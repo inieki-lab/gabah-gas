@@ -1,0 +1,68 @@
+/**
+ * GABAH Authoritative Numbering Engine
+ * Asset: {OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}
+ * Asset sequence resets yearly per owner division + asset code.
+ */
+export class AssetNumberingEngine {
+  private static sequenceStore = new Map<string, number>();
+  private static ticketSeq = new Map<number, number>();
+  private static loanSeq = new Map<number, number>();
+
+  static syncFromExistingAssets(assets: Array<{ asset_number: string }>) {
+    for (const a of assets) {
+      if (!a.asset_number) continue;
+      const parts = a.asset_number.split('-');
+      if (parts.length < 4) continue;
+      const division = parts[0].toUpperCase();
+      const year = parseInt(parts[parts.length - 2], 10);
+      const seq = parseInt(parts[parts.length - 1], 10);
+      const code = parts.slice(1, parts.length - 2).join('-').toUpperCase();
+      if (!isNaN(year) && !isNaN(seq)) {
+        const key = `${division}:${code}:${year}`;
+        this.sequenceStore.set(key, Math.max(this.sequenceStore.get(key) || 0, seq));
+      }
+    }
+  }
+
+  static syncFromExistingRecords(records: { tickets?: Array<{ ticket_number: string }>; loans?: Array<{ loan_number: string }> }) {
+    for (const t of records.tickets || []) {
+      const m = /^TKT-(\d{4})-(\d+)$/.exec(t.ticket_number || '');
+      if (m) this.ticketSeq.set(Number(m[1]), Math.max(this.ticketSeq.get(Number(m[1])) || 0, Number(m[2])));
+    }
+    for (const l of records.loans || []) {
+      const m = /^LOAN-(\d{4})-(\d+)$/.exec(l.loan_number || '');
+      if (m) this.loanSeq.set(Number(m[1]), Math.max(this.loanSeq.get(Number(m[1])) || 0, Number(m[2])));
+    }
+  }
+
+  static generateAssetNumber(ownerDivision: string, assetCode: string, targetYear?: number): string {
+    const year = targetYear || new Date().getFullYear();
+    const div = ownerDivision.trim().toUpperCase();
+    const code = assetCode.trim().toUpperCase();
+    if (!div || !code) throw new Error(`Owner division (${div}) dan Asset Code (${code}) wajib diisi.`);
+    const key = `${div}:${code}:${year}`;
+    const nextSeq = (this.sequenceStore.get(key) || 0) + 1;
+    this.sequenceStore.set(key, nextSeq);
+    return `${div}-${code}-${year}-${String(nextSeq).padStart(4, '0')}`;
+  }
+
+  static generateTicketNumber(targetYear?: number): string {
+    const year = targetYear || new Date().getFullYear();
+    const next = (this.ticketSeq.get(year) || 0) + 1;
+    this.ticketSeq.set(year, next);
+    return `TKT-${year}-${String(next).padStart(4, '0')}`;
+  }
+
+  static generateLoanNumber(targetYear?: number): string {
+    const year = targetYear || new Date().getFullYear();
+    const next = (this.loanSeq.get(year) || 0) + 1;
+    this.loanSeq.set(year, next);
+    return `LOAN-${year}-${String(next).padStart(4, '0')}`;
+  }
+
+  static _resetForTesting() {
+    this.sequenceStore.clear();
+    this.ticketSeq.clear();
+    this.loanSeq.clear();
+  }
+}

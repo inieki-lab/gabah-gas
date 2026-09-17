@@ -1,0 +1,6 @@
+{
+  "name": "GABAH - Enterprise Asset & Helpdesk Portal",
+  "description": "Portal internal perusahaan untuk manajemen aset IT, aset umum, lisensi software, helpdesk ticket, dan peminjaman barang anti-bentrok.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

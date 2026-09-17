@@ -1,0 +1,315 @@
+import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision } from '../types';
+
+const TOKEN_STORAGE_KEY = 'gabah_auth_token';
+
+class GabahApiClient {
+  private currentUserId: string = 'USR-ADM-001';
+  private authToken: string | null = null;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.authToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    }
+  }
+
+  setToken(token: string | null) {
+    this.authToken = token;
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      } else {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+      }
+    }
+  }
+
+  getToken(): string | null {
+    if (!this.authToken && typeof window !== 'undefined') {
+      this.authToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    }
+    return this.authToken;
+  }
+
+  setActor(userId: string) {
+    this.currentUserId = userId;
+  }
+
+  getActorId(): string {
+    return this.currentUserId;
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const token = this.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers as any),
+    };
+
+    const res = await fetch(endpoint, {
+      ...options,
+      headers,
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) {
+      if (res.status === 401 && endpoint !== '/api/auth/login') {
+        this.setToken(null);
+      }
+      throw new Error(json.message || `Request gagal: ${res.statusText}`);
+    }
+
+    return json.data !== undefined ? json.data : json;
+  }
+
+  // Users & Auth
+  async login(email: string, password: string): Promise<{ user: UserProfile; token: string; expires_at: string }> {
+    const data = await this.request<{ user: UserProfile; token: string; expires_at: string }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (data?.token) {
+      this.setToken(data.token);
+      this.setActor(data.user.id);
+    }
+    return data;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.request('/api/auth/logout', { method: 'POST' });
+    } finally {
+      this.setToken(null);
+    }
+  }
+
+  async getUsers(): Promise<any[]> {
+    return this.request<any[]>('/api/users');
+  }
+
+  async createUser(payload: Partial<UserProfile>): Promise<UserProfile> {
+    return this.request<UserProfile>('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateUser(userId: string, payload: Partial<UserProfile>): Promise<UserProfile> {
+    return this.request<UserProfile>(`/api/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/users/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getMe(): Promise<any> {
+    return this.request<any>('/api/auth/me');
+  }
+
+  async switchRole(userId: string): Promise<any> {
+    const data = await this.request<any>('/api/auth/switch-role', {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    });
+
+    if (data?.token) {
+      this.setToken(data.token);
+      this.setActor(data.user.id);
+    }
+    return data;
+  }
+
+  // Taxonomy
+  async getCategories(): Promise<any[]> {
+    return this.request<any[]>('/api/taxonomy/categories');
+  }
+
+  async resolveTaxonomy(nameOrCode: string): Promise<any> {
+    return this.request<any>('/api/taxonomy/resolve', {
+      method: 'POST',
+      body: JSON.stringify({ nameOrCode }),
+    });
+  }
+
+  // Assets
+  async getAssets(): Promise<Asset[]> {
+    return this.request<Asset[]>('/api/assets');
+  }
+
+  async getAssetById(id: string): Promise<Asset> {
+    return this.request<Asset>(`/api/assets/${id}`);
+  }
+
+  async createAsset(payload: {
+    category_name_or_code: string;
+    owner_division?: OwnerDivision;
+    name: string;
+    corporate_asset_number?: string | null;
+    brand?: string;
+    model?: string;
+    serial_number?: string;
+    specifications?: string;
+    purchase_date?: string;
+    purchase_price?: number;
+    warranty_until?: string;
+    location?: string;
+    is_loanable?: boolean;
+    condition?: string;
+    assigned_to_user_id?: string;
+    license_detail?: any;
+    notes?: string;
+  }): Promise<Asset> {
+    return this.request<Asset>('/api/assets', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateAsset(id: string, updates: Partial<Asset>): Promise<Asset> {
+    return this.request<Asset>(`/api/assets/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async assignAsset(id: string, targetUserId: string, reason: string): Promise<Asset> {
+    return this.request<Asset>(`/api/assets/${id}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId, reason }),
+    });
+  }
+
+  async moveAsset(id: string, newLocation: string, reason: string): Promise<Asset> {
+    return this.request<Asset>(`/api/assets/${id}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ newLocation, reason }),
+    });
+  }
+
+  async mutateLifecycle(id: string, action: string, notes: string): Promise<Asset> {
+    return this.request<Asset>(`/api/assets/${id}/lifecycle`, {
+      method: 'POST',
+      body: JSON.stringify({ action, notes }),
+    });
+  }
+
+  // Movements
+  async getMovements(assetId?: string): Promise<AssetMovement[]> {
+    const url = assetId ? `/api/movements?assetId=${assetId}` : '/api/movements';
+    return this.request<AssetMovement[]>(url);
+  }
+
+  // Loans
+  async getLoans(): Promise<Loan[]> {
+    return this.request<Loan[]>('/api/loans');
+  }
+
+  async requestLoan(payload: {
+    asset_id: string;
+    borrower_id: string;
+    purpose: string;
+    start_date: string;
+    due_date: string;
+  }): Promise<Loan> {
+    return this.request<Loan>('/api/loans', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async approveLoan(loanId: string): Promise<Loan> {
+    return this.request<Loan>(`/api/loans/${loanId}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  async handoverLoan(loanId: string, handoverNotes: string): Promise<Loan> {
+    return this.request<Loan>(`/api/loans/${loanId}/handover`, {
+      method: 'POST',
+      body: JSON.stringify({ handoverNotes }),
+    });
+  }
+
+  async returnLoan(loanId: string, condition: string, returnNotes: string): Promise<Loan> {
+    return this.request<Loan>(`/api/loans/${loanId}/return`, {
+      method: 'POST',
+      body: JSON.stringify({ condition, returnNotes }),
+    });
+  }
+
+  // Tickets
+  async getTickets(): Promise<Ticket[]> {
+    return this.request<Ticket[]>('/api/tickets');
+  }
+
+  async createTicket(payload: {
+    title: string;
+    description: string;
+    category: string;
+    priority: string;
+    related_asset_id?: string;
+  }): Promise<Ticket> {
+    return this.request<Ticket>('/api/tickets', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateTicketStatus(id: string, status: string, resolutionNotes?: string): Promise<Ticket> {
+    return this.request<Ticket>(`/api/tickets/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, resolutionNotes }),
+    });
+  }
+
+  // Notifications
+  async getNotifications(): Promise<any[]> {
+    return this.request<any[]>('/api/notifications');
+  }
+
+  async markNotificationRead(id: string): Promise<any> {
+    return this.request<any>(`/api/notifications/${id}/read`, {
+      method: 'PATCH',
+    });
+  }
+
+  async markAllNotificationsRead(): Promise<any> {
+    return this.request<any>('/api/notifications/read-all', {
+      method: 'POST',
+    });
+  }
+
+  // Dashboard & Attention Center
+  async getDashboardStats(): Promise<any> {
+    return this.request<any>('/api/dashboard/stats');
+  }
+
+  async getAttentionItems(): Promise<AttentionItem[]> {
+    return this.request<AttentionItem[]>('/api/dashboard/attention');
+  }
+
+  // Accurate Reconciliation
+  async getReconciliation(): Promise<{ stats: any; items: any[] }> {
+    return this.request<{ stats: any; items: any[] }>('/api/reconciliation');
+  }
+
+  async linkCorporateAssetNumber(assetId: string, corporateAssetNumber: string): Promise<Asset> {
+    return this.request<Asset>('/api/reconciliation/link', {
+      method: 'POST',
+      body: JSON.stringify({ assetId, corporateAssetNumber }),
+    });
+  }
+
+  // Audit Logs
+  async getAuditLogs(): Promise<AuditLog[]> {
+    return this.request<AuditLog[]>('/api/audit-logs');
+  }
+}
+
+export const gabahApi = new GabahApiClient();
