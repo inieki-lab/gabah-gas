@@ -1,17 +1,18 @@
+import 'dotenv/config';
 import { Pool } from 'pg';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db } from './db';
+import { db, seedInitialData } from './db';
 import { hashPassword } from './crypto';
 import { AssetNumberingEngine } from './numbering';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || undefined,
-  host: process.env.PGHOST || 'database',
+  host: process.env.PGHOST || (process.env.DATABASE_URL ? undefined : '127.0.0.1'),
   port: Number(process.env.PGPORT || 5432),
   database: process.env.PGDATABASE || 'gabah_db',
   user: process.env.PGUSER || 'gabah_user',
-  password: process.env.PGPASSWORD || 'PasswordBumd123!',
+  password: process.env.PGPASSWORD || '',
   max: 5,
   idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 2000,
@@ -53,7 +54,7 @@ function saveStateToFile(payload: any): void {
 }
 
 function hydrateDbFromState(state: any): void {
-  if (Array.isArray(state.users)) {
+  if (Array.isArray(state.users) && state.users.length > 0) {
     db.users = state.users.map((u: any) => {
       if (!u.password_hash || !u.password_salt) {
         const pass = u.temp_password || (u.role === 'Admin GABAH' ? 'AdminGabah#2026' : 'Pangan2026!');
@@ -64,12 +65,14 @@ function hydrateDbFromState(state: any): void {
     });
   }
   if (Array.isArray(state.sessions)) db.sessions = state.sessions;
-  if (Array.isArray(state.assets)) db.assets = state.assets;
-  if (Array.isArray(state.movements)) db.movements = state.movements;
-  if (Array.isArray(state.loans)) db.loans = state.loans;
-  if (Array.isArray(state.tickets)) db.tickets = state.tickets;
-  if (Array.isArray(state.notifications)) db.notifications = state.notifications;
-  if (Array.isArray(state.auditLogs)) db.auditLogs = state.auditLogs;
+  if (Array.isArray(state.assets) && state.assets.length > 0) db.assets = state.assets;
+  if (Array.isArray(state.movements) && state.movements.length > 0) db.movements = state.movements;
+  if (Array.isArray(state.loans) && state.loans.length > 0) db.loans = state.loans;
+  if (Array.isArray(state.tickets) && state.tickets.length > 0) db.tickets = state.tickets;
+  if (Array.isArray(state.notifications) && state.notifications.length > 0) db.notifications = state.notifications;
+  if (Array.isArray(state.auditLogs) && state.auditLogs.length > 0) db.auditLogs = state.auditLogs;
+  if (Array.isArray(state.rooms) && state.rooms.length > 0) db.rooms = state.rooms;
+  if (Array.isArray(state.roomReservations) && state.roomReservations.length > 0) db.roomReservations = state.roomReservations;
 }
 
 function loadStateFromFile(): boolean {
@@ -97,6 +100,8 @@ function createPayload() {
     tickets: db.tickets,
     notifications: db.notifications,
     auditLogs: db.auditLogs,
+    rooms: db.rooms,
+    roomReservations: db.roomReservations,
   };
 }
 
@@ -161,23 +166,40 @@ async function backfillNormalizedTables(): Promise<void> {
          ON CONFLICT (id) DO UPDATE SET asset_number=EXCLUDED.asset_number,corporate_asset_number=EXCLUDED.corporate_asset_number,name=EXCLUDED.name,category_id=EXCLUDED.category_id,owner_division_id=EXCLUDED.owner_division_id,brand=EXCLUDED.brand,model=EXCLUDED.model,serial_number=EXCLUDED.serial_number,specifications=EXCLUDED.specifications,purchase_date=EXCLUDED.purchase_date,purchase_price=EXCLUDED.purchase_price,warranty_until=EXCLUDED.warranty_until,status=EXCLUDED.status,condition=EXCLUDED.condition,location=EXCLUDED.location,is_loanable=EXCLUDED.is_loanable,license_detail=EXCLUDED.license_detail,notes=EXCLUDED.notes,updated_at=EXCLUDED.updated_at`,
         [a.id,a.asset_number,a.corporate_asset_number,a.name,a.category_code,a.owner_division,a.brand,a.model,a.serial_number,a.specifications,a.purchase_date || '',Number(a.purchase_price || 0),a.warranty_until || '',a.status,a.condition,a.location,a.is_loanable,a.license_detail ? JSON.stringify(a.license_detail) : null,a.notes || null,a.created_at,a.updated_at],
       );
-      if (a.assigned_to?.id) await client.query(
-        `INSERT INTO asset_assignments (asset_id,user_id,assigned_date,assigned_by,notes) VALUES ($1,$2,COALESCE(NULLIF($3,'')::date,CURRENT_DATE),NULL,$4) ON CONFLICT DO NOTHING`,
-        [a.id,a.assigned_to.id,a.assigned_to.assigned_date || '','Backfilled from GABAH state'],
-      );
+      if (a.assigned_to?.id) {
+        const userExists = db.users.some(u => u.id === a.assigned_to!.id);
+        if (userExists) {
+          await client.query(
+            `INSERT INTO asset_assignments (asset_id,user_id,assigned_date,assigned_by,notes) VALUES ($1,$2,COALESCE(NULLIF($3,'')::date,CURRENT_DATE),NULL,$4) ON CONFLICT DO NOTHING`,
+            [a.id,a.assigned_to.id,a.assigned_to.assigned_date || '','Backfilled from GABAH state'],
+          );
+        }
+      }
     }
     for (const m of db.movements) await client.query(
       `INSERT INTO asset_movements (id,asset_id,from_user_id,to_user_id,from_location,to_location,reason,document_ref,performed_by_id,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO NOTHING`,
       [m.id,m.asset_id,m.from_user_id || null,m.to_user_id || null,m.from_location || null,m.to_location || null,m.reason || '',m.document_ref || null,m.performed_by_id || null,m.created_at],
     );
-    for (const l of db.loans) await client.query(
-      `INSERT INTO loans (id,loan_number,asset_id,borrower_id,purpose,start_date,due_date,status,approver_id,approved_at,handover_by_id,handover_at,handover_notes,actual_returned_at,return_condition,return_inspected_by_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,approver_id=EXCLUDED.approver_id,approved_at=EXCLUDED.approved_at,handover_by_id=EXCLUDED.handover_by_id,handover_at=EXCLUDED.handover_at,handover_notes=EXCLUDED.handover_notes,actual_returned_at=EXCLUDED.actual_returned_at,return_condition=EXCLUDED.return_condition,return_inspected_by_id=EXCLUDED.return_inspected_by_id,updated_at=EXCLUDED.updated_at`,
-      [l.id,l.loan_number,l.asset_id,l.borrower_id,l.purpose,l.start_date,l.due_date,l.status,l.approver_id || null,l.approved_at || null,l.handover_by_id || null,l.handover_at || null,l.handover_notes || null,l.actual_returned_at || null,l.return_condition || null,l.return_inspected_by_id || null,l.created_at,l.updated_at],
-    );
-    for (const t of db.tickets) await client.query(
-      `INSERT INTO tickets (id,ticket_number,ticket_code,title,description,category,priority,status,reporter_id,assigned_agent_id,related_asset_id,sla_hours,sla_resolution_deadline,resolved_at,resolution_notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,assigned_agent_id=EXCLUDED.assigned_agent_id,resolved_at=EXCLUDED.resolved_at,resolution_notes=EXCLUDED.resolution_notes,updated_at=EXCLUDED.updated_at`,
-      [t.id,t.ticket_number,t.ticket_code,t.title,t.description,t.category,t.priority,t.status,t.reporter_id,t.assigned_agent_id || null,t.related_asset_id || null,t.sla_hours,t.sla_resolution_deadline,t.resolved_at || null,t.resolution_notes || null,t.created_at,t.updated_at],
-    );
+    for (const l of db.loans) {
+      const borrowerExists = db.users.some(u => u.id === l.borrower_id);
+      if (!borrowerExists) continue;
+      const approverId = (l.approver_id && db.users.some(u => u.id === l.approver_id)) ? l.approver_id : null;
+      const handoverId = (l.handover_by_id && db.users.some(u => u.id === l.handover_by_id)) ? l.handover_by_id : null;
+      const returnInspectorId = (l.return_inspected_by_id && db.users.some(u => u.id === l.return_inspected_by_id)) ? l.return_inspected_by_id : null;
+      await client.query(
+        `INSERT INTO loans (id,loan_number,asset_id,borrower_id,purpose,start_date,due_date,status,approver_id,approved_at,handover_by_id,handover_at,handover_notes,actual_returned_at,return_condition,return_inspected_by_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,approver_id=EXCLUDED.approver_id,approved_at=EXCLUDED.approved_at,handover_by_id=EXCLUDED.handover_by_id,handover_at=EXCLUDED.handover_at,handover_notes=EXCLUDED.handover_notes,actual_returned_at=EXCLUDED.actual_returned_at,return_condition=EXCLUDED.return_condition,return_inspected_by_id=EXCLUDED.return_inspected_by_id,updated_at=EXCLUDED.updated_at`,
+        [l.id,l.loan_number,l.asset_id,l.borrower_id,l.purpose,l.start_date,l.due_date,l.status,approverId,l.approved_at || null,handoverId,l.handover_at || null,l.handover_notes || null,l.actual_returned_at || null,l.return_condition || null,returnInspectorId,l.created_at,l.updated_at],
+      );
+    }
+    for (const t of db.tickets) {
+      const reporterExists = db.users.some(u => u.id === t.reporter_id);
+      if (!reporterExists) continue;
+      const agentId = (t.assigned_agent_id && db.users.some(u => u.id === t.assigned_agent_id)) ? t.assigned_agent_id : null;
+      await client.query(
+        `INSERT INTO tickets (id,ticket_number,ticket_code,title,description,category,priority,status,reporter_id,assigned_agent_id,related_asset_id,sla_hours,sla_resolution_deadline,resolved_at,resolution_notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,assigned_agent_id=EXCLUDED.assigned_agent_id,resolved_at=EXCLUDED.resolved_at,resolution_notes=EXCLUDED.resolution_notes,updated_at=EXCLUDED.updated_at`,
+        [t.id,t.ticket_number,t.ticket_code,t.title,t.description,t.category,t.priority,t.status,t.reporter_id,agentId,t.related_asset_id || null,t.sla_hours,t.sla_resolution_deadline,t.resolved_at || null,t.resolution_notes || null,t.created_at,t.updated_at],
+      );
+    }
     for (const n of db.notifications) await client.query(
       `INSERT INTO notifications (id,recipient_user_id,recipient_role,recipient_division_id,title,message,severity,category,link_type,link_id,is_read,created_at) VALUES ($1,$2,$3,(SELECT id FROM divisions WHERE code=$4),$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO UPDATE SET is_read=EXCLUDED.is_read`,
       [n.id,n.recipient_user_id || null,n.recipient_role || null,n.recipient_division || null,n.title,n.message,n.severity,n.category,n.link_type || null,n.link_id || null,n.is_read,n.created_at],
@@ -221,10 +243,12 @@ export async function initializePersistence(): Promise<void> {
         if (state && typeof state === 'object') {
           hydrateDbFromState(state);
         }
-      } else {
-        await persistPostgresState();
+      }
+      if (!db.assets || db.assets.length === 0) {
+        seedInitialData();
       }
       ensureCanonicalAdministrator();
+      await persistPostgresState();
       await backfillNormalizedTables();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
       isPostgresAvailable = true;
@@ -276,3 +300,8 @@ export function persistDataStore(): Promise<void> {
 
   return persistQueue;
 }
+
+export function getDbPool(): Pool {
+  return pool;
+}
+

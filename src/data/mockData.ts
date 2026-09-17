@@ -77,26 +77,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Audit Internal',
     avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
     temp_password: 'Auditor#2026',
-  },
-  {
-    id: 'USR-08',
-    name: 'Direksi Food Station',
-    email: 'direksi@foodstation.co.id',
-    role: 'Management',
-    role_label: 'Manajemen Eksekutif',
-    department: 'Direksi',
-    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
-    temp_password: 'Management#2026',
-  },
-  {
-    id: 'USR-09',
-    name: 'Mitra Servis Resmi',
-    email: 'vendor.it@metrodata.co.id',
-    role: 'Vendor',
-    role_label: 'Mitra Rekanan',
-    department: 'Hardware Maintenance Support',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    temp_password: 'Vendor#2026',
   }
 ];
 

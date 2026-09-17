@@ -76,7 +76,14 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
  * Resolve Category and Owner Division from human-readable name or code
  * User chooses human-readable "Jenis Aset", system derives canonical code and owner division.
  */
-export function resolveTaxonomyByHumanName(nameOrCode: string, requestedDivision?: 'IT' | 'GA' | 'SC' | 'PIBC'): AssetTaxonomyItem {
+export function resolveTaxonomyByHumanName(nameOrCode?: string, requestedDivision?: 'IT' | 'GA' | 'SC' | 'PIBC'): AssetTaxonomyItem {
+  if (!nameOrCode || typeof nameOrCode !== 'string' || !nameOrCode.trim()) {
+    if (requestedDivision === 'IT') return CANONICAL_TAXONOMY.find(t => t.code === 'HLT')!;
+    if (requestedDivision === 'GA') return CANONICAL_TAXONOMY.find(t => t.code === 'INV-P')!;
+    if (requestedDivision === 'SC') return CANONICAL_TAXONOMY.find(t => t.code === 'KDR-SC')!;
+    if (requestedDivision === 'PIBC') return CANONICAL_TAXONOMY.find(t => t.code === 'MSN-PIBC')!;
+    return CANONICAL_TAXONOMY[0];
+  }
   const query = nameOrCode.trim().toLowerCase();
   
   // 1. Check exact match by code

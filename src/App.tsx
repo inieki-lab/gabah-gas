@@ -11,7 +11,9 @@ import {
   AssetCategoryType,
   TicketPriority,
   MaintenanceSchedule,
-  MaintenanceStatus
+  MaintenanceStatus,
+  MeetingRoom,
+  RoomReservation
 } from './types';
 import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_USERS, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
 import { gabahApi } from './services/gabahApi';
@@ -28,6 +30,7 @@ import { VendorsView } from './components/views/VendorsView';
 import { KnowledgeBaseView } from './components/views/KnowledgeBaseView';
 import { ReportsView } from './components/views/ReportsView';
 import { MyAssetsView } from './components/views/MyAssetsView';
+import { MeetingRoomsView } from './components/views/MeetingRoomsView';
 
 import { LaravelArchitectureModal } from './components/modals/LaravelArchitectureModal';
 import { CreateAssetModal } from './components/modals/CreateAssetModal';
@@ -53,6 +56,8 @@ export default function App() {
   const [vendors] = useState<Vendor[]>(INITIAL_VENDORS);
   const [knowledgeBase] = useState<KnowledgeArticle[]>(INITIAL_KNOWLEDGE_BASE);
   const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>(INITIAL_MAINTENANCE_SCHEDULES);
+  const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
+  const [roomReservations, setRoomReservations] = useState<RoomReservation[]>([]);
 
   const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USERS[0]);
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
@@ -96,12 +101,14 @@ export default function App() {
   const refreshData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers] = await Promise.all([
+      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations] = await Promise.all([
         gabahApi.getAssets().catch(() => []),
         gabahApi.getLoans().catch(() => []),
         gabahApi.getTickets().catch(() => []),
         gabahApi.getAuditLogs().catch(() => []),
         gabahApi.getUsers().catch(() => INITIAL_USERS),
+        gabahApi.getMeetingRooms().catch(() => []),
+        gabahApi.getRoomReservations().catch(() => []),
       ]);
 
       if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
@@ -109,6 +116,8 @@ export default function App() {
       if (Array.isArray(fetchedTickets)) setTickets(fetchedTickets);
       if (Array.isArray(fetchedLogs)) setAuditLogs(fetchedLogs);
       if (Array.isArray(fetchedUsers) && fetchedUsers.length > 0) setAllUsers(fetchedUsers);
+      if (Array.isArray(fetchedRooms)) setMeetingRooms(fetchedRooms);
+      if (Array.isArray(fetchedReservations)) setRoomReservations(fetchedReservations);
     } catch (err: any) {
       console.error('Failed to fetch from backend:', err);
     } finally {
@@ -339,9 +348,65 @@ export default function App() {
     }
   };
 
+  // 10. Meeting Rooms Operations
+  const handleCreateReservation = async (payload: any) => {
+    try {
+      const res = await gabahApi.createRoomReservation(payload);
+      showToast(`Reservasi ${res.reservation_number} berhasil diajukan untuk ${res.room_name}!`);
+      await refreshData();
+      return res;
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengajukan reservasi', 'warning');
+      throw err;
+    }
+  };
+
+  const handleApproveReservation = async (id: string) => {
+    const res = await gabahApi.approveRoomReservation(id);
+    showToast(`Reservasi ${res.reservation_number} telah disetujui GA.`);
+    await refreshData();
+    return res;
+  };
+
+  const handleRejectReservation = async (id: string, reason: string) => {
+    const res = await gabahApi.rejectRoomReservation(id, reason);
+    showToast(`Reservasi ${res.reservation_number} ditolak.`, 'info');
+    await refreshData();
+    return res;
+  };
+
+  const handleCheckinReservation = async (id: string) => {
+    const res = await gabahApi.checkinRoomReservation(id);
+    showToast(`Check-in berhasil. Ruangan ${res.room_name} kini berstatus in use.`);
+    await refreshData();
+    return res;
+  };
+
+  const handleCheckoutReservation = async (id: string) => {
+    const res = await gabahApi.checkoutRoomReservation(id);
+    showToast(`Check-out selesai. Ruangan ${res.room_name} kembali tersedia.`);
+    await refreshData();
+    return res;
+  };
+
+  const handleCancelReservation = async (id: string) => {
+    const res = await gabahApi.cancelRoomReservation(id);
+    showToast(`Reservasi ${res.reservation_number} berhasil dibatalkan.`, 'info');
+    await refreshData();
+    return res;
+  };
+
+  const handleUpdateRoomStatus = async (roomId: string, status: 'available' | 'maintenance') => {
+    const res = await gabahApi.updateMeetingRoom(roomId, { status });
+    showToast(`Status ruangan ${res.name} diperbarui menjadi ${status}.`);
+    await refreshData();
+    return res;
+  };
+
   const pendingLoans = loans.filter(l => l.status === 'pending');
   const urgentTickets = tickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
   const openTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress');
+  const pendingReservations = roomReservations.filter(r => r.status === 'pending_approval');
 
   if (viewMode === 'landing') {
     return (
@@ -454,6 +519,7 @@ export default function App() {
           }}
           pendingLoansCount={pendingLoans.length}
           openTicketsCount={openTickets.length}
+          pendingReservationsCount={pendingReservations.length}
           currentUserRole={currentUser.role}
           onOpenAdministration={() => setIsAdministrationModalOpen(true)}
         />
@@ -494,6 +560,22 @@ export default function App() {
               onOpenNewLoanModal={() => setIsCreateLoanModalOpen(true)}
               onOpenNewTicketModal={() => setIsCreateTicketModalOpen(true)}
               onReturnLoan={handleReturnLoan}
+            />
+          )}
+
+          {currentTab === 'meeting_rooms' && (
+            <MeetingRoomsView
+              rooms={meetingRooms}
+              reservations={roomReservations}
+              currentUser={currentUser}
+              onCreateReservation={handleCreateReservation}
+              onApproveReservation={handleApproveReservation}
+              onRejectReservation={handleRejectReservation}
+              onCheckinReservation={handleCheckinReservation}
+              onCheckoutReservation={handleCheckoutReservation}
+              onCancelReservation={handleCancelReservation}
+              onUpdateRoomStatus={handleUpdateRoomStatus}
+              onRefresh={refreshData}
             />
           )}
 

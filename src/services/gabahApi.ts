@@ -1,4 +1,4 @@
-import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision } from '../types';
+import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation } from '../types';
 
 const TOKEN_STORAGE_KEY = 'gabah_auth_token';
 
@@ -309,6 +309,80 @@ class GabahApiClient {
   // Audit Logs
   async getAuditLogs(): Promise<AuditLog[]> {
     return this.request<AuditLog[]>('/api/audit-logs');
+  }
+
+  // Meeting Rooms & Reservations
+  async getMeetingRooms(): Promise<MeetingRoom[]> {
+    return this.request<MeetingRoom[]>('/api/meeting-rooms');
+  }
+
+  async getRoomReservations(query?: { room_id?: string; date?: string; status?: string; organizer_id?: string }): Promise<RoomReservation[]> {
+    const params = new URLSearchParams();
+    if (query?.room_id) params.append('room_id', query.room_id);
+    if (query?.date) params.append('date', query.date);
+    if (query?.status) params.append('status', query.status);
+    if (query?.organizer_id) params.append('organizer_id', query.organizer_id);
+    const qs = params.toString();
+    const url = qs ? `/api/room-reservations?${qs}` : '/api/room-reservations';
+    return this.request<RoomReservation[]>(url);
+  }
+
+  async createRoomReservation(payload: {
+    room_id: string;
+    title: string;
+    description?: string;
+    attendees_count: number;
+    meeting_type?: 'internal' | 'external' | 'hybrid' | 'direksi';
+    date: string;
+    start_time: string;
+    end_time: string;
+    facilities_requested?: string[];
+    consumption_requested?: boolean;
+    consumption_notes?: string;
+    notes?: string;
+  }): Promise<RoomReservation> {
+    return this.request<RoomReservation>('/api/room-reservations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async approveRoomReservation(id: string): Promise<RoomReservation> {
+    return this.request<RoomReservation>(`/api/room-reservations/${id}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectRoomReservation(id: string, reason: string): Promise<RoomReservation> {
+    return this.request<RoomReservation>(`/api/room-reservations/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async checkinRoomReservation(id: string): Promise<RoomReservation> {
+    return this.request<RoomReservation>(`/api/room-reservations/${id}/checkin`, {
+      method: 'POST',
+    });
+  }
+
+  async checkoutRoomReservation(id: string): Promise<RoomReservation> {
+    return this.request<RoomReservation>(`/api/room-reservations/${id}/checkout`, {
+      method: 'POST',
+    });
+  }
+
+  async cancelRoomReservation(id: string): Promise<RoomReservation> {
+    return this.request<RoomReservation>(`/api/room-reservations/${id}/cancel`, {
+      method: 'POST',
+    });
+  }
+
+  async updateMeetingRoom(id: string, updates: Partial<MeetingRoom>): Promise<MeetingRoom> {
+    return this.request<MeetingRoom>(`/api/meeting-rooms/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
   }
 }
 

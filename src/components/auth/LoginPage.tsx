@@ -19,7 +19,6 @@ import { gabahApi } from '../../services/gabahApi';
 
 const defaultPasswordForRole: Record<string, string> = {
   'Admin GABAH': 'AdminGabah#2026',
-  'Superadmin': 'AdminGabah#2026',
   'IT': 'ItStaff#2026',
   'GA': 'GaStaff#2026',
   'Supply Chain': 'ScStaff#2026',

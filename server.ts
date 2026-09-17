@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
@@ -350,7 +351,7 @@ async function startServer() {
     try {
       const actor = getActor(req);
       // Strictly prevent unauthorized users from switching roles
-      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+      if (actor.role !== 'Admin GABAH') {
         return res.status(403).json({
           success: false,
           message: 'Akses ditolak: Hanya Administrator yang berwenang melakukan simulasi role (RBAC switcher).',
@@ -408,10 +409,17 @@ async function startServer() {
     res.json({ success: true, data: scopedAssets });
   });
 
-  app.post('/api/assets', (req, res) => {
+  app.post('/api/assets', async (req, res) => {
     try {
       const actor = getActor(req);
+      if (actor.role === 'Auditor') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+      }
+      if (actor.role === 'Karyawan') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Karyawan tidak memiliki wewenang mendaftarkan aset baru.' });
+      }
       const newAsset = GabahDomainService.createAsset(req.body, actor);
+      await persistDataStore();
       res.status(201).json({ success: true, data: newAsset });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -429,6 +437,48 @@ async function startServer() {
     const asset = db.assets.find(a => a.id === req.params.id);
     if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
 
+    // Auditor is strictly read-only
+    if (actor.role === 'Auditor') {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+    }
+    // Karyawan cannot mutate assets
+    if (actor.role === 'Karyawan') {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Karyawan tidak memiliki wewenang mengubah aset.' });
+    }
+    // Enforce Division Authority
+    if (actor.role !== 'Admin GABAH') {
+      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Aset IT hanya dapat diubah oleh personel IT atau Admin GABAH.' });
+      }
+      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Aset GA hanya dapat diubah oleh personel GA atau Admin GABAH.' });
+      }
+      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Aset Supply Chain hanya dapat diubah oleh personel Supply Chain atau Admin GABAH.' });
+      }
+      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Aset PIBC hanya dapat diubah oleh personel PIBC atau Admin GABAH.' });
+      }
+    }
+
+    // Check duplicate serial number
+    if (req.body.serial_number && typeof req.body.serial_number === 'string' && req.body.serial_number.trim()) {
+      const sn = req.body.serial_number.trim();
+      const existingSN = db.assets.find(a => a.id !== asset.id && a.serial_number && a.serial_number.trim().toLowerCase() === sn.toLowerCase());
+      if (existingSN) {
+        return res.status(400).json({ success: false, message: `Nomor Seri (Serial Number) "${sn}" sudah terdaftar pada aset ${existingSN.asset_number} (${existingSN.name}).` });
+      }
+    }
+
+    // Check duplicate corporate asset number
+    if (req.body.corporate_asset_number && typeof req.body.corporate_asset_number === 'string' && req.body.corporate_asset_number.trim()) {
+      const corpNo = req.body.corporate_asset_number.trim();
+      const existingCorp = db.assets.find(a => a.id !== asset.id && a.corporate_asset_number && a.corporate_asset_number.trim().toLowerCase() === corpNo.toLowerCase());
+      if (existingCorp) {
+        return res.status(400).json({ success: false, message: `Nomor Aset Accurate/ERP "${corpNo}" sudah terdaftar pada aset ${existingCorp.asset_number} (${existingCorp.name}).` });
+      }
+    }
+
     // Update mutable fields (not asset_number or owner_division)
     const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
     for (const key of allowed) {
@@ -439,6 +489,7 @@ async function startServer() {
     asset.updated_at = new Date().toISOString();
 
     GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
+    persistDataStore().catch(() => {});
 
     res.json({ success: true, data: asset });
   });
@@ -490,7 +541,7 @@ async function startServer() {
   app.get('/api/loans', (req, res) => {
     const actor = getActor(req);
     // Scoping loans:
-    if (['Admin GABAH', 'Management', 'Auditor'].includes(actor.role)) {
+    if (actor.role === 'Admin GABAH' || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.loans });
     }
     if (actor.role === 'Karyawan') {
@@ -508,42 +559,46 @@ async function startServer() {
     res.json({ success: true, data: db.loans });
   });
 
-  app.post('/api/loans', (req, res) => {
+  app.post('/api/loans', async (req, res) => {
     try {
       const actor = getActor(req);
       const newLoan = GabahDomainService.requestLoan(req.body, actor);
+      await persistDataStore();
       res.status(201).json({ success: true, data: newLoan });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/loans/:id/approve', (req, res) => {
+  app.post('/api/loans/:id/approve', async (req, res) => {
     try {
       const actor = getActor(req);
       const approved = GabahDomainService.approveLoan(req.params.id, actor);
+      await persistDataStore();
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/loans/:id/handover', (req, res) => {
+  app.post('/api/loans/:id/handover', async (req, res) => {
     try {
       const actor = getActor(req);
       const { handoverNotes } = req.body;
       const handedOver = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
+      await persistDataStore();
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/loans/:id/return', (req, res) => {
+  app.post('/api/loans/:id/return', async (req, res) => {
     try {
       const actor = getActor(req);
       const { condition, returnNotes } = req.body;
       const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
+      await persistDataStore();
       res.json({ success: true, data: returned });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -553,7 +608,7 @@ async function startServer() {
   // Helpdesk Tickets
   app.get('/api/tickets', (req, res) => {
     const actor = getActor(req);
-    if (['Admin GABAH', 'Management', 'Auditor'].includes(actor.role)) {
+    if (actor.role === 'Admin GABAH' || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.tickets });
     }
     if (actor.role === 'Karyawan') {
@@ -583,6 +638,9 @@ async function startServer() {
 
   app.patch('/api/tickets/:id/status', (req, res) => {
     const actor = getActor(req);
+    if (actor.role === 'Auditor') {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+    }
     const ticket = db.tickets.find(t => t.id === req.params.id);
     if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
 
@@ -595,6 +653,7 @@ async function startServer() {
     ticket.updated_at = new Date().toISOString();
 
     GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} menjadi ${status}`, actor, ticket.id);
+    persistDataStore().catch(() => {});
 
     res.json({ success: true, data: ticket });
   });
@@ -602,7 +661,7 @@ async function startServer() {
   // Maintenance & Calibration Schedules
   app.get('/api/maintenances', (req, res) => {
     const actor = getActor(req);
-    if (['Admin GABAH', 'Management', 'Auditor'].includes(actor.role)) {
+    if (actor.role === 'Admin GABAH' || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.maintenances });
     }
     if (actor.role === 'IT') {
@@ -619,17 +678,44 @@ async function startServer() {
 
   app.post('/api/maintenances', (req, res) => {
     const actor = getActor(req);
+    if (actor.role === 'Auditor' || actor.role === 'Karyawan') {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Peran Anda tidak memiliki hak membuat jadwal servis.' });
+    }
+    if (!req.body.asset_id) {
+      return res.status(400).json({ success: false, message: 'Aset wajib dipilih untuk jadwal pemeliharaan.' });
+    }
+    const asset = db.assets.find(a => a.id === req.body.asset_id);
+    if (!asset) {
+      return res.status(400).json({ success: false, message: 'Aset yang dipilih tidak ditemukan.' });
+    }
+
+    // Enforce Division Authority
+    if (actor.role !== 'Admin GABAH') {
+      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
+        return res.status(403).json({ success: false, message: 'Jadwal servis aset IT hanya dapat dibuat oleh Divisi IT.' });
+      }
+      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
+        return res.status(403).json({ success: false, message: 'Jadwal servis aset GA hanya dapat dibuat oleh Divisi GA.' });
+      }
+      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+        return res.status(403).json({ success: false, message: 'Jadwal servis aset Supply Chain hanya dapat dibuat oleh Divisi Supply Chain.' });
+      }
+      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+        return res.status(403).json({ success: false, message: 'Jadwal servis aset PIBC hanya dapat dibuat oleh Divisi PIBC.' });
+      }
+    }
+
     const count = db.maintenances.length + 1;
     const scheduleCode = `MNT-2026-${String(count).padStart(3, '0')}`;
     const newSchedule = {
       id: `mnt-${Date.now()}`,
       schedule_code: scheduleCode,
-      title: req.body.title || 'Jadwal Pemeliharaan',
-      asset_id: req.body.asset_id,
-      asset_name: req.body.asset_name,
-      asset_number: req.body.asset_number,
-      category_type: req.body.category_type || 'General',
-      owner_division: req.body.owner_division || actor.division,
+      title: req.body.title || `Servis Pemeliharaan ${asset.name}`,
+      asset_id: asset.id,
+      asset_name: asset.name,
+      asset_number: asset.asset_number,
+      category_type: asset.category_type || 'General',
+      owner_division: asset.owner_division,
       scheduled_date: req.body.scheduled_date || new Date().toISOString().split('T')[0],
       frequency: req.body.frequency || 'one_time',
       status: req.body.status || 'scheduled',
@@ -644,19 +730,39 @@ async function startServer() {
     };
     db.maintenances.push(newSchedule);
     GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
+    persistDataStore().catch(() => {});
     res.status(201).json({ success: true, data: newSchedule });
   });
 
   app.patch('/api/maintenances/:id', (req, res) => {
     const actor = getActor(req);
+    if (actor.role === 'Auditor' || actor.role === 'Karyawan') {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Peran Anda tidak memiliki hak memperbarui jadwal servis.' });
+    }
     const schedule = db.maintenances.find(m => m.id === req.params.id);
     if (!schedule) return res.status(404).json({ success: false, message: 'Jadwal servis tidak ditemukan' });
+
+    if (actor.role !== 'Admin GABAH') {
+      if (schedule.owner_division === 'IT' && actor.role !== 'IT') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang mengubah jadwal ini.' });
+      }
+      if (schedule.owner_division === 'GA' && actor.role !== 'GA') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi GA atau Admin GABAH yang berwenang mengubah jadwal ini.' });
+      }
+      if ((schedule.owner_division === 'SC' || schedule.owner_division === 'Supply Chain') && actor.role !== 'Supply Chain') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi Supply Chain atau Admin GABAH yang berwenang mengubah jadwal ini.' });
+      }
+      if (schedule.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi PIBC atau Admin GABAH yang berwenang mengubah jadwal ini.' });
+      }
+    }
 
     Object.assign(schedule, req.body);
     if (req.body.status === 'completed') {
       schedule.last_completed_at = new Date().toISOString();
     }
     GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
+    persistDataStore().catch(() => {});
     res.json({ success: true, data: schedule });
   });
 
@@ -746,6 +852,89 @@ async function startServer() {
   // Audit Logs
   app.get('/api/audit-logs', (req, res) => {
     res.json({ success: true, data: db.auditLogs });
+  });
+
+  // ==========================================
+  // MEETING ROOMS & RESERVATIONS API
+  // ==========================================
+  app.get('/api/meeting-rooms', (req, res) => {
+    res.json({ success: true, data: GabahDomainService.getMeetingRooms() });
+  });
+
+  app.patch('/api/meeting-rooms/:id', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const updated = GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.get('/api/room-reservations', (req, res) => {
+    const { room_id, date, status, organizer_id } = req.query as any;
+    const data = GabahDomainService.getRoomReservations({ room_id, date, status, organizer_id });
+    res.json({ success: true, data });
+  });
+
+  app.post('/api/room-reservations', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const created = GabahDomainService.requestRoomReservation(req.body, actor);
+      res.status(201).json({ success: true, data: created });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.post('/api/room-reservations/:id/approve', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const approved = GabahDomainService.approveRoomReservation(req.params.id, actor);
+      res.json({ success: true, data: approved });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.post('/api/room-reservations/:id/reject', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const rejected = GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
+      res.json({ success: true, data: rejected });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.post('/api/room-reservations/:id/checkin', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const checkedIn = GabahDomainService.checkinRoomReservation(req.params.id, actor);
+      res.json({ success: true, data: checkedIn });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.post('/api/room-reservations/:id/checkout', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const checkedOut = GabahDomainService.checkoutRoomReservation(req.params.id, actor);
+      res.json({ success: true, data: checkedOut });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.post('/api/room-reservations/:id/cancel', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const cancelled = GabahDomainService.cancelRoomReservation(req.params.id, actor);
+      res.json({ success: true, data: cancelled });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
   });
 
   // ==========================================

@@ -15,7 +15,8 @@ import {
   Clock,
   ExternalLink,
   BookOpen,
-  UserCheck
+  UserCheck,
+  Building2
 } from 'lucide-react';
 import { Asset, Loan, Ticket, UserProfile, AuditLog } from '../../types';
 import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
@@ -228,24 +229,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Panduan & SOP Layanan */}
+          {/* Ruang Rapat & Fasilitas GA */}
           <div 
-            onClick={() => onNavigate('knowledge')}
+            onClick={() => onNavigate('meeting_rooms')}
             className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Pusat Informasi &amp; SOP</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Ruang Rapat &amp; GA</span>
               <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <BookOpen className="w-5 h-5" />
+                <Building2 className="w-5 h-5" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-black text-slate-900">Knowledge Base</div>
-              <div className="text-xs text-slate-600 mt-1">
-                Panduan WiFi, Printer, SOP Aset
+              <div className="text-2xl font-black text-slate-900">Reservasi Rapat</div>
+              <div className="text-xs text-emerald-700 font-medium mt-1">
+                Fasilitas Hybrid, TV &amp; Pantry
               </div>
               <div className="text-[11px] text-emerald-700 font-bold mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span>Buka Artikel Bantuan</span>
+                <span>Pesan &amp; Cek Jadwal</span>
                 <ArrowRight className="w-3 h-3 text-emerald-600" />
               </div>
             </div>

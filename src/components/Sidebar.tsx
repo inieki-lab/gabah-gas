@@ -32,6 +32,7 @@ import { AdministrationModal } from './modals/AdministrationModal';
 export type NavTab = 
   | 'dashboard'
   | 'my_assets'
+  | 'meeting_rooms'
   | 'assets'
   | 'maintenance'
   | 'loans'
@@ -49,6 +50,7 @@ interface SidebarProps {
   currentUserRole?: UserRole;
   pendingLoansCount?: number;
   openTicketsCount?: number;
+  pendingReservationsCount?: number;
   onOpenAdministration?: () => void;
 }
 
@@ -74,6 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUserRole,
   pendingLoansCount = 0,
   openTicketsCount = 0,
+  pendingReservationsCount = 0,
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole || 'Admin GABAH';
@@ -91,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: isEmployee ? 'Ringkasan & Status' : 'Overview SLA & Aset',
           icon: LayoutDashboard,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor', 'Management', 'Vendor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'my_assets',
@@ -99,7 +102,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: isEmployee ? 'Perangkat Kerja Anda' : 'Aset Ditugaskan',
           icon: Laptop,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor', 'Management'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+        },
+        {
+          id: 'meeting_rooms',
+          label: isEmployee ? 'Ruang Rapat' : 'Reservasi Ruangan',
+          description: 'Jadwal & Fasilitas GA',
+          icon: Building2,
+          badge: pendingReservationsCount > 0 && (activeRole === 'GA' || activeRole === 'Admin GABAH') ? pendingReservationsCount : null,
+          badgeColor: 'bg-emerald-600 text-white',
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'loans',
@@ -108,7 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: CalendarClock,
           badge: pendingLoansCount > 0 && !isEmployee ? pendingLoansCount : null,
           badgeColor: 'bg-[#F7B733] text-slate-900',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor', 'Management'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'tickets',
@@ -117,7 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: LifeBuoy,
           badge: openTicketsCount > 0 && !isEmployee ? openTicketsCount : null,
           badgeColor: 'bg-[#FC4A1A] text-white',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor', 'Management', 'Vendor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
       ],
     },
@@ -130,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'IT, GA, Kendaraan & SC',
           icon: Package,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor', 'Management'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
         },
         {
           id: 'maintenance',
@@ -139,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Wrench,
           badge: 'Rutin',
           badgeColor: 'bg-amber-100 text-amber-800 border border-amber-300',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor', 'Management'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
         },
         {
           id: 'licenses',
@@ -147,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Seat & Expiry',
           icon: KeyRound,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'Auditor', 'Management'],
+          roles: ['Admin GABAH', 'IT', 'Auditor'],
         },
       ],
     },
@@ -160,7 +172,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Kontrak Servis & Mitra',
           icon: Briefcase,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Auditor', 'Management'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Auditor'],
         },
         {
           id: 'knowledge',
@@ -168,7 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Panduan & SOP',
           icon: BookOpen,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor', 'Management', 'Vendor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
       ],
     },
@@ -181,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Depresiasi & SLA',
           icon: BarChart3,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Auditor', 'Management'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Auditor'],
         },
         {
           id: 'laravel_spec',

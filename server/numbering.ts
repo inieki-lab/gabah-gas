@@ -35,11 +35,10 @@ export class AssetNumberingEngine {
     }
   }
 
-  static generateAssetNumber(ownerDivision: string, assetCode: string, targetYear?: number): string {
+  static generateAssetNumber(ownerDivision?: string, assetCode?: string, targetYear?: number): string {
     const year = targetYear || new Date().getFullYear();
-    const div = ownerDivision.trim().toUpperCase();
-    const code = assetCode.trim().toUpperCase();
-    if (!div || !code) throw new Error(`Owner division (${div}) dan Asset Code (${code}) wajib diisi.`);
+    const div = (ownerDivision || 'IT').trim().toUpperCase();
+    const code = (assetCode || 'GEN').trim().toUpperCase();
     const key = `${div}:${code}:${year}`;
     const nextSeq = (this.sequenceStore.get(key) || 0) + 1;
     this.sequenceStore.set(key, nextSeq);

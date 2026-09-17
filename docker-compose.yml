@@ -5,9 +5,9 @@ services:
     container_name: gabah_database
     restart: unless-stopped
     environment:
-      POSTGRES_DB: gabah_db
-      POSTGRES_USER: gabah_user
-      POSTGRES_PASSWORD: PasswordBumd123!
+      POSTGRES_DB: ${PGDATABASE:-gabah_db}
+      POSTGRES_USER: ${PGUSER:-gabah_user}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -27,6 +27,12 @@ services:
       - "80:3000"
     environment:
       NODE_ENV: production
+      DATABASE_URL: postgresql://${PGUSER:-gabah_user}:${PGPASSWORD}@database:5432/${PGDATABASE:-gabah_db}
+      PGHOST: database
+      PGPORT: 5432
+      PGDATABASE: ${PGDATABASE:-gabah_db}
+      PGUSER: ${PGUSER:-gabah_user}
+      PGPASSWORD: ${PGPASSWORD}
     command: sh -c "npm install && npm run build && npm start"
     depends_on:
       - database

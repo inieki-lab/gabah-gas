@@ -6,7 +6,7 @@ export interface ServerUser {
   id: string;
   name: string;
   email: string;
-  role: 'Superadmin' | 'Admin GABAH' | 'IT' | 'GA' | 'Supply Chain' | 'PIBC' | 'Karyawan' | 'Auditor';
+  role: 'Admin GABAH' | 'IT' | 'GA' | 'Supply Chain' | 'PIBC' | 'Karyawan' | 'Auditor';
   role_label?: string;
   division: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
   department: string;
@@ -188,6 +188,57 @@ export interface ServerMaintenance {
   created_at: string;
 }
 
+export interface ServerMeetingRoom {
+  id: string;
+  name: string;
+  code: string;
+  building: string;
+  floor: string;
+  capacity: number;
+  facilities: string[];
+  status: 'available' | 'in_use' | 'maintenance';
+  color: string;
+  description: string;
+  pic_ga: string;
+  image_url?: string;
+}
+
+export interface ServerRoomReservation {
+  id: string;
+  reservation_number: string;
+  room_id: string;
+  room_name: string;
+  room_code?: string;
+  room_location: string;
+  title: string;
+  description?: string;
+  organizer_id: string;
+  organizer_name: string;
+  organizer_department: string;
+  organizer_phone: string;
+  organizer_role?: string;
+  attendees_count: number;
+  meeting_type: 'internal' | 'external' | 'hybrid' | 'direksi';
+  date: string; // YYYY-MM-DD
+  start_time: string; // HH:mm
+  end_time: string; // HH:mm
+  start_datetime: string;
+  end_datetime: string;
+  facilities_requested: string[];
+  consumption_requested: boolean;
+  consumption_notes?: string;
+  status: 'pending_approval' | 'approved' | 'rejected' | 'in_use' | 'completed' | 'cancelled';
+  approver_id?: string | null;
+  approver_name?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
+  checkin_at?: string | null;
+  checkout_at?: string | null;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // In-Memory Authoritative Data Store
 export const db = {
   users: [] as ServerUser[],
@@ -199,6 +250,8 @@ export const db = {
   notifications: [] as ServerNotification[],
   auditLogs: [] as ServerAuditLog[],
   maintenances: [] as ServerMaintenance[],
+  rooms: [] as ServerMeetingRoom[],
+  roomReservations: [] as ServerRoomReservation[],
 };
 
 // Seed Enterprise Master Users for 7 Active GABAH Roles with PBKDF2 Password Hashing
@@ -311,6 +364,54 @@ export function seedInitialData() {
       avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
       is_active: true,
       initialPassword: 'Karyawan#2026',
+    },
+    {
+      id: 'USR-IT-001',
+      name: 'Budi Santoso, S.Kom.',
+      email: 'budi.it@foodstation.co.id',
+      role: 'IT',
+      division: 'IT',
+      department: 'IT Support & Infra',
+      phone: '081298765400',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+      is_active: true,
+      initialPassword: 'ItStaff#2026',
+    },
+    {
+      id: 'USR-GA-001',
+      name: 'Ahmad Fauzi, S.E.',
+      email: 'fauzi.ga@foodstation.co.id',
+      role: 'GA',
+      division: 'GA',
+      department: 'Umum & Logistik',
+      phone: '081311223300',
+      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
+      is_active: true,
+      initialPassword: 'GaStaff#2026',
+    },
+    {
+      id: 'USR-KRY-001',
+      name: 'Citra Dewi, S.E.',
+      email: 'citra.karyawan@foodstation.co.id',
+      role: 'Karyawan',
+      division: 'SC',
+      department: 'Keuangan & Akuntansi',
+      phone: '081211223300',
+      avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',
+      is_active: true,
+      initialPassword: 'Karyawan#2026',
+    },
+    {
+      id: 'USR-PIBC-001',
+      name: 'Bambang Sudarsono',
+      email: 'bambang.pibc@foodstation.co.id',
+      role: 'PIBC',
+      division: 'PIBC',
+      department: 'Operasional Pasar PIBC Cipinang',
+      phone: '081577665500',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
+      is_active: true,
+      initialPassword: 'PibcStaff#2026',
     },
   ];
 
@@ -779,6 +880,210 @@ export function seedInitialData() {
       notes: 'Uji tera resmi tahunan jembatan timbang penerimaan gabah & beras operasi 24 jam di gerbang utama PIBC.',
       checklist: ['Pemeriksaan Load Cell 4 Titik', 'Pengujian Beban Standar Uji Metrologi', 'Pembersihan Celah Kolong Jembatan dari Debu Gabah', 'Penerbitan Sertifikat Tera Sah Metrologi'],
       created_at: '2026-08-15T11:00:00Z',
+    },
+  ];
+
+  // Seed Corporate Meeting Rooms (General Affairs Facilities)
+  db.rooms = [
+    {
+      id: 'ROOM-01',
+      name: 'Ruang Rapat Utama (Graha Tjipinang Lt. 2)',
+      code: 'RR-01',
+      building: 'Kantor Pusat Food Station',
+      floor: 'Lantai 2',
+      capacity: 30,
+      facilities: ['Smart TV 85" 4K HDR', 'Polycom Studio Video Conference', 'Sound System & 4x Wireless Mic', 'Whiteboard Kaca Magnetik', 'AC Sentral', 'WiFi 500 Mbps Dedicated', 'Podium & Flipchart'],
+      status: 'available',
+      color: 'emerald',
+      description: 'Ruang rapat VIP untuk Dewan Direksi, Dewan Komisaris, dan koordinasi lintas divisi kapasitas besar.',
+      pic_ga: 'Siti Rahmawati (GA)',
+      image_url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&auto=format&fit=crop&q=80',
+    },
+    {
+      id: 'ROOM-02',
+      name: 'Ruang Rapat Beras Premium (Lt. 1)',
+      code: 'RR-02',
+      building: 'Kantor Pusat Food Station',
+      floor: 'Lantai 1',
+      capacity: 16,
+      facilities: ['Laser Projector EPSON 4500 Lumens', 'Bose Video Soundbar', 'Glass Whiteboard', 'AC Split', 'Kabel HDMI/Type-C Converter', 'WiFi High-Speed'],
+      status: 'available',
+      color: 'blue',
+      description: 'Ruang rapat operasional perdagangan, distribusi pangan, beras komersial & SPHP.',
+      pic_ga: 'Budi Hartono (GA)',
+      image_url: 'https://images.unsplash.com/photo-1497215842964-222b430dc094?w=600&auto=format&fit=crop&q=80',
+    },
+    {
+      id: 'ROOM-03',
+      name: 'Ruang Rapat Pasar Induk PIBC',
+      code: 'RR-03',
+      building: 'Gedung Operasional PIBC Cipinang',
+      floor: 'Lantai 2',
+      capacity: 24,
+      facilities: ['Samsung Flip Pro 75" Interactive', 'Hybrid VC Camera 360', 'Wireless Conference Mic x6', 'AC Presisi', 'High-speed LAN Cipinang'],
+      status: 'available',
+      color: 'amber',
+      description: 'Ruang pertemuan monitoring harga pasar beras, pertemun pedagang beras, dan logistik pergudangan.',
+      pic_ga: 'Agus Setiawan (PIBC)',
+      image_url: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=600&auto=format&fit=crop&q=80',
+    },
+    {
+      id: 'ROOM-04',
+      name: 'Ruang Diskusi & Negosiasi Komersial (Lt. 1)',
+      code: 'RR-04',
+      building: 'Kantor Pusat Food Station',
+      floor: 'Lantai 1',
+      capacity: 8,
+      facilities: ['Smart TV 55"', 'Jabra Speak 710 Mic/Speaker', 'Whiteboard', 'Coffee Bar Corner', 'AC Split'],
+      status: 'available',
+      color: 'purple',
+      description: 'Ruang diskusi intensif tim kecil, interview calon karyawan, dan negosiasi rekanan vendor.',
+      pic_ga: 'Siti Rahmawati (GA)',
+      image_url: 'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=600&auto=format&fit=crop&q=80',
+    },
+    {
+      id: 'ROOM-05',
+      name: 'Auditorium Food Station (Lt. 3)',
+      code: 'RR-05',
+      building: 'Gedung Pusat Food Station',
+      floor: 'Lantai 3',
+      capacity: 100,
+      facilities: ['Panggung Utama & Podium', 'Dual Motorized Screen & Laser Projector', 'Audio Mixer Yamaha 16-Channel', 'Wireless Mic x8', 'Tata Lampu Seminar', 'Foyer Prasmanan & Konsumsi'],
+      status: 'available',
+      color: 'indigo',
+      description: 'Aula serbaguna untuk Townhall bulanan, sosialisasi BUMD pangan, seminar mitra, dan pelatihan akbar.',
+      pic_ga: 'Siti Rahmawati (GA)',
+      image_url: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=600&auto=format&fit=crop&q=80',
+    },
+  ];
+
+  // Seed Authoritative Room Reservations
+  const todayStr = new Date().toISOString().split('T')[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+  db.roomReservations = [
+    {
+      id: 'rsv-001',
+      reservation_number: 'RSV-2026-0001',
+      room_id: 'ROOM-01',
+      room_name: 'Ruang Rapat Utama (Graha Tjipinang Lt. 2)',
+      room_code: 'RR-01',
+      room_location: 'Kantor Pusat Food Station - Lantai 2',
+      title: 'Rapat Koordinasi Distribusi Beras SPHP & Stabilisasi Harga Pangan',
+      description: 'Evaluasi mingguan alokasi beras medium SPHP ke pasar tradisional dan retail modern DKI Jakarta bersama Direksi.',
+      organizer_id: 'USR-04',
+      organizer_name: 'Rudi Hermawan',
+      organizer_department: 'Supply Chain, Pengadaan & Distribusi',
+      organizer_phone: '081399887766',
+      organizer_role: 'Supply Chain',
+      attendees_count: 22,
+      meeting_type: 'direksi',
+      date: todayStr,
+      start_time: '09:00',
+      end_time: '11:30',
+      start_datetime: `${todayStr}T09:00:00+07:00`,
+      end_datetime: `${todayStr}T11:30:00+07:00`,
+      facilities_requested: ['Polycom Studio Video Conference', 'Sound System & 4x Wireless Mic', 'Smart TV 85" 4K HDR', 'Whiteboard Kaca Magnetik'],
+      consumption_requested: true,
+      consumption_notes: 'Snack box 25 pax & Kopi/Teh hangat dari pantry GA.',
+      status: 'approved',
+      approver_id: 'USR-03',
+      approver_name: 'Siti Rahmawati',
+      approved_at: `${todayStr}T07:30:00Z`,
+      notes: 'Disetujui. Pastikan kabel HDMI disiapkan oleh GA 15 menit sebelum rapat.',
+      created_at: `${todayStr}T07:00:00Z`,
+      updated_at: `${todayStr}T07:30:00Z`,
+    },
+    {
+      id: 'rsv-002',
+      reservation_number: 'RSV-2026-0002',
+      room_id: 'ROOM-02',
+      room_name: 'Ruang Rapat Beras Premium (Lt. 1)',
+      room_code: 'RR-02',
+      room_location: 'Kantor Pusat Food Station - Lantai 1',
+      title: 'Review Kesiapan Audit Sistem IT & Migrasi Database Cloud',
+      description: 'Pembahasan arsitektur high-availability PostgreSQL dan hardening PBKDF2 modul enterprise GABAH bersama tim IT & Auditor.',
+      organizer_id: 'USR-02',
+      organizer_name: 'Ahmad Faisal',
+      organizer_department: 'Infrastruktur IT & Jaringan',
+      organizer_phone: '081298765432',
+      organizer_role: 'IT',
+      attendees_count: 10,
+      meeting_type: 'hybrid',
+      date: todayStr,
+      start_time: '13:30',
+      end_time: '15:30',
+      start_datetime: `${todayStr}T13:30:00+07:00`,
+      end_datetime: `${todayStr}T15:30:00+07:00`,
+      facilities_requested: ['Bose Video Soundbar', 'Laser Projector EPSON 4500 Lumens', 'Kabel HDMI/Type-C Converter'],
+      consumption_requested: true,
+      consumption_notes: 'Snack sore & Air mineral 12 botol.',
+      status: 'approved',
+      approver_id: 'USR-01',
+      approver_name: 'Budi Santoso',
+      approved_at: `${todayStr}T08:00:00Z`,
+      notes: 'Rapat hybrid bersama auditor eksternal via Zoom/Google Meet.',
+      created_at: `${todayStr}T07:45:00Z`,
+      updated_at: `${todayStr}T08:00:00Z`,
+    },
+    {
+      id: 'rsv-003',
+      reservation_number: 'RSV-2026-0003',
+      room_id: 'ROOM-03',
+      room_name: 'Ruang Rapat Pasar Induk PIBC',
+      room_code: 'RR-03',
+      room_location: 'Gedung Operasional PIBC Cipinang - Lantai 2',
+      title: 'Koordinasi Pasokan Masuk Truk Beras Antar-Provinsi Jawa Barat & Jawa Timur',
+      description: 'Rapat teknis dengan perwakilan paguyuban pedagang beras PIBC terkait optimalisasi antrean timbangan 60 ton.',
+      organizer_id: 'USR-05',
+      organizer_name: 'Dewi Lestari',
+      organizer_department: 'Operasional Pasar Induk Beras Cipinang',
+      organizer_phone: '081377665544',
+      organizer_role: 'PIBC',
+      attendees_count: 18,
+      meeting_type: 'external',
+      date: tomorrow,
+      start_time: '10:00',
+      end_time: '12:00',
+      start_datetime: `${tomorrow}T10:00:00+07:00`,
+      end_datetime: `${tomorrow}T12:00:00+07:00`,
+      facilities_requested: ['Samsung Flip Pro 75" Interactive', 'Wireless Conference Mic x6', 'Hybrid VC Camera 360'],
+      consumption_requested: true,
+      consumption_notes: 'Snack box tradisional & Kopi 20 pax.',
+      status: 'approved',
+      approver_id: 'USR-03',
+      approver_name: 'Siti Rahmawati',
+      approved_at: `${todayStr}T08:30:00Z`,
+      created_at: `${todayStr}T08:15:00Z`,
+      updated_at: `${todayStr}T08:30:00Z`,
+    },
+    {
+      id: 'rsv-004',
+      reservation_number: 'RSV-2026-0004',
+      room_id: 'ROOM-04',
+      room_name: 'Ruang Diskusi & Negosiasi Komersial (Lt. 1)',
+      room_code: 'RR-04',
+      room_location: 'Kantor Pusat Food Station - Lantai 1',
+      title: 'Klarifikasi Evaluasi Vendor Servis Truk & Armada Operasional',
+      description: 'Negosiasi penyesuaian tarif kontrak servis berkala armada logistik dengan Auto2000.',
+      organizer_id: 'USR-06',
+      organizer_name: 'Eko Prasetyo',
+      organizer_department: 'Divisi Akuntansi & Keuangan',
+      organizer_phone: '081266554433',
+      organizer_role: 'Karyawan',
+      attendees_count: 6,
+      meeting_type: 'external',
+      date: tomorrow,
+      start_time: '14:00',
+      end_time: '15:30',
+      start_datetime: `${tomorrow}T14:00:00+07:00`,
+      end_datetime: `${tomorrow}T15:30:00+07:00`,
+      facilities_requested: ['Smart TV 55"', 'Jabra Speak 710 Mic/Speaker', 'Whiteboard'],
+      consumption_requested: false,
+      status: 'pending_approval',
+      notes: 'Menunggu review dari tim GA untuk ketersediaan ruang.',
+      created_at: `${todayStr}T09:00:00Z`,
+      updated_at: `${todayStr}T09:00:00Z`,
     },
   ];
 

@@ -1,6 +1,7 @@
-import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser } from './db';
+import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation } from './db';
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
+import { persistDataStore } from './persistence';
 
 export class GabahDomainService {
   /**
@@ -18,6 +19,7 @@ export class GabahDomainService {
       timestamp: new Date().toISOString(),
     };
     db.auditLogs.unshift(log);
+    persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
     return log;
   }
 
@@ -58,18 +60,13 @@ export class GabahDomainService {
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
     // Superusers / Global Observers
-    if (['Admin GABAH', 'Management', 'Auditor'].includes(user.role)) {
+    if (user.role === 'Admin GABAH' || user.role === 'Auditor') {
       return db.assets;
     }
 
     // Karyawan can only view assigned assets or loanable pool assets
     if (user.role === 'Karyawan') {
       return db.assets.filter(a => a.assigned_to?.id === user.id || a.is_loanable);
-    }
-
-    // Vendor only sees vendor related
-    if ((user.role as string) === 'Vendor') {
-      return db.assets.filter(a => a.license_detail?.vendor?.toLowerCase().includes('mitranet'));
     }
 
     // Operational Divisions: IT, GA, Supply Chain, PIBC
@@ -86,7 +83,9 @@ export class GabahDomainService {
    * Authoritative Asset Creation
    */
   static createAsset(payload: {
-    category_name_or_code: string;
+    category_name_or_code?: string;
+    category_code?: string;
+    category_name?: string;
     owner_division?: 'IT' | 'GA' | 'SC' | 'PIBC';
     name: string;
     corporate_asset_number?: string | null;
@@ -105,7 +104,8 @@ export class GabahDomainService {
     notes?: string;
   }, actor: ServerUser): ServerAsset {
     // 1. Resolve taxonomy strictly from server master
-    const taxonomy = resolveTaxonomyByHumanName(payload.category_name_or_code, payload.owner_division);
+    const rawCategory = payload.category_name_or_code || payload.category_code || payload.category_name || '';
+    const taxonomy = resolveTaxonomyByHumanName(rawCategory, payload.owner_division);
 
     // Enforce Corporate Rules:
     // a) All IT items (IT-H & IT-S) belong to IT. GA only has read-only access.
@@ -120,7 +120,10 @@ export class GabahDomainService {
     }
 
     // 2. Authorization check: Division Authority
-    if (!['Admin GABAH', 'Management'].includes(actor.role)) {
+    if (actor.role === 'Karyawan' || actor.role === 'Auditor') {
+      throw new Error('Peran Anda tidak berwenang mendaftarkan aset baru.');
+    }
+    if (actor.role !== 'Admin GABAH') {
       if (resolvedOwnerDivision === 'IT' && actor.role !== 'IT') {
         throw new Error(`Semua barang IT adalah milik Divisi IT. Divisi ${actor.role} hanya memiliki izin lihat (read-only).`);
       }
@@ -132,6 +135,26 @@ export class GabahDomainService {
       }
       if (resolvedOwnerDivision === 'PIBC' && actor.role !== 'PIBC') {
         throw new Error(`Hanya Divisi PIBC yang berwenang mendaftarkan aset kategori ${taxonomy.name}.`);
+      }
+    }
+
+    // Check for duplicate serial number
+    if (payload.serial_number && payload.serial_number.trim()) {
+      const existingSN = db.assets.find(
+        a => a.serial_number && a.serial_number.trim().toLowerCase() === payload.serial_number!.trim().toLowerCase()
+      );
+      if (existingSN) {
+        throw new Error(`Nomor Seri (Serial Number) "${payload.serial_number.trim()}" sudah terdaftar pada aset ${existingSN.asset_number} (${existingSN.name}).`);
+      }
+    }
+
+    // Check for duplicate corporate/Accurate asset number
+    if (payload.corporate_asset_number && payload.corporate_asset_number.trim()) {
+      const existingERP = db.assets.find(
+        a => a.corporate_asset_number && a.corporate_asset_number.trim().toLowerCase() === payload.corporate_asset_number!.trim().toLowerCase()
+      );
+      if (existingERP) {
+        throw new Error(`Nomor Aset Accurate/ERP "${payload.corporate_asset_number.trim()}" sudah terdaftar pada aset ${existingERP.asset_number} (${existingERP.name}).`);
       }
     }
 
@@ -301,8 +324,8 @@ export class GabahDomainService {
         asset.status = 'pending_disposal';
         break;
       case 'approve_disposal':
-        if (!['Admin GABAH', 'Management'].includes(actor.role)) {
-          throw new Error('Hanya Admin GABAH atau Management yang berwenang menyetujui penghapusan aset.');
+        if (actor.role !== 'Admin GABAH') {
+          throw new Error('Hanya Admin GABAH yang berwenang menyetujui penghapusan aset.');
         }
         asset.status = 'disposed';
         break;
@@ -676,5 +699,287 @@ export class GabahDomainService {
         match_status: a.corporate_asset_number ? 'matched' : 'unmatched',
       })),
     };
+  }
+
+  /**
+   * Meeting Rooms & Reservations
+   */
+  static getMeetingRooms(): ServerMeetingRoom[] {
+    return db.rooms || [];
+  }
+
+  static getRoomReservations(query?: { room_id?: string; date?: string; status?: string; organizer_id?: string }): ServerRoomReservation[] {
+    let list = db.roomReservations || [];
+    if (query?.room_id) list = list.filter(r => r.room_id === query.room_id);
+    if (query?.date) list = list.filter(r => r.date === query.date);
+    if (query?.status) list = list.filter(r => r.status === query.status);
+    if (query?.organizer_id) list = list.filter(r => r.organizer_id === query.organizer_id);
+    return list;
+  }
+
+  static requestRoomReservation(payload: {
+    room_id: string;
+    title: string;
+    description?: string;
+    attendees_count: number;
+    meeting_type?: 'internal' | 'external' | 'hybrid' | 'direksi';
+    date: string; // YYYY-MM-DD
+    start_time: string; // HH:mm
+    end_time: string; // HH:mm
+    facilities_requested?: string[];
+    consumption_requested?: boolean;
+    consumption_notes?: string;
+    notes?: string;
+  }, actor: ServerUser): ServerRoomReservation {
+    if (actor.role === 'Auditor') {
+      throw new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).');
+    }
+
+    const room = (db.rooms || []).find(r => r.id === payload.room_id);
+    if (!room) throw new Error('Ruang rapat tidak ditemukan.');
+
+    if (room.status === 'maintenance') {
+      throw new Error(`Ruangan "${room.name}" saat ini sedang dalam pemeliharaan/perbaikan.`);
+    }
+
+    if (!payload.title || !payload.title.trim()) {
+      throw new Error('Judul / Agenda rapat wajib diisi.');
+    }
+
+    if (!payload.date || !payload.start_time || !payload.end_time) {
+      throw new Error('Tanggal, jam mulai, dan jam selesai wajib diisi.');
+    }
+
+    if (payload.start_time >= payload.end_time) {
+      throw new Error('Jam mulai harus lebih awal dari jam selesai rapat.');
+    }
+
+    if (Number(payload.attendees_count) > room.capacity) {
+      throw new Error(`Jumlah peserta (${payload.attendees_count}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`);
+    }
+
+    // Anti-Collision Check: StartA < EndB && EndA > StartB on the same date for this room
+    const conflicting = (db.roomReservations || []).find(r => {
+      if (r.room_id !== room.id) return false;
+      if (['rejected', 'cancelled'].includes(r.status)) return false;
+      if (r.date !== payload.date) return false;
+      return payload.start_time < r.end_time && payload.end_time > r.start_time;
+    });
+
+    if (conflicting) {
+      throw new Error(
+        `Tabrakan Jadwal! Ruangan "${room.name}" sudah dipesan pada ${payload.date} pukul ${conflicting.start_time} - ${conflicting.end_time} untuk agenda "${conflicting.title}" oleh ${conflicting.organizer_name} (${conflicting.organizer_department}). Silakan pilih jam atau ruangan lain.`
+      );
+    }
+
+    const year = new Date().getFullYear();
+    const existingCount = (db.roomReservations || []).length + 1;
+    const reservationNumber = `RSV-${year}-${String(existingCount).padStart(4, '0')}`;
+
+    const reservation: ServerRoomReservation = {
+      id: `rsv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      reservation_number: reservationNumber,
+      room_id: room.id,
+      room_name: room.name,
+      room_code: room.code,
+      room_location: `${room.building} - ${room.floor}`,
+      title: payload.title.trim(),
+      description: payload.description?.trim() || '',
+      organizer_id: actor.id,
+      organizer_name: actor.name,
+      organizer_department: actor.department,
+      organizer_phone: actor.phone || '-',
+      organizer_role: actor.role,
+      attendees_count: Number(payload.attendees_count) || 1,
+      meeting_type: payload.meeting_type || 'internal',
+      date: payload.date,
+      start_time: payload.start_time,
+      end_time: payload.end_time,
+      start_datetime: `${payload.date}T${payload.start_time}:00`,
+      end_datetime: `${payload.date}T${payload.end_time}:00`,
+      facilities_requested: Array.isArray(payload.facilities_requested) ? payload.facilities_requested : [],
+      consumption_requested: Boolean(payload.consumption_requested),
+      consumption_notes: payload.consumption_notes?.trim(),
+      status: (actor.role === 'Admin GABAH' || actor.role === 'GA') ? 'approved' : 'pending_approval',
+      approver_id: (actor.role === 'Admin GABAH' || actor.role === 'GA') ? actor.id : null,
+      approver_name: (actor.role === 'Admin GABAH' || actor.role === 'GA') ? actor.name : null,
+      approved_at: (actor.role === 'Admin GABAH' || actor.role === 'GA') ? new Date().toISOString() : null,
+      notes: payload.notes?.trim() || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (!db.roomReservations) db.roomReservations = [];
+    db.roomReservations.unshift(reservation);
+
+    this.recordAudit(
+      'ROOM_RESERVATION_CREATED',
+      'MeetingRooms',
+      `Reservasi ${reservation.reservation_number} dibuat untuk ${room.name} (${payload.date} ${payload.start_time}-${payload.end_time}) - Agenda: ${reservation.title}`,
+      actor,
+      reservation.id
+    );
+
+    // Notify GA about pending reservation if submitted by employees
+    if (reservation.status === 'pending_approval') {
+      this.notify({
+        recipient_role: 'GA',
+        recipient_division: 'GA',
+        title: `Permintaan Reservasi Ruang Rapat: ${room.name}`,
+        message: `${actor.name} (${actor.department}) mengajukan pemesanan ${room.name} pada ${payload.date} (${payload.start_time} - ${payload.end_time}).`,
+        severity: 'action_required',
+        category: 'system',
+      });
+    }
+
+    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+
+    return reservation;
+  }
+
+  static approveRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
+      throw new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menyetujui reservasi ruang rapat.');
+    }
+
+    const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
+    if (!reservation) throw new Error('Reservasi tidak ditemukan.');
+
+    // Re-verify no collision before approving
+    const conflicting = (db.roomReservations || []).find(r => {
+      if (r.id === reservation.id) return false;
+      if (r.room_id !== reservation.room_id) return false;
+      if (r.date !== reservation.date) return false;
+      if (!['approved', 'in_use'].includes(r.status)) return false;
+      return reservation.start_time < r.end_time && reservation.end_time > r.start_time;
+    });
+
+    if (conflicting) {
+      throw new Error(`Tidak dapat disetujui: Tabrakan jadwal dengan reservasi ${conflicting.reservation_number} (${conflicting.organizer_name}).`);
+    }
+
+    reservation.status = 'approved';
+    reservation.approver_id = actor.id;
+    reservation.approver_name = actor.name;
+    reservation.approved_at = new Date().toISOString();
+    reservation.updated_at = new Date().toISOString();
+
+    this.recordAudit(
+      'ROOM_RESERVATION_APPROVED',
+      'MeetingRooms',
+      `Reservasi ${reservation.reservation_number} disetujui untuk ${reservation.room_name}`,
+      actor,
+      reservation.id
+    );
+
+    this.notify({
+      recipient_user_id: reservation.organizer_id,
+      title: `Reservasi Disetujui: ${reservation.room_name}`,
+      message: `Permintaan reservasi ruang rapat "${reservation.title}" pada ${reservation.date} (${reservation.start_time} - ${reservation.end_time}) telah disetujui oleh GA.`,
+      severity: 'success',
+      category: 'system',
+    });
+
+    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+
+    return reservation;
+  }
+
+  static rejectRoomReservation(reservationId: string, reason: string, actor: ServerUser): ServerRoomReservation {
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
+      throw new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menolak reservasi ruang rapat.');
+    }
+
+    const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
+    if (!reservation) throw new Error('Reservasi tidak ditemukan.');
+
+    reservation.status = 'rejected';
+    reservation.rejection_reason = reason || 'Kapasitas penuh / prioritas rapat direksi';
+    reservation.approver_id = actor.id;
+    reservation.approver_name = actor.name;
+    reservation.updated_at = new Date().toISOString();
+
+    this.recordAudit(
+      'ROOM_RESERVATION_REJECTED',
+      'MeetingRooms',
+      `Reservasi ${reservation.reservation_number} ditolak: ${reservation.rejection_reason}`,
+      actor,
+      reservation.id
+    );
+
+    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+
+    return reservation;
+  }
+
+  static checkinRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+    const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
+    if (!reservation) throw new Error('Reservasi tidak ditemukan.');
+
+    reservation.status = 'in_use';
+    reservation.checkin_at = new Date().toISOString();
+    reservation.updated_at = new Date().toISOString();
+
+    const room = (db.rooms || []).find(r => r.id === reservation.room_id);
+    if (room) {
+      room.status = 'in_use';
+    }
+
+    this.recordAudit('ROOM_CHECKIN', 'MeetingRooms', `Check-in rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
+    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    return reservation;
+  }
+
+  static checkoutRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+    const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
+    if (!reservation) throw new Error('Reservasi tidak ditemukan.');
+
+    reservation.status = 'completed';
+    reservation.checkout_at = new Date().toISOString();
+    reservation.updated_at = new Date().toISOString();
+
+    const room = (db.rooms || []).find(r => r.id === reservation.room_id);
+    if (room) {
+      room.status = 'available';
+    }
+
+    this.recordAudit('ROOM_CHECKOUT', 'MeetingRooms', `Check-out selesai rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
+    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    return reservation;
+  }
+
+  static cancelRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+    const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
+    if (!reservation) throw new Error('Reservasi tidak ditemukan.');
+
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
+      throw new Error('Akses ditolak: Anda hanya dapat membatalkan reservasi yang Anda buat sendiri.');
+    }
+
+    reservation.status = 'cancelled';
+    reservation.updated_at = new Date().toISOString();
+
+    const room = (db.rooms || []).find(r => r.id === reservation.room_id);
+    if (room && room.status === 'in_use') {
+      room.status = 'available';
+    }
+
+    this.recordAudit('ROOM_RESERVATION_CANCELLED', 'MeetingRooms', `Pembatalan reservasi ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
+    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    return reservation;
+  }
+
+  static updateMeetingRoom(roomId: string, updates: Partial<ServerMeetingRoom>, actor: ServerUser): ServerMeetingRoom {
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
+      throw new Error('Akses ditolak: Hanya GA dan Admin GABAH yang berwenang mengubah status ruangan.');
+    }
+
+    const room = (db.rooms || []).find(r => r.id === roomId);
+    if (!room) throw new Error('Ruangan tidak ditemukan.');
+
+    Object.assign(room, updates);
+    this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
+    persistDataStore().catch(err => console.warn('[GABAH Room] Persistence notice:', err.message));
+    return room;
   }
 }

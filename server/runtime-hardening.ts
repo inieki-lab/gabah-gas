@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser } from './db';
 import { authenticateRequest } from './auth';
 
-const isSuperadmin = (actor: ServerUser) => actor.role === 'Superadmin' || actor.role === 'Admin GABAH';
+const isSuperadmin = (actor: ServerUser) => actor.role === 'Admin GABAH';
 const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || actor.role === 'Auditor';
 
 export function actorFor(req: Request): ServerUser | null {
@@ -84,6 +84,18 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
 
   // Attach verified actor to request for all downstream route handlers
   (req as any).user = actor;
+
+  // Auditor is strictly READ-ONLY across the entire system
+  if (actor.role === 'Auditor' && req.method !== 'GET') {
+    const allowedAuditorActions = ['/api/auth/logout', '/api/notifications/read-all'];
+    const isNotificationRead = req.path.match(/^\/api\/notifications\/[^/]+\/read$/);
+    if (!allowedAuditorActions.includes(req.path) && !isNotificationRead) {
+      return res.status(403).json({
+        success: false,
+        message: 'Akses ditolak: Peran Auditor memiliki hak akses Read-Only dan dilarang membuat atau mengubah data.',
+      });
+    }
+  }
 
   if (req.path === '/api/audit-logs' && !isGlobalObserver(actor)) {
     return res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });

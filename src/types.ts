@@ -232,15 +232,12 @@ export interface KnowledgeArticle {
 
 export type UserRole =
   | 'Admin GABAH'
-  | 'Superadmin'
-  | 'Management'
   | 'IT'
   | 'GA'
   | 'Supply Chain'
   | 'PIBC'
   | 'Karyawan'
-  | 'Auditor'
-  | 'Vendor';
+  | 'Auditor';
 
 export interface UserProfile {
   id: string;
@@ -277,7 +274,63 @@ export interface AuditLog {
   user_agent?: string;
   user_name: string;
   role: UserRole;
-  module: 'Assets' | 'Loans' | 'Tickets' | 'Licenses' | 'Vendors' | 'Auth';
+  module: 'Assets' | 'Loans' | 'Tickets' | 'Licenses' | 'Vendors' | 'Auth' | 'MeetingRooms';
   details: string;
   timestamp: string;
+}
+
+export type RoomStatus = 'available' | 'in_use' | 'maintenance';
+
+export interface MeetingRoom {
+  id: string;
+  name: string;
+  code: string;
+  building: string;
+  floor: string;
+  capacity: number;
+  facilities: string[];
+  status: RoomStatus;
+  color: string;
+  description: string;
+  pic_ga: string;
+  image_url?: string;
+}
+
+export type ReservationStatus = 'pending_approval' | 'approved' | 'rejected' | 'in_use' | 'completed' | 'cancelled';
+export type MeetingType = 'internal' | 'external' | 'hybrid' | 'direksi';
+
+export interface RoomReservation {
+  id: string;
+  reservation_number: string; // e.g. RSV-2026-0001
+  room_id: string;
+  room_name: string;
+  room_code?: string;
+  room_location: string;
+  title: string; // Agenda / Subject
+  description?: string;
+  organizer_id: string;
+  organizer_name: string;
+  organizer_department: string;
+  organizer_phone: string;
+  organizer_role?: string;
+  attendees_count: number;
+  meeting_type: MeetingType;
+  date: string; // YYYY-MM-DD
+  start_time: string; // HH:mm
+  end_time: string; // HH:mm
+  start_datetime: string; // ISO string
+  end_datetime: string; // ISO string
+  facilities_requested: string[];
+  consumption_requested: boolean;
+  consumption_notes?: string;
+  status: ReservationStatus;
+  approver_id?: string | null;
+  approver_name?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
+  checkin_at?: string | null;
+  checkout_at?: string | null;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
 }
