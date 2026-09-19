@@ -28,7 +28,8 @@ import {
   Cpu,
   Trash2,
   UserCheck,
-  UserX
+  UserX,
+  Pencil
 } from 'lucide-react';
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
@@ -69,6 +70,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   assets,
   loans,
   tickets,
+  onUpdateUser,
   onCreateUser,
   onDeleteUser,
   showToast,
@@ -84,6 +86,31 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
+
+  // Edit User State
+  const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [isSubmittingEditUser, setIsSubmittingEditUser] = useState(false);
+  const [editUserData, setEditUserData] = useState<{
+    name: string;
+    email: string;
+    role: UserRole;
+    division: OwnerDivision;
+    department: string;
+    phone: string;
+    is_active: boolean;
+    new_password: string;
+  }>({
+    name: '',
+    email: '',
+    role: 'Karyawan',
+    division: 'SC',
+    department: '',
+    phone: '',
+    is_active: true,
+    new_password: '',
+  });
+
   const [newUserData, setNewUserData] = useState<Partial<UserProfile>>({
     name: '',
     email: '',
@@ -179,6 +206,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         role: newUserData.role,
         division: newUserData.division,
         department: newUserData.department,
+        phone: newUserData.phone || '',
         temp_password: newUserData.temp_password || 'Pangan2026!'
       });
 
@@ -203,12 +231,64 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  // Handle User Delete
+  // Handle Open Edit User
+  const handleOpenEditUser = (user: UserProfile) => {
+    setUserToEdit(user);
+    setEditUserData({
+      name: user.name || '',
+      email: user.email || '',
+      role: user.role,
+      division: (user.division as OwnerDivision) || 'SC',
+      department: user.department || '',
+      phone: user.phone || '',
+      is_active: user.is_active !== undefined ? user.is_active : true,
+      new_password: '',
+    });
+    setIsEditUserOpen(true);
+  };
+
+  // Handle Edit User Submit
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userToEdit) return;
+    try {
+      setIsSubmittingEditUser(true);
+      const payload: any = {
+        name: editUserData.name.trim(),
+        email: editUserData.email.trim(),
+        role: editUserData.role,
+        division: editUserData.division,
+        department: editUserData.department.trim(),
+        phone: editUserData.phone.trim(),
+        is_active: editUserData.is_active,
+      };
+      if (editUserData.new_password && editUserData.new_password.trim()) {
+        payload.password = editUserData.new_password.trim();
+      }
+
+      const res = await gabahApi.updateUser(userToEdit.id, payload);
+      const updatedUser: UserProfile = { ...userToEdit, ...res };
+      setUserList(prev => prev.map(u => u.id === userToEdit.id ? updatedUser : u));
+      if (onUpdateUser) {
+        onUpdateUser(updatedUser);
+      }
+      showToast(`Data pengguna ${updatedUser.name} berhasil diperbarui!`, 'success');
+      setIsEditUserOpen(false);
+      setUserToEdit(null);
+      if (onRefreshData) await onRefreshData();
+    } catch (err: any) {
+      showToast(`Gagal memperbarui pengguna: ${err.message}`, 'warning');
+    } finally {
+      setIsSubmittingEditUser(false);
+    }
+  };
+
+  // Handle User Delete (Always allows force delete with auto-release)
   const handleConfirmDeleteUser = async () => {
     if (!userToDelete) return;
     try {
       setIsDeletingUser(true);
-      const res = await gabahApi.deleteUser(userToDelete.id);
+      const res = await gabahApi.deleteUser(userToDelete.id, true);
       setUserList(prev => prev.filter(u => u.id !== userToDelete.id));
       if (onDeleteUser) onDeleteUser(userToDelete.id);
       showToast(res.message || `Pengguna ${userToDelete.name} berhasil dihapus.`, 'success');
@@ -524,6 +604,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       />
                     </div>
                     <div>
+                      <label className="block text-slate-600 mb-1 font-medium">Nomor Telepon / WhatsApp</label>
+                      <input
+                        type="text"
+                        value={newUserData.phone || ''}
+                        onChange={e => setNewUserData({ ...newUserData, phone: e.target.value })}
+                        placeholder="0812xxxxxxxx"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-slate-600 mb-1 font-medium">Sandi Sementara</label>
                       <input
                         type="text"
@@ -620,8 +710,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
+                                title={`Edit data ${user.name}`}
+                                onClick={() => handleOpenEditUser(user)}
+                                className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1"
+                              >
+                                <Pencil className="w-3 h-3 text-emerald-600" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
                                 title={`Reset sandi untuk ${user.name}`}
-                                onClick={() => showToast(`Reset sandi untuk ${user.name} dikirim ke ${user.email}`)}
+                                onClick={() => showToast(`Link reset sandi untuk ${user.name} dikirim ke ${user.email}`)}
                                 className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-[11px] font-bold whitespace-nowrap transition-colors"
                               >
                                 Reset Sandi
@@ -642,6 +741,170 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </table>
               </div>
 
+              {/* Edit User Modal */}
+              {isEditUserOpen && userToEdit && (
+                <div className="fixed inset-0 z-[90] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Pencil className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900">Edit Data Pengguna</h4>
+                          <p className="text-xs text-slate-500">ID: {userToEdit.id} · Perbarui profil dan hak akses</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setIsEditUserOpen(false); setUserToEdit(null); }}
+                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleEditUserSubmit} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        <div className="space-y-1.5 md:col-span-2">
+                          <label className="text-xs font-bold text-slate-700">Nama Lengkap *</label>
+                          <input
+                            type="text"
+                            required
+                            value={editUserData.name}
+                            onChange={e => setEditUserData(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                            placeholder="Contoh: Budi Santoso"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5 md:col-span-2">
+                          <label className="text-xs font-bold text-slate-700">Email Kantor (Login) *</label>
+                          <input
+                            type="email"
+                            required
+                            value={editUserData.email}
+                            onChange={e => setEditUserData(prev => ({ ...prev, email: e.target.value }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                            placeholder="nama@foodstation.co.id"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Peran Akses (Role) *</label>
+                          <select
+                            value={editUserData.role}
+                            onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                          >
+                            <option value="Admin GABAH">Admin GABAH (Super Admin)</option>
+                            <option value="IT">IT (Infrastruktur & Hardware)</option>
+                            <option value="GA">GA (General Affairs & Sarpras)</option>
+                            <option value="Supply Chain">Supply Chain (Logistik & Pabrik)</option>
+                            <option value="PIBC">PIBC (Pasar Induk Cipinang)</option>
+                            <option value="Management">Management (Direksi / Kadiv)</option>
+                            <option value="Auditor">Auditor (Satuan Pengawas Internal)</option>
+                            <option value="Karyawan">Karyawan (Pegawai Umum)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Divisi Utama *</label>
+                          <select
+                            value={editUserData.division}
+                            onChange={e => setEditUserData(prev => ({ ...prev, division: e.target.value as OwnerDivision }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                          >
+                            <option value="IT">IT (Divisi Teknologi & Sistem)</option>
+                            <option value="GA">GA (Divisi Umum & Aset)</option>
+                            <option value="SC">SC (Supply Chain & Beras)</option>
+                            <option value="PIBC">PIBC (Kawasan Pasar Induk)</option>
+                            <option value="Direksi">Direksi</option>
+                            <option value="Komersial">Komersial & Pemasaran</option>
+                            <option value="Umum">Umum / Lainnya</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Departemen / Unit</label>
+                          <input
+                            type="text"
+                            value={editUserData.department}
+                            onChange={e => setEditUserData(prev => ({ ...prev, department: e.target.value }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                            placeholder="Contoh: Operasional Beras SPHP"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Nomor Telepon / WhatsApp</label>
+                          <input
+                            type="text"
+                            value={editUserData.phone}
+                            onChange={e => setEditUserData(prev => ({ ...prev, phone: e.target.value }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                            placeholder="0812xxxxxxxx"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5 md:col-span-2">
+                          <label className="text-xs font-bold text-slate-700">
+                            Ubah Kata Sandi Baru <span className="text-slate-400 font-normal">(Kosongkan bila tidak diubah)</span>
+                          </label>
+                          <input
+                            type="password"
+                            value={editUserData.new_password}
+                            onChange={e => setEditUserData(prev => ({ ...prev, new_password: e.target.value }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                            placeholder="Minimal 6 karakter"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5 md:col-span-2 pt-1">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={editUserData.is_active}
+                              onChange={e => setEditUserData(prev => ({ ...prev, is_active: e.target.checked }))}
+                              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                            />
+                            <span className="text-xs font-bold text-slate-800">Akun Aktif (Dapat Login & Melakukan Transaksi)</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                        <button
+                          type="button"
+                          disabled={isSubmittingEditUser}
+                          onClick={() => { setIsEditUserOpen(false); setUserToEdit(null); }}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSubmittingEditUser}
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 transition-colors flex items-center gap-1.5"
+                        >
+                          {isSubmittingEditUser ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Menyimpan...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Simpan Perubahan</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
               {/* Delete User Confirmation Modal */}
               {userToDelete && (() => {
                 const activeLoansCount = loans.filter(
@@ -651,6 +914,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   a => a.assigned_to?.id === userToDelete.id && a.status === 'assigned'
                 ).length;
                 const hasBlockers = activeLoansCount > 0 || assignedAssetsCount > 0;
+                const isOnlySuperAdmin = userToDelete.role === 'Admin GABAH' && userList.filter(u => u.role === 'Admin GABAH').length <= 1;
 
                 return (
                   <div className="fixed inset-0 z-[90] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -680,25 +944,35 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
                       </div>
 
-                      {hasBlockers ? (
-                        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5">
+                      {isOnlySuperAdmin ? (
+                        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-1.5">
+                          <div className="font-extrabold flex items-center gap-1.5 text-rose-800">
+                            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                            <span>Tidak Dapat Menghapus Super Admin Terakhir</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed text-rose-800">
+                            Akun ini adalah satu-satunya Super Admin (Admin GABAH) di dalam sistem. Anda harus membuat atau menetapkan akun Super Admin lain terlebih dahulu sebelum menghapus akun ini.
+                          </p>
+                        </div>
+                      ) : hasBlockers ? (
+                        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
                           <div className="font-extrabold flex items-center gap-1.5 text-amber-800">
                             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                            <span>Pengguna Tidak Dapat Dihapus Langsung</span>
+                            <span>Pelepasan Aset Otomatis Diaktifkan</span>
                           </div>
                           <p className="text-[11px] leading-relaxed text-amber-800">
-                            Akun ini masih memiliki relasi data operasional aktif yang harus diselesaikan terlebih dahulu:
+                            Pengguna ini masih terhubung dengan data operasional berikut:
                           </p>
                           <ul className="list-disc list-inside text-[11px] space-y-0.5 font-semibold text-amber-900 pl-1">
-                            {activeLoansCount > 0 && (
-                              <li>{activeLoansCount} transaksi peminjaman aset yang belum selesai / dikembalikan</li>
-                            )}
                             {assignedAssetsCount > 0 && (
-                              <li>{assignedAssetsCount} aset tetap yang saat ini dipegang (assigned)</li>
+                              <li>{assignedAssetsCount} aset yang dipegang akan otomatis dikembalikan ke status Tersedia (unassigned)</li>
+                            )}
+                            {activeLoansCount > 0 && (
+                              <li>{activeLoansCount} peminjaman aktif akan ditutup secara aman</li>
                             )}
                           </ul>
-                          <p className="text-[10px] text-amber-700 italic pt-1">
-                            Silakan lakukan serah terima atau pengembalian aset terlebih dahulu di modul Peminjaman / Aset.
+                          <p className="text-[11px] text-emerald-800 font-medium bg-emerald-50 p-2 rounded-xl border border-emerald-200">
+                            Sistem GABAH akan otomatis melepaskan aset dan membersihkan relasi tanpa error saat Anda mengonfirmasi penghapusan.
                           </p>
                         </div>
                       ) : (
@@ -716,7 +990,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         >
                           Batal
                         </button>
-                        {!hasBlockers && (
+                        {!isOnlySuperAdmin && (
                           <button
                             type="button"
                             disabled={isDeletingUser}
@@ -731,7 +1005,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             ) : (
                               <>
                                 <Trash2 className="w-3.5 h-3.5" />
-                                <span>Ya, Hapus Pengguna</span>
+                                <span>{hasBlockers ? 'Lepaskan Aset & Hapus Pengguna' : 'Ya, Hapus Pengguna'}</span>
                               </>
                             )}
                           </button>

@@ -102,8 +102,8 @@ class GabahApiClient {
     });
   }
 
-  async deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>(`/api/users/${userId}`, {
+  async deleteUser(userId: string, force = true): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/users/${userId}${force ? '?force=true' : ''}`, {
       method: 'DELETE',
     });
   }
@@ -112,10 +112,11 @@ class GabahApiClient {
     return this.request<any>('/api/auth/me');
   }
 
-  async switchRole(userId: string): Promise<any> {
+  async switchRole(target: string | { userId?: string; role?: string }): Promise<any> {
+    const payload = typeof target === 'string' ? { userId: target } : target;
     const data = await this.request<any>('/api/auth/switch-role', {
       method: 'POST',
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify(payload),
     });
 
     if (data?.token) {

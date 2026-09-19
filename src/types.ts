@@ -249,6 +249,8 @@ export interface UserProfile {
   department: string;
   avatar: string;
   temp_password?: string;
+  phone?: string;
+  is_active?: boolean;
 }
 
 export interface Notice {

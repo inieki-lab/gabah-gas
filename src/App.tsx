@@ -13,7 +13,8 @@ import {
   MaintenanceSchedule,
   MaintenanceStatus,
   MeetingRoom,
-  RoomReservation
+  RoomReservation,
+  UserRole
 } from './types';
 import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_USERS, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
 import { gabahApi } from './services/gabahApi';
@@ -155,12 +156,29 @@ export default function App() {
   // Handle Role Switch
   const handleSelectUser = async (user: UserProfile) => {
     try {
-      await gabahApi.switchRole(user.id);
-      setCurrentUser(user);
-      showToast(`Berpindah role aktif: ${user.name} (${user.role_label})`, 'info');
+      const res = await gabahApi.switchRole(user.id);
+      if (res?.data?.user) {
+        setCurrentUser(res.data.user);
+      } else {
+        setCurrentUser(user);
+      }
+      showToast(`Berpindah akun aktif: ${user.name} (${user.role_label})`, 'info');
       await refreshData();
     } catch (err: any) {
       showToast(`Gagal mengganti role: ${err.message}`, 'warning');
+    }
+  };
+
+  const handleSwitchRoleSimulation = async (role: UserRole) => {
+    try {
+      const res = await gabahApi.switchRole({ role });
+      if (res?.data?.user) {
+        setCurrentUser(res.data.user);
+        showToast(`Beralih simulasi menu: ${res.data.user.role_label}`, 'info');
+      }
+      await refreshData();
+    } catch (err: any) {
+      showToast(`Gagal simulasi role: ${err.message}`, 'warning');
     }
   };
 
@@ -490,6 +508,7 @@ export default function App() {
         currentUser={currentUser}
         allUsers={allUsers}
         onSelectUser={handleSelectUser}
+        onSwitchRoleSimulation={handleSwitchRoleSimulation}
         onOpenArchitectureModal={() => setIsArchitectureModalOpen(true)}
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
@@ -748,6 +767,12 @@ export default function App() {
         assets={assets}
         loans={loans}
         tickets={tickets}
+        onUpdateUser={(updated) => {
+          setAllUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+          if (currentUser.id === updated.id) {
+            setCurrentUser(prev => ({ ...prev, ...updated }));
+          }
+        }}
         onCreateUser={(newUser) => setAllUsers(prev => [newUser, ...prev])}
         onDeleteUser={(userId) => setAllUsers(prev => prev.filter(u => u.id !== userId))}
         showToast={showToast}
