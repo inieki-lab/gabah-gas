@@ -10,14 +10,16 @@ import {
   Calendar,
   UserCheck
 } from 'lucide-react';
-import { Loan, Asset } from '../../types';
+import { Loan, Asset, UserProfile } from '../../types';
 import { formatDateTime, formatDate } from '../../services/gabahService';
 
 interface BastDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  loan: Loan | null;
+  loan?: Loan | null;
   asset?: Asset | null;
+  assignedUser?: UserProfile | null;
+  currentUser?: UserProfile | null;
 }
 
 export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
@@ -25,12 +27,42 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
   onClose,
   loan,
   asset,
+  assignedUser,
+  currentUser,
 }) => {
   const printRef = useRef<HTMLDivElement | null>(null);
 
-  if (!isOpen || !loan) return null;
+  if (!isOpen) return null;
+  if (!loan && !asset) return null;
 
-  const bastNumber = `BAST/${loan.category_type}/${new Date().getFullYear()}/${loan.loan_number.replace('LOAN-', '')}`;
+  const isAssignmentMode = !loan && Boolean(asset);
+
+  // Recipient details
+  const recipientName = isAssignmentMode 
+    ? (assignedUser?.name || asset?.assigned_to?.name || 'Karyawan Penerima') 
+    : loan!.borrower_name;
+  const recipientDepartment = isAssignmentMode 
+    ? (assignedUser?.department || asset?.assigned_to?.department || 'Divisi Terkait') 
+    : loan!.borrower_department;
+  const recipientPhone = isAssignmentMode 
+    ? (assignedUser?.phone || '-') 
+    : (loan!.borrower_phone || '-');
+  const purposeText = isAssignmentMode 
+    ? 'Penugasan Inventaris Kerja Tetap (Operasional Kedinasan Pegawai)' 
+    : loan!.purpose;
+
+  // Giver / Approver details
+  const giverName = isAssignmentMode
+    ? (currentUser?.name || 'Tim Pengelola Aset (IT Admin)')
+    : (loan!.approver_name || 'Tim Pengelola Aset (GA / IT Admin)');
+  const giverDivision = isAssignmentMode
+    ? (asset?.owner_division === 'IT' ? 'Divisi Teknologi Informasi' : 'Divisi Umum & Rumah Tangga (GA)')
+    : (loan!.category_type === 'IT' ? 'Divisi Teknologi Informasi' : 'Divisi Umum & Rumah Tangga (GA)');
+
+  const bastNumber = isAssignmentMode
+    ? `BAST/ASSIGN/${asset?.owner_division || 'IT'}/${new Date().getFullYear()}/${(asset?.asset_number || 'AST-001').replace(/[^a-zA-Z0-9]/g, '')}`
+    : `BAST/${loan!.category_type}/${new Date().getFullYear()}/${loan!.loan_number.replace('LOAN-', '')}`;
+
   const todayFormatted = new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
     day: 'numeric',
@@ -41,6 +73,10 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
   const handlePrint = () => {
     window.print();
   };
+
+  const assetName = isAssignmentMode ? asset!.name : loan!.asset_name;
+  const assetNumber = isAssignmentMode ? asset!.asset_number : loan!.asset_number;
+  const corporateNumber = isAssignmentMode ? asset!.corporate_asset_number : loan!.corporate_asset_number;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in overflow-y-auto">
@@ -53,7 +89,9 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-extrabold text-slate-900">Berita Acara Serah Terima (BAST)</h3>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  {isAssignmentMode ? 'BAST Penugasan Aset Inventaris' : 'Berita Acara Serah Terima (BAST)'}
+                </h3>
                 <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
                   Dokumen Resmi BUMD
                 </span>
@@ -108,7 +146,9 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
             {/* Judul & Nomor BAST */}
             <div className="text-center space-y-1 pt-2">
               <h3 className="text-base font-bold underline uppercase tracking-wide">
-                BERITA ACARA SERAH TERIMA BARANG INVENTARIS
+                {isAssignmentMode 
+                  ? 'BERITA ACARA SERAH TERIMA PENUGASAN BARANG INVENTARIS'
+                  : 'BERITA ACARA SERAH TERIMA PINJAM PAKAI BARANG INVENTARIS'}
               </h3>
               <p className="font-mono text-xs font-semibold text-slate-700">
                 Nomor: {bastNumber}
@@ -126,25 +166,25 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
                 <div className="font-bold">I. PIHAK PERTAMA (Yang Menyerahkan):</div>
                 <div className="grid grid-cols-4 gap-1">
                   <span className="text-slate-600">Nama Petugas</span>
-                  <span className="col-span-3">: {loan.approver_name || 'Tim Pengelola Aset (GA / IT Admin)'}</span>
+                  <span className="col-span-3">: {giverName}</span>
                   <span className="text-slate-600">Jabatan</span>
                   <span className="col-span-3">: Staf Pengelola Aset & Inventaris Korporat</span>
                   <span className="text-slate-600">Divisi</span>
-                  <span className="col-span-3">: {loan.category_type === 'IT' ? 'Divisi Teknologi Informasi' : 'Divisi Umum & Rumah Tangga (GA)'}</span>
+                  <span className="col-span-3">: {giverDivision}</span>
                 </div>
               </div>
 
               <div className="pl-4 border-l-2 border-slate-400 space-y-1">
-                <div className="font-bold">II. PIHAK KEDUA (Yang Menerima / Peminjam):</div>
+                <div className="font-bold">II. PIHAK KEDUA (Yang Menerima / Pemegang Aset):</div>
                 <div className="grid grid-cols-4 gap-1">
                   <span className="text-slate-600">Nama Karyawan</span>
-                  <span className="col-span-3 font-semibold">: {loan.borrower_name}</span>
+                  <span className="col-span-3 font-semibold">: {recipientName}</span>
                   <span className="text-slate-600">Departemen</span>
-                  <span className="col-span-3">: {loan.borrower_department}</span>
+                  <span className="col-span-3">: {recipientDepartment}</span>
                   <span className="text-slate-600">No. Kontak / HP</span>
-                  <span className="col-span-3">: {loan.borrower_phone}</span>
+                  <span className="col-span-3">: {recipientPhone}</span>
                   <span className="text-slate-600">Tujuan Penggunaan</span>
-                  <span className="col-span-3">: {loan.purpose}</span>
+                  <span className="col-span-3">: {purposeText}</span>
                 </div>
               </div>
             </div>
@@ -167,7 +207,7 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
                 <tr>
                   <td className="border border-slate-400 p-2.5 text-center font-bold">1</td>
                   <td className="border border-slate-400 p-2.5 space-y-1">
-                    <div className="font-bold text-sm text-slate-900">{loan.asset_name}</div>
+                    <div className="font-bold text-sm text-slate-900">{assetName}</div>
                     <div className="text-[11px] text-slate-600">
                       Merk/Model: {asset?.brand || 'Standard'} {asset?.model || ''}
                     </div>
@@ -178,10 +218,10 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
                     )}
                   </td>
                   <td className="border border-slate-400 p-2.5 font-mono text-[11px] space-y-1">
-                    <div>Asset No: <strong>{loan.asset_number}</strong></div>
+                    <div>Asset No: <strong>{assetNumber}</strong></div>
                     <div>SN: {asset?.serial_number || '-'}</div>
-                    {loan.corporate_asset_number && (
-                      <div>Corp ID: {loan.corporate_asset_number}</div>
+                    {corporateNumber && (
+                      <div>Corp ID: {corporateNumber}</div>
                     )}
                   </td>
                   <td className="border border-slate-400 p-2.5 text-center font-bold text-emerald-700">
@@ -191,12 +231,20 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
               </tbody>
             </table>
 
-            {/* Jadwal Waktu Pinjam */}
+            {/* Status / Jadwal */}
             <div className="p-3 bg-slate-50 border border-slate-300 rounded font-sans text-xs space-y-1">
-              <div className="font-bold text-slate-800">Masa Berlaku Peminjaman:</div>
+              <div className="font-bold text-slate-800">
+                {isAssignmentMode ? 'Status & Penempatan Penugasan:' : 'Masa Berlaku Peminjaman:'}
+              </div>
               <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-700">
-                <div>Tanggal Serah Terima: <strong>{formatDateTime(loan.start_date)}</strong></div>
-                <div>Batas Akhir Pengembalian: <strong className="text-rose-700">{formatDateTime(loan.due_date)}</strong></div>
+                <div>Tanggal Serah Terima: <strong>{isAssignmentMode ? todayFormatted : formatDateTime(loan!.start_date)}</strong></div>
+                <div>
+                  {isAssignmentMode ? (
+                    <span>Status: <strong className="text-emerald-700">Inventaris Kerja Pegawai (Aktif)</strong></span>
+                  ) : (
+                    <span>Batas Akhir Pengembalian: <strong className="text-rose-700">{formatDateTime(loan!.due_date)}</strong></span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -205,9 +253,13 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
               <div className="font-bold font-sans text-slate-900 text-xs">KETENTUAN DAN TANGGUNG JAWAB:</div>
               <ol className="list-decimal pl-4 space-y-1 text-justify">
                 <li>PIHAK KEDUA berkewajiban merawat, menjaga keamanan, dan menggunakan aset tersebut semata-mata untuk kepentingan kedinasan/operasional perusahaan.</li>
-                <li>Dilarang keras meminjamkan kembali, menyewakan, atau memindahtangankan aset kepada pihak ketiga tanpa izin tertulis dari Tim Aset.</li>
-                <li>Segala bentuk kerusakan atau kehilangan akibat kelalaian pemakaian menjadi tanggung jawab sepenuhnya PIHAK KEDUA sesuai dengan Peraturan Disiplin dan SOP Logistik Perusahaan.</li>
-                <li>Barang harus dikembalikan tepat waktu pada tanggal yang telah ditetapkan dalam kondisi utuh beserta seluruh kelengkapannya.</li>
+                <li>Dilarang keras meminjamkan kembali, menyewakan, atau memindahtangankan aset kepada pihak ketiga tanpa izin tertulis dari Tim Pengelola Aset (IT/GA).</li>
+                <li>Segala bentuk kerusakan atau kehilangan akibat kelalaian pemakaian menjadi tanggung jawab sepenuhnya PIHAK KEDUA sesuai dengan Peraturan Disiplin dan SOP Aset Perusahaan.</li>
+                {isAssignmentMode ? (
+                  <li>Apabila terjadi mutasi, rotasi jabatan, atau pengunduran diri (resign), PIHAK KEDUA wajib mengembalikan aset ini dalam keadaan baik dan lengkap kepada Divisi Pengelola Aset.</li>
+                ) : (
+                  <li>Barang harus dikembalikan tepat waktu pada tanggal yang telah ditetapkan dalam kondisi utuh beserta seluruh kelengkapannya.</li>
+                )}
               </ol>
             </div>
 
@@ -222,8 +274,8 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
                     <div className="text-[10px] text-slate-500">Yang Menyerahkan</div>
                   </div>
                   <div>
-                    <div className="font-bold underline">{loan.approver_name || 'Petugas Pengelola Aset'}</div>
-                    <div className="text-[10px] text-slate-500">NPP: 2021-GA-004</div>
+                    <div className="font-bold underline">{giverName}</div>
+                    <div className="text-[10px] text-slate-500">{giverDivision}</div>
                   </div>
                 </div>
 
@@ -231,11 +283,11 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
                 <div className="space-y-16">
                   <div>
                     <div className="font-semibold">PIHAK KEDUA</div>
-                    <div className="text-[10px] text-slate-500">Yang Menerima / Peminjam</div>
+                    <div className="text-[10px] text-slate-500">Yang Menerima / Pemegang Aset</div>
                   </div>
                   <div>
-                    <div className="font-bold underline">{loan.borrower_name}</div>
-                    <div className="text-[10px] text-slate-500">{loan.borrower_department}</div>
+                    <div className="font-bold underline">{recipientName}</div>
+                    <div className="text-[10px] text-slate-500">{recipientDepartment}</div>
                   </div>
                 </div>
 
@@ -257,7 +309,7 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
             {/* Footer QR Verification */}
             <div className="pt-6 border-t border-slate-300 flex items-center justify-between text-[10px] text-slate-500 font-sans">
               <span>Dokumen ini sah dicetak dari Portal GABAH (General Asset &amp; Business Automated Helpdesk)</span>
-              <span>Kode Verifikasi: {loan.loan_number}</span>
+              <span>Kode Verifikasi: {isAssignmentMode ? assetNumber : loan!.loan_number}</span>
             </div>
 
           </div>

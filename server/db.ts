@@ -245,6 +245,7 @@ export const db = {
   users: [] as ServerUser[],
   sessions: [] as ServerSession[],
   assets: [] as ServerAsset[],
+  categories: [...CANONICAL_TAXONOMY] as any[],
   movements: [] as ServerAssetMovement[],
   loans: [] as ServerLoan[],
   tickets: [] as ServerTicket[],

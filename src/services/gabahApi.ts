@@ -131,6 +131,21 @@ class GabahApiClient {
     return this.request<any[]>('/api/taxonomy/categories');
   }
 
+  async createCategory(payload: {
+    code: string;
+    name: string;
+    main_type: string;
+    owner_division: string;
+    category_type?: string;
+    description?: string;
+    is_loanable_by_default?: boolean;
+  }): Promise<any> {
+    return this.request<any>('/api/taxonomy/categories', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async resolveTaxonomy(nameOrCode: string): Promise<any> {
     return this.request<any>('/api/taxonomy/resolve', {
       method: 'POST',

@@ -127,6 +127,7 @@ function hydrateDbFromState(state: any): void {
   if (Array.isArray(state.auditLogs) && state.auditLogs.length > 0) db.auditLogs = state.auditLogs;
   if (Array.isArray(state.rooms) && state.rooms.length > 0) db.rooms = state.rooms;
   if (Array.isArray(state.roomReservations) && state.roomReservations.length > 0) db.roomReservations = state.roomReservations;
+  if (Array.isArray(state.categories) && state.categories.length > 0) db.categories = state.categories;
 }
 
 function loadStateFromFile(): boolean {
@@ -156,6 +157,7 @@ function createPayload() {
     auditLogs: db.auditLogs,
     rooms: db.rooms,
     roomReservations: db.roomReservations,
+    categories: db.categories,
   };
 }
 

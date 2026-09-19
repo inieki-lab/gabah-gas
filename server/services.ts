@@ -220,15 +220,52 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
-    // Corporate Security Rule: All IT assets belong to IT. GA only has read-only access.
-    if (asset.owner_division === 'IT' && actor.role === 'GA') {
-      throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang menugaskan aset ini.');
+    // Corporate Division Authority
+    if (actor.role !== 'Admin GABAH') {
+      const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
+      if (isITAsset && actor.role !== 'IT') {
+        throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang menugaskan aset ini.');
+      }
+      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
+        throw new Error('Aset General Affair (GA) hanya dapat ditugaskan oleh personel GA atau Admin GABAH.');
+      }
+      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+        throw new Error('Aset Supply Chain hanya dapat ditugaskan oleh personel Supply Chain atau Admin GABAH.');
+      }
+      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+        throw new Error('Aset PIBC hanya dapat ditugaskan oleh personel PIBC atau Admin GABAH.');
+      }
+    }
+
+    const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
+
+    // Support Unassign (Return to Pool/Warehouse as available/idle)
+    if (!targetUserId) {
+      asset.assigned_to = undefined;
+      asset.status = 'available';
+      asset.updated_at = new Date().toISOString();
+
+      const movement: ServerAssetMovement = {
+        id: `MOV-${Date.now()}`,
+        asset_id: asset.id,
+        asset_number: asset.asset_number,
+        from_user_name: previousUser,
+        to_user_id: '',
+        to_user_name: 'Gudang / Pool (Tersedia)',
+        from_location: asset.location,
+        to_location: asset.location,
+        reason: reason || 'Pengembalian aset ke gudang/pool penampungan (Idle)',
+        performed_by_id: actor.id,
+        performed_by_name: actor.name,
+        created_at: new Date().toISOString(),
+      };
+      db.movements.unshift(movement);
+      this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id);
+      return asset;
     }
 
     const targetUser = db.users.find(u => u.id === targetUserId);
     if (!targetUser) throw new Error('User penerima tidak ditemukan');
-
-    const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
 
     asset.assigned_to = {
       id: targetUser.id,
@@ -258,7 +295,6 @@ export class GabahDomainService {
     db.movements.unshift(movement);
 
     this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id);
-
     return asset;
   }
 

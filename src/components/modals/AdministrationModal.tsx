@@ -128,13 +128,99 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   }, [users]);
 
   // Master Data State
-  const [categories, setCategories] = useState([
+  const [categories, setCategories] = useState<any[]>([
     { code: 'IT-HLT', name: 'Hardware Laptop & PC', type: 'IT', loanable: true, total: 42 },
     { code: 'IT-SRV', name: 'Server & Infrastructure', type: 'IT', loanable: false, total: 18 },
     { code: 'SC-FLT', name: 'Armada Truk Beras Cipinang', type: 'SC', loanable: true, total: 24 },
     { code: 'GA-BLD', name: 'Gedung & Fasilitas Pasar', type: 'GA', loanable: false, total: 31 },
     { code: 'LIC-ENT', name: 'Lisensi ERP SAP & OS', type: 'License', loanable: false, total: 15 },
   ]);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
+  const [newCategoryData, setNewCategoryData] = useState({
+    code: '',
+    name: '',
+    main_type: 'EQUIPMENT',
+    owner_division: 'IT',
+    category_type: 'IT',
+    description: '',
+    is_loanable_by_default: true,
+  });
+
+  // Fetch live categories from database
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const liveCats = await gabahApi.getCategories();
+        if (Array.isArray(liveCats) && liveCats.length > 0) {
+          const mapped = liveCats.map((c: any) => ({
+            code: c.code,
+            name: c.name,
+            type: c.owner_division || (c.category_type === 'IT' ? 'IT' : 'GA'),
+            main_type: c.main_type,
+            loanable: c.is_loanable_by_default ?? false,
+            total: (assets || []).filter(a => (a.category_code === c.code || a.asset_number?.includes(c.code))).length,
+            description: c.description,
+          }));
+          setCategories(mapped);
+        }
+      } catch (e) {
+        console.warn('Notice loading categories:', e);
+      }
+    };
+    if (isOpen) {
+      fetchCats();
+    }
+  }, [isOpen, assets]);
+
+  const handleAddCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryData.code.trim() || !newCategoryData.name.trim()) {
+      showToast('Kode kategori dan nama kategori wajib diisi.', 'warning');
+      return;
+    }
+    try {
+      setIsSubmittingCategory(true);
+      const created = await gabahApi.createCategory({
+        code: newCategoryData.code.trim().toUpperCase(),
+        name: newCategoryData.name.trim(),
+        main_type: newCategoryData.main_type,
+        owner_division: newCategoryData.owner_division,
+        category_type: newCategoryData.category_type,
+        description: newCategoryData.description.trim(),
+        is_loanable_by_default: newCategoryData.is_loanable_by_default,
+      });
+
+      setCategories(prev => [
+        ...prev,
+        {
+          code: created.code,
+          name: created.name,
+          type: created.owner_division,
+          main_type: created.main_type,
+          loanable: created.is_loanable_by_default,
+          total: 0,
+          description: created.description,
+        }
+      ]);
+      setIsAddCategoryOpen(false);
+      setNewCategoryData({
+        code: '',
+        name: '',
+        main_type: 'EQUIPMENT',
+        owner_division: 'IT',
+        category_type: 'IT',
+        description: '',
+        is_loanable_by_default: true,
+      });
+      showToast(`Kategori ${created.code} - ${created.name} berhasil ditambahkan!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menambahkan kategori.', 'warning');
+    } finally {
+      setIsSubmittingCategory(false);
+    }
+  };
+
   const [locations, setLocations] = useState([
     { name: 'Kantor Pusat Food Station Cipinang', address: 'Jl. Pisangan Lama No. 1, Jakarta Timur', capacity: '120 Pegawai' },
     { name: 'Gudang Beras Induk Blok A-D', address: 'Kawasan PIBC, Jakarta Timur', capacity: '48.000 Ton Beras' },
@@ -1153,13 +1239,183 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <p className="text-xs text-slate-500">Konfigurasi kategori aset, lokasi fasilitas PIBC, dan standar SLA Helpdesk</p>
                 </div>
                 <button
-                  onClick={() => showToast('Form penambahan master kategori sedang dipersiapkan', 'info')}
-                  className="px-3 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] flex items-center gap-1.5"
+                  onClick={() => setIsAddCategoryOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 flex items-center gap-1.5 transition-colors shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Tambah Kategori</span>
                 </button>
               </div>
+
+              {/* Add Category Modal */}
+              {isAddCategoryOpen && (
+                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Plus className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900">Tambah Master Kategori Aset</h4>
+                          <p className="text-xs text-slate-500">Daftarkan taksonomi klasifikasi dan kode aset korporat</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddCategoryOpen(false)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleAddCategorySubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Kode Aset (3-5 Huruf) <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={newCategoryData.code}
+                            onChange={e => setNewCategoryData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                            placeholder="Contoh: PRN, HLT, FLT"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-emerald-500"
+                          />
+                          <span className="text-[10px] text-slate-400">Digunakan pada nomor aset otomatis</span>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Divisi Pemilik (Owner) <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={newCategoryData.owner_division}
+                            onChange={e => {
+                              const div = e.target.value;
+                              setNewCategoryData(prev => ({ 
+                                ...prev, 
+                                owner_division: div,
+                                category_type: div === 'IT' ? 'IT' : 'General'
+                              }));
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:border-emerald-500"
+                          >
+                            <option value="IT">IT (Teknologi Informasi)</option>
+                            <option value="GA">GA (General Affairs / Umum)</option>
+                            <option value="SC">SC (Supply Chain &amp; Gudang)</option>
+                            <option value="PIBC">PIBC (Pasar Induk Cipinang)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Nama Kategori <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newCategoryData.name}
+                          onChange={e => setNewCategoryData(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Misal: Printer Laser & Scanner Dokumen"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Jenis Utama Aset (Main Type)
+                          </label>
+                          <select
+                            value={newCategoryData.main_type}
+                            onChange={e => setNewCategoryData(prev => ({ ...prev, main_type: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                          >
+                            <option value="EQUIPMENT">EQUIPMENT (Peralatan &amp; Mesin)</option>
+                            <option value="VEHICLE">VEHICLE (Kendaraan Dinas)</option>
+                            <option value="FURNITURE">FURNITURE (Mebel &amp; Interior)</option>
+                            <option value="BUILDING">BUILDING (Gedung &amp; Bangunan)</option>
+                            <option value="LAND">LAND (Tanah &amp; Kawasan)</option>
+                            <option value="OTHER">OTHER (Lain-lain)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            Tipe Taksonomi GABAH
+                          </label>
+                          <select
+                            value={newCategoryData.category_type}
+                            onChange={e => setNewCategoryData(prev => ({ ...prev, category_type: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                          >
+                            <option value="IT">IT (Perangkat Komputasi)</option>
+                            <option value="General">General (Umum / Non-IT)</option>
+                            <option value="License">License (Lisensi Perangkat Lunak)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Deskripsi / Catatan Taksonomi
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={newCategoryData.description}
+                          onChange={e => setNewCategoryData(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Keterangan singkat klasifikasi aset ini..."
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs font-bold text-slate-800">Dapat Dipinjam Secara Default (Loanable)</div>
+                          <div className="text-[10px] text-slate-500">Aset dalam kategori ini dapat masuk formulir peminjaman sementara</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={newCategoryData.is_loanable_by_default}
+                          onChange={e => setNewCategoryData(prev => ({ ...prev, is_loanable_by_default: e.target.checked }))}
+                          className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddCategoryOpen(false)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSubmittingCategory}
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 transition-colors flex items-center gap-1.5"
+                        >
+                          {isSubmittingCategory ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Menyimpan...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Simpan Kategori</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
 
               {/* Master Kategori */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4">

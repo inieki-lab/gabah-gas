@@ -43,6 +43,7 @@ import { QRScannerModal } from './components/modals/QRScannerModal';
 import { BastDocumentModal } from './components/modals/BastDocumentModal';
 import { AdministrationModal } from './components/modals/AdministrationModal';
 import { GlobalSearchModal } from './components/modals/GlobalSearchModal';
+import { EditAssetModal } from './components/modals/EditAssetModal';
 import { LandingPage } from './components/landing/LandingPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { CheckCircle2, AlertTriangle, Info, RefreshCw } from 'lucide-react';
@@ -73,6 +74,7 @@ export default function App() {
   const [isCreateTicketModalOpen, setIsCreateTicketModalOpen] = useState(false);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
   const [selectedAssetForDetail, setSelectedAssetForDetail] = useState<Asset | null>(null);
+  const [selectedAssetForEdit, setSelectedAssetForEdit] = useState<Asset | null>(null);
   const [selectedAssetForQr, setSelectedAssetForQr] = useState<Asset | null>(null);
   const [selectedLoanForBast, setSelectedLoanForBast] = useState<Loan | null>(null);
   const [isAdministrationModalOpen, setIsAdministrationModalOpen] = useState(false);
@@ -616,6 +618,7 @@ export default function App() {
               assets={assets}
               currentUser={currentUser}
               onSelectAsset={setSelectedAssetForDetail}
+              onEditAsset={setSelectedAssetForEdit}
               onOpenQrModal={setSelectedAssetForQr}
               onOpenScannerModal={() => setIsScannerModalOpen(true)}
               onOpenNewAssetModal={() => setIsCreateAssetModalOpen(true)}
@@ -737,6 +740,9 @@ export default function App() {
         onClose={() => setSelectedAssetForDetail(null)}
         onOpenQrModal={setSelectedAssetForQr}
         onOpenBastModal={handleGenerateBastForAsset}
+        onEditThisAsset={(ast) => {
+          setSelectedAssetForEdit(ast);
+        }}
         onLoanThisAsset={(ast) => {
           setSelectedAssetForDetail(ast);
           setIsCreateLoanModalOpen(true);
@@ -748,6 +754,21 @@ export default function App() {
         onUpdateAsset={handleUpdateAsset}
         currentUser={currentUser}
         allAssets={assets}
+      />
+
+      <EditAssetModal
+        asset={selectedAssetForEdit}
+        isOpen={!!selectedAssetForEdit}
+        onClose={() => setSelectedAssetForEdit(null)}
+        onSaved={async (saved) => {
+          if (selectedAssetForDetail?.id === saved.id) {
+            setSelectedAssetForDetail(saved);
+          }
+          await refreshData();
+          showToast(`Aset ${saved.asset_number} berhasil diperbarui & disimpan!`);
+        }}
+        currentUser={currentUser}
+        allUsers={allUsers}
       />
 
       <QRCodeModal

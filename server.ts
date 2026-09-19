@@ -480,7 +480,57 @@ async function startServer() {
 
   // Master Taxonomy
   app.get('/api/taxonomy/categories', (req, res) => {
-    res.json({ success: true, data: CANONICAL_TAXONOMY });
+    const list = (db.categories && db.categories.length > 0) ? db.categories : CANONICAL_TAXONOMY;
+    res.json({ success: true, data: list });
+  });
+
+  app.post('/api/taxonomy/categories', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Akses ditolak: Hanya Super Admin (Admin GABAH) yang berwenang menambahkan Master Kategori Aset.' 
+        });
+      }
+
+      const { code, name, main_type, owner_division, category_type, description, is_loanable_by_default } = req.body;
+      if (!code || !name || !main_type || !owner_division) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Kode, Nama, Jenis Utama (main_type), dan Divisi Pemilik wajib diisi.' 
+        });
+      }
+
+      const normalizedCode = code.trim().toUpperCase();
+      if (!db.categories) db.categories = [...CANONICAL_TAXONOMY];
+
+      const existing = db.categories.find(c => c.code.toUpperCase() === normalizedCode);
+      if (existing) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Kategori dengan kode "${normalizedCode}" sudah terdaftar (${existing.name}).` 
+        });
+      }
+
+      const newCategory = {
+        code: normalizedCode,
+        name: name.trim(),
+        main_type,
+        owner_division,
+        category_type: category_type || (owner_division === 'IT' ? 'IT' : 'General'),
+        description: description || `Kategori ${name.trim()} (Milik ${owner_division})`,
+        is_loanable_by_default: Boolean(is_loanable_by_default),
+      };
+
+      db.categories.push(newCategory);
+      GabahDomainService.recordAudit('CATEGORY_CREATED', 'MasterData', `Menambahkan master kategori ${newCategory.code} - ${newCategory.name}`, actor);
+      await persistDataStore();
+
+      res.status(201).json({ success: true, data: newCategory });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
   });
 
   app.post('/api/taxonomy/resolve', (req, res) => {
@@ -571,7 +621,7 @@ async function startServer() {
     }
 
     // Update mutable fields (not asset_number or owner_division)
-    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
+    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         (asset as any)[key] = req.body[key];

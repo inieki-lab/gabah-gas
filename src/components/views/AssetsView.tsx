@@ -20,7 +20,8 @@ import {
   ScanLine,
   FileSpreadsheet,
   Truck,
-  Printer
+  Printer,
+  Pencil
 } from 'lucide-react';
 import { Asset, AssetCategoryType, AssetStatus, UserProfile } from '../../types';
 import { GabahService, formatRupiah, formatDate, exportAssetsToCsv } from '../../services/gabahService';
@@ -32,6 +33,7 @@ interface AssetsViewProps {
   onOpenCreateModal?: () => void;
   onOpenNewAssetModal?: () => void;
   onSelectAsset: (asset: Asset) => void;
+  onEditAsset?: (asset: Asset) => void;
   onOpenQrModal: (asset: Asset) => void;
   onOpenScannerModal?: () => void;
   onLoanAsset?: (asset: Asset) => void;
@@ -44,6 +46,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   onOpenCreateModal,
   onOpenNewAssetModal,
   onSelectAsset,
+  onEditAsset,
   onOpenQrModal,
   onOpenScannerModal = () => {},
   onLoanAsset,
@@ -415,6 +418,15 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                     {/* Actions */}
                     <td className="px-4 py-3.5 align-top text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
+                        {onEditAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                          <button
+                            onClick={() => onEditAsset(asset)}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                            title="Edit Aset / Penugasan Pegawai"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => onOpenQrModal(asset)}
                           className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-emerald-700 transition-colors"

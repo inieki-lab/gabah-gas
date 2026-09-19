@@ -36,6 +36,7 @@ interface AssetDetailModalProps {
   onReportThisAsset: (asset: Asset) => void;
   onUpdateAsset?: (asset: Asset) => void;
   onOpenBastModal?: (asset: Asset) => void;
+  onEditThisAsset?: (asset: Asset) => void;
   currentUser?: UserProfile;
   allAssets?: Asset[];
 }
@@ -48,6 +49,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   onReportThisAsset,
   onUpdateAsset,
   onOpenBastModal,
+  onEditThisAsset,
   currentUser,
   allAssets = [],
 }) => {
@@ -534,6 +536,21 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 >
                   <FileText className="w-4 h-4" />
                   Cetak BAST
+                </button>
+              )}
+
+              {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onEditThisAsset(asset);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold transition-colors"
+                  title="Edit Aset / Tugaskan Pengguna"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit &amp; Tugaskan
                 </button>
               )}
             </div>
