@@ -361,10 +361,11 @@ export class GabahDomainService {
       throw new Error('Jadwal peminjaman tidak valid. Tanggal kembali harus setelah tanggal mulai.');
     }
 
-    // Authoritative Collision Check: StartA < DueB && DueA > StartB
+    // Authoritative Collision Check: Strictly per-asset on confirmed reservations (approved / borrowed)
+    // Different assets (e.g. laptop IT + vehicle GA) can be borrowed concurrently by the same user with zero conflict.
     const conflicting = db.loans.find(l => {
       if (l.asset_id !== asset.id) return false;
-      if (!['pending_approval', 'approved', 'borrowed'].includes(l.status)) return false;
+      if (!['approved', 'borrowed'].includes(l.status)) return false;
 
       const existingStart = new Date(l.start_date).getTime();
       const existingDue = new Date(l.due_date).getTime();
@@ -373,14 +374,14 @@ export class GabahDomainService {
     });
 
     if (conflicting) {
-      throw new Error(`Tabrakan Jadwal! Aset "${asset.name}" (${asset.asset_number}) sudah dipinjam / direservasi pada periode tersebut (${conflicting.start_date.split('T')[0]} s/d ${conflicting.due_date.split('T')[0]}).`);
+      throw new Error(`Tabrakan Jadwal! Aset "${asset.name}" (${asset.asset_number}) sudah dipinjam / disetujui pada periode tersebut (${conflicting.start_date.split('T')[0]} s/d ${conflicting.due_date.split('T')[0]}).`);
     }
 
     const borrower = db.users.find(u => u.id === payload.borrower_id) || actor;
 
     const loanNumber = AssetNumberingEngine.generateLoanNumber();
     const newLoan: ServerLoan = {
-      id: `LOAN-${Date.now()}`,
+      id: `LOAN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       loan_number: loanNumber,
       asset_id: asset.id,
       asset_name: asset.name,
@@ -405,14 +406,14 @@ export class GabahDomainService {
       recipient_role: asset.owner_division,
       recipient_division: asset.owner_division,
       title: `Permohonan Pinjaman Baru: ${loanNumber}`,
-      message: `${borrower.name} (${borrower.department}) mengajukan pinjaman ${asset.name} (${asset.asset_number}).`,
+      message: `${borrower.name} (${borrower.department}) mengajukan pinjaman ${asset.name} (${asset.asset_number}). Persetujuan dibutuhkan dari Divisi ${asset.owner_division}.`,
       severity: 'action_required',
       category: 'loan',
       link_type: 'loan',
       link_id: newLoan.id,
     });
 
-    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.asset_number}`, actor, newLoan.id);
+    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id);
 
     return newLoan;
   }
@@ -427,14 +428,32 @@ export class GabahDomainService {
     // Authority verification: IT for IT assets, GA for GA assets, Admin GABAH everywhere
     if (actor.role !== 'Admin GABAH') {
       if (loan.owner_division === 'IT' && actor.role !== 'IT') {
-        throw new Error('Hanya Divisi IT yang berwenang menyetujui peminjaman aset IT.');
+        throw new Error('Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang menyetujui peminjaman aset IT (laptop/proyektor).');
       }
       if (loan.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Hanya Divisi GA yang berwenang menyetujui peminjaman aset GA.');
+        throw new Error('Akses ditolak: Hanya Divisi GA atau Admin GABAH yang berwenang menyetujui peminjaman aset GA (kendaraan operasional).');
       }
       if (loan.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Hanya Divisi Supply Chain yang berwenang menyetujui peminjaman aset SC.');
+        throw new Error('Akses ditolak: Hanya Divisi Supply Chain atau Admin GABAH yang berwenang menyetujui peminjaman aset SC.');
       }
+    }
+
+    // Re-verify no collision with other ALREADY APPROVED / BORROWED loans for THIS specific asset
+    const start = new Date(loan.start_date).getTime();
+    const due = new Date(loan.due_date).getTime();
+    const conflicting = db.loans.find(l => {
+      if (l.id === loan.id) return false;
+      if (l.asset_id !== loan.asset_id) return false;
+      if (!['approved', 'borrowed'].includes(l.status)) return false;
+
+      const existingStart = new Date(l.start_date).getTime();
+      const existingDue = new Date(l.due_date).getTime();
+
+      return start < existingDue && due > existingStart;
+    });
+
+    if (conflicting) {
+      throw new Error(`Tidak dapat disetujui: Tabrakan jadwal dengan peminjaman ${conflicting.loan_number} (${conflicting.borrower_name}) yang telah disetujui untuk aset ini.`);
     }
 
     loan.status = 'approved';
@@ -449,7 +468,17 @@ export class GabahDomainService {
       asset.status = 'reserved';
     }
 
-    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} untuk ${loan.borrower_name}`, actor, loan.id);
+    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id);
+
+    this.notify({
+      recipient_user_id: loan.borrower_id,
+      title: `Pinjaman Disetujui: ${loan.loan_number}`,
+      message: `Permohonan pinjaman ${loan.asset_name} telah disetujui oleh Divisi ${loan.owner_division} (${actor.name}). Siap untuk serah terima barang.`,
+      severity: 'success',
+      category: 'loan',
+      link_type: 'loan',
+      link_id: loan.id,
+    });
 
     return loan;
   }

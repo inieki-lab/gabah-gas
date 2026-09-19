@@ -78,7 +78,7 @@ export function clearFailedLogins(identifier: string): void {
 /**
  * Create a new authenticated session for a user
  */
-export function createSession(userId: string, req?: Request): ServerSession {
+export function createSession(userId: string, req?: Request, simulatedUser?: ServerUser): ServerSession {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_DURATION_MS);
 
@@ -94,6 +94,7 @@ export function createSession(userId: string, req?: Request): ServerSession {
     last_active_at: now.toISOString(),
     ip_address: ip,
     user_agent: userAgent,
+    simulated_user: simulatedUser,
   };
 
   db.sessions.push(session);
@@ -170,6 +171,9 @@ export function authenticateRequest(req: Request): { user: ServerUser | null; er
   if (token) {
     const session = getActiveSession(token);
     if (session) {
+      if (session.simulated_user) {
+        return { user: session.simulated_user };
+      }
       const user = db.users.find(u => u.id === session.user_id);
       if (user && user.is_active) {
         return { user };

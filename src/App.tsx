@@ -233,24 +233,37 @@ export default function App() {
     }
   };
 
-  // 3. Request Loan (Atomic Backend Schedule Collision Detection)
+  // 3. Request Loan (Atomic Backend Schedule Collision Detection & Multi-Asset Support)
   const handleRequestLoan = async (data: {
-    asset_id: string;
+    asset_id?: string;
+    asset_ids?: string[];
     purpose: string;
     start_date: string;
     due_date: string;
     borrower_phone: string;
   }) => {
     try {
-      const newLoan = await gabahApi.requestLoan({
-        asset_id: data.asset_id,
-        borrower_id: currentUser.id,
-        purpose: data.purpose,
-        start_date: data.start_date,
-        due_date: data.due_date,
-      });
+      if (data.asset_ids && data.asset_ids.length > 1) {
+        const res = await gabahApi.requestBatchLoans({
+          asset_ids: data.asset_ids,
+          borrower_id: currentUser.id,
+          purpose: data.purpose,
+          start_date: data.start_date,
+          due_date: data.due_date,
+        });
+        showToast(`${res.count || data.asset_ids.length} Permohonan pinjaman berhasil diajukan! Tiket diteruskan independen ke divisi terkait (IT/GA).`);
+      } else {
+        const targetAssetId = data.asset_ids?.[0] || data.asset_id || '';
+        const newLoan = await gabahApi.requestLoan({
+          asset_id: targetAssetId,
+          borrower_id: currentUser.id,
+          purpose: data.purpose,
+          start_date: data.start_date,
+          due_date: data.due_date,
+        });
+        showToast(`Reservasi ${newLoan.loan_number} (${newLoan.asset_name}) berhasil diajukan! Menunggu persetujuan.`);
+      }
 
-      showToast(`Reservasi ${newLoan.loan_number} berhasil diajukan! Menunggu persetujuan admin.`);
       setIsCreateLoanModalOpen(false);
       await refreshData();
     } catch (err: any) {

@@ -27,6 +27,7 @@ export interface ServerSession {
   last_active_at: string;
   ip_address?: string;
   user_agent?: string;
+  simulated_user?: ServerUser;
 }
 
 export interface ServerAsset {

@@ -151,9 +151,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
             }`}
           >
             {status === 'ALL' ? (isEmployee ? 'Semua Peminjaman Saya' : 'Semua Reservasi') :
-             status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => l.status === 'pending').length})` :
+             status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => l.status === 'pending' || (l.status as any) === 'pending_approval').length})` :
              status === 'approved' ? `Disetujui (${baseLoans.filter(l => l.status === 'approved').length})` :
-             status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => l.status === 'active').length})` :
+             status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => l.status === 'active' || (l.status as any) === 'borrowed').length})` :
              'Selesai Dikembalikan'}
           </button>
         ))}
@@ -162,7 +162,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
       {/* Loans Grid / Cards */}
       <div className="space-y-4">
         {filteredLoans.map((loan) => {
-          const isIT = loan.category_type === 'IT';
+          const isIT = loan.category_type === 'IT' || loan.owner_division === 'IT';
           const userCanApprove = canApprove(loan);
 
           return (
@@ -197,16 +197,20 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 <div>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                     loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                    loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                    loan.status === 'active' ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
+                    (loan.status === 'pending' || (loan.status as any) === 'pending_approval') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                    (loan.status === 'active' || (loan.status as any) === 'borrowed') ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
                     loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                     'bg-rose-100 text-rose-800 border border-rose-300'
                   }`}>
                     {loan.status === 'approved' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    {loan.status === 'pending' && <Clock className="w-3.5 h-3.5" />}
-                    {loan.status === 'active' && <UserCheck className="w-3.5 h-3.5" />}
+                    {(loan.status === 'pending' || (loan.status as any) === 'pending_approval') && <Clock className="w-3.5 h-3.5" />}
+                    {(loan.status === 'active' || (loan.status as any) === 'borrowed') && <UserCheck className="w-3.5 h-3.5" />}
                     {loan.status === 'returned' && <CheckSquare className="w-3.5 h-3.5" />}
-                    {loan.status}
+                    {loan.status === 'approved' ? 'Disetujui' :
+                     (loan.status === 'pending' || (loan.status as any) === 'pending_approval') ? 'Menunggu Approval' :
+                     (loan.status === 'active' || (loan.status as any) === 'borrowed') ? 'Sedang Dipinjam' :
+                     loan.status === 'returned' ? 'Dikembalikan' :
+                     loan.status}
                   </span>
                 </div>
               </div>
@@ -258,13 +262,13 @@ export const LoansView: React.FC<LoansViewProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <div className="text-xs text-slate-500 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5 text-slate-400" />
-                  {loan.category_type === 'IT' ? 'Otoritas persetujuan: IT Administrator' : 'Otoritas persetujuan: General Affair Admin'}
+                  {isIT ? 'Otoritas persetujuan: Divisi IT (Laptop/Hardware)' : 'Otoritas persetujuan: Divisi General Affair (Kendaraan/Fasilitas)'}
                 </div>
 
                 <div className="flex items-center gap-2">
                   
                   {/* Status: Pending -> Approve or Reject */}
-                  {loan.status === 'pending' && userCanApprove && (
+                  {(loan.status === 'pending' || (loan.status as any) === 'pending_approval') && userCanApprove && (
                     <>
                       <button
                         onClick={() => onApproveLoan(loan.id)}
@@ -295,7 +299,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Status: Active -> Return inspection */}
-                  {loan.status === 'active' && (
+                  {(loan.status === 'active' || (loan.status as any) === 'borrowed') && (
                     <button
                       onClick={() => setReturningLoan(loan)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"

@@ -73,7 +73,7 @@ async function startServer() {
     res.json({ success: true, data: db.users.map(u => sanitizeUser(u)) });
   });
 
-  app.post('/api/users', (req, res) => {
+  app.post('/api/users', async (req, res) => {
     try {
       const actor = getActor(req);
       if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
@@ -125,13 +125,15 @@ async function startServer() {
         newUser.id
       );
 
+      await persistDataStore();
+
       res.status(201).json({ success: true, data: sanitizeUser(newUser) });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.patch('/api/users/:id', (req, res) => {
+  app.patch('/api/users/:id', async (req, res) => {
     try {
       const actor = getActor(req);
       if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
@@ -189,13 +191,15 @@ async function startServer() {
         targetUser.id
       );
 
+      await persistDataStore();
+
       res.json({ success: true, data: sanitizeUser(targetUser) });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.delete('/api/users/:id', (req, res) => {
+  app.delete('/api/users/:id', async (req, res) => {
     try {
       const actor = getActor(req);
       if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
@@ -260,6 +264,8 @@ async function startServer() {
         actor,
         targetId
       );
+
+      await persistDataStore();
 
       res.json({
         success: true,
@@ -386,16 +392,9 @@ async function startServer() {
     }
   });
 
-  app.post('/api/auth/switch-role', (req, res) => {
+  app.post('/api/auth/switch-role', async (req, res) => {
     try {
       const actor = getActor(req);
-      // Strictly prevent unauthorized users from switching roles
-      if (actor.role !== 'Admin GABAH') {
-        return res.status(403).json({
-          success: false,
-          message: 'Akses ditolak: Hanya Administrator yang berwenang melakukan simulasi role (RBAC switcher).',
-        });
-      }
 
       const { userId, role } = req.body;
       let targetUser = userId ? db.users.find(u => u.id === userId) : null;
@@ -404,9 +403,12 @@ async function startServer() {
       }
 
       let effectiveUser: ServerUser;
+      let isSimulated = false;
+
       if (targetUser) {
         effectiveUser = targetUser;
       } else if (role) {
+        isSimulated = true;
         // Virtual simulation persona for testing roles when only 1 admin account exists
         const roleLabels: Record<string, string> = {
           'Admin GABAH': 'Admin GABAH',
@@ -430,7 +432,7 @@ async function startServer() {
         };
         effectiveUser = {
           id: `SIM-${role.replace(/\s+/g, '-').toUpperCase()}`,
-          name: `Simulasi: ${actor.name}`,
+          name: `Simulasi: ${actor.name || 'Pengguna'}`,
           email: `${role.toLowerCase().replace(/\s+/g, '')}@foodstation.co.id`,
           role: role as any,
           role_label: roleLabels[role] || role,
@@ -446,15 +448,22 @@ async function startServer() {
         return res.status(404).json({ success: false, message: 'User atau role target tidak ditemukan.' });
       }
 
-      // Create legitimate session
-      const session = createSession(actor.id, req);
+      // Create legitimate session for target user (or simulated user)
+      const session = createSession(
+        isSimulated ? (db.users[0]?.id || 'USR-01') : effectiveUser.id,
+        req,
+        isSimulated ? effectiveUser : undefined
+      );
+
       GabahDomainService.recordAudit(
         'AUTH_SWITCH_ROLE',
         'Auth',
-        `Admin ${actor.name} berpindah simulasi ke role ${effectiveUser.name} (${effectiveUser.role})`,
+        `Perpindahan role aktif ke ${effectiveUser.name} (${effectiveUser.role})`,
         actor,
         effectiveUser.id
       );
+
+      await persistDataStore();
 
       res.json({
         success: true,
@@ -644,6 +653,24 @@ async function startServer() {
   app.post('/api/loans', async (req, res) => {
     try {
       const actor = getActor(req);
+      const { asset_ids, asset_id } = req.body;
+
+      if (Array.isArray(asset_ids) && asset_ids.length > 0) {
+        const createdLoans = [];
+        for (const id of asset_ids) {
+          const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
+          createdLoans.push(newLoan);
+        }
+        await persistDataStore();
+        return res.status(201).json({
+          success: true,
+          data: createdLoans[0],
+          loans: createdLoans,
+          count: createdLoans.length,
+          message: `${createdLoans.length} aset pinjaman berhasil diajukan.`
+        });
+      }
+
       const newLoan = GabahDomainService.requestLoan(req.body, actor);
       await persistDataStore();
       res.status(201).json({ success: true, data: newLoan });

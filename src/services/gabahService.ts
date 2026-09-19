@@ -331,7 +331,7 @@ export class GabahService {
     const activeReservations = existingLoans.filter(l => {
       if (l.id === excludeLoanId) return false;
       if (l.asset_id !== assetId) return false;
-      return l.status === 'approved' || l.status === 'active';
+      return l.status === 'approved' || l.status === 'active' || (l.status as any) === 'borrowed';
     });
 
     for (const loan of activeReservations) {
@@ -364,7 +364,13 @@ export class GabahService {
   static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
     if (!user) return false;
     if (user.role === 'Admin GABAH') return true;
-    if (user.role === 'GA' || user.role === 'IT') return true;
+    if (!loan) return false;
+    
+    // Strict Authority: IT approves IT assets (laptop/hardware), GA approves GA assets (kendaraan/operasional)
+    const ownerDiv = loan.owner_division || (loan.category_type === 'IT' ? 'IT' : 'GA');
+    if (user.role === 'IT' && ownerDiv === 'IT') return true;
+    if (user.role === 'GA' && ownerDiv === 'GA') return true;
+    if (user.role === 'Supply Chain' && ownerDiv === 'SC') return true;
     return false;
   }
 

@@ -118,6 +118,7 @@ export interface Loan {
   asset_number: string; // Official authoritative asset number
   corporate_asset_number: string | null;
   category_type: AssetCategoryType;
+  owner_division?: string;
   borrower_id: string;
   borrower_name: string;
   borrower_department: string;

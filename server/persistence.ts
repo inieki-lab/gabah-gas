@@ -6,17 +6,71 @@ import { db, seedInitialData } from './db';
 import { hashPassword } from './crypto';
 import { AssetNumberingEngine } from './numbering';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || undefined,
-  host: process.env.PGHOST || (process.env.DATABASE_URL ? undefined : '127.0.0.1'),
-  port: Number(process.env.PGPORT || 5432),
-  database: process.env.PGDATABASE || 'gabah_db',
-  user: process.env.PGUSER || 'gabah_user',
-  password: process.env.PGPASSWORD || '',
-  max: 5,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 2000,
-});
+function isPlaceholderHostname(hostname?: string | null): boolean {
+  if (!hostname) return false;
+  const lower = hostname.toLowerCase();
+  return lower === 'database' || lower === 'postgres';
+}
+
+function resolveDbConfig() {
+  const rawUrl = process.env.DATABASE_URL;
+  const rawHost = process.env.PGHOST;
+
+  let isPlaceholder = false;
+  if (rawUrl) {
+    try {
+      const parsed = new URL(rawUrl);
+      if (isPlaceholderHostname(parsed.hostname)) {
+        isPlaceholder = true;
+      }
+    } catch {
+      if (rawUrl.includes('@database:') || rawUrl.includes('@database/') || rawUrl.includes('@postgres:')) {
+        isPlaceholder = true;
+      }
+    }
+  }
+
+  if (rawHost && isPlaceholderHostname(rawHost)) {
+    isPlaceholder = true;
+  }
+
+  // If the host is a docker-compose placeholder ('database' or 'postgres'),
+  // do NOT target it to prevent DNS EAI_AGAIN resolution failures in standalone environments.
+  if (isPlaceholder) {
+    return {
+      isConfigured: false,
+      poolConfig: {
+        host: '127.0.0.1',
+        port: 5432,
+        database: 'gabah_db',
+        user: 'gabah_user',
+        password: '',
+        max: 1,
+        idleTimeoutMillis: 1000,
+        connectionTimeoutMillis: 500,
+      },
+    };
+  }
+
+  const hasRealConfig = Boolean(rawUrl || (rawHost && rawHost !== '127.0.0.1' && rawHost !== 'localhost'));
+  return {
+    isConfigured: hasRealConfig,
+    poolConfig: {
+      connectionString: rawUrl || undefined,
+      host: rawHost || (rawUrl ? undefined : '127.0.0.1'),
+      port: Number(process.env.PGPORT || 5432),
+      database: process.env.PGDATABASE || 'gabah_db',
+      user: process.env.PGUSER || 'gabah_user',
+      password: process.env.PGPASSWORD || '',
+      max: 5,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 2000,
+    },
+  };
+}
+
+const dbConfig = resolveDbConfig();
+const pool = new Pool(dbConfig.poolConfig);
 
 let isPostgresAvailable = false;
 let persistQueue: Promise<void> = Promise.resolve();
@@ -24,7 +78,7 @@ let persistQueue: Promise<void> = Promise.resolve();
 // Prevent unhandled error crashes from pg pool background events
 pool.on('error', (err) => {
   if (isPostgresAvailable) {
-    console.warn('[GABAH Persistence] PostgreSQL pool warning:', err.message);
+    console.log('[GABAH Persistence] PostgreSQL pool status changed:', err.message);
     isPostgresAvailable = false;
   }
 });
@@ -226,12 +280,25 @@ async function persistPostgresState(): Promise<void> {
 }
 
 export async function initializePersistence(): Promise<void> {
-  const isCustomDbConfigured = Boolean(
-    process.env.DATABASE_URL ||
-    (process.env.PGHOST && process.env.PGHOST !== 'database')
-  );
-  const maxAttempts = isCustomDbConfigured ? (process.env.NODE_ENV === 'production' ? 10 : 3) : 1;
+  // If PostgreSQL is not configured with an external address, operate standalone with local persistent file store
+  if (!dbConfig.isConfigured) {
+    isPostgresAvailable = false;
+    console.log('[GABAH Persistence] Standalone environment active. Utilizing resilient local file storage.');
 
+    const loaded = loadStateFromFile();
+    if (loaded) {
+      console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
+    } else {
+      saveStateToFile(createPayload());
+      console.log('[GABAH Persistence] Initialized new persistent local storage file.');
+    }
+
+    ensureCanonicalAdministrator();
+    AssetNumberingEngine.syncFromExistingAssets(db.assets);
+    return;
+  }
+
+  const maxAttempts = process.env.NODE_ENV === 'production' ? 5 : 2;
   let lastError: any = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -257,8 +324,8 @@ export async function initializePersistence(): Promise<void> {
       return;
     } catch (error: any) {
       lastError = error;
-      if (isCustomDbConfigured && attempt < maxAttempts) {
-        console.warn(`[GABAH Persistence] PostgreSQL connection attempt ${attempt}/${maxAttempts} failed: ${error.message || error}`);
+      if (attempt < maxAttempts) {
+        console.log(`[GABAH Persistence] PostgreSQL connection attempt ${attempt}/${maxAttempts} notice: ${error.message || error}`);
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }

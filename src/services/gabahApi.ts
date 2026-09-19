@@ -212,13 +212,27 @@ class GabahApiClient {
   }
 
   async requestLoan(payload: {
-    asset_id: string;
+    asset_id?: string;
+    asset_ids?: string[];
     borrower_id: string;
     purpose: string;
     start_date: string;
     due_date: string;
   }): Promise<Loan> {
     return this.request<Loan>('/api/loans', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async requestBatchLoans(payload: {
+    asset_ids: string[];
+    borrower_id: string;
+    purpose: string;
+    start_date: string;
+    due_date: string;
+  }): Promise<{ success: boolean; data: Loan; loans: Loan[]; count: number; message: string }> {
+    return this.request<{ success: boolean; data: Loan; loans: Loan[]; count: number; message: string }>('/api/loans', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
