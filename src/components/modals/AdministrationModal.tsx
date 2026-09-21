@@ -153,7 +153,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   showToast,
   onRefreshData
 }) => {
-  const isCurrentUserAdmin = (activeRole ? activeRole === 'Admin GABAH' : currentUser?.role === 'Admin GABAH') ?? false;
+  const isCurrentUserAdmin = Boolean(activeRole ? activeRole === 'Admin GABAH' : currentUser?.role === 'Admin GABAH');
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 
   // User Management State
@@ -2144,7 +2144,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         {isCurrentUserAdmin && cat.total === 0 && (
                           <button
                             type="button"
-                            onClick={() => handleDeleteCategory(cat.code)}
+                            onClick={() => handleDeleteCategory(cat.code, cat.name)}
                             title={`Hapus kategori ${cat.name}`}
                             className="p-1 rounded-md text-rose-500 hover:bg-rose-50 hover:text-rose-700 opacity-80 group-hover:opacity-100 transition-all cursor-pointer"
                           >
@@ -2166,13 +2166,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   {isCurrentUserAdmin ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        const name = prompt('Masukkan Nama Lokasi / Fasilitas baru:');
-                        if (!name || !name.trim()) return;
-                        const address = prompt('Masukkan Alamat / Detail Blok (contoh: Kompleks PIBC Blok E-10):') || 'Kompleks PIBC';
-                        const capacity = prompt('Masukkan Kapasitas (contoh: 500 Ton Beras / 50 Workstation):') || '100 Unit';
-                        handleAddLocation(name.trim(), address.trim(), capacity.trim());
-                      }}
+                      onClick={() => setIsAddLocationOpen(true)}
                       className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <Plus className="w-3 h-3" />
@@ -2203,7 +2197,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       {isCurrentUserAdmin && locations.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => handleDeleteLocation(idx)}
+                          onClick={() => handleDeleteLocation(loc.id, loc.name)}
                           title={`Hapus lokasi ${loc.name}`}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 opacity-70 group-hover:opacity-100 transition-all cursor-pointer shrink-0"
                         >
@@ -2611,7 +2605,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
                 {isCurrentUserAdmin && (
                   <button
-                    onClick={handleExportFullBackup}
+                    onClick={handleFullSystemBackup}
                     className="px-3.5 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
                     <Database className="w-3.5 h-3.5" />
@@ -2678,8 +2672,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </button>
                 </div>
               </div>
-            </div>
-          )}
             </div>
           )}
 
