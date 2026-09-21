@@ -235,6 +235,8 @@ export type UserRole =
   | 'Admin GABAH'
   | 'IT'
   | 'GA'
+  | 'Sekretaris Direksi'
+  | 'Humas'
   | 'Supply Chain'
   | 'PIBC'
   | 'Karyawan'
@@ -300,7 +302,27 @@ export interface MeetingRoom {
 }
 
 export type ReservationStatus = 'pending_approval' | 'approved' | 'rejected' | 'in_use' | 'completed' | 'cancelled';
-export type MeetingType = 'internal' | 'external' | 'hybrid' | 'direksi';
+export type MeetingType = string;
+export type MeetingPriority = 'high' | 'medium' | 'low';
+
+export interface MeetingTypeItem {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  priority_level: MeetingPriority;
+  color: string;
+  is_system?: boolean;
+}
+
+export interface MeetingFacilityItem {
+  id: string;
+  name: string;
+  category: 'GA' | 'IT';
+  description?: string;
+  is_active: boolean;
+  is_system?: boolean;
+}
 
 export interface RoomReservation {
   id: string;
@@ -317,7 +339,9 @@ export interface RoomReservation {
   organizer_phone: string;
   organizer_role?: string;
   attendees_count: number;
-  meeting_type: MeetingType;
+  attendees_list?: string; // Multiline or comma-separated list of attendees
+  meeting_type: string;
+  priority: MeetingPriority;
   date: string; // YYYY-MM-DD
   start_time: string; // HH:mm
   end_time: string; // HH:mm
@@ -325,12 +349,22 @@ export interface RoomReservation {
   end_datetime: string; // ISO string
   facilities_requested: string[];
   consumption_requested: boolean;
+  consumption_type?: 'snack_box' | 'lunch_box' | 'coffee_tea' | 'vip_buffet' | 'custom';
+  consumption_pax?: number;
+  consumption_serving_time?: string;
   consumption_notes?: string;
+  documentation_requested?: boolean;
+  documentation_type?: 'foto' | 'video' | 'press_release' | 'notulensi' | 'lengkap';
+  documentation_notes?: string;
   status: ReservationStatus;
   approver_id?: string | null;
   approver_name?: string | null;
   approved_at?: string | null;
   rejection_reason?: string | null;
+  is_interrupted?: boolean;
+  interrupted_by_name?: string;
+  interruption_reason?: string;
+  original_room_name?: string;
   checkin_at?: string | null;
   checkout_at?: string | null;
   notes?: string;

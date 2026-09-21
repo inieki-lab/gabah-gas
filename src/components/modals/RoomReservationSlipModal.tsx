@@ -127,7 +127,18 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
             <div>
               <p className="text-[10px] uppercase font-bold text-slate-500">Agenda / Topik Rapat</p>
               <p className="text-sm font-bold text-slate-900 mt-0.5">{reservation.title}</p>
-              <p className="text-slate-600 text-[11px]">Tipe: <span className="capitalize font-semibold">{reservation.meeting_type}</span></p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-slate-600 text-[11px]">Tipe: <span className="capitalize font-semibold">{reservation.meeting_type}</span></span>
+                <span className={`px-2 py-0.2 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                  reservation.priority === 'high'
+                    ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                    : reservation.priority === 'low'
+                      ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                      : 'bg-blue-100 text-blue-800 border border-blue-200'
+                }`}>
+                  Prioritas: {reservation.priority || 'medium'}
+                </span>
+              </div>
             </div>
 
             <div className="pt-2 border-t border-slate-200">
@@ -166,14 +177,67 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
                 <Users className="w-4 h-4 text-slate-500" />
                 <span className="text-xs font-bold text-slate-900">{reservation.attendees_count} Orang</span>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
-                Konsumsi GA: {reservation.consumption_requested ? 'Ya (Diproses Pantry)' : 'Tidak Ada'}
-              </p>
-              {reservation.consumption_notes && (
-                <p className="text-[10px] text-slate-600 italic mt-0.5">"{reservation.consumption_notes}"</p>
+              {reservation.attendees_list && (
+                <div className="mt-1.5 pt-1.5 border-t border-slate-100">
+                  <p className="text-[10px] text-slate-500 font-semibold">Daftar Peserta / Pejabat:</p>
+                  <p className="text-[10px] text-slate-700 whitespace-pre-wrap">{reservation.attendees_list}</p>
+                </div>
               )}
             </div>
           </div>
+
+          {/* Layanan Konsumsi & Dokumentasi */}
+          {(reservation.consumption_requested || reservation.documentation_requested) && (
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              {reservation.consumption_requested && (
+                <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-3.5">
+                  <p className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1.5">
+                    <Coffee className="w-3.5 h-3.5 text-amber-700" />
+                    Layanan Konsumsi / Pantry GA
+                  </p>
+                  <p className="text-xs font-bold text-slate-900 mt-1">
+                    {reservation.consumption_type || 'Snack Box & Kopi/Teh'} ({reservation.consumption_pax || reservation.attendees_count} Pax)
+                  </p>
+                  {reservation.consumption_serving_time && (
+                    <p className="text-[11px] text-amber-800 mt-0.5">
+                      Penyajian: Pukul {reservation.consumption_serving_time} WIB
+                    </p>
+                  )}
+                  {reservation.consumption_notes && (
+                    <p className="text-[10px] text-slate-600 italic mt-0.5">"{reservation.consumption_notes}"</p>
+                  )}
+                </div>
+              )}
+
+              {reservation.documentation_requested && (
+                <div className="border border-sky-200 bg-sky-50/50 rounded-xl p-3.5">
+                  <p className="text-[10px] uppercase font-bold text-sky-900 flex items-center gap-1.5">
+                    <span>📸</span>
+                    Layanan Dokumentasi & Humas
+                  </p>
+                  <p className="text-xs font-bold text-slate-900 mt-1">
+                    {reservation.documentation_type || 'Foto Dokumentasi Kegiatan'}
+                  </p>
+                  {reservation.documentation_notes && (
+                    <p className="text-[10px] text-slate-600 italic mt-0.5">"{reservation.documentation_notes}"</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Interruption Notice if shifted */}
+          {reservation.was_interrupted && (
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-xs text-purple-950">
+              <p className="font-bold">⚠️ Informasi Penyesuaian Ruang Rapat (Prioritas Direksi):</p>
+              <p className="text-[11px] text-purple-900 mt-0.5">
+                Reservasi ini sebelumnya dijadwalkan di <strong>{reservation.original_room_name || 'Ruang Setra Wangi'}</strong> dan telah dialihkan secara resmi oleh {reservation.interrupted_by || 'Sekretaris Direksi'}.
+              </p>
+              {reservation.interruption_reason && (
+                <p className="text-[10px] text-purple-800 italic mt-0.5">Alasan: "{reservation.interruption_reason}"</p>
+              )}
+            </div>
+          )}
 
           {/* Fasilitas yang Disiapkan */}
           {reservation.facilities_requested && reservation.facilities_requested.length > 0 && (

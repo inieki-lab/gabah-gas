@@ -1,4 +1,4 @@
-import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation } from '../types';
+import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem } from '../types';
 
 const TOKEN_STORAGE_KEY = 'gabah_auth_token';
 
@@ -56,7 +56,10 @@ class GabahApiClient {
       if (res.status === 401 && endpoint !== '/api/auth/login') {
         this.setToken(null);
       }
-      throw new Error(json.message || `Request gagal: ${res.statusText}`);
+      const err: any = new Error(json.message || `Request gagal: ${res.statusText}`);
+      err.conflict = json.conflict;
+      err.can_override = json.can_override;
+      throw err;
     }
 
     return json.data !== undefined ? json.data : json;
@@ -362,14 +365,24 @@ class GabahApiClient {
     title: string;
     description?: string;
     attendees_count: number;
-    meeting_type?: 'internal' | 'external' | 'hybrid' | 'direksi';
+    attendees_list?: string;
+    meeting_type?: string;
+    priority?: 'high' | 'medium' | 'low';
     date: string;
     start_time: string;
     end_time: string;
     facilities_requested?: string[];
     consumption_requested?: boolean;
+    consumption_type?: string;
+    consumption_pax?: number;
+    consumption_serving_time?: string;
     consumption_notes?: string;
+    documentation_requested?: boolean;
+    documentation_type?: string;
+    documentation_notes?: string;
     notes?: string;
+    override_conflict?: boolean;
+    interruption_reason?: string;
   }): Promise<RoomReservation> {
     return this.request<RoomReservation>('/api/room-reservations', {
       method: 'POST',
@@ -412,6 +425,56 @@ class GabahApiClient {
     return this.request<MeetingRoom>(`/api/meeting-rooms/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
+    });
+  }
+
+  // Meeting Types CRUD API
+  async getMeetingTypes(): Promise<MeetingTypeItem[]> {
+    return this.request<MeetingTypeItem[]>('/api/meeting-types');
+  }
+
+  async createMeetingType(payload: Partial<MeetingTypeItem>): Promise<MeetingTypeItem> {
+    return this.request<MeetingTypeItem>('/api/meeting-types', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateMeetingType(id: string, payload: Partial<MeetingTypeItem>): Promise<MeetingTypeItem> {
+    return this.request<MeetingTypeItem>(`/api/meeting-types/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteMeetingType(id: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/api/meeting-types/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Meeting Facilities CRUD API
+  async getMeetingFacilities(): Promise<MeetingFacilityItem[]> {
+    return this.request<MeetingFacilityItem[]>('/api/meeting-facilities');
+  }
+
+  async createMeetingFacility(payload: Partial<MeetingFacilityItem>): Promise<MeetingFacilityItem> {
+    return this.request<MeetingFacilityItem>('/api/meeting-facilities', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateMeetingFacility(id: string, payload: Partial<MeetingFacilityItem>): Promise<MeetingFacilityItem> {
+    return this.request<MeetingFacilityItem>(`/api/meeting-facilities/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteMeetingFacility(id: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/api/meeting-facilities/${id}`, {
+      method: 'DELETE',
     });
   }
 }

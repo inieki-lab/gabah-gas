@@ -1,4 +1,4 @@
-import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation } from './db';
+import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility } from './db';
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
 import { persistDataStore } from './persistence';
@@ -787,13 +787,23 @@ export class GabahDomainService {
     title: string;
     description?: string;
     attendees_count: number;
-    meeting_type?: 'internal' | 'external' | 'hybrid' | 'direksi';
+    attendees_list?: string;
+    meeting_type?: string;
+    priority?: 'high' | 'medium' | 'low';
     date: string; // YYYY-MM-DD
     start_time: string; // HH:mm
     end_time: string; // HH:mm
     facilities_requested?: string[];
     consumption_requested?: boolean;
+    consumption_type?: 'snack_box' | 'lunch_box' | 'coffee_tea' | 'vip_buffet' | 'custom';
+    consumption_pax?: number;
+    consumption_serving_time?: string;
     consumption_notes?: string;
+    documentation_requested?: boolean;
+    documentation_type?: 'foto' | 'video' | 'press_release' | 'notulensi' | 'lengkap';
+    documentation_notes?: string;
+    override_conflict?: boolean;
+    interruption_reason?: string;
     notes?: string;
   }, actor: ServerUser): ServerRoomReservation {
     if (actor.role === 'Auditor') {
@@ -831,15 +841,93 @@ export class GabahDomainService {
       return payload.start_time < r.end_time && payload.end_time > r.start_time;
     });
 
+    const isPrivilegedInterrupter =
+      actor.role === 'Admin GABAH' ||
+      actor.role === 'GA' ||
+      actor.role === 'Sekretaris Direksi';
+
     if (conflicting) {
-      throw new Error(
-        `Tabrakan Jadwal! Ruangan "${room.name}" sudah dipesan pada ${payload.date} pukul ${conflicting.start_time} - ${conflicting.end_time} untuk agenda "${conflicting.title}" oleh ${conflicting.organizer_name} (${conflicting.organizer_department}). Silakan pilih jam atau ruangan lain.`
-      );
+      if (payload.override_conflict && isPrivilegedInterrupter) {
+        // Privileged Interruption: Find alternative room with sufficient capacity if available
+        const altRoom = (db.rooms || []).find(other => {
+          if (other.id === room.id) return false;
+          if (other.capacity < conflicting.attendees_count) return false;
+          if (other.status === 'maintenance') return false;
+          // Check collision in other room
+          const hasOverlap = (db.roomReservations || []).some(r => {
+            if (r.id === conflicting.id) return false;
+            if (r.room_id !== other.id) return false;
+            if (['rejected', 'cancelled'].includes(r.status)) return false;
+            if (r.date !== conflicting.date) return false;
+            return conflicting.start_time < r.end_time && conflicting.end_time > r.start_time;
+          });
+          return !hasOverlap;
+        });
+
+        const originalRoomName = conflicting.room_name;
+        conflicting.is_interrupted = true;
+        conflicting.interrupted_by_name = `${actor.name} (${actor.role})`;
+        conflicting.interruption_reason = payload.interruption_reason || `Diinterupsi untuk Prioritas Jadwal Direksi: "${payload.title}"`;
+        conflicting.original_room_name = originalRoomName;
+
+        if (altRoom) {
+          conflicting.room_id = altRoom.id;
+          conflicting.room_name = altRoom.name;
+          conflicting.room_code = altRoom.code;
+          conflicting.room_location = `${altRoom.building} - ${altRoom.floor}`;
+          conflicting.notes = (conflicting.notes ? conflicting.notes + ' | ' : '') + `[Jadwal Digeser] Dipindahkan dari ${originalRoomName} ke ${altRoom.name} karena agenda mendesak Direksi oleh ${actor.name} (${actor.role}).`;
+          this.notify({
+            recipient_user_id: conflicting.organizer_id,
+            title: `Perubahan Ruangan: Dialihkan ke ${altRoom.name}`,
+            message: `Jadwal reservasi Anda (${conflicting.reservation_number}) pada ${conflicting.date} (${conflicting.start_time}-${conflicting.end_time}) dialihkan dari ${originalRoomName} ke ${altRoom.name} untuk Rapat Direksi oleh ${actor.name} (${actor.role}).`,
+            severity: 'critical',
+            category: 'system',
+          });
+        } else {
+          conflicting.status = 'rejected';
+          conflicting.rejection_reason = `Jadwal diinterupsi oleh ${actor.name} (${actor.role}) untuk kebutuhan prioritas Rapat Direksi: "${payload.title}". Mohon ajukan jadwal di ruangan lain.`;
+          this.notify({
+            recipient_user_id: conflicting.organizer_id,
+            title: `Jadwal Rapat Dibatalkan/Diinterupsi: ${originalRoomName}`,
+            message: `Reservasi Anda (${conflicting.reservation_number}) pada ${conflicting.date} (${conflicting.start_time}-${conflicting.end_time}) terpaksa dibatalkan karena ruangan digunakan untuk Rapat Direksi oleh ${actor.name} (${actor.role}).`,
+            severity: 'critical',
+            category: 'system',
+          });
+        }
+        conflicting.updated_at = new Date().toISOString();
+
+        this.recordAudit(
+          'ROOM_RESERVATION_INTERRUPTED',
+          'MeetingRooms',
+          `Interupsi jadwal ${conflicting.reservation_number} di ${originalRoomName} oleh ${actor.name} (${actor.role}) untuk Rapat Direksi: ${payload.title}. Status pemindahan: ${altRoom ? 'Dipindahkan ke ' + altRoom.name : 'Dibatalkan/Ruangan penuh'}`,
+          actor,
+          conflicting.id
+        );
+      } else {
+        const err: any = new Error(
+          `Tabrakan Jadwal! Ruangan "${room.name}" sudah dipesan pada ${payload.date} pukul ${conflicting.start_time} - ${conflicting.end_time} untuk agenda "${conflicting.title}" oleh ${conflicting.organizer_name} (${conflicting.organizer_department}).`
+        );
+        err.conflict = {
+          reservation_number: conflicting.reservation_number,
+          title: conflicting.title,
+          organizer_name: conflicting.organizer_name,
+          organizer_department: conflicting.organizer_department,
+          date: conflicting.date,
+          start_time: conflicting.start_time,
+          end_time: conflicting.end_time,
+          room_name: room.name,
+          room_id: room.id,
+          priority: conflicting.priority,
+        };
+        err.can_override = isPrivilegedInterrupter;
+        throw err;
+      }
     }
 
     const year = new Date().getFullYear();
     const existingCount = (db.roomReservations || []).length + 1;
     const reservationNumber = `RSV-${year}-${String(existingCount).padStart(4, '0')}`;
+    const isAutoApproved = actor.role === 'Admin GABAH' || actor.role === 'GA' || actor.role === 'Sekretaris Direksi';
 
     const reservation: ServerRoomReservation = {
       id: `rsv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -856,7 +944,9 @@ export class GabahDomainService {
       organizer_phone: actor.phone || '-',
       organizer_role: actor.role,
       attendees_count: Number(payload.attendees_count) || 1,
+      attendees_list: payload.attendees_list?.trim() || '',
       meeting_type: payload.meeting_type || 'internal',
+      priority: payload.priority || (actor.role === 'Sekretaris Direksi' ? 'high' : 'medium'),
       date: payload.date,
       start_time: payload.start_time,
       end_time: payload.end_time,
@@ -864,11 +954,17 @@ export class GabahDomainService {
       end_datetime: `${payload.date}T${payload.end_time}:00`,
       facilities_requested: Array.isArray(payload.facilities_requested) ? payload.facilities_requested : [],
       consumption_requested: Boolean(payload.consumption_requested),
-      consumption_notes: payload.consumption_notes?.trim(),
-      status: (actor.role === 'Admin GABAH' || actor.role === 'GA') ? 'approved' : 'pending_approval',
-      approver_id: (actor.role === 'Admin GABAH' || actor.role === 'GA') ? actor.id : null,
-      approver_name: (actor.role === 'Admin GABAH' || actor.role === 'GA') ? actor.name : null,
-      approved_at: (actor.role === 'Admin GABAH' || actor.role === 'GA') ? new Date().toISOString() : null,
+      consumption_type: payload.consumption_type || 'snack_box',
+      consumption_pax: payload.consumption_pax ? Number(payload.consumption_pax) : Number(payload.attendees_count) || 1,
+      consumption_serving_time: payload.consumption_serving_time?.trim() || payload.start_time,
+      consumption_notes: payload.consumption_notes?.trim() || '',
+      documentation_requested: Boolean(payload.documentation_requested),
+      documentation_type: payload.documentation_type || 'foto',
+      documentation_notes: payload.documentation_notes?.trim() || '',
+      status: isAutoApproved ? 'approved' : 'pending_approval',
+      approver_id: isAutoApproved ? actor.id : null,
+      approver_name: isAutoApproved ? actor.name : null,
+      approved_at: isAutoApproved ? new Date().toISOString() : null,
       notes: payload.notes?.trim() || '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -880,7 +976,7 @@ export class GabahDomainService {
     this.recordAudit(
       'ROOM_RESERVATION_CREATED',
       'MeetingRooms',
-      `Reservasi ${reservation.reservation_number} dibuat untuk ${room.name} (${payload.date} ${payload.start_time}-${payload.end_time}) - Agenda: ${reservation.title}`,
+      `Reservasi ${reservation.reservation_number} dibuat untuk ${room.name} (${payload.date} ${payload.start_time}-${payload.end_time}) [Prioritas: ${reservation.priority.toUpperCase()}] - Agenda: ${reservation.title}`,
       actor,
       reservation.id
     );
@@ -894,6 +990,32 @@ export class GabahDomainService {
         message: `${actor.name} (${actor.department}) mengajukan pemesanan ${room.name} pada ${payload.date} (${payload.start_time} - ${payload.end_time}).`,
         severity: 'action_required',
         category: 'system',
+      });
+    }
+
+    // 1. Notify GA / Pantry for Consumption Request
+    if (reservation.consumption_requested) {
+      this.notify({
+        recipient_role: 'GA',
+        recipient_division: 'GA',
+        title: `Permintaan Konsumsi Pantry: ${room.name}`,
+        message: `Pesanan konsumsi (${reservation.consumption_type || 'Snack'} - ${reservation.consumption_pax} Pax) untuk rapat "${reservation.title}" pada ${reservation.date} (${reservation.consumption_serving_time}) oleh ${actor.name} (${actor.department}). Catatan: ${reservation.consumption_notes || '-'}`,
+        severity: 'action_required',
+        category: 'system',
+        link_type: 'asset',
+      });
+    }
+
+    // 2. Notify Humas for Documentation Request
+    if (reservation.documentation_requested) {
+      this.notify({
+        recipient_role: 'Humas',
+        recipient_division: 'GA',
+        title: `Permintaan Dokumentasi Humas: ${room.name}`,
+        message: `Permintaan liputan dokumentasi (${reservation.documentation_type || 'Dokumentasi Foto/Video'}) untuk agenda "${reservation.title}" (${reservation.date} ${reservation.start_time}-${reservation.end_time}) oleh ${actor.name} (${actor.department}). Catatan: ${reservation.documentation_notes || '-'}`,
+        severity: 'action_required',
+        category: 'system',
+        link_type: 'asset',
       });
     }
 
@@ -1046,5 +1168,113 @@ export class GabahDomainService {
     this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
     persistDataStore().catch(err => console.warn('[GABAH Room] Persistence notice:', err.message));
     return room;
+  }
+
+  // Meeting Types CRUD (Admin GABAH)
+  static getMeetingTypes(): ServerMeetingType[] {
+    return db.meetingTypes || [];
+  }
+
+  static createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
+    if (actor.role !== 'Admin GABAH') {
+      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menambah tipe rapat.');
+    }
+    if (!payload.name || !payload.name.trim()) throw new Error('Nama tipe rapat wajib diisi.');
+    const newItem: ServerMeetingType = {
+      id: `MT-${Date.now()}`,
+      name: payload.name.trim(),
+      code: payload.code ? payload.code.trim().toLowerCase() : payload.name.trim().toLowerCase().replace(/\s+/g, '_'),
+      description: payload.description?.trim() || '',
+      priority_level: payload.priority_level || 'medium',
+      color: payload.color || 'blue',
+      is_system: false,
+    };
+    if (!db.meetingTypes) db.meetingTypes = [];
+    db.meetingTypes.push(newItem);
+    this.recordAudit('MEETING_TYPE_CREATED', 'MeetingRooms', `Menambah tipe rapat baru: ${newItem.name}`, actor, newItem.id);
+    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    return newItem;
+  }
+
+  static updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
+    if (actor.role !== 'Admin GABAH') {
+      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang mengubah tipe rapat.');
+    }
+    const item = (db.meetingTypes || []).find(m => m.id === id);
+    if (!item) throw new Error('Tipe rapat tidak ditemukan.');
+    if (payload.name) item.name = payload.name.trim();
+    if (payload.code) item.code = payload.code.trim().toLowerCase();
+    if (payload.description !== undefined) item.description = payload.description.trim();
+    if (payload.priority_level) item.priority_level = payload.priority_level;
+    if (payload.color) item.color = payload.color;
+    this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id);
+    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    return item;
+  }
+
+  static deleteMeetingType(id: string, actor: ServerUser): { success: boolean } {
+    if (actor.role !== 'Admin GABAH') {
+      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menghapus tipe rapat.');
+    }
+    const idx = (db.meetingTypes || []).findIndex(m => m.id === id);
+    if (idx === -1) throw new Error('Tipe rapat tidak ditemukan.');
+    const removed = db.meetingTypes[idx];
+    db.meetingTypes.splice(idx, 1);
+    this.recordAudit('MEETING_TYPE_DELETED', 'MeetingRooms', `Menghapus tipe rapat: ${removed.name}`, actor, removed.id);
+    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    return { success: true };
+  }
+
+  // Meeting Facilities CRUD (Admin GABAH, GA, IT)
+  static getMeetingFacilities(): ServerMeetingFacility[] {
+    return db.meetingFacilities || [];
+  }
+
+  static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && actor.role !== 'IT') {
+      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menambah fasilitas.');
+    }
+    if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
+    const newFac: ServerMeetingFacility = {
+      id: `FAC-${payload.category || 'GA'}-${Date.now()}`,
+      name: payload.name.trim(),
+      category: payload.category === 'IT' ? 'IT' : 'GA',
+      description: payload.description?.trim() || '',
+      is_active: payload.is_active !== undefined ? payload.is_active : true,
+      is_system: false,
+    };
+    if (!db.meetingFacilities) db.meetingFacilities = [];
+    db.meetingFacilities.push(newFac);
+    this.recordAudit('MEETING_FACILITY_CREATED', 'MeetingRooms', `Menambah fasilitas rapat [${newFac.category}]: ${newFac.name}`, actor, newFac.id);
+    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    return newFac;
+  }
+
+  static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && actor.role !== 'IT') {
+      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang mengubah fasilitas.');
+    }
+    const item = (db.meetingFacilities || []).find(f => f.id === id);
+    if (!item) throw new Error('Fasilitas tidak ditemukan.');
+    if (payload.name) item.name = payload.name.trim();
+    if (payload.category) item.category = payload.category;
+    if (payload.description !== undefined) item.description = payload.description.trim();
+    if (payload.is_active !== undefined) item.is_active = payload.is_active;
+    this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id);
+    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    return item;
+  }
+
+  static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && actor.role !== 'IT') {
+      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menghapus fasilitas.');
+    }
+    const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);
+    if (idx === -1) throw new Error('Fasilitas tidak ditemukan.');
+    const removed = db.meetingFacilities[idx];
+    db.meetingFacilities.splice(idx, 1);
+    this.recordAudit('MEETING_FACILITY_DELETED', 'MeetingRooms', `Menghapus fasilitas rapat [${removed.category}]: ${removed.name}`, actor, removed.id);
+    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    return { success: true };
   }
 }

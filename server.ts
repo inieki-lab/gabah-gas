@@ -414,6 +414,8 @@ async function startServer() {
           'Admin GABAH': 'Admin GABAH',
           'IT': 'IT Technical Staff',
           'GA': 'GA & Sarpras Specialist',
+          'Sekretaris Direksi': 'Sekretaris Direksi & Dewan Komisaris',
+          'Humas': 'Humas & Dokumentasi Protokoler',
           'Supply Chain': 'Supply Chain & Logistik',
           'PIBC': 'Petugas Pasar Induk Cipinang',
           'Karyawan': 'Pegawai Operasional (Karyawan)',
@@ -424,6 +426,8 @@ async function startServer() {
           'Admin GABAH': 'IT',
           'IT': 'IT',
           'GA': 'GA',
+          'Sekretaris Direksi': 'GA',
+          'Humas': 'GA',
           'Supply Chain': 'SC',
           'PIBC': 'PIBC',
           'Karyawan': 'SC',
@@ -1042,7 +1046,12 @@ async function startServer() {
       const created = GabahDomainService.requestRoomReservation(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(400).json({
+        success: false,
+        message: err.message,
+        conflict: err.conflict || null,
+        can_override: Boolean(err.can_override),
+      });
     }
   });
 
@@ -1091,6 +1100,76 @@ async function startServer() {
       const actor = getActor(req);
       const cancelled = GabahDomainService.cancelRoomReservation(req.params.id, actor);
       res.json({ success: true, data: cancelled });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  // Meeting Types CRUD API (Admin GABAH)
+  app.get('/api/meeting-types', (req, res) => {
+    res.json({ success: true, data: GabahDomainService.getMeetingTypes() });
+  });
+
+  app.post('/api/meeting-types', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const created = GabahDomainService.createMeetingType(req.body, actor);
+      res.status(201).json({ success: true, data: created });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.patch('/api/meeting-types/:id', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const updated = GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.delete('/api/meeting-types/:id', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const result = GabahDomainService.deleteMeetingType(req.params.id, actor);
+      res.json({ success: true, data: result });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  // Meeting Facilities CRUD API (Admin GABAH, GA, IT)
+  app.get('/api/meeting-facilities', (req, res) => {
+    res.json({ success: true, data: GabahDomainService.getMeetingFacilities() });
+  });
+
+  app.post('/api/meeting-facilities', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const created = GabahDomainService.createMeetingFacility(req.body, actor);
+      res.status(201).json({ success: true, data: created });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.patch('/api/meeting-facilities/:id', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const updated = GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.delete('/api/meeting-facilities/:id', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const result = GabahDomainService.deleteMeetingFacility(req.params.id, actor);
+      res.json({ success: true, data: result });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
