@@ -25,17 +25,17 @@ import { formatRupiah } from '../../services/gabahService';
 interface QRScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  assets: Asset[];
+  assets?: Asset[];
   onSelectAsset: (asset: Asset) => void;
-  onOpenLoanModal: (asset: Asset) => void;
-  onOpenTicketModal: (asset: Asset) => void;
-  onOpenQrModal: (asset: Asset) => void;
+  onOpenLoanModal?: (asset: Asset) => void;
+  onOpenTicketModal?: (asset: Asset) => void;
+  onOpenQrModal?: (asset: Asset) => void;
 }
 
 export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   isOpen,
   onClose,
-  assets,
+  assets = [],
   onSelectAsset,
   onOpenLoanModal,
   onOpenTicketModal,
@@ -112,7 +112,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       return;
     }
 
-    const found = assets.find(a => 
+    const found = (assets || []).find(a => 
       a.asset_number.toLowerCase() === q ||
       a.corporate_asset_number?.toLowerCase() === q ||
       a.serial_number.toLowerCase() === q ||

@@ -88,7 +88,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   }, [preselectedRoomId, rooms]);
 
   const selectedRoom = useMemo(() => {
-    return rooms.find(r => r.id === roomId) || rooms[0];
+    return (rooms || []).find(r => r.id === roomId) || (rooms || [])[0];
   }, [rooms, roomId]);
 
   // Real-time Anti-Collision check
@@ -96,7 +96,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
     if (!roomId || !date || !startTime || !endTime) return null;
     if (startTime >= endTime) return null;
 
-    return existingReservations.find(r => {
+    return (existingReservations || []).find(r => {
       if (r.room_id !== roomId) return false;
       if (['rejected', 'cancelled'].includes(r.status)) return false;
       if (r.date !== date) return false;

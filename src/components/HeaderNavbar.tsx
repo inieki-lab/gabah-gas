@@ -18,22 +18,22 @@ import { UserProfile, UserRole, Ticket, Loan } from '../types';
 
 interface HeaderNavbarProps {
   currentUser: UserProfile;
-  allUsers: UserProfile[];
+  allUsers?: UserProfile[];
   onSelectUser: (user: UserProfile) => void;
   onSwitchRoleSimulation?: (role: UserRole) => void;
   onOpenArchitectureModal: () => void;
   onOpenScannerModal: () => void;
   onOpenGlobalSearch?: () => void;
   onLogout: () => void;
-  pendingLoans: Loan[];
-  urgentTickets: Ticket[];
+  pendingLoans?: Loan[];
+  urgentTickets?: Ticket[];
   onNavigateToLoans: () => void;
   onNavigateToTickets: () => void;
 }
 
 export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   currentUser,
-  allUsers,
+  allUsers = [],
   onSelectUser,
   onSwitchRoleSimulation,
   onOpenArchitectureModal,
@@ -263,10 +263,10 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 {/* Section 1: Registered Users in Database */}
                 <div className="mb-3">
                   <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
-                    Akun Terdaftar ({allUsers.length})
+                    Akun Terdaftar ({(allUsers || []).length})
                   </div>
                   <div className="space-y-1">
-                    {allUsers.map(user => {
+                    {(allUsers || []).map(user => {
                       const isSelected = user.id === currentUser.id;
                       return (
                         <button
@@ -324,7 +324,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                             if (onSwitchRoleSimulation) {
                               onSwitchRoleSimulation(item.role);
                             } else {
-                              const found = allUsers.find(u => u.role === item.role);
+                              const found = (allUsers || []).find(u => u.role === item.role);
                               if (found) onSelectUser(found);
                             }
                             setShowRoleDropdown(false);
@@ -342,18 +342,20 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 </div>
 
                 {/* Back to Real Super Admin Button if in simulation mode */}
-                {currentUser.id.startsWith('SIM-') && allUsers.length > 0 && (
+                {currentUser?.id?.startsWith('SIM-') && (allUsers || []).length > 0 && (
                   <div className="mt-2.5 pt-2 border-t border-slate-100">
                     <button
                       type="button"
                       onClick={() => {
-                        onSelectUser(allUsers[0]);
+                        if (allUsers && allUsers[0]) {
+                          onSelectUser(allUsers[0]);
+                        }
                         setShowRoleDropdown(false);
                       }}
                       className="w-full py-1.5 px-3 rounded-xl bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-1.5"
                     >
                       <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Kembali ke Akun Super Admin ({allUsers[0].name})</span>
+                      <span>Kembali ke Akun Super Admin ({allUsers?.[0]?.name || 'Admin'})</span>
                     </button>
                   </div>
                 )}

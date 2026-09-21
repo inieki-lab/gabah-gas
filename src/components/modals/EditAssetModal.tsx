@@ -27,9 +27,11 @@ interface EditAssetModalProps {
   onClose: () => void;
   asset: Asset | null;
   currentUser?: UserProfile;
-  users: UserProfile[];
+  users?: UserProfile[];
+  allUsers?: UserProfile[];
   allAssets?: Asset[];
-  onSaveAsset: (assetId: string, updates: Partial<Asset>, assignUserId?: string, assignReason?: string) => Promise<void>;
+  onSaveAsset?: (assetId: string, updates: Partial<Asset>, assignUserId?: string, assignReason?: string) => Promise<void>;
+  onSaved?: (asset: Asset) => Promise<void> | void;
   onOpenBastModal?: (asset: Asset, assignedUser?: UserProfile) => void;
 }
 
@@ -38,11 +40,14 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   onClose,
   asset,
   currentUser,
-  users,
+  users = [],
+  allUsers = [],
   allAssets = [],
   onSaveAsset,
+  onSaved,
   onOpenBastModal,
 }) => {
+  const activeUsers = (users && users.length > 0) ? users : (allUsers || []);
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
@@ -153,12 +158,16 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         status: selectedUserId ? 'assigned' : formData.status,
       };
 
-      await onSaveAsset(
-        asset.id, 
-        updates, 
-        selectedUserId !== (asset.assigned_to?.id || '') ? selectedUserId : undefined, 
-        assignmentReason.trim()
-      );
+      if (onSaveAsset) {
+        await onSaveAsset(
+          asset.id, 
+          updates, 
+          selectedUserId !== (asset.assigned_to?.id || '') ? selectedUserId : undefined, 
+          assignmentReason.trim()
+        );
+      } else if (onSaved) {
+        await onSaved({ ...asset, ...updates });
+      }
       
       onClose();
     } catch (err: any) {
@@ -168,7 +177,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
     }
   };
 
-  const targetAssignedUser = users.find(u => u.id === selectedUserId);
+  const targetAssignedUser = (activeUsers || []).find(u => u.id === selectedUserId);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in">
@@ -270,7 +279,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
                     <option value="">— Tidak Ada PIC / Idle di Pool Gudang (Tersedia) —</option>
-                    {users.map(u => (
+                    {(activeUsers || []).map(u => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({u.department} • {u.role})
                       </option>

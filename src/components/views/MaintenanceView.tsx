@@ -94,7 +94,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
       return;
     }
 
-    const selectedAsset = assets.find((a) => a.id === formData.asset_id);
+    const selectedAsset = (assets || []).find((a) => a.id === formData.asset_id);
     if (!selectedAsset) return;
 
     const checklistItems = formData.checklistText
@@ -293,7 +293,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
           </div>
         ) : (
           filteredSchedules.map((sch) => {
-            const matchedAsset = assets.find((a) => a.id === sch.asset_id);
+            const matchedAsset = (assets || []).find((a) => a.id === sch.asset_id);
             return (
               <div
                 key={sch.id}

@@ -37,10 +37,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onQuickLogin,
   demoUsers = INITIAL_USERS,
 }) => {
-  const superAdminUser = demoUsers.find(u => u.role === 'Admin GABAH') || demoUsers[0];
-  const gaAdminUser = demoUsers.find(u => u.role === 'GA') || demoUsers[2];
-  const itAdminUser = demoUsers.find(u => u.role === 'IT') || demoUsers[1];
-  const employeeUser = demoUsers.find(u => u.role === 'Karyawan') || demoUsers[4];
+  const usersList = (demoUsers && demoUsers.length > 0) ? demoUsers : INITIAL_USERS;
+  const superAdminUser = usersList.find(u => u.role === 'Admin GABAH') || usersList[0] || INITIAL_USERS[0];
+  const gaAdminUser = usersList.find(u => u.role === 'GA') || usersList[2] || INITIAL_USERS[2];
+  const itAdminUser = usersList.find(u => u.role === 'IT') || usersList[1] || INITIAL_USERS[1];
+  const employeeUser = usersList.find(u => u.role === 'Karyawan') || usersList[4] || INITIAL_USERS[4];
 
   return (
     <div className="min-h-screen bg-[#f8f7fa] text-slate-900 flex flex-col font-sans selection:bg-[#FC4A1A] selection:text-white">

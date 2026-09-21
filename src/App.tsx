@@ -319,7 +319,7 @@ export default function App() {
 
   // Direct BAST Document Generation for Any Asset
   const handleGenerateBastForAsset = (ast: Asset) => {
-    const existingLoan = loans.find(l => l.asset_id === ast.id && (l.status === 'active' || l.status === 'approved' || l.status === 'returned'));
+    const existingLoan = (loans || []).find(l => l.asset_id === ast.id && (l.status === 'active' || l.status === 'approved' || l.status === 'returned'));
     if (existingLoan) {
       setSelectedLoanForBast(existingLoan);
     } else {
@@ -768,6 +768,7 @@ export default function App() {
           showToast(`Aset ${saved.asset_number} berhasil diperbarui & disimpan!`);
         }}
         currentUser={currentUser}
+        users={allUsers}
         allUsers={allUsers}
       />
 
@@ -790,7 +791,7 @@ export default function App() {
         isOpen={!!selectedLoanForBast}
         onClose={() => setSelectedLoanForBast(null)}
         loan={selectedLoanForBast}
-        asset={assets.find(a => a.id === selectedLoanForBast?.asset_id) || null}
+        asset={(assets || []).find(a => a.id === selectedLoanForBast?.asset_id) || null}
       />
 
       <AdministrationModal
