@@ -802,6 +802,8 @@ export default function App() {
         assets={assets}
         loans={loans}
         tickets={tickets}
+        currentUser={currentUser}
+        activeRole={activeRole}
         onUpdateUser={(updated) => {
           setAllUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
           if (currentUser.id === updated.id) {

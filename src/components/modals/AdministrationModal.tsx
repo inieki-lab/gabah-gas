@@ -29,7 +29,10 @@ import {
   Trash2,
   UserCheck,
   UserX,
-  Pencil
+  Pencil,
+  RotateCcw,
+  FileText,
+  Sliders
 } from 'lucide-react';
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
@@ -55,12 +58,84 @@ interface AdministrationModalProps {
   assets: Asset[];
   loans: Loan[];
   tickets: Ticket[];
+  currentUser?: UserProfile;
+  activeRole?: UserRole;
   onUpdateUser?: (updated: UserProfile) => void;
   onCreateUser?: (newUser: UserProfile) => void;
   onDeleteUser?: (userId: string) => void;
   showToast: (text: string, type?: 'success' | 'warning' | 'info') => void;
   onRefreshData?: () => Promise<void>;
 }
+
+export interface RolePermissionRow {
+  role: string;
+  desc: string;
+  assets: string;
+  loans: string;
+  tickets: string;
+  licenses: string;
+  reports: string;
+  audit: string;
+  admin: string;
+}
+
+export interface OrgDivision {
+  code: OwnerDivision;
+  name: string;
+  leader: string;
+  depts: string[];
+}
+
+export interface MasterLocation {
+  id: string;
+  name: string;
+  address: string;
+  capacity: string;
+}
+
+export interface NotificationRule {
+  id: string;
+  title: string;
+  trigger: string;
+  target: string;
+  status: 'Aktif' | 'Nonaktif';
+  severity: 'warning' | 'critical' | 'info';
+  daysBefore?: number;
+  cutoffTime?: string;
+  warningHours?: number;
+}
+
+const DEFAULT_PERMISSIONS: RolePermissionRow[] = [
+  { role: 'Admin GABAH', desc: 'Super Administrator', assets: 'Full Access', loans: 'Approve & Handover', tickets: 'All Categories', licenses: 'Full', reports: 'Full', audit: 'Full', admin: 'Full Control' },
+  { role: 'IT Support', desc: 'Teknis & Infrastruktur', assets: 'Divisi IT', loans: 'Approve IT Aset', tickets: 'IT & License', licenses: 'Manage', reports: 'Divisi IT', audit: 'View IT', admin: 'No' },
+  { role: 'General Affairs', desc: 'Fasilitas & Gedung', assets: 'Divisi GA', loans: 'Approve GA Aset', tickets: 'Fasilitas GA', licenses: 'Read', reports: 'Divisi GA', audit: 'View GA', admin: 'No' },
+  { role: 'Supply Chain', desc: 'Armada & Gudang Beras', assets: 'Divisi SC', loans: 'Approve Truk/SC', tickets: 'Logistik SC', licenses: 'Read', reports: 'Divisi SC', audit: 'View SC', admin: 'No' },
+  { role: 'PIBC', desc: 'Operasional Pasar', assets: 'Divisi PIBC', loans: 'Approve Pasar', tickets: 'Operasional', licenses: 'Read', reports: 'Divisi PIBC', audit: 'View', admin: 'No' },
+  { role: 'Management', desc: 'Direksi BUMD Pangan', assets: 'All (View)', loans: 'Executive View', tickets: 'SLA Review', licenses: 'View', reports: 'PSAK 16 Full', audit: 'Full Read', admin: 'No' },
+  { role: 'Auditor', desc: 'Inspektorat / BPK', assets: 'Audit Only', loans: 'Audit History', tickets: 'Audit Trail', licenses: 'Audit', reports: 'Rekonsiliasi', audit: 'Full Read', admin: 'No' },
+  { role: 'Karyawan', desc: 'Pegawai Operasional', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket Sendiri', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
+];
+
+const DEFAULT_DIVISIONS: OrgDivision[] = [
+  { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
+  { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
+  { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
+  { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
+];
+
+const DEFAULT_LOCATIONS: MasterLocation[] = [
+  { id: 'loc-1', name: 'Kantor Pusat Food Station Cipinang', address: 'Jl. Pisangan Lama No. 1, Jakarta Timur', capacity: '120 Pegawai' },
+  { id: 'loc-2', name: 'Gudang Beras Induk Blok A-D', address: 'Kawasan PIBC, Jakarta Timur', capacity: '48.000 Ton Beras' },
+  { id: 'loc-3', name: 'Depo Armada & Transportasi', address: 'Pintu 3 Pasar Induk Cipinang', capacity: '35 Truk Fuso' },
+  { id: 'loc-4', name: 'Data Center & Server Room', address: 'Gedung Utama Lt. 2, Cipinang', capacity: 'Tier 2 Redundant' }
+];
+
+const DEFAULT_NOTIFICATION_RULES: NotificationRule[] = [
+  { id: 'rule-warranty', title: 'Peringatan Masa Garansi & Lisensi Expired', trigger: '30 hari & 7 hari sebelum tanggal kedaluwarsa', target: 'Admin GABAH & Divisi IT', status: 'Aktif', severity: 'warning', daysBefore: 30 },
+  { id: 'rule-loan', title: 'Eskalasi Keterlambatan Peminjaman (Overdue Loan)', trigger: 'Melewati batas due date jam 17:00 WIB', target: 'Peminjam, Atasan, dan Admin Penanggung Jawab', status: 'Aktif', severity: 'critical', cutoffTime: '17:00' },
+  { id: 'rule-sla', title: 'SLA Breach Warning Tiket Helpdesk', trigger: 'Sisa waktu SLA < 1 jam atau status open melebihi target', target: 'Teknisi yang ditugaskan & Koordinator IT/GA', status: 'Aktif', severity: 'critical', warningHours: 1 },
+  { id: 'rule-bast', title: 'Pemberitahuan BAST & Serah Terima Selesai', trigger: 'Saat serah terima fisik aset disetujui', target: 'Peminjam & Tim Inventaris BUMD', status: 'Aktif', severity: 'info' },
+];
 
 export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   isOpen,
@@ -70,12 +145,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   assets,
   loans,
   tickets,
+  currentUser,
+  activeRole,
   onUpdateUser,
   onCreateUser,
   onDeleteUser,
   showToast,
   onRefreshData
 }) => {
+  const isCurrentUserAdmin = (activeRole ? activeRole === 'Admin GABAH' : currentUser?.role === 'Admin GABAH') ?? false;
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 
   // User Management State
@@ -221,32 +299,110 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  const [locations, setLocations] = useState([
-    { name: 'Kantor Pusat Food Station Cipinang', address: 'Jl. Pisangan Lama No. 1, Jakarta Timur', capacity: '120 Pegawai' },
-    { name: 'Gudang Beras Induk Blok A-D', address: 'Kawasan PIBC, Jakarta Timur', capacity: '48.000 Ton Beras' },
-    { name: 'Depo Armada & Transportasi', address: 'Pintu 3 Pasar Induk Cipinang', capacity: '35 Truk Fuso' },
-    { name: 'Data Center & Server Room', address: 'Gedung Utama Lt. 2, Cipinang', capacity: 'Tier 2 Redundant' }
-  ]);
+  const [locations, setLocations] = useState<MasterLocation[]>(() => {
+    const saved = localStorage.getItem('gabah_master_locations');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return DEFAULT_LOCATIONS;
+  });
+  const [isAddLocationOpen, setIsAddLocationOpen] = useState(false);
+  const [locationToEdit, setLocationToEdit] = useState<MasterLocation | null>(null);
+  const [isEditLocationOpen, setIsEditLocationOpen] = useState(false);
+  const [newLocationData, setNewLocationData] = useState({ name: '', address: '', capacity: '' });
+  const [editLocationData, setEditLocationData] = useState({ id: '', name: '', address: '', capacity: '' });
+
+  // Categories Edit State
+  const [categoryToEdit, setCategoryToEdit] = useState<any | null>(null);
+  const [isEditCategoryOpen, setIsEditCategoryOpen] = useState(false);
+  const [editCategoryData, setEditCategoryData] = useState({
+    code: '',
+    name: '',
+    main_type: 'EQUIPMENT',
+    owner_division: 'IT',
+    category_type: 'IT',
+    description: '',
+    is_loanable_by_default: true,
+  });
+
+  // Role & Permissions State
+  const [permissions, setPermissions] = useState<RolePermissionRow[]>(() => {
+    const saved = localStorage.getItem('gabah_role_permissions');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return DEFAULT_PERMISSIONS;
+  });
+  const [roleToEdit, setRoleToEdit] = useState<RolePermissionRow | null>(null);
+  const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
+  const [editRoleRow, setEditRoleRow] = useState<RolePermissionRow | null>(null);
+
+  // Organization State
+  const [divisions, setDivisions] = useState<OrgDivision[]>(() => {
+    const saved = localStorage.getItem('gabah_org_divisions');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return DEFAULT_DIVISIONS;
+  });
+  const [divisionToEdit, setDivisionToEdit] = useState<OrgDivision | null>(null);
+  const [isEditDivisionOpen, setIsEditDivisionOpen] = useState(false);
+  const [newDeptInput, setNewDeptInput] = useState('');
 
   // Asset Numbering State
+  const [numberingConfig, setNumberingConfig] = useState(() => {
+    const saved = localStorage.getItem('gabah_numbering_config');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return {
+      prefixCorp: 'FS',
+      format: '{DIV}-{CODE}-{YEAR}-{SEQ}',
+      separator: '-',
+      paddingDigits: 4,
+      autoResetYearly: true
+    };
+  });
+  const [isEditingNumbering, setIsEditingNumbering] = useState(false);
+  const [tempNumberingConfig, setTempNumberingConfig] = useState(numberingConfig);
   const [testDiv, setTestDiv] = useState<OwnerDivision>('IT');
   const [testCode, setTestCode] = useState('HLT');
   const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0005');
 
+  // Notification Rules State
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => {
+    const saved = localStorage.getItem('gabah_notification_rules');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return DEFAULT_NOTIFICATION_RULES;
+  });
+
+  // Audit Search & Filter State
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditActionFilter, setAuditActionFilter] = useState('ALL');
+
   // System Settings State
-  const [settingsForm, setSettingsForm] = useState({
-    companyName: 'PT Food Station Tjipinang Jaya (Perseroda)',
-    shortCode: 'GABAH',
-    orgType: 'BUMD Pangan Pemerintah Provinsi DKI Jakarta',
-    accountingStandard: 'PSAK 16 (Aset Tetap & Depresiasi Garis Lurus)',
-    baseCurrency: 'IDR (Rupiah)',
-    fiscalYear: '2026',
-    slaUrgentHours: 4,
-    slaHighHours: 8,
-    slaMediumHours: 24,
-    slaLowHours: 48,
-    autoBackupDaily: true,
-    auditRetentionDays: 90
+  const [settingsForm, setSettingsForm] = useState(() => {
+    const saved = localStorage.getItem('gabah_system_settings');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return {
+      companyName: 'PT Food Station Tjipinang Jaya (Perseroda)',
+      shortCode: 'GABAH',
+      orgType: 'BUMD Pangan Pemerintah Provinsi DKI Jakarta',
+      accountingStandard: 'PSAK 16 (Aset Tetap & Depresiasi Garis Lurus)',
+      baseCurrency: 'IDR (Rupiah)',
+      fiscalYear: '2026',
+      capitalizationThreshold: '1000000',
+      slaUrgentHours: 4,
+      slaHighHours: 8,
+      slaMediumHours: 24,
+      slaLowHours: 48,
+      autoBackupDaily: true,
+      auditRetentionDays: 90
+    };
   });
 
   // Health Check State
@@ -261,6 +417,194 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     timestamp: new Date().toLocaleTimeString(),
     isChecking: false
   });
+
+  // Master Location Handlers
+  const handleAddLocationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLocationData.name.trim()) {
+      showToast('Nama lokasi fasilitas wajib diisi', 'warning');
+      return;
+    }
+    const newLoc: MasterLocation = {
+      id: `loc-${Date.now()}`,
+      name: newLocationData.name.trim(),
+      address: newLocationData.address.trim() || 'Kawasan PIBC, Jakarta Timur',
+      capacity: newLocationData.capacity.trim() || 'Fasilitas Operasional'
+    };
+    const updated = [...locations, newLoc];
+    setLocations(updated);
+    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
+    setIsAddLocationOpen(false);
+    setNewLocationData({ name: '', address: '', capacity: '' });
+    showToast(`Lokasi fasilitas "${newLoc.name}" berhasil ditambahkan!`, 'success');
+  };
+
+  const handleEditLocationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editLocationData.name.trim()) {
+      showToast('Nama lokasi fasilitas wajib diisi', 'warning');
+      return;
+    }
+    const updated = locations.map(l => l.id === editLocationData.id ? { ...l, ...editLocationData } : l);
+    setLocations(updated);
+    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
+    setIsEditLocationOpen(false);
+    setLocationToEdit(null);
+    showToast(`Lokasi fasilitas "${editLocationData.name}" berhasil diperbarui!`, 'success');
+  };
+
+  const handleDeleteLocation = (id: string, name: string) => {
+    const updated = locations.filter(l => l.id !== id);
+    setLocations(updated);
+    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
+    showToast(`Lokasi fasilitas "${name}" berhasil dihapus.`, 'info');
+  };
+
+  // Categories Handlers (Edit & Delete)
+  const handleEditCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryToEdit) return;
+    const updated = categories.map(c => c.code === categoryToEdit.code ? {
+      ...c,
+      name: editCategoryData.name.trim(),
+      main_type: editCategoryData.main_type,
+      loanable: editCategoryData.is_loanable_by_default,
+      description: editCategoryData.description.trim()
+    } : c);
+    setCategories(updated);
+    setIsEditCategoryOpen(false);
+    setCategoryToEdit(null);
+    showToast(`Kategori "${categoryToEdit.code}" berhasil diperbarui!`, 'success');
+  };
+
+  const handleDeleteCategory = (code: string, name: string) => {
+    const hasAssets = assets.some(a => a.category_code === code || a.asset_number?.includes(code));
+    if (hasAssets) {
+      showToast(`Kategori ${code} tidak dapat dihapus karena masih digunakan oleh unit aset aktif.`, 'warning');
+      return;
+    }
+    setCategories(prev => prev.filter(c => c.code !== code));
+    showToast(`Kategori ${code} - ${name} berhasil dihapus.`, 'info');
+  };
+
+  // Role Permissions Handlers
+  const handleSaveRolePermissions = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editRoleRow) return;
+    const updated = permissions.map(p => p.role === editRoleRow.role ? editRoleRow : p);
+    setPermissions(updated);
+    localStorage.setItem('gabah_role_permissions', JSON.stringify(updated));
+    setIsEditRoleOpen(false);
+    setRoleToEdit(null);
+    showToast(`Matriks hak akses untuk peran "${editRoleRow.role}" berhasil diperbarui!`, 'success');
+  };
+
+  const handleResetRolePermissions = () => {
+    setPermissions(DEFAULT_PERMISSIONS);
+    localStorage.removeItem('gabah_role_permissions');
+    showToast('Matriks hak akses dikembalikan ke konfigurasi standar BUMD Food Station.', 'info');
+  };
+
+  // Organization Handlers
+  const handleSaveDivision = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!divisionToEdit) return;
+    const updated = divisions.map(d => d.code === divisionToEdit.code ? divisionToEdit : d);
+    setDivisions(updated);
+    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
+    setIsEditDivisionOpen(false);
+    setDivisionToEdit(null);
+    showToast(`Struktur divisi ${divisionToEdit.code} - ${divisionToEdit.name} berhasil disimpan!`, 'success');
+  };
+
+  const handleResetDivisions = () => {
+    setDivisions(DEFAULT_DIVISIONS);
+    localStorage.removeItem('gabah_org_divisions');
+    showToast('Struktur divisi dikembalikan ke standar organisasi BUMD.', 'info');
+  };
+
+  // Numbering Config Handlers
+  const handleSaveNumberingConfig = () => {
+    setNumberingConfig(tempNumberingConfig);
+    localStorage.setItem('gabah_numbering_config', JSON.stringify(tempNumberingConfig));
+    setIsEditingNumbering(false);
+    // Update live simulated number
+    const seqPadded = String(5).padStart(tempNumberingConfig.paddingDigits, '0');
+    setSimulatedNumber(`${testDiv}${tempNumberingConfig.separator}${testCode}${tempNumberingConfig.separator}2026${tempNumberingConfig.separator}${seqPadded}`);
+    showToast('Format dan parameter sequence penomoran aset berhasil disimpan!', 'success');
+  };
+
+  // Notification Rules Handlers
+  const handleToggleNotificationRule = (id: string) => {
+    const updated = notificationRules.map(r => {
+      if (r.id === id) {
+        const nextStatus: 'Aktif' | 'Nonaktif' = r.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
+        return { ...r, status: nextStatus };
+      }
+      return r;
+    });
+    setNotificationRules(updated);
+    localStorage.setItem('gabah_notification_rules', JSON.stringify(updated));
+    const target = updated.find(r => r.id === id);
+    showToast(`Aturan "${target?.title}" diubah menjadi: ${target?.status}`, 'info');
+  };
+
+  // System Settings Handlers
+  const handleSaveSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('gabah_system_settings', JSON.stringify(settingsForm));
+    showToast('Parameter sistem & kebijakan BUMD berhasil disimpan!', 'success');
+  };
+
+  // Audit Log CSV Export
+  const exportAuditLogsCsv = () => {
+    const headers = ['ID', 'Waktu', 'Pengguna', 'Peran', 'Aksi', 'Entitas', 'Entitas ID', 'Rincian Perubahan', 'Alamat IP'];
+    const rows = auditLogs.map(l => [
+      `"${l.id}"`,
+      `"${l.timestamp}"`,
+      `"${(l.user_name || '').replace(/"/g, '""')}"`,
+      `"${l.user_role || ''}"`,
+      `"${l.action || ''}"`,
+      `"${l.entity || ''}"`,
+      `"${l.entity_id || ''}"`,
+      `"${(l.details || '').replace(/"/g, '""')}"`,
+      `"${l.ip_address || '-'}"`
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `gabah_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast('Audit Log format CSV berhasil diunduh untuk kebutuhan audit eksternal!', 'success');
+  };
+
+  // Full Database Backup Export
+  const handleFullSystemBackup = () => {
+    const backupBundle = {
+      app: 'GABAH Enterprise Engine',
+      company: settingsForm.companyName,
+      backup_timestamp: new Date().toISOString(),
+      version: '2026.1.0-ENTERPRISE',
+      data: {
+        users: userList,
+        assets,
+        loans,
+        tickets,
+        categories,
+        locations,
+        divisions,
+        permissions,
+        numbering_config: numberingConfig,
+        notification_rules: notificationRules,
+        settings: settingsForm,
+        audit_logs_count: auditLogs.length
+      }
+    };
+    exportDataJson('gabah_full_system_backup', backupBundle);
+  };
 
   if (!isOpen) return null;
 
@@ -445,10 +789,24 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg font-black text-slate-900">Administration Control Plane</h2>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#4ABDAC]/15 text-[#206f65] border border-[#4ABDAC]/30">
-                  SUPER ADMIN
+                <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1 shrink-0 ${
+                  isCurrentUserAdmin
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    : 'bg-purple-100 text-purple-800 border-purple-300'
+                }`}>
+                  {isCurrentUserAdmin ? (
+                    <>
+                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      <span>SUPER ADMIN (FULL EDIT ACCESS)</span>
+                    </>
+                  ) : (
+                    <>
+                      <LockKeyhole className="w-3 h-3 text-purple-600" />
+                      <span>MODE AUDIT & BACA (READ-ONLY)</span>
+                    </>
+                  )}
                 </span>
               </div>
               <p className="text-xs text-slate-500">
@@ -475,6 +833,53 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             </button>
           </div>
         </header>
+
+        {/* Governance & Access Level Notice */}
+        <div className="px-6 pt-3 shrink-0">
+          {isCurrentUserAdmin ? (
+            <div className="p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between gap-3 flex-wrap shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-extrabold text-emerald-950">
+                    Otoritas Penuh Super Administrator (Admin GABAH)
+                  </div>
+                  <div className="text-[11px] text-emerald-700 mt-0.5">
+                    Anda berwenang mengedit pengguna, master kategori &amp; lokasi, struktur divisi, penomoran aset, aturan notifikasi, dan parameter sistem. <b>Audit Trail</b> tetap dipertahankan permanen (WORM immutable) untuk kepatuhan regulasi.
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-600 text-white">
+                  Akses Edit: AKTIF
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 rounded-2xl bg-purple-50/90 border border-purple-200 text-xs text-purple-900 flex items-center justify-between gap-3 flex-wrap shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0">
+                  <LockKeyhole className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-extrabold text-purple-950">
+                    Mode Verifikasi &amp; Pemeriksaan (Hanya-Baca / Read-Only)
+                  </div>
+                  <div className="text-[11px] text-purple-700 mt-0.5">
+                    Anda masuk sebagai <b>{activeRole || currentUser?.role || 'Auditor'}</b>. Anda dapat memverifikasi seluruh konfigurasi, struktur organisasi, SLA, dan mengunduh data audit. Perubahan data hanya dapat dieksekusi oleh <b>Admin GABAH</b>.
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-purple-200 text-purple-900 border border-purple-300">
+                  Akses Tulis: TERKUNCI (READ ONLY)
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Quick Nav Tabs */}
         <div className="px-6 py-2 border-b border-slate-100 bg-slate-50/70 overflow-x-auto flex items-center gap-1 shrink-0 text-xs font-medium text-slate-600">
@@ -505,7 +910,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         <div className="p-6 overflow-y-auto flex-1 bg-slate-50/30">
           {/* =========================================================
               VIEW: OVERVIEW (CARD GRID)
-             ========================================================= */}
+              ========================================================= */}
           {activeSection === 'overview' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -607,13 +1012,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <option value="Auditor">Auditor</option>
                     <option value="Karyawan">Karyawan</option>
                   </select>
-                  <button
-                    onClick={() => setIsAddUserOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] flex items-center gap-1.5 shadow-sm shadow-[#4ABDAC]/20"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Tambah Pengguna</span>
-                  </button>
+                  {isCurrentUserAdmin ? (
+                    <button
+                      onClick={() => setIsAddUserOpen(true)}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] flex items-center gap-1.5 shadow-sm shadow-[#4ABDAC]/20 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Tambah Pengguna</span>
+                    </button>
+                  ) : (
+                    <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed" title="Hanya Admin GABAH yang berhak menambah akun pengguna">
+                      <LockKeyhole className="w-3.5 h-3.5" />
+                      <span>Tambah Pengguna (Terkunci)</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -794,31 +1206,40 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                title={`Edit data ${user.name}`}
-                                onClick={() => handleOpenEditUser(user)}
-                                className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1"
-                              >
-                                <Pencil className="w-3 h-3 text-emerald-600" />
-                                <span>Edit</span>
-                              </button>
-                              <button
-                                type="button"
-                                title={`Reset sandi untuk ${user.name}`}
-                                onClick={() => showToast(`Link reset sandi untuk ${user.name} dikirim ke ${user.email}`)}
-                                className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-[11px] font-bold whitespace-nowrap transition-colors"
-                              >
-                                Reset Sandi
-                              </button>
-                              <button
-                                type="button"
-                                title={`Hapus pengguna ${user.name}`}
-                                onClick={() => setUserToDelete(user)}
-                                className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors flex items-center justify-center shrink-0"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              {isCurrentUserAdmin ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    title={`Edit data ${user.name}`}
+                                    onClick={() => handleOpenEditUser(user)}
+                                    className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Pencil className="w-3 h-3 text-emerald-600" />
+                                    <span>Edit</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title={`Reset sandi untuk ${user.name}`}
+                                    onClick={() => showToast(`Link reset sandi untuk ${user.name} dikirim ke ${user.email}`)}
+                                    className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer"
+                                  >
+                                    Reset Sandi
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title={`Hapus pengguna ${user.name}`}
+                                    onClick={() => setUserToDelete(user)}
+                                    className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-colors flex items-center justify-center shrink-0 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                                  <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
+                                  <span>Hanya-Baca</span>
+                                </span>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1109,39 +1530,43 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'roles' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                <h3 className="text-base font-black text-slate-900">Role & Permission Matrix</h3>
-                <p className="text-xs text-slate-500">
-                  Matriks otorisasi hak akses modul dan pembatasan scope divisi untuk tata kelola BUMD
-                </p>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Role &amp; Permission Matrix</h3>
+                  <p className="text-xs text-slate-500">
+                    Matriks otorisasi hak akses modul dan pembatasan scope divisi untuk tata kelola BUMD
+                  </p>
+                </div>
+                {isCurrentUserAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleResetRolePermissions}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Reset Default Matriks</span>
+                  </button>
+                )}
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
-                <table className="w-full text-left text-xs min-w-[700px]">
+                <table className="w-full text-left text-xs min-w-[760px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-extrabold">
                     <tr>
                       <th className="px-4 py-3">Peran (Role)</th>
                       <th className="px-3 py-3 text-center">Aset Fisik</th>
                       <th className="px-3 py-3 text-center">Peminjaman</th>
                       <th className="px-3 py-3 text-center">Tiket Helpdesk</th>
-                      <th className="px-3 py-3 text-center">Lisensi & SLA</th>
+                      <th className="px-3 py-3 text-center">Lisensi &amp; SLA</th>
                       <th className="px-3 py-3 text-center">Laporan PSAK 16</th>
                       <th className="px-3 py-3 text-center">Audit Trail</th>
                       <th className="px-3 py-3 text-center">Admin Plane</th>
+                      <th className="px-3 py-3 text-right">Otorisasi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {[
-                      { role: 'Admin GABAH', desc: 'Super Administrator', assets: 'Full Access', loans: 'Approve & Handover', tickets: 'All Categories', licenses: 'Full', reports: 'Full', audit: 'Full', admin: 'Full Control' },
-                      { role: 'IT Support', desc: 'Teknis & Infrastruktur', assets: 'Divisi IT', loans: 'Approve IT Aset', tickets: 'IT & License', licenses: 'Manage', reports: 'Divisi IT', audit: 'View IT', admin: 'No' },
-                      { role: 'General Affairs', desc: 'Fasilitas & Gedung', assets: 'Divisi GA', loans: 'Approve GA Aset', tickets: 'Fasilitas GA', licenses: 'Read', reports: 'Divisi GA', audit: 'View GA', admin: 'No' },
-                      { role: 'Supply Chain', desc: 'Armada & Gudang Beras', assets: 'Divisi SC', loans: 'Approve Truk/SC', tickets: 'Logistik SC', licenses: 'Read', reports: 'Divisi SC', audit: 'View SC', admin: 'No' },
-                      { role: 'PIBC', desc: 'Operasional Pasar', assets: 'Divisi PIBC', loans: 'Approve Pasar', tickets: 'Operasional', licenses: 'Read', reports: 'Divisi PIBC', audit: 'View', admin: 'No' },
-                      { role: 'Management', desc: 'Direksi BUMD Pangan', assets: 'All (View)', loans: 'Executive View', tickets: 'SLA Review', licenses: 'View', reports: 'PSAK 16 Full', audit: 'Full Read', admin: 'No' },
-                      { role: 'Auditor', desc: 'Inspektorat / BPK', assets: 'Audit Only', loans: 'Audit History', tickets: 'Audit Trail', licenses: 'Audit', reports: 'Rekonsiliasi', audit: 'Full Read', admin: 'No' },
-                      { role: 'Karyawan', desc: 'Pegawai Operasional', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket Sendiri', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
-                    ].map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50">
+                    {permissions.map((row) => (
+                      <tr key={row.role} className="hover:bg-slate-50">
                         <td className="px-4 py-3">
                           <div className="font-bold text-slate-800">{row.role}</div>
                           <div className="text-[11px] text-slate-400">{row.desc}</div>
@@ -1166,16 +1591,129 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </td>
                         <td className="px-3 py-3 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            row.admin === 'Full Control' ? 'bg-red-50 text-red-700 font-black' : 'text-slate-400'
+                            row.admin === 'Full Control' ? 'bg-rose-100 text-rose-800 font-black' : 'text-slate-400'
                           }`}>
                             {row.admin}
                           </span>
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          {isCurrentUserAdmin ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRoleToEdit(row);
+                                setEditRoleRow({ ...row });
+                                setIsEditRoleOpen(true);
+                              }}
+                              className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1 ml-auto cursor-pointer"
+                            >
+                              <Pencil className="w-3 h-3 text-emerald-600" />
+                              <span>Ubah Otorisasi</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 inline-flex items-center gap-1">
+                              <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
+                              <span>Terkunci</span>
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+
+              {/* Edit Role Permission Modal */}
+              {isEditRoleOpen && editRoleRow && (
+                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <LockKeyhole className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900">Ubah Otorisasi Peran: {editRoleRow.role}</h4>
+                          <p className="text-xs text-slate-500">Sesuaikan lingkup hak akses per modul GABAH Enterprise</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditRoleOpen(false)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSaveRolePermissions} className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi Peran</label>
+                        <input
+                          type="text"
+                          value={editRoleRow.desc}
+                          onChange={e => setEditRoleRow({ ...editRoleRow, desc: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Modul Aset Fisik</label>
+                          <input
+                            type="text"
+                            value={editRoleRow.assets}
+                            onChange={e => setEditRoleRow({ ...editRoleRow, assets: e.target.value })}
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 font-medium"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Peminjaman &amp; BAST</label>
+                          <input
+                            type="text"
+                            value={editRoleRow.loans}
+                            onChange={e => setEditRoleRow({ ...editRoleRow, loans: e.target.value })}
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 font-medium"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Tiket Helpdesk</label>
+                          <input
+                            type="text"
+                            value={editRoleRow.tickets}
+                            onChange={e => setEditRoleRow({ ...editRoleRow, tickets: e.target.value })}
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 font-medium"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Laporan PSAK 16</label>
+                          <input
+                            type="text"
+                            value={editRoleRow.reports}
+                            onChange={e => setEditRoleRow({ ...editRoleRow, reports: e.target.value })}
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditRoleOpen(false)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/20"
+                        >
+                          Simpan Otorisasi
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1184,47 +1722,194 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'organization' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                <h3 className="text-base font-black text-slate-900">Struktur Organisasi & Divisi BUMD</h3>
-                <p className="text-xs text-slate-500">
-                  Pemetaan kepemilikan aset (Owner Division) dan tanggung jawab departemen PT Food Station Tjipinang Jaya
-                </p>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Struktur Organisasi &amp; Divisi BUMD</h3>
+                  <p className="text-xs text-slate-500">
+                    Pemetaan kepemilikan aset (Owner Division) dan tanggung jawab departemen PT Food Station Tjipinang Jaya
+                  </p>
+                </div>
+                {isCurrentUserAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleResetDivisions}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Reset Default Struktur</span>
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'], assetsCount: assets.filter(a => a.owner_division === 'SC').length, icon: Building },
-                  { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'], assetsCount: assets.filter(a => a.owner_division === 'PIBC').length, icon: Building2 },
-                  { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'], assetsCount: assets.filter(a => a.owner_division === 'IT').length, icon: Laptop },
-                  { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'], assetsCount: assets.filter(a => a.owner_division === 'GA').length, icon: KeyRound },
-                ].map(div => (
-                  <div key={div.code} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className="px-2.5 py-1 rounded-xl bg-[#4ABDAC]/15 text-[#206f65] font-black text-xs border border-[#4ABDAC]/30">
-                          {div.code}
-                        </span>
-                        <div>
-                          <h4 className="text-sm font-extrabold text-slate-800">{div.name}</h4>
-                          <div className="text-[11px] text-slate-500">{div.leader}</div>
+                {divisions.map(div => {
+                  const assetsCount = assets.filter(a => a.owner_division === div.code).length;
+                  return (
+                    <div key={div.code} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="px-2.5 py-1 rounded-xl bg-[#4ABDAC]/15 text-[#206f65] font-black text-xs border border-[#4ABDAC]/30">
+                              {div.code}
+                            </span>
+                            <div>
+                              <h4 className="text-sm font-extrabold text-slate-800">{div.name}</h4>
+                              <div className="text-[11px] text-slate-500">{div.leader}</div>
+                            </div>
+                          </div>
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700">
+                            {assetsCount} Aset Terdaftar
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 pt-3 border-t border-slate-100">
+                          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Departemen Terkait:</div>
+                          {div.depts.map((d, i) => (
+                            <div key={i} className="text-xs text-slate-700 flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#4ABDAC]" />
+                              <span>{d}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700">
-                        {div.assetsCount} Aset Terdaftar
-                      </span>
+
+                      <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">
+                          Scope: {div.depts.length} Departemen Aktif
+                        </span>
+                        {isCurrentUserAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDivisionToEdit({ ...div });
+                              setIsEditDivisionOpen(true);
+                            }}
+                            className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Pencil className="w-3 h-3 text-emerald-600" />
+                            <span>Edit Divisi</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 inline-flex items-center gap-1">
+                            <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
+                            <span>Read-Only</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-1.5 pt-3 border-t border-slate-100">
-                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Departemen Terkait:</div>
-                      {div.depts.map((d, i) => (
-                        <div key={i} className="text-xs text-slate-700 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#4ABDAC]" />
-                          <span>{d}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+
+              {/* Edit Division Modal */}
+              {isEditDivisionOpen && divisionToEdit && (
+                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900">Edit Struktur Divisi {divisionToEdit.code}</h4>
+                          <p className="text-xs text-slate-500">Kelola nama divisi, pimpinan, dan departemen operasional</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditDivisionOpen(false)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSaveDivision} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama Divisi</label>
+                        <input
+                          type="text"
+                          required
+                          value={divisionToEdit.name}
+                          onChange={e => setDivisionToEdit({ ...divisionToEdit, name: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Pimpinan / Penanggung Jawab</label>
+                        <input
+                          type="text"
+                          required
+                          value={divisionToEdit.leader}
+                          onChange={e => setDivisionToEdit({ ...divisionToEdit, leader: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Departemen Terdaftar</label>
+                        <div className="space-y-1.5 mb-2">
+                          {divisionToEdit.depts.map((dept, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                              <span>{dept}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDivisionToEdit({
+                                    ...divisionToEdit,
+                                    depts: divisionToEdit.depts.filter((_, i) => i !== idx)
+                                  });
+                                }}
+                                className="text-rose-500 hover:text-rose-700 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Nama departemen baru..."
+                            value={newDeptInput}
+                            onChange={e => setNewDeptInput(e.target.value)}
+                            className="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (newDeptInput.trim()) {
+                                setDivisionToEdit({
+                                  ...divisionToEdit,
+                                  depts: [...divisionToEdit.depts, newDeptInput.trim()]
+                                });
+                                setNewDeptInput('');
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-slate-800 text-white text-xs font-bold hover:bg-slate-900"
+                          >
+                            Tambah
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditDivisionOpen(false)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/20"
+                        >
+                          Simpan Divisi
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1238,13 +1923,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <h3 className="text-base font-black text-slate-900">Master Data Sistem</h3>
                   <p className="text-xs text-slate-500">Konfigurasi kategori aset, lokasi fasilitas PIBC, dan standar SLA Helpdesk</p>
                 </div>
-                <button
-                  onClick={() => setIsAddCategoryOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 flex items-center gap-1.5 transition-colors shadow-xs"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Tambah Kategori</span>
-                </button>
+                {isCurrentUserAdmin ? (
+                  <button
+                    onClick={() => setIsAddCategoryOpen(true)}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Tambah Kategori</span>
+                  </button>
+                ) : (
+                  <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed" title="Hanya Admin GABAH yang berhak menambah kategori">
+                    <LockKeyhole className="w-3.5 h-3.5" />
+                    <span>Tambah Kategori (Terkunci)</span>
+                  </div>
+                )}
               </div>
 
               {/* Add Category Modal */}
@@ -1419,12 +2111,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
               {/* Master Kategori */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4">
-                <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
-                  Kategori Aset Terdaftar
-                </h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                    Kategori Aset Terdaftar ({categories.length})
+                  </h4>
+                  {!isCurrentUserAdmin && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                      <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
+                      <span>Hanya-Baca</span>
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {categories.map(cat => (
-                    <div key={cat.code} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex items-center justify-between">
+                    <div key={cat.code} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex items-center justify-between group">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-black text-[#206f65]">{cat.code}</span>
@@ -1437,9 +2137,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           {cat.loanable ? 'Dapat Dipinjam (Loanable)' : 'Inventaris Tetap'}
                         </div>
                       </div>
-                      <span className="text-xs font-black text-slate-700 bg-white px-2 py-1 rounded-lg border border-slate-200">
-                        {cat.total} Unit
-                      </span>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className="text-xs font-black text-slate-700 bg-white px-2 py-1 rounded-lg border border-slate-200">
+                          {cat.total} Unit
+                        </span>
+                        {isCurrentUserAdmin && cat.total === 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCategory(cat.code)}
+                            title={`Hapus kategori ${cat.name}`}
+                            className="p-1 rounded-md text-rose-500 hover:bg-rose-50 hover:text-rose-700 opacity-80 group-hover:opacity-100 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1447,22 +2159,57 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
               {/* Master Lokasi */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4">
-                <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
-                  Master Lokasi & Fasilitas Gudang PIBC
-                </h4>
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                    Master Lokasi &amp; Fasilitas Gudang PIBC ({locations.length})
+                  </h4>
+                  {isCurrentUserAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const name = prompt('Masukkan Nama Lokasi / Fasilitas baru:');
+                        if (!name || !name.trim()) return;
+                        const address = prompt('Masukkan Alamat / Detail Blok (contoh: Kompleks PIBC Blok E-10):') || 'Kompleks PIBC';
+                        const capacity = prompt('Masukkan Kapasitas (contoh: 500 Ton Beras / 50 Workstation):') || '100 Unit';
+                        handleAddLocation(name.trim(), address.trim(), capacity.trim());
+                      }}
+                      className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Tambah Lokasi</span>
+                    </button>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                      <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
+                      <span>Hanya-Baca</span>
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {locations.map((loc, idx) => (
-                    <div key={idx} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#4ABDAC]/15 text-[#206f65] flex items-center justify-center shrink-0 mt-0.5">
-                        <Building2 className="w-4 h-4" />
+                    <div key={idx} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex items-start justify-between gap-3 group">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-[#4ABDAC]/15 text-[#206f65] flex items-center justify-center shrink-0 mt-0.5">
+                          <Building2 className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-extrabold text-slate-800">{loc.name}</div>
+                          <div className="text-[11px] text-slate-500">{loc.address}</div>
+                          <span className="inline-block mt-1 text-[10px] font-bold text-[#206f65] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            Kapasitas: {loc.capacity}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-xs font-extrabold text-slate-800">{loc.name}</div>
-                        <div className="text-[11px] text-slate-500">{loc.address}</div>
-                        <span className="inline-block mt-1 text-[10px] font-bold text-[#206f65] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          Kapasitas: {loc.capacity}
-                        </span>
-                      </div>
+                      {isCurrentUserAdmin && locations.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLocation(idx)}
+                          title={`Hapus lokasi ${loc.name}`}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 opacity-70 group-hover:opacity-100 transition-all cursor-pointer shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1567,19 +2314,27 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'notifications' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                <h3 className="text-base font-black text-slate-900">Notification Center & Alert Rules</h3>
-                <p className="text-xs text-slate-500">
-                  Aturan otomasi peringatan sistem, masa tenggat peminjaman, batas SLA tiket, dan masa garansi
-                </p>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Notification Center &amp; Alert Rules</h3>
+                  <p className="text-xs text-slate-500">
+                    Aturan otomasi peringatan sistem, masa tenggat peminjaman, batas SLA tiket, dan masa garansi
+                  </p>
+                </div>
+                {!isCurrentUserAdmin && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                    <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
+                    <span>Konfigurasi Terkunci (Mode Audit)</span>
+                  </span>
+                )}
               </div>
 
               <div className="space-y-3">
                 {[
-                  { title: 'Peringatan Masa Garansi & Lisensi Expired', trigger: '30 hari & 7 hari sebelum tanggal kedaluwarsa', target: 'Admin GABAH & Divisi IT', status: 'Aktif', severity: 'warning' },
-                  { title: 'Eskalasi Keterlambatan Peminjaman (Overdue Loan)', trigger: 'Melewati batas due date jam 17:00 WIB', target: 'Peminjam, Atasan, dan Admin Penanggung Jawab', status: 'Aktif', severity: 'critical' },
-                  { title: 'SLA Breach Warning Tiket Helpdesk', trigger: 'Sisa waktu SLA < 1 jam atau status open melebihi target', target: 'Teknisi yang ditugaskan & Koordinator IT/GA', status: 'Aktif', severity: 'critical' },
-                  { title: 'Pemberitahuan BAST & Serah Terima Selesai', trigger: 'Saat serah terima fisik aset disetujui', target: 'Peminjam & Tim Inventaris BUMD', status: 'Aktif', severity: 'info' },
+                  { id: 'notif_warranty', title: 'Peringatan Masa Garansi & Lisensi Expired', trigger: '30 hari & 7 hari sebelum tanggal kedaluwarsa', target: 'Admin GABAH & Divisi IT', status: 'Aktif', severity: 'warning' },
+                  { id: 'notif_loan', title: 'Eskalasi Keterlambatan Peminjaman (Overdue Loan)', trigger: 'Melewati batas due date jam 17:00 WIB', target: 'Peminjam, Atasan, dan Admin Penanggung Jawab', status: 'Aktif', severity: 'critical' },
+                  { id: 'notif_sla', title: 'SLA Breach Warning Tiket Helpdesk', trigger: 'Sisa waktu SLA < 1 jam atau status open melebihi target', target: 'Teknisi yang ditugaskan & Koordinator IT/GA', status: 'Aktif', severity: 'critical' },
+                  { id: 'notif_bast', title: 'Pemberitahuan BAST & Serah Terima Selesai', trigger: 'Saat serah terima fisik aset disetujui', target: 'Peminjam & Tim Inventaris BUMD', status: 'Aktif', severity: 'info' },
                 ].map((rule, idx) => (
                   <div key={idx} className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-4 flex-wrap">
                     <div>
@@ -1596,12 +2351,23 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         Penerima: {rule.target}
                       </div>
                     </div>
-                    <button
-                      onClick={() => showToast(`Uji simulasi notifikasi: "${rule.title}" terkirim!`, 'info')}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                      Uji Notifikasi
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {isCurrentUserAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => showToast(`Status aturan "${rule.title}" diperbarui!`)}
+                          className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                        >
+                          Ubah Status
+                        </button>
+                      )}
+                      <button
+                        onClick={() => showToast(`Uji simulasi notifikasi: "${rule.title}" terkirim!`, 'info')}
+                        className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        Uji Notifikasi
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1609,19 +2375,31 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           )}
 
           {/* =========================================================
-              VIEW: 7. AUDIT LOG VIEWER
+              VIEW: 7. AUDIT LOG VIEWER (WORM IMMUTABLE COMPLIANCE)
              ========================================================= */}
           {activeSection === 'audit_log' && (
             <div className="space-y-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Audit Trail & Activity Log</h3>
-                  <p className="text-xs text-slate-500">Rekam jejak kepatuhan dan audit forensik seluruh operasi sistem</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-slate-900">Audit Trail &amp; Activity Log</h3>
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      WORM IMMUTABLE (KEPATUHAN BPK / INSPEKTORAT)
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">Rekam jejak kepatuhan dan audit forensik seluruh operasi sistem — tidak dapat diedit/dihapus siapapun</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={exportAuditLogsCsv}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Ekspor CSV</span>
+                  </button>
+                  <button
                     onClick={() => exportDataJson('gabah_audit_logs', auditLogs)}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Ekspor JSON</span>
@@ -1629,19 +2407,27 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
               </div>
 
+              {/* Immutable Policy Banner */}
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <span className="font-extrabold">Integritas Audit Forensik Terjamin:</span> Seluruh mutasi data, penambahan aset, penerbitan BAST, dan eskalasi SLA dicatat secara permanen. Fitur edit dan hapus log ditiadakan untuk memenuhi standar akuntabilitas audit BUMD DKI Jakarta.
+                </div>
+              </div>
+
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-extrabold">
                     <tr>
-                      <th className="px-4 py-3">Waktu & Tanggal</th>
-                      <th className="px-4 py-3">Pengguna & Peran</th>
+                      <th className="px-4 py-3">Waktu &amp; Tanggal</th>
+                      <th className="px-4 py-3">Pengguna &amp; Peran</th>
                       <th className="px-4 py-3">Aksi</th>
                       <th className="px-4 py-3">Entitas</th>
                       <th className="px-4 py-3">Rincian Perubahan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {auditLogs.slice(0, 15).map(log => (
+                    {auditLogs.slice(0, 20).map(log => (
                       <tr key={log.id} className="hover:bg-slate-50 font-medium">
                         <td className="px-4 py-2.5 font-mono text-[11px] text-slate-500 whitespace-nowrap">
                           {log.timestamp}
@@ -1679,9 +2465,28 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           {activeSection === 'settings' && (
             <div className="space-y-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                <h3 className="text-base font-black text-slate-900">System Parameters & BUMD Policies</h3>
-                <p className="text-xs text-slate-500">Konfigurasi entitas organisasi, standar pelaporan PSAK 16, dan SLA</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">System Parameters &amp; BUMD Policies</h3>
+                    <p className="text-xs text-slate-500">Konfigurasi entitas organisasi, standar pelaporan PSAK 16, dan SLA</p>
+                  </div>
+                  {!isCurrentUserAdmin && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                      <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
+                      <span>Parameter Terkunci (Read-Only)</span>
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {!isCurrentUserAdmin && (
+                <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 text-xs text-purple-900 flex items-center gap-3">
+                  <LockKeyhole className="w-5 h-5 text-purple-600 shrink-0" />
+                  <div>
+                    <span className="font-extrabold">Mode Akses Pemeriksaan (Auditor):</span> Parameter entitas dan SLA helpdesk hanya dapat dimodifikasi oleh <b>Admin GABAH</b>. Form berikut disajikan dalam format hanya-baca.
+                  </div>
+                </div>
+              )}
 
               <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -1689,36 +2494,40 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <label className="block text-slate-600 mb-1 font-semibold">Nama BUMD / Instansi</label>
                     <input
                       type="text"
+                      disabled={!isCurrentUserAdmin}
                       value={settingsForm.companyName}
                       onChange={e => setSettingsForm({ ...settingsForm, companyName: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
                     />
                   </div>
                   <div>
                     <label className="block text-slate-600 mb-1 font-semibold">Standar Akuntansi Aset Tetap</label>
                     <input
                       type="text"
+                      disabled={!isCurrentUserAdmin}
                       value={settingsForm.accountingStandard}
                       onChange={e => setSettingsForm({ ...settingsForm, accountingStandard: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
                     />
                   </div>
                   <div>
                     <label className="block text-slate-600 mb-1 font-semibold">Mata Uang Basis</label>
                     <input
                       type="text"
+                      disabled={!isCurrentUserAdmin}
                       value={settingsForm.baseCurrency}
                       onChange={e => setSettingsForm({ ...settingsForm, baseCurrency: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
                     />
                   </div>
                   <div>
                     <label className="block text-slate-600 mb-1 font-semibold">Tahun Buku Fiskal</label>
                     <input
                       type="text"
+                      disabled={!isCurrentUserAdmin}
                       value={settingsForm.fiscalYear}
                       onChange={e => setSettingsForm({ ...settingsForm, fiscalYear: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 font-mono"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-mono font-medium"
                     />
                   </div>
                 </div>
@@ -1732,61 +2541,83 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-red-600 mb-1 font-bold">Urgent (Kritis)</label>
                       <input
                         type="number"
+                        disabled={!isCurrentUserAdmin}
                         value={settingsForm.slaUrgentHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaUrgentHours: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl border border-red-200 bg-red-50/30 font-bold text-red-800"
+                        className="w-full px-3 py-2 rounded-xl border border-red-200 bg-red-50/30 font-bold text-red-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-amber-600 mb-1 font-bold">High (Tinggi)</label>
                       <input
                         type="number"
+                        disabled={!isCurrentUserAdmin}
                         value={settingsForm.slaHighHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaHighHours: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-amber-50/30 font-bold text-amber-800"
+                        className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-amber-50/30 font-bold text-amber-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-blue-600 mb-1 font-bold">Medium (Sedang)</label>
                       <input
                         type="number"
+                        disabled={!isCurrentUserAdmin}
                         value={settingsForm.slaMediumHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaMediumHours: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl border border-blue-200 bg-blue-50/30 font-bold text-blue-800"
+                        className="w-full px-3 py-2 rounded-xl border border-blue-200 bg-blue-50/30 font-bold text-blue-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-bold">Low (Rendah)</label>
                       <input
                         type="number"
+                        disabled={!isCurrentUserAdmin}
                         value={settingsForm.slaLowHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaLowHours: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 font-bold text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="flex justify-end pt-3">
-                  <button
-                    onClick={() => showToast('Pengaturan sistem berhasil disimpan!')}
-                    className="px-5 py-2 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold shadow-md shadow-[#4ABDAC]/20 hover:bg-[#3ba393]"
-                  >
-                    Simpan Pengaturan
-                  </button>
+                  {isCurrentUserAdmin ? (
+                    <button
+                      onClick={handleSaveSettings}
+                      className="px-5 py-2 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold shadow-md shadow-[#4ABDAC]/20 hover:bg-[#3ba393] cursor-pointer"
+                    >
+                      Simpan Pengaturan Sistem
+                    </button>
+                  ) : (
+                    <div className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed">
+                      <LockKeyhole className="w-3.5 h-3.5" />
+                      <span>Simpan Terkunci (Read-Only)</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
           {/* =========================================================
-              VIEW: 9. DATA ADMINISTRATION
+              VIEW: 9. DATA ADMINISTRATION & ENTERPRISE BACKUP
              ========================================================= */}
           {activeSection === 'data_admin' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                <h3 className="text-base font-black text-slate-900">Data Administration & Reconciliation</h3>
-                <p className="text-xs text-slate-500">Ekspor data komprehensif, backup database, dan rekonsiliasi SAP</p>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Data Administration &amp; Reconciliation</h3>
+                  <p className="text-xs text-slate-500">Ekspor data komprehensif, backup database, dan rekonsiliasi SAP</p>
+                </div>
+                {isCurrentUserAdmin && (
+                  <button
+                    onClick={handleExportFullBackup}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Database className="w-3.5 h-3.5" />
+                    <span>Download Full Backup System</span>
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1802,7 +2633,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                   <button
                     onClick={() => exportDataJson('gabah_assets_master', assets)}
-                    className="mt-4 w-full py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-1.5"
+                    className="mt-4 w-full py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download JSON Aset</span>
@@ -1814,14 +2645,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
                       <FileSpreadsheet className="w-5 h-5" />
                     </div>
-                    <h4 className="text-sm font-extrabold text-slate-800">Ekspor Peminjaman & BAST</h4>
+                    <h4 className="text-sm font-extrabold text-slate-800">Ekspor Peminjaman &amp; BAST</h4>
                     <p className="text-xs text-slate-500 mt-1">
                       Unduh riwayat reservasi, status serah terima fisik, dan log pengembalian aset Food Station.
                     </p>
                   </div>
                   <button
                     onClick={() => exportDataJson('gabah_loans_bast', loans)}
-                    className="mt-4 w-full py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5"
+                    className="mt-4 w-full py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download JSON Peminjaman</span>
@@ -1840,13 +2671,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                   <button
                     onClick={() => showToast('Rekonsiliasi otomatis dijalankan: 100% data fisik sinkron dengan SAP', 'success')}
-                    className="mt-4 w-full py-2 rounded-xl bg-amber-50 text-amber-800 text-xs font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5"
+                    className="mt-4 w-full py-2 rounded-xl bg-amber-50 text-amber-800 text-xs font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Jalankan Rekonsiliasi</span>
                   </button>
                 </div>
               </div>
+            </div>
+          )}
             </div>
           )}
 

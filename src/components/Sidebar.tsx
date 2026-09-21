@@ -274,11 +274,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           ))}
 
-          {isSuperAdmin && (
+          {(isSuperAdmin || activeRole === 'Auditor') && (
             <div className="pt-2 border-t border-slate-100 space-y-1">
               <div className="px-2 pb-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Super Admin
+                  {isSuperAdmin ? 'Super Admin' : 'Tata Kelola & Audit'}
                 </span>
               </div>
               <button
@@ -296,11 +296,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <ShieldCheck className="w-4 h-4 shrink-0 text-[#4ABDAC]" />
                   <div className="truncate">
                     <div className="text-xs leading-tight truncate">Pusat Administrasi</div>
-                    <div className="text-[10px] leading-tight mt-0.5 text-slate-400 truncate">10 Sub-Modul Kontrol</div>
+                    <div className="text-[10px] leading-tight mt-0.5 text-slate-400 truncate">
+                      {isSuperAdmin ? '10 Sub-Modul Kontrol' : 'Mode Verifikasi & Audit'}
+                    </div>
                   </div>
                 </div>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-[#4ABDAC]/15 text-[#206f65] border border-[#4ABDAC]/30 shrink-0">
-                  ADMIN
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 ${
+                  isSuperAdmin 
+                    ? 'bg-[#4ABDAC]/15 text-[#206f65] border-[#4ABDAC]/30' 
+                    : 'bg-purple-100 text-purple-800 border-purple-200'
+                }`}>
+                  {isSuperAdmin ? 'ADMIN' : 'AUDIT'}
                 </span>
               </button>
             </div>
