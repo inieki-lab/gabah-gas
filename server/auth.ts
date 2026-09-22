@@ -23,15 +23,15 @@ interface ApiRateLimitRecord {
 }
 const apiRateLimits = new Map<string, ApiRateLimitRecord>();
 const API_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_API_REQUESTS_PER_MINUTE = 200; // 200 requests/minute per client IP
+const MAX_API_REQUESTS_PER_MINUTE = 200; // 200 requests/minute per rate-limit key
 
-export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaining: number; resetSeconds: number } {
+export function checkApiRateLimit(rateLimitKey: string): { allowed: boolean; remaining: number; resetSeconds: number } {
   const now = Date.now();
-  let bucket = apiRateLimits.get(clientIp);
+  let bucket = apiRateLimits.get(rateLimitKey);
 
   if (!bucket || bucket.resetAt <= now) {
     bucket = { count: 1, resetAt: now + API_WINDOW_MS };
-    apiRateLimits.set(clientIp, bucket);
+    apiRateLimits.set(rateLimitKey, bucket);
     return { allowed: true, remaining: MAX_API_REQUESTS_PER_MINUTE - 1, resetSeconds: 60 };
   }
 
