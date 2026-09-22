@@ -63,8 +63,9 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USERS[0]);
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
-  // Default to 'portal' to show working application immediately
-  const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>('portal');
+  // Production must always start behind the real authentication screen.
+  // Development convenience belongs in the dev-only tooling, never in the app bootstrap.
+  const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>('login');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Modals state
@@ -132,24 +133,26 @@ export default function App() {
     async function initAuth() {
       try {
         const token = gabahApi.getToken();
-        if (token) {
-          const me = await gabahApi.getMe().catch(() => null);
-          if (me) {
-            setCurrentUser(me);
-          } else {
-            // Token expired or invalid, auto-login default superadmin
-            const res = await gabahApi.login('admin.gabah@foodstation.id', 'AdminGabah#2026').catch(() => null);
-            if (res?.user) setCurrentUser(res.user);
-          }
-        } else {
-          // Initialize active session for default persona
-          const res = await gabahApi.login('admin.gabah@foodstation.id', 'AdminGabah#2026').catch(() => null);
-          if (res?.user) setCurrentUser(res.user);
+        if (!token) {
+          setViewMode('login');
+          return;
         }
+
+        const me = await gabahApi.getMe().catch(() => null);
+        if (!me) {
+          // Invalid/expired tokens are cleared by the API client on 401.
+          gabahApi.setToken(null);
+          setViewMode('login');
+          return;
+        }
+
+        setCurrentUser(me);
+        setViewMode('portal');
+        await refreshData();
       } catch (err) {
         console.warn('Auth initialization:', err);
-      } finally {
-        await refreshData();
+        gabahApi.setToken(null);
+        setViewMode('login');
       }
     }
     initAuth();
@@ -467,9 +470,9 @@ export default function App() {
         )}
         <LandingPage
           onOpenLogin={() => setViewMode('login')}
-          onQuickLogin={(u) => {
-            handleSelectUser(u);
-            setViewMode('portal');
+          onQuickLogin={() => {
+            // Demo/persona selection must never bypass real authentication.
+            setViewMode('login');
           }}
           demoUsers={allUsers}
         />
@@ -496,9 +499,10 @@ export default function App() {
         )}
         <LoginPage
           availableUsers={allUsers}
-          onLoginSuccess={(u) => {
-            handleSelectUser(u);
+          onLoginSuccess={async (u) => {
+            setCurrentUser(u);
             setViewMode('portal');
+            await refreshData();
           }}
           onBackToLanding={() => setViewMode('landing')}
         />
@@ -536,6 +540,7 @@ export default function App() {
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
         onLogout={async () => {
           await gabahApi.logout();
+          setCurrentUser(INITIAL_USERS[0]);
           setViewMode('login');
           showToast('Sesi selesai, berhasil logout.', 'info');
         }}
