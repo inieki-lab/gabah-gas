@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Layers,
   Wrench,
+  Camera,
   X
 } from 'lucide-react';
 import { UserRole } from '../types';
@@ -51,6 +52,7 @@ interface SidebarProps {
   pendingLoansCount?: number;
   openTicketsCount?: number;
   pendingReservationsCount?: number;
+  documentationRequestsCount?: number;
   onOpenAdministration?: () => void;
 }
 
@@ -77,59 +79,65 @@ export const Sidebar: React.FC<SidebarProps> = ({
   pendingLoansCount = 0,
   openTicketsCount = 0,
   pendingReservationsCount = 0,
+  documentationRequestsCount = 0,
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole || 'Admin GABAH';
-  const isEmployee = activeRole === 'Karyawan';
+  const isStaff = activeRole === 'Karyawan' || activeRole === 'Sekretaris Direksi' || activeRole === 'Humas';
+  const isHumas = activeRole === 'Humas';
+  const isSekdir = activeRole === 'Sekretaris Direksi';
   const isSuperAdmin = activeRole === 'Admin GABAH';
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
     {
-      title: isEmployee ? 'Layanan & Tugas' : 'Operasional Utama',
+      title: isStaff ? 'Layanan & Tugas Staf' : 'Operasional Utama',
       items: [
         {
           id: 'dashboard',
-          label: isEmployee ? 'Dashboard' : 'Dashboard KPI',
-          description: isEmployee ? 'Ringkasan & Status' : 'Overview SLA & Aset',
+          label: isHumas ? 'Dashboard Humas' : isStaff ? 'Dashboard Staf' : 'Dashboard KPI',
+          description: isHumas ? 'Ringkasan & Request Foto' : isStaff ? 'Ringkasan & Status' : 'Overview SLA & Aset',
           icon: LayoutDashboard,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'my_assets',
           label: 'Aset Saya',
-          description: isEmployee ? 'Perangkat Kerja Anda' : 'Aset Ditugaskan',
+          description: isStaff ? 'Perangkat Kerja Anda' : 'Aset Ditugaskan',
           icon: Laptop,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+          // Catatan khusus user: "untuk tim humas ga perlu bisa lihat aset"
+          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'meeting_rooms',
-          label: isEmployee ? 'Ruang Rapat' : 'Reservasi Ruangan',
-          description: 'Jadwal & Fasilitas GA',
-          icon: Building2,
-          badge: pendingReservationsCount > 0 && (activeRole === 'GA' || activeRole === 'Admin GABAH') ? pendingReservationsCount : null,
-          badgeColor: 'bg-emerald-600 text-white',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+          label: isHumas ? 'Ruang Rapat & Liputan' : isStaff ? 'Ruang Rapat' : 'Reservasi Ruangan',
+          description: isHumas ? 'Jadwal & Request Liputan' : 'Jadwal & Fasilitas GA',
+          icon: isHumas ? Camera : Building2,
+          badge: isHumas
+            ? (documentationRequestsCount > 0 ? `${documentationRequestsCount} Foto` : null)
+            : (pendingReservationsCount > 0 && (activeRole === 'GA' || activeRole === 'Admin GABAH') ? pendingReservationsCount : null),
+          badgeColor: isHumas ? 'bg-sky-600 text-white' : 'bg-emerald-600 text-white',
+          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'loans',
-          label: isEmployee ? 'Pinjam Barang' : 'Peminjaman Barang',
+          label: isStaff ? 'Pinjam Barang' : 'Peminjaman Barang',
           description: 'Sirkulasi & BAST',
           icon: CalendarClock,
-          badge: pendingLoansCount > 0 && !isEmployee ? pendingLoansCount : null,
+          badge: pendingLoansCount > 0 && !isStaff ? pendingLoansCount : null,
           badgeColor: 'bg-[#F7B733] text-slate-900',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'tickets',
-          label: isEmployee ? 'Tiket Helpdesk' : 'Helpdesk & Tiket',
-          description: isEmployee ? 'Bantuan Kendala' : 'Insiden & SLA',
+          label: isStaff ? 'Tiket Helpdesk' : 'Helpdesk & Tiket',
+          description: isStaff ? 'Bantuan Kendala' : 'Insiden & SLA',
           icon: LifeBuoy,
-          badge: openTicketsCount > 0 && !isEmployee ? openTicketsCount : null,
+          badge: openTicketsCount > 0 && !isStaff ? openTicketsCount : null,
           badgeColor: 'bg-[#FC4A1A] text-white',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
       ],
     },
@@ -164,7 +172,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      title: isEmployee ? 'Informasi & SOP' : 'Tata Kelola & Rekanan',
+      title: isStaff ? 'Informasi & Panduan' : 'Tata Kelola & Rekanan',
       items: [
         {
           id: 'vendors',
@@ -180,7 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Panduan & SOP',
           icon: BookOpen,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
       ],
     },

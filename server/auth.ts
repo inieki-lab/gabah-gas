@@ -16,6 +16,35 @@ const loginAttempts = new Map<string, LoginAttemptRecord>();
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
+// Rate limiting state for general API endpoints
+interface ApiRateLimitRecord {
+  count: number;
+  resetAt: number;
+}
+const apiRateLimits = new Map<string, ApiRateLimitRecord>();
+const API_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_API_REQUESTS_PER_MINUTE = 200; // 200 requests/minute per client IP
+
+export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaining: number; resetSeconds: number } {
+  const now = Date.now();
+  let bucket = apiRateLimits.get(clientIp);
+
+  if (!bucket || bucket.resetAt <= now) {
+    bucket = { count: 1, resetAt: now + API_WINDOW_MS };
+    apiRateLimits.set(clientIp, bucket);
+    return { allowed: true, remaining: MAX_API_REQUESTS_PER_MINUTE - 1, resetSeconds: 60 };
+  }
+
+  bucket.count += 1;
+  const resetSeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+
+  if (bucket.count > MAX_API_REQUESTS_PER_MINUTE) {
+    return { allowed: false, remaining: 0, resetSeconds };
+  }
+
+  return { allowed: true, remaining: MAX_API_REQUESTS_PER_MINUTE - bucket.count, resetSeconds };
+}
+
 // Session duration: 7 days
 export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -78,7 +107,12 @@ export function clearFailedLogins(identifier: string): void {
 /**
  * Create a new authenticated session for a user
  */
-export function createSession(userId: string, req?: Request, simulatedUser?: ServerUser): ServerSession {
+export function createSession(
+  userId: string,
+  req?: Request,
+  simulatedUser?: ServerUser,
+  originalAdminId?: string
+): ServerSession {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_DURATION_MS);
 
@@ -89,6 +123,7 @@ export function createSession(userId: string, req?: Request, simulatedUser?: Ser
     id: `SES-${Date.now().toString().slice(-6)}-${crypto.randomBytes(4).toString('hex')}`,
     token: generateToken(),
     user_id: userId,
+    original_admin_id: originalAdminId,
     created_at: now.toISOString(),
     expires_at: expiresAt.toISOString(),
     last_active_at: now.toISOString(),
@@ -163,38 +198,55 @@ export function extractToken(req: Request): string | null {
 /**
  * Core authentication resolver for Express requests.
  * User identity comes EXCLUSIVELY from authenticated session token.
- * `x-user-id` is strictly audited and cannot be used to forge identity.
+ * Arbitrary `x-user-id` headers cannot be used to forge identity.
+ * Unauthenticated requests NEVER default to Superadmin.
  */
-export function authenticateRequest(req: Request): { user: ServerUser | null; error?: string; spoofAttempt?: boolean } {
+export function authenticateRequest(req: Request): {
+  user: ServerUser | null;
+  session?: ServerSession;
+  error?: string;
+  spoofAttempt?: boolean;
+} {
   const token = extractToken(req);
+  const rawHeaderUserId = req.headers['x-user-id'];
+  const hasHeaderUserId = typeof rawHeaderUserId === 'string' && rawHeaderUserId.trim().length > 0;
+  const headerUserId = hasHeaderUserId ? (rawHeaderUserId as string).trim() : null;
 
   if (token) {
     const session = getActiveSession(token);
     if (session) {
-      if (session.simulated_user) {
-        return { user: session.simulated_user };
+      const activeUser = session.simulated_user || db.users.find(u => u.id === session.user_id && u.is_active);
+      if (activeUser) {
+        // Anti-spoofing verification:
+        // If client sends x-user-id that doesn't match the authenticated session and is not superadmin
+        if (headerUserId && headerUserId !== activeUser.id && activeUser.role !== 'Admin GABAH') {
+          return {
+            user: null,
+            spoofAttempt: true,
+            error: 'Percobaan manipulasi identitas (ID spoofing) melalui header terdeteksi.',
+          };
+        }
+        return { user: activeUser, session };
       }
-      const user = db.users.find(u => u.id === session.user_id);
-      if (user && user.is_active) {
-        return { user };
-      }
+      return { user: null, error: 'Akun pengguna untuk sesi ini tidak aktif atau telah dinonaktifkan.' };
     }
+    return { user: null, error: 'Sesi token tidak valid atau telah kedaluwarsa. Silakan login kembali.' };
   }
 
-  // Fallback 1: x-user-id header
-  const headerUserId = req.headers['x-user-id'];
-  if (typeof headerUserId === 'string' && headerUserId.trim()) {
-    const user = db.users.find(u => u.id === headerUserId.trim() && u.is_active);
-    if (user) return { user };
+  // Attempting to authenticate via x-user-id header without an active session is an explicit spoofing attempt
+  if (hasHeaderUserId) {
+    return {
+      user: null,
+      spoofAttempt: true,
+      error: 'Header identitas x-user-id ditolak: autentikasi memerlukan session token Bearer yang valid.',
+    };
   }
 
-  // Fallback 2: Default to Superadmin / first active user in database
-  const defaultAdmin = db.users.find(u => u.role === 'Admin GABAH' && u.is_active) || db.users.find(u => u.is_active) || db.users[0];
-  if (defaultAdmin) {
-    return { user: defaultAdmin };
-  }
-
-  return { user: null, error: 'Pengguna tidak ditemukan di sistem.' };
+  // STRICT ZERO FALLBACK: Never auto-login as Superadmin / first active user
+  return {
+    user: null,
+    error: 'Autentikasi diperlukan. Header Authorization: Bearer <token> tidak ditemukan.',
+  };
 }
 
 /**

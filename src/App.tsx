@@ -184,6 +184,13 @@ export default function App() {
     }
   };
 
+  // Guard Humas: Sesuai instruksi user, Humas tidak perlu bisa melihat aset
+  useEffect(() => {
+    if (currentUser.role === 'Humas' && (currentTab === 'my_assets' || currentTab === 'assets')) {
+      setCurrentTab('meeting_rooms');
+    }
+  }, [currentUser.role, currentTab]);
+
   // 1. Create Asset (Handled Authoritatively by Backend Engine)
   const handleCreateAsset = async (data: Partial<Asset>) => {
     try {
@@ -534,8 +541,10 @@ export default function App() {
         }}
         pendingLoans={pendingLoans}
         urgentTickets={urgentTickets}
+        roomReservations={roomReservations}
         onNavigateToLoans={() => setCurrentTab('loans')}
         onNavigateToTickets={() => setCurrentTab('tickets')}
+        onNavigateToMeetingRooms={() => setCurrentTab('meeting_rooms')}
       />
 
       {/* App Shell: Sidebar + Main Content */}
@@ -554,6 +563,7 @@ export default function App() {
           pendingLoansCount={pendingLoans.length}
           openTicketsCount={openTickets.length}
           pendingReservationsCount={pendingReservations.length}
+          documentationRequestsCount={roomReservations.filter(r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)).length}
           currentUserRole={currentUser.role}
           onOpenAdministration={() => setIsAdministrationModalOpen(true)}
         />
@@ -574,6 +584,7 @@ export default function App() {
               tickets={tickets}
               currentUser={currentUser}
               auditLogs={auditLogs}
+              roomReservations={roomReservations}
               onNavigate={setCurrentTab}
               onOpenNewLoanModal={() => setIsCreateLoanModalOpen(true)}
               onOpenNewTicketModal={() => setIsCreateTicketModalOpen(true)}

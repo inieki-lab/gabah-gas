@@ -12,9 +12,10 @@ import {
   Laptop, 
   Clock,
   ScanLine,
+  Camera,
   LogOut 
 } from 'lucide-react';
-import { UserProfile, UserRole, Ticket, Loan } from '../types';
+import { UserProfile, UserRole, Ticket, Loan, RoomReservation } from '../types';
 
 interface HeaderNavbarProps {
   currentUser: UserProfile;
@@ -27,8 +28,10 @@ interface HeaderNavbarProps {
   onLogout: () => void;
   pendingLoans?: Loan[];
   urgentTickets?: Ticket[];
+  roomReservations?: RoomReservation[];
   onNavigateToLoans: () => void;
   onNavigateToTickets: () => void;
+  onNavigateToMeetingRooms?: (categoryFilter?: 'all' | 'consumption' | 'documentation') => void;
 }
 
 export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
@@ -42,15 +45,24 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   onLogout,
   pendingLoans = [],
   urgentTickets = [],
+  roomReservations = [],
   onNavigateToLoans,
   onNavigateToTickets,
+  onNavigateToMeetingRooms,
 }) => {
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
   const safeLoans = Array.isArray(pendingLoans) ? pendingLoans : [];
   const safeTickets = Array.isArray(urgentTickets) ? urgentTickets : [];
-  const totalNotifications = safeLoans.length + safeTickets.length;
+  const isHumas = currentUser.role === 'Humas';
+  const docReservations = (roomReservations || []).filter(
+    r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
+  );
+
+  const totalNotifications = isHumas 
+    ? docReservations.length + safeLoans.length + safeTickets.length
+    : safeLoans.length + safeTickets.length;
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#DFDCE3] text-slate-800 shadow-xs">
@@ -167,6 +179,34 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 </div>
 
                 <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto mt-2 space-y-2">
+                  {/* Photo / Documentation Requests for Humas / All */}
+                  {docReservations.map(res => (
+                    <div 
+                      key={`doc-${res.id}`}
+                      onClick={() => {
+                        setShowNotifications(false);
+                        onNavigateToMeetingRooms?.('documentation');
+                      }}
+                      className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 hover:bg-sky-100/70 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-bold text-sky-800 flex items-center gap-1">
+                          <Camera className="w-3.5 h-3.5 text-sky-600" /> Request Foto: {res.room_name}
+                        </span>
+                        <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">{res.date}</span>
+                      </div>
+                      <p className="text-xs text-slate-800 font-semibold line-clamp-1">{res.title}</p>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        {res.start_time} - {res.end_time} WIB • {res.organizer_name} ({res.organizer_department})
+                      </p>
+                      {res.documentation_notes && (
+                        <p className="text-[11px] text-sky-700 italic mt-0.5 bg-sky-100/50 px-1.5 py-0.5 rounded">
+                          "{res.documentation_notes}"
+                        </p>
+                      )}
+                    </div>
+                  ))}
+
                   {urgentTickets.map(ticket => (
                     <div 
                       key={ticket.id}
@@ -303,16 +343,18 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 <div className="pt-2 border-t border-slate-100">
                   <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5 flex items-center justify-between">
                     <span>Simulasi Cek Menu (RBAC)</span>
-                    <span className="text-[9px] font-normal text-slate-400">7 Peran</span>
+                    <span className="text-[9px] font-normal text-slate-400">9 Peran</span>
                   </div>
                   <div className="grid grid-cols-2 gap-1">
                     {[
                       { role: 'Admin GABAH' as UserRole, label: 'Super Admin', color: 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100' },
-                      { role: 'IT' as UserRole, label: 'IT Staff', color: 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' },
+                      { role: 'Karyawan' as UserRole, label: 'Karyawan / Staf', color: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' },
+                      { role: 'Sekretaris Direksi' as UserRole, label: 'Sekretaris Direksi', color: 'border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100' },
+                      { role: 'Humas' as UserRole, label: 'Staf Humas', color: 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100' },
                       { role: 'GA' as UserRole, label: 'GA & Sarpras', color: 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100' },
+                      { role: 'IT' as UserRole, label: 'IT Support', color: 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' },
                       { role: 'Supply Chain' as UserRole, label: 'Supply Chain', color: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
                       { role: 'PIBC' as UserRole, label: 'Pasar PIBC', color: 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' },
-                      { role: 'Karyawan' as UserRole, label: 'Karyawan', color: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' },
                       { role: 'Auditor' as UserRole, label: 'Auditor SPI', color: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' },
                     ].map(item => {
                       const isActive = currentUser.role === item.role;

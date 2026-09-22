@@ -1,8 +1,9 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { db, seedInitialData, ServerUser } from './server/db';
+import { db, seedInitialData, ServerUser, ServerSession } from './server/db';
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService } from './server/services';
@@ -98,7 +99,10 @@ async function startServer() {
         'Karyawan': 'Pegawai Operasional'
       };
 
-      const plainPassword = password || temp_password || 'Pangan2026!';
+      // Generate a secure, unpredictable temporary password if none is provided
+      const secureRandomSuffix = crypto.randomBytes(4).toString('hex').toUpperCase();
+      const generatedTempPassword = `FS-${secureRandomSuffix}!`;
+      const plainPassword = password || temp_password || generatedTempPassword;
       const { hash, salt } = hashPassword(plainPassword);
 
       const newUser: ServerUser = {
@@ -114,6 +118,7 @@ async function startServer() {
         is_active: true,
         password_hash: hash,
         password_salt: salt,
+        temp_password: (!password && !temp_password) ? plainPassword : temp_password,
       };
 
       db.users.unshift(newUser);
@@ -127,7 +132,13 @@ async function startServer() {
 
       await persistDataStore();
 
-      res.status(201).json({ success: true, data: sanitizeUser(newUser) });
+      res.status(201).json({
+        success: true,
+        data: {
+          ...sanitizeUser(newUser),
+          temp_password: plainPassword,
+        },
+      });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
@@ -395,6 +406,20 @@ async function startServer() {
   app.post('/api/auth/switch-role', async (req, res) => {
     try {
       const actor = getActor(req);
+      const currentSession = (req as any).session as ServerSession | undefined;
+
+      // CRITICAL: Privilege escalation protection
+      // Only Admin GABAH or an active session initiated by an Admin GABAH is allowed to switch roles
+      const hasAdminPrivilege = actor.role === 'Admin GABAH' || Boolean(currentSession?.original_admin_id);
+      if (!hasAdminPrivilege) {
+        return res.status(403).json({
+          success: false,
+          message: 'Akses ditolak: Hanya Administrator GABAH yang berwenang melakukan alih peran atau simulasi peran.',
+        });
+      }
+
+      // Preserve original admin identity across role simulation hops
+      const originalAdminId = currentSession?.original_admin_id || actor.id;
 
       const { userId, role } = req.body;
       let targetUser = userId ? db.users.find(u => u.id === userId) : null;
@@ -452,11 +477,12 @@ async function startServer() {
         return res.status(404).json({ success: false, message: 'User atau role target tidak ditemukan.' });
       }
 
-      // Create legitimate session for target user (or simulated user)
+      // Create legitimate session for target user (or simulated user) with preserved root admin identity
       const session = createSession(
         isSimulated ? (db.users[0]?.id || 'USR-01') : effectiveUser.id,
         req,
-        isSimulated ? effectiveUser : undefined
+        isSimulated ? effectiveUser : undefined,
+        originalAdminId
       );
 
       GabahDomainService.recordAudit(

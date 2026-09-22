@@ -64,8 +64,13 @@ export class GabahDomainService {
       return db.assets;
     }
 
-    // Karyawan can only view assigned assets or loanable pool assets
-    if (user.role === 'Karyawan') {
+    // Humas: "untuk tim humas ga perlu bisa lihat aset"
+    if (user.role === 'Humas') {
+      return [];
+    }
+
+    // Karyawan & Sekretaris Direksi can only view assigned assets or loanable pool assets
+    if (user.role === 'Karyawan' || user.role === 'Sekretaris Direksi') {
       return db.assets.filter(a => a.assigned_to?.id === user.id || a.is_loanable);
     }
 
@@ -120,7 +125,7 @@ export class GabahDomainService {
     }
 
     // 2. Authorization check: Division Authority
-    if (actor.role === 'Karyawan' || actor.role === 'Auditor') {
+    if (actor.role === 'Karyawan' || actor.role === 'Auditor' || actor.role === 'Humas' || actor.role === 'Sekretaris Direksi') {
       throw new Error('Peran Anda tidak berwenang mendaftarkan aset baru.');
     }
     if (actor.role !== 'Admin GABAH') {
@@ -1066,6 +1071,19 @@ export class GabahDomainService {
       severity: 'success',
       category: 'system',
     });
+
+    // Notify Humas team if photography/documentation was requested
+    if (reservation.documentation_requested) {
+      this.notify({
+        recipient_role: 'Humas',
+        recipient_division: 'GA',
+        title: `Jadwal Liputan Foto Disetujui: ${reservation.room_name}`,
+        message: `Rapat "${reservation.title}" pada ${reservation.date} (${reservation.start_time} - ${reservation.end_time}) di ${reservation.room_name} telah disetujui GA. Tim Humas dapat bersiap untuk dokumentasi foto kegiatan.`,
+        severity: 'action_required',
+        category: 'system',
+        link_type: 'asset',
+      });
+    }
 
     persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
 

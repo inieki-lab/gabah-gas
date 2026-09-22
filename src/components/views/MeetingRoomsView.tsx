@@ -390,7 +390,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           <button
             onClick={() => setActiveTab('reservations')}
             className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all relative ${
-              activeTab === 'reservations'
+              activeTab === 'reservations' && categoryFilter !== 'documentation'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
@@ -401,6 +401,28 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               <span className="w-2 h-2 rounded-full bg-amber-500" />
             )}
           </button>
+
+          {currentUser.role === 'Humas' && (
+            <button
+              onClick={() => {
+                setActiveTab('reservations');
+                setCategoryFilter('documentation');
+              }}
+              className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+                activeTab === 'reservations' && categoryFilter === 'documentation'
+                  ? 'bg-sky-600 text-white shadow-xs ring-2 ring-sky-400'
+                  : 'text-sky-700 bg-sky-50 hover:bg-sky-100 hover:text-sky-900 border border-sky-200'
+              }`}
+            >
+              <Camera className="w-3.5 h-3.5 text-sky-500" />
+              <span>Request Foto &amp; Liputan ({stats.documentationCount})</span>
+              {stats.documentationCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-sky-600 text-white text-[10px] font-black">
+                  {stats.documentationCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

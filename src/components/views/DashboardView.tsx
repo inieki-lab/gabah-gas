@@ -16,9 +16,10 @@ import {
   ExternalLink,
   BookOpen,
   UserCheck,
-  Building2
+  Building2,
+  Camera
 } from 'lucide-react';
-import { Asset, Loan, Ticket, UserProfile, AuditLog } from '../../types';
+import { Asset, Loan, Ticket, UserProfile, AuditLog, RoomReservation } from '../../types';
 import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
 
@@ -28,6 +29,7 @@ interface DashboardViewProps {
   tickets: Ticket[];
   currentUser: UserProfile;
   auditLogs: AuditLog[];
+  roomReservations?: RoomReservation[];
   onNavigate: (tab: NavTab) => void;
   onOpenNewLoanModal: () => void;
   onOpenNewTicketModal: () => void;
@@ -40,15 +42,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   tickets = [],
   currentUser,
   auditLogs = [],
+  roomReservations = [],
   onNavigate,
   onOpenNewLoanModal,
   onOpenNewTicketModal,
   onOpenNewAssetModal,
 }) => {
-  const isEmployee = currentUser?.role === 'Karyawan';
+  const isStaff = currentUser?.role === 'Karyawan' || currentUser?.role === 'Sekretaris Direksi' || currentUser?.role === 'Humas';
+  const isEmployee = isStaff;
+  const isHumas = currentUser?.role === 'Humas';
+  const isSekdir = currentUser?.role === 'Sekretaris Direksi';
+
   const safeAssets = Array.isArray(assets) ? assets : [];
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeTickets = Array.isArray(tickets) ? tickets : [];
+  const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
+
+  const docReservations = safeReservations.filter(
+    r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
+  );
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayMeetings = safeReservations.filter(r => r.date === todayStr && !['cancelled', 'rejected'].includes(r.status));
 
   const itAssets = safeAssets.filter(a => a.owner_division === 'IT' || a.category_type === 'IT');
   const gaAssets = safeAssets.filter(a => a.owner_division === 'GA' || a.category_type === 'GA');
@@ -155,31 +169,56 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* KPI Stats Cards Grid */}
       {isEmployee ? (
-        /* Employee KPI Stats (4 Cards: Aset Saya, Peminjaman, Tiket, Knowledge Base) */
+        /* Employee KPI Stats (4 Cards) */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Aset Saya */}
-          <div 
-            onClick={() => onNavigate('my_assets')}
-            className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Aset Saya</span>
-              <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Laptop className="w-5 h-5" />
+          {/* Card 1: If Humas -> Request Foto Dokumentasi; If other staff -> Aset Saya */}
+          {isHumas ? (
+            <div 
+              onClick={() => onNavigate('meeting_rooms')}
+              className="p-5 rounded-2xl bg-white border border-sky-200 hover:border-sky-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-sky-700">Request Foto Rapat</span>
+                <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Camera className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl font-black text-slate-900">{docReservations.length} Permintaan</div>
+                <div className="text-xs text-sky-700 mt-1 flex items-center gap-1.5 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
+                  Bebas Ruangan Mana Saja
+                </div>
+                <div className="text-[11px] text-sky-700 font-bold mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span>Lihat Agenda Liputan</span>
+                  <ArrowRight className="w-3 h-3 text-sky-600" />
+                </div>
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-2xl font-black text-slate-900">{myAssignedAssets.length} Unit</div>
-              <div className="text-xs text-blue-700 mt-1 flex items-center gap-1.5 font-bold">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Perangkat Kerja Ditugaskan
+          ) : (
+            <div 
+              onClick={() => onNavigate('my_assets')}
+              className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Aset Saya</span>
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Laptop className="w-5 h-5" />
+                </div>
               </div>
-              <div className="text-[11px] text-slate-500 font-medium mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span>Inventaris Tetap</span>
-                <ArrowRight className="w-3 h-3 text-blue-600" />
+              <div className="mt-3">
+                <div className="text-2xl font-black text-slate-900">{myAssignedAssets.length} Unit</div>
+                <div className="text-xs text-blue-700 mt-1 flex items-center gap-1.5 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Perangkat Kerja Ditugaskan
+                </div>
+                <div className="text-[11px] text-slate-500 font-medium mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span>Inventaris Tetap</span>
+                  <ArrowRight className="w-3 h-3 text-blue-600" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Peminjaman Saya */}
           <div 
@@ -235,18 +274,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Ruang Rapat &amp; GA</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                {isHumas ? 'Agenda Ruang Rapat' : 'Ruang Rapat & GA'}
+              </span>
               <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Building2 className="w-5 h-5" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-black text-slate-900">Reservasi Rapat</div>
+              <div className="text-2xl font-black text-slate-900">{todayMeetings.length} Hari Ini</div>
               <div className="text-xs text-emerald-700 font-medium mt-1">
-                Fasilitas Hybrid, TV &amp; Pantry
+                {safeReservations.length} Total Jadwal Rapat
               </div>
               <div className="text-[11px] text-emerald-700 font-bold mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span>Pesan &amp; Cek Jadwal</span>
+                <span>{isHumas ? 'Pantau Semua Ruang' : 'Pesan & Cek Jadwal'}</span>
                 <ArrowRight className="w-3 h-3 text-emerald-600" />
               </div>
             </div>
@@ -353,87 +394,178 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Main Content Layout */}
       {isEmployee ? (
-        /* Employee View: Shows only user's loans & user's tickets (No general helpdesk queue, no audit log) */
+        /* Employee View: Shows only user's loans & user's tickets, or Humas photo requests */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Peminjaman Saya (8 cols) */}
-          <div className="lg:col-span-8 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <CalendarClock className="w-4 h-4 text-emerald-600" />
-                  Peminjaman Barang Saya
-                </h3>
-                <p className="text-xs text-slate-500">Daftar riwayat dan pengajuan peminjaman aset yang Anda ajukan</p>
-              </div>
-              <button
-                onClick={() => onNavigate('loans')}
-                className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1"
-              >
-                Lihat Semua <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {myLoans.length === 0 ? (
-              <div className="p-8 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-3">
-                <CalendarClock className="w-10 h-10 text-slate-400 mx-auto" />
-                <p className="text-sm font-semibold text-slate-700">Belum Ada Peminjaman Barang</p>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Anda belum memiliki pengajuan peminjaman aset saat ini. Anda dapat meminjam mobil dinas, laptop cadangan, atau ruangan rapat.
-                </p>
+          {/* Main 8 Cols: If Humas -> Antrean Request Foto Ruang Rapat; If other staff -> Peminjaman Barang Saya */}
+          {isHumas ? (
+            <div className="lg:col-span-8 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-sky-600" />
+                    Permintaan Dokumentasi &amp; Foto Rapat (Semua Ruangan)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Antrean permohonan liputan foto kegiatan &amp; dokumentasi acara rapat dari seluruh unit kerja (bebas ruang mana saja)
+                  </p>
+                </div>
                 <button
-                  onClick={onOpenNewLoanModal}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                  onClick={() => onNavigate('meeting_rooms')}
+                  className="text-xs text-sky-700 hover:text-sky-800 font-bold flex items-center gap-1"
                 >
-                  <Plus className="w-4 h-4" />
-                  Ajukan Peminjaman Sekarang
+                  Buka Ruang Rapat <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {myLoans.map((loan) => (
-                  <div 
-                    key={loan.id}
-                    className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+
+              {docReservations.length === 0 ? (
+                <div className="p-8 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-3">
+                  <Camera className="w-10 h-10 text-slate-400 mx-auto" />
+                  <p className="text-sm font-semibold text-slate-700">Belum Ada Permintaan Liputan Foto</p>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Saat ini tidak ada permohonan dokumentasi aktif di seluruh ruang rapat. Anda dapat memantau jadwal ruang rapat sewaktu-waktu.
+                  </p>
+                  <button
+                    onClick={() => onNavigate('meeting_rooms')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all shadow-xs"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg mt-0.5 ${loan.category_type === 'IT' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {loan.category_type === 'IT' ? <Laptop className="w-4 h-4" /> : <Car className="w-4 h-4" />}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm text-slate-900">{loan.asset_name}</span>
-                          {loan.corporate_asset_number && (
-                            <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-emerald-800 border border-emerald-300 font-bold">
-                              {loan.corporate_asset_number}
+                    <Building2 className="w-4 h-4" />
+                    Lihat Semua Jadwal Rapat
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {docReservations.map((res) => (
+                    <div 
+                      key={res.id}
+                      className="p-3.5 rounded-xl bg-sky-50/60 border border-sky-200/80 hover:border-sky-300 transition-colors flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 rounded-xl bg-sky-500 text-white mt-0.5 shadow-xs shrink-0">
+                          <Camera className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-slate-900">{res.title}</span>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white text-sky-800 border border-sky-300 shadow-2xs">
+                              {res.room_name}
                             </span>
+                          </div>
+                          <div className="text-xs text-slate-600 mt-1 flex items-center gap-2 flex-wrap">
+                            <span>Tanggal: <strong>{res.date}</strong></span>
+                            <span>•</span>
+                            <span>Waktu: <strong>{res.start_time} - {res.end_time} WIB</strong></span>
+                            <span>•</span>
+                            <span>Pemohon: <strong>{res.organizer_name}</strong> ({res.organizer_department})</span>
+                          </div>
+                          {res.documentation_notes && (
+                            <p className="text-xs text-sky-900 bg-sky-100/70 p-2 rounded-lg mt-2 border border-sky-200 font-medium">
+                              📸 <strong>Instruksi Liputan Humas:</strong> {res.documentation_notes}
+                            </p>
                           )}
                         </div>
-                        <p className="text-xs text-slate-600 mt-1">{loan.purpose}</p>
-                        <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-1.5 flex-wrap">
-                          <span>Jadwal: <strong>{formatDateTime(loan.start_date)}</strong> s/d <strong>{formatDateTime(loan.due_date)}</strong></span>
-                        </div>
+                      </div>
+
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0 gap-1.5">
+                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                          res.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                          res.status === 'in_use' ? 'bg-blue-100 text-blue-800 border border-blue-300 animate-pulse' :
+                          'bg-amber-100 text-amber-800 border border-amber-300'
+                        }`}>
+                          {res.status === 'approved' ? 'Disetujui GA' : res.status === 'in_use' ? 'Sedang Berlangsung' : 'Menunggu GA'}
+                        </span>
+                        <button
+                          onClick={() => onNavigate('meeting_rooms')}
+                          className="text-[11px] font-bold text-sky-700 hover:text-sky-900 underline flex items-center gap-1 mt-1"
+                        >
+                          Buka Agenda Rapat
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
-                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                        loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                        loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                        loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
-                        'bg-slate-200 text-slate-700'
-                      }`}>
-                        {loan.status}
-                      </span>
-                      {loan.approver_name && (
-                        <span className="text-[10px] text-slate-500 mt-1">Disetujui: {loan.approver_name}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Standard Employee Peminjaman Saya (8 cols) */
+            <div className="lg:col-span-8 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <CalendarClock className="w-4 h-4 text-emerald-600" />
+                    Peminjaman Barang Saya
+                  </h3>
+                  <p className="text-xs text-slate-500">Daftar riwayat dan pengajuan peminjaman aset yang Anda ajukan</p>
+                </div>
+                <button
+                  onClick={() => onNavigate('loans')}
+                  className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1"
+                >
+                  Lihat Semua <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
-            )}
-          </div>
+
+              {myLoans.length === 0 ? (
+                <div className="p-8 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-3">
+                  <CalendarClock className="w-10 h-10 text-slate-400 mx-auto" />
+                  <p className="text-sm font-semibold text-slate-700">Belum Ada Peminjaman Barang</p>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Anda belum memiliki pengajuan peminjaman aset saat ini. Anda dapat meminjam mobil dinas, laptop cadangan, atau ruangan rapat.
+                  </p>
+                  <button
+                    onClick={onOpenNewLoanModal}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Ajukan Peminjaman Sekarang
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {myLoans.map((loan) => (
+                    <div 
+                      key={loan.id}
+                      className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-lg mt-0.5 ${loan.category_type === 'IT' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {loan.category_type === 'IT' ? <Laptop className="w-4 h-4" /> : <Car className="w-4 h-4" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-slate-900">{loan.asset_name}</span>
+                            {loan.corporate_asset_number && (
+                              <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-emerald-800 border border-emerald-300 font-bold">
+                                {loan.corporate_asset_number}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-600 mt-1">{loan.purpose}</p>
+                          <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-1.5 flex-wrap">
+                            <span>Jadwal: <strong>{formatDateTime(loan.start_date)}</strong> s/d <strong>{formatDateTime(loan.due_date)}</strong></span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
+                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                          loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                          loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                          loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                          'bg-slate-200 text-slate-700'
+                        }`}>
+                          {loan.status}
+                        </span>
+                        {loan.approver_name && (
+                          <span className="text-[10px] text-slate-500 mt-1">Disetujui: {loan.approver_name}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tiket Bantuan Saya (4 cols) */}
           <div className="lg:col-span-4 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">

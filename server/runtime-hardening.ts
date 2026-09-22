@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
-import { db, ServerUser } from './db';
-import { authenticateRequest } from './auth';
+import { db, ServerUser, ServerSession } from './db';
+import { authenticateRequest, checkApiRateLimit } from './auth';
 
 const isSuperadmin = (actor: ServerUser) => actor.role === 'Admin GABAH';
 const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || actor.role === 'Auditor';
@@ -60,17 +60,33 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   // Only intercept API calls
   if (!req.path.startsWith('/api/')) return next();
 
+  // General API rate limiter across all endpoints (mitigates brute-force, scraping, and enumeration)
+  const clientIp = (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
+  const rateLimit = checkApiRateLimit(clientIp);
+  res.setHeader('X-RateLimit-Limit', '200');
+  res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
+  res.setHeader('X-RateLimit-Reset', rateLimit.resetSeconds.toString());
+
+  if (!rateLimit.allowed) {
+    res.setHeader('Retry-After', rateLimit.resetSeconds.toString());
+    return res.status(429).json({
+      success: false,
+      message: `Terlalu banyak permintaan API. Harap tunggu ${rateLimit.resetSeconds} detik sebelum mencoba kembali.`,
+      retry_after_seconds: rateLimit.resetSeconds,
+    });
+  }
+
   // Allow public endpoints
   if (PUBLIC_API_PATHS.includes(req.path)) return next();
 
   // Validate server-side session token
   const authResult = authenticateRequest(req);
 
-  // If a non-admin client attempted to forge identity via x-user-id header, immediately reject with 403
+  // If a client attempted to forge identity via x-user-id header or without a valid token, immediately reject with 403
   if (authResult.spoofAttempt) {
     return res.status(403).json({
       success: false,
-      message: 'Akses ditolak: Percobaan manipulasi identitas (ID spoofing) terdeteksi.',
+      message: authResult.error || 'Akses ditolak: Percobaan manipulasi identitas (ID spoofing) terdeteksi.',
     });
   }
 
@@ -82,8 +98,11 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     });
   }
 
-  // Attach verified actor to request for all downstream route handlers
+  // Attach verified actor and session to request for all downstream route handlers
   (req as any).user = actor;
+  if (authResult.session) {
+    (req as any).session = authResult.session;
+  }
 
   // Auditor is strictly READ-ONLY across the entire system
   if (actor.role === 'Auditor' && req.method !== 'GET') {

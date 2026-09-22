@@ -75,7 +75,7 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ articles }
             return (
               <div key={idx} className="flex items-start gap-2 pl-2">
                 <span className="text-emerald-600 font-bold mt-0.5">•</span>
-                <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(itemText) }} />
+                <span>{renderFormattedInline(itemText)}</span>
               </div>
             );
           }
@@ -87,7 +87,7 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ articles }
                   <span className="font-bold text-emerald-800 text-[11px] bg-emerald-100 rounded-full w-4 h-4 flex items-center justify-center shrink-0 mt-0.5">
                     {numMatch[1]}
                   </span>
-                  <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(numMatch[2]) }} />
+                  <span>{renderFormattedInline(numMatch[2])}</span>
                 </div>
               );
             }
@@ -96,17 +96,37 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ articles }
             return <div key={idx} className="h-1.5" />;
           }
           return (
-            <p key={idx} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed) }} />
+            <p key={idx}>{renderFormattedInline(trimmed)}</p>
           );
         })}
       </div>
     );
   };
 
-  const formatInlineMarkdown = (text: string) => {
-    return text
-      .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-slate-200 text-slate-900 font-mono text-[11px] font-bold border border-slate-300">$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>');
+  const renderFormattedInline = (text: string) => {
+    const parts: React.ReactNode[] = [];
+    const regex = /(`[^`]+`|\*\*[^*]+\*\*)/g;
+    const tokens = text.split(regex);
+
+    tokens.forEach((token, i) => {
+      if (token.startsWith('`') && token.endsWith('`') && token.length >= 2) {
+        parts.push(
+          <code key={i} className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-900 font-mono text-[11px] font-bold border border-slate-300">
+            {token.slice(1, -1)}
+          </code>
+        );
+      } else if (token.startsWith('**') && token.endsWith('**') && token.length >= 4) {
+        parts.push(
+          <strong key={i} className="font-bold text-slate-900">
+            {token.slice(2, -2)}
+          </strong>
+        );
+      } else if (token) {
+        parts.push(<span key={i}>{token}</span>);
+      }
+    });
+
+    return parts;
   };
 
   return (

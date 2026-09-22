@@ -22,6 +22,7 @@ export interface ServerSession {
   id: string;
   token: string;
   user_id: string;
+  original_admin_id?: string;
   created_at: string;
   expires_at: string;
   last_active_at: string;
@@ -724,6 +725,30 @@ export function seedInitialData() {
       category: 'warranty',
       link_type: 'asset',
       link_id: 'AST-SLIC-001',
+      is_read: false,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'NOTIF-HUMAS-001',
+      recipient_role: 'Humas',
+      recipient_division: 'GA',
+      title: 'Permintaan Liputan & Dokumentasi Foto: Ruang Setra Wangi',
+      message: 'Permintaan peliputan foto resmi untuk agenda Rapat Pleno Direksi & Dewan Komisaris pada Ruang Setra Wangi oleh Dewi Anggraini (Sekretariat Direksi).',
+      severity: 'action_required',
+      category: 'system',
+      link_type: 'asset',
+      is_read: false,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'NOTIF-HUMAS-002',
+      recipient_role: 'Humas',
+      recipient_division: 'GA',
+      title: 'Permintaan Foto Dokumentasi: Ruang Rapat Kantor Pasar',
+      message: 'Permintaan foto dokumentasi kegiatan koordinasi pasokan masuk truk beras PIBC oleh Hendra Wijaya (Divisi Komersial).',
+      severity: 'action_required',
+      category: 'system',
+      link_type: 'asset',
       is_read: false,
       created_at: new Date().toISOString(),
     },
