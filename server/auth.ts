@@ -252,7 +252,7 @@ export function authenticateRequest(req: Request): {
 /**
  * Sanitize user object to never leak password hashes or internal secrets to client
  */
-export function sanitizeUser(user: ServerUser): Record<string, any> {
-  const { password_hash, password_salt, temp_password, ...safe } = user;
-  return safe;
+export function sanitizeUser(user: ServerUser, includePhone = true): Record<string, any> {
+  const { password_hash, password_salt, temp_password, phone, ...safe } = user;
+  return includePhone ? { ...safe, phone } : safe;
 }
