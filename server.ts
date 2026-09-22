@@ -563,6 +563,224 @@ async function startServer() {
     }
   });
 
+  app.patch('/api/taxonomy/categories/:code', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin (Admin GABAH) yang berwenang mengubah Master Kategori.' });
+      }
+      const code = req.params.code.trim().toUpperCase();
+      if (!db.categories) db.categories = [...CANONICAL_TAXONOMY];
+      const target = db.categories.find(c => c.code.toUpperCase() === code);
+      if (!target) return res.status(404).json({ success: false, message: `Kategori "${code}" tidak ditemukan.` });
+
+      const { name, main_type, owner_division, category_type, description, is_loanable_by_default } = req.body;
+      if (name) target.name = name.trim();
+      if (main_type) target.main_type = main_type;
+      if (owner_division) target.owner_division = owner_division;
+      if (category_type) target.category_type = category_type;
+      if (description !== undefined) target.description = description;
+      if (is_loanable_by_default !== undefined) target.is_loanable_by_default = Boolean(is_loanable_by_default);
+
+      GabahDomainService.recordAudit('CATEGORY_UPDATED', 'MasterData', `Memperbarui master kategori ${target.code} - ${target.name}`, actor);
+      await persistDataStore();
+      res.json({ success: true, data: target });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  app.delete('/api/taxonomy/categories/:code', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin (Admin GABAH) yang berwenang menghapus Master Kategori.' });
+      }
+      const code = req.params.code.trim().toUpperCase();
+      const inUse = db.assets.filter(a => a.category_code === code || a.asset_number?.includes(`-${code}-`));
+      if (inUse.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Tidak dapat menghapus kategori "${code}" karena masih digunakan oleh ${inUse.length} aset terdaftar.`
+        });
+      }
+
+      if (!db.categories) db.categories = [...CANONICAL_TAXONOMY];
+      const initialLen = db.categories.length;
+      db.categories = db.categories.filter(c => c.code.toUpperCase() !== code);
+      if (db.categories.length === initialLen) {
+        return res.status(404).json({ success: false, message: `Kategori "${code}" tidak ditemukan.` });
+      }
+
+      GabahDomainService.recordAudit('CATEGORY_DELETED', 'MasterData', `Menghapus master kategori ${code}`, actor);
+      await persistDataStore();
+      res.json({ success: true, message: `Kategori ${code} berhasil dihapus.` });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // Master Locations API
+  app.get('/api/master/locations', (req, res) => {
+    res.json({ success: true, data: db.locations || [] });
+  });
+
+  app.post('/api/master/locations', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menambah master lokasi.' });
+      }
+      const { name, address, capacity } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ success: false, message: 'Nama lokasi fasilitas wajib diisi.' });
+      }
+      if (!db.locations) db.locations = [];
+      const newLoc = {
+        id: `loc-${Date.now()}`,
+        name: name.trim(),
+        address: address?.trim() || 'Kawasan PIBC, Jakarta Timur',
+        capacity: capacity?.trim() || 'Fasilitas Operasional'
+      };
+      db.locations.push(newLoc);
+      GabahDomainService.recordAudit('LOCATION_CREATED', 'MasterData', `Menambahkan master lokasi ${newLoc.name}`, actor);
+      await persistDataStore();
+      res.status(201).json({ success: true, data: newLoc });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  app.patch('/api/master/locations/:id', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang mengedit master lokasi.' });
+      }
+      if (!db.locations) db.locations = [];
+      const target = db.locations.find(l => l.id === req.params.id);
+      if (!target) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
+
+      const { name, address, capacity } = req.body;
+      if (name) target.name = name.trim();
+      if (address !== undefined) target.address = address.trim();
+      if (capacity !== undefined) target.capacity = capacity.trim();
+
+      GabahDomainService.recordAudit('LOCATION_UPDATED', 'MasterData', `Memperbarui master lokasi ${target.name}`, actor);
+      await persistDataStore();
+      res.json({ success: true, data: target });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  app.delete('/api/master/locations/:id', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menghapus master lokasi.' });
+      }
+      if (!db.locations) db.locations = [];
+      const loc = db.locations.find(l => l.id === req.params.id);
+      if (!loc) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
+
+      db.locations = db.locations.filter(l => l.id !== req.params.id);
+      GabahDomainService.recordAudit('LOCATION_DELETED', 'MasterData', `Menghapus master lokasi ${loc.name}`, actor);
+      await persistDataStore();
+      res.json({ success: true, message: `Lokasi ${loc.name} berhasil dihapus.` });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // Master Organization Divisions API
+  app.get('/api/master/divisions', (req, res) => {
+    res.json({ success: true, data: db.divisions || [] });
+  });
+
+  app.post('/api/master/divisions', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menambah divisi.' });
+      }
+      const { code, name, leader, depts } = req.body;
+      if (!code || !name) {
+        return res.status(400).json({ success: false, message: 'Kode divisi dan nama divisi wajib diisi.' });
+      }
+      const normCode = code.trim().toUpperCase();
+      if (!db.divisions) db.divisions = [];
+      if (db.divisions.some(d => d.code.toUpperCase() === normCode)) {
+        return res.status(400).json({ success: false, message: `Divisi dengan kode "${normCode}" sudah ada.` });
+      }
+
+      const newDiv = {
+        code: normCode,
+        name: name.trim(),
+        leader: leader?.trim() || 'Kepala Divisi',
+        depts: Array.isArray(depts) && depts.length > 0 ? depts : ['Operasional']
+      };
+      db.divisions.push(newDiv);
+      GabahDomainService.recordAudit('DIVISION_CREATED', 'Organization', `Menambahkan divisi baru ${newDiv.code} - ${newDiv.name}`, actor);
+      await persistDataStore();
+      res.status(201).json({ success: true, data: newDiv });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  app.patch('/api/master/divisions/:code', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang mengubah struktur divisi.' });
+      }
+      const code = req.params.code.trim().toUpperCase();
+      if (!db.divisions) db.divisions = [];
+      const div = db.divisions.find(d => d.code.toUpperCase() === code);
+      if (!div) return res.status(404).json({ success: false, message: 'Divisi tidak ditemukan.' });
+
+      const { name, leader, depts } = req.body;
+      if (name) div.name = name.trim();
+      if (leader) div.leader = leader.trim();
+      if (Array.isArray(depts)) div.depts = depts;
+
+      GabahDomainService.recordAudit('DIVISION_UPDATED', 'Organization', `Memperbarui divisi ${div.code} - ${div.name}`, actor);
+      await persistDataStore();
+      res.json({ success: true, data: div });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  app.delete('/api/master/divisions/:code', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menghapus divisi.' });
+      }
+      const code = req.params.code.trim().toUpperCase();
+      const assetsCount = db.assets.filter(a => a.owner_division === code).length;
+      if (assetsCount > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Tidak dapat menghapus divisi "${code}" karena masih memiliki ${assetsCount} aset terdaftar.`
+        });
+      }
+
+      if (!db.divisions) db.divisions = [];
+      const div = db.divisions.find(d => d.code.toUpperCase() === code);
+      if (!div) return res.status(404).json({ success: false, message: 'Divisi tidak ditemukan.' });
+
+      db.divisions = db.divisions.filter(d => d.code.toUpperCase() !== code);
+      GabahDomainService.recordAudit('DIVISION_DELETED', 'Organization', `Menghapus struktur divisi ${code} (${div.name})`, actor);
+      await persistDataStore();
+      res.json({ success: true, message: `Divisi ${code} berhasil dihapus.` });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
   app.post('/api/taxonomy/resolve', (req, res) => {
     try {
       const { nameOrCode } = req.body;

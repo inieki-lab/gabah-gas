@@ -149,10 +149,80 @@ class GabahApiClient {
     });
   }
 
+  async updateCategory(code: string, payload: {
+    name?: string;
+    main_type?: string;
+    owner_division?: string;
+    category_type?: string;
+    description?: string;
+    is_loanable_by_default?: boolean;
+  }): Promise<any> {
+    return this.request<any>(`/api/taxonomy/categories/${encodeURIComponent(code)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteCategory(code: string): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>(`/api/taxonomy/categories/${encodeURIComponent(code)}`, {
+      method: 'DELETE',
+    });
+  }
+
   async resolveTaxonomy(nameOrCode: string): Promise<any> {
     return this.request<any>('/api/taxonomy/resolve', {
       method: 'POST',
       body: JSON.stringify({ nameOrCode }),
+    });
+  }
+
+  // Master Locations
+  async getLocations(): Promise<any[]> {
+    return this.request<any[]>('/api/master/locations');
+  }
+
+  async createLocation(payload: { name: string; address?: string; capacity?: string }): Promise<any> {
+    return this.request<any>('/api/master/locations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateLocation(id: string, payload: { name?: string; address?: string; capacity?: string }): Promise<any> {
+    return this.request<any>(`/api/master/locations/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteLocation(id: string): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>(`/api/master/locations/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Master Divisions
+  async getDivisions(): Promise<any[]> {
+    return this.request<any[]>('/api/master/divisions');
+  }
+
+  async createDivision(payload: { code: string; name: string; leader?: string; depts?: string[] }): Promise<any> {
+    return this.request<any>('/api/master/divisions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateDivision(code: string, payload: { name?: string; leader?: string; depts?: string[] }): Promise<any> {
+    return this.request<any>(`/api/master/divisions/${encodeURIComponent(code)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteDivision(code: string): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>(`/api/master/divisions/${encodeURIComponent(code)}`, {
+      method: 'DELETE',
     });
   }
 

@@ -128,6 +128,8 @@ function hydrateDbFromState(state: any): void {
   if (Array.isArray(state.rooms) && state.rooms.length > 0) db.rooms = state.rooms;
   if (Array.isArray(state.roomReservations) && state.roomReservations.length > 0) db.roomReservations = state.roomReservations;
   if (Array.isArray(state.categories) && state.categories.length > 0) db.categories = state.categories;
+  if (Array.isArray(state.locations) && state.locations.length > 0) db.locations = state.locations;
+  if (Array.isArray(state.divisions) && state.divisions.length > 0) db.divisions = state.divisions;
   if (Array.isArray(state.meetingTypes) && state.meetingTypes.length > 0) db.meetingTypes = state.meetingTypes;
   if (Array.isArray(state.meetingFacilities) && state.meetingFacilities.length > 0) db.meetingFacilities = state.meetingFacilities;
 }
@@ -160,6 +162,8 @@ function createPayload() {
     rooms: db.rooms,
     roomReservations: db.roomReservations,
     categories: db.categories,
+    locations: db.locations,
+    divisions: db.divisions,
     meetingTypes: db.meetingTypes,
     meetingFacilities: db.meetingFacilities,
   };
