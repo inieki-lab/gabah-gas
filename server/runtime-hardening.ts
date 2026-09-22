@@ -60,9 +60,34 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   // Only intercept API calls
   if (!req.path.startsWith('/api/')) return next();
 
-  // General API rate limiter across all endpoints (mitigates brute-force, scraping, and enumeration)
+  // Use the socket address unless the deployment explicitly trusts a reverse proxy.
+  // Authentication is resolved before rate limiting so authenticated users on the
+  // same office NAT do not share one bucket. Public/invalid requests remain IP-scoped.
   const clientIp = (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
-  const rateLimit = checkApiRateLimit(clientIp);
+
+  // Allow public endpoints; login/health remain IP-scoped.
+  if (PUBLIC_API_PATHS.includes(req.path)) {
+    const rateLimit = checkApiRateLimit(`ip:${clientIp}`);
+    res.setHeader('X-RateLimit-Limit', '200');
+    res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
+    res.setHeader('X-RateLimit-Reset', rateLimit.resetSeconds.toString());
+    if (!rateLimit.allowed) {
+      res.setHeader('Retry-After', rateLimit.resetSeconds.toString());
+      return res.status(429).json({
+        success: false,
+        message: `Terlalu banyak permintaan API. Harap tunggu ${rateLimit.resetSeconds} detik sebelum mencoba kembali.`,
+        retry_after_seconds: rateLimit.resetSeconds,
+      });
+    }
+    return next();
+  }
+
+  // Validate server-side session token before selecting the authenticated rate-limit bucket.
+  const authResult = authenticateRequest(req);
+  const rateLimitKey = authResult.user
+    ? `user:${authResult.user.id}:ip:${clientIp}`
+    : `ip:${clientIp}`;
+  const rateLimit = checkApiRateLimit(rateLimitKey);
   res.setHeader('X-RateLimit-Limit', '200');
   res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
   res.setHeader('X-RateLimit-Reset', rateLimit.resetSeconds.toString());
@@ -75,12 +100,6 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
       retry_after_seconds: rateLimit.resetSeconds,
     });
   }
-
-  // Allow public endpoints
-  if (PUBLIC_API_PATHS.includes(req.path)) return next();
-
-  // Validate server-side session token
-  const authResult = authenticateRequest(req);
 
   // If a client attempted to forge identity via x-user-id header or without a valid token, immediately reject with 403
   if (authResult.spoofAttempt) {
