@@ -71,7 +71,17 @@ async function startServer() {
 
   // Auth / Users
   app.get('/api/users', (req, res) => {
-    res.json({ success: true, data: db.users.map(u => sanitizeUser(u)) });
+    const actor = getActor(req);
+    const canViewDirectoryPhones =
+      actor.role === 'Admin GABAH' ||
+      actor.role === 'IT' ||
+      actor.role === 'GA' ||
+      actor.role === 'Auditor';
+
+    res.json({
+      success: true,
+      data: db.users.map(u => sanitizeUser(u, canViewDirectoryPhones || u.id === actor.id)),
+    });
   });
 
   app.post('/api/users', async (req, res) => {
