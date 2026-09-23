@@ -109,7 +109,13 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-extrabold text-slate-900 text-base">{license.name}</h3>
+                      <button
+                        onClick={() => onSelectAsset && onSelectAsset(license)}
+                        className="font-extrabold text-slate-900 text-base hover:text-emerald-700 text-left transition-colors cursor-pointer"
+                        title="Lihat Detail Lisensi"
+                      >
+                        {license.name}
+                      </button>
                       {license.corporate_asset_number && (
                         <span className="font-mono text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 font-bold">
                           {license.corporate_asset_number}

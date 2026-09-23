@@ -1,4 +1,4 @@
-import { Asset, AssetStatus, AssetCondition, Loan, Ticket, UserProfile, UserRole } from '../types';
+import { Asset, AssetStatus, AssetCondition, Loan, Ticket, UserProfile, UserRole, RoomReservation, MeetingFacilityItem } from '../types';
 
 /**
  * Currency Formatter (IDR)
@@ -379,6 +379,44 @@ export class GabahService {
     return ['Admin GABAH', 'IT', 'GA'].includes(user.role);
   }
 
+  /**
+   * Rule:
+   * "di semua user kecuali IT dan super admin dan GA (jika tiket ditujukan ke GA) 
+   * informasi tiket yg bukan pelapor ybs jgn dimunculkan di menu tiket helpdesk, yg yg muncul hanya tiket nya sendiri"
+   */
+  static isTicketVisibleToUser(ticket: Ticket, user?: UserProfile | null): boolean {
+    if (!user || !ticket) return false;
+
+    // 1. IT and Super Admin (Admin GABAH) can see all tickets
+    if (user.role === 'Admin GABAH' || user.role === 'IT') {
+      return true;
+    }
+
+    const currentUserId = user.id || '';
+    const currentUserName = (user.name || '').trim().toLowerCase();
+    const reporterName = (ticket.reporter_name || '').trim().toLowerCase();
+    const isReporter = Boolean(
+      (ticket.reporter_id && ticket.reporter_id === currentUserId) ||
+      (reporterName && currentUserName && (reporterName === currentUserName || reporterName.includes(currentUserName) || currentUserName.includes(reporterName)))
+    );
+
+    // 2. GA: can see tickets directed to GA (category 'GA'), or tickets reported by GA user themselves
+    if (user.role === 'GA') {
+      return ticket.category === 'GA' || isReporter;
+    }
+
+    // 3. All other users (Karyawan, Humas, Sekretaris Direksi, Supply Chain, PIBC, Auditor, etc.):
+    // ONLY see tickets where they are the reporter
+    return isReporter;
+  }
+
+  static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
+    if (!user || !ticket) return false;
+    if (user.role === 'Admin GABAH' || user.role === 'IT') return true;
+    if (user.role === 'GA' && ticket.category === 'GA') return true;
+    return false;
+  }
+
   static generateCorporateAssetNumber(categoryCodeOrAssets?: any, year: number = new Date().getFullYear()): string {
     let catCode = 'AST';
     if (typeof categoryCodeOrAssets === 'string') {
@@ -386,5 +424,37 @@ export class GabahService {
     }
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     return `ACC-${catCode.toUpperCase()}-${year}-${randomSuffix}`;
+  }
+
+  static isITFacility(facilityName: string, knownFacilities?: MeetingFacilityItem[]): boolean {
+    if (!facilityName) return false;
+    const clean = facilityName.trim().toLowerCase();
+    if (knownFacilities && knownFacilities.length > 0) {
+      const match = knownFacilities.find(f => f.name.toLowerCase() === clean);
+      if (match) return match.category === 'IT';
+    }
+    const itKeywords = ['polycom', 'projector', 'proyektor', 'tv', 'hdmi', 'converter', 'video conference', 'vicon', 'zoom', 'camera', 'laptop', 'wifi', 'lan', 'audio visual', 'network'];
+    return itKeywords.some(kw => clean.includes(kw));
+  }
+
+  static isGAFacility(facilityName: string, knownFacilities?: MeetingFacilityItem[]): boolean {
+    if (!facilityName) return false;
+    const clean = facilityName.trim().toLowerCase();
+    if (knownFacilities && knownFacilities.length > 0) {
+      const match = knownFacilities.find(f => f.name.toLowerCase() === clean);
+      if (match) return match.category === 'GA';
+    }
+    const gaKeywords = ['sound', 'mic', 'wireless', 'whiteboard', 'spidol', 'kursi', 'meja', 'podium', 'ac', 'kebersihan', 'ruangan', 'pantry', 'snack', 'makan'];
+    return gaKeywords.some(kw => clean.includes(kw));
+  }
+
+  static getITFacilities(reservation: RoomReservation, knownFacilities?: MeetingFacilityItem[]): string[] {
+    if (!reservation.facilities_requested || !Array.isArray(reservation.facilities_requested)) return [];
+    return reservation.facilities_requested.filter(f => this.isITFacility(f, knownFacilities));
+  }
+
+  static getGAFacilities(reservation: RoomReservation, knownFacilities?: MeetingFacilityItem[]): string[] {
+    if (!reservation.facilities_requested || !Array.isArray(reservation.facilities_requested)) return [];
+    return reservation.facilities_requested.filter(f => this.isGAFacility(f, knownFacilities));
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Building2, 
   Calendar, 
@@ -24,12 +24,14 @@ import {
   Layers,
   Settings,
   Camera,
-  Sparkles
+  Sparkles,
+  Laptop
 } from 'lucide-react';
 import { MeetingRoom, RoomReservation, UserProfile } from '../../types';
 import { CreateRoomReservationModal } from '../modals/CreateRoomReservationModal';
 import { RoomReservationSlipModal } from '../modals/RoomReservationSlipModal';
 import { MeetingMasterSettingsModal } from '../modals/MeetingMasterSettingsModal';
+import { GabahService } from '../../services/gabahService';
 
 interface MeetingRoomsViewProps {
   rooms: MeetingRoom[];
@@ -43,6 +45,7 @@ interface MeetingRoomsViewProps {
   onCancelReservation: (id: string) => Promise<RoomReservation>;
   onUpdateRoomStatus?: (roomId: string, status: 'available' | 'maintenance') => Promise<MeetingRoom>;
   onRefresh?: () => void;
+  initialCategoryFilter?: 'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities' | 'high_priority';
 }
 
 type SubTab = 'calendar' | 'rooms' | 'reservations';
@@ -61,8 +64,9 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   onCancelReservation,
   onUpdateRoomStatus,
   onRefresh,
+  initialCategoryFilter,
 }) => {
-  const [activeTab, setActiveTab] = useState<SubTab>('calendar');
+  const [activeTab, setActiveTab] = useState<SubTab>(initialCategoryFilter ? 'reservations' : 'calendar');
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -76,7 +80,16 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   const [rejectReasonPromptId, setRejectReasonPromptId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [isMasterSettingsModalOpen, setIsMasterSettingsModalOpen] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'consumption' | 'documentation' | 'high_priority'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities' | 'high_priority'>(initialCategoryFilter || 'all');
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialCategoryFilter) {
+      setCategoryFilter(initialCategoryFilter);
+      setActiveTab('reservations');
+    }
+  }, [initialCategoryFilter]);
 
   const isGAOrAdmin = currentUser.role === 'Admin GABAH' || currentUser.role === 'GA';
   const isAuditor = currentUser.role === 'Auditor';
@@ -91,6 +104,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
     const consumptionCount = reservations.filter(r => r.consumption_requested).length;
     const documentationCount = reservations.filter(r => r.documentation_requested).length;
     const highPriorityCount = reservations.filter(r => r.priority === 'high').length;
+    const itFacilitiesCount = reservations.filter(r => !['cancelled', 'rejected'].includes(r.status) && GabahService.getITFacilities(r).length > 0).length;
+    const gaFacilitiesCount = reservations.filter(r => !['cancelled', 'rejected'].includes(r.status) && GabahService.getGAFacilities(r).length > 0).length;
 
     return {
       activeRooms,
@@ -100,6 +115,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
       consumptionCount,
       documentationCount,
       highPriorityCount,
+      itFacilitiesCount,
+      gaFacilitiesCount,
     };
   }, [rooms, reservations]);
 
@@ -126,7 +143,13 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
       if (statusFilter !== 'all' && r.status !== statusFilter) {
         return false;
       }
-      // Category Filter (Consumption, Documentation, Priority)
+      // Category Filter (IT Facilities, GA Facilities, Consumption, Documentation, Priority)
+      if (categoryFilter === 'it_facilities' && GabahService.getITFacilities(r).length === 0) {
+        return false;
+      }
+      if (categoryFilter === 'ga_facilities' && GabahService.getGAFacilities(r).length === 0) {
+        return false;
+      }
       if (categoryFilter === 'consumption' && !r.consumption_requested) {
         return false;
       }
@@ -149,11 +172,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
   const handleApprove = async (id: string) => {
     try {
+      setActionError(null);
       setActionLoadingId(id);
       await onApproveReservation(id);
       onRefresh?.();
     } catch (err: any) {
-      alert(err.message || 'Gagal menyetujui reservasi');
+      setActionError(err.message || 'Gagal menyetujui reservasi');
     } finally {
       setActionLoadingId(null);
     }
@@ -161,13 +185,14 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
   const handleReject = async (id: string) => {
     try {
+      setActionError(null);
       setActionLoadingId(id);
       await onRejectReservation(id, rejectionReason || 'Kapasitas penuh / prioritas rapat direksi');
       setRejectReasonPromptId(null);
       setRejectionReason('');
       onRefresh?.();
     } catch (err: any) {
-      alert(err.message || 'Gagal menolak reservasi');
+      setActionError(err.message || 'Gagal menolak reservasi');
     } finally {
       setActionLoadingId(null);
     }
@@ -175,11 +200,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
   const handleCheckin = async (id: string) => {
     try {
+      setActionError(null);
       setActionLoadingId(id);
       await onCheckinReservation(id);
       onRefresh?.();
     } catch (err: any) {
-      alert(err.message || 'Gagal check-in');
+      setActionError(err.message || 'Gagal check-in');
     } finally {
       setActionLoadingId(null);
     }
@@ -187,24 +213,26 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
   const handleCheckout = async (id: string) => {
     try {
+      setActionError(null);
       setActionLoadingId(id);
       await onCheckoutReservation(id);
       onRefresh?.();
     } catch (err: any) {
-      alert(err.message || 'Gagal check-out');
+      setActionError(err.message || 'Gagal check-out');
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const handleCancel = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin membatalkan reservasi ini?')) return;
     try {
+      setActionError(null);
       setActionLoadingId(id);
       await onCancelReservation(id);
+      setCancelConfirmId(null);
       onRefresh?.();
     } catch (err: any) {
-      alert(err.message || 'Gagal membatalkan reservasi');
+      setActionError(err.message || 'Gagal membatalkan reservasi');
     } finally {
       setActionLoadingId(null);
     }
@@ -721,7 +749,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
       {activeTab === 'reservations' && (
         <div className="space-y-4">
           
-          {/* Category Filter Pills (Semua, Pantry GA, Dokumentasi Humas, Prioritas Direksi) */}
+          {/* Category Filter Pills (Semua, IT Support, GA Sarpras, Pantry GA, Dokumentasi Humas, Prioritas Direksi) */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setCategoryFilter('all')}
@@ -732,6 +760,28 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               }`}
             >
               Semua ({reservations.length})
+            </button>
+            <button
+              onClick={() => setCategoryFilter('it_facilities')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                categoryFilter === 'it_facilities'
+                  ? 'bg-sky-600 text-white shadow-xs'
+                  : 'bg-white text-sky-800 hover:bg-sky-50 border border-sky-200'
+              }`}
+            >
+              <Laptop className="w-3.5 h-3.5 text-sky-500" />
+              <span>Dukungan IT Support ({stats.itFacilitiesCount})</span>
+            </button>
+            <button
+              onClick={() => setCategoryFilter('ga_facilities')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                categoryFilter === 'ga_facilities'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-200'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Sarana GA ({stats.gaFacilitiesCount})</span>
             </button>
             <button
               onClick={() => setCategoryFilter('consumption')}
@@ -748,7 +798,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               onClick={() => setCategoryFilter('documentation')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
                 categoryFilter === 'documentation'
-                  ? 'bg-sky-600 text-white shadow-xs'
+                  ? 'bg-sky-700 text-white shadow-xs'
                   : 'bg-white text-sky-800 hover:bg-sky-50 border border-sky-200'
               }`}
             >
@@ -928,11 +978,31 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                                   <span>{r.documentation_type || 'Liputan Humas'}</span>
                                 </div>
                               )}
-                              {r.facilities_requested && r.facilities_requested.length > 0 && (
-                                <p className="text-[10px] text-slate-500">
-                                  🛠️ {r.facilities_requested.length} item fasilitas
-                                </p>
-                              )}
+                              {r.facilities_requested && r.facilities_requested.length > 0 && (() => {
+                                const itItems = GabahService.getITFacilities(r);
+                                const gaItems = GabahService.getGAFacilities(r);
+                                return (
+                                  <div className="pt-0.5 space-y-1">
+                                    {itItems.length > 0 && (
+                                      <div className="flex items-start gap-1 text-[10px] text-sky-800 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">
+                                        <Laptop className="w-3 h-3 text-sky-600 shrink-0 mt-0.5" />
+                                        <span className="font-medium">IT: {itItems.join(', ')}</span>
+                                      </div>
+                                    )}
+                                    {gaItems.length > 0 && (
+                                      <div className="flex items-start gap-1 text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                        <Building2 className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
+                                        <span className="font-medium">GA: {gaItems.join(', ')}</span>
+                                      </div>
+                                    )}
+                                    {itItems.length === 0 && gaItems.length === 0 && (
+                                      <p className="text-[10px] text-slate-500">
+                                        🛠️ {r.facilities_requested.join(', ')}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </td>
 
@@ -1031,7 +1101,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             {['pending_approval', 'approved'].includes(r.status) && (isGAOrAdmin || isOwner) && (
                               <button
                                 disabled={isLoading}
-                                onClick={() => handleCancel(r.id)}
+                                onClick={() => setCancelConfirmId(r.id)}
                                 className="px-2 py-1 text-slate-500 hover:text-rose-600 text-[11px] font-semibold transition-colors"
                               >
                                 Batalkan
@@ -1049,6 +1119,45 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* Action Error Banner */}
+      {actionError && (
+        <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs flex items-center justify-between">
+          <span>{actionError}</span>
+          <button
+            onClick={() => setActionError(null)}
+            className="text-rose-600 hover:text-rose-900 font-bold ml-2"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancelConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-sm space-y-3 border border-slate-200">
+            <h4 className="text-sm font-bold text-slate-900">Batalkan Reservasi Ruangan</h4>
+            <p className="text-xs text-slate-600">
+              Apakah Anda yakin ingin membatalkan reservasi ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setCancelConfirmId(null)}
+                className="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-xl font-semibold"
+              >
+                Kembali
+              </button>
+              <button
+                onClick={() => handleCancel(cancelConfirmId)}
+                className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-2xs"
+              >
+                Ya, Batalkan
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

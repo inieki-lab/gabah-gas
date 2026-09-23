@@ -395,16 +395,28 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <div className="text-[11px] text-slate-500">{asset.assigned_to.department} • {asset.assigned_to.email}</div>
                     </div>
                   </div>
-                  {onOpenBastModal && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenBastModal(asset)}
-                      className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Cetak BAST</span>
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {onOpenBastModal && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenBastModal(asset)}
+                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Cetak BAST</span>
+                      </button>
+                    )}
+                    {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                      <button
+                        type="button"
+                        onClick={() => onEditThisAsset(asset)}
+                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-slate-600" />
+                        <span>Ubah / Lepas</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

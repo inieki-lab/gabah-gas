@@ -47,6 +47,7 @@
 
 - **Frontend**: React 19, TypeScript, Tailwind CSS v4, Lucide Icons, Motion.
 - **Backend / Dev Server**: Node.js, Express, TSX, Vite Middleware.
+- **Data Persistence & Domain Engine**: In-memory & JSON file persistence, RBAC hardening middleware, corporate asset numbering engine.
 
 ---
 
@@ -91,6 +92,7 @@ npm run start
 │   ├── types.ts           # Definisi tipe data & antarmuka TypeScript
 │   ├── App.tsx            # Komponen root aplikasi
 │   └── main.tsx           # Entry point aplikasi
+├── server/                # Modul backend server (Auth, Persistence, Domain Services, Taxonomy)
 ├── server.ts              # Server Express dengan integrasi Vite middleware
 └── package.json           # Konfigurasi dependensi dan skrip build
 ```

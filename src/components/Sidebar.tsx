@@ -51,6 +51,8 @@ interface SidebarProps {
   openTicketsCount?: number;
   pendingReservationsCount?: number;
   documentationRequestsCount?: number;
+  itFacilitiesCount?: number;
+  gaRequestsCount?: number;
   onOpenAdministration?: () => void;
 }
 
@@ -78,6 +80,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   openTicketsCount = 0,
   pendingReservationsCount = 0,
   documentationRequestsCount = 0,
+  itFacilitiesCount = 0,
+  gaRequestsCount = 0,
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole || 'Admin GABAH';
@@ -110,12 +114,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           id: 'meeting_rooms',
           label: isHumas ? 'Ruang Rapat & Liputan' : isStaff ? 'Ruang Rapat' : 'Reservasi Ruangan',
-          description: isHumas ? 'Jadwal & Request Liputan' : 'Jadwal & Fasilitas GA',
+          description: isHumas ? 'Jadwal & Request Liputan' : isStaff ? 'Jadwal & Booking Ruang' : 'Jadwal & Fasilitas GA/IT',
           icon: isHumas ? Camera : Building2,
           badge: isHumas
             ? (documentationRequestsCount > 0 ? `${documentationRequestsCount} Foto` : null)
-            : (pendingReservationsCount > 0 && (activeRole === 'GA' || activeRole === 'Admin GABAH') ? pendingReservationsCount : null),
-          badgeColor: isHumas ? 'bg-sky-600 text-white' : 'bg-emerald-600 text-white',
+            : (activeRole === 'IT' && itFacilitiesCount > 0)
+            ? `${itFacilitiesCount} IT`
+            : (activeRole === 'GA' || activeRole === 'Admin GABAH') && (gaRequestsCount > 0 || pendingReservationsCount > 0)
+            ? (gaRequestsCount || pendingReservationsCount)
+            : null,
+          badgeColor: isHumas 
+            ? 'bg-sky-600 text-white' 
+            : activeRole === 'IT'
+            ? 'bg-sky-600 text-white'
+            : 'bg-emerald-600 text-white',
           roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {

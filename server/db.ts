@@ -47,7 +47,7 @@ export interface ServerAsset {
   purchase_price: number;
   warranty_until: string;
   status: 'active' | 'assigned' | 'available' | 'reserved' | 'in_repair' | 'damaged' | 'cannibalized' | 'pending_disposal' | 'pending_auction' | 'auctioned' | 'disposed' | 'lost' | 'inactive';
-  condition: 'new' | 'good' | 'fair' | 'poor' | 'broken';
+  condition: 'new' | 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged';
   location: string;
   is_loanable: boolean;
   assigned_to?: {
@@ -420,6 +420,19 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150&auto=format&fit=crop&q=80',
     is_active: true,
     initialPassword: 'Auditor#2026',
+  },
+  {
+    id: 'USR-05',
+    name: 'Anisa Putri, S.Ak',
+    email: 'anisa.putri@foodstation.co.id',
+    role: 'Karyawan',
+    role_label: 'Staf Keuangan & Perpajakan',
+    division: 'Umum',
+    department: 'Divisi Keuangan & Akuntansi',
+    phone: '081299334455',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    is_active: true,
+    initialPassword: 'Keuangan#2026',
   },
 ];
 

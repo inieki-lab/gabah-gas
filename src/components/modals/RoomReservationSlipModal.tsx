@@ -9,9 +9,11 @@ import {
   Users, 
   ShieldCheck,
   Coffee,
-  Check
+  Check,
+  Laptop
 } from 'lucide-react';
 import { RoomReservation } from '../../types';
+import { GabahService } from '../../services/gabahService';
 
 interface RoomReservationSlipModalProps {
   isOpen: boolean;
@@ -240,19 +242,57 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
           )}
 
           {/* Fasilitas yang Disiapkan */}
-          {reservation.facilities_requested && reservation.facilities_requested.length > 0 && (
-            <div className="border border-slate-200 rounded-xl p-3.5 text-xs">
-              <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">Fasilitas GA & IT yang Disiapkan</p>
-              <div className="flex flex-wrap gap-1.5">
-                {reservation.facilities_requested.map((f, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-[11px] border border-slate-200">
-                    <Check className="w-3 h-3 text-emerald-600" />
-                    {f}
-                  </span>
-                ))}
+          {reservation.facilities_requested && reservation.facilities_requested.length > 0 && (() => {
+            const itItems = GabahService.getITFacilities(reservation);
+            const gaItems = GabahService.getGAFacilities(reservation);
+            return (
+              <div className="border border-slate-200 rounded-xl p-3.5 text-xs space-y-2.5">
+                <p className="text-[10px] uppercase font-bold text-slate-500">Fasilitas GA &amp; IT yang Disiapkan</p>
+                {itItems.length > 0 && (
+                  <div>
+                    <span className="text-[11px] font-bold text-sky-900 flex items-center gap-1 mb-1">
+                      <Laptop className="w-3.5 h-3.5 text-sky-600" />
+                      Dukungan Tim IT Support:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {itItems.map((f, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-sky-50 text-sky-900 text-[11px] border border-sky-200 font-medium">
+                          <Check className="w-3 h-3 text-sky-600" />
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {gaItems.length > 0 && (
+                  <div>
+                    <span className="text-[11px] font-bold text-emerald-900 flex items-center gap-1 mb-1">
+                      <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Sarana Tim General Affairs (GA):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {gaItems.map((f, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-900 text-[11px] border border-emerald-200 font-medium">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {itItems.length === 0 && gaItems.length === 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {reservation.facilities_requested.map((f, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-[11px] border border-slate-200">
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Tata Tertib Ruang Rapat */}
           <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-950 space-y-1">

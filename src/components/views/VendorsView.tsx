@@ -54,11 +54,15 @@ export const VendorsView: React.FC<VendorsViewProps> = ({ vendors }) => {
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="font-mono text-slate-800">{v.pic_phone}</span>
+                <a href={`tel:${v.pic_phone}`} className="font-mono text-emerald-700 hover:underline">
+                  {v.pic_phone}
+                </a>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-blue-600 shrink-0" />
-                <span className="font-mono text-slate-800">{v.pic_email}</span>
+                <a href={`mailto:${v.pic_email}`} className="font-mono text-blue-700 hover:underline">
+                  {v.pic_email}
+                </a>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />

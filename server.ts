@@ -1045,22 +1045,36 @@ async function startServer() {
   // Helpdesk Tickets
   app.get('/api/tickets', (req, res) => {
     const actor = getActor(req);
-    if (actor.role === 'Admin GABAH' || actor.role === 'Auditor') {
+    const actorId = actor.id || '';
+    const actorName = (actor.name || '').trim().toLowerCase();
+
+    const isReporter = (t: any) => {
+      const repName = (t.reporter_name || '').trim().toLowerCase();
+      return (
+        t.reporter_id === actorId ||
+        Boolean(repName && actorName && (repName === actorName || repName.includes(actorName) || actorName.includes(repName)))
+      );
+    };
+
+    // 1. IT and Super Admin (Admin GABAH) can see all tickets
+    if (actor.role === 'Admin GABAH' || actor.role === 'IT') {
       return res.json({ success: true, data: db.tickets });
     }
-    if (actor.role === 'Karyawan') {
-      return res.json({ success: true, data: db.tickets.filter(t => t.reporter_id === actor.id) });
-    }
-    if (actor.role === 'IT') {
-      return res.json({ success: true, data: db.tickets.filter(t => t.category === 'IT' || t.category === 'License') });
-    }
+
+    // 2. GA: only tickets directed to GA ('GA' category), or tickets reported by the GA user
     if (actor.role === 'GA') {
-      return res.json({ success: true, data: db.tickets.filter(t => t.category === 'GA') });
+      return res.json({
+        success: true,
+        data: db.tickets.filter(t => t.category === 'GA' || isReporter(t)),
+      });
     }
-    if (actor.role === 'Supply Chain') {
-      return res.json({ success: true, data: db.tickets.filter(t => t.category === 'SC') });
-    }
-    res.json({ success: true, data: db.tickets });
+
+    // 3. All other users (Karyawan, Humas, Sekretaris Direksi, Supply Chain, PIBC, Auditor, etc.):
+    // ONLY see tickets where they are the reporter
+    return res.json({
+      success: true,
+      data: db.tickets.filter(t => isReporter(t)),
+    });
   });
 
   app.post('/api/tickets', (req, res) => {

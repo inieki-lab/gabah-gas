@@ -20,7 +20,7 @@ import {
   Camera
 } from 'lucide-react';
 import { Asset, Loan, Ticket, UserProfile, AuditLog, RoomReservation } from '../../types';
-import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
+import { formatRupiah, formatDateTime, formatDate, GabahService } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
 
 interface DashboardViewProps {
@@ -55,7 +55,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const safeAssets = Array.isArray(assets) ? assets : [];
   const safeLoans = Array.isArray(loans) ? loans : [];
-  const safeTickets = Array.isArray(tickets) ? tickets : [];
+  const safeTickets = (Array.isArray(tickets) ? tickets : []).filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
 
   const docReservations = safeReservations.filter(

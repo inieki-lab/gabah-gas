@@ -21,7 +21,8 @@ import {
   ChevronRight,
   ChevronDown,
   MapPin,
-  Check
+  Check,
+  Laptop
 } from 'lucide-react';
 import { 
   MeetingRoom, 
@@ -32,6 +33,7 @@ import {
   MeetingPriority 
 } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
+import { GabahService } from '../../services/gabahService';
 
 interface CreateRoomReservationModalProps {
   isOpen: boolean;
@@ -800,6 +802,50 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                 );
               })}
             </div>
+
+            {/* Real-time notification routing confirmation for Section 4 */}
+            {(() => {
+              const activeFacilitiesList = facilitiesList.length > 0 ? facilitiesList : [
+                { id: '1', name: 'Polycom Studio Video Conference', category: 'IT' as const },
+                { id: '2', name: 'Laser Projector & Layar', category: 'IT' as const },
+                { id: '3', name: 'Smart TV 85" 4K HDR', category: 'IT' as const },
+                { id: '4', name: 'Sound System & Wireless Mic', category: 'GA' as const },
+                { id: '5', name: 'Whiteboard Kaca & Spidol', category: 'GA' as const },
+                { id: '6', name: 'Kabel HDMI / Converter Type-C', category: 'IT' as const },
+              ];
+              const selectedIT = activeFacilitiesList.filter(f => selectedFacilities.includes(f.name) && (f.category === 'IT' || GabahService.isITFacility(f.name)));
+              const selectedGA = activeFacilitiesList.filter(f => selectedFacilities.includes(f.name) && (f.category === 'GA' || GabahService.isGAFacility(f.name)));
+
+              return (
+                <div className="mt-2.5 space-y-1.5">
+                  {selectedIT.length > 0 && (
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-950 text-xs animate-in fade-in">
+                      <Laptop className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-sky-900">Notifikasi Otomatis ke Tim IT Support: </span>
+                        <span className="text-sky-800">{selectedIT.map(f => f.name).join(', ')}</span>
+                        <p className="text-[10px] text-sky-600 mt-0.5">Tiket persiapan perangkat &amp; uji koneksi vicon akan otomatis diteruskan ke petugas IT.</p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedGA.length > 0 && (
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs animate-in fade-in">
+                      <Building2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-emerald-900">Notifikasi Otomatis ke Tim GA (Sarpras): </span>
+                        <span className="text-emerald-800">{selectedGA.map(f => f.name).join(', ')}</span>
+                        <p className="text-[10px] text-emerald-600 mt-0.5">Penyiapan fisik tata ruang, mikrofon, dan sarana umum akan otomatis diteruskan ke petugas GA.</p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedFacilities.length === 0 && (
+                    <p className="text-[11px] text-slate-500 italic mt-1">
+                      💡 Centang item di atas untuk mengirimkan permintaan fasilitas langsung ke tim IT Support (perangkat IT) dan tim GA (sarana fisik).
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Section 6: Permintaan Konsumsi / Pantry GA (Requirement #3: Permintaan konsumsi ke pantry masuk notif ke tim GA) */}

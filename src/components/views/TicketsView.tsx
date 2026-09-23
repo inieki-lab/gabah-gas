@@ -58,20 +58,23 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     'Dokumen BAST serah terima perangkat pengganti telah diterbitkan secara resmi melalui GABAH.',
   ];
 
-  const isEmployee = currentUser?.role === 'Karyawan';
-  const safeTickets = Array.isArray(tickets) ? tickets : [];
-  const currentUserName = (currentUser?.name || '').toLowerCase();
-  const currentUserId = currentUser?.id || '';
+  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
+  const isIT = currentUser?.role === 'IT';
+  const isGA = currentUser?.role === 'GA';
+  // Per instruction: all users except IT, super admin, and GA (for GA tickets) only see their own tickets
+  const isSelfTicketsOnly = !isSuperAdmin && !isIT && !isGA;
+  const isEmployee = isSelfTicketsOnly;
 
-  const baseTickets = isEmployee
-    ? safeTickets.filter(t => {
-        const rName = (t.reporter_name || '').toLowerCase();
-        return (
-          t.reporter_id === currentUserId ||
-          (rName && currentUserName && (rName.includes(currentUserName) || currentUserName.includes(rName)))
-        );
-      })
-    : safeTickets;
+  const safeTickets = Array.isArray(tickets) ? tickets : [];
+  const baseTickets = safeTickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
+
+  const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
+  const defaultCategories = isSelfTicketsOnly
+    ? ['ALL', ...Array.from(baseCategorySet)]
+    : isGA
+    ? ['ALL', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'GA')]
+    : ['ALL', 'IT', 'GA', 'License', 'General'];
+  const availableCategories = Array.from(new Set(defaultCategories));
 
   const filteredTickets = baseTickets.filter((t) => {
     if (selectedCategory !== 'ALL' && t.category !== selectedCategory) return false;
@@ -131,11 +134,17 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
         <div>
           <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
             <LifeBuoy className="w-5 h-5 text-rose-600" />
-            {isEmployee ? 'Tiket Helpdesk Saya' : 'Helpdesk & Tiket Layanan Internal'}
+            {isSelfTicketsOnly 
+              ? 'Tiket Helpdesk Saya' 
+              : isGA 
+              ? 'Helpdesk & Tiket Layanan GA' 
+              : 'Helpdesk & Tiket Layanan Internal'}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            {isEmployee 
+            {isSelfTicketsOnly 
               ? 'Daftar pengajuan kendala teknis, kerusakan fasilitas, dan permohonan bantuan Anda.'
+              : isGA
+              ? 'Daftar tiket kendala fasilitas gedung & sarana GA, serta tiket kendala yang Anda ajukan.'
               : 'Laporan insiden, kerusakan perangkat IT, pemeliharaan fasilitas GA, dan permintaan lisensi software.'}
           </p>
         </div>
@@ -161,8 +170,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
         </div>
       </div>
 
-      {/* SLA Policy Summary (Hidden for employee / ordinary user) */}
-      {!isEmployee && (
+      {/* SLA Policy Summary (Shown for IT, Super Admin, and GA) */}
+      {!isSelfTicketsOnly && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
             <div className="flex items-center justify-between text-xs font-bold text-rose-800">
@@ -211,7 +220,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
         <div className="flex items-center gap-2">
           {/* Category Filter */}
           <div className="flex items-center gap-1 overflow-x-auto text-xs">
-            {['ALL', 'IT', 'GA', 'License'].map((cat) => (
+            {availableCategories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
@@ -301,7 +310,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
                         <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-100">
                           <span>{ticket.reporter_name} ({ticket.category})</span>
-                          {canManage && (
+                          {GabahService.canManageTicket(ticket, currentUser) && (
                             <div>
                               {ticket.status === 'open' && (
                                 <button
@@ -418,7 +427,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   </div>
 
                   {/* Status action buttons */}
-                  {canManage && (
+                  {GabahService.canManageTicket(ticket, currentUser) && (
                     <div className="flex items-center gap-2">
                       {ticket.status === 'open' && (
                         <button
@@ -457,14 +466,20 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <div className="text-center py-12 rounded-2xl bg-white border border-slate-200 p-8 space-y-3 shadow-xs">
               <LifeBuoy className="w-12 h-12 mx-auto text-slate-300" />
               <h4 className="font-bold text-slate-800 text-sm">
-                {isEmployee ? 'Belum Ada Tiket Kendala dari Anda' : 'Tidak Ada Tiket Ditemukan'}
+                {isSelfTicketsOnly 
+                  ? 'Belum Ada Tiket Kendala dari Anda' 
+                  : isGA 
+                  ? 'Belum Ada Tiket Layanan GA'
+                  : 'Tidak Ada Tiket Ditemukan'}
               </h4>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                {isEmployee 
+                {isSelfTicketsOnly 
                   ? 'Anda belum memiliki riwayat pengajuan tiket kendala. Klik "Buat Tiket Baru" jika Anda mengalami gangguan IT atau fasilitas kantor.'
+                  : isGA
+                  ? 'Tidak ada tiket kendala fasilitas GA yang menunggu penanganan.'
                   : 'Tidak ada tiket yang cocok dengan pencarian atau filter status yang dipilih.'}
               </p>
-              {isEmployee && (
+              {isSelfTicketsOnly && (
                 <button
                   onClick={handleOpenCreate}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs"

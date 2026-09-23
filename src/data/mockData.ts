@@ -118,6 +118,19 @@ export const INITIAL_USERS: UserProfile[] = [
     temp_password: 'Auditor#2026',
     is_active: true,
   },
+  {
+    id: 'USR-05',
+    name: 'Anisa Putri, S.Ak',
+    email: 'anisa.putri@foodstation.co.id',
+    role: 'Karyawan',
+    role_label: 'Staf Keuangan & Perpajakan',
+    division: 'Umum',
+    department: 'Divisi Keuangan & Akuntansi',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    phone: '081299334455',
+    temp_password: 'Keuangan#2026',
+    is_active: true,
+  },
 ];
 
 export const INITIAL_VENDORS: Vendor[] = [

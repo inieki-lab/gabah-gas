@@ -12,9 +12,12 @@ import {
   Clock,
   ScanLine,
   Camera,
-  LogOut 
+  LogOut,
+  Coffee,
+  CalendarClock
 } from 'lucide-react';
 import { UserProfile, UserRole, Ticket, Loan, RoomReservation } from '../types';
+import { GabahService } from '../services/gabahService';
 
 interface HeaderNavbarProps {
   currentUser: UserProfile;
@@ -22,14 +25,14 @@ interface HeaderNavbarProps {
   onSelectUser: (user: UserProfile) => void;
   onSwitchRoleSimulation?: (role: UserRole) => void;
   onOpenScannerModal: () => void;
-  onOpenGlobalSearch?: () => void;
+  onOpenGlobalSearch: () => void;
   onLogout: () => void;
   pendingLoans?: Loan[];
   urgentTickets?: Ticket[];
   roomReservations?: RoomReservation[];
   onNavigateToLoans: () => void;
   onNavigateToTickets: () => void;
-  onNavigateToMeetingRooms?: (categoryFilter?: 'all' | 'consumption' | 'documentation') => void;
+  onNavigateToMeetingRooms?: (categoryFilter?: 'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities') => void;
 }
 
 export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
@@ -53,19 +56,47 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   const safeLoans = Array.isArray(pendingLoans) ? pendingLoans : [];
   const safeTickets = Array.isArray(urgentTickets) ? urgentTickets : [];
   const isHumas = currentUser.role === 'Humas';
-  const docReservations = isHumas
+  const isIT = currentUser.role === 'IT' || currentUser.role === 'Admin GABAH';
+  const isGA = currentUser.role === 'GA' || currentUser.role === 'Admin GABAH';
+
+  // 1. Photo & documentation request notifications - strictly for Humas (and Admin GABAH)
+  const docReservations = (isHumas || currentUser.role === 'Admin GABAH')
     ? (roomReservations || []).filter(
         r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
       )
     : [];
 
-  const totalNotifications = isHumas 
-    ? docReservations.length + safeLoans.length + safeTickets.length
-    : safeLoans.length + safeTickets.length;
+  // 2. IT Support facility notifications: reservations requesting IT items (Polycom, Projector, Smart TV, HDMI, etc.)
+  const itFacilityReservations = isIT
+    ? (roomReservations || []).filter(
+        r => !['cancelled', 'rejected'].includes(r.status) && GabahService.getITFacilities(r).length > 0
+      )
+    : [];
+
+  // 3. GA facility & pantry notifications: reservations requesting GA facilities, pantry consumption, or pending approval
+  const gaReservations = isGA
+    ? (roomReservations || []).filter(
+        r => !['cancelled', 'rejected'].includes(r.status) && (
+          GabahService.getGAFacilities(r).length > 0 ||
+          r.consumption_requested ||
+          r.status === 'pending_approval'
+        )
+      )
+    : [];
+
+  const totalNotifications = 
+    safeLoans.length + 
+    safeTickets.length + 
+    (isHumas ? docReservations.length : 0) +
+    (currentUser.role === 'IT' ? itFacilityReservations.length : 0) +
+    (currentUser.role === 'GA' ? gaReservations.length : 0) +
+    (currentUser.role === 'Admin GABAH' ? (docReservations.length + itFacilityReservations.length + gaReservations.length) : 0);
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#DFDCE3] text-slate-800 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        
+        {/* Brand Logo & Tagline */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-[#4ABDAC] flex items-center justify-center shadow-md shadow-[#4ABDAC]/25">
             <Building2 className="w-6 h-6 text-white" />
@@ -81,11 +112,12 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           </div>
         </div>
 
+        {/* Center: Global Search Omnibox Trigger */}
         {onOpenGlobalSearch && (
           <div className="flex-1 max-w-md mx-2 hidden md:block">
             <button
               onClick={onOpenGlobalSearch}
-              className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-slate-100/80 hover:bg-slate-100 border border-slate-200/80 text-xs text-slate-500 hover:text-slate-800 transition-colors group"
+              className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-slate-100/80 hover:bg-slate-100 border border-slate-200/80 text-xs text-slate-500 hover:text-slate-800 transition-all group shadow-2xs"
             >
               <div className="flex items-center gap-2.5">
                 <Search className="w-4 h-4 text-slate-400 group-hover:text-[#4ABDAC] transition-colors" />
@@ -99,7 +131,10 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           </div>
         )}
 
+        {/* Right Actions: QR Scanner + Notifications + User Switcher + Logout */}
         <div className="flex items-center gap-2 sm:gap-2.5">
+          
+          {/* Quick QR & Barcode Scanner Button */}
           <button
             id="btn-scan-qr-header"
             onClick={onOpenScannerModal}
@@ -110,6 +145,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             <span className="hidden lg:inline">Scan Barcode</span>
           </button>
 
+          {/* Notifications Popover */}
           <div className="relative">
             <button
               id="btn-notifications"
@@ -126,7 +162,9 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-50">
+              <div 
+                className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-50"
+              >
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                     <Bell className="w-4 h-4 text-emerald-600" />
@@ -141,7 +179,84 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 </div>
 
                 <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto mt-2 space-y-2">
-                  {isHumas && docReservations.map(res => (
+                  {/* IT Facility Requests - For IT and Admin GABAH */}
+                  {itFacilityReservations.map(res => {
+                    const itItems = GabahService.getITFacilities(res);
+                    return (
+                      <div 
+                        key={`it-fac-${res.id}`}
+                        onClick={() => {
+                          setShowNotifications(false);
+                          onNavigateToMeetingRooms?.('it_facilities');
+                        }}
+                        className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 hover:bg-sky-100/70 cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="font-bold text-sky-900 flex items-center gap-1">
+                            <Laptop className="w-3.5 h-3.5 text-sky-600" /> Fasilitas IT: {res.room_name}
+                          </span>
+                          <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">{res.date}</span>
+                        </div>
+                        <p className="text-xs text-slate-800 font-semibold line-clamp-1">{res.title}</p>
+                        <p className="text-[11px] text-slate-600 mt-0.5">
+                          {res.start_time} - {res.end_time} WIB • {res.organizer_name} ({res.organizer_department})
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {itItems.map((item, idx) => (
+                            <span key={idx} className="text-[10px] bg-sky-100/90 text-sky-900 px-1.5 py-0.2 rounded font-medium">
+                              🖥️ {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* GA Facility & Pantry Requests - For GA and Admin GABAH */}
+                  {gaReservations.map(res => {
+                    const gaItems = GabahService.getGAFacilities(res);
+                    return (
+                      <div 
+                        key={`ga-fac-${res.id}`}
+                        onClick={() => {
+                          setShowNotifications(false);
+                          onNavigateToMeetingRooms?.(res.consumption_requested ? 'consumption' : 'ga_facilities');
+                        }}
+                        className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/70 cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="font-bold text-emerald-900 flex items-center gap-1">
+                            {res.status === 'pending_approval' ? (
+                              <CalendarClock className="w-3.5 h-3.5 text-amber-600" />
+                            ) : (
+                              <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                            )}
+                            {res.status === 'pending_approval' ? 'Approval Ruangan' : 'Fasilitas & Pantry GA'}: {res.room_name}
+                          </span>
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">{res.date}</span>
+                        </div>
+                        <p className="text-xs text-slate-800 font-semibold line-clamp-1">{res.title}</p>
+                        <p className="text-[11px] text-slate-600 mt-0.5">
+                          {res.start_time} - {res.end_time} WIB • {res.organizer_name} ({res.organizer_department})
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {res.consumption_requested && (
+                            <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-medium flex items-center gap-1">
+                              <Coffee className="w-3 h-3 text-amber-700" /> {res.consumption_type || 'Pantry'}
+                            </span>
+                          )}
+                          {gaItems.map((item, idx) => (
+                            <span key={idx} className="text-[10px] bg-emerald-100/90 text-emerald-900 px-1.5 py-0.2 rounded font-medium">
+                              🏢 {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Photo / Documentation Requests - Strictly for Humas employees only (or Admin GABAH) */}
+                  {(isHumas || currentUser.role === 'Admin GABAH') && docReservations.map(res => (
                     <div 
                       key={`doc-${res.id}`}
                       onClick={() => {
@@ -218,6 +333,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             )}
           </div>
 
+          {/* Granular RBAC Role Switcher (Clean White) */}
           <div className="relative">
             <button
               id="btn-user-role-dropdown"
@@ -241,6 +357,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
               <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
             </button>
 
+            {/* Dropdown Menu for Roles & Simulation */}
             {showRoleDropdown && (
               <div 
                 className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 z-50 max-h-[85vh] overflow-y-auto"
@@ -259,6 +376,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   <p className="text-[11px] text-slate-500 mt-0.5">Uji coba akses dan tampilan per role secara langsung</p>
                 </div>
 
+                {/* Section 1: Registered Users in Database */}
                 <div className="mb-3">
                   <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
                     Akun Terdaftar ({(allUsers || []).length})
@@ -297,6 +415,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   </div>
                 </div>
 
+                {/* Section 2: Role Simulation (Fast testing for all menus across all users) */}
                 <div className="pt-2 border-t border-slate-100">
                   <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5 flex items-center justify-between">
                     <span>Simulasi Cek Menu (RBAC)</span>
@@ -340,6 +459,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   </div>
                 </div>
 
+                {/* Back to Real Super Admin Button if in simulation mode */}
                 {currentUser?.id?.startsWith('SIM-') && (allUsers || []).length > 0 && (
                   <div className="mt-2.5 pt-2 border-t border-slate-100">
                     <button
@@ -361,6 +481,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             )}
           </div>
 
+          {/* Logout Button */}
           <button
             onClick={onLogout}
             className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors"
@@ -368,7 +489,9 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           >
             <LogOut className="w-4 h-4" />
           </button>
+
         </div>
+
       </div>
     </header>
   );

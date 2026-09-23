@@ -106,6 +106,27 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
 
 ---
 
+### 2.5 Penghapusan Seluruh Referensi & Artefak Laravel 11
+* **Latar Belakang:**
+  * Proyek **GABAH** tidak menggunakan backend PHP/Laravel, melainkan berjalan secara penuh di atas arsitektur **Node.js, Express, TSX, Vite, dan React 19 (TypeScript Fullstack)** dengan endpoint API terotentikasi di `server.ts`.
+  * Seluruh teks, tombol, modal blueprint, dan aset bertuliskan *Laravel 11* telah dihapus dari seluruh aplikasi agar tidak menimbulkan kerancuan bagi pengguna dan pengembang.
+* **Tindakan yang Dilakukan:**
+  1. **Header Navigation (`src/components/HeaderNavbar.tsx`):**
+     * Menghapus tombol *"Download Backend (.tar.gz)"* dan tombol *"Laravel 11 Backend (PHP 8.3)"*.
+     * Menghapus prop `onOpenArchitectureModal` dan import icon `Code2`.
+  2. **Sidebar Navigation (`src/components/Sidebar.tsx`):**
+     * Menghapus menu tab `laravel_spec` ("Laravel 11 Backend - Arsitektur Service Layer") dari grup menu *"Sistem & Analitik"*.
+     * Menghapus tipe `'laravel_spec'` dari enum `NavTab`.
+  3. **Root Controller (`src/App.tsx`):**
+     * Menghapus state `isArchitectureModalOpen`, import `LaravelArchitectureModal`, dan render elemen dialognya.
+  4. **Pembersihan File:**
+     * Menghapus file modal `src/components/modals/LaravelArchitectureModal.tsx`.
+     * Menghapus arsip unduhan `public/gabah-source.tar.gz`.
+  5. **Pembaruan Dokumentasi (`README.md` & `AUDIT_NOTES.md`):**
+     * Memperbarui deskripsi arsitektur teknis agar 100% mencerminkan stack aktual: Node.js + Express backend dengan TypeScript.
+
+---
+
 ## 3. Matriks 9 Peran (RBAC) & Kredensial Pengujian (Terverifikasi 100%)
 
 | Peran (Role) | Nama Persona | Email Utama & Alias | Password Valid |
@@ -139,5 +160,6 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
 
 Jika melanjutkan pengembangan setelah turn ini:
 1. **Verifikasi Build:** Selalu jalankan `compile_applet` dan `lint_applet` setelah melakukan perubahan kode.
+2. **Backend Persistance:** Backend Express (`server.ts` & `server/`) menyajikan REST API terverifikasi yang terhubung ke `src/services/gabahApi.ts` dengan persistensi data JSON & memory store.
 3. **Penyimpanan Multi-User:** Pastikan data yang disimpan di `localStorage` memiliki fallback aman saat data dari live backend tidak tersedia.
 4. **Proteksi Aset Aktif:** Pertahankan validasi integritas data (misalnya: divisi atau kategori yang masih memiliki aset terdaftar tidak boleh dihapus sembarangan).

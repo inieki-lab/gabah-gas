@@ -426,9 +426,13 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                         Disetujui: <strong className="text-slate-700">{loan.approver_name || 'Tim Pengelola'}</strong>
                       </span>
 
-                      {onReturnLoan && loan.status === 'borrowed' && (
+                      {(loan.status === 'borrowed' || loan.status === 'active') && (
                         <button
-                          onClick={() => onReturnLoan(loan.id)}
+                          onClick={() => {
+                            if (onReturnLoan) {
+                              onReturnLoan(loan.id);
+                            }
+                          }}
                           className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-2xs"
                         >
                           Ajukan Pengembalian
