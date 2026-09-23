@@ -6,55 +6,16 @@ import { db, seedInitialData, CANONICAL_USERS } from './db';
 import { hashPassword } from './crypto';
 import { AssetNumberingEngine } from './numbering';
 
-function isPlaceholderHostname(hostname?: string | null): boolean {
-  if (!hostname) return false;
-  const lower = hostname.toLowerCase();
-  return lower === 'database' || lower === 'postgres';
-}
-
 function resolveDbConfig() {
   const rawUrl = process.env.DATABASE_URL;
   const rawHost = process.env.PGHOST;
 
-  let isPlaceholder = false;
-  if (rawUrl) {
-    try {
-      const parsed = new URL(rawUrl);
-      if (isPlaceholderHostname(parsed.hostname)) {
-        isPlaceholder = true;
-      }
-    } catch {
-      if (rawUrl.includes('@database:') || rawUrl.includes('@database/') || rawUrl.includes('@postgres:')) {
-        isPlaceholder = true;
-      }
-    }
-  }
+  // DATABASE_URL and PGHOST are explicit database configuration. Docker Compose
+  // service names such as "database" and "postgres" are valid DNS hostnames.
+  const isConfigured = Boolean(rawUrl || rawHost);
 
-  if (rawHost && isPlaceholderHostname(rawHost)) {
-    isPlaceholder = true;
-  }
-
-  // If the host is a docker-compose placeholder ('database' or 'postgres'),
-  // do NOT target it to prevent DNS EAI_AGAIN resolution failures in standalone environments.
-  if (isPlaceholder) {
-    return {
-      isConfigured: false,
-      poolConfig: {
-        host: '127.0.0.1',
-        port: 5432,
-        database: 'gabah_db',
-        user: 'gabah_user',
-        password: '',
-        max: 1,
-        idleTimeoutMillis: 1000,
-        connectionTimeoutMillis: 500,
-      },
-    };
-  }
-
-  const hasRealConfig = Boolean(rawUrl || (rawHost && rawHost !== '127.0.0.1' && rawHost !== 'localhost'));
   return {
-    isConfigured: hasRealConfig,
+    isConfigured,
     poolConfig: {
       connectionString: rawUrl || undefined,
       host: rawHost || (rawUrl ? undefined : '127.0.0.1'),
