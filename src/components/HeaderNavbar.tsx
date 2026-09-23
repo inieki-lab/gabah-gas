@@ -4,7 +4,6 @@ import {
   Search, 
   Bell, 
   Shield, 
-  Code2, 
   ChevronDown, 
   UserCheck, 
   AlertTriangle, 
@@ -22,7 +21,6 @@ interface HeaderNavbarProps {
   allUsers?: UserProfile[];
   onSelectUser: (user: UserProfile) => void;
   onSwitchRoleSimulation?: (role: UserRole) => void;
-  onOpenArchitectureModal: () => void;
   onOpenScannerModal: () => void;
   onOpenGlobalSearch?: () => void;
   onLogout: () => void;
@@ -39,7 +37,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   allUsers = [],
   onSelectUser,
   onSwitchRoleSimulation,
-  onOpenArchitectureModal,
   onOpenScannerModal,
   onOpenGlobalSearch,
   onLogout,
@@ -56,7 +53,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   const safeLoans = Array.isArray(pendingLoans) ? pendingLoans : [];
   const safeTickets = Array.isArray(urgentTickets) ? urgentTickets : [];
   const isHumas = currentUser.role === 'Humas';
-  // Photo & documentation request notifications are strictly for Humas employees only
   const docReservations = isHumas
     ? (roomReservations || []).filter(
         r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
@@ -70,8 +66,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#DFDCE3] text-slate-800 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        
-        {/* Brand Logo & Tagline */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-[#4ABDAC] flex items-center justify-center shadow-md shadow-[#4ABDAC]/25">
             <Building2 className="w-6 h-6 text-white" />
@@ -87,12 +81,11 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           </div>
         </div>
 
-        {/* Center: Global Search Omnibox Trigger */}
         {onOpenGlobalSearch && (
           <div className="flex-1 max-w-md mx-2 hidden md:block">
             <button
               onClick={onOpenGlobalSearch}
-              className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-slate-100/80 hover:bg-slate-100 border border-slate-200/80 text-xs text-slate-500 hover:text-slate-800 transition-all group shadow-2xs"
+              className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-slate-100/80 hover:bg-slate-100 border border-slate-200/80 text-xs text-slate-500 hover:text-slate-800 transition-colors group"
             >
               <div className="flex items-center gap-2.5">
                 <Search className="w-4 h-4 text-slate-400 group-hover:text-[#4ABDAC] transition-colors" />
@@ -106,10 +99,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           </div>
         )}
 
-        {/* Right Actions: QR Scanner + Laravel Architecture + Notifications + User Switcher + Logout */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          
-          {/* Quick QR & Barcode Scanner Button */}
           <button
             id="btn-scan-qr-header"
             onClick={onOpenScannerModal}
@@ -120,35 +110,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             <span className="hidden lg:inline">Scan Barcode</span>
           </button>
 
-          {/* Backend Code & Architecture Inspector Button (Only visible for Admin GABAH) */}
-          {currentUser.role === 'Admin GABAH' && (
-            <>
-              <a
-                id="btn-download-source-header"
-                href="/gabah-source.tar.gz"
-                download="gabah-laravel11-source.tar.gz"
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#F7B733]/15 hover:bg-[#F7B733]/25 text-amber-900 border border-[#F7B733]/40 text-xs font-semibold transition-all shadow-xs group"
-                title="Download Source Code Backend Laravel 11 (tar.gz)"
-              >
-                <Code2 className="w-4 h-4 text-amber-700 group-hover:scale-110 transition-transform" />
-                <span className="hidden xl:inline">Download Backend</span>
-                <span className="text-[10px] bg-[#F7B733]/40 text-amber-950 px-1 py-0.2 rounded font-bold">.tar.gz</span>
-              </a>
-
-              <button
-                id="btn-laravel-architecture"
-                onClick={onOpenArchitectureModal}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-semibold transition-all shadow-xs group"
-                title="Lihat Arsitektur Laravel 11, Service Layer & Database Migration"
-              >
-                <Code2 className="w-4 h-4 text-rose-600 group-hover:scale-110 transition-transform" />
-                <span className="hidden md:inline">Laravel 11 Backend</span>
-                <span className="text-[10px] bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded font-bold">PHP 8.3</span>
-              </button>
-            </>
-          )}
-
-          {/* Notifications Popover */}
           <div className="relative">
             <button
               id="btn-notifications"
@@ -165,9 +126,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             </button>
 
             {showNotifications && (
-              <div 
-                className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-50"
-              >
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-50">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                     <Bell className="w-4 h-4 text-emerald-600" />
@@ -182,7 +141,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 </div>
 
                 <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto mt-2 space-y-2">
-                  {/* Photo / Documentation Requests - Strictly for Humas employees only */}
                   {isHumas && docReservations.map(res => (
                     <div 
                       key={`doc-${res.id}`}
@@ -260,7 +218,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             )}
           </div>
 
-          {/* Granular RBAC Role Switcher (Clean White) */}
           <div className="relative">
             <button
               id="btn-user-role-dropdown"
@@ -284,7 +241,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
               <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
             </button>
 
-            {/* Dropdown Menu for Roles & Simulation */}
             {showRoleDropdown && (
               <div 
                 className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 z-50 max-h-[85vh] overflow-y-auto"
@@ -303,7 +259,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   <p className="text-[11px] text-slate-500 mt-0.5">Uji coba akses dan tampilan per role secara langsung</p>
                 </div>
 
-                {/* Section 1: Registered Users in Database */}
                 <div className="mb-3">
                   <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
                     Akun Terdaftar ({(allUsers || []).length})
@@ -342,7 +297,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   </div>
                 </div>
 
-                {/* Section 2: Role Simulation (Fast testing for all menus across all users) */}
                 <div className="pt-2 border-t border-slate-100">
                   <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5 flex items-center justify-between">
                     <span>Simulasi Cek Menu (RBAC)</span>
@@ -386,7 +340,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   </div>
                 </div>
 
-                {/* Back to Real Super Admin Button if in simulation mode */}
                 {currentUser?.id?.startsWith('SIM-') && (allUsers || []).length > 0 && (
                   <div className="mt-2.5 pt-2 border-t border-slate-100">
                     <button
@@ -408,7 +361,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             )}
           </div>
 
-          {/* Logout Button */}
           <button
             onClick={onLogout}
             className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors"
@@ -416,9 +368,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           >
             <LogOut className="w-4 h-4" />
           </button>
-
         </div>
-
       </div>
     </header>
   );
