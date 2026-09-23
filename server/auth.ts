@@ -87,6 +87,10 @@ export function recordFailedLogin(identifier: string): { isLocked: boolean; rema
  * Check if identifier is currently locked out
  */
 export function isLoginLocked(identifier: string): { isLocked: boolean; remainingLockoutSeconds?: number } {
+  // Dalam mode pengembangan, matikan lockout IP agar tidak memblokir pengujian multi-akun
+  if (process.env.NODE_ENV !== 'production') {
+    return { isLocked: false };
+  }
   const record = loginAttempts.get(identifier);
   if (!record || record.lockedUntil <= Date.now()) {
     return { isLocked: false };

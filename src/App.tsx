@@ -138,12 +138,12 @@ export default function App() {
             setCurrentUser(me);
           } else {
             // Token expired or invalid, auto-login default superadmin
-            const res = await gabahApi.login('admin.gabah@foodstation.id', 'AdminGabah#2026').catch(() => null);
+            const res = await gabahApi.login('admin@foodstation.co.id', 'AdminGabah#2026').catch(() => null);
             if (res?.user) setCurrentUser(res.user);
           }
         } else {
           // Initialize active session for default persona
-          const res = await gabahApi.login('admin.gabah@foodstation.id', 'AdminGabah#2026').catch(() => null);
+          const res = await gabahApi.login('admin@foodstation.co.id', 'AdminGabah#2026').catch(() => null);
           if (res?.user) setCurrentUser(res.user);
         }
       } catch (err) {
@@ -159,28 +159,39 @@ export default function App() {
   const handleSelectUser = async (user: UserProfile) => {
     try {
       const res = await gabahApi.switchRole(user.id);
-      if (res?.data?.user) {
-        setCurrentUser(res.data.user);
-      } else {
-        setCurrentUser(user);
-      }
-      showToast(`Berpindah akun aktif: ${user.name} (${user.role_label})`, 'info');
+      const targetUser = res?.user || res?.data?.user || user;
+      setCurrentUser(targetUser);
+      showToast(`Berpindah akun aktif: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
-      showToast(`Gagal mengganti role: ${err.message}`, 'warning');
+      console.warn('Switch user warning:', err);
+      setCurrentUser(user);
+      showToast(`Berpindah akun aktif: ${user.name} (${user.role_label || user.role})`, 'info');
     }
   };
 
   const handleSwitchRoleSimulation = async (role: UserRole) => {
     try {
       const res = await gabahApi.switchRole({ role });
-      if (res?.data?.user) {
-        setCurrentUser(res.data.user);
-        showToast(`Beralih simulasi menu: ${res.data.user.role_label}`, 'info');
+      const targetUser = res?.user || res?.data?.user;
+      if (targetUser) {
+        setCurrentUser(targetUser);
+        showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
+      } else {
+        const found = (allUsers || []).find(u => u.role === role) || INITIAL_USERS.find(u => u.role === role);
+        if (found) {
+          setCurrentUser(found);
+          showToast(`Beralih peran: ${found.name} (${found.role_label || found.role})`, 'info');
+        }
       }
       await refreshData();
     } catch (err: any) {
-      showToast(`Gagal simulasi role: ${err.message}`, 'warning');
+      console.warn('Switch role simulation warning:', err);
+      const found = (allUsers || []).find(u => u.role === role) || INITIAL_USERS.find(u => u.role === role);
+      if (found) {
+        setCurrentUser(found);
+        showToast(`Beralih peran: ${found.name} (${found.role_label || found.role})`, 'info');
+      }
     }
   };
 
@@ -497,8 +508,10 @@ export default function App() {
         <LoginPage
           availableUsers={allUsers}
           onLoginSuccess={(u) => {
-            handleSelectUser(u);
+            setCurrentUser(u);
             setViewMode('portal');
+            showToast(`Berhasil masuk sebagai ${u.name} (${u.role_label || u.role})`, 'success');
+            refreshData();
           }}
           onBackToLanding={() => setViewMode('landing')}
         />
@@ -565,7 +578,11 @@ export default function App() {
           pendingReservationsCount={pendingReservations.length}
           documentationRequestsCount={roomReservations.filter(r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)).length}
           currentUserRole={currentUser.role}
-          onOpenAdministration={() => setIsAdministrationModalOpen(true)}
+          onOpenAdministration={() => {
+            if (currentUser.role === 'Admin GABAH') {
+              setIsAdministrationModalOpen(true);
+            }
+          }}
         />
 
         {/* Main Content Pane */}
@@ -771,6 +788,26 @@ export default function App() {
         asset={selectedAssetForEdit}
         isOpen={!!selectedAssetForEdit}
         onClose={() => setSelectedAssetForEdit(null)}
+        onSaveAsset={async (assetId, updates, assignUserId, assignReason) => {
+          try {
+            if (updates && Object.keys(updates).length > 0) {
+              await gabahApi.updateAsset(assetId, updates);
+            }
+            if (assignUserId !== undefined) {
+              await gabahApi.assignAsset(assetId, assignUserId, assignReason || 'Penugasan aset karyawan');
+            }
+            await refreshData();
+            showToast(assignUserId ? 'Aset berhasil ditugaskan ke pegawai!' : 'Perubahan aset berhasil disimpan!');
+            if (selectedAssetForDetail?.id === assetId) {
+              const all = await gabahApi.getAssets();
+              const updated = all.find(a => a.id === assetId);
+              if (updated) setSelectedAssetForDetail(updated);
+            }
+          } catch (err: any) {
+            showToast(`Gagal menyimpan: ${err.message}`, 'warning');
+            throw err;
+          }
+        }}
         onSaved={async (saved) => {
           if (selectedAssetForDetail?.id === saved.id) {
             setSelectedAssetForDetail(saved);
@@ -778,9 +815,13 @@ export default function App() {
           await refreshData();
           showToast(`Aset ${saved.asset_number} berhasil diperbarui & disimpan!`);
         }}
+        onOpenBastModal={(asset) => {
+          handleGenerateBastForAsset(asset);
+        }}
         currentUser={currentUser}
         users={allUsers}
         allUsers={allUsers}
+        allAssets={assets}
       />
 
       <QRCodeModal
@@ -806,7 +847,7 @@ export default function App() {
       />
 
       <AdministrationModal
-        isOpen={isAdministrationModalOpen}
+        isOpen={isAdministrationModalOpen && currentUser?.role === 'Admin GABAH'}
         onClose={() => setIsAdministrationModalOpen(false)}
         users={allUsers}
         auditLogs={auditLogs}

@@ -282,11 +282,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           ))}
 
-          {(isSuperAdmin || activeRole === 'Auditor') && (
+          {/* Pusat Administrasi: HANYA untuk Super Admin (Admin GABAH) */}
+          {isSuperAdmin && (
             <div className="pt-2 border-t border-slate-100 space-y-1">
-              <div className="px-2 pb-1">
+              <div className="px-2 pb-1 flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  {isSuperAdmin ? 'Super Admin' : 'Tata Kelola & Audit'}
+                  Pusat Administrasi
+                </span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                  Super Admin Only
                 </span>
               </div>
               <button
@@ -303,18 +307,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <ShieldCheck className="w-4 h-4 shrink-0 text-[#4ABDAC]" />
                   <div className="truncate">
-                    <div className="text-xs leading-tight truncate">Pusat Administrasi</div>
+                    <div className="text-xs leading-tight truncate">Administration Control Panel</div>
                     <div className="text-[10px] leading-tight mt-0.5 text-slate-400 truncate">
-                      {isSuperAdmin ? '10 Sub-Modul Kontrol' : 'Mode Verifikasi & Audit'}
+                      10 Sub-Modul Kontrol &amp; Konfigurasi
                     </div>
                   </div>
                 </div>
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 ${
-                  isSuperAdmin 
-                    ? 'bg-[#4ABDAC]/15 text-[#206f65] border-[#4ABDAC]/30' 
-                    : 'bg-purple-100 text-purple-800 border-purple-200'
-                }`}>
-                  {isSuperAdmin ? 'ADMIN' : 'AUDIT'}
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 bg-[#4ABDAC]/15 text-[#206f65] border-[#4ABDAC]/30">
+                  Super Admin
                 </span>
               </button>
             </div>
@@ -322,7 +322,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </aside>
 
-      {showAdministration && isSuperAdmin && (
+      {showAdministration && (
         <AdministrationModal
           isOpen={showAdministration}
           onClose={() => setShowAdministration(false)}

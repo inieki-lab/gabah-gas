@@ -56,9 +56,12 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   const safeLoans = Array.isArray(pendingLoans) ? pendingLoans : [];
   const safeTickets = Array.isArray(urgentTickets) ? urgentTickets : [];
   const isHumas = currentUser.role === 'Humas';
-  const docReservations = (roomReservations || []).filter(
-    r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
-  );
+  // Photo & documentation request notifications are strictly for Humas employees only
+  const docReservations = isHumas
+    ? (roomReservations || []).filter(
+        r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
+      )
+    : [];
 
   const totalNotifications = isHumas 
     ? docReservations.length + safeLoans.length + safeTickets.length
@@ -179,8 +182,8 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 </div>
 
                 <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto mt-2 space-y-2">
-                  {/* Photo / Documentation Requests for Humas / All */}
-                  {docReservations.map(res => (
+                  {/* Photo / Documentation Requests - Strictly for Humas employees only */}
+                  {isHumas && docReservations.map(res => (
                     <div 
                       key={`doc-${res.id}`}
                       onClick={() => {

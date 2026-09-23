@@ -21,7 +21,10 @@ import {
   FileSpreadsheet,
   Truck,
   Printer,
-  Pencil
+  Pencil,
+  UserCheck,
+  UserPlus,
+  User
 } from 'lucide-react';
 import { Asset, AssetCategoryType, AssetStatus, UserProfile } from '../../types';
 import { GabahService, formatRupiah, formatDate, exportAssetsToCsv } from '../../services/gabahService';
@@ -379,9 +382,35 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                     {/* Location / User */}
                     <td className="px-4 py-3.5 align-top">
                       <div className="text-slate-800 font-medium text-[11px]">{asset.location}</div>
-                      {asset.assigned_to && (
-                        <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">
-                          PIC: {asset.assigned_to.name} ({asset.assigned_to.department})
+                      {asset.assigned_to ? (
+                        <div className="mt-1">
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                            <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span className="truncate max-w-[150px]">PIC: {asset.assigned_to.name}</span>
+                          </div>
+                          <div className="text-[9px] text-slate-500 mt-0.5 truncate max-w-[170px]">
+                            {asset.assigned_to.department}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                            Pool / Belum Di-assign
+                          </span>
+                          {onEditAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditAsset(asset);
+                              }}
+                              className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-2xs"
+                              title="Tugaskan Aset Ini ke Pegawai / Karyawan"
+                            >
+                              <UserPlus className="w-2.5 h-2.5" />
+                              <span>Assign PIC</span>
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>

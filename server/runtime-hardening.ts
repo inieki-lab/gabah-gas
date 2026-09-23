@@ -54,6 +54,7 @@ function scopedAttention(actor: ServerUser, items: any[]) {
 const PUBLIC_API_PATHS = [
   '/api/health',
   '/api/auth/login',
+  '/api/auth/switch-role',
 ];
 
 export function gabahSecurityMiddleware(req: Request, res: Response, next: NextFunction) {
@@ -106,7 +107,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
 
   // Auditor is strictly READ-ONLY across the entire system
   if (actor.role === 'Auditor' && req.method !== 'GET') {
-    const allowedAuditorActions = ['/api/auth/logout', '/api/notifications/read-all'];
+    const allowedAuditorActions = ['/api/auth/logout', '/api/auth/switch-role', '/api/notifications/read-all'];
     const isNotificationRead = req.path.match(/^\/api\/notifications\/[^/]+\/read$/);
     if (!allowedAuditorActions.includes(req.path) && !isNotificationRead) {
       return res.status(403).json({

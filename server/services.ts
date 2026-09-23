@@ -1011,11 +1011,11 @@ export class GabahDomainService {
       });
     }
 
-    // 2. Notify Humas for Documentation Request
+    // 2. Notify Humas for Documentation Request (Photo / Media Coverage)
+    // STRICT RULE: Photo & documentation notifications are exclusively for Humas employees
     if (reservation.documentation_requested) {
       this.notify({
         recipient_role: 'Humas',
-        recipient_division: 'GA',
         title: `Permintaan Dokumentasi Humas: ${room.name}`,
         message: `Permintaan liputan dokumentasi (${reservation.documentation_type || 'Dokumentasi Foto/Video'}) untuk agenda "${reservation.title}" (${reservation.date} ${reservation.start_time}-${reservation.end_time}) oleh ${actor.name} (${actor.department}). Catatan: ${reservation.documentation_notes || '-'}`,
         severity: 'action_required',
@@ -1072,11 +1072,10 @@ export class GabahDomainService {
       category: 'system',
     });
 
-    // Notify Humas team if photography/documentation was requested
+    // Notify Humas team if photography/documentation was requested (Humas only)
     if (reservation.documentation_requested) {
       this.notify({
         recipient_role: 'Humas',
-        recipient_division: 'GA',
         title: `Jadwal Liputan Foto Disetujui: ${reservation.room_name}`,
         message: `Rapat "${reservation.title}" pada ${reservation.date} (${reservation.start_time} - ${reservation.end_time}) di ${reservation.room_name} telah disetujui GA. Tim Humas dapat bersiap untuk dokumentasi foto kegiatan.`,
         severity: 'action_required',

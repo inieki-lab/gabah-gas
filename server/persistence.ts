@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { Pool } from 'pg';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, seedInitialData } from './db';
+import { db, seedInitialData, CANONICAL_USERS } from './db';
 import { hashPassword } from './crypto';
 import { AssetNumberingEngine } from './numbering';
 
@@ -108,16 +108,35 @@ function saveStateToFile(payload: any): void {
 }
 
 function hydrateDbFromState(state: any): void {
-  if (Array.isArray(state.users) && state.users.length > 0) {
-    db.users = state.users.map((u: any) => {
-      if (!u.password_hash || !u.password_salt) {
-        const pass = u.temp_password || (u.role === 'Admin GABAH' ? 'AdminGabah#2026' : 'Pangan2026!');
-        const { hash, salt } = hashPassword(pass);
-        return { ...u, password_hash: hash, password_salt: salt };
-      }
-      return u;
-    });
+  const existingUsers: any[] = Array.isArray(state.users) ? state.users : [];
+  const mergedUsers: any[] = [...existingUsers];
+
+  // Guarantee all 9 canonical enterprise users are always present in the datastore
+  for (const cu of CANONICAL_USERS) {
+    const foundIndex = mergedUsers.findIndex(u => u.id === cu.id || (u.email && u.email.toLowerCase() === cu.email.toLowerCase()));
+    if (foundIndex === -1) {
+      const { hash, salt } = hashPassword(cu.initialPassword);
+      mergedUsers.push({
+        ...cu,
+        password_hash: hash,
+        password_salt: salt,
+        temp_password: cu.initialPassword,
+      });
+    } else {
+      // Sync canonical role and label if needed
+      mergedUsers[foundIndex].role = cu.role;
+      mergedUsers[foundIndex].role_label = cu.role_label || mergedUsers[foundIndex].role_label;
+    }
   }
+
+  db.users = mergedUsers.map((u: any) => {
+    if (!u.password_hash || !u.password_salt) {
+      const pass = u.temp_password || (u.role === 'Admin GABAH' ? 'AdminGabah#2026' : 'Pangan2026!');
+      const { hash, salt } = hashPassword(pass);
+      return { ...u, password_hash: hash, password_salt: salt };
+    }
+    return u;
+  });
   if (Array.isArray(state.sessions)) db.sessions = state.sessions;
   if (Array.isArray(state.assets) && state.assets.length > 0) db.assets = state.assets;
   if (Array.isArray(state.movements) && state.movements.length > 0) db.movements = state.movements;

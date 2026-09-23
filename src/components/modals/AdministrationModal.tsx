@@ -32,7 +32,8 @@ import {
   Pencil,
   RotateCcw,
   FileText,
-  Sliders
+  Sliders,
+  Info
 } from 'lucide-react';
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
@@ -105,15 +106,44 @@ export interface NotificationRule {
   warningHours?: number;
 }
 
+export const SYSTEM_ROLES: { value: UserRole; label: string; desc: string }[] = [
+  { value: 'Admin GABAH', label: 'Admin GABAH (Super Admin)', desc: 'Kendali Penuh Seluruh Sistem & Konfigurasi' },
+  { value: 'IT', label: 'IT (Infrastruktur & Jaringan)', desc: 'Pengelola Aset TI, Komputasi & Lisensi' },
+  { value: 'GA', label: 'GA (General Affairs & Fasilitas)', desc: 'Pengelola Fasilitas, Gedung & Ruang Rapat' },
+  { value: 'Sekretaris Direksi', label: 'Sekretaris Direksi', desc: 'Reservasi VIP Ruang Rapat & Notifikasi Agenda' },
+  { value: 'Humas', label: 'Humas & Protokoler', desc: 'Dokumentasi Acara & Rapat di Semua Ruangan' },
+  { value: 'Supply Chain', label: 'Supply Chain & Pergudangan', desc: 'Pengelola Armada Truk & Pabrik Beras' },
+  { value: 'PIBC', label: 'PIBC (Pasar Induk Cipinang)', desc: 'Operasional Kawasan Pasar & Retribusi' },
+  { value: 'Karyawan', label: 'Karyawan (Pegawai Umum)', desc: 'Peminjaman Aset & Pengajuan Tiket' },
+  { value: 'Auditor', label: 'Auditor (Satuan Pengawas Internal)', desc: 'Audit Trail & Rekonsiliasi PSAK 16 Read-Only' },
+];
+
+export const ASSET_MAIN_TYPES = [
+  { value: 'EQUIPMENT', label: 'EQUIPMENT (Peralatan, Mesin & Komputasi)', desc: 'Laptop, PC, Server, Mesin Pabrik, Timbangan, Forklift, Alat Berat' },
+  { value: 'VEHICLE', label: 'VEHICLE (Kendaraan Dinas & Operasional)', desc: 'Truk Logistik Beras, Mobil Dinas Operasional, Sepeda Motor Lapangan' },
+  { value: 'FURNITURE', label: 'FURNITURE (Mebel & Interior Kantor)', desc: 'Meja Rapat, Kursi Ergonomis, Lemari Arsip, Rak Pallet Gudang' },
+  { value: 'BUILDING', label: 'BUILDING (Gedung & Bangunan Fisik)', desc: 'Kantor Pusat Cipinang, Komplek Pergudangan Beras Induk, Pos Keamanan' },
+  { value: 'LAND', label: 'LAND (Tanah & Kawasan Korporat)', desc: 'Kawasan Pasar Induk Beras Cipinang, Lahan Pergudangan' },
+  { value: 'LICENSE', label: 'LICENSE (Hak Cipta & Lisensi Digital)', desc: 'Lisensi OS, Microsoft 365, Software Akuntansi SAP, Lisensi Antivirus' },
+  { value: 'OTHER', label: 'OTHER (Aset Tetap Khusus Lainnya)', desc: 'Genset Cadangan, Instalasi Listrik, Peralatan Lab Uji Beras' },
+];
+
+export const GABAH_TAXONOMY_TYPES: { value: 'IT' | 'License' | 'General'; label: string; desc: string }[] = [
+  { value: 'IT', label: 'IT (Modul Perangkat Keras Komputasi)', desc: 'Mengaktifkan form spesifikasi teknis (CPU, RAM, Storage, IP, MAC Address, Hostname, OS)' },
+  { value: 'License', label: 'License (Modul Lisensi Digital Software)', desc: 'Mengaktifkan pengelolaan lisensi perangkat lunak, jumlah seat, serial key, dan masa aktif' },
+  { value: 'General', label: 'General (Modul Inventaris Fisik / Fasilitas)', desc: 'Pengelolaan sarpras, mebel, kendaraan operasional, dan gedung dengan pelacakan fisik BAST' },
+];
+
 const DEFAULT_PERMISSIONS: RolePermissionRow[] = [
   { role: 'Admin GABAH', desc: 'Super Administrator', assets: 'Full Access', loans: 'Approve & Handover', tickets: 'All Categories', licenses: 'Full', reports: 'Full', audit: 'Full', admin: 'Full Control' },
-  { role: 'IT Support', desc: 'Teknis & Infrastruktur', assets: 'Divisi IT', loans: 'Approve IT Aset', tickets: 'IT & License', licenses: 'Manage', reports: 'Divisi IT', audit: 'View IT', admin: 'No' },
-  { role: 'General Affairs', desc: 'Fasilitas & Gedung', assets: 'Divisi GA', loans: 'Approve GA Aset', tickets: 'Fasilitas GA', licenses: 'Read', reports: 'Divisi GA', audit: 'View GA', admin: 'No' },
-  { role: 'Supply Chain', desc: 'Armada & Gudang Beras', assets: 'Divisi SC', loans: 'Approve Truk/SC', tickets: 'Logistik SC', licenses: 'Read', reports: 'Divisi SC', audit: 'View SC', admin: 'No' },
-  { role: 'PIBC', desc: 'Operasional Pasar', assets: 'Divisi PIBC', loans: 'Approve Pasar', tickets: 'Operasional', licenses: 'Read', reports: 'Divisi PIBC', audit: 'View', admin: 'No' },
-  { role: 'Management', desc: 'Direksi BUMD Pangan', assets: 'All (View)', loans: 'Executive View', tickets: 'SLA Review', licenses: 'View', reports: 'PSAK 16 Full', audit: 'Full Read', admin: 'No' },
-  { role: 'Auditor', desc: 'Inspektorat / BPK', assets: 'Audit Only', loans: 'Audit History', tickets: 'Audit Trail', licenses: 'Audit', reports: 'Rekonsiliasi', audit: 'Full Read', admin: 'No' },
-  { role: 'Karyawan', desc: 'Pegawai Operasional', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket Sendiri', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
+  { role: 'IT', desc: 'Teknologi Informasi & Sistem', assets: 'Divisi IT', loans: 'Approve IT Aset', tickets: 'IT & License', licenses: 'Manage', reports: 'Divisi IT', audit: 'View IT', admin: 'No' },
+  { role: 'GA', desc: 'General Affairs & Fasilitas', assets: 'Divisi GA', loans: 'Approve GA Aset', tickets: 'Fasilitas GA', licenses: 'Read', reports: 'Divisi GA', audit: 'View GA', admin: 'No' },
+  { role: 'Sekretaris Direksi', desc: 'Sekretariat Direksi & Komisaris', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
+  { role: 'Humas', desc: 'Humas & Protokoler Perusahaan', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
+  { role: 'Supply Chain', desc: 'Armada & Pergudangan Beras', assets: 'Divisi SC', loans: 'Approve Truk/SC', tickets: 'Logistik SC', licenses: 'Read', reports: 'Divisi SC', audit: 'View SC', admin: 'No' },
+  { role: 'PIBC', desc: 'Pasar Induk Beras Cipinang', assets: 'Divisi PIBC', loans: 'Approve Pasar', tickets: 'Operasional', licenses: 'Read', reports: 'Divisi PIBC', audit: 'View', admin: 'No' },
+  { role: 'Karyawan', desc: 'Pegawai Operasional BUMD', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket Sendiri', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
+  { role: 'Auditor', desc: 'Satuan Pengawas Internal / BPKP', assets: 'Audit Only', loans: 'Audit History', tickets: 'Audit Trail', licenses: 'Audit', reports: 'Rekonsiliasi', audit: 'Full Read', admin: 'No' },
 ];
 
 const DEFAULT_DIVISIONS: OrgDivision[] = [
@@ -153,7 +183,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   showToast,
   onRefreshData
 }) => {
-  const isCurrentUserAdmin = Boolean(activeRole ? activeRole === 'Admin GABAH' : currentUser?.role === 'Admin GABAH');
+  // Hak akses administrasi dibatasi HANYA untuk Super Admin ('Admin GABAH')
+  const isCurrentUserAdmin = (activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH');
+  const currentRoleName = activeRole || currentUser?.role || 'Admin GABAH';
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 
   // User Management State
@@ -225,29 +257,41 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     is_loanable_by_default: true,
   });
 
-  // Fetch live categories from database
+  // Fetch live master data (categories, locations, divisions) from database
   useEffect(() => {
-    const fetchCats = async () => {
+    const fetchMasterData = async () => {
       try {
-        const liveCats = await gabahApi.getCategories();
+        const [liveCats, liveLocs, liveDivs] = await Promise.all([
+          gabahApi.getCategories().catch(() => []),
+          gabahApi.getLocations().catch(() => []),
+          gabahApi.getDivisions().catch(() => []),
+        ]);
         if (Array.isArray(liveCats) && liveCats.length > 0) {
           const mapped = liveCats.map((c: any) => ({
             code: c.code,
             name: c.name,
             type: c.owner_division || (c.category_type === 'IT' ? 'IT' : 'GA'),
-            main_type: c.main_type,
+            main_type: c.main_type || 'EQUIPMENT',
+            owner_division: c.owner_division || 'IT',
+            category_type: c.category_type || 'IT',
             loanable: c.is_loanable_by_default ?? false,
             total: (assets || []).filter(a => (a.category_code === c.code || a.asset_number?.includes(c.code))).length,
-            description: c.description,
+            description: c.description || '',
           }));
           setCategories(mapped);
         }
+        if (Array.isArray(liveLocs) && liveLocs.length > 0) {
+          setLocations(liveLocs);
+        }
+        if (Array.isArray(liveDivs) && liveDivs.length > 0) {
+          setDivisions(liveDivs);
+        }
       } catch (e) {
-        console.warn('Notice loading categories:', e);
+        console.warn('Notice loading master data:', e);
       }
     };
     if (isOpen) {
-      fetchCats();
+      fetchMasterData();
     }
   }, [isOpen, assets]);
 
@@ -276,6 +320,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           name: created.name,
           type: created.owner_division,
           main_type: created.main_type,
+          owner_division: created.owner_division,
+          category_type: created.category_type,
           loanable: created.is_loanable_by_default,
           total: 0,
           description: created.description,
@@ -347,6 +393,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   });
   const [divisionToEdit, setDivisionToEdit] = useState<OrgDivision | null>(null);
   const [isEditDivisionOpen, setIsEditDivisionOpen] = useState(false);
+  const [isAddDivisionOpen, setIsAddDivisionOpen] = useState(false);
+  const [newDivisionData, setNewDivisionData] = useState({
+    code: '',
+    name: '',
+    leader: '',
+    initialDept: '',
+  });
   const [newDeptInput, setNewDeptInput] = useState('');
 
   // Asset Numbering State
@@ -419,7 +472,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   });
 
   // Master Location Handlers
-  const handleAddLocationSubmit = (e: React.FormEvent) => {
+  const handleAddLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLocationData.name.trim()) {
       showToast('Nama lokasi fasilitas wajib diisi', 'warning');
@@ -431,6 +484,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       address: newLocationData.address.trim() || 'Kawasan PIBC, Jakarta Timur',
       capacity: newLocationData.capacity.trim() || 'Fasilitas Operasional'
     };
+    try {
+      await gabahApi.createLocation(newLoc).catch(() => {});
+    } catch {}
     const updated = [...locations, newLoc];
     setLocations(updated);
     localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
@@ -439,12 +495,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast(`Lokasi fasilitas "${newLoc.name}" berhasil ditambahkan!`, 'success');
   };
 
-  const handleEditLocationSubmit = (e: React.FormEvent) => {
+  const handleEditLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editLocationData.name.trim()) {
       showToast('Nama lokasi fasilitas wajib diisi', 'warning');
       return;
     }
+    try {
+      await gabahApi.updateLocation(editLocationData.id, editLocationData).catch(() => {});
+    } catch {}
     const updated = locations.map(l => l.id === editLocationData.id ? { ...l, ...editLocationData } : l);
     setLocations(updated);
     localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
@@ -453,7 +512,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast(`Lokasi fasilitas "${editLocationData.name}" berhasil diperbarui!`, 'success');
   };
 
-  const handleDeleteLocation = (id: string, name: string) => {
+  const handleDeleteLocation = async (id: string, name: string) => {
+    try {
+      await gabahApi.deleteLocation(id).catch(() => {});
+    } catch {}
     const updated = locations.filter(l => l.id !== id);
     setLocations(updated);
     localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
@@ -461,15 +523,29 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // Categories Handlers (Edit & Delete)
-  const handleEditCategorySubmit = (e: React.FormEvent) => {
+  const handleEditCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryToEdit) return;
-    const updated = categories.map(c => c.code === categoryToEdit.code ? {
-      ...c,
+    const payload = {
       name: editCategoryData.name.trim(),
       main_type: editCategoryData.main_type,
+      owner_division: editCategoryData.owner_division,
+      category_type: editCategoryData.category_type,
       loanable: editCategoryData.is_loanable_by_default,
       description: editCategoryData.description.trim()
+    };
+    try {
+      await gabahApi.updateCategory(categoryToEdit.code, payload).catch(() => {});
+    } catch {}
+    const updated = categories.map(c => c.code === categoryToEdit.code ? {
+      ...c,
+      name: payload.name,
+      type: payload.owner_division,
+      main_type: payload.main_type,
+      owner_division: payload.owner_division,
+      category_type: payload.category_type,
+      loanable: payload.loanable,
+      description: payload.description
     } : c);
     setCategories(updated);
     setIsEditCategoryOpen(false);
@@ -477,12 +553,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast(`Kategori "${categoryToEdit.code}" berhasil diperbarui!`, 'success');
   };
 
-  const handleDeleteCategory = (code: string, name: string) => {
+  const handleDeleteCategory = async (code: string, name: string) => {
     const hasAssets = assets.some(a => a.category_code === code || a.asset_number?.includes(code));
     if (hasAssets) {
       showToast(`Kategori ${code} tidak dapat dihapus karena masih digunakan oleh unit aset aktif.`, 'warning');
       return;
     }
+    try {
+      await gabahApi.deleteCategory(code).catch(() => {});
+    } catch {}
     setCategories(prev => prev.filter(c => c.code !== code));
     showToast(`Kategori ${code} - ${name} berhasil dihapus.`, 'info');
   };
@@ -506,9 +585,59 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // Organization Handlers
-  const handleSaveDivision = (e: React.FormEvent) => {
+  const handleAddDivisionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDivisionData.code.trim() || !newDivisionData.name.trim()) {
+      showToast('Kode dan nama divisi wajib diisi.', 'warning');
+      return;
+    }
+    const code = newDivisionData.code.trim().toUpperCase() as OwnerDivision;
+    if (divisions.some(d => d.code === code)) {
+      showToast(`Divisi dengan kode "${code}" sudah terdaftar.`, 'warning');
+      return;
+    }
+    const newDiv: OrgDivision = {
+      code,
+      name: newDivisionData.name.trim(),
+      leader: newDivisionData.leader.trim() || 'Pimpinan Divisi',
+      depts: newDivisionData.initialDept.trim() ? [newDivisionData.initialDept.trim()] : ['Operasional & Administrasi']
+    };
+    try {
+      await gabahApi.createDivision(newDiv).catch(() => {});
+    } catch {}
+    const updated = [...divisions, newDiv];
+    setDivisions(updated);
+    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
+    setIsAddDivisionOpen(false);
+    setNewDivisionData({ code: '', name: '', leader: '', initialDept: '' });
+    showToast(`Divisi baru ${newDiv.code} - ${newDiv.name} berhasil ditambahkan!`, 'success');
+  };
+
+  const handleDeleteDivision = async (code: string, name: string) => {
+    const assetCount = assets.filter(a => a.owner_division === code).length;
+    if (assetCount > 0) {
+      showToast(`Divisi "${code}" tidak dapat dihapus karena masih menaungi ${assetCount} aset aktif.`, 'warning');
+      return;
+    }
+    if (divisions.length <= 1) {
+      showToast('Minimal harus ada satu divisi yang terdaftar.', 'warning');
+      return;
+    }
+    try {
+      await gabahApi.deleteDivision(code).catch(() => {});
+    } catch {}
+    const updated = divisions.filter(d => d.code !== code);
+    setDivisions(updated);
+    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
+    showToast(`Divisi "${code} - ${name}" berhasil dihapus.`, 'info');
+  };
+
+  const handleSaveDivision = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!divisionToEdit) return;
+    try {
+      await gabahApi.updateDivision(divisionToEdit.code, divisionToEdit).catch(() => {});
+    } catch {}
     const updated = divisions.map(d => d.code === divisionToEdit.code ? divisionToEdit : d);
     setDivisions(updated);
     localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
@@ -790,23 +919,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-black text-slate-900">Administration Control Plane</h2>
-                <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1 shrink-0 ${
-                  isCurrentUserAdmin
-                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                    : 'bg-purple-100 text-purple-800 border-purple-300'
-                }`}>
-                  {isCurrentUserAdmin ? (
-                    <>
-                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                      <span>SUPER ADMIN (FULL EDIT ACCESS)</span>
-                    </>
-                  ) : (
-                    <>
-                      <LockKeyhole className="w-3 h-3 text-purple-600" />
-                      <span>MODE AUDIT & BACA (READ-ONLY)</span>
-                    </>
-                  )}
+                <h2 className="text-lg font-black text-slate-900">Administration Control Panel</h2>
+                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 shrink-0 bg-emerald-100 text-emerald-800 border-emerald-300">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>SUPER ADMIN (FULL ACCESS)</span>
+                  <span className="text-emerald-400">•</span>
+                  <span className="text-emerald-950 font-extrabold">{currentUser?.name || 'Budi Santoso'}</span>
                 </span>
               </div>
               <p className="text-xs text-slate-500">
@@ -1002,15 +1120,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     onChange={e => setUserRoleFilter(e.target.value)}
                     className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#4ABDAC]"
                   >
-                    <option value="all">Semua Peran</option>
-                    <option value="Admin GABAH">Admin GABAH</option>
-                    <option value="IT">IT Support</option>
-                    <option value="GA">General Affairs</option>
-                    <option value="Supply Chain">Supply Chain</option>
-                    <option value="PIBC">PIBC Pasar</option>
-                    <option value="Management">Management</option>
-                    <option value="Auditor">Auditor</option>
-                    <option value="Karyawan">Karyawan</option>
+                    <option value="all">Semua Peran ({SYSTEM_ROLES.length})</option>
+                    {SYSTEM_ROLES.map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
                   </select>
                   {isCurrentUserAdmin ? (
                     <button
@@ -1057,25 +1170,24 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         required
                         value={newUserData.email}
                         onChange={e => setNewUserData({ ...newUserData, email: e.target.value })}
-                        placeholder="rian@foodstation.id"
+                        placeholder="rian@foodstation.co.id"
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Peran (Role)</label>
+                      <label className="block text-slate-600 mb-1 font-medium">Peran Akses (Role)</label>
                       <select
                         value={newUserData.role}
-                        onChange={e => setNewUserData({ ...newUserData, role: e.target.value as UserRole })}
+                        onChange={e => {
+                          const r = e.target.value as UserRole;
+                          const found = SYSTEM_ROLES.find(x => x.value === r);
+                          setNewUserData({ ...newUserData, role: r, role_label: found?.label || r });
+                        }}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
-                        <option value="Karyawan">Karyawan (Peminjam)</option>
-                        <option value="IT">IT (Teknis & Jaringan)</option>
-                        <option value="GA">GA (Fasilitas Gedung)</option>
-                        <option value="Supply Chain">Supply Chain (Logistik)</option>
-                        <option value="PIBC">PIBC (Pasar Induk)</option>
-                        <option value="Management">Management (Direksi)</option>
-                        <option value="Auditor">Auditor (Pemeriksa)</option>
-                        <option value="Admin GABAH">Admin GABAH (Super Admin)</option>
+                        {SYSTEM_ROLES.map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -1083,12 +1195,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <select
                         value={newUserData.division}
                         onChange={e => setNewUserData({ ...newUserData, division: e.target.value as OwnerDivision })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
-                        <option value="SC">Supply Chain & Pergudangan</option>
-                        <option value="PIBC">Pasar Induk Beras Cipinang</option>
-                        <option value="IT">Teknologi Informasi</option>
-                        <option value="GA">General Affairs</option>
+                        {divisions.map(d => (
+                          <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -1304,14 +1415,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
-                            <option value="Admin GABAH">Admin GABAH (Super Admin)</option>
-                            <option value="IT">IT (Infrastruktur & Hardware)</option>
-                            <option value="GA">GA (General Affairs & Sarpras)</option>
-                            <option value="Supply Chain">Supply Chain (Logistik & Pabrik)</option>
-                            <option value="PIBC">PIBC (Pasar Induk Cipinang)</option>
-                            <option value="Management">Management (Direksi / Kadiv)</option>
-                            <option value="Auditor">Auditor (Satuan Pengawas Internal)</option>
-                            <option value="Karyawan">Karyawan (Pegawai Umum)</option>
+                            {SYSTEM_ROLES.map(r => (
+                              <option key={r.value} value={r.value}>{r.label}</option>
+                            ))}
                           </select>
                         </div>
 
@@ -1322,13 +1428,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditUserData(prev => ({ ...prev, division: e.target.value as OwnerDivision }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
-                            <option value="IT">IT (Divisi Teknologi & Sistem)</option>
-                            <option value="GA">GA (Divisi Umum & Aset)</option>
-                            <option value="SC">SC (Supply Chain & Beras)</option>
-                            <option value="PIBC">PIBC (Kawasan Pasar Induk)</option>
-                            <option value="Direksi">Direksi</option>
-                            <option value="Komersial">Komersial & Pemasaran</option>
-                            <option value="Umum">Umum / Lainnya</option>
+                            {divisions.map(d => (
+                              <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
+                            ))}
                           </select>
                         </div>
 
@@ -1730,14 +1832,24 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </p>
                 </div>
                 {isCurrentUserAdmin && (
-                  <button
-                    type="button"
-                    onClick={handleResetDivisions}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Reset Default Struktur</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddDivisionOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm shadow-emerald-600/20"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Divisi Baru</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetDivisions}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Reset Default</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -1777,17 +1889,29 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           Scope: {div.depts.length} Departemen Aktif
                         </span>
                         {isCurrentUserAdmin ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDivisionToEdit({ ...div });
-                              setIsEditDivisionOpen(true);
-                            }}
-                            className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <Pencil className="w-3 h-3 text-emerald-600" />
-                            <span>Edit Divisi</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDivisionToEdit({ ...div });
+                                setIsEditDivisionOpen(true);
+                              }}
+                              className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-3 h-3 text-emerald-600" />
+                              <span>Edit Divisi</span>
+                            </button>
+                            {assetsCount === 0 && divisions.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDivision(div.code, div.name)}
+                                title={`Hapus divisi ${div.name}`}
+                                className="p-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3 text-rose-600" />
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 inline-flex items-center gap-1">
                             <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
@@ -1799,6 +1923,99 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   );
                 })}
               </div>
+
+              {/* Add Division Modal */}
+              {isAddDivisionOpen && (
+                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900">Tambah Divisi / Departemen Baru</h4>
+                          <p className="text-xs text-slate-500">Daftarkan divisi baru untuk klasifikasi kepemilikan aset</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddDivisionOpen(false)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleAddDivisionSubmit} className="space-y-4">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-1">
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Kode Divisi *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Contoh: HC, FIN"
+                            value={newDivisionData.code}
+                            onChange={e => setNewDivisionData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Nama Divisi *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Contoh: Human Capital & Korporat"
+                            value={newDivisionData.name}
+                            onChange={e => setNewDivisionData(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Pimpinan / Kepala Divisi</label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: Kepala Divisi Human Capital"
+                          value={newDivisionData.leader}
+                          onChange={e => setNewDivisionData(prev => ({ ...prev, leader: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Departemen / Unit Awal</label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: Personalia & Pengembangan SDM"
+                          value={newDivisionData.initialDept}
+                          onChange={e => setNewDivisionData(prev => ({ ...prev, initialDept: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-500"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">Departemen tambahan dapat dikelola kapan saja lewat tombol Edit Divisi</p>
+                      </div>
+
+                      <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddDivisionOpen(false)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 flex items-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Simpan Divisi</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
 
               {/* Edit Division Modal */}
               {isEditDivisionOpen && divisionToEdit && (
@@ -2017,38 +2234,51 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-bold text-slate-700 mb-1">
-                            Jenis Utama Aset (Main Type)
+                            Jenis Utama Aset (Main Type) *
                           </label>
                           <select
                             value={newCategoryData.main_type}
                             onChange={e => setNewCategoryData(prev => ({ ...prev, main_type: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                           >
-                            <option value="EQUIPMENT">EQUIPMENT (Peralatan &amp; Mesin)</option>
-                            <option value="VEHICLE">VEHICLE (Kendaraan Dinas)</option>
-                            <option value="FURNITURE">FURNITURE (Mebel &amp; Interior)</option>
-                            <option value="BUILDING">BUILDING (Gedung &amp; Bangunan)</option>
-                            <option value="LAND">LAND (Tanah &amp; Kawasan)</option>
-                            <option value="OTHER">OTHER (Lain-lain)</option>
+                            {ASSET_MAIN_TYPES.map(t => (
+                              <option key={t.value} value={t.value}>{t.label}</option>
+                            ))}
                           </select>
+                          <p className="text-[10px] text-slate-500 mt-1">
+                            Standar PSAK 16 BUMD untuk kelompok depresiasi &amp; pelaporan akuntansi aset tetap.
+                          </p>
                         </div>
 
                         <div>
                           <label className="block text-xs font-bold text-slate-700 mb-1">
-                            Tipe Taksonomi GABAH
+                            Tipe Taksonomi GABAH *
                           </label>
                           <select
                             value={newCategoryData.category_type}
                             onChange={e => setNewCategoryData(prev => ({ ...prev, category_type: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                           >
-                            <option value="IT">IT (Perangkat Komputasi)</option>
-                            <option value="General">General (Umum / Non-IT)</option>
-                            <option value="License">License (Lisensi Perangkat Lunak)</option>
+                            {GABAH_TAXONOMY_TYPES.map(g => (
+                              <option key={g.value} value={g.value}>{g.label}</option>
+                            ))}
                           </select>
+                          <p className="text-[10px] text-slate-500 mt-1">
+                            Modul sistem: menentukan atribut spesifikasi teknis (IT=CPU/RAM/IP/MAC, License=seat/expiry, General=fisik).
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-start gap-2">
+                        <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold text-slate-800">Petunjuk Klasifikasi GABAH:</span>
+                          <span className="text-slate-600 ml-1">
+                            Pilih <b>Jenis Utama</b> sesuai akun neraca keuangan aset tetap (Peralatan, Kendaraan, Gedung), dan <b>Tipe Taksonomi</b> sesuai form spesifikasi yang dibutuhkan saat pencatatan aset baru.
+                          </span>
                         </div>
                       </div>
 
@@ -2109,7 +2339,138 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
               )}
 
-              {/* Master Kategori */}
+              {/* Edit Category Modal */}
+              {isEditCategoryOpen && categoryToEdit && (
+                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Pencil className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900">Edit Kategori Aset ({categoryToEdit.code})</h4>
+                          <p className="text-xs text-slate-500">Perbarui nama kategori, klasifikasi PSAK 16, dan taksonomi</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditCategoryOpen(false)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleEditCategorySubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Kode Aset</label>
+                          <input
+                            type="text"
+                            disabled
+                            value={categoryToEdit.code}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 text-xs font-mono font-bold cursor-not-allowed"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Divisi Pemilik (Owner) *</label>
+                          <select
+                            value={editCategoryData.owner_division}
+                            onChange={e => setEditCategoryData(prev => ({ ...prev, owner_division: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:border-emerald-500"
+                          >
+                            {divisions.map(d => (
+                              <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama Kategori *</label>
+                        <input
+                          type="text"
+                          required
+                          value={editCategoryData.name}
+                          onChange={e => setEditCategoryData(prev => ({ ...prev, name: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Utama Aset (Main Type)</label>
+                          <select
+                            value={editCategoryData.main_type}
+                            onChange={e => setEditCategoryData(prev => ({ ...prev, main_type: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                          >
+                            {ASSET_MAIN_TYPES.map(t => (
+                              <option key={t.value} value={t.value}>{t.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Tipe Taksonomi GABAH</label>
+                          <select
+                            value={editCategoryData.category_type}
+                            onChange={e => setEditCategoryData(prev => ({ ...prev, category_type: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                          >
+                            {GABAH_TAXONOMY_TYPES.map(g => (
+                              <option key={g.value} value={g.value}>{g.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi / Catatan Taksonomi</label>
+                        <textarea
+                          rows={2}
+                          value={editCategoryData.description}
+                          onChange={e => setEditCategoryData(prev => ({ ...prev, description: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs font-bold text-slate-800">Dapat Dipinjam Secara Default (Loanable)</div>
+                          <div className="text-[10px] text-slate-500">Aset dalam kategori ini dapat masuk formulir peminjaman sementara</div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={editCategoryData.is_loanable_by_default}
+                          onChange={e => setEditCategoryData(prev => ({ ...prev, is_loanable_by_default: e.target.checked }))}
+                          className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditCategoryOpen(false)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 transition-colors flex items-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Simpan Perubahan</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Master Kategori List */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
@@ -2141,15 +2502,39 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <span className="text-xs font-black text-slate-700 bg-white px-2 py-1 rounded-lg border border-slate-200">
                           {cat.total} Unit
                         </span>
-                        {isCurrentUserAdmin && cat.total === 0 && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCategory(cat.code, cat.name)}
-                            title={`Hapus kategori ${cat.name}`}
-                            className="p-1 rounded-md text-rose-500 hover:bg-rose-50 hover:text-rose-700 opacity-80 group-hover:opacity-100 transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                        {isCurrentUserAdmin && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCategoryToEdit(cat);
+                                setEditCategoryData({
+                                  code: cat.code,
+                                  name: cat.name,
+                                  main_type: cat.main_type || 'EQUIPMENT',
+                                  owner_division: cat.type || 'IT',
+                                  category_type: cat.category_type || (cat.type === 'IT' ? 'IT' : 'General'),
+                                  description: cat.description || '',
+                                  is_loanable_by_default: cat.loanable ?? false,
+                                });
+                                setIsEditCategoryOpen(true);
+                              }}
+                              title={`Edit kategori ${cat.name}`}
+                              className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 opacity-80 group-hover:opacity-100 transition-all cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            {cat.total === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCategory(cat.code, cat.name)}
+                                title={`Hapus kategori ${cat.name}`}
+                                className="p-1 rounded-md text-rose-500 hover:bg-rose-50 hover:text-rose-700 opacity-80 group-hover:opacity-100 transition-all cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -2194,20 +2579,196 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           </span>
                         </div>
                       </div>
-                      {isCurrentUserAdmin && locations.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteLocation(loc.id, loc.name)}
-                          title={`Hapus lokasi ${loc.name}`}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 opacity-70 group-hover:opacity-100 transition-all cursor-pointer shrink-0"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      {isCurrentUserAdmin && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLocationToEdit(loc);
+                              setEditLocationData({
+                                id: loc.id,
+                                name: loc.name,
+                                address: loc.address,
+                                capacity: loc.capacity,
+                              });
+                              setIsEditLocationOpen(true);
+                            }}
+                            title={`Edit lokasi ${loc.name}`}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 opacity-70 group-hover:opacity-100 transition-all cursor-pointer"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          {locations.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLocation(loc.id, loc.name)}
+                              title={`Hapus lokasi ${loc.name}`}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 opacity-70 group-hover:opacity-100 transition-all cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))}
                 </div>
               </div>
+
+              {/* Add Location Modal */}
+              {isAddLocationOpen && (
+                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900">Tambah Lokasi Fasilitas Baru</h4>
+                          <p className="text-xs text-slate-500">Daftarkan gudang, gedung kantor, atau fasilitas logistik PIBC</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddLocationOpen(false)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleAddLocationSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama Lokasi / Fasilitas *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Contoh: Gedung Penggilingan Beras Cipinang"
+                          value={newLocationData.name}
+                          onChange={e => setNewLocationData(prev => ({ ...prev, name: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Alamat / Area Lokasi</label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: Blok G No. 12-14, Kawasan PIBC, Jakarta Timur"
+                          value={newLocationData.address}
+                          onChange={e => setNewLocationData(prev => ({ ...prev, address: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Kapasitas / Peruntukan Fasilitas</label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: 15.000 Ton Beras / Kantor 30 Staf"
+                          value={newLocationData.capacity}
+                          onChange={e => setNewLocationData(prev => ({ ...prev, capacity: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddLocationOpen(false)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 flex items-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Simpan Lokasi</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Edit Location Modal */}
+              {isEditLocationOpen && locationToEdit && (
+                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Pencil className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-extrabold text-slate-900">Edit Lokasi Fasilitas</h4>
+                          <p className="text-xs text-slate-500">Perbarui data lokasi dan peruntukan fasilitas gudang</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditLocationOpen(false)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleEditLocationSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama Lokasi / Fasilitas *</label>
+                        <input
+                          type="text"
+                          required
+                          value={editLocationData.name}
+                          onChange={e => setEditLocationData(prev => ({ ...prev, name: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Alamat / Area Lokasi</label>
+                        <input
+                          type="text"
+                          value={editLocationData.address}
+                          onChange={e => setEditLocationData(prev => ({ ...prev, address: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Kapasitas / Peruntukan Fasilitas</label>
+                        <input
+                          type="text"
+                          value={editLocationData.capacity}
+                          onChange={e => setEditLocationData(prev => ({ ...prev, capacity: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditLocationOpen(false)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 flex items-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Simpan Perubahan</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
