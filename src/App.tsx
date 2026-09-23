@@ -33,7 +33,6 @@ import { ReportsView } from './components/views/ReportsView';
 import { MyAssetsView } from './components/views/MyAssetsView';
 import { MeetingRoomsView } from './components/views/MeetingRoomsView';
 
-import { LaravelArchitectureModal } from './components/modals/LaravelArchitectureModal';
 import { CreateAssetModal } from './components/modals/CreateAssetModal';
 import { CreateLoanModal } from './components/modals/CreateLoanModal';
 import { CreateTicketModal } from './components/modals/CreateTicketModal';
@@ -49,7 +48,6 @@ import { LoginPage } from './components/auth/LoginPage';
 import { CheckCircle2, AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
 export default function App() {
-  // Authoritative server-backed state
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -63,12 +61,9 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USERS[0]);
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
-  // Default to 'portal' to show working application immediately
   const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>('portal');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Modals state
-  const [isArchitectureModalOpen, setIsArchitectureModalOpen] = useState(false);
   const [isCreateAssetModalOpen, setIsCreateAssetModalOpen] = useState(false);
   const [isCreateLoanModalOpen, setIsCreateLoanModalOpen] = useState(false);
   const [isCreateTicketModalOpen, setIsCreateTicketModalOpen] = useState(false);
@@ -80,7 +75,6 @@ export default function App() {
   const [isAdministrationModalOpen, setIsAdministrationModalOpen] = useState(false);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
 
-  // Global Ctrl+K / Cmd+K listener
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -92,7 +86,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
-  // Toast notification
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'warning' | 'info'; text: string } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'warning' | 'info' = 'success') => {
@@ -100,7 +93,6 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Fetch all authoritative data from Backend API
   const refreshData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -137,12 +129,10 @@ export default function App() {
           if (me) {
             setCurrentUser(me);
           } else {
-            // Token expired or invalid, auto-login default superadmin
             const res = await gabahApi.login('admin@foodstation.co.id', 'AdminGabah#2026').catch(() => null);
             if (res?.user) setCurrentUser(res.user);
           }
         } else {
-          // Initialize active session for default persona
           const res = await gabahApi.login('admin@foodstation.co.id', 'AdminGabah#2026').catch(() => null);
           if (res?.user) setCurrentUser(res.user);
         }
@@ -155,7 +145,6 @@ export default function App() {
     initAuth();
   }, [refreshData]);
 
-  // Handle Role Switch
   const handleSelectUser = async (user: UserProfile) => {
     try {
       const res = await gabahApi.switchRole(user.id);
@@ -195,14 +184,12 @@ export default function App() {
     }
   };
 
-  // Guard Humas: Sesuai instruksi user, Humas tidak perlu bisa melihat aset
   useEffect(() => {
     if (currentUser.role === 'Humas' && (currentTab === 'my_assets' || currentTab === 'assets')) {
       setCurrentTab('meeting_rooms');
     }
   }, [currentUser.role, currentTab]);
 
-  // 1. Create Asset (Handled Authoritatively by Backend Engine)
   const handleCreateAsset = async (data: Partial<Asset>) => {
     try {
       const created = await gabahApi.createAsset({
@@ -232,7 +219,6 @@ export default function App() {
     }
   };
 
-  // 2. Update Asset (Authoritative Backend)
   const handleUpdateAsset = async (updatedAsset: Asset) => {
     try {
       const saved = await gabahApi.updateAsset(updatedAsset.id, {
@@ -253,7 +239,6 @@ export default function App() {
     }
   };
 
-  // 3. Request Loan (Atomic Backend Schedule Collision Detection & Multi-Asset Support)
   const handleRequestLoan = async (data: {
     asset_id?: string;
     asset_ids?: string[];
@@ -291,7 +276,6 @@ export default function App() {
     }
   };
 
-  // 4. Approve Loan
   const handleApproveLoan = async (loanId: string) => {
     try {
       const approved = await gabahApi.approveLoan(loanId);
@@ -302,10 +286,8 @@ export default function App() {
     }
   };
 
-  // 5. Reject Loan
   const handleRejectLoan = async (loanId: string, reason: string) => {
     try {
-      // Reject endpoint or loan update
       showToast(`Reservasi ditolak. Alasan: ${reason}`, 'info');
       await refreshData();
     } catch (err: any) {
@@ -313,7 +295,6 @@ export default function App() {
     }
   };
 
-  // 6. Handover Loan (Status to Active & Asset to Loaned)
   const handleHandoverLoan = async (loanId: string) => {
     try {
       const activeLoan = await gabahApi.handoverLoan(loanId, 'Serah terima fisik terverifikasi');
@@ -324,7 +305,6 @@ export default function App() {
     }
   };
 
-  // 7. Return Loan (Status to Returned, Condition Verified, Asset Restored)
   const handleReturnLoan = async (loanId: string, condition: string, notes: string) => {
     try {
       const returnedLoan = await gabahApi.returnLoan(loanId, condition, notes);
@@ -335,7 +315,6 @@ export default function App() {
     }
   };
 
-  // Direct BAST Document Generation for Any Asset
   const handleGenerateBastForAsset = (ast: Asset) => {
     const existingLoan = (loans || []).find(l => l.asset_id === ast.id && (l.status === 'active' || l.status === 'approved' || l.status === 'returned'));
     if (existingLoan) {
@@ -363,7 +342,6 @@ export default function App() {
     }
   };
 
-  // 8. Create Ticket (SLA Engine Server-Side)
   const handleCreateTicket = async (data: {
     title: string;
     description: string;
@@ -388,7 +366,6 @@ export default function App() {
     }
   };
 
-  // 9. Update Ticket Status
   const handleUpdateTicketStatus = async (ticketId: string, status: TicketStatus, notes?: string) => {
     try {
       const updated = await gabahApi.updateTicketStatus(ticketId, status, notes);
@@ -399,7 +376,6 @@ export default function App() {
     }
   };
 
-  // 10. Meeting Rooms Operations
   const handleCreateReservation = async (payload: any) => {
     try {
       const res = await gabahApi.createRoomReservation(payload);
@@ -521,8 +497,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-emerald-600 selection:text-white">
-      
-      {/* Toast Floating Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-3">
           <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl border text-xs font-semibold ${
@@ -538,13 +512,11 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Header Navbar with Role Switcher & Scan Barcode */}
       <HeaderNavbar
         currentUser={currentUser}
         allUsers={allUsers}
         onSelectUser={handleSelectUser}
         onSwitchRoleSimulation={handleSwitchRoleSimulation}
-        onOpenArchitectureModal={() => setIsArchitectureModalOpen(true)}
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
         onLogout={async () => {
@@ -560,19 +532,10 @@ export default function App() {
         onNavigateToMeetingRooms={() => setCurrentTab('meeting_rooms')}
       />
 
-      {/* App Shell: Sidebar + Main Content */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto">
-        
-        {/* Left Navigation Sidebar */}
         <Sidebar
           currentTab={currentTab}
-          onTabChange={(tab) => {
-            if (tab === 'laravel_spec') {
-              setIsArchitectureModalOpen(true);
-            } else {
-              setCurrentTab(tab);
-            }
-          }}
+          onTabChange={(tab) => setCurrentTab(tab)}
           pendingLoansCount={pendingLoans.length}
           openTicketsCount={openTickets.length}
           pendingReservationsCount={pendingReservations.length}
@@ -585,7 +548,6 @@ export default function App() {
           }}
         />
 
-        {/* Main Content Pane */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto">
           {isLoading && (
             <div className="mb-4 flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
@@ -730,12 +692,6 @@ export default function App() {
           )}
         </main>
       </div>
-
-      {/* Modal Dialogs */}
-      <LaravelArchitectureModal
-        isOpen={isArchitectureModalOpen}
-        onClose={() => setIsArchitectureModalOpen(false)}
-      />
 
       <CreateAssetModal
         isOpen={isCreateAssetModalOpen}
