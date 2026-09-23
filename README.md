@@ -47,7 +47,6 @@
 
 - **Frontend**: React 19, TypeScript, Tailwind CSS v4, Lucide Icons, Motion.
 - **Backend / Dev Server**: Node.js, Express, TSX, Vite Middleware.
-- **Blueprint Arsitektur Enterprise**: Tersedia spesifikasi arsitektur backend Laravel 11 (`/opt/gabah`) dengan migrasi database, model Eloquent, dan *Controller Resource*.
 
 ---
 
@@ -93,7 +92,6 @@ npm run start
 │   ├── App.tsx            # Komponen root aplikasi
 │   └── main.tsx           # Entry point aplikasi
 ├── server.ts              # Server Express dengan integrasi Vite middleware
-├── opt/gabah/             # Cetak biru arsitektur Laravel enterprise
 └── package.json           # Konfigurasi dependensi dan skrip build
 ```
 
