@@ -139,6 +139,5 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
 
 Jika melanjutkan pengembangan setelah turn ini:
 1. **Verifikasi Build:** Selalu jalankan `compile_applet` dan `lint_applet` setelah melakukan perubahan kode.
-2. **Backend Persistance:** Backend Laravel di `/opt/gabah` dapat terus diselaraskan dengan endpoint pada `src/services/gabahApi.ts`.
 3. **Penyimpanan Multi-User:** Pastikan data yang disimpan di `localStorage` memiliki fallback aman saat data dari live backend tidak tersedia.
 4. **Proteksi Aset Aktif:** Pertahankan validasi integritas data (misalnya: divisi atau kategori yang masih memiliki aset terdaftar tidak boleh dihapus sembarangan).
