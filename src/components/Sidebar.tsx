@@ -8,7 +8,6 @@ import {
   Briefcase, 
   BookOpen, 
   BarChart3, 
-  Code2, 
   ShieldCheck,
   Users,
   LockKeyhole,
@@ -41,8 +40,7 @@ export type NavTab =
   | 'licenses'
   | 'vendors'
   | 'knowledge'
-  | 'reports'
-  | 'laravel_spec';
+  | 'reports';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -107,7 +105,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: isStaff ? 'Perangkat Kerja Anda' : 'Aset Ditugaskan',
           icon: Laptop,
           badge: null,
-          // Catatan khusus user: "untuk tim humas ga perlu bisa lihat aset"
           roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
@@ -203,20 +200,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           badge: null,
           roles: ['Admin GABAH', 'IT', 'GA', 'Auditor'],
         },
-        {
-          id: 'laravel_spec',
-          label: 'Laravel 11 Backend',
-          description: 'Arsitektur Service Layer',
-          icon: Code2,
-          badge: 'PHP 8.3',
-          badgeColor: 'bg-[#F7B733]/20 text-amber-900 border border-[#F7B733]/40',
-          roles: ['Admin GABAH', 'IT'],
-        },
       ],
     },
   ];
 
-  // Filter sections and items based on role
   const visibleSections = sections
     .map(section => ({
       ...section,
@@ -282,7 +269,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           ))}
 
-          {/* Pusat Administrasi: HANYA untuk Super Admin (Admin GABAH) */}
           {isSuperAdmin && (
             <div className="pt-2 border-t border-slate-100 space-y-1">
               <div className="px-2 pb-1 flex items-center justify-between">
@@ -302,7 +288,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     setShowAdministration(true);
                   }
                 }}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all group text-slate-700 hover:text-[#206f65] hover:bg-[#4ABDAC]/10 font-bold border border-slate-200/60 hover:border-[#4ABDAC]/30 shadow-2xs"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all group text-slate-700 hover:text-[#206f65] hover:bg-[#4ABDAC]/10 font-bold border border-slate-200"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <ShieldCheck className="w-4 h-4 shrink-0 text-[#4ABDAC]" />
@@ -337,4 +323,3 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </>
   );
 };
-
