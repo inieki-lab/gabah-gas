@@ -109,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: isStaff ? 'Perangkat Kerja Anda' : 'Aset Ditugaskan',
           icon: Laptop,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'meeting_rooms',

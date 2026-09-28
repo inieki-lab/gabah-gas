@@ -24,7 +24,8 @@ import {
   Pencil,
   UserCheck,
   UserPlus,
-  User
+  User,
+  LifeBuoy
 } from 'lucide-react';
 import { Asset, AssetCategoryType, AssetStatus, UserProfile } from '../../types';
 import { GabahService, formatRupiah, formatDate, exportAssetsToCsv } from '../../services/gabahService';
@@ -463,6 +464,15 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
+                        {onReportAsset && currentUser?.role !== 'Auditor' && (
+                          <button
+                            onClick={() => onReportAsset(asset)}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
+                            title="Laporkan Kendala Aset Ini"
+                          >
+                            <LifeBuoy className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => onSelectAsset(asset)}
                           className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"

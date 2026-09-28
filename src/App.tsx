@@ -72,6 +72,7 @@ export default function App() {
   const [isCreateAssetModalOpen, setIsCreateAssetModalOpen] = useState(false);
   const [isCreateLoanModalOpen, setIsCreateLoanModalOpen] = useState(false);
   const [isCreateTicketModalOpen, setIsCreateTicketModalOpen] = useState(false);
+  const [preselectedTicketAssetId, setPreselectedTicketAssetId] = useState<string | undefined>(undefined);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
   const [selectedAssetForDetail, setSelectedAssetForDetail] = useState<Asset | null>(null);
   const [selectedAssetForEdit, setSelectedAssetForEdit] = useState<Asset | null>(null);
@@ -79,6 +80,16 @@ export default function App() {
   const [selectedLoanForBast, setSelectedLoanForBast] = useState<Loan | null>(null);
   const [isAdministrationModalOpen, setIsAdministrationModalOpen] = useState(false);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
+
+  const handleOpenNewTicketModal = () => {
+    setPreselectedTicketAssetId(undefined);
+    setIsCreateTicketModalOpen(true);
+  };
+
+  const handleReportAssetTicket = (ast: Asset) => {
+    setPreselectedTicketAssetId(ast.id);
+    setIsCreateTicketModalOpen(true);
+  };
 
   // Global Ctrl+K / Cmd+K listener
   useEffect(() => {
@@ -382,6 +393,7 @@ export default function App() {
 
       showToast(`Tiket ${newTicket.ticket_number} berhasil dibuat! Target SLA: ${newTicket.sla_hours} jam.`);
       setIsCreateTicketModalOpen(false);
+      setPreselectedTicketAssetId(undefined);
       await refreshData();
     } catch (err: any) {
       showToast(err.message || 'Gagal membuat tiket', 'warning');
@@ -614,7 +626,7 @@ export default function App() {
               roomReservations={roomReservations}
               onNavigate={setCurrentTab}
               onOpenNewLoanModal={() => setIsCreateLoanModalOpen(true)}
-              onOpenNewTicketModal={() => setIsCreateTicketModalOpen(true)}
+              onOpenNewTicketModal={handleOpenNewTicketModal}
               onOpenNewAssetModal={() => setIsCreateAssetModalOpen(true)}
             />
           )}
@@ -625,12 +637,9 @@ export default function App() {
               loans={loans}
               currentUser={currentUser}
               onSelectAsset={setSelectedAssetForDetail}
-              onReportAsset={(ast) => {
-                setSelectedAssetForDetail(ast);
-                setIsCreateTicketModalOpen(true);
-              }}
+              onReportAsset={handleReportAssetTicket}
               onOpenNewLoanModal={() => setIsCreateLoanModalOpen(true)}
-              onOpenNewTicketModal={() => setIsCreateTicketModalOpen(true)}
+              onOpenNewTicketModal={handleOpenNewTicketModal}
               onReturnLoan={(loanId) => handleReturnLoan(loanId, 'good', 'Diajukan pengembalian oleh peminjam via Portal Aset Saya')}
             />
           )}
@@ -665,10 +674,7 @@ export default function App() {
                 setSelectedAssetForDetail(ast);
                 setIsCreateLoanModalOpen(true);
               }}
-              onReportAsset={(ast) => {
-                setSelectedAssetForDetail(ast);
-                setIsCreateTicketModalOpen(true);
-              }}
+              onReportAsset={handleReportAssetTicket}
             />
           )}
 
@@ -709,7 +715,7 @@ export default function App() {
               tickets={tickets}
               assets={assets}
               currentUser={currentUser}
-              onOpenNewTicketModal={() => setIsCreateTicketModalOpen(true)}
+              onOpenNewTicketModal={handleOpenNewTicketModal}
               onUpdateTicketStatus={handleUpdateTicketStatus}
             />
           )}
@@ -763,10 +769,14 @@ export default function App() {
 
       <CreateTicketModal
         isOpen={isCreateTicketModalOpen}
-        onClose={() => setIsCreateTicketModalOpen(false)}
+        onClose={() => {
+          setIsCreateTicketModalOpen(false);
+          setPreselectedTicketAssetId(undefined);
+        }}
         assets={assets}
+        loans={loans}
         currentUser={currentUser}
-        preselectedAssetId={selectedAssetForDetail?.id}
+        preselectedAssetId={preselectedTicketAssetId}
         onCreateTicket={handleCreateTicket}
       />
 
@@ -783,8 +793,7 @@ export default function App() {
           setIsCreateLoanModalOpen(true);
         }}
         onReportThisAsset={(ast) => {
-          setSelectedAssetForDetail(ast);
-          setIsCreateTicketModalOpen(true);
+          handleReportAssetTicket(ast);
         }}
         onUpdateAsset={handleUpdateAsset}
         currentUser={currentUser}

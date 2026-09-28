@@ -145,15 +145,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <CalendarClock className="w-4 h-4" />
               Pinjam Aset
             </button>
-            <button
-              id="btn-quick-ticket"
-              onClick={onOpenNewTicketModal}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold transition-all shadow-xs"
-            >
-              <LifeBuoy className="w-4 h-4 text-rose-600" />
-              Buat Tiket Kendala
-            </button>
-            {!isEmployee && (
+            {currentUser?.role !== 'Auditor' ? (
+              <button
+                id="btn-quick-ticket"
+                onClick={onOpenNewTicketModal}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold transition-all shadow-xs"
+              >
+                <LifeBuoy className="w-4 h-4 text-rose-600" />
+                Buat Tiket Kendala
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs font-semibold" title="Auditor berstatus Read-Only">
+                <LifeBuoy className="w-4 h-4 text-slate-400" />
+                <span>Tiket (Read-Only)</span>
+              </div>
+            )}
+            {!isEmployee && currentUser?.role !== 'Auditor' && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
@@ -574,12 +581,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <LifeBuoy className="w-4 h-4 text-rose-600" />
                 Tiket Kendala Saya
               </h3>
-              <button
-                onClick={() => onNavigate('tickets')}
-                className="text-xs text-emerald-700 hover:text-emerald-800 font-bold"
-              >
-                Lihat Semua
-              </button>
+              <div className="flex items-center gap-2">
+                {currentUser?.role !== 'Auditor' && (
+                  <button
+                    onClick={onOpenNewTicketModal}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Lapor Kendala Baru
+                  </button>
+                )}
+                <button
+                  onClick={() => onNavigate('tickets')}
+                  className="text-xs text-emerald-700 hover:text-emerald-800 font-bold"
+                >
+                  Lihat Semua
+                </button>
+              </div>
             </div>
 
             {myTickets.length === 0 ? (
@@ -705,12 +722,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <LifeBuoy className="w-4 h-4 text-rose-600" />
                   Antrean Helpdesk
                 </h3>
-                <button
-                  onClick={() => onNavigate('tickets')}
-                  className="text-xs text-emerald-700 hover:text-emerald-800 font-bold"
-                >
-                  Lihat Semua
-                </button>
+                <div className="flex items-center gap-2">
+                  {currentUser?.role !== 'Auditor' && (
+                    <button
+                      onClick={onOpenNewTicketModal}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Lapor Kendala
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onNavigate('tickets')}
+                    className="text-xs text-emerald-700 hover:text-emerald-800 font-bold"
+                  >
+                    Lihat Semua
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3">

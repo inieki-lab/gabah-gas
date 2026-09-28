@@ -421,23 +421,40 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                       <span className="text-[11px] text-slate-500">
                         Disetujui: <strong className="text-slate-700">{loan.approver_name || 'Tim Pengelola'}</strong>
                       </span>
 
-                      {(loan.status === 'borrowed' || loan.status === 'active') && (
+                      <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
-                            if (onReturnLoan) {
-                              onReturnLoan(loan.id);
+                            const matchedAsset = assets.find(a => a.id === loan.asset_id);
+                            if (matchedAsset && onReportAsset) {
+                              onReportAsset(matchedAsset);
+                            } else if (onOpenNewTicketModal) {
+                              onOpenNewTicketModal();
                             }
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-2xs"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors shadow-2xs"
                         >
-                          Ajukan Pengembalian
+                          <LifeBuoy className="w-3.5 h-3.5" />
+                          Lapor Kendala
                         </button>
-                      )}
+
+                        {(loan.status === 'borrowed' || loan.status === 'active') && (
+                          <button
+                            onClick={() => {
+                              if (onReturnLoan) {
+                                onReturnLoan(loan.id);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-2xs"
+                          >
+                            Ajukan Pengembalian
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

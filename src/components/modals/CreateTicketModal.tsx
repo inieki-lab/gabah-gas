@@ -9,12 +9,13 @@ import {
   KeyRound, 
   Info 
 } from 'lucide-react';
-import { Asset, AssetCategoryType, TicketPriority, UserProfile } from '../../types';
+import { Asset, AssetCategoryType, Loan, TicketPriority, UserProfile } from '../../types';
 
 interface CreateTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
   assets?: Asset[];
+  loans?: Loan[];
   currentUser: UserProfile;
   preselectedAssetId?: string;
   onCreateTicket: (ticketData: {
@@ -30,6 +31,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   isOpen,
   onClose,
   assets = [],
+  loans = [],
   currentUser,
   preselectedAssetId,
   onCreateTicket,
@@ -39,6 +41,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
+
+  const isAuditor = currentUser?.role === 'Auditor';
 
   // Freshservice-inspired Quick Service Catalog Templates
   const serviceCatalogTemplates = [
@@ -96,29 +100,93 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     setDescription(tpl.desc);
   };
 
-  React.useEffect(() => {
-    if (preselectedAssetId) {
-      setRelatedAssetId(preselectedAssetId);
-      const matched = (assets || []).find(a => a.id === preselectedAssetId);
-      if (matched) {
-        if (matched.category_type === 'General' || matched.category_type === 'GA') {
-          setCategory('GA');
-        } else if (matched.category_type === 'License') {
+  const safeAssets = Array.isArray(assets) ? assets : [];
+  const safeLoans = Array.isArray(loans) ? loans : [];
+
+  // Filter ONLY assets belonging to the reporter (assigned to reporter or currently loaned to reporter)
+  const reporterAssignedAssets = safeAssets.filter((asset) => {
+    if (!asset.assigned_to) return false;
+    const assignedId = asset.assigned_to.id;
+    const assignedEmail = asset.assigned_to.email?.toLowerCase();
+    const currentEmail = currentUser?.email?.toLowerCase();
+    const assignedName = asset.assigned_to.name?.toLowerCase();
+    const currentName = currentUser?.name?.toLowerCase();
+
+    return (
+      (assignedId && assignedId === currentUser?.id) ||
+      (assignedEmail && currentEmail && assignedEmail === currentEmail) ||
+      (assignedName && currentName && (assignedName.includes(currentName) || currentName.includes(assignedName)))
+    );
+  });
+
+  const reporterActiveLoans = safeLoans.filter((loan) => {
+    const isBorrower =
+      loan.borrower_id === currentUser?.id ||
+      (loan.borrower_name && currentUser?.name && loan.borrower_name.toLowerCase().includes(currentUser.name.toLowerCase()));
+    const isActive = ['approved', 'borrowed', 'active'].includes(loan.status);
+    return isBorrower && isActive;
+  });
+
+  const reporterLoanedAssetIds = new Set(reporterActiveLoans.map(l => l.asset_id));
+  const reporterLoanedAssets = safeAssets.filter(a => reporterLoanedAssetIds.has(a.id));
+
+  // Build the reporter-only assets list
+  const reporterAssetsMap = new Map<string, { asset: Asset; label: string }>();
+  reporterAssignedAssets.forEach(a => {
+    reporterAssetsMap.set(a.id, {
+      asset: a,
+      label: `[Aset Ditugaskan] [${a.asset_number}] ${a.name}`,
+    });
+  });
+  reporterLoanedAssets.forEach(a => {
+    if (!reporterAssetsMap.has(a.id)) {
+      reporterAssetsMap.set(a.id, {
+        asset: a,
+        label: `[Aset Dipinjam] [${a.asset_number}] ${a.name}`,
+      });
+    }
+  });
+
+  // If a specific asset was preselected by clicking "Lapor Kendala" on an asset, ensure it is available
+  if (preselectedAssetId) {
+    const preselected = safeAssets.find(a => a.id === preselectedAssetId);
+    if (preselected && !reporterAssetsMap.has(preselected.id)) {
+      reporterAssetsMap.set(preselected.id, {
+        asset: preselected,
+        label: `[Aset Terpilih] [${preselected.asset_number}] ${preselected.name}`,
+      });
+    }
+  }
+
+  const reporterAssets = Array.from(reporterAssetsMap.values());
+
+  const handleAssetSelect = (assetId: string) => {
+    setRelatedAssetId(assetId);
+    if (assetId) {
+      const selected = safeAssets.find(a => a.id === assetId);
+      if (selected) {
+        if (selected.category_type === 'General' || selected.category_type === 'GA') {
+          setCategory('General');
+        } else if (selected.category_type === 'License') {
           setCategory('License');
         } else {
           setCategory('IT');
         }
       }
     }
-  }, [preselectedAssetId, assets]);
+  };
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (preselectedAssetId) {
+        handleAssetSelect(preselectedAssetId);
+      } else {
+        setRelatedAssetId('');
+      }
+    }
+  }, [isOpen, preselectedAssetId]);
 
   if (!isOpen) return null;
-
-  const safeAssets = Array.isArray(assets) ? assets : [];
-  const filteredAssets = safeAssets.filter(a => {
-    if (category === 'GA') return a.category_type === 'GA' || a.category_type === 'General';
-    return a.category_type === category;
-  });
 
   const slaHours = priority === 'urgent' ? 4 : priority === 'high' ? 8 : priority === 'medium' ? 24 : 48;
 
@@ -267,21 +335,35 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             </div>
           </div>
 
-          {/* Related Asset Selector (Optional) */}
-          <div className="space-y-1">
-            <label className="text-slate-700 font-bold">Pilih Aset Terkait (Opsional):</label>
+          {/* Related Asset Selector (Mengacu Khusus Aset Pelapor) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-slate-700 font-bold">Pilih Aset Terkait Pelapor:</label>
+              <span className="text-[11px] text-emerald-700 font-semibold">
+                {reporterAssets.length} aset milik pelapor tersedia
+              </span>
+            </div>
             <select
               value={relatedAssetId}
-              onChange={(e) => setRelatedAssetId(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-rose-500"
+              onChange={(e) => handleAssetSelect(e.target.value)}
+              className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-rose-500 text-xs"
             >
-              <option value="">-- Tidak Terkait Aset Tertentu / Masalah Umum --</option>
-              {filteredAssets.map((asset) => (
-                <option key={asset.id} value={asset.id}>
-                  [{asset.asset_number}] {asset.name} ({asset.owner_division})
+              <option value="">-- Tidak Terkait Aset Tertentu / Kendala Umum / Fasilitas Kantor --</option>
+              {reporterAssets.length === 0 ? (
+                <option value="" disabled>
+                  (Belum ada perangkat terdaftar atas nama {currentUser.name} - silakan laporkan kendala umum)
                 </option>
-              ))}
+              ) : (
+                reporterAssets.map(({ asset, label }) => (
+                  <option key={asset.id} value={asset.id}>
+                    {label} ({asset.owner_division})
+                  </option>
+                ))
+              )}
             </select>
+            <p className="text-[10px] text-slate-500">
+              * Opsi aset langsung mengacu ke perangkat yang ditugaskan resmi atau sedang dipinjam oleh <span className="font-semibold text-slate-700">{currentUser.name}</span>.
+            </p>
           </div>
 
           {/* Ticket Title */}
@@ -310,6 +392,14 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             />
           </div>
 
+          {/* Auditor Warning */}
+          {isAuditor && (
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Akun Auditor berstatus <strong>Read-Only</strong> untuk kepatuhan SPI. Anda tidak dapat membuat tiket baru.</span>
+            </div>
+          )}
+
           {/* Footer Submit */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
             <button
@@ -321,7 +411,12 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold transition-all shadow-xs"
+              disabled={isAuditor}
+              className={`px-5 py-2 rounded-xl font-bold transition-all shadow-xs ${
+                isAuditor 
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                  : 'bg-rose-600 hover:bg-rose-700 text-white'
+              }`}
             >
               Kirim Tiket ke Helpdesk
             </button>
