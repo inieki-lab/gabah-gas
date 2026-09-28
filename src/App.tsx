@@ -828,10 +828,7 @@ export default function App() {
         onOpenBastModal={(asset) => {
           handleGenerateBastForAsset(asset);
         }}
-        currentUser={currentUser}
         users={allUsers}
-        allUsers={allUsers}
-        allAssets={assets}
       />
 
       <QRCodeModal

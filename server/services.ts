@@ -1024,6 +1024,44 @@ export class GabahDomainService {
       });
     }
 
+    // 3. Notify IT Support for IT Facilities Request (e.g. Polycom, Smart TV, Laser Projector, HDMI)
+    const itKeywords = ['polycom', 'projector', 'proyektor', 'tv', 'hdmi', 'converter', 'video conference', 'vicon', 'zoom', 'camera', 'laptop', 'wifi', 'lan', 'audio visual', 'network'];
+    const requestedITFacilities = (reservation.facilities_requested || []).filter(f => {
+      const lower = f.toLowerCase();
+      return itKeywords.some(kw => lower.includes(kw));
+    });
+
+    if (requestedITFacilities.length > 0) {
+      this.notify({
+        recipient_role: 'IT',
+        recipient_division: 'IT',
+        title: `Permintaan Fasilitas IT Ruang Rapat: ${room.name}`,
+        message: `Permintaan perangkat IT (${requestedITFacilities.join(', ')}) untuk rapat "${reservation.title}" pada ${reservation.date} (${reservation.start_time} - ${reservation.end_time}) oleh ${actor.name} (${actor.department}). Siapkan perangkat & koneksi sebelum rapat.`,
+        severity: 'action_required',
+        category: 'system',
+        link_type: 'asset',
+      });
+    }
+
+    // 4. Notify GA for GA Facilities / Sarana Tambahan (e.g. Sound System, Mic Wireless, Whiteboard Kaca)
+    const gaKeywords = ['sound', 'mic', 'wireless', 'whiteboard', 'spidol', 'kursi', 'meja', 'podium', 'ac', 'kebersihan', 'ruangan', 'tata letak'];
+    const requestedGAFacilities = (reservation.facilities_requested || []).filter(f => {
+      const lower = f.toLowerCase();
+      return gaKeywords.some(kw => lower.includes(kw));
+    });
+
+    if (requestedGAFacilities.length > 0) {
+      this.notify({
+        recipient_role: 'GA',
+        recipient_division: 'GA',
+        title: `Kebutuhan Sarana GA Ruang Rapat: ${room.name}`,
+        message: `Kebutuhan sarana fisik GA (${requestedGAFacilities.join(', ')}) untuk rapat "${reservation.title}" pada ${reservation.date} (${reservation.start_time} - ${reservation.end_time}) oleh ${actor.name} (${actor.department}).`,
+        severity: 'info',
+        category: 'system',
+        link_type: 'asset',
+      });
+    }
+
     persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
 
     return reservation;
@@ -1078,6 +1116,25 @@ export class GabahDomainService {
         recipient_role: 'Humas',
         title: `Jadwal Liputan Foto Disetujui: ${reservation.room_name}`,
         message: `Rapat "${reservation.title}" pada ${reservation.date} (${reservation.start_time} - ${reservation.end_time}) di ${reservation.room_name} telah disetujui GA. Tim Humas dapat bersiap untuk dokumentasi foto kegiatan.`,
+        severity: 'action_required',
+        category: 'system',
+        link_type: 'asset',
+      });
+    }
+
+    // Notify IT Support if IT facilities were requested upon approval
+    const itKeywords = ['polycom', 'projector', 'proyektor', 'tv', 'hdmi', 'converter', 'video conference', 'vicon', 'zoom', 'camera', 'laptop', 'wifi', 'lan', 'audio visual', 'network'];
+    const approvedITFacilities = (reservation.facilities_requested || []).filter(f => {
+      const lower = f.toLowerCase();
+      return itKeywords.some(kw => lower.includes(kw));
+    });
+
+    if (approvedITFacilities.length > 0) {
+      this.notify({
+        recipient_role: 'IT',
+        recipient_division: 'IT',
+        title: `Penyiapan IT Disetujui: ${reservation.room_name}`,
+        message: `Reservasi rapat "${reservation.title}" pada ${reservation.date} (${reservation.start_time} - ${reservation.end_time}) telah disetujui GA. Mohon siapkan perangkat IT: ${approvedITFacilities.join(', ')}.`,
         severity: 'action_required',
         category: 'system',
         link_type: 'asset',
