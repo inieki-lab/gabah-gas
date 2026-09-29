@@ -1,4 +1,4 @@
-import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem } from '../types';
+import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract } from '../types';
 
 const TOKEN_STORAGE_KEY = 'gabah_auth_token';
 
@@ -368,6 +368,7 @@ class GabahApiClient {
     category: string;
     priority: string;
     related_asset_id?: string;
+    contract_id?: string;
   }): Promise<Ticket> {
     return this.request<Ticket>('/api/tickets', {
       method: 'POST',
@@ -507,6 +508,78 @@ class GabahApiClient {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
+  }
+
+  // =========================
+  // Contract Management (separate domain — NOT helpdesk)
+  // =========================
+  async getContracts(): Promise<Contract[]> {
+    return this.request<Contract[]>('/api/contracts');
+  }
+
+  async getContractById(id: string): Promise<Contract> {
+    return this.request<Contract>(`/api/contracts/${id}`);
+  }
+
+  async createContract(payload: {
+    contract_type: string;
+    title: string;
+    vendor_name: string;
+    owner_division: string;
+    pic_user_id: string;
+    start_date: string;
+    end_date: string;
+    notice_period_days?: number;
+    contract_value?: number;
+    auto_renewal?: boolean;
+    restricted?: boolean;
+    escalation_user_id?: string | null;
+    notes?: string;
+    status?: 'draft' | 'active';
+    reminder_config?: { reminder1_days: number; reminder2_days: number; reminder3_days: number };
+  }): Promise<Contract> {
+    return this.request<Contract>('/api/contracts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateContract(id: string, updates: Partial<Contract>): Promise<Contract> {
+    return this.request<Contract>(`/api/contracts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async addContractDocument(id: string, doc: { kind: string; file_name: string; file_ref: string }): Promise<Contract> {
+    return this.request<Contract>(`/api/contracts/${id}/documents`, {
+      method: 'POST',
+      body: JSON.stringify(doc),
+    });
+  }
+
+  async addContractMilestone(id: string, milestone: { type: string; title: string; due_date: string; amount?: number; notes?: string }): Promise<Contract> {
+    return this.request<Contract>(`/api/contracts/${id}/milestones`, {
+      method: 'POST',
+      body: JSON.stringify(milestone),
+    });
+  }
+
+  async decideContractRenewal(id: string, outcome: string, notes: string, replacementContractId?: string | null): Promise<Contract> {
+    return this.request<Contract>(`/api/contracts/${id}/renewal-decision`, {
+      method: 'POST',
+      body: JSON.stringify({ outcome, notes, replacement_contract_id: replacementContractId || null }),
+    });
+  }
+
+  async runContractReminderSweep(): Promise<{ evaluated: number; queued: number; logs: any[] }> {
+    return this.request<{ evaluated: number; queued: number; logs: any[] }>('/api/contracts/reminders/run', {
+      method: 'POST',
+    });
+  }
+
+  async getContractNotificationLogs(id: string): Promise<any[]> {
+    return this.request<any[]>(`/api/contracts/${id}/notification-logs`);
   }
 
   // Meeting Types CRUD API

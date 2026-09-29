@@ -14,7 +14,8 @@ import {
   MaintenanceStatus,
   MeetingRoom,
   RoomReservation,
-  UserRole
+  UserRole,
+  Contract
 } from './types';
 import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_USERS, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
 import { gabahApi } from './services/gabahApi';
@@ -31,6 +32,8 @@ import { LicensesView } from './components/views/LicensesView';
 import { VendorsView } from './components/views/VendorsView';
 import { KnowledgeBaseView } from './components/views/KnowledgeBaseView';
 import { ReportsView } from './components/views/ReportsView';
+import { ContractsView } from './components/views/ContractsView';
+import { CreateContractModal } from './components/modals/CreateContractModal';
 import { MyAssetsView } from './components/views/MyAssetsView';
 import { MeetingRoomsView } from './components/views/MeetingRoomsView';
 
@@ -60,6 +63,9 @@ export default function App() {
   const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>(INITIAL_MAINTENANCE_SCHEDULES);
   const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
   const [roomReservations, setRoomReservations] = useState<RoomReservation[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [isCreateContractModalOpen, setIsCreateContractModalOpen] = useState(false);
+  const [contractForLinkedTicket, setContractForLinkedTicket] = useState<Contract | null>(null);
 
   const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USERS[0]);
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
@@ -74,6 +80,7 @@ export default function App() {
   const [isCreateTicketModalOpen, setIsCreateTicketModalOpen] = useState(false);
   const [preselectedTicketAssetId, setPreselectedTicketAssetId] = useState<string | undefined>(undefined);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
+  const [linkedTicketContractId, setLinkedTicketContractId] = useState<string | undefined>(undefined);
   const [selectedAssetForDetail, setSelectedAssetForDetail] = useState<Asset | null>(null);
   const [selectedAssetForEdit, setSelectedAssetForEdit] = useState<Asset | null>(null);
   const [selectedAssetForQr, setSelectedAssetForQr] = useState<Asset | null>(null);
@@ -115,7 +122,7 @@ export default function App() {
   const refreshData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations] = await Promise.all([
+      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts] = await Promise.all([
         gabahApi.getAssets().catch(() => []),
         gabahApi.getLoans().catch(() => []),
         gabahApi.getTickets().catch(() => []),
@@ -123,6 +130,7 @@ export default function App() {
         gabahApi.getUsers().catch(() => INITIAL_USERS),
         gabahApi.getMeetingRooms().catch(() => []),
         gabahApi.getRoomReservations().catch(() => []),
+        gabahApi.getContracts().catch(() => []),
       ]);
 
       if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
@@ -132,6 +140,7 @@ export default function App() {
       if (Array.isArray(fetchedUsers) && fetchedUsers.length > 0) setAllUsers(fetchedUsers);
       if (Array.isArray(fetchedRooms)) setMeetingRooms(fetchedRooms);
       if (Array.isArray(fetchedReservations)) setRoomReservations(fetchedReservations);
+      if (Array.isArray(fetchedContracts)) setContracts(fetchedContracts);
     } catch (err: any) {
       console.error('Failed to fetch from backend:', err);
     } finally {
@@ -390,6 +399,7 @@ export default function App() {
         category: data.category,
         priority: data.priority,
         related_asset_id: data.related_asset_id,
+        contract_id: linkedTicketContractId,
       });
 
       showToast(`Tiket ${newTicket.ticket_number} berhasil dibuat! Target SLA: ${newTicket.sla_hours} jam.`);
@@ -410,6 +420,21 @@ export default function App() {
     } catch (err: any) {
       showToast(err.message || 'Gagal memperbarui status tiket', 'warning');
     }
+  };
+
+  // 10b. Contract Management (separate domain)
+  const handleCreateContract = async (payload: any) => {
+    const created = await gabahApi.createContract(payload);
+    showToast(`Kontrak ${created.contract_number} berhasil didaftarkan.`);
+    await refreshData();
+    return created;
+  };
+
+  const handleCreateLinkedTicket = (contract: Contract) => {
+    setContractForLinkedTicket(contract);
+    setLinkedTicketContractId(contract.id);
+    setPreselectedTicketAssetId(undefined);
+    setIsCreateTicketModalOpen(true);
   };
 
   // 10. Meeting Rooms Operations
@@ -747,6 +772,17 @@ export default function App() {
               maintenanceSchedules={maintenanceSchedules}
             />
           )}
+
+          {currentTab === 'contracts' && (
+            <ContractsView
+              contracts={contracts}
+              currentUser={currentUser}
+              onRefresh={refreshData}
+              showToast={showToast}
+              onCreateContract={() => setIsCreateContractModalOpen(true)}
+              onCreateLinkedTicket={handleCreateLinkedTicket}
+            />
+          )}
         </main>
       </div>
 
@@ -773,12 +809,23 @@ export default function App() {
         onClose={() => {
           setIsCreateTicketModalOpen(false);
           setPreselectedTicketAssetId(undefined);
+          setContractForLinkedTicket(null);
+          setLinkedTicketContractId(undefined);
         }}
         assets={assets}
         loans={loans}
         currentUser={currentUser}
         preselectedAssetId={preselectedTicketAssetId}
+        linkedContract={contractForLinkedTicket}
         onCreateTicket={handleCreateTicket}
+      />
+
+      <CreateContractModal
+        isOpen={isCreateContractModalOpen}
+        onClose={() => setIsCreateContractModalOpen(false)}
+        users={allUsers}
+        currentUser={currentUser}
+        onCreate={handleCreateContract}
       />
 
       <AssetDetailModal

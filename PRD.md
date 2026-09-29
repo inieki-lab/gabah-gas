@@ -27,6 +27,7 @@ Sebelum adanya GABAH, pencatatan aset inventaris, penjadwalan pemeliharaan armad
 5. **Pemeliharaan Berkala (*Preventive Maintenance & Calibration*)**: Kalender servis berkala armada logistik, AC data center, genset, serta uji tera resmi jembatan timbang PIBC.
 6. **Reservasi Ruang Rapat VIP & Otomatisasi Fasilitas**: Pemesanan ruang rapat dengan penanganan prioritas Direksi, deteksi tabrakan jadwal, serta perutean notifikasi otomatis multi-divisi (IT Support untuk alat vicon/proyektor, GA Sarpras untuk fisik, GA Pantry untuk konsumsi, dan Humas untuk peliputan/dokumentasi).
 7. **Kepatuhan & Audit Trail BUMD**: Pencatatan log mutasi dan aktivitas administratif yang tidak dapat diubah (*immutable audit logs*), inspeksi kepatuhan Satuan Pengawas Internal (SPI/Auditor).
+8. **Contract Management (Domain Tersendiri)**: Register kontrak lintas divisi (security → GA, maintenance firewall → IT, supplier beras → SC, layanan pasar → PIBC, kontrak divisi lain sesuai pemilik) dengan PIC, dokumen append-only (original/amendment/renewal/supporting), nilai kontrak, notice period + notice date, reminder kedaluwarsa configurable (default 60/35/7 hari) via in-app, email, dan Telegram dengan log pengiriman per channel, keputusan renewal (outcome + notes), dashboard kedaluwarsa berfilter, dan audit trail. **Contract Management adalah domain tersendiri; Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract (`contract_id`) apabila terdapat pekerjaan yang perlu ditindaklanjuti.
 
 ---
 
@@ -85,7 +86,13 @@ Sistem GABAH mengimplementasikan **9 peran pengguna aktif** dengan kredensial ka
   - `low`: SLA 48 jam
 - Penugasan teknisi (*Assignee*), pelacakan status (`open`, `in_progress`, `pending_vendor`, `resolved`, `closed`), catatan solusi (*resolution notes*), dan rating kepuasan.
 
-### 3.5 Preventive Maintenance & Kalibrasi Tera
+### 3.5 Kategori Helpdesk Ticket (Strict Divisional)
+Kategori tiket helpdesk bersifat divisial dan **terbatas**: `IT`, `GA`, `SC`, `PIBC`.
+- Software/License/SaaS (Accurate, Microsoft 365, VPN, aktivasi lisensi) → kategori `IT` (License adalah domain aset, bukan kategori tiket).
+- Hardware, jaringan, server, akun → `IT`. Fasilitas gedung → `GA`. Permintaan pergudangan → `SC`. Kendaraan Pasar Induk → `PIBC`.
+- **Contract Management adalah domain tersendiri dan BUKAN kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti (`contract_id` pada tiket).
+
+### 3.6 Preventive Maintenance & Kalibrasi Tera
 - Penjadwalan perawatan berkala: Mingguan, Bulanan, Triwulan, Semester, Tahunan, atau Insidental.
 - Pencatatan teknisi, vendor rekanan, estimasi biaya, realisasi biaya, dan checklist pekerjaan teknis.
 - Pengawasan kalibrasi tera berkala jembatan timbang 60 ton PIBC.

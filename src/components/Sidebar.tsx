@@ -15,6 +15,7 @@ import {
   Database,
   Bell,
   ScrollText,
+  FileText,
   Settings2,
   Hash,
   HeartPulse,
@@ -38,6 +39,7 @@ export type NavTab =
   | 'loans'
   | 'tickets'
   | 'licenses'
+  | 'contracts'
   | 'vendors'
   | 'knowledge'
   | 'reports';
@@ -190,6 +192,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Briefcase,
           badge: null,
           roles: ['Admin GABAH', 'IT', 'GA', 'Auditor'],
+        },
+        {
+          id: 'contracts',
+          label: 'Contract Management',
+          description: 'Register & Reminder Kontrak',
+          icon: FileText,
+          badge: null,
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
         },
         {
           id: 'knowledge',

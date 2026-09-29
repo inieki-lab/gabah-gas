@@ -145,7 +145,12 @@ export interface Loan {
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TicketStatus = 'open' | 'in_progress' | 'pending_vendor' | 'resolved' | 'closed';
-export type TicketCategory = AssetCategoryType | 'SC' | 'PIBC';
+/**
+ * Helpdesk Ticket Category — strictly divisional.
+ * Contract Management is a separate domain and is NOT a ticket category.
+ * Software/License/SaaS tickets belong to 'IT' (License is an asset domain, not a helpdesk category).
+ */
+export type TicketCategory = 'IT' | 'GA' | 'SC' | 'PIBC';
 
 export interface Ticket {
   id: string;
@@ -210,7 +215,7 @@ export interface MaintenanceSchedule {
 export interface Vendor {
   id: string;
   name: string;
-  category: 'IT' | 'GA' | 'License' | 'General';
+  category: AssetCategoryType; // Vendor service domain (License = asset domain, NOT a ticket category)
   pic_name: string;
   pic_phone: string;
   pic_email: string;
@@ -286,6 +291,86 @@ export interface AuditLog {
 }
 
 export type RoomStatus = 'available' | 'in_use' | 'maintenance';
+
+/**
+ * CONTRACT MANAGEMENT — separate business domain (NOT a helpdesk category).
+ * Contract = business record; Notification = reminder; Ticket = linked work/action.
+ */
+export type ContractStatus = 'draft' | 'active' | 'expiring' | 'renewal_in_progress' | 'renewed' | 'terminated' | 'expired';
+export type RenewalOutcome = 'pending_decision' | 'renewed' | 'not_renewed' | 'terminated' | 'replaced_by_new_contract';
+export type ContractDocumentKind = 'original_contract' | 'amendment' | 'renewal' | 'supporting_document';
+export type ContractMilestoneType = 'payment' | 'service_maintenance' | 'evaluation' | 'other_obligation';
+
+export interface ContractReminderConfig {
+  reminder1_days: number;
+  reminder2_days: number;
+  reminder3_days: number;
+}
+
+export interface ContractDocument {
+  id: string;
+  kind: ContractDocumentKind;
+  file_name: string;
+  file_ref: string;
+  uploaded_by: string;
+  uploaded_by_name: string;
+  uploaded_at: string;
+}
+
+export interface ContractMilestone {
+  id: string;
+  type: ContractMilestoneType;
+  title: string;
+  due_date: string;
+  amount?: number;
+  status: 'pending' | 'completed' | 'overdue' | 'cancelled';
+  notes?: string;
+}
+
+export interface ContractNotificationLog {
+  id: string;
+  contract_id: string;
+  notification_type: string;
+  channel: 'in_app' | 'email' | 'telegram';
+  recipient: string;
+  scheduled_at: string;
+  sent_at?: string | null;
+  status: 'pending' | 'sent' | 'failed' | 'skipped';
+  error_message?: string | null;
+}
+
+export interface Contract {
+  id: string;
+  contract_number: string;
+  contract_type: string;
+  title: string;
+  vendor_name: string;
+  owner_division: string;
+  owner_division_label?: string;
+  pic_user_id: string;
+  pic_name: string;
+  start_date: string;
+  end_date: string;
+  notice_period_days: number;
+  notice_date: string;
+  contract_value: number;
+  auto_renewal: boolean;
+  status: ContractStatus;
+  renewal_outcome: RenewalOutcome;
+  renewal_notes?: string | null;
+  replaced_by_contract_id?: string | null;
+  parent_contract_id?: string | null;
+  documents: ContractDocument[];
+  milestones: ContractMilestone[];
+  reminder_config: ContractReminderConfig;
+  escalation_user_id?: string | null;
+  restricted: boolean;
+  notes?: string | null;
+  created_by: string;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface MeetingRoom {
   id: string;

@@ -7,6 +7,7 @@ import { db, seedInitialData, ServerUser, ServerSession, CANONICAL_USERS } from 
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService } from './server/services';
+import { ContractDomainService } from './server/contracts';
 import { initializePersistence, persistDataStore } from './server/persistence';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import {
@@ -1106,6 +1107,12 @@ async function startServer() {
     try {
       const actor = getActor(req);
       const newTicket = GabahDomainService.createTicket(req.body, actor);
+      // Optional contract linkage: Contract = data, Ticket = pekerjaan (action)
+      if (req.body?.contract_id) {
+        const contract = db.contracts.find((c: any) => c.id === req.body.contract_id);
+        if (contract) newTicket.contract_id = contract.id;
+      }
+      persistDataStore().catch(() => {});
       res.status(201).json({ success: true, data: newTicket });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -1337,6 +1344,106 @@ async function startServer() {
   // Audit Logs
   app.get('/api/audit-logs', (req, res) => {
     res.json({ success: true, data: db.auditLogs });
+  });
+
+  // ==========================================
+  // CONTRACT MANAGEMENT API (separate domain — NOT helpdesk)
+  // ==========================================
+  app.get('/api/contracts', (req, res) => {
+    try {
+      const actor = getActor(req);
+      res.json({ success: true, data: ContractDomainService.listContracts(actor) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.get('/api/contracts/:id', (req, res) => {
+    try {
+      const actor = getActor(req);
+      res.json({ success: true, data: ContractDomainService.getContract(actor, req.params.id) });
+    } catch (err: any) {
+      res.status(404).json({ success: false, message: err.message });
+    }
+  });
+
+  app.post('/api/contracts', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      const created = ContractDomainService.createContract(req.body, actor);
+      await persistDataStore();
+      res.status(201).json({ success: true, data: created });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.patch('/api/contracts/:id', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      const updated = ContractDomainService.updateContract(req.params.id, req.body, actor);
+      await persistDataStore();
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.post('/api/contracts/:id/documents', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      const updated = ContractDomainService.addDocument(req.params.id, req.body, actor);
+      await persistDataStore();
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.post('/api/contracts/:id/milestones', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      const updated = ContractDomainService.addMilestone(req.params.id, req.body, actor);
+      await persistDataStore();
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.post('/api/contracts/:id/renewal-decision', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      const { outcome, notes, replacement_contract_id } = req.body;
+      const updated = ContractDomainService.decideRenewal(req.params.id, outcome, notes, replacement_contract_id || null, actor);
+      await persistDataStore();
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  // Reminder evaluation sweep (idempotent per threshold per day). Intended for a scheduler cron.
+  app.post('/api/contracts/reminders/run', (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat menjalankan reminder sweep manual.' });
+      }
+      const result = ContractDomainService.runReminderSweep(actor);
+      res.json({ success: true, data: result });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.get('/api/contracts/:id/notification-logs', (req, res) => {
+    try {
+      const actor = getActor(req);
+      res.json({ success: true, data: ContractDomainService.getNotificationLogs(actor, req.params.id) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
   });
 
   // ==========================================

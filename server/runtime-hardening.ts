@@ -29,7 +29,7 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   if (isSuperadmin(actor)) return true;
   if (actor.role === 'Auditor') return false;
   if (actor.role === 'Karyawan') return ticket.reporter_id === actor.id;
-  if (actor.role === 'IT') return ticket.category === 'IT' || ticket.category === 'License';
+  if (actor.role === 'IT') return ticket.category === 'IT'; // software/license tickets are IT
   if (actor.role === 'GA') return ticket.category === 'GA';
   if (actor.role === 'Supply Chain') return ticket.category === 'SC';
   if (actor.role === 'PIBC') return (ticket.category as string) === 'PIBC';

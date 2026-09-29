@@ -22,6 +22,8 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
 8. **Karyawan (Staf Umum)**: Karyawan operasional dari seluruh divisi BUMD. Berwenang melihat aset yang ditugaskan kepadanya (*Aset Saya*), mengajukan permohonan pinjaman dari pool aset, membuat tiket kendala bantuan kerja, dan mengajukan reservasi ruang rapat.
 9. **Auditor (Satuan Pengawas Internal / SPI)**: Pengawas tata kelola dan kepatuhan BUMD. Memiliki hak akses **Read-Only menyeluruh** ke seluruh katalog aset, riwayat pergerakan, log peminjaman, tiket, laporan rekonsiliasi Accurate, dan riwayat audit trail. **Terkunci dari operasi mutasi data (HTTP 403)**.
 
+> **Contract Management (domain tersendiri):** Contract bukan kategori Helpdesk dan tidak memerlukan peran baru. Akses mengikuti divisi pemilik/PIC; Auditor membaca sesuai kewenangan audit; Admin GABAH mengelola sesuai kebijakan. Kontrak tertentu dapat diberi flag `restricted` untuk pembatasan lebih ketat di masa depan. Software License/SaaS merupakan domain IT — seluruh Helpdesk Ticket terkait software/license menggunakan kategori IT.
+
 > **Catatan Peran Legacy / Non-Login:**
 > 1. Role `Management` **bukan** akun login terpisah; fungsi pengawasan eksekutif diakomodasi oleh akun `Auditor` (read-only) atau `Admin GABAH`.
 > 2. Role `Vendor` **bukan** akun login pengguna sistem; vendor dikelola murni sebagai entitas data master rekanan servis/kontrak pada tabel `contracts` dan modul Master Data.
@@ -51,6 +53,9 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
 | **Notifikasi Fasilitas IT** |  |  Terima |  |  |  |  |  |  |  |
 | **Notifikasi Pantry Konsumsi** |  |  |  Terima |  |  |  |  |  |  |
 | **Notifikasi Liputan Humas** |  |  |  |  |  Terima |  |  |  |  |
+| **Contract Register (View)** |  Semua | Own Div | Own Div |  |  | Own Div | Own Div |  |  Audit Read |
+| **Contract Create/Edit** |  Semua | Own Div | Own Div |  |  | Own Div | Own Div |  |  |
+| **Contract Reminder & Log** |  Kelola | PIC/Div | PIC/Div |  |  | PIC/Div | PIC/Div |  |  Read |
 | **Administration Control Panel**|  Eksklusif |  |  |  |  |  |  |  |  |
 | **Kelola Pengguna (Users)** |  CRUD |  |  |  |  |  |  |  |  |
 | **Kelola Master Lokasi/Divisi** |  CRUD |  |  |  |  |  |  |  |  |

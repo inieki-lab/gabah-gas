@@ -143,6 +143,16 @@ Content-Type: application/json
 
 ---
 
+### 2.9b Contract Management API (Domain Tersendiri)
+- `GET /api/contracts` — daftar kontrak ter-scope (divisi pemilik/PIC; Admin & Auditor seluruh; `restricted` difilter)
+- `GET /api/contracts/:id`, `POST /api/contracts`, `PATCH /api/contracts/:id`
+- `POST /api/contracts/:id/documents` (append-only), `POST /api/contracts/:id/milestones`
+- `POST /api/contracts/:id/renewal-decision` — body `{ outcome, notes, replacement_contract_id }`
+- `POST /api/contracts/reminders/run` — evaluasi threshold (idempoten per hari; Admin only; siap dijadwalkan cron)
+- `GET /api/contracts/:id/notification-logs` — log pengiriman per channel (in_app/email/telegram)
+- `POST /api/tickets` menerima `contract_id` opsional — Ticket = pekerjaan atas Contract; Contract bukan kategori tiket
+- Kategori tiket helpdesk resmi: `IT` | `GA` | `SC` | `PIBC` (license/software → IT)
+
 ### 2.9 Tiket Helpdesk & Gangguan (Tickets)
 | Endpoint | Method | Autentikasi | Hak Akses | Deskripsi |
 |:---|:---:|:---:|:---:|:---|

@@ -643,7 +643,7 @@ export const INITIAL_TICKETS: Ticket[] = [
     id: 'tkt-002',
     ticket_number: 'TKT-2026-0002',
     title: 'AC Ruang Server Lt. 2 Mengalami Penurunan Suhu',
-    category: 'General',
+    category: 'GA',
     priority: 'high',
     status: 'open',
     description: 'Suhu ruang server naik menjadi 26°C, warning sensor IoT terpicu.',

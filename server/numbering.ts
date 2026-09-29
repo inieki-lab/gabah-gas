@@ -59,6 +59,15 @@ export class AssetNumberingEngine {
     return `LOAN-${year}-${String(next).padStart(4, '0')}`;
   }
 
+  static generateContractNumber(targetYear?: number): string {
+    const year = targetYear || new Date().getFullYear();
+    const next = (this.contractSeq.get(year) || 0) + 1;
+    this.contractSeq.set(year, next);
+    return `CTR-${year}-${String(next).padStart(4, '0')}`;
+  }
+
+  private static contractSeq = new Map<number, number>();
+
   static _resetForTesting() {
     this.sequenceStore.clear();
     this.ticketSeq.clear();

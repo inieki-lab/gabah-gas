@@ -11,7 +11,7 @@ import {
   Store,
   Info 
 } from 'lucide-react';
-import { Asset, AssetCategoryType, Loan, TicketCategory, TicketPriority, UserProfile } from '../../types';
+import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
 
 interface CreateTicketModalProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ interface CreateTicketModalProps {
   loans?: Loan[];
   currentUser: UserProfile;
   preselectedAssetId?: string;
+  linkedContract?: Contract | null;
   onCreateTicket: (ticketData: {
     title: string;
     description: string;
@@ -36,6 +37,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   loans = [],
   currentUser,
   preselectedAssetId,
+  linkedContract,
   onCreateTicket,
 }) => {
   const [category, setCategory] = useState<TicketCategory>('IT');
@@ -51,7 +53,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'hw-issue',
       label: 'Laptop / PC Kendala',
-      category: 'IT' as AssetCategoryType,
+      category: 'IT' as TicketCategory,
       priority: 'high' as TicketPriority,
       title: 'Laptop / PC Kerja Mengalami Gangguan Teknis',
       desc: 'Perangkat kerja utama mengalami kendala booting, performa lambat, atau blue screen yang menghambat aktivitas harian.',
@@ -60,7 +62,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'sw-access',
       label: 'Akses Software & Lisensi',
-      category: 'License' as AssetCategoryType,
+      category: 'IT' as TicketCategory,
       priority: 'medium' as TicketPriority,
       title: 'Permohonan Akun ERP Accurate / Microsoft 365 / VPN',
       desc: 'Permintaan aktivasi akun baru atau reset password lisensi kerja resmi Food Station.',
@@ -69,7 +71,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'ga-facility',
       label: 'Fasilitas & AC Kantor',
-      category: 'General' as AssetCategoryType,
+      category: 'GA' as TicketCategory,
       priority: 'medium' as TicketPriority,
       title: 'Pemeliharaan AC Ruangan / Penggantian Perabotan Kantor',
       desc: 'Unit AC ruangan kerja kurang dingin / bocor, atau perbaikan meja dan kursi ergonomis kerja.',
@@ -78,7 +80,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'sc-weighbridge',
       label: 'Timbangan & Mesin Pabrik',
-      category: 'General' as AssetCategoryType,
+      category: 'SC' as TicketCategory,
       priority: 'urgent' as TicketPriority,
       title: 'Kendala Mesin Pabrik Beras / Jembatan Timbang Truk',
       desc: 'Sensor jembatan timbang atau conveyor penggilingan beras mengalami deviasi/error butuh kalibrasi darurat.',
@@ -87,7 +89,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'incident-down',
       label: 'Gangguan Jaringan / Server',
-      category: 'IT' as AssetCategoryType,
+      category: 'IT' as TicketCategory,
       priority: 'urgent' as TicketPriority,
       title: 'Insiden Jaringan Internet / WiFi / Server Down',
       desc: 'Akses jaringan di lantai kantor atau server database tidak dapat dijangkau oleh tim kerja.',
@@ -167,10 +169,13 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     if (assetId) {
       const selected = safeAssets.find(a => a.id === assetId);
       if (selected) {
-        if (selected.category_type === 'General' || selected.category_type === 'GA') {
-          setCategory('General');
-        } else if (selected.category_type === 'License') {
-          setCategory('License');
+        // License/SaaS is an IT domain: software & license tickets route to IT
+        if (selected.owner_division === 'SC') {
+          setCategory('SC');
+        } else if (selected.owner_division === 'PIBC') {
+          setCategory('PIBC');
+        } else if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
+          setCategory('GA');
         } else {
           setCategory('IT');
         }
@@ -185,8 +190,19 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       } else {
         setRelatedAssetId('');
       }
+      // Linked contract prefill: Ticket = pekerjaan atas Contract tertentu
+      if (linkedContract) {
+        setTitle(`Tindak Lanjut Kontrak ${linkedContract.contract_number} — ${linkedContract.title}`);
+        setDescription(
+          `Tiket kerja terkait kontrak ${linkedContract.contract_number} (${linkedContract.title}) dengan vendor ${linkedContract.vendor_name}. Divisi pemilik: ${linkedContract.owner_division}.`
+        );
+        setCategory((linkedContract.owner_division === 'IT' ? 'IT'
+          : linkedContract.owner_division === 'SC' ? 'SC'
+          : linkedContract.owner_division === 'PIBC' ? 'PIBC'
+          : 'GA') as TicketCategory);
+      }
     }
-  }, [isOpen, preselectedAssetId]);
+  }, [isOpen, preselectedAssetId, linkedContract]);
 
   if (!isOpen) return null;
 
@@ -273,18 +289,18 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 type="button"
                 onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'IT' 
+                  category === 'IT'
                     ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <Laptop className="w-4 h-4" /> IT Support
+                <Laptop className="w-4 h-4" /> IT / Lisensi
               </button>
               <button
                 type="button"
                 onClick={() => { setCategory('General'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'General' 
+                  category === 'GA' 
                     ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
@@ -293,14 +309,14 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { setCategory('License'); setRelatedAssetId(''); }}
+                onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'License' 
+                  category === 'IT' && title.toLowerCase().includes('lisensi')
                     ? 'bg-purple-600 text-white border-purple-600 shadow-sm' 
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <KeyRound className="w-4 h-4" /> Lisensi Software
+                <KeyRound className="w-4 h-4" /> Lisensi (IT)
               </button>
               <button
                 type="button"

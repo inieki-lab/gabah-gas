@@ -121,7 +121,8 @@ export interface ServerTicket {
   ticket_code: string;
   title: string;
   description: string;
-  category: 'IT' | 'GA' | 'SC' | 'PIBC' | 'License' | 'General';
+  category: 'IT' | 'GA' | 'SC' | 'PIBC';
+  contract_id?: string | null; // Linked Contract (optional action linkage, Contract ≠ Ticket)
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
   reporter_id: string;
@@ -136,6 +137,86 @@ export interface ServerTicket {
   sla_resolution_deadline: string;
   resolved_at?: string | null;
   resolution_notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * CONTRACT MANAGEMENT — separate business domain (NOT a helpdesk category).
+ * Contract = business record; Notification = reminder; Ticket = linked work/action.
+ */
+export type ContractStatus = 'draft' | 'active' | 'expiring' | 'renewal_in_progress' | 'renewed' | 'terminated' | 'expired';
+export type RenewalOutcome = 'pending_decision' | 'renewed' | 'not_renewed' | 'terminated' | 'replaced_by_new_contract';
+export type ContractDocumentKind = 'original_contract' | 'amendment' | 'renewal' | 'supporting_document';
+export type ContractMilestoneType = 'payment' | 'service_maintenance' | 'evaluation' | 'other_obligation';
+
+export interface ContractReminderConfig {
+  reminder1_days: number; // default 60 → WARNING
+  reminder2_days: number; // default 35 → URGENT
+  reminder3_days: number; // default 7  → CRITICAL
+}
+
+export interface ServerContractDocument {
+  id: string;
+  kind: ContractDocumentKind;
+  file_name: string;
+  file_ref: string; // storage reference / URL
+  uploaded_by: string;
+  uploaded_by_name: string;
+  uploaded_at: string;
+}
+
+export interface ServerContractMilestone {
+  id: string;
+  type: ContractMilestoneType;
+  title: string;
+  due_date: string;
+  amount?: number;
+  status: 'pending' | 'completed' | 'overdue' | 'cancelled';
+  notes?: string;
+}
+
+export interface ServerContractNotificationLog {
+  id: string;
+  contract_id: string;
+  notification_type: string; // e.g. EXPIRY_60, EXPIRY_35, EXPIRY_7, NOTICE_DATE, MILESTONE_DUE
+  channel: 'in_app' | 'email' | 'telegram';
+  recipient: string; // user id / email / chat id
+  scheduled_at: string;
+  sent_at?: string | null;
+  status: 'pending' | 'sent' | 'failed' | 'skipped';
+  error_message?: string | null;
+}
+
+export interface ServerContract {
+  id: string;
+  contract_number: string; // CTR-YYYY-NNNN
+  contract_type: string; // e.g. 'Security', 'Maintenance', 'Supplier', 'Layanan Pasar'
+  title: string;
+  vendor_name: string; // counterparty
+  owner_division: string; // free department/division ownership (GA, IT, SC, PIBC, ...)
+  owner_division_label?: string;
+  pic_user_id: string;
+  pic_name: string;
+  start_date: string;
+  end_date: string;
+  notice_period_days: number;
+  notice_date: string; // computed at write time from end_date - notice_period_days
+  contract_value: number; // IDR, 0 if n/a
+  auto_renewal: boolean;
+  status: ContractStatus;
+  renewal_outcome: RenewalOutcome;
+  renewal_notes?: string | null;
+  replaced_by_contract_id?: string | null;
+  parent_contract_id?: string | null; // for renewal/amendment chains
+  documents: ServerContractDocument[];
+  milestones: ServerContractMilestone[];
+  reminder_config: ContractReminderConfig;
+  escalation_user_id?: string | null; // optional escalation recipient for 35/7-day reminders
+  restricted: boolean; // restricted access: only owner division/PIC/Admin (Auditor per audit authority)
+  notes?: string | null;
+  created_by: string;
+  created_by_name: string;
   created_at: string;
   updated_at: string;
 }
@@ -300,6 +381,8 @@ export const db = {
   roomReservations: [] as ServerRoomReservation[],
   meetingTypes: [] as ServerMeetingType[],
   meetingFacilities: [] as ServerMeetingFacility[],
+  contracts: [] as ServerContract[],
+  contractNotificationLogs: [] as ServerContractNotificationLog[],
 };
 
 // Seed Enterprise Master Users

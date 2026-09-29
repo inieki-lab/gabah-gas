@@ -194,7 +194,28 @@ Mencatat permohonan bantuan teknis dan pemenuhan SLA layanan.
 - `body` (TEXT, NOT NULL)
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 
-### 2.13 Tabel `contracts` (Kontrak Rekanan / Vendor)
+### 2.13 Tabel `contracts` (Contract Management — Domain Tersendiri)
+> **Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract melalui `tickets.contract_id` untuk pekerjaan tindak lanjut. Software License/SaaS adalah domain IT (kategori tiket IT).
+- `id` (VARCHAR(64), PRIMARY KEY)
+- `contract_number` (VARCHAR(100), NOT NULL, UNIQUE) — format `CTR-YYYY-NNNN`
+- `contract_type` (VARCHAR(100)) — Security, Maintenance, Supplier, Layanan Pasar, dll.
+- `title` (VARCHAR(255), NOT NULL), `vendor_name` (VARCHAR(255), NOT NULL)
+- `owner_division` (VARCHAR(50), NOT NULL) — bebas per departemen pemilik (tidak hard-coded)
+- `pic_user_id` (VARCHAR(64), REFERENCES users(id))
+- `start_date` (DATE), `end_date` (DATE, NOT NULL)
+- `notice_period_days` (INTEGER, default 0), `notice_date` (DATE, dihitung = end_date − notice_period_days)
+- `contract_value` (NUMERIC(18,2)), `auto_renewal` (BOOLEAN)
+- `status` (VARCHAR(30)) — draft/active/expiring/renewal_in_progress/renewed/terminated/expired
+- `renewal_outcome` (VARCHAR(40)) — pending_decision/renewed/not_renewed/terminated/replaced_by_new_contract
+- `renewal_notes` (TEXT), `replaced_by_contract_id`, `parent_contract_id` (versioning/renewal chain-ready)
+- `reminder1_days`/`reminder2_days`/`reminder3_days` (INTEGER, default 60/35/7 — configurable)
+- `escalation_user_id` (VARCHAR(64), REFERENCES users(id), opsional)
+- `restricted` (BOOLEAN, default FALSE) — akses terbatas PIC/divisi/Admin
+- `notes` (TEXT), metadata created/updated
+- Tabel pendukung: `contract_documents` (append-only, kind: original/amendment/renewal/supporting), `contract_milestones` (payment/service_maintenance/evaluation/other), `contract_notification_logs` (contract_id, notification_type, channel in_app/email/telegram, recipient, scheduled_at, sent_at, status, error_message)
+- **Indeks Penting**: `idx_contracts_expiry` ON contracts(end_date, status); `idx_tickets_contract` ON tickets(contract_id)
+
+### 2.13b Tabel `contracts` (Legacy Spec — Terintegrasi)
 - `id` (VARCHAR(64), PRIMARY KEY)
 - `contract_number` (VARCHAR(100), NOT NULL, UNIQUE)
 - `vendor_name` (VARCHAR(255), NOT NULL)

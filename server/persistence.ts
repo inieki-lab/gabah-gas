@@ -112,6 +112,16 @@ function hydrateDbFromState(state: any): void {
   if (Array.isArray(state.divisions) && state.divisions.length > 0) db.divisions = state.divisions;
   if (Array.isArray(state.meetingTypes) && state.meetingTypes.length > 0) db.meetingTypes = state.meetingTypes;
   if (Array.isArray(state.meetingFacilities) && state.meetingFacilities.length > 0) db.meetingFacilities = state.meetingFacilities;
+  if (Array.isArray(state.contracts) && state.contracts.length > 0) db.contracts = state.contracts;
+  if (Array.isArray(state.contractNotificationLogs) && state.contractNotificationLogs.length > 0) db.contractNotificationLogs = state.contractNotificationLogs;
+
+  // Ticket category normalization: legacy 'License'/'General' collapse into divisional categories.
+  // Software/License/SaaS → IT; General (facility) → GA. Contract Management is a separate domain.
+  for (const t of db.tickets as any[]) {
+    if (t.category === 'License' || t.category === 'General') {
+      t.category = t.category === 'License' ? 'IT' : 'GA';
+    }
+  }
 }
 
 function loadStateFromFile(): boolean {
@@ -146,6 +156,8 @@ function createPayload() {
     divisions: db.divisions,
     meetingTypes: db.meetingTypes,
     meetingFacilities: db.meetingFacilities,
+    contracts: db.contracts,
+    contractNotificationLogs: db.contractNotificationLogs,
   };
 }
 
@@ -248,6 +260,31 @@ async function backfillNormalizedTables(): Promise<void> {
       `INSERT INTO notifications (id,recipient_user_id,recipient_role,recipient_division_id,title,message,severity,category,link_type,link_id,is_read,created_at) VALUES ($1,$2,$3,(SELECT id FROM divisions WHERE code=$4),$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO UPDATE SET is_read=EXCLUDED.is_read`,
       [n.id,n.recipient_user_id || null,n.recipient_role || null,n.recipient_division || null,n.title,n.message,n.severity,n.category,n.link_type || null,n.link_id || null,n.is_read,n.created_at],
     );
+    // Contract Management (separate domain) — best-effort sync; file store remains fail-safe fallback
+    for (const c of (db as any).contracts || []) {
+      await client.query(
+        `INSERT INTO contracts (id,contract_number,contract_type,title,vendor_name,owner_division,pic_user_id,start_date,end_date,notice_period_days,notice_date,contract_value,auto_renewal,status,renewal_outcome,renewal_notes,restricted,notes,created_by,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,renewal_outcome=EXCLUDED.renewal_outcome,renewal_notes=EXCLUDED.renewal_notes,updated_at=EXCLUDED.updated_at,notice_date=EXCLUDED.notice_date`,
+        [c.id,c.contract_number,c.contract_type,c.title,c.vendor_name,c.owner_division,c.pic_user_id,c.start_date,c.end_date,c.notice_period_days,c.notice_date,c.contract_value||0,c.auto_renewal,c.status,c.renewal_outcome,c.renewal_notes||null,c.restricted,c.notes||null,c.created_by,c.created_at,c.updated_at],
+      );
+      for (const d of c.documents || []) {
+        await client.query(
+          `INSERT INTO contract_documents (id,contract_id,kind,file_name,file_ref,uploaded_by,uploaded_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING`,
+          [d.id,c.id,d.kind,d.file_name,d.file_ref,d.uploaded_by,d.uploaded_at],
+        );
+      }
+      for (const m of c.milestones || []) {
+        await client.query(
+          `INSERT INTO contract_milestones (id,contract_id,type,title,due_date,amount,status,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
+          [m.id,c.id,m.type,m.title,m.due_date,m.amount||null,m.status,m.notes||null],
+        );
+      }
+    }
+    for (const l of (db as any).contractNotificationLogs || []) {
+      await client.query(
+        `INSERT INTO contract_notification_logs (id,contract_id,notification_type,channel,recipient,scheduled_at,sent_at,status,error_message) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
+        [l.id,l.contract_id,l.notification_type,l.channel,l.recipient,l.scheduled_at,l.sent_at||null,l.status,l.error_message||null],
+      );
+    }
     for (const log of db.auditLogs) {
       const user = db.users.find(u => u.name === log.user_name);
       await client.query(

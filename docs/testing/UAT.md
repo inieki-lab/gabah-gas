@@ -136,6 +136,16 @@
 
 ---
 
+### Skenario 10: Contract Management (Domain Tersendiri) & Kategori Tiket
+1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware → `IT`; fasilitas → `GA`; SC → `SC`; PIBC → `PIBC`. Tidak ada opsi License/General/Contract di form.
+2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
+3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
+4. **Email & Telegram**: log pengiriman muncul di `GET /api/contracts/:id/notification-logs`; bila provider belum dikonfigurasi, status FAILED dengan alasan (SMTP_URL/TELEGRAM_BOT_TOKEN).
+5. **Linked Ticket**: dari kartu kontrak, buat tiket terkait → tiket tersimpan dengan `contract_id` dan audit log tercatat.
+6. **Renewal outcome & expired**: keputusan renewed/not_renewed tersimpan; kontrak lewat end_date berstatus expired.
+7. **Restricted access**: kontrak restricted tidak terlihat oleh divisi lain; PIC/divisi/Admin tetap dapat mengakses; Auditor membaca.
+8. **Audit trail**: created/updated/document/renewal/reminder tercatat pada audit log.
+
 ### Skenario 9: Administration Control Panel (Khusus Super Admin)
 - **Tujuan**: Memastikan menu kontrol administrasi hanya dapat diakses oleh Super Admin.
 - **Langkah Pengujian**:

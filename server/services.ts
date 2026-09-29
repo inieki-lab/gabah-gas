@@ -628,9 +628,10 @@ export class GabahDomainService {
   static createTicket(payload: {
     title: string;
     description: string;
-    category: 'IT' | 'GA' | 'SC' | 'PIBC' | 'License' | 'General';
+    category: 'IT' | 'GA' | 'SC' | 'PIBC';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
+    contract_id?: string;
   }, actor: ServerUser): ServerTicket {
     const slaHours = {
       urgent: 4,
@@ -675,8 +676,17 @@ export class GabahDomainService {
 
     db.tickets.unshift(newTicket);
 
-    // Notify respective division
-    const targetDivision = payload.category === 'IT' || payload.category === 'License' ? 'IT' : payload.category === 'GA' ? 'GA' : payload.category === 'SC' ? 'SC' : 'IT';
+    // Linked contract (optional): Ticket = pekerjaan atas suatu Contract, bukan kategori
+    if (payload.contract_id) {
+      const contract = db.contracts.find(c => c.id === payload.contract_id);
+      if (contract) {
+        newTicket.contract_id = contract.id;
+        this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id);
+      }
+    }
+
+    // Notify respective division (IT covers software/license/SaaS)
+    const targetDivision = payload.category;
     this.notify({
       recipient_role: targetDivision,
       recipient_division: targetDivision,

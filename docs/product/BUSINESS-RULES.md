@@ -84,6 +84,21 @@
 
 ---
 
+## 5. Aturan Kategori Helpdesk Ticket (BR-04b)
+- Kategori tiket **terbatas pada**: `IT`, `GA`, `SC`, `PIBC`. Tidak ada kategori `License`, `General`, atau `Contract`.
+- Software/License/SaaS (Accurate, M365, VPN) adalah domain IT → seluruh tiket terkait menggunakan kategori `IT`.
+- Hardware/jaringan/server/akun → `IT`; fasilitas gedung → `GA`; permintaan SC → `SC`; PIBC → `PIBC`.
+- **Contract Management adalah domain tersendiri. Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti.
+- Data tiket lama berkategori `License`/`General` dinormalisasi otomatis saat server boot (License→IT, General→GA).
+
+## 6. Aturan Contract Management (BR-06)
+- Contract = record bisnis: nomor `CTR-YYYY-NNNN`, tipe, vendor, divisi pemilik (tidak terbatas GA/IT/SC/PIBC), PIC, periode, notice period, nilai, auto-renewal, status, dokumen append-only, notes.
+- Reminder kedaluwarsa menggunakan threshold **configurable** (default 60/35/7 hari): >60 normal; ≤60 warning; ≤35 urgent; ≤7 critical; kedaluwarsa = expired. Tampilan selalu menyertakan teks status + sisa hari (bukan warna saja).
+- Reminder dikirim ke PIC + divisi pemilik (bukan broadcast), dengan eskalasi opsional pada threshold 35/7 hari.
+- Channel notifikasi: in-app, email, telegram — semuanya melalui satu engine reminder dengan log `contract_notification_logs` (notification_type, channel, recipient, status, error_message).
+- Notice date dihitung `end_date − notice_period_days` dan remndernnya terpisah dari reminder kedaluwarsa.
+- Renewal outcome wajib disimpan (pending/renewed/not_renewed/terminated/replaced) beserta alasan; kontrak lama dipertahankan (audit & versioning-ready).
+
 ## 5. Aturan Reservasi Ruang Rapat & Notifikasi Multi-Divisi (BR-05)
 
 ### BR-05.1: Jalur Cepat Direksi (VIP Auto-Approval)
