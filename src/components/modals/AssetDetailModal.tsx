@@ -25,8 +25,8 @@ import {
   Scale,
   Info
 } from 'lucide-react';
-import { Asset, UserProfile } from '../../types';
-import { formatRupiah, formatDate, calculateDepreciation, GabahService } from '../../services/gabahService';
+import { Asset, UserProfile, Loan, Ticket } from '../../types';
+import { formatRupiah, formatDate, formatDateTime, calculateDepreciation, GabahService } from '../../services/gabahService';
 
 interface AssetDetailModalProps {
   asset: Asset | null;
@@ -39,6 +39,8 @@ interface AssetDetailModalProps {
   onEditThisAsset?: (asset: Asset) => void;
   currentUser?: UserProfile;
   allAssets?: Asset[];
+  assetLoans?: Loan[];
+  assetTickets?: Ticket[];
 }
 
 export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
@@ -52,11 +54,13 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   onEditThisAsset,
   currentUser,
   allAssets = [],
+  assetLoans = [],
+  assetTickets = [],
 }) => {
   const [isEditingCorpNumber, setIsEditingCorpNumber] = useState(false);
   const [editedCorpNumber, setEditedCorpNumber] = useState('');
   const [copiedAssetNumber, setCopiedAssetNumber] = useState(false);
-  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'financials' | 'maintenance'>('overview');
+  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'financials' | 'maintenance' | 'history'>('overview');
 
   const handleCopyAssetNumber = (num: string) => {
     navigator.clipboard.writeText(num);
@@ -254,6 +258,16 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               }`}
             >
               Log Servis &amp; Pemeliharaan
+            </button>
+            <button
+              onClick={() => setActiveDetailTab('history')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                activeDetailTab === 'history'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Riwayat Lengkap
             </button>
           </div>
 
@@ -557,6 +571,98 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Tab 4: Timeline Riwayat Lengkap (Snipe-IT style) */}
+          {activeDetailTab === 'history' && (() => {
+            type HistoryEntry = {
+              kind: 'creation' | 'loan' | 'ticket';
+              date: number;
+              title: string;
+              subtitle: string;
+              meta: string;
+              tone: string;
+              icon: React.ComponentType<{ className?: string }>;
+            };
+
+            const entries: HistoryEntry[] = [];
+
+            entries.push({
+              kind: 'creation',
+              date: new Date(asset.created_at || asset.purchase_date || Date.now()).getTime(),
+              title: 'Aset didaftarkan ke sistem',
+              subtitle: `Nomor kanonikal ${asset.asset_number} • Divisi pemilik ${asset.owner_division}`,
+              meta: `Perolehan: ${formatDate(asset.purchase_date)}${asset.purchase_price ? ` • Nilai: ${formatRupiah(asset.purchase_price)}` : ''}`,
+              tone: 'bg-emerald-100 text-emerald-700',
+              icon: Sparkles,
+            });
+
+            assetLoans.forEach(loan => {
+              const badge = GabahService.getLoanStatusBadge(loan.status);
+              entries.push({
+                kind: 'loan',
+                date: new Date(loan.created_at || loan.start_date).getTime(),
+                title: `Peminjaman ${loan.loan_number} — ${badge.label}`,
+                subtitle: `Peminjam: ${loan.borrower_name} (${loan.borrower_department})`,
+                meta: `${formatDateTime(loan.start_date)} → ${formatDateTime(loan.due_date)}${loan.rejection_reason ? ` • Alasan tolak: ${loan.rejection_reason}` : ''}`,
+                tone: 'bg-indigo-100 text-indigo-700',
+                icon: CalendarClock,
+              });
+            });
+
+            assetTickets.forEach(t => {
+              entries.push({
+                kind: 'ticket',
+                date: new Date(t.created_at || Date.now()).getTime(),
+                title: `Tiket ${t.ticket_number || t.id} — ${t.title}`,
+                subtitle: `Pelapor: ${t.reporter_name} • Kategori ${t.category} • Prioritas ${t.priority}`,
+                meta: `Status: ${t.status.replace('_', ' ')} • SLA ${t.sla_hours} jam`,
+                tone: 'bg-rose-100 text-rose-700',
+                icon: LifeBuoy,
+              });
+            });
+
+            entries.sort((a, b) => b.date - a.date);
+
+            return (
+              <div className="space-y-3">
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                    <FileText className="w-3.5 h-3.5 text-slate-700" />
+                    Timeline Riwayat Aset ({entries.length} peristiwa)
+                  </h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Rekap kronologis: pendaftaran, peminjaman, dan tiket gangguan yang terkait aset ini.
+                  </p>
+                </div>
+
+                {entries.length === 0 && (
+                  <div className="text-center py-8 text-xs text-slate-400">Belum ada aktivitas tercatat.</div>
+                )}
+
+                <div className="relative pl-6">
+                  <div className="absolute left-2 top-1 bottom-1 w-px bg-slate-200" aria-hidden="true" />
+                  {entries.map((e, i) => {
+                    const Icon = e.icon;
+                    return (
+                      <div key={`${e.kind}-${i}`} className="relative pb-4 last:pb-0">
+                        <span className={`absolute -left-[22px] top-0.5 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm ${e.tone}`}>
+                          <Icon className="w-3 h-3" />
+                        </span>
+                        <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs space-y-0.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs font-bold text-slate-900 leading-tight">{e.title}</div>
+                            <span className="text-[10px] font-mono text-slate-400 whitespace-nowrap">{formatDateTime(new Date(e.date).toISOString())}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-600">{e.subtitle}</div>
+                          <div className="text-[10px] text-slate-500">{e.meta}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200">

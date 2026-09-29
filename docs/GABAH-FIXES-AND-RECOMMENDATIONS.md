@@ -101,16 +101,20 @@ Audit dilakukan terhadap 9 peran resmi, 11 menu navigasi, seluruh modals, servic
 
 ## 5. Masukan Produk — Benchmark dari Aplikasi Sejenis
 
+> **Update 29 Sep 2026 (sesi kedua):** Dua rekomendasi teratas sudah diimplementasikan ✅:
+> 1. **SLA Timer visual** — komponen `<SlaTimer />` (countdown hidup, refresh 30 detik, amber < 25% window, rose + pulse saat breach) dipasang di tampilan list & kanban `TicketsView`.
+> 2. **Timeline riwayat per aset** — tab baru "Riwayat Lengkap" di `AssetDetailModal` yang menggabungkan pendaftaran, seluruh peminjaman (dengan status & alasan penolakan), dan tiket terkait dalam satu garis waktu kronologis.
+
 Referensi: **Freshservice / ServiceNow (ITSM)**, **Snipe-IT & Asset Panda (asset management)**,
 **Skedulo / UpKeep (maintenance)**, **Robin / Skedda (room booking)**, **Jira Service Management**.
 
 ### 5.1 Dari Freshservice / Jira SM (Helpdesk)
-- **Visual SLA timer** per tiket (countdown ke deadline, merah saat breach) — GABAH sudah hitung SLA, tapi belum ditampilkan sebagai timer hidup di kartu tiket.
+- ✅ **Visual SLA timer** per tiket — *SELESAI 29 Sep: `<SlaTimer />` live countdown di list & kanban tiket.*
 - **Trikage otomatis**: routing tiket berdasarkan kata kunci/aset terkait (mis. tiket terkait laptop → otomatis kategori IT).
 - **CSAT otomatis**: kirim survei rating begitu tiket `resolved` (field `rating` sudah ada, belum ada alurnya).
 
 ### 5.2 Dari Snipe-IT / Asset Panda (Aset)
-- **Riwayat per aset dalam satu timeline** (assign, move, loan, maintenance, tiket) — data movements sudah ada, tinggal satukan di `AssetDetailModal` sebagai timeline vertikal.
+- ✅ **Riwayat per aset dalam satu timeline** — *SELESAI 29 Sep: tab "Riwayat Lengkap" di `AssetDetailModal` (pendaftaran + pinjaman + tiket, kronologis). Kanban: integrasi movement log & maintenance berikutnya.*
 - **Bulk action** untuk stock opname: pilih banyak aset → ubah lokasi/kondisi sekaligus (pendukung hasil scan QR massal).
 - **Depresiasi & laporan nilai buku** per divisi untuk kebutuhan PSAK 16 — kalkulator sudah ada, tampilkan agregat di `ReportsView`.
 

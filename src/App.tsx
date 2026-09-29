@@ -786,6 +786,8 @@ export default function App() {
         onClose={() => setSelectedAssetForDetail(null)}
         onOpenQrModal={setSelectedAssetForQr}
         onOpenBastModal={handleGenerateBastForAsset}
+        assetLoans={(loans || []).filter(l => l.asset_id === selectedAssetForDetail?.id)}
+        assetTickets={(tickets || []).filter(t => t.related_asset_id === selectedAssetForDetail?.id)}
         onEditThisAsset={(ast) => {
           setSelectedAssetForEdit(ast);
         }}
