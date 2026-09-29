@@ -7,9 +7,11 @@ import {
   Laptop, 
   Car, 
   KeyRound, 
+  Package,
+  Store,
   Info 
 } from 'lucide-react';
-import { Asset, AssetCategoryType, Loan, TicketPriority, UserProfile } from '../../types';
+import { Asset, AssetCategoryType, Loan, TicketCategory, TicketPriority, UserProfile } from '../../types';
 
 interface CreateTicketModalProps {
   isOpen: boolean;
@@ -21,7 +23,7 @@ interface CreateTicketModalProps {
   onCreateTicket: (ticketData: {
     title: string;
     description: string;
-    category: AssetCategoryType;
+    category: TicketCategory;
     priority: TicketPriority;
     related_asset_id?: string;
   }) => void;
@@ -36,7 +38,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   preselectedAssetId,
   onCreateTicket,
 }) => {
-  const [category, setCategory] = useState<AssetCategoryType>('IT');
+  const [category, setCategory] = useState<TicketCategory>('IT');
   const [priority, setPriority] = useState<TicketPriority>('high');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -266,7 +268,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           {/* Category */}
           <div className="space-y-1.5">
             <label className="text-slate-700 font-bold">Departemen Penanganan:</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               <button
                 type="button"
                 onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
@@ -299,6 +301,28 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 }`}
               >
                 <KeyRound className="w-4 h-4" /> Lisensi Software
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCategory('SC'); setRelatedAssetId(''); }}
+                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
+                  category === 'SC' 
+                    ? 'bg-orange-600 text-white border-orange-600 shadow-sm' 
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <Package className="w-4 h-4" /> Supply Chain
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCategory('PIBC'); setRelatedAssetId(''); }}
+                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
+                  category === 'PIBC' 
+                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm' 
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <Store className="w-4 h-4" /> PIBC
               </button>
             </div>
           </div>

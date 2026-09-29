@@ -145,6 +145,7 @@ export interface Loan {
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TicketStatus = 'open' | 'in_progress' | 'pending_vendor' | 'resolved' | 'closed';
+export type TicketCategory = AssetCategoryType | 'SC' | 'PIBC';
 
 export interface Ticket {
   id: string;
@@ -154,7 +155,7 @@ export interface Ticket {
   subject?: string;
   type?: string; // incident, request, maintenance
   description: string;
-  category: AssetCategoryType;
+  category: TicketCategory;
   priority: TicketPriority;
   status: TicketStatus;
   reporter_id: string;

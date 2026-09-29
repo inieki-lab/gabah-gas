@@ -316,11 +316,12 @@ export default function App() {
   // 5. Reject Loan
   const handleRejectLoan = async (loanId: string, reason: string) => {
     try {
-      // Reject endpoint or loan update
-      showToast(`Reservasi ditolak. Alasan: ${reason}`, 'info');
+      const rejected = await gabahApi.rejectLoan(loanId, reason);
+      showToast(`Reservasi ${rejected.loan_number} ditolak. Peminjam telah diberi notifikasi.`, 'info');
       await refreshData();
     } catch (err: any) {
       showToast(err.message || 'Gagal menolak peminjaman', 'warning');
+      await refreshData();
     }
   };
 

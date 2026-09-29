@@ -1018,6 +1018,17 @@ async function startServer() {
     }
   });
 
+  app.post('/api/loans/:id/reject', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      const rejected = GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
+      await persistDataStore();
+      res.json({ success: true, data: rejected });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
   app.post('/api/loans/:id/handover', async (req, res) => {
     try {
       const actor = getActor(req);
@@ -1059,6 +1070,20 @@ async function startServer() {
     // 1. IT and Super Admin (Admin GABAH) can see all tickets
     if (actor.role === 'Admin GABAH' || actor.role === 'IT') {
       return res.json({ success: true, data: db.tickets });
+    }
+
+    // 1b. Auditor: read-only visibility over all tickets (enforced by middleware for mutations)
+    if (actor.role === 'Auditor') {
+      return res.json({ success: true, data: db.tickets });
+    }
+
+    // 1c. Operational divisions: scoped to their category (SC → 'SC', PIBC → 'PIBC') plus own tickets
+    if (actor.role === 'Supply Chain' || actor.role === 'PIBC') {
+      const ownCategory = actor.role === 'Supply Chain' ? 'SC' : 'PIBC';
+      return res.json({
+        success: true,
+        data: db.tickets.filter(t => (t.category as string) === ownCategory || isReporter(t)),
+      });
     }
 
     // 2. GA: only tickets directed to GA ('GA' category), or tickets reported by the GA user

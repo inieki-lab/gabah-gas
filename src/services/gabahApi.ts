@@ -336,6 +336,13 @@ class GabahApiClient {
     });
   }
 
+  async rejectLoan(loanId: string, reason: string): Promise<Loan> {
+    return this.request<Loan>(`/api/loans/${loanId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
   async handoverLoan(loanId: string, handoverNotes: string): Promise<Loan> {
     return this.request<Loan>(`/api/loans/${loanId}/handover`, {
       method: 'POST',

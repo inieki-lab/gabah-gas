@@ -525,6 +525,56 @@ export class GabahDomainService {
   }
 
   /**
+   * Loan Rejection (Owner-division authority, mirrors approveLoan)
+   */
+  static rejectLoan(loanId: string, reason: string, actor: ServerUser): ServerLoan {
+    const loan = db.loans.find(l => l.id === loanId);
+    if (!loan) throw new Error('Data pinjaman tidak ditemukan');
+
+    if (loan.status !== 'pending_approval') {
+      throw new Error('Hanya pinjaman berstatus menunggu persetujuan yang dapat ditolak.');
+    }
+
+    // Authority verification: same matrix as approveLoan
+    if (actor.role !== 'Admin GABAH') {
+      if (loan.owner_division === 'IT' && actor.role !== 'IT') {
+        throw new Error('Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang menolak peminjaman aset IT.');
+      }
+      if (loan.owner_division === 'GA' && actor.role !== 'GA') {
+        throw new Error('Akses ditolak: Hanya Divisi GA atau Admin GABAH yang berwenang menolak peminjaman aset GA.');
+      }
+      if (loan.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+        throw new Error('Akses ditolak: Hanya Divisi Supply Chain atau Admin GABAH yang berwenang menolak peminjaman aset SC.');
+      }
+      if (loan.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+        throw new Error('Akses ditolak: Hanya Divisi PIBC atau Admin GABAH yang berwenang menolak peminjaman aset PIBC.');
+      }
+    }
+
+    if (actor.role === 'Auditor') {
+      throw new Error('Akses ditolak: Auditor bersifat read-only.');
+    }
+
+    loan.status = 'rejected';
+    loan.rejection_reason = reason || 'Ditolak oleh divisi pemilik aset';
+    loan.updated_at = new Date().toISOString();
+
+    this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id);
+
+    this.notify({
+      recipient_user_id: loan.borrower_id,
+      title: `Pinjaman Ditolak: ${loan.loan_number}`,
+      message: `Permohonan pinjaman ${loan.asset_name} ditolak. Alasan: ${loan.rejection_reason}`,
+      severity: 'warning',
+      category: 'loan',
+      link_type: 'loan',
+      link_id: loan.id,
+    });
+
+    return loan;
+  }
+
+  /**
    * Loan Handover Execution (Fisik diserahkan)
    */
   static handoverLoan(loanId: string, handoverNotes: string, actor: ServerUser): ServerLoan {

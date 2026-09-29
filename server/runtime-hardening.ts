@@ -32,6 +32,7 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   if (actor.role === 'IT') return ticket.category === 'IT' || ticket.category === 'License';
   if (actor.role === 'GA') return ticket.category === 'GA';
   if (actor.role === 'Supply Chain') return ticket.category === 'SC';
+  if (actor.role === 'PIBC') return (ticket.category as string) === 'PIBC';
   return false;
 }
 
