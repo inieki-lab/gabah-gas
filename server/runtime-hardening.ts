@@ -51,11 +51,12 @@ function scopedAttention(actor: ServerUser, items: any[]) {
   });
 }
 
-// Public endpoints that do not require an active session token
+// Public endpoints that do not require an active session token.
+// SECURITY (CR-01): /api/auth/switch-role is NOT public — it requires an
+// authenticated session and enforces server-side privilege validation.
 const PUBLIC_API_PATHS = [
   '/api/health',
   '/api/auth/login',
-  '/api/auth/switch-role',
 ];
 
 export function gabahSecurityMiddleware(req: Request, res: Response, next: NextFunction) {
@@ -106,9 +107,11 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     (req as any).session = authResult.session;
   }
 
-  // Auditor is strictly READ-ONLY across the entire system
+  // Auditor is strictly READ-ONLY across the entire system.
+  // SECURITY (CR-01): switch-role is no longer an auditor exemption —
+  // identity switching must never be usable to escape the read-only gate.
   if (actor.role === 'Auditor' && req.method !== 'GET') {
-    const allowedAuditorActions = ['/api/auth/logout', '/api/auth/switch-role', '/api/notifications/read-all'];
+    const allowedAuditorActions = ['/api/auth/logout', '/api/notifications/read-all'];
     const isNotificationRead = req.path.match(/^\/api\/notifications\/[^/]+\/read$/);
     if (!allowedAuditorActions.includes(req.path) && !isNotificationRead) {
       return res.status(403).json({

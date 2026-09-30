@@ -156,16 +156,13 @@ export default function App() {
           const me = await gabahApi.getMe().catch(() => null);
           if (me) {
             setCurrentUser(me);
-          } else {
-            // Token expired or invalid, auto-login default superadmin
-            const res = await gabahApi.login('admin@foodstation.co.id', 'AdminGabah#2026').catch(() => null);
-            if (res?.user) setCurrentUser(res.user);
           }
-        } else {
-          // Initialize active session for default persona
-          const res = await gabahApi.login('admin@foodstation.co.id', 'AdminGabah#2026').catch(() => null);
-          if (res?.user) setCurrentUser(res.user);
+          // SECURITY (CR-02): no automatic login with hardcoded credentials.
+          // An invalid/expired token simply clears the session; the user must
+          // authenticate explicitly via the Login page.
         }
+        // No token: stay signed out until the user logs in with real
+        // credentials (server-side verification only).
       } catch (err) {
         console.warn('Auth initialization:', err);
       } finally {
@@ -175,18 +172,22 @@ export default function App() {
     initAuth();
   }, [refreshData]);
 
-  // Handle Role Switch
+  // Handle Role Switch (SECURITY CR-01: identity changes ONLY when the server
+  // confirms the switch and returns a fresh session token; no local fallback
+  // that would simulate a role change the server refused.)
   const handleSelectUser = async (user: UserProfile) => {
     try {
       const res = await gabahApi.switchRole(user.id);
-      const targetUser = res?.user || res?.data?.user || user;
+      const targetUser = res?.user || res?.data?.user;
+      if (!targetUser) {
+        showToast('Alih peran ditolak oleh server.', 'warning');
+        return;
+      }
       setCurrentUser(targetUser);
       showToast(`Berpindah akun aktif: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
-      console.warn('Switch user warning:', err);
-      setCurrentUser(user);
-      showToast(`Berpindah akun aktif: ${user.name} (${user.role_label || user.role})`, 'info');
+      showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
     }
   };
 
@@ -194,24 +195,15 @@ export default function App() {
     try {
       const res = await gabahApi.switchRole({ role });
       const targetUser = res?.user || res?.data?.user;
-      if (targetUser) {
-        setCurrentUser(targetUser);
-        showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
-      } else {
-        const found = (allUsers || []).find(u => u.role === role) || INITIAL_USERS.find(u => u.role === role);
-        if (found) {
-          setCurrentUser(found);
-          showToast(`Beralih peran: ${found.name} (${found.role_label || found.role})`, 'info');
-        }
+      if (!targetUser) {
+        showToast('Alih peran ditolak oleh server.', 'warning');
+        return;
       }
+      setCurrentUser(targetUser);
+      showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
-      console.warn('Switch role simulation warning:', err);
-      const found = (allUsers || []).find(u => u.role === role) || INITIAL_USERS.find(u => u.role === role);
-      if (found) {
-        setCurrentUser(found);
-        showToast(`Beralih peran: ${found.name} (${found.role_label || found.role})`, 'info');
-      }
+      showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
     }
   };
 

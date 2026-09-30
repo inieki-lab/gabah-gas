@@ -257,7 +257,8 @@ export interface UserProfile {
   division?: OwnerDivision;
   department: string;
   avatar: string;
-  temp_password?: string;
+  // SECURITY (CR-02): temp_password removed from the client model — plaintext
+  // credentials are never sent to or stored by the frontend.
   phone?: string;
   is_active?: boolean;
 }

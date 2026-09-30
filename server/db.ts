@@ -1,6 +1,5 @@
 import { CANONICAL_TAXONOMY } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
-import { hashPassword } from './crypto';
 
 export interface ServerUser {
   id: string;
@@ -15,12 +14,22 @@ export interface ServerUser {
   is_active: boolean;
   password_hash?: string;
   password_salt?: string;
+  /** Server-only per-user revocation version. Bumped on password change,
+   *  role/privilege change, or forced revoke; sessions issued before the bump
+   *  are invalidated (CR-03 §3.7). */
+  authVersion?: number;
   temp_password?: string;
 }
 
 export interface ServerSession {
   id: string;
   token: string;
+  /** Global revocation epoch at session creation. A token is only valid while
+   *  its epoch matches the server's current global auth epoch (CR-03 revocation). */
+  auth_epoch?: number;
+  /** Owner's authVersion at issuance — validated against the live user record
+   *  on every request so rotated/revoked users are rejected (CR-03 §3.7). */
+  user_auth_version?: number;
   user_id: string;
   original_admin_id?: string;
   created_at: string;
@@ -385,8 +394,11 @@ export const db = {
   contractNotificationLogs: [] as ServerContractNotificationLog[],
 };
 
-// Seed Enterprise Master Users
-export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password_salt'> & { initialPassword: string }> = [
+// Seed Enterprise Master Users.
+// SECURITY (CR-02): no initial/default password is hardcoded here.
+// Password provisioning is performed at boot by persistence.provisionCanonicalUserPasswords()
+// from environment secrets (GABAH_INITIAL_ADMIN_PASSWORD / GABAH_INITIAL_USER_PASSWORD).
+export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password_salt' | 'temp_password'>> = [
   {
     id: 'USR-01',
     name: 'Budi Santoso',
@@ -398,7 +410,6 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081234567890',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'AdminGabah#2026',
   },
   {
     id: 'USR-02',
@@ -411,7 +422,6 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081398765432',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'GaStaff#2026',
   },
   {
     id: 'USR-SEKDIR',
@@ -424,7 +434,6 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081288997766',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'DireksiFoodStation#2026',
   },
   {
     id: 'USR-HUMAS',
@@ -437,7 +446,6 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081377889900',
     avatar: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'HumasFoodStation#2026',
   },
   {
     id: 'USR-03',
@@ -450,7 +458,6 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081233445566',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'ItStaff#2026',
   },
   {
     id: 'USR-SC',
@@ -463,7 +470,6 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081288776655',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'ScStaff#2026',
   },
   {
     id: 'USR-PIBC',
@@ -476,7 +482,6 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081211223344',
     avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'PibcStaff#2026',
   },
   {
     id: 'USR-04',
@@ -489,7 +494,6 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081299887766',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'Karyawan#2026',
   },
   {
     id: 'USR-AUDITOR',
@@ -502,7 +506,6 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081299001122',
     avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'Auditor#2026',
   },
   {
     id: 'USR-05',
@@ -515,20 +518,18 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     phone: '081299334455',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
     is_active: true,
-    initialPassword: 'Keuangan#2026',
   },
 ];
 
 export function seedInitialData() {
   const defaultUsers = CANONICAL_USERS;
-  db.users = defaultUsers.map(({ initialPassword, ...user }) => {
-    const { hash, salt } = hashPassword(initialPassword);
-    return {
-      ...user,
-      password_hash: hash,
-      password_salt: salt,
-    };
-  });
+  // SECURITY (CR-02): seed users are created WITHOUT password material.
+  // Passwords are provisioned from environment secrets in
+  // persistence.provisionCanonicalUserPasswords() before authentication is served.
+  db.users = defaultUsers.map(user => ({
+    ...user,
+    authVersion: 1,
+  }));
 
   // Seed Canonical Assets (IT, GA, SC)
   db.assets = [

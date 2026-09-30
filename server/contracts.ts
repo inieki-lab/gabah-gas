@@ -236,7 +236,28 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
-    const protectedFields: Array<keyof ServerContract> = ['id', 'contract_number', 'created_by', 'created_at', 'created_by_name'];
+    // SECURITY (CR-06): protected fields — these govern identity, ownership,
+    // governance flags, and the authoritative lifecycle of the contract and can
+    // only change through their dedicated, authorized endpoints (create with
+    // division check, addDocument, addMilestone, decideRenewal, reminder sweep).
+    const protectedFields: Array<keyof ServerContract> = [
+      'id',
+      'contract_number',
+      'created_by',
+      'created_by_name',
+      'created_at',
+      'owner_division',
+      'owner_division_label',
+      'pic_user_id',
+      'pic_name',
+      'restricted',
+      'status',
+      'renewal_outcome',
+      'replaced_by_contract_id',
+      'parent_contract_id',
+      'documents',
+      'milestones',
+    ];
     for (const key of Object.keys(updates) as Array<keyof ServerContract>) {
       if (protectedFields.includes(key)) continue;
       if (updates[key] !== undefined) (contract as any)[key] = updates[key];

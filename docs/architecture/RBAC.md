@@ -94,16 +94,23 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
 
 ---
 
-## 4. Akun Pengujian Persona Resmi (Kanonikal)
+## 4. Akun Kanonikal (Kredensial Tidak Dipublikasikan)
 
-| Peran | Nama Pegawai | Email Kanonikal | Password Default | Divisi & Jabatan |
+> **SECURITY (CR-02):** Tidak ada password default yang ditulis di dokumentasi.
+> Kredensial awal diprovision dari environment secrets saat boot:
+> `GABAH_INITIAL_ADMIN_PASSWORD` (akun Admin GABAH) dan
+> `GABAH_INITIAL_USER_PASSWORD` (akun non-admin), atau di-generate acak CSPRNG
+> per akun pada mode development (disimpan sekali di file yang di-gitignore).
+> Placeholder dalam tabel di bawah hanyalah penanda, bukan nilai nyata.
+
+| Peran | Nama Pegawai | Email Kanonikal | Password | Divisi & Jabatan |
 |:---|:---|:---|:---|:---|
-| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `AdminGabah#2026` | IT / Super Administrator |
-| **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `ItStaff#2026` | IT / IT Technical Support |
-| **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `GaStaff#2026` | GA / General Affairs & Sarpras |
-| **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` | `DireksiFoodStation#2026` | GA / Staf Sekretariat Direksi |
-| **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `HumasFoodStation#2026` | GA / Staf Humas & Protokoler |
-| **Supply Chain** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `ScStaff#2026` | SC / Logistik Pergudangan Beras |
-| **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `PibcStaff#2026` | PIBC / Pengawas Pasar Induk |
-| **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `Karyawan#2026` | Komersial / Staf Komersial |
-| **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `Auditor#2026` | Audit / Auditor Internal (SPI) |
+| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | IT / Super Administrator |
+| **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT / IT Technical Support |
+| **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / General Affairs & Sarpras |
+| **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Sekretariat Direksi |
+| **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Humas & Protokoler |
+| **Supply Chain** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | SC / Logistik Pergudangan Beras |
+| **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | PIBC / Pengawas Pasar Induk |
+| **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Komersial / Staf Komersial |
+| **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Audit / Auditor Internal (SPI) |

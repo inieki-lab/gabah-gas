@@ -20,19 +20,23 @@
 
 ## 2. Matriks Persona Pengujian (9 Peran Kanonikal)
 
-| Peran (Role) | Nama Persona | Email Login | Password Valid | Peran Operasional |
-|:---|:---|:---|:---|:---|
-| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `AdminGabah#2026` | Super Administrator (Full Control) |
-| **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `ItStaff#2026` | IT Support & Aset Komputasi |
-| **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `GaStaff#2026` | General Affairs & Sarana Prasarana |
-| **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `DireksiFoodStation#2026`| Protokoler Direksi & VIP Booking |
-| **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `HumasFoodStation#2026` | Liputan Dokumentasi & Publikasi |
-| **Supply Chain** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `ScStaff#2026` | Logistik & Gudang Beras |
-| **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `PibcStaff#2026` | Pengawas Pasar Induk Cipinang |
-| **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `Karyawan#2026` | Pegawai Biasa / Pemohon Layanan |
-| **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `Auditor#2026` | Satuan Pengawas Internal (Read-Only) |
+> **SECURITY (CR-02):** Password tidak ditulis di dokumen ini. Gunakan kredensial
+> yang diterbitkan melalui proses provisioning resmi
+> (`<INITIAL_ADMIN_PASSWORD>` / `<INITIAL_USER_PASSWORD>` — placeholder, bukan
+> nilai nyata) atau yang direset oleh Admin GABAH. Tombol *1-Click Login* telah
+> dihapus dari halaman login.
 
-> **Fitur 1-Click Login:** Pada halaman `LoginPage.tsx`, tombol *1-Click Login* tersedia di samping profil untuk pengujian cepat tanpa mengetik kata sandi secara manual.
+| Peran (Role) | Nama Persona | Email Login | Password | Peran Operasional |
+|:---|:---|:---|:---|:---|
+| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | Super Administrator (Full Control) |
+| **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT Support & Aset Komputasi |
+| **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | General Affairs & Sarana Prasarana |
+| **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `<INITIAL_USER_PASSWORD>`| Protokoler Direksi & VIP Booking |
+| **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Liputan Dokumentasi & Publikasi |
+| **Supply Chain** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Logistik & Gudang Beras |
+| **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pengawas Pasar Induk Cipinang |
+| **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai Biasa / Pemohon Layanan |
+| **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Satuan Pengawas Internal (Read-Only) |
 
 ---
 
@@ -41,7 +45,7 @@
 ### Skenario 1: Autentikasi, Token Sesi & Logout
 - **Tujuan**: Memastikan sesi diterbitkan dengan aman dan dibersihkan saat logout.
 - **Langkah Pengujian**:
-  1. Buka halaman login. Masukkan email `admin@foodstation.co.id` dan password `AdminGabah#2026`.
+  1. Buka halaman login. Masukkan email admin dan password kredensial resmi (lihat Seksi 2 — placeholder, bukan nilai nyata).
   2. Periksa apakah sistem berhasil masuk ke dashboard dan menyimpan `gabah_auth_token` di `localStorage`.
   3. Lakukan logout melalui menu avatar kanan atas.
   4. Verifikasi bahwa token di `localStorage` terhapus dan pengguna diarahkan kembali ke landing page.

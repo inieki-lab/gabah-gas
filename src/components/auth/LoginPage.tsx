@@ -9,25 +9,16 @@ import {
   ArrowLeft, 
   ShieldCheck, 
   CheckCircle2, 
-  AlertCircle,
-  HelpCircle,
-  UserCheck
+  AlertCircle
 } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { INITIAL_USERS } from '../../data/mockData';
 import { gabahApi } from '../../services/gabahApi';
 
-const defaultPasswordForRole: Record<string, string> = {
-  'Admin GABAH': 'AdminGabah#2026',
-  'IT': 'ItStaff#2026',
-  'GA': 'GaStaff#2026',
-  'Sekretaris Direksi': 'DireksiFoodStation#2026',
-  'Humas': 'HumasFoodStation#2026',
-  'Supply Chain': 'ScStaff#2026',
-  'PIBC': 'PibcStaff#2026',
-  'Karyawan': 'Karyawan#2026',
-  'Auditor': 'Auditor#2026',
-};
+// SECURITY (CR-02): hardcoded role passwords, defaultPasswordForRole, and the
+// "1-Click Login" mechanism have been REMOVED. Authentication requires real
+// credentials issued through the secure provisioning process (environment
+// secrets at boot / Admin-issued credentials). There is no client-side bypass.
 
 interface LoginPageProps {
   onLoginSuccess: (user: UserProfile) => void;
@@ -40,21 +31,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onBackToLanding,
   availableUsers = INITIAL_USERS,
 }) => {
-  const users = (availableUsers && availableUsers.length > 0) ? availableUsers : INITIAL_USERS;
-  const [selectedUser, setSelectedUser] = useState<UserProfile>(users[0]);
-  const [emailInput, setEmailInput] = useState<string>(users[0]?.email || '');
-  const [passwordInput, setPasswordInput] = useState<string>(defaultPasswordForRole[users[0]?.role] || 'AdminGabah#2026');
+  const [emailInput, setEmailInput] = useState<string>('');
+  const [passwordInput, setPasswordInput] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const handleSelectUserQuick = (u: UserProfile) => {
-    setSelectedUser(u);
-    setEmailInput(u.email);
-    setPasswordInput(defaultPasswordForRole[u.role] || u.temp_password || 'AdminGabah#2026');
-    setErrorMessage(null);
-  };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,94 +184,46 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
           </div>
 
-          {/* Right Column: Interactive Quick Demo Accounts Switcher (Clean White) */}
+          {/* Right Column: Security Notice (credentials are no longer displayed) */}
           <div className="lg:col-span-6 space-y-4">
             
             <div className="bg-white rounded-2xl border border-[#DFDCE3] shadow-md p-5 sm:p-6">
               <div className="flex items-center gap-2 text-[#2d7f74] font-bold text-sm mb-1">
-                <KeyRound className="w-4 h-4 text-[#4ABDAC]" />
-                <span>Password Sementara Setiap User (Siap Pakai)</span>
+                <ShieldCheck className="w-4 h-4 text-[#4ABDAC]" />
+                <span>Kredensial Resmi Perusahaan</span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Sistem telah membuat <strong>Password Sementara</strong> resmi untuk setiap role jabatan di BUMD Food Station. Klik tombol <strong>"1-Click Login"</strong> untuk langsung masuk:
+                Demi keamanan data BUMD, kata sandi tidak ditampilkan di halaman login dan tidak
+                tersedia tombol masuk instan. Setiap akun menerima kredensial awal melalui
+                proses provisioning resmi, dan wajib menggantinya setelah login pertama.
               </p>
 
-              <div className="space-y-2.5">
-                {(availableUsers || INITIAL_USERS).map((u) => {
-                  const isSelected = selectedUser?.id === u.id;
-                  return (
-                    <div
-                      key={u.id}
-                      onClick={() => handleSelectUserQuick(u)}
-                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                        isSelected 
-                          ? 'bg-[#4ABDAC]/10 border-[#4ABDAC] shadow-xs' 
-                          : 'bg-[#f8f7fa] hover:bg-slate-100 border-[#DFDCE3]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <img 
-                          src={u.avatar} 
-                          alt={u.name} 
-                          className="w-10 h-10 rounded-full object-cover border-2 border-[#4ABDAC]/40 shrink-0" 
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-slate-900 truncate">{u.name}</span>
-                            <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${
-                              u.role === 'Admin GABAH' ? 'bg-[#4ABDAC]/20 text-[#206f65] border-[#4ABDAC]/40' :
-                              u.role === 'IT' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                              u.role === 'GA' ? 'bg-[#F7B733]/25 text-amber-900 border-[#F7B733]/40' :
-                              u.role === 'Sekretaris Direksi' ? 'bg-rose-100 text-rose-800 border-rose-200' :
-                              u.role === 'Humas' ? 'bg-teal-100 text-teal-800 border-teal-200' :
-                              u.role === 'Supply Chain' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-                              u.role === 'PIBC' ? 'bg-purple-100 text-purple-800 border-purple-200' :
-                              u.role === 'Auditor' ? 'bg-indigo-100 text-indigo-800 border-indigo-200' :
-                              'bg-[#DFDCE3] text-slate-800 border-slate-300'
-                            }`}>
-                              {u.role_label}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-slate-500 font-mono truncate">{u.email}</div>
-                          <div className="text-[11px] text-amber-900 font-mono font-bold mt-0.5">
-                            Pass: {defaultPasswordForRole[u.role] || 'AdminGabah#2026'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          handleSelectUserQuick(u);
-                          setIsLoading(true);
-                          setErrorMessage(null);
-                          try {
-                            const pwd = defaultPasswordForRole[u.role] || 'AdminGabah#2026';
-                            const res = await gabahApi.login(u.email, pwd);
-                            onLoginSuccess(res.user);
-                          } catch (err: any) {
-                            setErrorMessage(err.message || 'Login gagal.');
-                          } finally {
-                            setIsLoading(false);
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-[#4ABDAC] hover:bg-[#3ea395] text-white font-bold text-[11px] shrink-0 transition-colors shadow-xs"
-                      >
-                        1-Click Login
-                      </button>
-                    </div>
-                  );
-                })}
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-[#f8f7fa] border border-[#DFDCE3] flex items-start gap-3">
+                  <KeyRound className="w-4 h-4 text-[#4ABDAC] shrink-0 mt-0.5" />
+                  <div className="text-xs text-slate-700 leading-relaxed">
+                    <strong>Belum punya kata sandi?</strong> Ajukan melalui IT Service Desk
+                    (ext. 108). Administrator akan menerbitkan kredensial melalui jalur
+                    resmi — bukan melalui email atau pesan publik.
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#f8f7fa] border border-[#DFDCE3] flex items-start gap-3">
+                  <CheckCircle2 className="w-4 h-4 text-[#4ABDAC] shrink-0 mt-0.5" />
+                  <div className="text-xs text-slate-700 leading-relaxed">
+                    <strong>Kebijakan sesi:</strong> sesi aktif memiliki masa berlaku terbatas dan
+                    otomatis dicabut saat kata sandi atau hak akses Anda berubah. Keluar
+                    (logout) akan langsung mendaftarkan token sesi sebagai tidak valid.
+                  </div>
+                </div>
               </div>
-
             </div>
 
             {/* SLA & Security Compliance Notice */}
             <div className="p-4 rounded-xl bg-[#4ABDAC]/10 border border-[#4ABDAC]/30 text-xs text-slate-800 flex items-start gap-3">
               <CheckCircle2 className="w-4 h-4 text-[#4ABDAC] shrink-0 mt-0.5" />
               <div className="leading-relaxed">
-                <strong>Ketentuan Keamanan BUMD:</strong> Pengguna disarankan memperbarui password sementara pada menu profil setelah pertama kali berhasil masuk ke dalam portal.
+                <strong>Ketentuan Keamanan BUMD:</strong> jangan pernah membagikan kata sandi Anda.
+                Sistem mencatat seluruh aktivitas autentikasi dan alih peran untuk kepatuhan audit.
               </div>
             </div>
 

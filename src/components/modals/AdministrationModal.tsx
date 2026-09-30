@@ -227,8 +227,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     role: 'Karyawan',
     role_label: 'Pegawai Operasional',
     division: 'SC',
-    department: 'Pergudangan & Distribusi',
-    temp_password: 'Pangan2026!'
+    department: 'Pergudangan & Distribusi'
   });
 
   useEffect(() => {
@@ -765,8 +764,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         role: newUserData.role,
         division: newUserData.division,
         department: newUserData.department,
-        phone: newUserData.phone || '',
-        temp_password: newUserData.temp_password || 'Pangan2026!'
+        phone: newUserData.phone || ''
       });
 
       setUserList(prev => [created, ...prev.filter(u => u.id !== created.id)]);
@@ -779,8 +777,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         role: 'Karyawan',
         role_label: 'Pegawai Operasional',
         division: 'SC',
-        department: 'Pergudangan & Distribusi',
-        temp_password: 'Pangan2026!'
+        department: 'Pergudangan & Distribusi'
       });
       if (onRefreshData) await onRefreshData();
     } catch (err: any) {
@@ -1222,14 +1219,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
                       />
                     </div>
-                    <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Sandi Sementara</label>
-                      <input
-                        type="text"
-                        value={newUserData.temp_password}
-                        onChange={e => setNewUserData({ ...newUserData, temp_password: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono"
-                      />
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+                      Sandi awal dibuat otomatis oleh server (CSPRNG) dan dikirim out-of-band oleh Administrator — tidak ditampilkan di UI.
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
@@ -1313,7 +1304,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             <div className="text-[11px] text-slate-400">{user.department}</div>
                           </td>
                           <td className="px-4 py-3 font-mono text-[11px] text-slate-500">
-                            {user.temp_password || '********'}
+                            ********
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">

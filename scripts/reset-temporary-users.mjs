@@ -1,12 +1,20 @@
 import { Pool } from 'pg';
 
+// SECURITY (CR-02): no hardcoded database password. Credentials must come from
+// the environment (PGPASSWORD / DATABASE_URL). The script aborts when they are
+// not configured instead of falling back to a default secret.
+if (!process.env.DATABASE_URL && !process.env.PGPASSWORD) {
+  console.error('[GABAH] Database credentials not configured. Set DATABASE_URL or PGPASSWORD in the environment.');
+  process.exit(1);
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || undefined,
   host: process.env.PGHOST || '127.0.0.1',
   port: Number(process.env.PGPORT || 5432),
   database: process.env.PGDATABASE || 'gabah_db',
   user: process.env.PGUSER || 'gabah_user',
-  password: process.env.PGPASSWORD || 'PasswordBumd123!',
+  password: process.env.PGPASSWORD || undefined,
   connectionTimeoutMillis: 2000,
 });
 

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { Request } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { hashPassword, verifyPassword, generateToken } from './crypto';
+import { getSecurityEpoch } from './persistence';
 
 export { hashPassword, verifyPassword, generateToken };
 
@@ -110,6 +111,12 @@ export function clearFailedLogins(identifier: string): void {
 
 /**
  * Create a new authenticated session for a user
+ *
+ * SECURITY (CR-03):
+ * - Token is a 256-bit CSPRNG value (crypto.randomBytes via generateToken()).
+ * - Fresh token per authentication event — old tokens are never resurrected.
+ * - Session carries the global security epoch at issuance; tokens from older
+ *   epochs are rejected (forced revocation / rotation on boot).
  */
 export function createSession(
   userId: string,
@@ -126,6 +133,8 @@ export function createSession(
   const session: ServerSession = {
     id: `SES-${Date.now().toString().slice(-6)}-${crypto.randomBytes(4).toString('hex')}`,
     token: generateToken(),
+    auth_epoch: getSecurityEpoch(),
+    user_auth_version: db.users.find(u => u.id === userId)?.authVersion ?? 1,
     user_id: userId,
     original_admin_id: originalAdminId,
     created_at: now.toISOString(),
@@ -142,6 +151,12 @@ export function createSession(
 
 /**
  * Find and validate active session
+ *
+ * SECURITY (CR-03): a token is valid only if
+ *  - it exists in the in-memory session registry (never restored from Git-tracked state),
+ *  - it has not expired, AND
+ *  - it was issued under the CURRENT global security epoch.
+ * Any mismatch ⇒ the token is treated as invalid (revoked).
  */
 export function getActiveSession(token: string): ServerSession | null {
   if (!token) return null;
@@ -151,13 +166,19 @@ export function getActiveSession(token: string): ServerSession | null {
   const session = db.sessions[index];
   const now = new Date();
 
-  // Check expiration
+  // Check expiration (absolute timeout)
   if (new Date(session.expires_at) <= now) {
     db.sessions.splice(index, 1);
     return null;
   }
 
-  // Update last_active_at
+  // Check global revocation epoch (forced revocation / rotation)
+  if (session.auth_epoch !== undefined && session.auth_epoch !== getSecurityEpoch()) {
+    db.sessions.splice(index, 1);
+    return null;
+  }
+
+  // Update last_active_at (sliding activity marker; absolute expiry is unchanged)
   session.last_active_at = now.toISOString();
   return session;
 }
@@ -181,6 +202,42 @@ export function destroySession(token: string): boolean {
 export function destroyAllUserSessions(userId: string): void {
   db.sessions = db.sessions.filter(s => s.user_id !== userId);
 }
+
+/**
+ * SECURITY (CR-03 §3.7): bump a user's authVersion and drop every session
+ * issued to them. Called on password change/reset, material privilege change,
+ * account deactivation, and forced single-user revoke. Old tokens must be
+ * re-authenticated — there is no silent migration to a new token.
+ */
+export function revokeUserSessions(userId: string): void {
+  const user = db.users.find(u => u.id === userId);
+  if (user) user.authVersion = (user.authVersion || 1) + 1;
+  destroyAllUserSessions(userId);
+}
+
+/**
+ * SECURITY (CR-03 §3.4): forced global revocation for incident response.
+ * Increments the server-side security epoch so every previously issued token
+ * is invalid, then clears the in-memory session registry.
+ */
+export function revokeAllSessions(): void {
+  for (const u of db.users) {
+    u.authVersion = (u.authVersion || 1) + 1;
+  }
+  db.sessions = [];
+}
+
+/**
+ * SECURITY (CR-03 §3.8): absolute session timeout — 7 days from issuance.
+ * There is no refresh token; after expiry (or logout/rotation) the client must
+ * re-authenticate with credentials. Idle timeout is not enforced beyond the
+ * absolute window (documented as accepted behavior for P0).
+ */
+export const SESSION_LIFETIME_POLICY = {
+  absoluteTimeout: '7 days',
+  idleTimeout: 'not enforced (absolute 7-day window only)',
+  refreshTokens: 'none — re-authentication required on expiry',
+};
 
 /**
  * Extract auth token from request headers
@@ -219,6 +276,15 @@ export function authenticateRequest(req: Request): {
   if (token) {
     const session = getActiveSession(token);
     if (session) {
+      const sessionOwnerId = db.users.find(u => u.id === session.user_id);
+      // If the session owner's authVersion has advanced since issuance, the
+      // token was revoked (password change / privilege change / forced revoke).
+      const ownerVersion = sessionOwnerId?.authVersion ?? 1;
+      if (session.user_auth_version !== undefined && session.user_auth_version !== ownerVersion) {
+        const idx = db.sessions.findIndex(s => s.token === token);
+        if (idx !== -1) db.sessions.splice(idx, 1);
+        return { user: null, error: 'Sesi telah dicabut (kredensial atau hak akses berubah). Silakan login kembali.' };
+      }
       const activeUser = session.simulated_user || db.users.find(u => u.id === session.user_id && u.is_active);
       if (activeUser) {
         // Anti-spoofing verification:

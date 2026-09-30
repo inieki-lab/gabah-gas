@@ -6,3 +6,13 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# SECURITY (CR-03): runtime authentication/session state must never be tracked
+# by Git. gabah_state.json previously contained live bearer tokens and password
+# hashes and is considered COMPROMISED (documented in the P0 hardening report).
+server/data/
+server/data/gabah_state.json
+server/data/gabah_state.json.tmp
+server/data/initial_credentials_dev.txt
+*.session
+*.token

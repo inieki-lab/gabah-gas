@@ -1298,7 +1298,17 @@ export class GabahDomainService {
     const room = (db.rooms || []).find(r => r.id === roomId);
     if (!room) throw new Error('Ruangan tidak ditemukan.');
 
-    Object.assign(room, updates);
+    // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
+    // Protected server-owned fields: id, code, building, floor (identity &
+    // location integrity), pic_ga (PIC ditetapkan admin/GA via proses resmi).
+    const allowedRoomFields: Array<keyof ServerMeetingRoom> = [
+      'name', 'capacity', 'facilities', 'status', 'color', 'description', 'image_url',
+    ];
+    for (const key of allowedRoomFields) {
+      if (updates[key] !== undefined) {
+        (room as any)[key] = updates[key];
+      }
+    }
     this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
     persistDataStore().catch(err => console.warn('[GABAH Room] Persistence notice:', err.message));
     return room;

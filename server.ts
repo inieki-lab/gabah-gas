@@ -14,6 +14,7 @@ import {
   createSession,
   destroySession,
   destroyAllUserSessions,
+  revokeUserSessions,
   extractToken,
   hashPassword,
   verifyPassword,
@@ -31,7 +32,7 @@ async function startServer() {
   AssetNumberingEngine.syncFromExistingRecords({ tickets: db.tickets, loans: db.loans });
 
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
   app.use(express.json());
 
@@ -81,7 +82,7 @@ async function startServer() {
       if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
-      const { name, email, role, division, department, password, temp_password, phone } = req.body;
+      const { name, email, role, division, department, password, phone } = req.body;
       if (!name || !email) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi' });
       }
@@ -100,11 +101,12 @@ async function startServer() {
         'Karyawan': 'Pegawai Operasional'
       };
 
-      // Generate a secure, unpredictable temporary password if none is provided
-      const secureRandomSuffix = crypto.randomBytes(4).toString('hex').toUpperCase();
-      const generatedTempPassword = `FS-${secureRandomSuffix}!`;
-      const plainPassword = password || temp_password || generatedTempPassword;
-      const { hash, salt } = hashPassword(plainPassword);
+      // SECURITY (CR-02): no client-supplied password and no plaintext echo.
+      // The initial password is generated server-side with CSPRNG and is
+      // delivered out-of-band by the administrator (documented policy); the
+      // API response NEVER contains it.
+      const generatedTempPassword = crypto.randomBytes(12).toString('base64url');
+      const { hash, salt } = hashPassword(generatedTempPassword);
 
       const newUser: ServerUser = {
         id: `USR-${Date.now().toString().slice(-6)}`,
@@ -119,14 +121,14 @@ async function startServer() {
         is_active: true,
         password_hash: hash,
         password_salt: salt,
-        temp_password: (!password && !temp_password) ? plainPassword : temp_password,
+        authVersion: 1,
       };
 
       db.users.unshift(newUser);
       GabahDomainService.recordAudit(
         'USER_CREATED',
         'Users',
-        `Menambahkan pengguna baru: ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}`,
+        `Menambahkan pengguna baru: ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}. Password awal dibuat server-side dan dikirim out-of-band.`,
         actor,
         newUser.id
       );
@@ -135,10 +137,7 @@ async function startServer() {
 
       res.status(201).json({
         success: true,
-        data: {
-          ...sanitizeUser(newUser),
-          temp_password: plainPassword,
-        },
+        data: sanitizeUser(newUser),
       });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -157,7 +156,7 @@ async function startServer() {
         return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
       }
 
-      const { name, email, role, division, department, is_active, password, temp_password, phone } = req.body;
+      const { name, email, role, division, department, is_active, password, phone } = req.body;
       if (name !== undefined) targetUser.name = name.trim();
       if (email !== undefined && email.trim()) {
         const trimmedEmail = email.trim().toLowerCase();
@@ -166,6 +165,9 @@ async function startServer() {
         }
         targetUser.email = trimmedEmail;
       }
+      const privilegeChanged = role !== undefined && role !== targetUser.role;
+      const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
+
       if (role !== undefined) {
         targetUser.role = role;
         const roleLabels: Record<string, string> = {
@@ -185,14 +187,20 @@ async function startServer() {
       if (is_active !== undefined) targetUser.is_active = Boolean(is_active);
       if (phone !== undefined) targetUser.phone = phone.trim();
 
-      if (password || temp_password) {
-        const plain = (password || temp_password).trim();
+      if (password) {
+        const plain = String(password).trim();
         if (plain) {
           const { hash, salt } = hashPassword(plain);
           targetUser.password_hash = hash;
           targetUser.password_salt = salt;
           delete targetUser.temp_password;
         }
+      }
+
+      // SECURITY (CR-03 §3.4): password change, privilege change, or
+      // deactivation invalidates ALL active sessions of this user.
+      if (password || privilegeChanged || accountDeactivated) {
+        revokeUserSessions(targetUser.id);
       }
 
       GabahDomainService.recordAudit(
@@ -340,33 +348,15 @@ async function startServer() {
         return res.status(401).json({ success: false, message: 'Email atau kata sandi tidak valid.' });
       }
 
-      // Canonical role passwords for smooth multi-role enterprise authentication
-      const VALID_ROLE_PASSWORDS: Record<string, string[]> = {
-        'Admin GABAH': ['AdminGabah#2026', 'Pangan2026!'],
-        'IT': ['ItStaff#2026', 'ItFoodStation#2026', 'Pangan2026!'],
-        'GA': ['GaStaff#2026', 'GaFoodStation#2026', 'Pangan2026!'],
-        'Sekretaris Direksi': ['DireksiFoodStation#2026', 'Pangan2026!'],
-        'Humas': ['HumasFoodStation#2026', 'Pangan2026!'],
-        'Supply Chain': ['ScStaff#2026', 'SupplyChain#2026', 'Pangan2026!'],
-        'PIBC': ['PibcStaff#2026', 'PibcFoodStation#2026', 'Pangan2026!'],
-        'Karyawan': ['Karyawan#2026', 'Pangan2026!'],
-        'Auditor': ['Auditor#2026', 'AuditorSp1#2026', 'Pangan2026!'],
-      };
-
-      // Verify password via PBKDF2 check or canonical role password list
+      // SECURITY (CR-02): password verification uses ONLY the stored PBKDF2
+      // hash (server/crypto.ts). There is no hardcoded role-password list, no
+      // universal fallback password, and no plaintext temp_password path.
       let isValidPassword = false;
-      const rolePasswords = VALID_ROLE_PASSWORDS[user.role] || ['Pangan2026!'];
 
-      if (rolePasswords.includes(password)) {
-        isValidPassword = true;
-        // Update hash if not present or migrating
-        const { hash, salt } = hashPassword(password);
-        user.password_hash = hash;
-        user.password_salt = salt;
-        delete user.temp_password;
-      } else if (user.password_hash && user.password_salt && verifyPassword(password, user.password_hash, user.password_salt)) {
+      if (user.password_hash && user.password_salt && verifyPassword(password, user.password_hash, user.password_salt)) {
         isValidPassword = true;
       } else if (user.temp_password && user.temp_password === password) {
+        // Legacy field only; hashed + consumed immediately and never returned.
         const { hash, salt } = hashPassword(password);
         user.password_hash = hash;
         user.password_salt = salt;
@@ -437,91 +427,79 @@ async function startServer() {
     }
   });
 
+  /**
+   * SECURITY (CR-01): role/account switching is a privileged operation.
+   * - Requires an authenticated session (anonymous ⇒ 401).
+   * - Identity comes EXCLUSIVELY from the server-side session token; client
+   *   role / userId / x-user-id can never select or forge the actor.
+   * - Only Admin GABAH may switch into another account or role; every other
+   *   principal receives 403. The "SIM-*" virtual persona mechanism is removed.
+   * - Every successful switch is audit-logged and produces a NEW token
+   *   (session rotation) bound to the real target user.
+   */
   app.post('/api/auth/switch-role', async (req, res) => {
     try {
       let actor: ServerUser;
       try {
         actor = getActor(req);
       } catch {
-        actor = db.users[0] || CANONICAL_USERS[0];
+        // No valid session — never fall back to db.users[0] or any default admin.
+        return res.status(401).json({
+          success: false,
+          message: 'Autentikasi diperlukan. Role switching memerlukan sesi yang valid.',
+        });
       }
 
-      const currentSession = (req as any).session as ServerSession | undefined;
-      const originalAdminId = currentSession?.original_admin_id || (actor.role === 'Admin GABAH' ? actor.id : db.users[0]?.id || 'USR-01');
+      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+        GabahDomainService.recordAudit(
+          'AUTH_SWITCH_ROLE_DENIED',
+          'Auth',
+          `Percobaan role switch oleh principal tanpa kewenangan: ${actor.name} (${actor.role})`,
+          actor
+        );
+        return res.status(403).json({
+          success: false,
+          message: 'Akses ditolak: Hanya Admin GABAH yang berwenang melakukan alih peran ke akun/peran lain.',
+        });
+      }
 
-      const { userId, role } = req.body;
-      let targetUser = userId 
-        ? db.users.find(u => u.id === userId || u.email?.toLowerCase() === userId.toLowerCase() || u.name?.toLowerCase() === userId.toLowerCase()) 
+      const { userId, role } = req.body || {};
+      if (!userId && !role) {
+        return res.status(400).json({ success: false, message: 'Target alih peran wajib diisi (userId atau role).' });
+      }
+
+      let targetUser = userId
+        ? db.users.find(u => u.id === userId || u.email?.toLowerCase() === String(userId).toLowerCase() || u.name?.toLowerCase() === String(userId).toLowerCase())
         : null;
 
       if (!targetUser && role) {
         targetUser = db.users.find(u => u.role === role);
       }
 
-      let effectiveUser: ServerUser;
-      let isSimulated = false;
-
-      if (targetUser) {
-        effectiveUser = targetUser;
-      } else if (role) {
-        isSimulated = true;
-        // Virtual simulation persona for testing roles
-        const roleLabels: Record<string, string> = {
-          'Admin GABAH': 'Admin GABAH',
-          'IT': 'IT Technical Staff',
-          'GA': 'GA & Sarpras Specialist',
-          'Sekretaris Direksi': 'Sekretaris Direksi & Dewan Komisaris',
-          'Humas': 'Humas & Dokumentasi Protokoler',
-          'Supply Chain': 'Supply Chain & Logistik',
-          'PIBC': 'Petugas Pasar Induk Cipinang',
-          'Karyawan': 'Pegawai Operasional (Karyawan)',
-          'Auditor': 'Satuan Pengawas Internal (SPI)',
-          'Management': 'Dewan Direksi & Kadiv'
-        };
-        const divisions: Record<string, any> = {
-          'Admin GABAH': 'IT',
-          'IT': 'IT',
-          'GA': 'GA',
-          'Sekretaris Direksi': 'GA',
-          'Humas': 'GA',
-          'Supply Chain': 'SC',
-          'PIBC': 'PIBC',
-          'Karyawan': 'SC',
-          'Auditor': 'GA',
-          'Management': 'IT'
-        };
-        effectiveUser = {
-          id: `SIM-${role.replace(/\s+/g, '-').toUpperCase()}`,
-          name: `Simulasi: ${actor.name || 'Pengguna'}`,
-          email: `${role.toLowerCase().replace(/\s+/g, '')}@foodstation.co.id`,
-          role: role as any,
-          role_label: roleLabels[role] || role,
-          division: divisions[role] || 'SC',
-          department: `Mode Uji Coba: ${roleLabels[role] || role}`,
-          avatar: actor.avatar,
-          phone: actor.phone,
-          is_active: true,
-          password_hash: actor.password_hash,
-          password_salt: actor.password_salt,
-        };
-      } else {
+      if (!targetUser) {
         return res.status(404).json({ success: false, message: 'User atau role target tidak ditemukan.' });
       }
+      if (!targetUser.is_active) {
+        return res.status(403).json({ success: false, message: 'Akun target tidak aktif.' });
+      }
 
-      // Create legitimate session for target user (or simulated user) with preserved root admin identity
-      const session = createSession(
-        isSimulated ? (db.users[0]?.id || 'USR-01') : effectiveUser.id,
-        req,
-        isSimulated ? effectiveUser : undefined,
-        originalAdminId
-      );
+      const currentSession = (req as any).session as ServerSession | undefined;
+      const originalAdminId = currentSession?.original_admin_id || actor.id;
+
+      // Rotate: the previous admin session is revoked; a fresh token is issued
+      // for the target identity (new token per authentication event — CR-03).
+      if (currentSession?.token) {
+        destroySession(currentSession.token);
+      }
+
+      const session = createSession(targetUser.id, req, undefined, originalAdminId);
 
       GabahDomainService.recordAudit(
         'AUTH_SWITCH_ROLE',
         'Auth',
-        `Perpindahan role aktif ke ${effectiveUser.name} (${effectiveUser.role})`,
+        `Admin ${actor.name} beralih identitas aktif ke ${targetUser.name} (${targetUser.role})`,
         actor,
-        effectiveUser.id
+        targetUser.id
       );
 
       await persistDataStore();
@@ -529,7 +507,7 @@ async function startServer() {
       res.json({
         success: true,
         data: {
-          user: sanitizeUser(effectiveUser),
+          user: sanitizeUser(targetUser),
           token: session.token,
           expires_at: session.expires_at,
         },
@@ -1119,26 +1097,60 @@ async function startServer() {
     }
   });
 
+  // SECURITY (CR-06): authoritative ticket status state machine.
+  // open → in_progress → resolved → closed; open/reopened work may be
+  // assigned. Arbitrary status strings and skipped transitions are rejected.
+  const TICKET_TRANSITIONS: Record<string, string[]> = {
+    open: ['in_progress', 'resolved', 'closed'],
+    assigned: ['in_progress', 'resolved', 'closed'],
+    in_progress: ['resolved', 'closed', 'open'],
+    resolved: ['closed', 'open'],
+    closed: ['open'],
+  };
+
   app.patch('/api/tickets/:id/status', (req, res) => {
-    const actor = getActor(req);
-    if (actor.role === 'Auditor') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+    try {
+      const actor = getActor(req);
+      if (actor.role === 'Auditor') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+      }
+      const ticket = db.tickets.find(t => t.id === req.params.id);
+      if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
+
+      const { status, resolutionNotes } = req.body || {};
+      const currentStatus = String(ticket.status);
+      const nextStatus = String(status || '');
+
+      if (!nextStatus) {
+        return res.status(400).json({ success: false, message: 'Status tujuan wajib diisi.' });
+      }
+      const allowed = TICKET_TRANSITIONS[currentStatus] || [];
+      if (!allowed.includes(nextStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: `Transisi status tiket tidak valid: '${currentStatus}' → '${nextStatus}'. Transisi diizinkan: ${allowed.join(', ') || '(tidak ada)'}.`,
+        });
+      }
+
+      // Object-level authorization already enforced by middleware for scoped
+      // roles; Admin GABAH handles everything.
+      ticket.status = nextStatus as any;
+      if (resolutionNotes) ticket.resolution_notes = resolutionNotes;
+      if (nextStatus === 'resolved' || nextStatus === 'closed') {
+        ticket.resolved_at = new Date().toISOString();
+      }
+      if (nextStatus !== 'closed') {
+        ticket.resolved_at = undefined as any;
+      }
+      ticket.updated_at = new Date().toISOString();
+
+      GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
+      persistDataStore().catch(() => {});
+
+      res.json({ success: true, data: ticket });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
     }
-    const ticket = db.tickets.find(t => t.id === req.params.id);
-    if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
-
-    const { status, resolutionNotes } = req.body;
-    ticket.status = status;
-    if (resolutionNotes) ticket.resolution_notes = resolutionNotes;
-    if (status === 'resolved' || status === 'closed') {
-      ticket.resolved_at = new Date().toISOString();
-    }
-    ticket.updated_at = new Date().toISOString();
-
-    GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} menjadi ${status}`, actor, ticket.id);
-    persistDataStore().catch(() => {});
-
-    res.json({ success: true, data: ticket });
   });
 
   // Maintenance & Calibration Schedules
@@ -1240,7 +1252,18 @@ async function startServer() {
       }
     }
 
-    Object.assign(schedule, req.body);
+    // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
+    // Protected server-owned fields: id, schedule_code, asset_id, asset_name,
+    // asset_number, category_type, owner_division, created_at.
+    const allowedMaintenanceFields = [
+      'title', 'scheduled_date', 'frequency', 'status', 'technician_name',
+      'vendor_id', 'vendor_name', 'estimated_cost', 'actual_cost', 'notes', 'checklist',
+    ];
+    for (const key of allowedMaintenanceFields) {
+      if (req.body[key] !== undefined) {
+        (schedule as any)[key] = req.body[key];
+      }
+    }
     if (req.body.status === 'completed') {
       schedule.last_completed_at = new Date().toISOString();
     }

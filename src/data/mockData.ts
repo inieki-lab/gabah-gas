@@ -11,7 +11,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Management Information System & TI',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     phone: '081234567890',
-    temp_password: 'AdminGabah#2026',
     is_active: true,
   },
   {
@@ -24,7 +23,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Sekretariat Direksi & Dewan Komisaris',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
     phone: '081288997766',
-    temp_password: 'DireksiFoodStation#2026',
     is_active: true,
   },
   {
@@ -37,7 +35,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Humas & Protokoler Perusahaan',
     avatar: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80',
     phone: '081377889900',
-    temp_password: 'HumasFoodStation#2026',
     is_active: true,
   },
   {
@@ -50,7 +47,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Divisi Perdagangan & Komersial',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     phone: '081299887766',
-    temp_password: 'Karyawan#2026',
     is_active: true,
   },
   {
@@ -63,7 +59,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'General Affairs & Rumah Tangga',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
     phone: '081398765432',
-    temp_password: 'GaFoodStation#2026',
     is_active: true,
   },
   {
@@ -76,7 +71,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Management Information System & TI',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     phone: '081233445566',
-    temp_password: 'ItStaff#2026',
     is_active: true,
   },
   {
@@ -89,7 +83,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Pergudangan Beras Induk & Distribusi',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
     phone: '081288776655',
-    temp_password: 'ScStaff#2026',
     is_active: true,
   },
   {
@@ -102,7 +95,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Pengelolaan Kios & Los Pasar Induk',
     avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
     phone: '081211223344',
-    temp_password: 'PibcStaff#2026',
     is_active: true,
   },
   {
@@ -115,7 +107,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Satuan Pengawas Internal (SPI)',
     avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150&auto=format&fit=crop&q=80',
     phone: '081299001122',
-    temp_password: 'Auditor#2026',
     is_active: true,
   },
   {
@@ -128,7 +119,6 @@ export const INITIAL_USERS: UserProfile[] = [
     department: 'Divisi Keuangan & Akuntansi',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
     phone: '081299334455',
-    temp_password: 'Keuangan#2026',
     is_active: true,
   },
 ];

@@ -20,8 +20,7 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
 * **Auth Bypass & Impersonasi Ditutup:**
   * Diperbaiki pada `server/auth.ts`: Menghapus celah keamanan auto-login superadmin tanpa token serta impersonasi via header `x-user-id` tanpa kata sandi.
 * **Kredensial Default:**
-  * Akun Super Admin disinkronkan menjadi: `admin@foodstation.co.id` dengan sandi `AdminGabah#2026` di seluruh sistem (`App.tsx`, `mockData.ts`, dan `LoginPage.tsx`).
-  * Menambahkan kredensial cepat untuk seluruh 9 peran di `LoginPage.tsx` (termasuk `Sekretaris Direksi` dan `Humas`).
+  * (REDACTED — CR-02) Kredensial nyata tidak lagi ditulis di dokumen ini. Password awal kini diprovision dari environment secrets (`GABAH_INITIAL_ADMIN_PASSWORD` / `GABAH_INITIAL_USER_PASSWORD`) dan tombol 1-Click Login telah dihapus.
 
 ---
 
@@ -81,14 +80,14 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
   * Header modal menampilkan badge: `SUPER ADMIN (FULL ACCESS) • [Nama Pengguna]`.
 
 ### 2.6 Perbaikan Masalah Login Multi-User (Semua 9 Akun & Alias Aktif)
-* **Penyebab Masalah Sebelumnya:**
-  1. **Mismatch Password Database vs Halaman Login:** Pada database hash, password untuk peran `IT` dan `GA` sebelumnya tercatat varian `ItFoodStation#2026` dan `GaFoodStation#2026`, sedangkan tombol "1-Click Login" mengirim `ItStaff#2026` dan `GaStaff#2026`, sehingga ditolak oleh server (401).
+* **Penyebab Masalah Sebelumnya (REDACTED — CR-02):**
+  1. **Mismatch Password Database vs Halaman Login:** Password peran `IT`/`GA` di hash database berbeda dari yang dikirim tombol "1-Click Login", sehingga ditolak server (401). Nilai password lama tidak ditampilkan lagi (redacted).
   2. **Akun Belum Lengkap di Persistent Store:** Tiga peran baru (`Supply Chain`, `PIBC`, dan `Auditor`) belum terdaftar secara permanen pada `gabah_state.json` dan `server/persistence.ts`.
   3. **Strict Lockout IP:** Mekanisme rate limiting memblokir IP selama 300 detik (5 menit) setelah 5 kali gagal percobaan saat pengguna mencoba-coba akun lain.
   4. **Pencocokan Email Kaku:** Pengguna yang memasukkan alias email (seperti `sekdir@`, `it@`, `karyawan@`, `sc@`, `pibc@`, atau `spi@`) gagal karena server hanya menerima string email eksak tertentu.
 * **Solusi yang Diterapkan:**
   1. **Canonical Users & Auto-Merge (`server/db.ts` & `server/persistence.ts`):** Kesembilan akun resmi kini didefinisikan secara otoritatif dalam `CANONICAL_USERS` dan otomatis digabungkan (*auto-merge*) saat server booting sehingga tidak akan pernah hilang dari persistent store.
-  2. **Dukungan Multi-Password per Peran:** Server menerima kedua variasi password resmi (contoh: `ItStaff#2026` maupun `ItFoodStation#2026`, `GaStaff#2026` maupun `GaFoodStation#2026`, serta `Auditor#2026`).
+  2. **Multi-varian Password per Peran:** Server sebelumnya menerima beberapa varian password per peran. Mekanisme ini telah DIHAPUS (CR-02) — verifikasi kini hanya terhadap PBKDF2 hash tersimpan.
   3. **Pencocokan Alias Cerdas (`server.ts`):** Endpoint `/api/auth/login` mengenali alias prefix dan peran (misal `sekdir`, `sekretariat.direksi`, `it`, `it.support`, `karyawan`, `sc`, `pibc`, `auditor`, `spi`).
   4. **Bypass Lockout Mode Dev (`server/auth.ts`):** Lockout IP dinonaktifkan dalam mode development agar penguji tidak terblokir saat mengevaluasi multi-role.
   5. **Verifikasi Otomatis:** Telah diuji dengan script tes mandiri untuk seluruh 9 akun dan 9 alias (18/18 pengujian berhasil 100% dengan token Bearer aktif).
@@ -127,21 +126,24 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
 
 ---
 
-## 3. Matriks 9 Peran (RBAC) & Kredensial Pengujian (Terverifikasi 100%)
+## 3. Matriks 9 Peran (RBAC) — Kredensial Tidak Dipublikasikan (REDACTED, CR-02)
 
-| Peran (Role) | Nama Persona | Email Utama & Alias | Password Valid |
+| Peran (Role) | Nama Persona | Email Utama & Alias | Password |
 | :--- | :--- | :--- | :--- |
-| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` / `budi.santoso@...` | `AdminGabah#2026` |
-| **IT** | Dani Setiawan | `it.support@foodstation.co.id` / `it@...` | `ItStaff#2026` atau `ItFoodStation#2026` |
-| **GA** | Siti Rahmawati | `ga@foodstation.co.id` / `ga.officer@...` | `GaStaff#2026` atau `GaFoodStation#2026` |
-| **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` / `sekdir@...` | `DireksiFoodStation#2026` |
-| **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `HumasFoodStation#2026` |
-| **Supply Chain** | Agus Pratama | `sc.warehouse@foodstation.co.id` / `sc@...` / `supplychain@...` | `ScStaff#2026` |
-| **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` / `pibc@...` | `PibcStaff#2026` |
-| **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` / `karyawan@...` | `Karyawan#2026` |
-| **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` / `spi@...` | `Auditor#2026` |
+| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` / `budi.santoso@...` | `<INITIAL_ADMIN_PASSWORD>` |
+| **IT** | Dani Setiawan | `it.support@foodstation.co.id` / `it@...` | `<INITIAL_USER_PASSWORD>` |
+| **GA** | Siti Rahmawati | `ga@foodstation.co.id` / `ga.officer@...` | `<INITIAL_USER_PASSWORD>` |
+| **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` / `sekdir@...` | `<INITIAL_USER_PASSWORD>` |
+| **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` |
+| **Supply Chain** | Agus Pratama | `sc.warehouse@foodstation.co.id` / `sc@...` | `<INITIAL_USER_PASSWORD>` |
+| **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` / `pibc@...` | `<INITIAL_USER_PASSWORD>` |
+| **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` / `karyawan@...` | `<INITIAL_USER_PASSWORD>` |
+| **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` / `spi@...` | `<INITIAL_USER_PASSWORD>` |
 
-> **Catatan:** Di halaman Login, Anda dapat langsung mengklik tombol **"1-Click Login"** di samping setiap profil untuk masuk secara instan tanpa perlu mengetik manual. Switcher persona di kanan atas header (`HeaderNavbar.tsx`) juga tetap tersedia untuk berpindah peran seketika.
+> **REDACTED (CR-02):** Nilai password nyata sebelumnya tercantum di tabel ini dan
+> telah dihapus dari dokumentasi. Semua kredensial lama dianggap COMPROMISED dan
+> wajib dirotasi. Password kini diprovision dari environment secrets saat boot;
+> tombol **1-Click Login** telah dihapus dari halaman login.
 
 ---
 

@@ -1,10 +1,60 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { db, seedInitialData, CANONICAL_USERS } from './db';
 import { hashPassword } from './crypto';
 import { AssetNumberingEngine } from './numbering';
+
+/**
+ * SECURITY (CR-02): initial canonical-account passwords are provisioned from
+ * environment secrets — never hardcoded. The Admin GABAH bootstrap account
+ * requires GABAH_INITIAL_ADMIN_PASSWORD; all other canonical accounts use
+ * GABAH_INITIAL_USER_PASSWORD. When neither is set (development only), each
+ * account receives a unique, CSPRNG-generated random password that is written
+ * once to a Git-ignored file so the first interactive login remains possible.
+ * The generated values are NEVER embedded in source code or committed files.
+ */
+export function provisionCanonicalUserPasswords(): void {
+  const adminPass = process.env.GABAH_INITIAL_ADMIN_PASSWORD;
+  const userPass = process.env.GABAH_INITIAL_USER_PASSWORD;
+  const devFallback = !adminPass && !userPass && process.env.NODE_ENV !== 'production';
+
+  let devNote: string[] | null = devFallback ? [] : null;
+  let devFile: string | null = devFallback ? path.join(DATA_DIR, 'initial_credentials_dev.txt') : null;
+
+  for (const cu of CANONICAL_USERS) {
+    const user = db.users.find(u => u.id === cu.id || (u.email && u.email.toLowerCase() === cu.email.toLowerCase()));
+    if (!user) continue;
+    // Never clobber an existing credential (e.g. an operator already changed it)
+    if (user.password_hash && user.password_salt) continue;
+
+    let plain: string;
+    if (cu.role === 'Admin GABAH') {
+      plain = adminPass || userPass || crypto.randomBytes(18).toString('base64url');
+    } else {
+      plain = userPass || crypto.randomBytes(18).toString('base64url');
+    }
+
+    const { hash, salt } = hashPassword(plain);
+    user.password_hash = hash;
+    user.password_salt = salt;
+    delete user.temp_password;
+    if (typeof user.authVersion !== 'number') user.authVersion = 1;
+
+    if (devNote) devNote.push(`${cu.email} => ${plain}`);
+  }
+
+  if (devNote && devNote.length > 0 && devFile) {
+    try {
+      fs.writeFileSync(devFile, devNote.join('\n') + '\n', { encoding: 'utf8', mode: 0o600 });
+      console.log(`[GABAH Security] Dev-only initial credentials written once to ${path.basename(devFile)} (gitignored). Set GABAH_INITIAL_ADMIN_PASSWORD in production.`);
+    } catch {
+      console.warn('[GABAH Security] Could not write dev credential note file.');
+    }
+  }
+}
 
 function resolveDbConfig() {
   const rawUrl = process.env.DATABASE_URL;
@@ -47,6 +97,18 @@ pool.on('error', (err) => {
 const DATA_DIR = path.resolve(process.cwd(), 'server/data');
 const STATE_FILE = path.join(DATA_DIR, 'gabah_state.json');
 
+/**
+ * SECURITY (CR-03 §3.7): global revocation epoch. Incremented whenever exposed
+ * or previously valid credentials must be force-invalidated (e.g. after the
+ * committed gabah_state.json token leak). Sessions carry the epoch they were
+ * issued under; getActiveSession() rejects any token from an older epoch.
+ * Override via GABAH_SECURITY_EPOCH to force re-login across a deployment.
+ */
+const SECURITY_EPOCH = Number(process.env.GABAH_SECURITY_EPOCH || '2');
+export function getSecurityEpoch(): number {
+  return SECURITY_EPOCH;
+}
+
 function ensureDataDirectory(): void {
   if (!fs.existsSync(DATA_DIR)) {
     try {
@@ -72,33 +134,35 @@ function hydrateDbFromState(state: any): void {
   const existingUsers: any[] = Array.isArray(state.users) ? state.users : [];
   const mergedUsers: any[] = [...existingUsers];
 
-  // Guarantee all 9 canonical enterprise users are always present in the datastore
+  // Guarantee all 9 canonical enterprise users are always present in the datastore.
+  // SECURITY (CR-02): canonical users are merged WITHOUT password material —
+  // provisioning happens in provisionCanonicalUserPasswords() from env secrets.
   for (const cu of CANONICAL_USERS) {
     const foundIndex = mergedUsers.findIndex(u => u.id === cu.id || (u.email && u.email.toLowerCase() === cu.email.toLowerCase()));
     if (foundIndex === -1) {
-      const { hash, salt } = hashPassword(cu.initialPassword);
       mergedUsers.push({
         ...cu,
-        password_hash: hash,
-        password_salt: salt,
-        temp_password: cu.initialPassword,
+        authVersion: 1,
       });
     } else {
       // Sync canonical role and label if needed
       mergedUsers[foundIndex].role = cu.role;
       mergedUsers[foundIndex].role_label = cu.role_label || mergedUsers[foundIndex].role_label;
+      if (typeof mergedUsers[foundIndex].authVersion !== 'number') mergedUsers[foundIndex].authVersion = 1;
     }
   }
 
-  db.users = mergedUsers.map((u: any) => {
-    if (!u.password_hash || !u.password_salt) {
-      const pass = u.temp_password || (u.role === 'Admin GABAH' ? 'AdminGabah#2026' : 'Pangan2026!');
-      const { hash, salt } = hashPassword(pass);
-      return { ...u, password_hash: hash, password_salt: salt };
-    }
-    return u;
-  });
-  if (Array.isArray(state.sessions)) db.sessions = state.sessions;
+  // SECURITY (CR-02): never backfill missing password hashes from hardcoded
+  // fallback passwords. Users without a stored hash are provisioned from env
+  // secrets by provisionCanonicalUserPasswords() below; unknown non-canonical
+  // accounts without hash material cannot log in until an Admin resets them.
+  db.users = mergedUsers;
+
+  // SECURITY (CR-03): session tokens are NEVER restored from persisted state.
+  // Snapshot files/PG blobs may have been committed to Git (gabah_state.json)
+  // and every token that has ever been in source control is considered
+  // COMPROMISED. Sessions are in-memory only; users re-authenticate on boot.
+  db.sessions = [];
   if (Array.isArray(state.assets) && state.assets.length > 0) db.assets = state.assets;
   if (Array.isArray(state.movements) && state.movements.length > 0) db.movements = state.movements;
   if (Array.isArray(state.loans) && state.loans.length > 0) db.loans = state.loans;
@@ -130,6 +194,9 @@ function loadStateFromFile(): boolean {
     const raw = fs.readFileSync(STATE_FILE, 'utf8');
     const state = JSON.parse(raw);
     if (state && typeof state === 'object') {
+      // SECURITY (CR-03): sessions are stripped before hydration — tokens from
+      // Git-tracked snapshots must never become live sessions.
+      if (state.sessions) delete state.sessions;
       hydrateDbFromState(state);
       return true;
     }
@@ -142,7 +209,10 @@ function loadStateFromFile(): boolean {
 function createPayload() {
   return {
     users: db.users,
-    sessions: db.sessions,
+    // SECURITY (CR-03): sessions are deliberately excluded from persisted
+    // payloads. Session state lives in memory only and is never written to
+    // the JSON snapshot or PostgreSQL gabah_state blob.
+    sessions: [] as typeof db.sessions,
     assets: db.assets,
     movements: db.movements,
     loans: db.loans,
@@ -202,14 +272,9 @@ async function backfillNormalizedTables(): Promise<void> {
         [u.id,u.name,u.email,u.role,u.division,u.phone || null,u.avatar || null,u.is_active,u.password_hash || null,u.password_salt || null],
       );
     }
-    for (const s of db.sessions) {
-      await client.query(
-        `INSERT INTO user_sessions (id,token,user_id,created_at,expires_at,last_active_at,ip_address,user_agent)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-         ON CONFLICT (id) DO UPDATE SET last_active_at=EXCLUDED.last_active_at,expires_at=EXCLUDED.expires_at`,
-        [s.id, s.token, s.user_id, s.created_at, s.expires_at, s.last_active_at, s.ip_address || null, s.user_agent || null],
-      );
-    }
+    // SECURITY (CR-03): db.sessions are deliberately NOT backfilled into
+    // user_sessions — bearer tokens must never be restored to a durable store
+    // from the application runtime (they were previously committed to Git).
     for (const a of db.assets) {
       await client.query(
         `INSERT INTO asset_categories (code,name,category_type,owner_division_id)
@@ -321,6 +386,7 @@ export async function initializePersistence(): Promise<void> {
     }
 
     ensureCanonicalAdministrator();
+    provisionCanonicalUserPasswords();
     AssetNumberingEngine.syncFromExistingAssets(db.assets);
     return;
   }
@@ -342,6 +408,7 @@ export async function initializePersistence(): Promise<void> {
         seedInitialData();
       }
       ensureCanonicalAdministrator();
+      provisionCanonicalUserPasswords();
       await persistPostgresState();
       await backfillNormalizedTables();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
@@ -371,6 +438,7 @@ export async function initializePersistence(): Promise<void> {
   }
 
   ensureCanonicalAdministrator();
+  provisionCanonicalUserPasswords();
   AssetNumberingEngine.syncFromExistingAssets(db.assets);
 }
 

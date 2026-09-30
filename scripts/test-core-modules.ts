@@ -1,6 +1,12 @@
 import 'dotenv/config';
 import { getDbPool } from '../server/persistence';
 
+// SECURITY (CR-02): test credentials come from the environment, never from
+// hardcoded literals. Export GABAH_TEST_ADMIN_PASSWORD / GABAH_TEST_USER_PASSWORD
+// before running this script.
+const TEST_ADMIN_PASSWORD = process.env.GABAH_TEST_ADMIN_PASSWORD || '';
+const TEST_USER_PASSWORD = process.env.GABAH_TEST_USER_PASSWORD || '';
+
 const BASE_URL = 'http://localhost:3000';
 
 interface TestResult {
@@ -63,7 +69,7 @@ async function runAllTests() {
   {
     const res = await api('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'admin.gabah@foodstation.co.id', password: 'AdminGabah#2026' }),
+      body: JSON.stringify({ email: 'admin.gabah@foodstation.co.id', password: TEST_ADMIN_PASSWORD }),
     });
     const token = res.body?.data?.token;
     const ok = res.status === 200 && res.body?.success && token && res.body?.data?.user?.role === 'Admin GABAH';
@@ -117,42 +123,42 @@ async function runAllTests() {
   {
     const itRes = await api('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'faisal.it@foodstation.co.id', password: 'ItStaff#2026' }),
+      body: JSON.stringify({ email: 'faisal.it@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (itRes.status === 200) itToken = itRes.body?.data?.token;
     recordTest('Auth', 'IT Login', itRes.status === 200 && itRes.body?.data?.user?.role === 'IT', itRes.status === 200 ? undefined : JSON.stringify(itRes.body));
 
     const gaRes = await api('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'siti.ga@foodstation.co.id', password: 'GaStaff#2026' }),
+      body: JSON.stringify({ email: 'siti.ga@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (gaRes.status === 200) gaToken = gaRes.body?.data?.token;
     recordTest('Auth', 'GA Login', gaRes.status === 200 && gaRes.body?.data?.user?.role === 'GA', gaRes.status === 200 ? undefined : JSON.stringify(gaRes.body));
 
     const scRes = await api('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'bambang.sc@foodstation.co.id', password: 'ScStaff#2026' }),
+      body: JSON.stringify({ email: 'bambang.sc@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (scRes.status === 200) scToken = scRes.body?.data?.token;
     recordTest('Auth', 'Supply Chain Login', scRes.status === 200 && scRes.body?.data?.user?.role === 'Supply Chain', scRes.status === 200 ? undefined : JSON.stringify(scRes.body));
 
     const pibcRes = await api('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'joko.pibc@foodstation.co.id', password: 'PibcStaff#2026' }),
+      body: JSON.stringify({ email: 'joko.pibc@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (pibcRes.status === 200) pibcToken = pibcRes.body?.data?.token;
     recordTest('Auth', 'PIBC Login', pibcRes.status === 200 && pibcRes.body?.data?.user?.role === 'PIBC', pibcRes.status === 200 ? undefined : JSON.stringify(pibcRes.body));
 
     const kryRes = await api('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'dewi.lestari@foodstation.co.id', password: 'Karyawan#2026' }),
+      body: JSON.stringify({ email: 'dewi.lestari@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (kryRes.status === 200) karyawanToken = kryRes.body?.data?.token;
     recordTest('Auth', 'Karyawan Login', kryRes.status === 200 && kryRes.body?.data?.user?.role === 'Karyawan', kryRes.status === 200 ? undefined : JSON.stringify(kryRes.body));
 
     const audRes = await api('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'hendro.auditor@foodstation.co.id', password: 'Auditor#2026' }),
+      body: JSON.stringify({ email: 'hendro.auditor@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (audRes.status === 200) auditorToken = audRes.body?.data?.token;
     recordTest('Auth', 'Auditor Login', audRes.status === 200 && audRes.body?.data?.user?.role === 'Auditor', audRes.status === 200 ? undefined : JSON.stringify(audRes.body));
@@ -162,7 +168,7 @@ async function runAllTests() {
   {
     const tempLogin = await api('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'admin.gabah@foodstation.co.id', password: 'AdminGabah#2026' }),
+      body: JSON.stringify({ email: 'admin.gabah@foodstation.co.id', password: TEST_ADMIN_PASSWORD }),
     });
     const tempToken = tempLogin.body?.data?.token;
     const logoutRes = await api('/api/auth/logout', { method: 'POST' }, tempToken);
