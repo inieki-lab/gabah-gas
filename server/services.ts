@@ -2,6 +2,7 @@ import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerN
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
 import { persistDataStore } from './persistence';
+import { canSeeContract } from './contracts';
 
 export class GabahDomainService {
   /**
@@ -677,9 +678,11 @@ export class GabahDomainService {
     db.tickets.unshift(newTicket);
 
     // Linked contract (optional): Ticket = pekerjaan atas suatu Contract, bukan kategori
+    // SECURITY: linkage is only honored when the actor may see the contract —
+    // client input cannot probe restricted contracts through ticket creation.
     if (payload.contract_id) {
       const contract = db.contracts.find(c => c.id === payload.contract_id);
-      if (contract) {
+      if (contract && canSeeContract(actor, contract)) {
         newTicket.contract_id = contract.id;
         this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id);
       }

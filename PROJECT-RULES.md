@@ -49,13 +49,13 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 
 1. **Bearer Token Authentication**:
    - Autentikasi menggunakan header standar `Authorization: Bearer <token>`.
-   - Token dikelola pada tabel `user_sessions` dengan masa berlaku 7 hari.
+   - Sesi ber-usia maksimum 7 hari (absolute) dan bersifat **memory-only** — tidak pernah disimpan ke tabel `user_sessions`, snapshot `gabah_state.json`, maupun blob PostgreSQL; setiap restart mengharuskan re-authentication. Penerbitan ulang password/role/privilege mencabut seluruh sesi user (authVersion).
    - Browser `localStorage` **hanya** diizinkan menyimpan kunci `gabah_auth_token`. Tidak boleh ada data transaksi operasional yang disimpan permanen di localStorage sebagai database alternatif.
 2. **Anti-Spoofing & Zero Fallback**:
    - Header manipulasi `x-user-id` yang tidak sesuai dengan token sesi aktif akan ditolak seketika dengan status `403 Forbidden` (`spoofAttempt: true`).
    - Request tanpa token yang valid tidak pernah di-fallback otomatis menjadi Super Admin.
 3. **Auditor Strictly Read-Only**:
-   - Pengguna dengan peran `Auditor` diblokir dari seluruh request yang bermutasi (`POST`, `PATCH`, `PUT`, `DELETE`), kecuali logout, switch-role dev, dan menandai notifikasi terbaca. Setiap percobaan mutasi data oleh Auditor menghasilkan `403 Forbidden`.
+   - Pengguna dengan peran `Auditor` diblokir dari seluruh request yang bermutasi (`POST`, `PATCH`, `PUT`, `DELETE`), kecuali logout dan menandai notifikasi terbaca. Pergantian peran (`switch-role`) bersifat **admin-only** dan bukan pengecualian Auditor. Setiap percobaan mutasi data oleh Auditor menghasilkan `403 Forbidden`.
 4. **Audit Logging Wajib**:
    - Setiap mutasi administratif (buat aset, ubah status, serah terima pinjaman, buat tiket, ubah master data, alih peran) wajib mencatat riwayat audit ke tabel `audit_logs` secara otomatis melalui `GabahDomainService.recordAudit()`.
 5. **Rate Limiting**:

@@ -71,8 +71,22 @@ Sistem tidak lagi menggunakan arsitektur warisan (legacy) PHP/Laravel. Seluruh k
 |   - asset_assignments       - asset_movements        - asset_number_sequences     |
 |   - loans (PL/pgSQL Anti-Collision Trigger)          - tickets                    |
 |   - ticket_comments         - contracts              - notifications              |
-|   - audit_logs              - gabah_state (Bridge cache)                          |
+|   - contract_documents      - contract_milestones    - contract_notification_logs |
+|   - schema_migrations (ledger) - audit_logs          - gabah_state (Bridge cache) |
 +-----------------------------------------------------------------------------------+
+
+NOTIFICATION & SCHEDULER LAYER (CR-05):
+  server/notifications/emailProvider.ts     — SMTP client raw (env GABAH_SMTP_*)
+  server/notifications/telegramProvider.ts  — Bot API client (env TELEGRAM_BOT_TOKEN)
+  server/notifications/notificationService.ts — orkestrasi in-app/email/telegram;
+      idempotensi deterministik SHA-256 (kontrak|tipe|kanal|penerima|due-day),
+      status jujur sent/failed/skipped, penerima di-resolve server-side
+  server/notifications/reminderScheduler.ts — scheduler internal interval
+      (GABAH_REMINDER_INTERVAL_MS, default 1 jam), leader-lock
+      pg_try_advisory_lock(842201) untuk multi-instance, error containment
+PERSISTENCE (CR-04): migration runner berbasis ledger schema_migrations;
+production fail-fast bila PostgreSQL gagal (tanpa fallback file senyap);
+/api/health mengekspos persistence=postgresql|file-store (development fallback).
 ```
 
 ---

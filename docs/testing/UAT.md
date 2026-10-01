@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Authoritative Test Plan & Acceptance Criteria (100% Sesuai Source Code Aktual)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Terakhir Diperbarui:** 1 Oktober 2026
 
 ---
 
@@ -144,7 +144,7 @@
 1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware → `IT`; fasilitas → `GA`; SC → `SC`; PIBC → `PIBC`. Tidak ada opsi License/General/Contract di form.
 2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
 3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
-4. **Email & Telegram**: log pengiriman muncul di `GET /api/contracts/:id/notification-logs`; bila provider belum dikonfigurasi, status FAILED dengan alasan (SMTP_URL/TELEGRAM_BOT_TOKEN).
+4. **Email & Telegram**: log pengiriman muncul di `GET /api/contracts/:id/notification-logs` dengan status JUJUR per channel: `sent` (terkirim nyata), `skipped` (provider belum dikonfigurasi — memerlukan `GABAH_SMTP_HOST`+`GABAH_SMTP_FROM` untuk email, `TELEGRAM_BOT_TOKEN` untuk Telegram; recipient divisi tanpa email/chat id juga `skipped`), atau `failed` (provider dikonfigurasi tapi gagal — host tak terjangkau, token invalid). **Tidak pernah ada status sukses palsu.** Scheduler otomatis berjalan tiap `GABAH_REMINDER_INTERVAL_MS` (default 1 jam, leader-lock `pg_try_advisory_lock(842201)` untuk multi-instance); status via `GET /api/contracts/reminders/scheduler-status` (Admin-only).
 5. **Linked Ticket**: dari kartu kontrak, buat tiket terkait → tiket tersimpan dengan `contract_id` dan audit log tercatat.
 6. **Renewal outcome & expired**: keputusan renewed/not_renewed tersimpan; kontrak lewat end_date berstatus expired.
 7. **Restricted access**: kontrak restricted tidak terlihat oleh divisi lain; PIC/divisi/Admin tetap dapat mengakses; Auditor membaca.
@@ -172,3 +172,40 @@
   3. **Uji Unauthenticated Request**: Kirim request `GET /api/assets` tanpa menyertakan header Bearer token.
      - *Hasil Diharapkan*: Server merespon HTTP `401 Unauthorized` (tidak pernah auto-login sebagai Super Admin).
 - **Kriteria Lulus**: Seluruh upaya pelanggaran keamanan ditolak dengan status HTTP yang tepat.
+
+---
+
+## 4. Hasil Verifikasi Otomatis (1 Oktober 2026)
+
+### 4.1 Verifikasi Live CR-04/CR-05 — `node scripts/cr04-cr05-verify.mjs`
+Dijalankan fresh terhadap DB PostgreSQL test terisolasi (dibuat & di-drop otomatis oleh skrip); server di-boot dalam mode **production** dengan `DATABASE_URL` menunjuk DB tersebut.
+
+**TOTAL: 36 | PASS: 36 | FAIL: 0**
+
+| Area | Bukti |
+|---|---|
+| Migration chain 001–005 di DB kosong | ledger `schema_migrations` terisi 5 baris via boot server |
+| Health & persistence | `/api/health` melaporkan `persistence: "postgresql"` (tanpa fallback senyap) |
+| Skema legacy terselaras | kolom `contracts.owner_division` varchar ada; UNIQUE index idempotensi `contract_notification_logs` terpasang (2) |
+| CRUD kontrak via API | create 201 → read-back 200 → PATCH notes diterapkan |
+| RBAC | kontrak restricted 404 untuk divisi lain; probe linkage via tiket ditolak; Auditor read-only ditolak; `reminders/run` & `scheduler-status` 403 non-admin |
+| Reminder sweep | EXPIRY_60/35/7 terkirim (kontrak sisa 5 hari); status jujur: 9 sent (in-app), 18 skipped (email/telegram unconfigured), 0 failed; derived status `expiring` |
+| Idempotensi | sweep kedua pada due-day sama: queued=0 |
+| Persisten lintas restart | kontrak (dengan PATCH), tiket+`contract_id`, dan 27 notification log selamat restart proses (PostgreSQL authoritative) |
+| Fail-fast production | `DATABASE_URL` mati + NODE_ENV=production → proses exit non-zero, tidak pernah melayani request, tanpa fallback file |
+
+### 4.2 Regresi Keamanan P0 — `node scripts/p0-security-verify.mjs`
+
+**TOTAL: 37 | PASS: 37 | FAIL: 0** (CR-01/02/03/06 tetap tertutup setelah perubahan CR-04/CR-05)
+
+### 4.3 Kejujuran Provider (bukti jalur gagal, `scripts/provider-failpath-check.mts`)
+- Email ke host tak terjangkau → `{"ok":false,"error":"connect ECONNREFUSED 127.0.0.1:59999"}` (bukan sukses palsu).
+- Telegram token invalid → `{"ok":false,"error":"Telegram API HTTP 401: Unauthorized"}`.
+
+### 4.4 Kualitas Statik
+- `npx tsc --noEmit` — PASS (0 error).
+- `npm run build` (Vite + esbuild) — PASS.
+
+### 4.5 Blocker Pengujian Eksternal (jujur)
+- **Pengiriman email/Telegram nyata (status `sent` pada provider eksternal) belum dapat diuji end-to-end** — tidak ada SMTP relay maupun `TELEGRAM_BOT_TOKEN` di lingkungan verifikasi. Cakupan yang terverifikasi: jalur unconfigured→skipped, jalur gagal→failed dengan alasan jelas, dan pengiriman in-app→sent. Konfigurasi produksi: set env `GABAH_SMTP_*` dan `TELEGRAM_BOT_TOKEN` lalu ulangi verifikasi manual Seksi 3 Skenario 10 poin 4.
+- **Docker build tidak dapat diverifikasi** (Docker tidak tersedia di lingkungan verifikasi).

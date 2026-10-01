@@ -7,8 +7,9 @@ import { db, seedInitialData, ServerUser, ServerSession, CANONICAL_USERS } from 
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService } from './server/services';
-import { ContractDomainService } from './server/contracts';
-import { initializePersistence, persistDataStore } from './server/persistence';
+import { ContractDomainService, canSeeContract } from './server/contracts';
+import { initializePersistence, persistDataStore, isPostgresPersistenceActive } from './server/persistence';
+import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import {
   createSession,
@@ -30,6 +31,12 @@ seedInitialData();
 async function startServer() {
   await initializePersistence();
   AssetNumberingEngine.syncFromExistingRecords({ tickets: db.tickets, loans: db.loans });
+
+  // CR-05 STEP 4: internal production scheduler for contract reminders.
+  // Timezone-aware (GABAH_REMINDER_TIMEZONE, default Asia/Jakarta), configurable
+  // interval, leader-locked for multi-instance deployments, and fully contained
+  // (a failing tick never crashes the API server).
+  startReminderScheduler();
 
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
@@ -68,6 +75,8 @@ async function startServer() {
       app: 'GABAH (General Asset & Business Administration Hub)',
       version: '2026.1.0-enterprise',
       organization: 'PT Food Station Tjipinang Jaya (BUMD DKI Jakarta)',
+      persistence: isPostgresPersistenceActive() ? 'postgresql' : 'file-store (development fallback)',
+      scheduler: getSchedulerStatus(),
     });
   });
 
@@ -156,8 +165,11 @@ async function startServer() {
         return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
       }
 
-      const { name, email, role, division, department, is_active, password, phone } = req.body;
+      const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
       if (name !== undefined) targetUser.name = name.trim();
+      // CR-05: Telegram chat id is an admin-managed profile field (server-side only);
+      // it is NEVER accepted from non-admin input and never echoed in login flows.
+      if (telegram_chat_id !== undefined) targetUser.telegram_chat_id = String(telegram_chat_id).trim() || undefined;
       if (email !== undefined && email.trim()) {
         const trimmedEmail = email.trim().toLowerCase();
         if (db.users.some(u => u.id !== targetUser.id && u.email.toLowerCase().trim() === trimmedEmail)) {
@@ -1081,16 +1093,19 @@ async function startServer() {
     });
   });
 
-  app.post('/api/tickets', (req, res) => {
+  app.post('/api/tickets', async (req, res) => {
     try {
       const actor = getActor(req);
       const newTicket = GabahDomainService.createTicket(req.body, actor);
-      // Optional contract linkage: Contract = data, Ticket = pekerjaan (action)
+      // Optional contract linkage: Contract = data, Ticket = pekerjaan (action).
+      // SECURITY: linkage is only honored when the actor may actually see the
+      // contract (canSeeContract) — client input cannot probe restricted contracts.
       if (req.body?.contract_id) {
         const contract = db.contracts.find((c: any) => c.id === req.body.contract_id);
-        if (contract) newTicket.contract_id = contract.id;
+        if (contract && canSeeContract(actor, contract)) newTicket.contract_id = contract.id;
       }
-      persistDataStore().catch(() => {});
+      // Await persistence so the linkage is durable before the response is sent.
+      await persistDataStore();
       res.status(201).json({ success: true, data: newTicket });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -1390,6 +1405,9 @@ async function startServer() {
     }
   });
 
+  // Contract Management — create. Reminder recipients are resolved SERVER-SIDE
+  // (PIC + owner division + escalation from the stored contract); client input
+  // can never add or spoof a recipient channel/destination.
   app.post('/api/contracts', async (req, res) => {
     try {
       const actor = getActor(req);
@@ -1446,15 +1464,31 @@ async function startServer() {
     }
   });
 
-  // Reminder evaluation sweep (idempotent per threshold per day). Intended for a scheduler cron.
-  app.post('/api/contracts/reminders/run', (req, res) => {
+  // Reminder evaluation sweep (idempotent per threshold per due-day). The internal
+  // scheduler calls the same engine automatically; this manual trigger stays
+  // available for administrative execution and testing without waiting for a
+  // real reminder date.
+  app.post('/api/contracts/reminders/run', async (req, res) => {
     try {
       const actor = getActor(req);
       if (actor.role !== 'Admin GABAH') {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat menjalankan reminder sweep manual.' });
       }
-      const result = ContractDomainService.runReminderSweep(actor);
+      const result = await ContractDomainService.runReminderSweep(actor);
       res.json({ success: true, data: result });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  // CR-05 STEP 4: scheduler observability (admin only — no secret values exposed).
+  app.get('/api/contracts/reminders/scheduler-status', (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat melihat status scheduler.' });
+      }
+      res.json({ success: true, data: getSchedulerStatus() });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }

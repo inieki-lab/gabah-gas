@@ -40,6 +40,20 @@
 ```bash
 # Salin konfigurasi environment
 cp .env.example .env
+```
+
+#### Variabel Environment Utama (Ringkasan — lihat `.env.example` untuk daftar lengkap)
+
+| Variabel | Fungsi |
+|---|---|
+| `DATABASE_URL` | PostgreSQL otoritatif (CR-04). Kosong = dev fallback file store; production fail-fast bila gagal. |
+| `GABAH_INITIAL_ADMIN_PASSWORD` / `GABAH_INITIAL_USER_PASSWORD` | Password awal akun kanonikal (CR-02); tanpa ini dev memakai CSPRNG. |
+| `GABAH_SMTP_HOST` + `GABAH_SMTP_FROM` (+ `GABAH_SMTP_PORT/SECURE/USER/PASSWORD/TLS_REJECT_UNAUTHORIZED`) | Relay SMTP pengiriman email reminder kontrak (CR-05); tanpa itu status email = `skipped`. |
+| `TELEGRAM_BOT_TOKEN` (+ `GABAH_TELEGRAM_TIMEOUT_MS/API_BASE`) | Bot API Telegram pengiriman reminder (CR-05); tanpa itu status = `skipped`. |
+| `GABAH_REMINDER_TIMEZONE` | Zona waktu due-day reminder (default `Asia/Jakarta`). |
+| `GABAH_REMINDER_INTERVAL_MS` | Interval scheduler reminder (default 1 jam, min 60 detik). |
+| `GABAH_REMINDER_SCHEDULER_DISABLED` | `true` = matikan scheduler internal. |
+| `GABAH_REMINDER_RUN_ON_BOOT` | `false` = jangan sweep saat boot.
 
 # Install dependensi
 npm install

@@ -19,6 +19,8 @@ export interface ServerUser {
    *  are invalidated (CR-03 §3.7). */
   authVersion?: number;
   temp_password?: string;
+  /** Telegram chat id for contract reminder push (admin-managed via PATCH /api/users/:id). */
+  telegram_chat_id?: string;
 }
 
 export interface ServerSession {

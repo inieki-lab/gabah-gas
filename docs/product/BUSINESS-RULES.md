@@ -94,8 +94,8 @@
 ## 6. Aturan Contract Management (BR-06)
 - Contract = record bisnis: nomor `CTR-YYYY-NNNN`, tipe, vendor, divisi pemilik (tidak terbatas GA/IT/SC/PIBC), PIC, periode, notice period, nilai, auto-renewal, status, dokumen append-only, notes.
 - Reminder kedaluwarsa menggunakan threshold **configurable** (default 60/35/7 hari): >60 normal; ≤60 warning; ≤35 urgent; ≤7 critical; kedaluwarsa = expired. Tampilan selalu menyertakan teks status + sisa hari (bukan warna saja).
-- Reminder dikirim ke PIC + divisi pemilik (bukan broadcast), dengan eskalasi opsional pada threshold 35/7 hari.
-- Channel notifikasi: in-app, email, telegram — semuanya melalui satu engine reminder dengan log `contract_notification_logs` (notification_type, channel, recipient, status, error_message).
+- Reminder dikirim ke PIC + divisi pemilik (bukan broadcast), dengan eskalasi opsional pada threshold 35/7 hari; seluruh penerima di-resolve **server-side** dari data kontrak/user (input klien tidak pernah menentukan penerima/kanal).
+- Channel notifikasi: in-app, email, telegram — semuanya melalui satu engine reminder dengan log `contract_notification_logs` (notification_type, channel, recipient, status, error_message, attempts). Idempoten per (kontrak, tipe, kanal, penerima, due-day) — UNIQUE index di PostgreSQL + guard in-memory. Status jujur: `sent` (terkirim nyata), `failed` (provider gagal + alasan), `skipped` (provider belum dikonfigurasi / penerima tanpa alamat) — tidak pernah ada sukses palsu.
 - Notice date dihitung `end_date − notice_period_days` dan remndernnya terpisah dari reminder kedaluwarsa.
 - Renewal outcome wajib disimpan (pending/renewed/not_renewed/terminated/replaced) beserta alasan; kontrak lama dipertahankan (audit & versioning-ready).
 

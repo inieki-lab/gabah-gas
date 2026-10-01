@@ -148,9 +148,10 @@ Content-Type: application/json
 - `GET /api/contracts/:id`, `POST /api/contracts`, `PATCH /api/contracts/:id`
 - `POST /api/contracts/:id/documents` (append-only), `POST /api/contracts/:id/milestones`
 - `POST /api/contracts/:id/renewal-decision` — body `{ outcome, notes, replacement_contract_id }`
-- `POST /api/contracts/reminders/run` — evaluasi threshold (idempoten per hari; Admin only; siap dijadwalkan cron)
-- `GET /api/contracts/:id/notification-logs` — log pengiriman per channel (in_app/email/telegram)
-- `POST /api/tickets` menerima `contract_id` opsional — Ticket = pekerjaan atas Contract; Contract bukan kategori tiket
+- `POST /api/contracts/reminders/run` — evaluasi threshold 60/35/7 + NOTICE_DATE (idempoten per hari; Admin only; scheduler internal juga memanggil engine yang sama)
+- `GET /api/contracts/reminders/scheduler-status` — status scheduler internal (enabled/running/interval/timezone/lastRun; Admin only)
+- `GET /api/contracts/:id/notification-logs` — log pengiriman per channel (in_app/email/telegram) dengan status JUJUR `sent`/`failed`/`skipped` (+ alasan); tanpa konfigurasi provider → `skipped`, bukan sukses palsu
+- `POST /api/tickets` menerima `contract_id` opsional — hanya di-honor bila aktor boleh melihat kontrak (`canSeeContract`); input klien tidak dapat mem probing kontrak restricted. Ticket = pekerjaan atas Contract; Contract bukan kategori tiket
 - Kategori tiket helpdesk resmi: `IT` | `GA` | `SC` | `PIBC` (license/software → IT)
 
 ### 2.9 Tiket Helpdesk & Gangguan (Tickets)

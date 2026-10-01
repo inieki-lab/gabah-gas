@@ -80,7 +80,7 @@
 ### FR-11: Contract Management (Domain Tersendiri)
 - Register kontrak sebagai **domain bisnis tersendiri** — Contract bukan kategori Helpdesk; tiket dapat ditautkan (`contract_id`) untuk tindak lanjut pekerjaan.
 - Atribut: contract number (`CTR-YYYY-NNNN`), tipe, judul, vendor/counterparty, divisi pemilik (bebas per departemen), PIC, start/end date, notice period + notice date (dihitung otomatis), nilai, auto-renewal, status, dokumen (append-only: original/amendment/renewal/supporting), notes, metadata.
-- Reminder kedaluwarsa configurable (default 60/35/7 hari) ke PIC + divisi pemilik (+ eskalasi pada 35/7 hari), dikirim via in-app, email, dan Telegram — setiap pengiriman tercatat pada `contract_notification_logs` (status SENT/FAILED + alasan gagal).
+- Reminder kedaluwarsa configurable (default 60/35/7 hari) ke PIC + divisi pemilik (+ eskalasi pada 35/7 hari), dikirim via in-app, email, dan Telegram — setiap pengiriman tercatat pada `contract_notification_logs` (status SENT/FAILED/SKIPPED + alasan; penerima di-resolve server-side; idempoten per kontrak/tipe/kanal/penerima/hari; scheduler internal otomatis dengan leader-lock). Status SENT hanya bila pengiriman eksternal benar-benar berhasil — tidak ada sukses palsu.
 - Renewal outcome: pending/renewed/not_renewed/terminated/replaced_by_new_contract + notes; kontrak lama tidak dihapus (rantai `parent_contract_id`).
 - Access control: Admin semua; PIC & divisi pemilik; Auditor otoritas audit (read); kontrak `restricted` hanya PIC/divisi/Admin.
 

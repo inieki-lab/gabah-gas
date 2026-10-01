@@ -231,13 +231,49 @@ function createPayload() {
   };
 }
 
+/**
+ * CR-04: authoritative migration runner.
+ * - Creates a schema_migrations ledger first so the runner itself is repeatable
+ *   and each applied file is recorded exactly once.
+ * - Every migration file runs inside its own transaction; a failing migration
+ *   aborts the whole schema bootstrap with a CLEAR error (no silent fallback).
+ * - Migration files are expected to be idempotent (IF NOT EXISTS / ALTER guards)
+ *   so re-running them on an already-migrated database is a safe no-op.
+ */
 async function ensureNormalizedSchema(): Promise<void> {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version VARCHAR(16) PRIMARY KEY,
+      name VARCHAR(120) NOT NULL,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   const migrationsDir = path.resolve(process.cwd(), 'server/migrations');
   if (!fs.existsSync(migrationsDir)) return;
   const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
   for (const file of files) {
+    const version = file.match(/^(\d+)/)?.[1] || file;
+    const applied = await pool.query('SELECT 1 FROM schema_migrations WHERE version = $1', [version]);
+    if (applied.rowCount && applied.rowCount > 0) continue;
     const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-    await pool.query(sql);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(sql);
+      await client.query(
+        `INSERT INTO schema_migrations (version, name, applied_at) VALUES ($1, $2, NOW())
+         ON CONFLICT (version) DO NOTHING`,
+        [version, file.replace(/\.sql$/, '')],
+      );
+      await client.query('COMMIT');
+      console.log(`[GABAH Persistence] Migration applied: ${file}`);
+    } catch (err: any) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw new Error(`Migration ${file} gagal dijalankan: ${err.message || err}`);
+    } finally {
+      client.release();
+    }
   }
 }
 
@@ -325,11 +361,11 @@ async function backfillNormalizedTables(): Promise<void> {
       `INSERT INTO notifications (id,recipient_user_id,recipient_role,recipient_division_id,title,message,severity,category,link_type,link_id,is_read,created_at) VALUES ($1,$2,$3,(SELECT id FROM divisions WHERE code=$4),$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO UPDATE SET is_read=EXCLUDED.is_read`,
       [n.id,n.recipient_user_id || null,n.recipient_role || null,n.recipient_division || null,n.title,n.message,n.severity,n.category,n.link_type || null,n.link_id || null,n.is_read,n.created_at],
     );
-    // Contract Management (separate domain) — best-effort sync; file store remains fail-safe fallback
+    // Contract Management (separate domain) — authoritative sync into PostgreSQL
     for (const c of (db as any).contracts || []) {
       await client.query(
-        `INSERT INTO contracts (id,contract_number,contract_type,title,vendor_name,owner_division,pic_user_id,start_date,end_date,notice_period_days,notice_date,contract_value,auto_renewal,status,renewal_outcome,renewal_notes,restricted,notes,created_by,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,renewal_outcome=EXCLUDED.renewal_outcome,renewal_notes=EXCLUDED.renewal_notes,updated_at=EXCLUDED.updated_at,notice_date=EXCLUDED.notice_date`,
-        [c.id,c.contract_number,c.contract_type,c.title,c.vendor_name,c.owner_division,c.pic_user_id,c.start_date,c.end_date,c.notice_period_days,c.notice_date,c.contract_value||0,c.auto_renewal,c.status,c.renewal_outcome,c.renewal_notes||null,c.restricted,c.notes||null,c.created_by,c.created_at,c.updated_at],
+        `INSERT INTO contracts (id,contract_number,contract_type,title,vendor_name,owner_division,pic_user_id,start_date,end_date,notice_period_days,notice_date,contract_value,auto_renewal,status,renewal_outcome,renewal_notes,replaced_by_contract_id,parent_contract_id,reminder1_days,reminder2_days,reminder3_days,escalation_user_id,restricted,notes,created_by,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,renewal_outcome=EXCLUDED.renewal_outcome,renewal_notes=EXCLUDED.renewal_notes,updated_at=EXCLUDED.updated_at,notice_date=EXCLUDED.notice_date,end_date=EXCLUDED.end_date,notice_period_days=EXCLUDED.notice_period_days,restricted=EXCLUDED.restricted,escalation_user_id=EXCLUDED.escalation_user_id,reminder1_days=EXCLUDED.reminder1_days,reminder2_days=EXCLUDED.reminder2_days,reminder3_days=EXCLUDED.reminder3_days,auto_renewal=EXCLUDED.auto_renewal,contract_value=EXCLUDED.contract_value`,
+        [c.id,c.contract_number,c.contract_type,c.title,c.vendor_name,c.owner_division,c.pic_user_id,c.start_date,c.end_date,c.notice_period_days,c.notice_date,c.contract_value||0,c.auto_renewal,c.status,c.renewal_outcome,c.renewal_notes||null,c.replaced_by_contract_id||null,c.parent_contract_id||null,c.reminder_config?.reminder1_days??60,c.reminder_config?.reminder2_days??35,c.reminder_config?.reminder3_days??7,c.escalation_user_id||null,c.restricted,c.notes||null,c.created_by,c.created_at,c.updated_at],
       );
       for (const d of c.documents || []) {
         await client.query(
@@ -349,6 +385,13 @@ async function backfillNormalizedTables(): Promise<void> {
         `INSERT INTO contract_notification_logs (id,contract_id,notification_type,channel,recipient,scheduled_at,sent_at,status,error_message) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
         [l.id,l.contract_id,l.notification_type,l.channel,l.recipient,l.scheduled_at,l.sent_at||null,l.status,l.error_message||null],
       );
+    }
+    // CR-04: also sync the ticket -> contract linkage so restarts/rebuilds keep it.
+    for (const t of db.tickets) {
+      const contractId = (t as any).contract_id;
+      if (contractId) {
+        await client.query(`UPDATE tickets SET contract_id=$1 WHERE id=$2`, [contractId, t.id]);
+      }
     }
     for (const log of db.auditLogs) {
       const user = db.users.find(u => u.name === log.user_name);
@@ -425,8 +468,16 @@ export async function initializePersistence(): Promise<void> {
     }
   }
 
+  // SECURITY/RELIABILITY (CR-04): production must never silently degrade to the
+  // JSON file store when PostgreSQL is explicitly configured but unavailable —
+  // that hides data-integrity incidents (authoritative store bypassed). The file
+  // fallback remains ONLY for local development/test convenience.
   isPostgresAvailable = false;
-  console.log(`[GABAH Persistence] PostgreSQL unavailable (${lastError?.code || lastError?.message || 'standalone'}). Activating resilient persistent file store.`);
+  if (process.env.NODE_ENV === 'production') {
+    console.error(`[GABAH Persistence] FATAL: PostgreSQL unavailable in production (${lastError?.code || lastError?.message || 'unknown'}). Refusing to fall back to the file store.`);
+    throw lastError instanceof Error ? lastError : new Error(`PostgreSQL unavailable in production: ${lastError?.message || lastError}`);
+  }
+  console.log(`[GABAH Persistence] PostgreSQL unavailable (${lastError?.code || lastError?.message || 'standalone'}). Development fallback: activating resilient persistent file store.`);
 
   // Hydrate from persistent file store if it exists
   const loaded = loadStateFromFile();
@@ -465,5 +516,15 @@ export function persistDataStore(): Promise<void> {
 
 export function getDbPool(): Pool {
   return pool;
+}
+
+/**
+ * CR-04 observability: reports whether PostgreSQL is currently the active
+ * persistence layer. Exposed via /api/health so operators can detect a
+ * development file-store fallback immediately (production fail-fast makes
+ * that state impossible by design).
+ */
+export function isPostgresPersistenceActive(): boolean {
+  return isPostgresAvailable;
 }
 

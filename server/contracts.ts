@@ -1,5 +1,7 @@
 import { db, ServerUser, ServerContract, ServerContractDocument, ServerContractMilestone, ServerContractNotificationLog, ContractStatus, RenewalOutcome, ContractReminderConfig } from './db';
 import { AssetNumberingEngine } from './numbering';
+import { queueNotification, summarize, SCHEDULER_ACTOR } from './notifications/notificationService';
+import { persistDataStore } from './persistence';
 
 /**
  * CONTRACT MANAGEMENT — separate business domain.
@@ -23,6 +25,20 @@ function addDays(dateIso: string, days: number): string {
   const d = new Date(dateIso);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Reminder "due day" bucket (Asia/Jakarta by default, CR-05 STEP 4).
+ * All reminders evaluated on the same calendar day share one idempotency
+ * bucket, so re-running the sweep during the day never duplicates deliveries.
+ */
+function reminderDueDay(): string {
+  const tz = process.env.GABAH_REMINDER_TIMEZONE || 'Asia/Jakarta';
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
 }
 
 /** Compute derived contract status from end date + reminder thresholds. */
@@ -68,98 +84,25 @@ function canEditContract(user: ServerUser, contract: ServerContract): boolean {
 }
 
 function recordContractAudit(action: string, details: string, actor: ServerUser, contractId: string) {
+  // Shape MUST match the canonical ServerAuditLog (recordAudit in services.ts):
+  // the PostgreSQL audit_logs table enforces entity/user_name/user_role NOT NULL,
+  // and a deviating shape silently breaks the authoritative persistence sync.
   db.auditLogs.unshift({
-    id: `AUD-CTR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    user_id: actor.id,
-    user_name: actor.name,
-    role: actor.role as any,
-    module: 'Contracts',
+    id: `LOG-CTR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     action,
+    entity: 'Contracts',
+    entity_id: contractId,
+    user_name: actor.name || 'System',
+    user_role: actor.role,
     details,
     timestamp: new Date().toISOString(),
   } as any);
 }
 
-/** Queue a contract notification across channels with per-delivery logging. */
-function queueNotification(
-  contract: ServerContract,
-  notificationType: string,
-  actor?: ServerUser
-): ServerContractNotificationLog[] {
-  const now = new Date().toISOString();
-  const recipients: string[] = [contract.pic_user_id];
-  // Owner department distribution list (division role recipients)
-  recipients.push(`division:${contract.owner_division}`);
-  // Escalation recipient for urgent/critical thresholds
-  if (['EXPIRY_35', 'EXPIRY_7', 'NOTICE_DATE'].includes(notificationType) && contract.escalation_user_id) {
-    recipients.push(contract.escalation_user_id);
-  }
-
-  const channels: Array<'in_app' | 'email' | 'telegram'> = ['in_app', 'email', 'telegram'];
-  const logs: ServerContractNotificationLog[] = [];
-
-  for (const recipient of recipients) {
-    for (const channel of channels) {
-      let status: 'sent' | 'failed' = 'sent';
-      let error: string | null = null;
-
-      if (channel === 'email') {
-        // Outbound email transport is pluggable (SMTP provider). Until a provider key
-        // is configured, delivery is recorded as skipped rather than silently failing.
-        if (!process.env.SMTP_URL && !process.env.EMAIL_API_KEY) {
-          status = 'failed';
-          error = 'Email provider belum dikonfigurasi (SMTP_URL / EMAIL_API_KEY)';
-        }
-      }
-      if (channel === 'telegram') {
-        if (!process.env.TELEGRAM_BOT_TOKEN) {
-          status = 'failed';
-          error = 'Telegram bot belum dikonfigurasi (TELEGRAM_BOT_TOKEN)';
-        }
-      }
-
-      const log: ServerContractNotificationLog = {
-        id: `CNL-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
-        contract_id: contract.id,
-        notification_type: notificationType,
-        channel,
-        recipient,
-        scheduled_at: now,
-        sent_at: status === 'sent' ? now : null,
-        status: status === 'sent' ? 'sent' : 'failed',
-        error_message: error,
-      };
-      db.contractNotificationLogs.unshift(log);
-      logs.push(log);
-    }
-
-    // In-app notification also goes to the user's notification feed
-    if (recipient === contract.pic_user_id || recipient.startsWith('division:')) {
-      db.notifications.unshift({
-        id: `NTF-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
-        recipient_user_id: recipient === contract.pic_user_id ? contract.pic_user_id : undefined,
-        recipient_role: recipient.startsWith('division:') ? recipient.replace('division:', '') : undefined,
-        title: `[Kontrak] ${notificationType}: ${contract.contract_number}`,
-        message: `${contract.title} (${contract.vendor_name}) — ${getReminderLevel(contract).label}`,
-        severity: notificationType === 'EXPIRY_7' || notificationType === 'NOTICE_DATE' ? 'critical' : notificationType === 'EXPIRY_35' ? 'action_required' : 'warning',
-        category: 'contract',
-        link_type: 'contract',
-        link_id: contract.id,
-        is_read: false,
-        created_at: now,
-      } as any);
-    }
-  }
-
-  recordContractAudit(
-    'CONTRACT_REMINDER_QUEUED',
-    `Reminder ${notificationType} untuk kontrak ${contract.contract_number} diantrian (${logs.length} antrean kirim)`,
-    actor || ({ id: 'SYSTEM', name: 'System Scheduler', role: 'SYSTEM', department: '-' } as unknown as ServerUser),
-    contract.id
-  );
-
-  return logs;
-}
+// NOTE (CR-05): queueing/delivery moved to server/notifications/notificationService.ts —
+// real email (SMTP) + Telegram providers, deterministic idempotency keys, honest
+// sent/failed/skipped statuses, targeted recipients only (PIC + owner division +
+// escalation), audit trail per queue attempt.
 
 export const ContractDomainService = {
   DEFAULT_REMINDER_CONFIG,
@@ -328,14 +271,23 @@ export const ContractDomainService = {
   },
 
   /**
-   * Reminder evaluation pass — called from the API (GET /api/contracts/reminders/run)
-   * and intended for a scheduler. Evaluates expiry/notice thresholds and queues
-   * notifications once per threshold per contract (idempotent per type+day).
+   * Reminder evaluation pass — called from the API (POST /api/contracts/reminders/run)
+   * and from the internal scheduler. Evaluates expiry/notice thresholds and
+   * queues notifications once per (contract, threshold, due day).
+   *
+   * CR-05 hardening on top of the original engine:
+   *  - Idempotency via deterministic key (contract, type, channel, recipient, due day);
+   *    a UNIQUE index in PostgreSQL backs the in-memory guard.
+   *  - Auto-renewal contracts keep receiving reminders until their (future) end date,
+   *    but the message states that renewal is automatic (no false urgency).
+   *  - Notice-date reminder uses a bounded evaluation window, not a single-day check.
+   *  - Restricted contracts follow the exact same engine — recipients are resolved
+   *    server-side from PIC/division/escalation, never from client input.
    */
-  runReminderSweep(actor?: ServerUser): { evaluated: number; queued: number; logs: ServerContractNotificationLog[] } {
+  async runReminderSweep(actor?: ServerUser): Promise<{ evaluated: number; queued: number; sent: number; failed: number; skipped: number; logs: ServerContractNotificationLog[] }> {
+    const dueDay = reminderDueDay();
+    let queued = 0, sent = 0, failed = 0, skipped = 0;
     const logs: ServerContractNotificationLog[] = [];
-    let queued = 0;
-    const today = new Date().toISOString().slice(0, 10);
 
     for (const contract of db.contracts) {
       if (['draft', 'terminated', 'renewed'].includes(contract.status)) continue;
@@ -346,30 +298,27 @@ export const ContractDomainService = {
         [contract.reminder_config.reminder1_days, 'EXPIRY_60'],
       ];
 
+      const dueTypes: string[] = [];
       for (const [thresholdDays, type] of thresholds) {
-        if (days <= thresholdDays && days >= 0) {
-          const alreadyQueuedToday = db.contractNotificationLogs.some(
-            l => l.contract_id === contract.id && l.notification_type === type && l.scheduled_at.slice(0, 10) === today
-          );
-          if (!alreadyQueuedToday) {
-            const result = queueNotification(contract, type, actor);
-            logs.push(...result);
-            queued += result.length;
-          }
-        }
+        if (days <= thresholdDays && days >= 0) dueTypes.push(type);
       }
 
-      // Notice-date reminder (distinct from expiry reminder)
-      const noticeDays = daysUntil(contract.notice_date);
-      if (contract.notice_period_days > 0 && noticeDays <= 0 && noticeDays > -1) {
-        const alreadyQueuedToday = db.contractNotificationLogs.some(
-          l => l.contract_id === contract.id && l.notification_type === 'NOTICE_DATE' && l.scheduled_at.slice(0, 10) === today
-        );
-        if (!alreadyQueuedToday) {
-          const result = queueNotification(contract, 'NOTICE_DATE', actor);
-          logs.push(...result);
-          queued += result.length;
+      // Notice-date reminder: bounded window (today or up to 1 day missed),
+      // distinct from the expiry reminders.
+      if (contract.notice_period_days > 0) {
+        const noticeDays = daysUntil(contract.notice_date);
+        if (noticeDays <= 0 && noticeDays >= -1) dueTypes.push('NOTICE_DATE');
+      }
+
+      for (const type of dueTypes) {
+        const result = await queueNotification(contract, type, dueDay, actor || SCHEDULER_ACTOR);
+        for (const log of result.logs) {
+          logs.push(log);
+          if (log.status === 'sent') sent++;
+          else if (log.status === 'failed') failed++;
+          else if (log.status === 'skipped') skipped++;
         }
+        if (result.created) queued += result.logs.length;
       }
 
       // Keep derived status fresh
@@ -380,7 +329,14 @@ export const ContractDomainService = {
       }
     }
 
-    return { evaluated: db.contracts.length, queued, logs };
+    if (queued > 0) {
+      // Await (not fire-and-forget): the idempotency ledger must reach the
+      // authoritative store before the sweep returns, otherwise a process kill
+      // right after a sweep could re-queue and re-deliver the same reminders.
+      try { await persistDataStore(); } catch { /* persistence failures are non-fatal for the sweep */ }
+    }
+
+    return { evaluated: db.contracts.length, queued, sent, failed, skipped, logs };
   },
 
   getNotificationLogs(user: ServerUser, contractId?: string): ServerContractNotificationLog[] {
