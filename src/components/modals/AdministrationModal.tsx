@@ -451,6 +451,18 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   // Audit Search & Filter State
   const [auditSearch, setAuditSearch] = useState('');
   const [auditActionFilter, setAuditActionFilter] = useState('ALL');
+  const [auditPage, setAuditPage] = useState(0);
+  const AUDIT_PAGE_SIZE = 20;
+
+  // P2#10: live numbering sequences (server snapshot) — no more hardcoded samples.
+  const [liveSequences, setLiveSequences] = useState<Array<{ key: string; division: string; code: string; year: number; current: number }> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    gabahApi.getNumberingSequences()
+      .then(seq => { if (!cancelled) setLiveSequences(seq); })
+      .catch(() => { /* keep null → UI shows honest "unavailable" state */ });
+    return () => { cancelled = true; };
+  }, []);
 
   // System Settings State
   const [settingsForm, setSettingsForm] = useState(() => {
@@ -1559,9 +1571,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             type="text"
                             value={editUserData.department}
                             onChange={e => setEditUserData(prev => ({ ...prev, department: e.target.value }))}
+                            list="department-suggestions"
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                             placeholder="Contoh: Operasional Beras SPHP"
                           />
+                          <datalist id="department-suggestions">
+                            {(divisions.find(d => d.code === editUserData.division)?.depts || []).map(d => (
+                              <option key={d} value={d} />
+                            ))}
+                          </datalist>
                         </div>
 
                         <div className="space-y-1.5">
@@ -3045,30 +3063,36 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
               </div>
 
-              {/* Status Sequence Terkini */}
+              {/* Status Sequence Terkini — live dari server (P2#10) */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4">
                 <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
-                  Sequence Counter Terdaftar Tahun 2026
+                  Sequence Counter Terdaftar (Live dari Server)
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {[
-                    { key: 'IT:HLT:2026', current: 4, next: 'IT-HLT-2026-0005', label: 'Laptop & Workstation IT' },
-                    { key: 'SC:FLT:2026', current: 3, next: 'SC-FLT-2026-0004', label: 'Armada Truk Logistik' },
-                    { key: 'GA:BLD:2026', current: 2, next: 'GA-BLD-2026-0003', label: 'Gedung & Sarana PIBC' },
-                    { key: 'LIC:ENT:2026', current: 1, next: 'LIC-ENT-2026-0002', label: 'Enterprise Software' },
-                  ].map(seq => (
-                    <div key={seq.key} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
-                      <div className="text-[10px] font-mono text-slate-500 font-bold">{seq.key}</div>
-                      <div className="text-xs font-extrabold text-slate-800 mt-0.5">{seq.label}</div>
-                      <div className="mt-2 flex items-center justify-between text-xs">
-                        <span className="text-slate-500">Terakhir: <b>{seq.current}</b></span>
-                        <span className="font-mono font-bold text-[#206f65] bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
-                          Next: {seq.next}
-                        </span>
+                {liveSequences === null ? (
+                  <div className="text-xs text-slate-400 py-3 text-center">Memuat snapshot sequence dari server…</div>
+                ) : liveSequences.length === 0 ? (
+                  <div className="text-xs text-slate-500 py-3 text-center">
+                    Belum ada sequence terdaftar — counter terisi otomatis saat aset pertama didaftarkan per kombinasi (Divisi, Kode, Tahun).
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {liveSequences.slice(0, 12).map(seq => (
+                      <div key={seq.key} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+                        <div className="text-[10px] font-mono text-slate-500 font-bold">{seq.key}</div>
+                        <div className="text-xs font-extrabold text-slate-800 mt-0.5">Divisi {seq.division} · {seq.code}</div>
+                        <div className="mt-2 flex items-center justify-between text-xs">
+                          <span className="text-slate-500">Terakhir: <b>{seq.current}</b></span>
+                          <span className="font-mono font-bold text-[#206f65] bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
+                            Next: {seq.division}-{seq.code}-{seq.year}-{String(seq.current + 1).padStart(4, '0')}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
+                {liveSequences !== null && liveSequences.length > 12 && (
+                  <div className="mt-2 text-[10px] text-slate-400">Menampilkan 12 dari {liveSequences.length} kombinasi sequence terdaftar.</div>
+                )}
               </div>
             </div>
           )}
@@ -3160,6 +3184,26 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <p className="text-xs text-slate-500 mt-0.5">Rekam jejak kepatuhan dan audit forensik seluruh operasi sistem — tidak dapat diedit/dihapus siapapun</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari pengguna/aksi/rincian..."
+                      value={auditSearch}
+                      onChange={e => { setAuditSearch(e.target.value); setAuditPage(0); }}
+                      className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#4ABDAC] w-52"
+                    />
+                  </div>
+                  <select
+                    value={auditActionFilter}
+                    onChange={e => { setAuditActionFilter(e.target.value); setAuditPage(0); }}
+                    className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#4ABDAC]"
+                  >
+                    <option value="ALL">Semua Aksi</option>
+                    {[...new Set(auditLogs.map(l => l.action))].sort().map(action => (
+                      <option key={action} value={action}>{action}</option>
+                    ))}
+                  </select>
                   <button
                     onClick={exportAuditLogsCsv}
                     className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
@@ -3197,32 +3241,74 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {auditLogs.slice(0, 20).map(log => (
-                      <tr key={log.id} className="hover:bg-slate-50 font-medium">
-                        <td className="px-4 py-2.5 font-mono text-[11px] text-slate-500 whitespace-nowrap">
-                          {log.timestamp}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="font-bold text-slate-800">{log.user_name}</div>
-                          <div className="text-[10px] text-slate-400">{log.user_role}</div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
-                            log.action.includes('CREATE') ? 'bg-emerald-50 text-emerald-700' :
-                            log.action.includes('UPDATE') ? 'bg-blue-50 text-blue-700' :
-                            log.action.includes('DELETE') ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-700'
-                          }`}>
-                            {log.action}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 font-mono text-[11px] text-slate-700">
-                          {log.entity} {log.entity_id ? `(${log.entity_id})` : ''}
-                        </td>
-                        <td className="px-4 py-2.5 text-slate-600 max-w-md truncate">
-                          {log.details}
-                        </td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const q = auditSearch.trim().toLowerCase();
+                      const filtered = auditLogs.filter(l => {
+                        const matchAction = auditActionFilter === 'ALL' || l.action === auditActionFilter;
+                        const matchSearch = !q
+                          || (l.user_name || '').toLowerCase().includes(q)
+                          || (l.action || '').toLowerCase().includes(q)
+                          || (l.entity || '').toLowerCase().includes(q)
+                          || (l.details || '').toLowerCase().includes(q);
+                        return matchAction && matchSearch;
+                      });
+                      const pageCount = Math.max(1, Math.ceil(filtered.length / AUDIT_PAGE_SIZE));
+                      const page = Math.min(auditPage, pageCount - 1);
+                      const rows = filtered.slice(page * AUDIT_PAGE_SIZE, (page + 1) * AUDIT_PAGE_SIZE);
+
+                      if (rows.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-6 text-center text-slate-400 text-xs">Tidak ada log yang cocok dengan filter.</td>
+                          </tr>
+                        );
+                      }
+
+                      return (
+                        <>
+                          {rows.map(log => (
+                            <tr key={log.id} className="hover:bg-slate-50 font-medium">
+                              <td className="px-4 py-2.5 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                                {log.timestamp}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <div className="font-bold text-slate-800">{log.user_name}</div>
+                                <div className="text-[10px] text-slate-400">{log.user_role}</div>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
+                                  log.action.includes('CREATE') ? 'bg-emerald-50 text-emerald-700' :
+                                  log.action.includes('UPDATE') ? 'bg-blue-50 text-blue-700' :
+                                  log.action.includes('DELETE') ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 font-mono text-[11px] text-slate-700">
+                                {log.entity} {log.entity_id ? `(${log.entity_id})` : ''}
+                              </td>
+                              <td className="px-4 py-2.5 text-slate-600 max-w-md truncate">
+                                {log.details}
+                              </td>
+                            </tr>
+                          ))}
+                          {filtered.length > AUDIT_PAGE_SIZE && (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-3">
+                                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                                  <span>Menampilkan {page * AUDIT_PAGE_SIZE + 1}–{Math.min((page + 1) * AUDIT_PAGE_SIZE, filtered.length)} dari {filtered.length} log (total {auditLogs.length})</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <button type="button" disabled={page === 0} onClick={() => setAuditPage(page - 1)} className="px-2.5 py-1 rounded-lg border border-slate-200 font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer">← Sebelumnya</button>
+                                    <span className="px-2 font-bold">Hal. {page + 1}/{pageCount}</span>
+                                    <button type="button" disabled={page >= pageCount - 1} onClick={() => setAuditPage(page + 1)} className="px-2.5 py-1 rounded-lg border border-slate-200 font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer">Berikutnya →</button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>

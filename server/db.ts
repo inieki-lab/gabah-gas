@@ -381,6 +381,8 @@ export const db = {
     { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
     { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
     { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
+    { code: 'Audit', name: 'Satuan Pengawas Internal (SPI)', leader: 'Kepala SPI', depts: ['Audit Kepatuhan & PSAK 16', 'Tinjauan Tata Kelola Aset'] },
+    { code: 'Umum', name: 'Sekretariat & Umum', leader: 'Kepala Sekretariat', depts: ['Administrasi & Personalia', 'Dokumentasi & Kearsipan'] },
   ] as any[],
   movements: [] as ServerAssetMovement[],
   loans: [] as ServerLoan[],

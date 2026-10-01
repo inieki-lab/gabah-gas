@@ -426,6 +426,11 @@ class GabahApiClient {
     return this.request<AuditLog[]>('/api/audit-logs');
   }
 
+  /** Live asset numbering sequence snapshot (P2#10). */
+  async getNumberingSequences(): Promise<Array<{ key: string; division: string; code: string; year: number; current: number }>> {
+    return this.request<Array<{ key: string; division: string; code: string; year: number; current: number }>>('/api/numbering/sequences');
+  }
+
   // Meeting Rooms & Reservations
   async getMeetingRooms(): Promise<MeetingRoom[]> {
     return this.request<MeetingRoom[]>('/api/meeting-rooms');

@@ -2,6 +2,7 @@ import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerN
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
 import { persistDataStore } from './persistence';
+import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 
 export class GabahDomainService {
@@ -17,6 +18,9 @@ export class GabahDomainService {
       user_name: user.name || 'System',
       user_role: user.role || 'System',
       details,
+      // P2#9: stamp the originating client IP from the request context when the
+      // write happens inside an HTTP request (undefined for boot-time writers).
+      ip_address: requestContext.getStore()?.ip,
       timestamp: new Date().toISOString(),
     };
     db.auditLogs.unshift(log);

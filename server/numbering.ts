@@ -68,6 +68,19 @@ export class AssetNumberingEngine {
 
   private static contractSeq = new Map<number, number>();
 
+  /**
+   * P2#10: read-only snapshot of the live asset sequence store for the admin
+   * Asset Numbering panel (previously hardcoded sample values in the UI).
+   */
+  static getAssetSequenceSnapshot(): Array<{ key: string; division: string; code: string; year: number; current: number }> {
+    return Array.from(this.sequenceStore.entries())
+      .map(([key, current]) => {
+        const [division, code, yearStr] = key.split(':');
+        return { key, division, code, year: Number(yearStr) || 0, current };
+      })
+      .sort((a, b) => b.year - a.year || a.key.localeCompare(b.key));
+  }
+
   static _resetForTesting() {
     this.sequenceStore.clear();
     this.ticketSeq.clear();

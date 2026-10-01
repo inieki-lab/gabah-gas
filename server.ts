@@ -11,6 +11,7 @@ import { ContractDomainService, canSeeContract } from './server/contracts';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive } from './server/persistence';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
+import { requestContext, extractClientIp } from './server/requestContext';
 import {
   createSession,
   destroySession,
@@ -42,6 +43,12 @@ async function startServer() {
   const PORT = Number(process.env.PORT || 3000);
 
   app.use(express.json());
+
+  // Per-request audit context: carry the client IP through the async chain so
+  // recordAudit writers can stamp ip_address (P2#9).
+  app.use((req, res, next) => {
+    requestContext.run({ ip: extractClientIp(req) }, () => next());
+  });
 
   // Production API security and session/role hardening
   app.use(gabahSecurityMiddleware);
@@ -349,6 +356,12 @@ async function startServer() {
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
+  });
+
+  // P2#10: live numbering sequence snapshot for the admin Asset Numbering panel
+  // (replaces the hardcoded sample counters previously shown in the UI).
+  app.get('/api/numbering/sequences', (req, res) => {
+    res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
   });
 
   // Secure Authentication Endpoints
