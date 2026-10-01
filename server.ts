@@ -33,7 +33,7 @@ seedInitialData();
 
 async function startServer() {
   await initializePersistence();
-  AssetNumberingEngine.syncFromExistingRecords({ tickets: db.tickets, loans: db.loans });
+  AssetNumberingEngine.syncFromExistingRecords({ tickets: db.tickets, loans: db.loans, contracts: db.contracts });
 
   // CR-05 STEP 4: internal production scheduler for contract reminders.
   // Timezone-aware (GABAH_REMINDER_TIMEZONE, default Asia/Jakarta), configurable

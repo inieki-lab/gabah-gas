@@ -48,6 +48,7 @@ cp .env.example .env
 |---|---|
 | `DATABASE_URL` | PostgreSQL otoritatif (CR-04). Kosong = dev fallback file store; production fail-fast bila gagal. |
 | `GABAH_INITIAL_ADMIN_PASSWORD` / `GABAH_INITIAL_USER_PASSWORD` | Password awal akun kanonikal (CR-02); tanpa ini dev memakai CSPRNG. |
+| `GABAH_TEST_PASSWORD` | **UAT/dev saja** (diabaikan di production): memberi SEMUA akun kanonikal satu password uji seragam agar QA bisa mencoba 9 peran tanpa kelola kredensial. Contoh: `GABAH_TEST_PASSWORD=test123`. |
 | `GABAH_SMTP_HOST` + `GABAH_SMTP_FROM` (+ `GABAH_SMTP_PORT/SECURE/USER/PASSWORD/TLS_REJECT_UNAUTHORIZED`) | Relay SMTP pengiriman email reminder kontrak (CR-05); tanpa itu status email = `skipped`. |
 | `TELEGRAM_BOT_TOKEN` (+ `GABAH_TELEGRAM_TIMEOUT_MS/API_BASE`) | Bot API Telegram pengiriman reminder (CR-05); tanpa itu status = `skipped`. |
 | `GABAH_REMINDER_TIMEZONE` | Zona waktu due-day reminder (default `Asia/Jakarta`). |

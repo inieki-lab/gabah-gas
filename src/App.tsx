@@ -67,11 +67,18 @@ export default function App() {
   const [isCreateContractModalOpen, setIsCreateContractModalOpen] = useState(false);
   const [contractForLinkedTicket, setContractForLinkedTicket] = useState<Contract | null>(null);
 
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USERS[0]);
+  // No default authenticated user: signed-out visitors get null until login
+  // succeeds (prevents ghost sessions appearing after logout).
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [meetingCategoryFilter, setMeetingCategoryFilter] = useState<'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities' | 'high_priority'>('all');
   // Default to 'portal' to show working application immediately
-  const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>('portal');
+  // Initial view mode follows the actual session state: only enter the portal
+  // when a token exists (validated by initAuth below); otherwise show the login
+  // flow. Prevents being stuck in the portal shell after logout/stale session.
+  const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>(
+    () => (typeof window !== 'undefined' && localStorage.getItem('gabah_auth_token') ? 'portal' : 'login')
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Modals state
@@ -156,13 +163,21 @@ export default function App() {
           const me = await gabahApi.getMe().catch(() => null);
           if (me) {
             setCurrentUser(me);
+          } else {
+            // Stale/invalid token (e.g. server restarted with memory-only
+            // sessions): clear it and drop to the login page instead of
+            // rendering a portal shell without an authenticated user.
+            gabahApi.setToken(null);
+            setViewMode('login');
           }
           // SECURITY (CR-02): no automatic login with hardcoded credentials.
           // An invalid/expired token simply clears the session; the user must
           // authenticate explicitly via the Login page.
+        } else {
+          // No token: stay signed out until the user logs in with real
+          // credentials (server-side verification only).
+          setViewMode('login');
         }
-        // No token: stay signed out until the user logs in with real
-        // credentials (server-side verification only).
       } catch (err) {
         console.warn('Auth initialization:', err);
       } finally {
@@ -550,6 +565,20 @@ export default function App() {
     );
   }
 
+  // Session restore in flight (page reload with a stored token): never render
+  // the portal shell without an authenticated user — every child reads
+  // currentUser.role. Show a neutral loading screen until initAuth resolves.
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
+          <div className="w-10 h-10 rounded-full border-4 border-[#4ABDAC]/20 border-t-[#4ABDAC] animate-spin" />
+          <span className="text-xs font-bold">Memulihkan sesi…</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-emerald-600 selection:text-white">
       
@@ -578,7 +607,16 @@ export default function App() {
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
         onLogout={async () => {
-          await gabahApi.logout();
+          // Logout must ALWAYS succeed locally: even if the server rejects the
+          // call (stale session, server restarted, network error), the client
+          // session is cleared and the user returns to the login page.
+          try {
+            await gabahApi.logout();
+          } catch {
+            /* server-side destroy best-effort */
+          }
+          gabahApi.setToken(null);
+          setCurrentUser(null);
           setViewMode('login');
           showToast('Sesi selesai, berhasil logout.', 'info');
         }}

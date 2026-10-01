@@ -21,20 +21,31 @@ export function provisionCanonicalUserPasswords(): void {
   const userPass = process.env.GABAH_INITIAL_USER_PASSWORD;
   const devFallback = !adminPass && !userPass && process.env.NODE_ENV !== 'production';
 
+  // UAT convenience (explicit operator request, dev/test only): when
+  // GABAH_TEST_PASSWORD is set OUTSIDE production, EVERY canonical account is
+  // (re)provisioned with that one short shared password so QA can test all 9
+  // roles without managing credentials. Sessions are not revoked here; users
+  // simply re-login with the test password.
+  const testPassword = process.env.NODE_ENV === 'production' ? undefined : process.env.GABAH_TEST_PASSWORD;
+
   let devNote: string[] | null = devFallback ? [] : null;
   let devFile: string | null = devFallback ? path.join(DATA_DIR, 'initial_credentials_dev.txt') : null;
 
   for (const cu of CANONICAL_USERS) {
     const user = db.users.find(u => u.id === cu.id || (u.email && u.email.toLowerCase() === cu.email.toLowerCase()));
     if (!user) continue;
-    // Never clobber an existing credential (e.g. an operator already changed it)
-    if (user.password_hash && user.password_salt) continue;
 
     let plain: string;
-    if (cu.role === 'Admin GABAH') {
-      plain = adminPass || userPass || crypto.randomBytes(18).toString('base64url');
+    if (testPassword) {
+      plain = testPassword;
     } else {
-      plain = userPass || crypto.randomBytes(18).toString('base64url');
+      // Never clobber an existing credential (e.g. an operator already changed it)
+      if (user.password_hash && user.password_salt) continue;
+      if (cu.role === 'Admin GABAH') {
+        plain = adminPass || userPass || crypto.randomBytes(18).toString('base64url');
+      } else {
+        plain = userPass || crypto.randomBytes(18).toString('base64url');
+      }
     }
 
     const { hash, salt } = hashPassword(plain);
@@ -44,6 +55,10 @@ export function provisionCanonicalUserPasswords(): void {
     if (typeof user.authVersion !== 'number') user.authVersion = 1;
 
     if (devNote) devNote.push(`${cu.email} => ${plain}`);
+  }
+
+  if (testPassword) {
+    console.log('[GABAH Security] UAT mode: all canonical accounts share the GABAH_TEST_PASSWORD test credential (non-production only).');
   }
 
   if (devNote && devNote.length > 0 && devFile) {

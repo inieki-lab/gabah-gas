@@ -24,7 +24,7 @@ export class AssetNumberingEngine {
     }
   }
 
-  static syncFromExistingRecords(records: { tickets?: Array<{ ticket_number: string }>; loans?: Array<{ loan_number: string }> }) {
+  static syncFromExistingRecords(records: { tickets?: Array<{ ticket_number: string }>; loans?: Array<{ loan_number: string }>; contracts?: Array<{ contract_number: string }> }) {
     for (const t of records.tickets || []) {
       const m = /^TKT-(\d{4})-(\d+)$/.exec(t.ticket_number || '');
       if (m) this.ticketSeq.set(Number(m[1]), Math.max(this.ticketSeq.get(Number(m[1])) || 0, Number(m[2])));
@@ -32,6 +32,12 @@ export class AssetNumberingEngine {
     for (const l of records.loans || []) {
       const m = /^LOAN-(\d{4})-(\d+)$/.exec(l.loan_number || '');
       if (m) this.loanSeq.set(Number(m[1]), Math.max(this.loanSeq.get(Number(m[1])) || 0, Number(m[2])));
+    }
+    // Keep the contract sequence consistent with persisted records so a fresh
+    // boot never re-issues a CTR number that already exists in the store.
+    for (const c of records.contracts || []) {
+      const m = /^CTR-(\d{4})-(\d+)$/.exec(c.contract_number || '');
+      if (m) this.contractSeq.set(Number(m[1]), Math.max(this.contractSeq.get(Number(m[1])) || 0, Number(m[2])));
     }
   }
 
