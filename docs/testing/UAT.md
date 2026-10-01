@@ -206,6 +206,12 @@ Dijalankan fresh terhadap DB PostgreSQL test terisolasi (dibuat & di-drop otomat
 - `npx tsc --noEmit` — PASS (0 error).
 - `npm run build` (Vite + esbuild) — PASS.
 
-### 4.5 Blocker Pengujian Eksternal (jujur)
+### 4.5 Verifikasi Panel Administrasi (audit superadmin, 1 Oktober 2026)
+Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan berikut (commits `e2441eb`, `129a22b`, dan berikutnya), semua diverifikasi live:
+- **Fake-success dihapus**: Reset Sandi kini endpoint nyata `POST /api/users/:id/reset-password` (CSPRNG, hash PBKDF2, revokasi sesi CR-03, tampil sekali); Rekonsiliasi = audit integritas data nyata + ekspor anomali; Notification Center pakai state tersimpan tanpa tombol uji palsu.
+- **Tampilan mengikuti server**: System Health membaca `/api/health` riil (latency, persistence CR-04, scheduler CR-05); Asset Numbering menampilkan sequence live dari `/api/numbering/sequences`; Notification Center menampilkan overview CR-05 dari `/api/contracts/reminders/overview` (admin-only, live-tested 200 admin / 403 non-admin).
+- **Data lengkap**: audit log kini membawa `ip_address` (request context ALS, live-tested terisi) + search/filter/pagination; seed divisi 6 kode (SC, PIBC, IT, GA, Audit, Umum); badge dinamis; field `telegram_chat_id` + badge Nonaktif di user management.
+
+### 4.6 Blocker Pengujian Eksternal (jujur)
 - **Pengiriman email/Telegram nyata (status `sent` pada provider eksternal) belum dapat diuji end-to-end** — tidak ada SMTP relay maupun `TELEGRAM_BOT_TOKEN` di lingkungan verifikasi. Cakupan yang terverifikasi: jalur unconfigured→skipped, jalur gagal→failed dengan alasan jelas, dan pengiriman in-app→sent. Konfigurasi produksi: set env `GABAH_SMTP_*` dan `TELEGRAM_BOT_TOKEN` lalu ulangi verifikasi manual Seksi 3 Skenario 10 poin 4.
 - **Docker build tidak dapat diverifikasi** (Docker tidak tersedia di lingkungan verifikasi).

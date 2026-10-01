@@ -431,6 +431,11 @@ class GabahApiClient {
     return this.request<Array<{ key: string; division: string; code: string; year: number; current: number }>>('/api/numbering/sequences');
   }
 
+  /** CR-05 reminder subsystem overview for the admin Notification Center (P2#11). */
+  async getReminderOverview(): Promise<any> {
+    return this.request<any>('/api/contracts/reminders/overview');
+  }
+
   // Meeting Rooms & Reservations
   async getMeetingRooms(): Promise<MeetingRoom[]> {
     return this.request<MeetingRoom[]>('/api/meeting-rooms');

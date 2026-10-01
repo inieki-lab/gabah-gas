@@ -464,6 +464,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     return () => { cancelled = true; };
   }, []);
 
+  // P2#11: CR-05 reminder subsystem overview (admin-only endpoint).
+  const [reminderOverview, setReminderOverview] = useState<any>(null);
+  const [reminderOverviewError, setReminderOverviewError] = useState<string>('');
+  const refreshReminderOverview = () => {
+    setReminderOverviewError('');
+    gabahApi.getReminderOverview()
+      .then(res => setReminderOverview(res))
+      .catch((err: any) => setReminderOverviewError(err.message || 'Gagal memuat overview reminder'));
+  };
+  useEffect(() => {
+    refreshReminderOverview();
+  }, []);
+
   // System Settings State
   const [settingsForm, setSettingsForm] = useState(() => {
     const saved = localStorage.getItem('gabah_system_settings');
@@ -3163,7 +3176,91 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               <div className="rounded-2xl border border-teal-200 bg-teal-50/70 p-4 text-[11px] text-teal-900 leading-relaxed">
-                <strong className="font-extrabold">Reminder Kontrak (otomatis):</strong> engine CR-05 mengirim reminder kedaluwarsa kontrak (60/35/7 hari + notice date) via in-app, email, dan Telegram secara terjadwal — idempoten per hari. Status & konfigurasi lihat menu System Health (persistence/scheduler) dan <code className="font-mono">GET /api/contracts/reminders/scheduler-status</code>. Penerima di-resolve server-side (PIC, divisi pemilik, eskalasi) — bukan broadcast.
+                <strong className="font-extrabold">Reminder Kontrak (otomatis):</strong> engine CR-05 mengirim reminder kedaluwarsa kontrak (60/35/7 hari + notice date) via in-app, email, dan Telegram secara terjadwal — idempoten per hari. Penerima di-resolve server-side (PIC, divisi pemilik, eskalasi) — bukan broadcast.
+              </div>
+
+              {/* P2#11: CR-05 reminder subsystem overview — live dari server */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                    Reminder Kontrak CR-05 — Status Live Subsistem
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={refreshReminderOverview}
+                    className="px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3 h-3 text-slate-500" />
+                    <span>Muat Ulang</span>
+                  </button>
+                </div>
+
+                {reminderOverviewError ? (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">
+                    Overview reminder tidak tersedia: {reminderOverviewError} (endpoint ini khusus Admin GABAH).
+                  </div>
+                ) : !reminderOverview ? (
+                  <div className="text-xs text-slate-400 py-3 text-center">Memuat status subsistem reminder dari server…</div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase">Scheduler</div>
+                        <div className={`text-sm font-black mt-0.5 ${reminderOverview.scheduler?.enabled ? 'text-emerald-700' : 'text-slate-500'}`}>
+                          {reminderOverview.scheduler?.enabled ? 'Aktif' : 'Nonaktif'}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1">
+                          Interval {Math.round((reminderOverview.scheduler?.intervalMs || 0) / 60000)} menit · {reminderOverview.timezone}
+                          <br />Run terakhir: {reminderOverview.scheduler?.lastRun || '—'}
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase">Provider Eksternal</div>
+                        <div className="text-sm font-black mt-0.5 text-slate-800">
+                          Email: {reminderOverview.providers?.email_configured ? 'Terkonfigurasi' : 'Belum'}
+                          {' · '}
+                          Telegram: {reminderOverview.providers?.telegram_configured ? 'Terkonfigurasi' : 'Belum'}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1">
+                          Provider belum dikonfigurasi → pengiriman berstatus skipped (jujur, bukan gagal).
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase">Threshold (hari)</div>
+                        <div className="text-sm font-black mt-0.5 text-slate-800">
+                          {reminderOverview.thresholds?.reminder1_days ?? 60} / {reminderOverview.thresholds?.reminder2_days ?? 35} / {reminderOverview.thresholds?.reminder3_days ?? 7}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1">
+                          {reminderOverview.contracts_monitored} kontrak aktif terpantau
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase">Statistik Pengiriman</div>
+                        <div className="text-sm font-black mt-0.5">
+                          <span className="text-emerald-700">{reminderOverview.delivery?.by_status?.sent ?? 0} sent</span>
+                          {' · '}
+                          <span className="text-amber-700">{reminderOverview.delivery?.by_status?.skipped ?? 0} skipped</span>
+                          {' · '}
+                          <span className="text-rose-700">{reminderOverview.delivery?.by_status?.failed ?? 0} failed</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1">
+                          Total {reminderOverview.delivery?.total_logs ?? 0} log pengiriman
+                        </div>
+                      </div>
+                    </div>
+
+                    {(reminderOverview.recent_failures || []).length > 0 && (
+                      <div className="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700 mb-1">Kegagalan Terakhir (maks 5)</div>
+                        {reminderOverview.recent_failures.map((f: any) => (
+                          <div key={f.id} className="text-[11px] text-rose-900 font-mono truncate">
+                            {f.scheduled_at?.slice(0, 16).replace('T', ' ')} · {f.channel} · {f.notification_type} · {f.recipient} — {f.error_message || 'unknown error'}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}

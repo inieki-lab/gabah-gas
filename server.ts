@@ -8,6 +8,8 @@ import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './server/taxonom
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService } from './server/services';
 import { ContractDomainService, canSeeContract } from './server/contracts';
+import { isEmailConfigured } from './server/notifications/emailProvider';
+import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive } from './server/persistence';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
@@ -362,6 +364,54 @@ async function startServer() {
   // (replaces the hardcoded sample counters previously shown in the UI).
   app.get('/api/numbering/sequences', (req, res) => {
     res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
+  });
+
+  // P2#11: CR-05 reminder subsystem overview for the admin Notification Center —
+  // scheduler state, provider configuration presence, thresholds, and delivery
+  // statistics derived from the authoritative notification log. Admin-only;
+  // no provider secrets are exposed (only configured true/false).
+  app.get('/api/contracts/reminders/overview', (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat melihat overview reminder.' });
+      }
+      const logs = db.contractNotificationLogs || [];
+      const byStatus: Record<string, number> = { sent: 0, failed: 0, skipped: 0 };
+      for (const l of logs) byStatus[l.status] = (byStatus[l.status] || 0) + 1;
+      const byChannel: Record<string, { total: number; sent: number; failed: number; skipped: number }> = {};
+      for (const l of logs) {
+        byChannel[l.channel] = byChannel[l.channel] || { total: 0, sent: 0, failed: 0, skipped: 0 };
+        byChannel[l.channel].total++;
+        byChannel[l.channel][l.status as 'sent' | 'failed' | 'skipped']++;
+      }
+      const failures = logs.filter(l => l.status === 'failed').slice(0, 5).map(l => ({
+        id: l.id,
+        contract_id: l.contract_id,
+        notification_type: l.notification_type,
+        channel: l.channel,
+        recipient: l.recipient,
+        error_message: l.error_message,
+        scheduled_at: l.scheduled_at,
+      }));
+      res.json({
+        success: true,
+        data: {
+          scheduler: getSchedulerStatus(),
+          providers: {
+            email_configured: isEmailConfigured(),
+            telegram_configured: isTelegramConfigured(),
+          },
+          thresholds: ContractDomainService.DEFAULT_REMINDER_CONFIG,
+          timezone: process.env.GABAH_REMINDER_TIMEZONE || 'Asia/Jakarta',
+          contracts_monitored: db.contracts.filter(c => !['draft', 'terminated', 'renewed'].includes(c.status)).length,
+          delivery: { total_logs: logs.length, by_status: byStatus, by_channel: byChannel },
+          recent_failures: failures,
+        },
+      });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
   });
 
   // Secure Authentication Endpoints
