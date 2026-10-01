@@ -308,6 +308,49 @@ async function startServer() {
     }
   });
 
+  // P1#2 (admin UX honesty): REAL password reset endpoint. The server issues a
+  // CSPRNG temporary password, stores ONLY its PBKDF2 hash, revokes the user's
+  // sessions (CR-03), and returns the plaintext exactly once so the admin can
+  // deliver it out-of-band. No fake "reset link sent" claims — email delivery
+  // for resets is a separate, explicitly-configured feature.
+  app.post('/api/users/:id/reset-password', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+        return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang mereset sandi pengguna.' });
+      }
+
+      const targetUser = db.users.find(u => u.id === req.params.id);
+      if (!targetUser) {
+        return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+      }
+
+      // Mirrors POST /api/users password policy: 12-char CSPRNG, base64url.
+      const tempPassword = crypto.randomBytes(12).toString('base64url');
+      const { hash, salt } = hashPassword(tempPassword);
+      targetUser.password_hash = hash;
+      targetUser.password_salt = salt;
+      delete targetUser.temp_password;
+
+      // SECURITY (CR-03 §3.4): a password change revokes ALL active sessions.
+      revokeUserSessions(targetUser.id);
+
+      GabahDomainService.recordAudit(
+        'USER_PASSWORD_RESET',
+        'Users',
+        `Menerbitkan sandi sementara baru untuk pengguna ${targetUser.name} (${targetUser.email}); seluruh sesi aktif dicabut`,
+        actor,
+        targetUser.id
+      );
+
+      await persistDataStore();
+
+      res.json({ success: true, data: { temp_password: tempPassword, user_id: targetUser.id } });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
   // Secure Authentication Endpoints
   app.post('/api/auth/login', (req, res) => {
     try {

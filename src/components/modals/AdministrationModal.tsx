@@ -146,6 +146,22 @@ const DEFAULT_PERMISSIONS: RolePermissionRow[] = [
   { role: 'Auditor', desc: 'Satuan Pengawas Internal / BPKP', assets: 'Audit Only', loans: 'Audit History', tickets: 'Audit Trail', licenses: 'Audit', reports: 'Rekonsiliasi', audit: 'Full Read', admin: 'No' },
 ];
 
+/**
+ * Vocabulary otorisasi standar (template) per kolom matriks, diturunkan dari
+ * DEFAULT_PERMISSIONS. Modal "Ubah Otorisasi" HARUS memakai dropdown dari
+ * daftar ini (bukan input bebas) agar nilai matriks konsisten dan tidak
+ * merusak tampilan/pemetaan hak akses.
+ */
+const PERMISSION_TEMPLATE_FIELDS: Record<keyof Omit<RolePermissionRow, 'role' | 'desc'>, string[]> = {
+  assets: ['Full Access', 'Divisi IT', 'Divisi GA', 'Divisi SC', 'Divisi PIBC', 'Aset Pribadi', 'Audit Only', 'No'],
+  loans: ['Approve & Handover', 'Approve IT Aset', 'Approve GA Aset', 'Approve Truk/SC', 'Approve Pasar', 'Request Pinjam', 'Audit History', 'No'],
+  tickets: ['All Categories', 'IT & License', 'Fasilitas GA', 'Logistik SC', 'Operasional', 'Buat Tiket', 'Buat Tiket Sendiri', 'Audit Trail', 'No'],
+  licenses: ['Full', 'Manage', 'Read', 'Audit', 'No'],
+  reports: ['Full', 'Divisi IT', 'Divisi GA', 'Divisi SC', 'Divisi PIBC', 'Rekonsiliasi', 'No'],
+  audit: ['Full', 'Full Read', 'View IT', 'View GA', 'View SC', 'View', 'No'],
+  admin: ['Full Control', 'No'],
+};
+
 const DEFAULT_DIVISIONS: OrgDivision[] = [
   { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
   { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
@@ -209,6 +225,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     department: string;
     phone: string;
     is_active: boolean;
+    telegram_chat_id: string;
     new_password: string;
   }>({
     name: '',
@@ -218,6 +235,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     department: '',
     phone: '',
     is_active: true,
+    telegram_chat_id: '',
     new_password: '',
   });
 
@@ -463,10 +481,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     latency: number | null;
     timestamp: string;
     isChecking: boolean;
+    persistence?: string;
+    scheduler?: { enabled?: boolean; running?: boolean; intervalMs?: number; timezone?: string; lastRun?: string | null };
   }>({
-    status: 'Operational',
-    latency: 3,
-    timestamp: new Date().toLocaleTimeString(),
+    // Status awal: BELUM diperiksa — jangan mengarang angka latency/status.
+    status: 'Belum Diperiksa',
+    latency: null,
+    timestamp: '',
     isChecking: false
   });
 
@@ -681,7 +702,45 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem('gabah_system_settings', JSON.stringify(settingsForm));
-    showToast('Parameter sistem & kebijakan BUMD berhasil disimpan!', 'success');
+    showToast('Parameter tampilan panel administrasi tersimpan (local browser).', 'success');
+  };
+
+  // P1#1: Rekonsiliasi INTEGRITAS DATA NYATA (bukan toast palsu).
+  // Memeriksa konsistensi referensi lintas data pada datastore aktif:
+  // aset tanpa kategori valid, tiket tanpa reporter valid, pinjaman
+  // tanpa aset/peminjam valid, dan nomor aset yang melanggar format kanonikal.
+  const handleSapReconciliation = () => {
+    const validCodes = new Set(categories.map(c => c.code));
+    const orphanAssets = assets.filter(a => a.category_code && !validCodes.has(a.category_code));
+    const invalidNumberAssets = assets.filter(a => {
+      const n = a.asset_number || '';
+      if (!n) return false;
+      const parts = n.split('-');
+      return parts.length !== 4 || !/\d{4}$/.test(parts[3] || '');
+    });
+    const validUserIds = new Set(userList.map(u => u.id));
+    const validAssetIds = new Set(assets.map(a => a.id));
+    const orphanTickets = tickets.filter(t => !validUserIds.has(t.reporter_id));
+    const orphanLoans = loans.filter(l => !validUserIds.has(l.borrower_id) || (l.asset_id && !validAssetIds.has(l.asset_id)));
+
+    const issues = [
+      { label: 'Aset dengan kode kategori tidak terdaftar di master', items: orphanAssets },
+      { label: 'Nomor aset tidak sesuai format kanonikal DIV-CODE-YEAR-SEQ', items: invalidNumberAssets },
+      { label: 'Tiket dengan reporter tidak valid', items: orphanTickets },
+      { label: 'Peminjaman dengan peminjam/aset tidak valid', items: orphanLoans },
+    ];
+    const totalIssues = issues.reduce((s, g) => s + g.items.length, 0);
+
+    if (totalIssues === 0) {
+      showToast(`Integritas data 100% konsisten: ${assets.length} aset, ${loans.length} peminjaman, ${tickets.length} tiket diperiksa — 0 anomali.`, 'success');
+    } else {
+      const detail = issues.filter(g => g.items.length > 0).map(g => `${g.items.length} ${g.label.toLowerCase()}`).join('; ');
+      showToast(`Rekonsiliasi menemukan ${totalIssues} anomali: ${detail}. Ekspor JSON aset untuk analisis lanjutan.`, 'warning');
+      exportDataJson('gabah_reconciliation_anomalies', {
+        generated_at: new Date().toISOString(),
+        summary: issues.map(g => ({ check: g.label, count: g.items.length, samples: g.items.slice(0, 20) })),
+      });
+    }
   };
 
   // Audit Log CSV Export
@@ -738,8 +797,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   const adminMenuCards = [
     { id: 'users' as AdminSection, label: 'User Management', description: 'Kelola pengguna, peranan, divisi, dan sandi sementara', icon: Users, badge: `${userList.length} User` },
-    { id: 'roles' as AdminSection, label: 'Role & Permission', description: 'Matriks otorisasi per modul & pembatasan scope divisi', icon: LockKeyhole, badge: '8 Roles' },
-    { id: 'organization' as AdminSection, label: 'Organization', description: 'Divisi operasional Food Station & struktur departemen', icon: Building2, badge: '4 Divisi' },
+    { id: 'roles' as AdminSection, label: 'Role & Permission', description: 'Matriks otorisasi per modul & pembatasan scope divisi', icon: LockKeyhole, badge: `${DEFAULT_PERMISSIONS.length} Roles` },
+    { id: 'organization' as AdminSection, label: 'Organization', description: 'Divisi operasional Food Station & struktur departemen', icon: Building2, badge: `${divisions.length} Divisi` },
     { id: 'master_data' as AdminSection, label: 'Master Data', description: 'Kategori aset, master lokasi gedung PIBC, dan SLA Helpdesk', icon: Database, badge: `${categories.length} Kategori` },
     { id: 'numbering' as AdminSection, label: 'Asset Numbering', description: 'Format {DIV}-{CODE}-{YEAR}-{SEQ} & simulator sequence', icon: Hash, badge: 'Auto Sync' },
     { id: 'notifications' as AdminSection, label: 'Notification Center', description: 'Konfigurasi rule pengingat masa garansi, overdue loan, & SLA', icon: Bell, badge: 'Aktif' },
@@ -798,6 +857,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       department: user.department || '',
       phone: user.phone || '',
       is_active: user.is_active !== undefined ? user.is_active : true,
+      telegram_chat_id: user.telegram_chat_id || '',
       new_password: '',
     });
     setIsEditUserOpen(true);
@@ -817,6 +877,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         department: editUserData.department.trim(),
         phone: editUserData.phone.trim(),
         is_active: editUserData.is_active,
+        // Admin-managed Telegram chat id untuk pengiriman reminder (CR-05).
+        telegram_chat_id: editUserData.telegram_chat_id.trim() || undefined,
       };
       if (editUserData.new_password && editUserData.new_password.trim()) {
         payload.password = editUserData.new_password.trim();
@@ -857,38 +919,89 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  // Run ping health check
+  // Run health check — MURNI dari respons /api/health riil (tanpa nilai default palsu).
   const pingHealthCheck = async () => {
     setHealthStatus(prev => ({ ...prev, isChecking: true }));
     const start = performance.now();
     try {
       const res = await fetch('/api/health');
       const latency = Math.round(performance.now() - start);
+      const body = await res.json().catch(() => ({}));
       if (res.ok) {
         setHealthStatus({
           status: 'Operational (200 OK)',
           latency,
           timestamp: new Date().toLocaleTimeString(),
-          isChecking: false
+          isChecking: false,
+          persistence: typeof body.persistence === 'string' ? body.persistence : undefined,
+          scheduler: body.scheduler && typeof body.scheduler === 'object' ? body.scheduler : undefined,
         });
         showToast(`API Server sehat! Waktu respon: ${latency} ms`, 'success');
       } else {
-        setHealthStatus({
-          status: 'Degraded',
-          latency,
-          timestamp: new Date().toLocaleTimeString(),
-          isChecking: false
-        });
+        setHealthStatus({ status: 'Degraded', latency, timestamp: new Date().toLocaleTimeString(), isChecking: false });
         showToast('API mengembalikan respon tidak normal', 'warning');
       }
     } catch {
-      setHealthStatus({
-        status: 'Error Menghubungi API',
-        latency: null,
-        timestamp: new Date().toLocaleTimeString(),
-        isChecking: false
-      });
+      setHealthStatus({ status: 'Error Menghubungi API', latency: null, timestamp: new Date().toLocaleTimeString(), isChecking: false });
       showToast('Gagal menghubungi backend API', 'warning');
+    }
+  };
+
+  // Health snapshot awal sekali per render modal (sekali fetch, tanpa toast).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const start = performance.now();
+      try {
+        const res = await fetch('/api/health');
+        const latency = Math.round(performance.now() - start);
+        const body = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok) {
+          setHealthStatus({
+            status: 'Operational (200 OK)',
+            latency,
+            timestamp: new Date().toLocaleTimeString(),
+            isChecking: false,
+            persistence: typeof body.persistence === 'string' ? body.persistence : undefined,
+            scheduler: body.scheduler && typeof body.scheduler === 'object' ? body.scheduler : undefined,
+          });
+        }
+      } catch {
+        /* biarkan state default: belum diperiksa — jangan mengarang status */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // P1#2: Reset sandi NYATA — minta server menerbitkan sandi sementara CSPRNG
+  // (server meng-hash & menyimpannya), lalu tampilkan SEKALI untuk disampaikan
+  // out-of-band. Tanpa provider email yang terkonfigurasi, klaim "link email
+  // terkirim" adalah palsu — sehingga UI menampilkan sandinya secara eksplisit.
+  const [passwordResetTarget, setPasswordResetTarget] = useState<UserProfile | null>(null);
+  const [tempIssuedPassword, setTempIssuedPassword] = useState<string | null>(null);
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+  const handleRealPasswordReset = async () => {
+    if (!passwordResetTarget) return;
+    try {
+      setIsSubmittingReset(true);
+      const res = await fetch(`/api/users/${passwordResetTarget.id}/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('gabah_auth_token') || ''}`,
+        },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body?.data?.temp_password) {
+        throw new Error(body?.message || `HTTP ${res.status}`);
+      }
+      setTempIssuedPassword(body.data.temp_password);
+      showToast(`Sandi sementara untuk ${passwordResetTarget.name} diterbitkan server. Sampaikan via kanal aman.`, 'success');
+      if (onRefreshData) await onRefreshData();
+    } catch (err: any) {
+      showToast(`Gagal reset sandi: ${err.message}`, 'warning');
+    } finally {
+      setIsSubmittingReset(false);
     }
   };
 
@@ -1084,7 +1197,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     className="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 text-emerald-800 text-xs font-bold hover:bg-emerald-100 flex items-center gap-1.5 transition-colors"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${healthStatus.isChecking ? 'animate-spin' : ''}`} />
-                    <span>Ping API ({healthStatus.latency ?? 3} ms)</span>
+                    <span>Ping API ({healthStatus.latency !== null ? `${healthStatus.latency} ms` : '…'})</span>
                   </button>
                 </div>
               </div>
@@ -1285,19 +1398,34 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                              user.role === 'Admin GABAH'
-                                ? 'bg-purple-50 text-purple-700 border-purple-200'
-                                : user.role === 'IT'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : user.role === 'GA'
-                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : user.role === 'Supply Chain'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-slate-100 text-slate-700 border-slate-200'
-                            }`}>
-                              {user.role}
-                            </span>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                                user.role === 'Admin GABAH'
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                  : user.role === 'IT'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : user.role === 'GA'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : user.role === 'Supply Chain'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : user.role === 'Auditor'
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : user.role === 'PIBC'
+                                  ? 'bg-teal-50 text-teal-700 border-teal-200'
+                                  : user.role === 'Sekretaris Direksi'
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                  : user.role === 'Humas'
+                                  ? 'bg-pink-50 text-pink-700 border-pink-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}>
+                                {user.role}
+                              </span>
+                              {user.is_active === false && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-rose-50 text-rose-700 border-rose-200" title="Akun dinonaktifkan — tidak dapat login">
+                                  Nonaktif
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <div className="font-medium text-slate-700">{user.division || '-'}</div>
@@ -1321,8 +1449,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   </button>
                                   <button
                                     type="button"
-                                    title={`Reset sandi untuk ${user.name}`}
-                                    onClick={() => showToast(`Link reset sandi untuk ${user.name} dikirim ke ${user.email}`)}
+                                    title={`Terbitkan sandi sementara untuk ${user.name}`}
+                                    onClick={() => { setPasswordResetTarget(user); setTempIssuedPassword(null); }}
                                     className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer"
                                   >
                                     Reset Sandi
@@ -1445,6 +1573,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                             placeholder="0812xxxxxxxx"
                           />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">
+                            Telegram Chat ID <span className="text-slate-400 font-normal">(opsional, untuk reminder)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={editUserData.telegram_chat_id}
+                            onChange={e => setEditUserData(prev => ({ ...prev, telegram_chat_id: e.target.value }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                            placeholder="Contoh: 123456789"
+                          />
+                          <p className="text-[10px] text-slate-400">Dipakai engine reminder kontrak (CR-05) untuk pengiriman Telegram ke user ini.</p>
                         </div>
 
                         <div className="space-y-1.5 md:col-span-2">
@@ -1615,6 +1757,81 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                 );
               })()}
+
+              {/* P1#2: Reset Sandi — konfirmasi + hasil sandi sementara (tampil SEKALI) */}
+              {passwordResetTarget && (
+                <div className="fixed inset-0 z-[92] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                        <RotateCcw className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-extrabold text-slate-900">Reset Sandi Pengguna</h4>
+                        <p className="text-xs text-slate-500">
+                          {tempIssuedPassword
+                            ? 'Sandi sementara diterbitkan oleh server — sampaikan via kanal aman (WA/telepon/pertemuan), bukan email biasa.'
+                            : `Terbitkan sandi sementara baru untuk ${passwordResetTarget.name}? Sesi aktif pengguna akan dicabut.`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {tempIssuedPassword ? (
+                      <div className="space-y-3">
+                        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
+                          <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 mb-1">Sandi Sementara (tampil sekali)</div>
+                          <div className="font-mono text-lg font-black text-amber-900 select-all break-all">{tempIssuedPassword}</div>
+                        </div>
+                        <p className="text-[11px] text-slate-500 leading-relaxed">
+                          Server menyimpan versi hash-nya (PBKDF2). Sandi plaintext ini tidak akan ditampilkan lagi — salin sekarang sebelum menutup dialog.
+                        </p>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setPasswordResetTarget(null); setTempIssuedPassword(null); }}
+                            className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold hover:bg-slate-900"
+                          >
+                            Saya Sudah Menyalin
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 flex items-center gap-3">
+                        <img
+                          src={passwordResetTarget.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
+                          alt={passwordResetTarget.name}
+                          className="w-10 h-10 rounded-full border border-slate-200 object-cover"
+                        />
+                        <div>
+                          <div className="font-bold text-sm text-slate-800">{passwordResetTarget.name}</div>
+                          <div className="text-xs text-slate-500">{passwordResetTarget.email}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!tempIssuedPassword && (
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setPasswordResetTarget(null)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isSubmittingReset}
+                          onClick={handleRealPasswordReset}
+                          className="px-5 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 disabled:opacity-60 flex items-center gap-1.5"
+                        >
+                          {isSubmittingReset ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          <span>{isSubmittingReset ? 'Menerbitkan...' : 'Terbitkan Sandi Sementara'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1746,46 +1963,47 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           type="text"
                           value={editRoleRow.desc}
                           onChange={e => setEditRoleRow({ ...editRoleRow, desc: e.target.value })}
+                          list="role-desc-suggestions"
                           className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
                         />
+                        <datalist id="role-desc-suggestions">
+                          {DEFAULT_PERMISSIONS.map(p => (
+                            <option key={p.role} value={p.desc} />
+                          ))}
+                        </datalist>
                       </div>
                       <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <label className="block font-bold text-slate-700 mb-1">Modul Aset Fisik</label>
-                          <input
-                            type="text"
-                            value={editRoleRow.assets}
-                            onChange={e => setEditRoleRow({ ...editRoleRow, assets: e.target.value })}
-                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 font-medium"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold text-slate-700 mb-1">Peminjaman &amp; BAST</label>
-                          <input
-                            type="text"
-                            value={editRoleRow.loans}
-                            onChange={e => setEditRoleRow({ ...editRoleRow, loans: e.target.value })}
-                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 font-medium"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold text-slate-700 mb-1">Tiket Helpdesk</label>
-                          <input
-                            type="text"
-                            value={editRoleRow.tickets}
-                            onChange={e => setEditRoleRow({ ...editRoleRow, tickets: e.target.value })}
-                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 font-medium"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold text-slate-700 mb-1">Laporan PSAK 16</label>
-                          <input
-                            type="text"
-                            value={editRoleRow.reports}
-                            onChange={e => setEditRoleRow({ ...editRoleRow, reports: e.target.value })}
-                            className="w-full px-3 py-1.5 rounded-xl border border-slate-200 font-medium"
-                          />
-                        </div>
+                        {(
+                          [
+                            ['assets', 'Modul Aset Fisik'],
+                            ['loans', 'Peminjaman & BAST'],
+                            ['tickets', 'Tiket Helpdesk'],
+                            ['licenses', 'Lisensi & SLA'],
+                            ['reports', 'Laporan PSAK 16'],
+                            ['audit', 'Audit Trail'],
+                            ['admin', 'Admin Plane'],
+                          ] as Array<[keyof typeof PERMISSION_TEMPLATE_FIELDS, string]>
+                        ).map(([field, label]) => (
+                          <div key={field}>
+                            <label className="block font-bold text-slate-700 mb-1">{label}</label>
+                            <select
+                              value={editRoleRow[field]}
+                              onChange={e => setEditRoleRow({ ...editRoleRow, [field]: e.target.value })}
+                              className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-medium cursor-pointer"
+                            >
+                              {/* Nilai tersimpan di luar template tetap ditampilkan agar tidak hilang diam-diam. */}
+                              {!PERMISSION_TEMPLATE_FIELDS[field].includes(editRoleRow[field]) && (
+                                <option value={editRoleRow[field]}>{editRoleRow[field]} (non-standar)</option>
+                              )}
+                              {PERMISSION_TEMPLATE_FIELDS[field].map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800 leading-relaxed">
+                        <strong>Catatan tata kelola:</strong> matriks ini adalah referensi hak akses pada panel administrasi. Penegakan akses aktual (RBAC) tetap ditegakkan oleh server terhadap 9 peran resmi GABAH — perubahan di sini tidak memperluas atau membatasi hak akses riil pengguna.
                       </div>
 
                       <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
@@ -2876,17 +3094,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               <div className="space-y-3">
-                {[
-                  { id: 'notif_warranty', title: 'Peringatan Masa Garansi & Lisensi Expired', trigger: '30 hari & 7 hari sebelum tanggal kedaluwarsa', target: 'Admin GABAH & Divisi IT', status: 'Aktif', severity: 'warning' },
-                  { id: 'notif_loan', title: 'Eskalasi Keterlambatan Peminjaman (Overdue Loan)', trigger: 'Melewati batas due date jam 17:00 WIB', target: 'Peminjam, Atasan, dan Admin Penanggung Jawab', status: 'Aktif', severity: 'critical' },
-                  { id: 'notif_sla', title: 'SLA Breach Warning Tiket Helpdesk', trigger: 'Sisa waktu SLA < 1 jam atau status open melebihi target', target: 'Teknisi yang ditugaskan & Koordinator IT/GA', status: 'Aktif', severity: 'critical' },
-                  { id: 'notif_bast', title: 'Pemberitahuan BAST & Serah Terima Selesai', trigger: 'Saat serah terima fisik aset disetujui', target: 'Peminjam & Tim Inventaris BUMD', status: 'Aktif', severity: 'info' },
-                ].map((rule, idx) => (
-                  <div key={idx} className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-4 flex-wrap">
+                {notificationRules.map((rule, idx) => (
+                  <div key={rule.id || idx} className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-4 flex-wrap">
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="text-xs font-extrabold text-slate-800">{rule.title}</h4>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          rule.status === 'Aktif' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                        }`}>
                           {rule.status}
                         </span>
                       </div>
@@ -2898,24 +3113,33 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {isCurrentUserAdmin && (
+                      {isCurrentUserAdmin ? (
                         <button
                           type="button"
-                          onClick={() => showToast(`Status aturan "${rule.title}" diperbarui!`)}
-                          className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                          onClick={() => handleToggleNotificationRule(rule.id)}
+                          title="Aktifkan/nonaktifkan aturan — tersimpan di panel administrasi ini"
+                          className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            rule.status === 'Aktif'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                              : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                          }`}
                         >
-                          Ubah Status
+                          <span className={`w-2 h-2 rounded-full ${rule.status === 'Aktif' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                          <span>{rule.status === 'Aktif' ? 'Aktif' : 'Nonaktif'}</span>
                         </button>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                          <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
+                          <span>Read-Only</span>
+                        </span>
                       )}
-                      <button
-                        onClick={() => showToast(`Uji simulasi notifikasi: "${rule.title}" terkirim!`, 'info')}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-                      >
-                        Uji Notifikasi
-                      </button>
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div className="rounded-2xl border border-teal-200 bg-teal-50/70 p-4 text-[11px] text-teal-900 leading-relaxed">
+                <strong className="font-extrabold">Reminder Kontrak (otomatis):</strong> engine CR-05 mengirim reminder kedaluwarsa kontrak (60/35/7 hari + notice date) via in-app, email, dan Telegram secara terjadwal — idempoten per hari. Status & konfigurasi lihat menu System Health (persistence/scheduler) dan <code className="font-mono">GET /api/contracts/reminders/scheduler-status</code>. Penerima di-resolve server-side (PIC, divisi pemilik, eskalasi) — bukan broadcast.
               </div>
             </div>
           )}
@@ -3035,48 +3259,51 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               )}
 
               <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <label className="block text-slate-600 mb-1 font-semibold">Nama BUMD / Instansi</label>
-                    <input
-                      type="text"
-                      disabled={!isCurrentUserAdmin}
-                      value={settingsForm.companyName}
-                      onChange={e => setSettingsForm({ ...settingsForm, companyName: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">                    <div>
+                      <label className="block text-slate-600 mb-1 font-semibold">Nama BUMD / Instansi</label>
+                      <input
+                        type="text"
+                        disabled={!isCurrentUserAdmin}
+                        value={settingsForm.companyName}
+                        onChange={e => setSettingsForm({ ...settingsForm, companyName: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 mb-1 font-semibold">Standar Akuntansi Aset Tetap</label>
+                      <input
+                        type="text"
+                        disabled={!isCurrentUserAdmin}
+                        value={settingsForm.accountingStandard}
+                        onChange={e => setSettingsForm({ ...settingsForm, accountingStandard: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 mb-1 font-semibold">Mata Uang Basis</label>
+                      <input
+                        type="text"
+                        disabled={!isCurrentUserAdmin}
+                        value={settingsForm.baseCurrency}
+                        onChange={e => setSettingsForm({ ...settingsForm, baseCurrency: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 mb-1 font-semibold">Tahun Buku Fiskal</label>
+                      <input
+                        type="text"
+                        disabled={!isCurrentUserAdmin}
+                        value={settingsForm.fiscalYear}
+                        onChange={e => setSettingsForm({ ...settingsForm, fiscalYear: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-mono font-medium"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-slate-600 mb-1 font-semibold">Standar Akuntansi Aset Tetap</label>
-                    <input
-                      type="text"
-                      disabled={!isCurrentUserAdmin}
-                      value={settingsForm.accountingStandard}
-                      onChange={e => setSettingsForm({ ...settingsForm, accountingStandard: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
-                    />
+
+                  <div className="rounded-xl bg-sky-50 border border-sky-200 px-3 py-2 text-[11px] text-sky-900 leading-relaxed">
+                    <strong>Catatan:</strong> parameter entitas (nama, standar, mata uang, tahun buku) tersimpan sebagai konfigurasi tampilan panel administrasi ini. Batas SLA helpdesk di bawah merupakan <strong>referensi</strong> — nilai SLA operasional riil saat ini ditetapkan server (Urgent 4h, High 8h, Medium 24h, Low 48h) dan belum dapat diubah dari UI.
                   </div>
-                  <div>
-                    <label className="block text-slate-600 mb-1 font-semibold">Mata Uang Basis</label>
-                    <input
-                      type="text"
-                      disabled={!isCurrentUserAdmin}
-                      value={settingsForm.baseCurrency}
-                      onChange={e => setSettingsForm({ ...settingsForm, baseCurrency: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 mb-1 font-semibold">Tahun Buku Fiskal</label>
-                    <input
-                      type="text"
-                      disabled={!isCurrentUserAdmin}
-                      value={settingsForm.fiscalYear}
-                      onChange={e => setSettingsForm({ ...settingsForm, fiscalYear: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-mono font-medium"
-                    />
-                  </div>
-                </div>
 
                 <div className="pt-4 border-t border-slate-100">
                   <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
@@ -3216,7 +3443,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </p>
                   </div>
                   <button
-                    onClick={() => showToast('Rekonsiliasi otomatis dijalankan: 100% data fisik sinkron dengan SAP', 'success')}
+                    onClick={handleSapReconciliation}
                     className="mt-4 w-full py-2 rounded-xl bg-amber-50 text-amber-800 text-xs font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
@@ -3253,31 +3480,55 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <span>API Express Server</span>
                     <Activity className="w-4 h-4 text-emerald-500" />
                   </div>
-                  <div className="text-lg font-black text-slate-900">{healthStatus.status}</div>
+                  <div className={`text-lg font-black ${healthStatus.latency === null ? 'text-slate-400' : 'text-slate-900'}`}>{healthStatus.status}</div>
                   <div className="text-[11px] text-slate-400 mt-1">
-                    Latency: <b className="text-emerald-600">{healthStatus.latency ?? 3} ms</b> · Port 3000
+                    Latency: <b className={healthStatus.latency !== null ? 'text-emerald-600' : 'text-slate-400'}>{healthStatus.latency !== null ? `${healthStatus.latency} ms` : 'belum diukur'}</b> · Diperiksa: {healthStatus.timestamp || '—'}
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl border border-slate-200 bg-white">
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                    <span>Database Engine</span>
+                    <span>Persistence (CR-04)</span>
                     <Database className="w-4 h-4 text-blue-500" />
                   </div>
-                  <div className="text-lg font-black text-slate-900">PostgreSQL Ready</div>
+                  <div className={`text-lg font-black ${
+                    healthStatus.persistence === 'postgresql' ? 'text-emerald-700'
+                    : healthStatus.persistence?.includes('file-store') ? 'text-amber-700'
+                    : 'text-slate-400'
+                  }`}>
+                    {healthStatus.persistence === 'postgresql'
+                      ? 'PostgreSQL Aktif'
+                      : healthStatus.persistence?.includes('file-store')
+                      ? 'File Store (Dev Fallback)'
+                      : 'Belum Diperiksa'}
+                  </div>
                   <div className="text-[11px] text-slate-400 mt-1">
-                    Dual-Store Persistence & Fallback
+                    {healthStatus.persistence === 'postgresql'
+                      ? 'Migrasi 001–005 tersinkron (ledger)'
+                      : healthStatus.persistence?.includes('file-store')
+                      ? 'Production akan fail-fast tanpa DATABASE_URL'
+                      : 'Klik "Ping Server Sekarang" untuk memuat status riil'}
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl border border-slate-200 bg-white">
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                    <span>Numbering Engine</span>
-                    <Hash className="w-4 h-4 text-purple-500" />
+                    <span>Reminder Scheduler (CR-05)</span>
+                    <Bell className="w-4 h-4 text-purple-500" />
                   </div>
-                  <div className="text-lg font-black text-slate-900">In-Sync 2026</div>
+                  <div className={`text-lg font-black ${
+                    healthStatus.scheduler?.enabled === false ? 'text-slate-500'
+                    : healthStatus.scheduler ? 'text-emerald-700'
+                    : 'text-slate-400'
+                  }`}>
+                    {healthStatus.scheduler
+                      ? (healthStatus.scheduler.enabled ? 'Berjalan' : 'Dinonaktifkan')
+                      : 'Belum Diperiksa'}
+                  </div>
                   <div className="text-[11px] text-slate-400 mt-1">
-                    Concurrency-Safe Sequence Store
+                    {healthStatus.scheduler
+                      ? `Interval ${(healthStatus.scheduler.intervalMs ?? 0) / 60000 || '?'} menit · ${healthStatus.scheduler.timezone || '-'} · Run terakhir: ${healthStatus.scheduler.lastRun || '—'}${healthStatus.scheduler.lastRun ? '' : ' (menunggu jadwal pertama)'}`
+                      : 'Status dari /api/health'}
                   </div>
                 </div>
 
@@ -3293,12 +3544,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-100 text-xs font-mono text-slate-700 space-y-1">
-                <div className="text-[11px] font-bold uppercase text-slate-500 mb-1">Diagnostic Log Snapshot:</div>
-                <div>[GABAH Kernel] Environment: Node.js 20 / Linux Container</div>
-                <div>[GABAH Numbering] Sequence store hydrated: 2026 year sequences active</div>
-                <div>[GABAH Security] Multi-role enforcement active (Admin GABAH, IT, GA, SC, PIBC)</div>
-                <div>[GABAH PSAK 16] Straight-line depreciation calculator online</div>
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 text-xs font-mono text-slate-700 space-y-1">
+                <div className="text-[11px] font-bold uppercase text-slate-500 mb-1">Diagnostic Log Snapshot (dari respons /api/health):</div>
+                <div>[GABAH Health] persistence: {healthStatus.persistence || 'belum diperiksa'}</div>
+                <div>[GABAH Scheduler] enabled: {healthStatus.scheduler?.enabled ?? 'belum diperiksa'} · timezone: {healthStatus.scheduler?.timezone || '-'} · intervalMs: {healthStatus.scheduler?.intervalMs ?? '-'}</div>
+                <div>[GABAH Data] {assets.length} aset · {loans.length} peminjaman · {tickets.length} tiket · {userList.length} pengguna · {auditLogs.length} log audit</div>
+                <div>[GABAH RBAC] 9 peran resmi ditegakkan server-side (Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Supply Chain, PIBC, Karyawan, Auditor)</div>
               </div>
             </div>
           )}

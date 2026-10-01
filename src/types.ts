@@ -261,6 +261,8 @@ export interface UserProfile {
   // credentials are never sent to or stored by the frontend.
   phone?: string;
   is_active?: boolean;
+  /** Telegram chat id untuk pengiriman reminder (admin-managed via PATCH /api/users/:id). */
+  telegram_chat_id?: string;
 }
 
 export interface Notice {
