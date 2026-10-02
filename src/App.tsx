@@ -224,10 +224,10 @@ export default function App() {
 
   // Guard Humas: Sesuai instruksi user, Humas tidak perlu bisa melihat aset
   useEffect(() => {
-    if (currentUser.role === 'Humas' && (currentTab === 'my_assets' || currentTab === 'assets')) {
+    if (currentUser?.role === 'Humas' && (currentTab === 'my_assets' || currentTab === 'assets')) {
       setCurrentTab('meeting_rooms');
     }
-  }, [currentUser.role, currentTab]);
+  }, [currentUser?.role, currentTab]);
 
   // 1. Create Asset (Handled Authoritatively by Backend Engine)
   const handleCreateAsset = async (data: Partial<Asset>) => {
