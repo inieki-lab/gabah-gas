@@ -129,7 +129,7 @@ export default function App() {
   const refreshData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts] = await Promise.all([
+      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances] = await Promise.all([
         gabahApi.getAssets().catch(() => []),
         gabahApi.getLoans().catch(() => []),
         gabahApi.getTickets().catch(() => []),
@@ -138,6 +138,7 @@ export default function App() {
         gabahApi.getMeetingRooms().catch(() => []),
         gabahApi.getRoomReservations().catch(() => []),
         gabahApi.getContracts().catch(() => []),
+        gabahApi.getMaintenances().catch(() => []),
       ]);
 
       if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
@@ -148,6 +149,10 @@ export default function App() {
       if (Array.isArray(fetchedRooms)) setMeetingRooms(fetchedRooms);
       if (Array.isArray(fetchedReservations)) setRoomReservations(fetchedReservations);
       if (Array.isArray(fetchedContracts)) setContracts(fetchedContracts);
+      if (Array.isArray(fetchedMaintenances)) {
+        if (fetchedMaintenances.length > 0) setMaintenanceSchedules(fetchedMaintenances);
+        else console.warn('Backend returned an empty maintenance list; keeping seeded schedules for offline dev.');
+      }
     } catch (err: any) {
       console.error('Failed to fetch from backend:', err);
     } finally {
@@ -742,12 +747,26 @@ export default function App() {
               onOpenAssetDetail={setSelectedAssetForDetail}
               showToast={showToast}
               onUpdateScheduleStatus={(id, st) => {
-                setMaintenanceSchedules(prev => prev.map(s => s.id === id ? { ...s, status: st, last_completed_at: st === 'completed' ? new Date().toISOString() : s.last_completed_at } : s));
-                showToast(`Status pemeliharaan diperbarui menjadi ${st}.`, 'success');
+                (async () => {
+                  try {
+                    const updated = await gabahApi.updateMaintenance(id, { status: st });
+                    setMaintenanceSchedules(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
+                    showToast(`Status pemeliharaan tersimpan di server: ${updated.status}.`, 'success');
+                  } catch (err: any) {
+                    showToast(err?.message || 'Gagal memperbarui status pemeliharaan di server.', 'warning');
+                  }
+                })();
               }}
               onAddSchedule={(newSch) => {
-                setMaintenanceSchedules(prev => [newSch as MaintenanceSchedule, ...prev]);
-                showToast('Jadwal servis berhasil ditambahkan ke kalender pemeliharaan.', 'success');
+                (async () => {
+                  try {
+                    const created = await gabahApi.createMaintenance(newSch);
+                    setMaintenanceSchedules(prev => [created, ...prev.filter(s => s.id !== created.id)]);
+                    showToast(`Jadwal servis ${created.schedule_code} tersimpan di server.`, 'success');
+                  } catch (err: any) {
+                    showToast(err?.message || 'Gagal menyimpan jadwal servis ke server.', 'warning');
+                  }
+                })();
               }}
             />
           )}

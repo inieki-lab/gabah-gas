@@ -1,4 +1,4 @@
-import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract } from '../types';
+import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract, MaintenanceSchedule } from '../types';
 
 const TOKEN_STORAGE_KEY = 'gabah_auth_token';
 
@@ -515,6 +515,27 @@ class GabahApiClient {
 
   async updateMeetingRoom(id: string, updates: Partial<MeetingRoom>): Promise<MeetingRoom> {
     return this.request<MeetingRoom>(`/api/meeting-rooms/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  // =========================
+  // Preventive Maintenance (server-authoritative schedules)
+  // =========================
+  async getMaintenances(): Promise<MaintenanceSchedule[]> {
+    return this.request<MaintenanceSchedule[]>('/api/maintenances');
+  }
+
+  async createMaintenance(payload: Partial<MaintenanceSchedule> & { asset_id: string }): Promise<MaintenanceSchedule> {
+    return this.request<MaintenanceSchedule>('/api/maintenances', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateMaintenance(id: string, updates: Partial<MaintenanceSchedule>): Promise<MaintenanceSchedule> {
+    return this.request<MaintenanceSchedule>(`/api/maintenances/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
