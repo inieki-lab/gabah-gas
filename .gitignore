@@ -17,3 +17,4 @@ server/data/gabah_state.json.tmp
 server/data/initial_credentials_dev.txt
 *.session
 *.token
+.env
