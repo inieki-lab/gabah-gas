@@ -434,14 +434,18 @@ async function startServer() {
       const inputEmail = email.trim().toLowerCase();
       const inPrefix = inputEmail.split('@')[0];
 
-      // Robust Enterprise User Resolver with Alias Mapping
-      const user = db.users.find(u => {
+      // Robust Enterprise User Resolver with Alias Mapping.
+      // FIX: two-pass resolution — exact email/prefix matches always win over
+      // role aliases, so a person's address (hendra.w@…) can never be captured
+      // by an earlier account that merely shares the same role.
+      const exactUser = db.users.find(u => {
         const uEmail = u.email.toLowerCase().trim();
         if (uEmail === inputEmail) return true;
         const uPrefix = uEmail.split('@')[0];
-        if (uPrefix === inPrefix) return true;
-
-        // Role-based Alias Matching
+        return uPrefix === inPrefix;
+      });
+      const user = exactUser ?? db.users.find(u => {
+        // Role-based Alias Matching (fallback only — e.g. `karyawan@`, `it@`, `sc@`)
         if (u.role === 'Admin GABAH' && ['admin', 'admin.gabah', 'budi.santoso', 'superadmin'].includes(inPrefix)) return true;
         if (u.role === 'IT' && ['it', 'it.support', 'dani', 'dani.setiawan'].includes(inPrefix)) return true;
         if (u.role === 'GA' && ['ga', 'ga.officer', 'siti', 'siti.rahmawati'].includes(inPrefix)) return true;
@@ -1391,6 +1395,126 @@ async function startServer() {
     GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
     persistDataStore().catch(() => {});
     res.json({ success: true, data: schedule });
+  });
+
+  // =========================
+  // Vendor Directory (server-authoritative)
+  // =========================
+  app.get('/api/vendors', (req, res) => {
+    res.json({ success: true, data: db.vendors });
+  });
+
+  app.post('/api/vendors', (req, res) => {
+    const actor = getActor(req);
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH atau Divisi GA yang berwenang mengelola direktori vendor.' });
+    }
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Nama vendor wajib diisi.' });
+    }
+    const count = db.vendors.length + 1;
+    const vendor = {
+      id: `VND-${String(count).padStart(2, '0')}-${Date.now().toString(36)}`,
+      name,
+      category: req.body.category || 'General',
+      pic_name: req.body.pic_name || '',
+      pic_phone: req.body.pic_phone || '',
+      pic_email: req.body.pic_email || '',
+      address: req.body.address || '',
+      active_contracts_count: Number(req.body.active_contracts_count) || 0,
+      rating: Number(req.body.rating) || 4.0,
+      notes: req.body.notes || '',
+    };
+    db.vendors.push(vendor);
+    GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
+    persistDataStore().catch(() => {});
+    res.status(201).json({ success: true, data: vendor });
+  });
+
+  app.patch('/api/vendors/:id', (req, res) => {
+    const actor = getActor(req);
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH atau Divisi GA yang berwenang mengubah vendor.' });
+    }
+    const vendor = db.vendors.find(v => v.id === req.params.id);
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan' });
+    // SECURITY (CR-06): explicit allowlist — id is server-owned.
+    const allowedVendorFields = ['name', 'category', 'pic_name', 'pic_phone', 'pic_email', 'address', 'active_contracts_count', 'rating', 'notes'];
+    for (const key of allowedVendorFields) {
+      if (req.body[key] !== undefined) (vendor as any)[key] = req.body[key];
+    }
+    GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
+    persistDataStore().catch(() => {});
+    res.json({ success: true, data: vendor });
+  });
+
+  // =========================
+  // Knowledge Base (SOP & panduan operasional)
+  // =========================
+  app.get('/api/knowledge', (req, res) => {
+    res.json({ success: true, data: db.knowledgeArticles });
+  });
+
+  app.post('/api/knowledge', (req, res) => {
+    const actor = getActor(req);
+    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH, IT, atau GA yang berwenang menulis artikel panduan.' });
+    }
+    const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    const content = typeof req.body.content === 'string' ? req.body.content : '';
+    if (!title || !content) {
+      return res.status(400).json({ success: false, message: 'Judul dan isi artikel wajib diisi.' });
+    }
+    const article = {
+      id: `kb-${Date.now().toString(36)}`,
+      title,
+      category: req.body.category || 'Policy',
+      content,
+      tags: Array.isArray(req.body.tags) ? req.body.tags.map(String).slice(0, 10) : [],
+      view_count: 0,
+      helpful_votes: 0,
+      author: actor.name,
+      updated_at: new Date().toISOString(),
+    };
+    db.knowledgeArticles.push(article);
+    GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
+    persistDataStore().catch(() => {});
+    res.status(201).json({ success: true, data: article });
+  });
+
+  app.patch('/api/knowledge/:id', (req, res) => {
+    const actor = getActor(req);
+    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH, IT, atau GA yang berwenang mengubah artikel.' });
+    }
+    const article = db.knowledgeArticles.find(a => a.id === req.params.id);
+    if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
+    // SECURITY (CR-06): explicit allowlist — view_count/helpful_votes only via dedicated endpoints.
+    const allowedArticleFields = ['title', 'category', 'content', 'tags', 'author'];
+    for (const key of allowedArticleFields) {
+      if (req.body[key] !== undefined) (article as any)[key] = req.body[key];
+    }
+    article.updated_at = new Date().toISOString();
+    GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
+    persistDataStore().catch(() => {});
+    res.json({ success: true, data: article });
+  });
+
+  app.post('/api/knowledge/:id/vote', (req, res) => {
+    const article = db.knowledgeArticles.find(a => a.id === req.params.id);
+    if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
+    article.helpful_votes += 1;
+    persistDataStore().catch(() => {});
+    res.json({ success: true, data: article });
+  });
+
+  app.post('/api/knowledge/:id/view', (req, res) => {
+    const article = db.knowledgeArticles.find(a => a.id === req.params.id);
+    if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
+    article.view_count += 1;
+    persistDataStore().catch(() => {});
+    res.json({ success: true, data: article });
   });
 
   // Notifications

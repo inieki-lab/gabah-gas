@@ -259,6 +259,31 @@ export interface ServerAuditLog {
   timestamp: string;
 }
 
+export interface ServerVendor {
+  id: string;
+  name: string;
+  category: string;
+  pic_name: string;
+  pic_phone: string;
+  pic_email: string;
+  address: string;
+  active_contracts_count: number;
+  rating: number;
+  notes: string;
+}
+
+export interface ServerKnowledgeArticle {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+  tags: string[];
+  view_count: number;
+  helpful_votes: number;
+  author: string;
+  updated_at: string;
+}
+
 export interface ServerMaintenance {
   id: string;
   schedule_code: string;
@@ -390,6 +415,8 @@ export const db = {
   notifications: [] as ServerNotification[],
   auditLogs: [] as ServerAuditLog[],
   maintenances: [] as ServerMaintenance[],
+  vendors: [] as ServerVendor[],
+  knowledgeArticles: [] as ServerKnowledgeArticle[],
   rooms: [] as ServerMeetingRoom[],
   roomReservations: [] as ServerRoomReservation[],
   meetingTypes: [] as ServerMeetingType[],
@@ -1264,6 +1291,23 @@ export function seedInitialData() {
       checklist: ['Pemeriksaan Load Cell 4 Titik', 'Pengujian Beban Standar Uji Metrologi', 'Pembersihan Celah Kolong Jembatan dari Debu Gabah', 'Penerbitan Sertifikat Tera Sah Metrologi'],
       created_at: '2026-08-15T11:00:00Z',
     },
+  ];
+
+  // Seed Vendor Directory (rekanan resmi — dipakai modul Vendors, Maintenance, Contracts)
+  db.vendors = [
+    { id: 'VND-01', name: 'PT Metrodata Electronics Tbk', category: 'IT', pic_name: 'Irwan Setiawan', pic_phone: '0812-8899-1001', pic_email: 'irwan.s@metrodata.co.id', address: 'APL Tower Lt. 37, Jl. Letjen S. Parman Kav. 28, Jakarta Barat', active_contracts_count: 3, rating: 4.8, notes: 'Official Enterprise Partner Lenovo, Dell, dan Cisco.' },
+    { id: 'VND-02', name: 'PT Astra International Tbk (Auto2000)', category: 'GA', pic_name: 'Hendra Gunawan', pic_phone: '0811-9234-5678', pic_email: 'fleet.sales@auto2000.astra.co.id', address: 'Jl. Gaya Motor Raya No.8, Sunter II, Jakarta Utara', active_contracts_count: 2, rating: 4.9, notes: 'Penyedia armada kendaraan dinas & pemeliharaan berkala GA.' },
+    { id: 'VND-03', name: 'Microsoft Indonesia & Cloud Reseller', category: 'License', pic_name: 'Jessica Tan', pic_phone: '0815-7766-2233', pic_email: 'licensing@cloudpartner.id', address: 'Indonesia Stock Exchange Tower II, SCBD, Jakarta Selatan', active_contracts_count: 2, rating: 4.7, notes: 'Enterprise Agreement Microsoft 365 E3 & Azure Cloud CSP.' },
+    { id: 'VND-04', name: 'PT Master Cipta Sejuk (Daikin Specialist)', category: 'GA', pic_name: 'Bambang Kusuma', pic_phone: '0813-1122-3344', pic_email: 'service@mastercipta.co.id', address: 'Jl. Fatmawati No. 45, Jakarta Selatan', active_contracts_count: 1, rating: 4.6, notes: 'Kontrak maintenance rutin sistem pendingin gedung kantor.' },
+    { id: 'VND-05', name: 'PT Avery Weigh-Tronix Indonesia', category: 'General', pic_name: 'Rudi Hartono', pic_phone: '0812-3344-5566', pic_email: 'service@averyweigh-tronix.co.id', address: 'Kawasan Pergudangan PIBC, Jakarta Timur', active_contracts_count: 1, rating: 4.5, notes: 'Kalibrasi & uji tera resmi jembatan timbang 60 ton.' },
+  ];
+
+  // Seed Knowledge Base (SOP & panduan operasional)
+  db.knowledgeArticles = [
+    { id: 'kb-001', title: 'SOP Peminjaman Perangkat IT & Kendaraan Dinas Operasional', category: 'Policy', content: '## 1. Ketentuan Umum Peminjaman Aset\n1. Permohonan peminjaman diajukan minimal H-1 sebelum jadwal penggunaan melalui portal GABAH.\n2. Sistem GABAH secara otomatis memverifikasi ketersediaan jadwal untuk mencegah bentrok waktu.\n3. Persetujuan peminjaman dilakukan oleh Divisi Pemilik aset:\n   - Aset IT (Laptop, Proyektor IT): Disetujui Tim IT.\n   - Aset GA (Kendaraan, Ruang Meeting, AC): Disetujui Tim GA.\n4. Serah terima fisik wajib disertai pemeriksaan kondisi barang dan penerbitan dokumen BAST digital ber-QR Code.', tags: ['SOP', 'Peminjaman', 'BAST', 'Kebijakan'], view_count: 320, helpful_votes: 45, author: 'Admin GABAH', updated_at: '2026-01-10T10:00:00Z' },
+    { id: 'kb-002', title: 'Panduan Koneksi Wi-Fi Secure & VPN Food Station Cipinang', category: 'IT', content: '## Konfigurasi Jaringan Kantor Food Station\n- **SSID Kantor Pusat**: `FST-Corp-Secure` (WPA3 Enterprise)\n- **SSID Tamu / Eksternal**: `FST-Guest` (Voucher Helpdesk)\n- **VPN Remote Work**: Gunakan FortiClient VPN dengan alamat gateway `vpn.foodstation.co.id`.', tags: ['Jaringan', 'Wi-Fi', 'VPN', 'Panduan'], view_count: 512, helpful_votes: 88, author: 'Ahmad Faisal', updated_at: '2026-02-01T14:00:00Z' },
+    { id: 'kb-003', title: 'Pedoman Standar Penomoran Aset {DIVISI}-{KODE}-{TAHUN}-0001 & Kaidah Kepemilikan', category: 'Policy', content: '## 1. Struktur Format Nomor Aset Resmi\nSistem GABAH menetapkan standar penomoran aktiva terpusat:\n`{DIVISI}-{KODE_KATEGORI}-{TAHUN}-{URUTAN_4_DIGIT}`\n\nContoh:\n- `IT-HLT-2026-0001` : Laptop Tim IT, Tahun 2026, Urutan ke-1.\n- `GA-INV-F-2026-0001` : Meja Kerja Kantor, Kepemilikan GA.\n- `SC-MSN-2026-0001` : Mesin Pengolahan Padi Gudang Sragen.\n- `PIBC-KDR-2026-0001` : Mobil Patroli Pasar Induk Beras Cipinang.\n\n## 2. Kaidah Khusus Kepemilikan Antar-Divisi\n1. **Kaidah Perabotan / Furniture (INV-F)**: Semua perabotan adalah milik **Divisi GA** di manapun lokasi fisiknya.\n2. **Kaidah Perangkat IT (IT-H & IT-S)**: Semua laptop, server, dan lisensi software adalah milik **Divisi IT**.\n3. **Kaidah Supply Chain (SC)**: Mesin penggilingan, jembatan timbang, silo gabah, dan truk distribusi.\n4. **Kaidah Pasar Induk Cipinang (PIBC)**: Timbangan komoditas, fasilitas los pasar, dan aset operasional PIBC.', tags: ['Standar', 'Penomoran', 'Taksonomi', 'Kaidah', 'Inventaris'], view_count: 640, helpful_votes: 112, author: 'Tim Regulasi Aset Food Station', updated_at: '2026-09-15T08:00:00Z' },
+    { id: 'kb-004', title: 'Tata Cara Penerbitan & Validasi Dokumen BAST (Berita Acara Serah Terima)', category: 'Policy', content: '## Alur Resmi Penerbitan BAST Digital\n1. Setiap perpindahan atau peminjaman aset wajib dibuatkan dokumen BAST.\n2. Tombol **"Cetak BAST"** tersedia langsung pada detail aset dan modul peminjaman.\n3. Dokumen BAST GABAH mencantumkan:\n   - Nomor Resmi Aset ({DIVISI}-{KODE}-{TAHUN}-XXXX).\n   - Identitas Pihak Pertama (Pengelola Divisi) dan Pihak Kedua (Penerima Manfaat).\n   - Kondisi fisik saat diserahkan dan masa berlaku penggunaan.\n   - Kolom tanda tangan basah / digital untuk arsip audit BPK/Inspektorat DKI Jakarta.', tags: ['BAST', 'Dokumen', 'Audit', 'SOP'], view_count: 418, helpful_votes: 76, author: 'Admin GABAH', updated_at: '2026-09-15T09:30:00Z' },
   ];
 
   // Seed Corporate Meeting Rooms (7 Official Meeting Rooms as requested)

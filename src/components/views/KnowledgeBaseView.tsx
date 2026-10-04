@@ -18,9 +18,11 @@ import { KnowledgeArticle } from '../../types';
 
 interface KnowledgeBaseViewProps {
   articles: KnowledgeArticle[];
+  onOpenArticle?: (articleId: string) => void;
+  onVote?: (articleId: string) => void;
 }
 
-export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ articles }) => {
+export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ articles, onOpenArticle, onVote }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
@@ -36,6 +38,7 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ articles }
   const handleVote = (articleId: string, currentVotes: number) => {
     if (votedArticles[articleId] !== undefined) return;
     setVotedArticles(prev => ({ ...prev, [articleId]: currentVotes + 1 }));
+    if (onVote) onVote(articleId);
   };
 
   const filtered = articles.filter(a => {
@@ -238,7 +241,10 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ articles }
             {filtered.map(art => (
               <div 
                 key={art.id}
-                onClick={() => setSelectedArticle(art)}
+                onClick={() => {
+                  setSelectedArticle(art);
+                  if (onOpenArticle) onOpenArticle(art.id);
+                }}
                 className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-500 cursor-pointer transition-all hover:shadow-md space-y-3 shadow-xs flex flex-col justify-between"
               >
                 <div className="space-y-2">

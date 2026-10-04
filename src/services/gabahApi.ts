@@ -1,4 +1,4 @@
-import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract, MaintenanceSchedule } from '../types';
+import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract, MaintenanceSchedule, Vendor, KnowledgeArticle } from '../types';
 
 const TOKEN_STORAGE_KEY = 'gabah_auth_token';
 
@@ -539,6 +539,56 @@ class GabahApiClient {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
+  }
+
+  // =========================
+  // Vendor Directory (server-authoritative)
+  // =========================
+  async getVendors(): Promise<Vendor[]> {
+    return this.request<Vendor[]>('/api/vendors');
+  }
+
+  async createVendor(payload: Partial<Vendor> & { name: string }): Promise<Vendor> {
+    return this.request<Vendor>('/api/vendors', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateVendor(id: string, updates: Partial<Vendor>): Promise<Vendor> {
+    return this.request<Vendor>(`/api/vendors/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  // =========================
+  // Knowledge Base (SOP & panduan)
+  // =========================
+  async getKnowledgeArticles(): Promise<KnowledgeArticle[]> {
+    return this.request<KnowledgeArticle[]>('/api/knowledge');
+  }
+
+  async createKnowledgeArticle(payload: Partial<KnowledgeArticle> & { title: string; content: string }): Promise<KnowledgeArticle> {
+    return this.request<KnowledgeArticle>('/api/knowledge', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateKnowledgeArticle(id: string, updates: Partial<KnowledgeArticle>): Promise<KnowledgeArticle> {
+    return this.request<KnowledgeArticle>(`/api/knowledge/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async voteKnowledgeArticle(id: string): Promise<KnowledgeArticle> {
+    return this.request<KnowledgeArticle>(`/api/knowledge/${id}/vote`, { method: 'POST' });
+  }
+
+  async viewKnowledgeArticle(id: string): Promise<KnowledgeArticle> {
+    return this.request<KnowledgeArticle>(`/api/knowledge/${id}/view`, { method: 'POST' });
   }
 
   // =========================

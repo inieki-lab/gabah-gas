@@ -193,6 +193,11 @@ function hydrateDbFromState(state: any): void {
   if (Array.isArray(state.meetingFacilities) && state.meetingFacilities.length > 0) db.meetingFacilities = state.meetingFacilities;
   if (Array.isArray(state.contracts) && state.contracts.length > 0) db.contracts = state.contracts;
   if (Array.isArray(state.contractNotificationLogs) && state.contractNotificationLogs.length > 0) db.contractNotificationLogs = state.contractNotificationLogs;
+  // Maintenance schedules, vendor directory, and knowledge base are
+  // server-authoritative collections — never silently reset on boot.
+  if (Array.isArray(state.maintenances) && state.maintenances.length > 0) db.maintenances = state.maintenances;
+  if (Array.isArray(state.vendors) && state.vendors.length > 0) db.vendors = state.vendors;
+  if (Array.isArray(state.knowledgeArticles) && state.knowledgeArticles.length > 0) db.knowledgeArticles = state.knowledgeArticles;
 
   // Ticket category normalization: legacy 'License'/'General' collapse into divisional categories.
   // Software/License/SaaS → IT; General (facility) → GA. Contract Management is a separate domain.
@@ -243,6 +248,9 @@ function createPayload() {
     meetingFacilities: db.meetingFacilities,
     contracts: db.contracts,
     contractNotificationLogs: db.contractNotificationLogs,
+    maintenances: db.maintenances,
+    vendors: db.vendors,
+    knowledgeArticles: db.knowledgeArticles,
   };
 }
 

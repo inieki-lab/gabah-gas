@@ -58,8 +58,8 @@ export default function App() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>(INITIAL_USERS);
-  const [vendors] = useState<Vendor[]>(INITIAL_VENDORS);
-  const [knowledgeBase] = useState<KnowledgeArticle[]>(INITIAL_KNOWLEDGE_BASE);
+  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>(INITIAL_KNOWLEDGE_BASE);
   const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>(INITIAL_MAINTENANCE_SCHEDULES);
   const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
   const [roomReservations, setRoomReservations] = useState<RoomReservation[]>([]);
@@ -129,7 +129,7 @@ export default function App() {
   const refreshData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances] = await Promise.all([
+      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge] = await Promise.all([
         gabahApi.getAssets().catch(() => []),
         gabahApi.getLoans().catch(() => []),
         gabahApi.getTickets().catch(() => []),
@@ -139,6 +139,8 @@ export default function App() {
         gabahApi.getRoomReservations().catch(() => []),
         gabahApi.getContracts().catch(() => []),
         gabahApi.getMaintenances().catch(() => []),
+        gabahApi.getVendors().catch(() => []),
+        gabahApi.getKnowledgeArticles().catch(() => []),
       ]);
 
       if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
@@ -153,6 +155,8 @@ export default function App() {
         if (fetchedMaintenances.length > 0) setMaintenanceSchedules(fetchedMaintenances);
         else console.warn('Backend returned an empty maintenance list; keeping seeded schedules for offline dev.');
       }
+      if (Array.isArray(fetchedVendors) && fetchedVendors.length > 0) setVendors(fetchedVendors);
+      if (Array.isArray(fetchedKnowledge) && fetchedKnowledge.length > 0) setKnowledgeBase(fetchedKnowledge);
     } catch (err: any) {
       console.error('Failed to fetch from backend:', err);
     } finally {
@@ -809,7 +813,19 @@ export default function App() {
           )}
 
           {currentTab === 'knowledge' && (
-            <KnowledgeBaseView articles={knowledgeBase} />
+            <KnowledgeBaseView
+              articles={knowledgeBase}
+              onOpenArticle={(id) => {
+                gabahApi.viewKnowledgeArticle(id).then(updated => {
+                  setKnowledgeBase(prev => prev.map(a => a.id === id ? { ...a, view_count: updated.view_count } : a));
+                }).catch(() => { /* view counter is best-effort */ });
+              }}
+              onVote={(id) => {
+                gabahApi.voteKnowledgeArticle(id).then(updated => {
+                  setKnowledgeBase(prev => prev.map(a => a.id === id ? { ...a, helpful_votes: updated.helpful_votes } : a));
+                }).catch(() => showToast('Gagal mengirim vote ke server.', 'warning'));
+              }}
+            />
           )}
 
           {currentTab === 'reports' && (
