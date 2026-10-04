@@ -638,6 +638,19 @@ export class GabahDomainService {
     related_asset_id?: string;
     contract_id?: string;
   }, actor: ServerUser): ServerTicket {
+    // Strict divisional categories per PRD §3.5: a ticket must target an
+    // operational division that actually staffs a queue. Without this gate a
+    // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
+    // ticket: notification goes to a role that does not exist and nobody ever
+    // picks it up.
+    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'SC', 'PIBC'] as const;
+    if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
+      throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
+    }
+    const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+    if (!VALID_PRIORITIES.includes(payload.priority as any)) {
+      throw Object.assign(new Error(`Prioritas "${payload.priority}" tidak valid. Pilihan: ${VALID_PRIORITIES.join(', ')}.`), { statusCode: 400 });
+    }
     const slaHours = {
       urgent: 4,
       high: 8,
