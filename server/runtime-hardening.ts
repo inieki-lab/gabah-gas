@@ -129,7 +129,9 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   }
 
   const assetMatch = req.path.match(/^\/api\/assets\/([^/]+)/);
-  if (assetMatch && !canSeeAsset(actor, assetMatch[1])) {
+  // '/bulk-import' adalah operasi collection-level (bukan asset id);
+  // authority per baris ditegakkan di handler + domain service.
+  if (assetMatch && assetMatch[1] !== 'bulk-import' && !canSeeAsset(actor, assetMatch[1])) {
     return res.status(403).json({ success: false, message: 'Aset berada di luar scope pengguna.' });
   }
 

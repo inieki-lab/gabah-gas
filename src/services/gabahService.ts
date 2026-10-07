@@ -334,6 +334,99 @@ export function parseUsersImportCsv(
 }
 
 /**
+ * Parse hasil upload CSV/Excel aset menjadi payload siap kirim ke
+ * POST /api/assets/bulk-import. Baris pertama dianggap header.
+ * Server tetap memvalidasi ulang (taxonomi, authority, duplikat SN).
+ */
+export function parseAssetsImportCsv(text: string): {
+  valid: {
+    name: string;
+    category: string;
+    owner_division: string;
+    brand: string;
+    model: string;
+    serial_number: string;
+    corporate_asset_number: string;
+    specifications: string;
+    purchase_date: string;
+    purchase_price: string;
+    location: string;
+    condition: string;
+    is_loanable: string;
+    notes: string;
+  }[];
+  errors: string[];
+} {
+  const rows = parseCsvText(text);
+  if (rows.length < 2) {
+    return { valid: [], errors: ['File kosong atau hanya berisi header.'] };
+  }
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const idx = (candidates: string[]) => header.findIndex(h => candidates.some(c => h.includes(c)));
+  const iName = idx(['nama', 'name']);
+  const iCat = idx(['kategori', 'category']);
+  const iDiv = idx(['divisi', 'division']);
+  const iBrand = idx(['merk', 'merek', 'brand']);
+  const iModel = idx(['model']);
+  const iSerial = idx(['serial', 'nomor seri', 'sn']);
+  const iCorp = idx(['accurate', 'corporate', 'nomor aset']);
+  const iSpec = idx(['spesifikasi', 'specification']);
+  const iDate = idx(['tanggal beli', 'tanggal perolehan', 'purchase date']);
+  const iPrice = idx(['harga', 'price']);
+  const iLoc = idx(['lokasi', 'location']);
+  const iCond = idx(['kondisi', 'condition']);
+  const iLoan = idx(['pinjam', 'loanable']);
+  const iNotes = idx(['catatan', 'notes']);
+  if (iName === -1) {
+    return { valid: [], errors: ['Header tidak dikenali. Gunakan template: Nama Aset, Kategori, Divisi Pemilik, Merk, Model, Serial Number, Nomor Accurate, Lokasi, Kondisi, Harga Beli, Tanggal Beli, Bisa Dipinjam, Catatan.'] };
+  }
+  const condMap: Record<string, string> = {
+    baru: 'new', baik: 'good', cukup: 'fair', kurang: 'poor', rusak: 'broken',
+  };
+  const cell = (r: string[], i: number) => (i !== -1 ? (r[i] || '').trim() : '');
+  const valid: ReturnType<typeof parseAssetsImportCsv>['valid'] = [];
+  const errors: string[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const rowNo = i + 1;
+    const name = cell(r, iName);
+    if (!name) { errors.push(`Baris ${rowNo}: Nama aset wajib diisi.`); continue; }
+    const condRaw = cell(r, iCond).toLowerCase();
+    valid.push({
+      name,
+      category: cell(r, iCat),
+      owner_division: cell(r, iDiv).toUpperCase(),
+      brand: cell(r, iBrand),
+      model: cell(r, iModel),
+      serial_number: cell(r, iSerial),
+      corporate_asset_number: cell(r, iCorp),
+      specifications: cell(r, iSpec),
+      purchase_date: cell(r, iDate),
+      purchase_price: cell(r, iPrice),
+      location: cell(r, iLoc),
+      condition: condMap[condRaw] || condRaw,
+      is_loanable: cell(r, iLoan),
+      notes: cell(r, iNotes),
+    });
+  }
+  return { valid, errors };
+}
+
+/**
+ * Unduh template CSV impor aset (header + 2 baris contoh).
+ */
+export function downloadAssetsImportTemplate() {
+  downloadCsv(
+    'gabah_template_import_aset.csv',
+    ['Nama Aset', 'Kategori', 'Divisi Pemilik', 'Merk', 'Model', 'Serial Number', 'Nomor Accurate', 'Lokasi', 'Kondisi', 'Harga Beli', 'Tanggal Beli', 'Bisa Dipinjam', 'Catatan'],
+    [
+      ['Laptop Dinas Baru', 'Laptop / Notebook', 'IT', 'Lenovo', 'ThinkPad T14', 'SN-CONTOH-001', 'FST-IT-0001', 'Kantor Pusat - Lantai 3', 'good', '15000000', '2026-01-15', 'Ya', 'Contoh baris — hapus sebelum impor'],
+      ['Kursi Rapat Ergonomis', 'Inventaris Furniture (Meja, Kursi, Lemari)', 'GA', 'ChairPro', 'Ergo X', '', '', 'Ruang Rapat VIP', 'new', '2500000', '2026-02-01', 'Tidak', ''],
+    ]
+  );
+}
+
+/**
  * Rekap agregat per divisi (jumlah aset, nilai perolehan, akumulasi
  * depresiasi, nilai buku) — untuk laporan per divisi/departemen.
  */

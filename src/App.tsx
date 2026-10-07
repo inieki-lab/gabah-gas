@@ -51,6 +51,7 @@ import { EditAssetModal } from './components/modals/EditAssetModal';
 import { LandingPage } from './components/landing/LandingPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
+import { AssetImportModal } from './components/modals/AssetImportModal';
 import { CheckCircle2, AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -69,6 +70,7 @@ export default function App() {
   const [isCreateContractModalOpen, setIsCreateContractModalOpen] = useState(false);
   const [contractForLinkedTicket, setContractForLinkedTicket] = useState<Contract | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isAssetImportOpen, setIsAssetImportOpen] = useState(false);
   const [movements, setMovements] = useState<AssetMovement[]>([]);
 
   // No default authenticated user: signed-out visitors get null until login
@@ -777,6 +779,7 @@ export default function App() {
                 setIsCreateLoanModalOpen(true);
               }}
               onReportAsset={handleReportAssetTicket}
+              onOpenImportModal={() => setIsAssetImportOpen(true)}
             />
           )}
 
@@ -1049,6 +1052,12 @@ export default function App() {
         open={isChangePasswordOpen}
         onClose={() => setIsChangePasswordOpen(false)}
         onSuccess={(msg) => showToast(msg, 'success')}
+      />
+
+      <AssetImportModal
+        open={isAssetImportOpen}
+        onClose={() => setIsAssetImportOpen(false)}
+        onImported={refreshData}
       />
 
       <GlobalSearchModal

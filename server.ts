@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { db, seedInitialData, ServerUser, ServerSession, CANONICAL_USERS } from './server/db';
+import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService } from './server/services';
@@ -1127,6 +1127,158 @@ async function startServer() {
       const newAsset = GabahDomainService.createAsset(req.body, actor);
       await persistDataStore();
       res.status(201).json({ success: true, data: newAsset });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  // Bulk import aset (IMPORT Excel/CSV). Setiap baris diproses individual via
+  // GabahDomainService.createAsset sehingga resolusi taxonomi, authority divisi,
+  // deteksi duplikat SN/ERP, dan penomoran aset tetap server-authoritative.
+  // Satu baris buruk tidak menggagalkan batch.
+  // Upsert opsional: allow_update=true → baris yang serial/No. Accurate-nya
+  // sudah terdaftar DIPERBARUI (allowlist sama dengan PATCH /api/assets/:id),
+  // bukan ditolak.
+  app.post('/api/assets/bulk-import', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      const blockedRoles = ['Karyawan', 'Auditor', 'Humas', 'Sekretaris Direksi'];
+      if (blockedRoles.includes(actor.role)) {
+        return res.status(403).json({ success: false, message: 'Peran Anda tidak berwenang mengimpor aset baru.' });
+      }
+
+      const rows: any[] = Array.isArray(req.body?.assets) ? req.body.assets : [];
+      if (rows.length === 0) {
+        return res.status(400).json({ success: false, message: 'Tidak ada baris data aset untuk diimpor.' });
+      }
+      if (rows.length > 500) {
+        return res.status(400).json({ success: false, message: 'Maksimal 500 baris per impor. Pisahkan menjadi beberapa berkas.' });
+      }
+      const allowUpdate = req.body?.allow_update === true;
+
+      const VALID_CONDITIONS = ['new', 'good', 'fair', 'poor', 'broken'];
+      const VALID_DIVISIONS = ['IT', 'GA', 'SC', 'PIBC'];
+      // CR-06: allowlist identik dengan PATCH /api/assets/:id
+      const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
+
+      let created = 0;
+      let updated = 0;
+      const errors: string[] = [];
+      const warnings: string[] = [];
+      const importedAssets: ServerAsset[] = [];
+      const seenKeys = new Set<string>();
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i] || {};
+        const rowNo = i + 1;
+        const name = String(row.name || '').trim();
+        const serial = String(row.serial_number || '').trim();
+        const corp = String(row.corporate_asset_number || '').trim();
+
+        if (!name) { errors.push(`Baris ${rowNo}: Nama aset wajib diisi.`); continue; }
+
+        // Duplikat kunci di dalam satu berkas (SN atau No. Accurate)
+        const fileKey = serial ? `sn:${serial.toLowerCase()}` : (corp ? `corp:${corp.toLowerCase()}` : '');
+        if (fileKey) {
+          if (seenKeys.has(fileKey)) {
+            errors.push(`Baris ${rowNo}: ${serial ? 'Serial number' : 'Nomor Accurate'} duplikat di dalam berkas.`);
+            continue;
+          }
+          seenKeys.add(fileKey);
+        }
+
+        // Divisi pemilik opsional (kategori menentukan default-nya)
+        let division = String(row.owner_division || '').trim().toUpperCase();
+        if (division && !VALID_DIVISIONS.includes(division)) {
+          warnings.push(`Baris ${rowNo}: Divisi "${division}" tidak dikenali (mengikuti kategori).`);
+          division = '';
+        }
+
+        // Kondisi fisik dinormalisasi; nilai asing → dilewati + warning
+        let condition = String(row.condition || '').trim().toLowerCase();
+        if (condition && !VALID_CONDITIONS.includes(condition)) {
+          warnings.push(`Baris ${rowNo}: Kondisi "${condition}" tidak dikenali (dilewati).`);
+          condition = '';
+        }
+
+        let isLoanable: boolean | undefined = undefined;
+        if (row.is_loanable !== undefined && String(row.is_loanable).trim() !== '') {
+          isLoanable = /^(true|1|ya|yes)$/i.test(String(row.is_loanable).trim());
+        }
+
+        const existing = (serial && db.assets.find(a => a.serial_number && a.serial_number.trim().toLowerCase() === serial.toLowerCase()))
+          || (corp && db.assets.find(a => a.corporate_asset_number && a.corporate_asset_number.trim().toLowerCase() === corp.toLowerCase()));
+
+        if (existing) {
+          if (!allowUpdate) {
+            errors.push(`Baris ${rowNo}: ${serial ? `Serial "${serial}"` : `Nomor Accurate "${corp}"`} sudah terdaftar pada aset ${existing.asset_number} (${existing.name}). Aktifkan opsi perbarui bila ingin memperbarui.`);
+            continue;
+          }
+          // UPDATE path — allowlist eksplisit, asset_number & owner_division server-owned
+          for (const key of UPDATE_FIELDS) {
+            if (key === 'condition') {
+              if (condition) (existing as any).condition = condition;
+              continue;
+            }
+            if (key === 'is_loanable') {
+              if (isLoanable !== undefined) (existing as any).is_loanable = isLoanable;
+              continue;
+            }
+            const value = row[key];
+            if (value !== undefined && String(value).trim() !== '') {
+              (existing as any)[key] = typeof value === 'string' ? value.trim() : value;
+            }
+          }
+          existing.updated_at = new Date().toISOString();
+          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id);
+          importedAssets.push(existing);
+          updated++;
+          continue;
+        }
+
+        // CREATE path — domain service yang otoritatif
+        const priceRaw = String(row.purchase_price ?? '').replace(/[^0-9.-]/g, '');
+        const priceNum = Number(priceRaw);
+        try {
+          const asset = GabahDomainService.createAsset({
+            category_name_or_code: String(row.category_name_or_code || row.category || '').trim() || undefined,
+            name,
+            owner_division: (division || undefined) as any,
+            corporate_asset_number: corp || undefined,
+            brand: String(row.brand || '').trim() || undefined,
+            model: String(row.model || '').trim() || undefined,
+            serial_number: serial || undefined,
+            specifications: String(row.specifications || '').trim() || undefined,
+            purchase_date: String(row.purchase_date || '').trim() || undefined,
+            purchase_price: Number.isFinite(priceNum) && priceNum > 0 ? priceNum : undefined,
+            location: String(row.location || '').trim() || undefined,
+            is_loanable: isLoanable,
+            condition: (condition || undefined) as any,
+            notes: String(row.notes || '').trim() || undefined,
+          }, actor);
+          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id);
+          importedAssets.push(asset);
+          created++;
+        } catch (rowErr: any) {
+          errors.push(`Baris ${rowNo}: ${rowErr.message}`);
+        }
+      }
+
+      if (created > 0 || updated > 0) {
+        await persistDataStore();
+      }
+
+      res.json({
+        success: true,
+        data: {
+          created,
+          updated,
+          failed: errors.length,
+          errors: errors.slice(0, 50),
+          warnings: warnings.slice(0, 50),
+          assets: importedAssets,
+        },
+      });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }

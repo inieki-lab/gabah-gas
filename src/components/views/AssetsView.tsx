@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ScanLine,
   FileSpreadsheet,
+  FileUp,
   Truck,
   Printer,
   Pencil,
@@ -42,6 +43,7 @@ interface AssetsViewProps {
   onOpenScannerModal?: () => void;
   onLoanAsset?: (asset: Asset) => void;
   onReportAsset?: (asset: Asset) => void;
+  onOpenImportModal?: () => void;
 }
 
 export const AssetsView: React.FC<AssetsViewProps> = ({
@@ -55,6 +57,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   onOpenScannerModal = () => {},
   onLoanAsset,
   onReportAsset,
+  onOpenImportModal,
 }) => {
   const handleOpenCreate = onOpenCreateModal || onOpenNewAssetModal || (() => {});
   const [selectedDivision, setSelectedDivision] = useState<string>('ALL');
@@ -190,6 +193,17 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             <span>Export CSV</span>
           </button>
+
+          {canCreateAsset && onOpenImportModal && (
+            <button
+              onClick={onOpenImportModal}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+              title="Import massal aset dari berkas CSV/Excel"
+            >
+              <FileUp className="w-4 h-4 text-emerald-600" />
+              <span>Import CSV</span>
+            </button>
+          )}
 
           {canCreateAsset && (
             <button

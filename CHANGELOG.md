@@ -48,6 +48,31 @@ apa yang sudah dikerjakan, di mana kodenya, dan bagaimana memverifikasinya.
   - `AssetDetailModal.tsx`: timeline tab *history* kini menampilkan entri `kind: 'movement'`
     (warna amber, ikon Truck) — mutasi lokasi/pengguna/status aset.
   - Endpoint `GET /api/movements` mendukung `?assetId=` untuk filter per aset.
+- **Import massal aset via CSV** (peran IT, GA, Supply Chain, PIBC, Admin GABAH):
+  - Endpoint `POST /api/assets/bulk-import` (`server.ts` ~1142) — setiap baris diproses
+    individual via `GabahDomainService.createAsset` sehingga resolusi taxonomi kategori,
+    authority divisi, deteksi duplikat SN/No. Accurate, dan **penomoran aset resmi**
+    tetap server-authoritative. Maks 500 baris. Satu baris buruk tidak menggagalkan batch.
+  - Upsert opsional `allow_update: true` → baris dengan Serial Number / Nomor Accurate
+    yang sudah terdaftar DIPERBARUI (allowlist identik dengan PATCH /api/assets/:id,
+    CR-06) — `asset_number` & `owner_division` tetap server-owned.
+  - Perbaikan middleware `server/runtime-hardening.ts`: path `/api/assets/bulk-import`
+    tidak lagi dianggap asset id oleh scope-guard (sebelumnya 403).
+  - API client `gabahApi.bulkImportAssets(rows, allowUpdate)`.
+  - Parser + template CSV di `gabahService.ts`: `parseAssetsImportCsv()` (header
+    Indonesia, kondisi `baik/rusak/...` dipetakan ke `good/broken/...`) dan
+    `downloadAssetsImportTemplate()`.
+  - Modal baru `src/components/modals/AssetImportModal.tsx`: pilih file, unduh template,
+    preview tabel, checkbox upsert, ringkasan hasil (Baru/Diperbarui/Gagal + daftar
+    error/warning). Tombol **Import CSV** di toolbar `AssetsView.tsx` (prop
+    `onOpenImportModal`) untuk peran yang berwenang.
+  - Audit: `ASSET_BULK_CREATED` / `ASSET_BULK_UPDATED` via `recordAudit`.
+- **Skrip verifikasi** `scripts/asset-import-verify.mjs` — 20 tes end-to-end:
+  anonim 401, batch kosong/oversize 400, created=2 + failed=1 (baris tanpa nama),
+  nomor aset `IT-HLT-*` & `GA-INV-F-*` otomatis, kondisi tak dikenal → warning,
+  harga & is_loanable tersimpan, duplikat SN ditolak, `allow_update` memperbarui,
+  duplikat SN dalam satu berkas ditolak, authority per baris (IT impor kendaraan SC
+  → row error), Karyawan → 403.
 - **Skrip verifikasi** `scripts/p1-features-verify.mjs` — 16 tes end-to-end:
   anonim 401, sandi lama salah 401, sandi baru pendek 400, sukses + token baru,
   token lama mati 401, token baru hidup 200, login sandi lama ditolak / baru berhasil,
@@ -64,7 +89,11 @@ apa yang sudah dikerjakan, di mana kodenya, dan bagaimana memverifikasinya.
   `GABAH_INITIAL_USER_PASSWORD` terpisah — user non-admin tidak ikut sandi boot admin.
   Patch ini sudah ada di `p1-features-verify.mjs`, `bulk-import-verify.mjs`,
   `menu-connectivity-verify.mjs`.
-- Verifikasi: `tsc --noEmit` 0 error; `npm run build` pass; **16/16 PASS** (exit 0).
+- Verifikasi: `tsc --noEmit` 0 error; `npm run build` pass; **16/16 PASS** (exit 0);
+  asset-import **20/20 PASS**; regresi menu-connectivity **23/23**, bulk-import users
+  **14/14** setelah perubahan middleware.
+- Catatan domain: furniture INV-F **sengaja** dapat dibuat peran mana pun
+  (otomatis jadi milik GA) — konsisten dengan alur create aset tunggal.
 
 ---
 
@@ -113,7 +142,6 @@ apa yang sudah dikerjakan, di mana kodenya, dan bagaimana memverifikasinya.
 | Notifikasi email / Telegram (CR-05) | P2 | **Ditunda** sampai aplikasi ready 100% |
 | Lampiran dokumen pada tiket/aset | P2 | Belum mulai |
 | Custom fields aset | P2 | Belum mulai |
-| Import CSV aset (setelah users) | P2 | Belum mulai |
 
 ### Kredensial UAT (non-produksi)
 Semua akun kanonik domain `@foodstation.co.id` memakai sandi yang sama, diset lewat
@@ -130,6 +158,7 @@ npm run build
 node scripts/menu-connectivity-verify.mjs   # 23 cek menu & RBAC
 node scripts/bulk-import-verify.mjs         # 14 tes import CSV
 node scripts/p1-features-verify.mjs         # 16 tes fitur P1
+node scripts/asset-import-verify.mjs        # 20 tes import aset
 ```
 Skrip boot `dist/server.cjs` di port acak 39000+, backup/restore state file,
 dan self-terminating (aman dijalankan berulang).

@@ -130,6 +130,44 @@ class GabahApiClient {
     });
   }
 
+  /**
+   * IMPORT MASSAL aset dari file CSV/Excel.
+   * Setiap baris divalidasi server-side (taxonomi, authority divisi, duplikat
+   * SN/No. Accurate, penomoran otomatis). allowUpdate=true → baris yang SN/
+   * No. Accurate-nya sudah terdaftar diperbarui, bukan ditolak.
+   */
+  async bulkImportAssets(
+    assets: Array<{
+      name: string;
+      category?: string;
+      owner_division?: string;
+      brand?: string;
+      model?: string;
+      serial_number?: string;
+      corporate_asset_number?: string;
+      specifications?: string;
+      purchase_date?: string;
+      purchase_price?: string | number;
+      location?: string;
+      condition?: string;
+      is_loanable?: string | boolean;
+      notes?: string;
+    }>,
+    allowUpdate = false,
+  ): Promise<{
+    created: number;
+    updated: number;
+    failed: number;
+    errors: string[];
+    warnings: string[];
+    assets: Asset[];
+  }> {
+    return this.request<any>('/api/assets/bulk-import', {
+      method: 'POST',
+      body: JSON.stringify({ assets, allow_update: allowUpdate }),
+    });
+  }
+
   async updateUser(userId: string, payload: Partial<UserProfile>): Promise<UserProfile> {
     return this.request<UserProfile>(`/api/users/${userId}`, {
       method: 'PATCH',
