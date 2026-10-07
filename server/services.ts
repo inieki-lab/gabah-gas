@@ -580,11 +580,44 @@ export class GabahDomainService {
   }
 
   /**
+   * Loan custody authority — the existing application authorization model
+   * (docs/architecture/RBAC.md §2 "Serah Terima / Pengembalian" rows and the
+   * client helper GabahService.canApproveLoan): Admin GABAH acts on all loans;
+   * division custodians (IT, GA, Supply Chain, PIBC) act only on loans for
+   * assets owned by their own division. No new roles, no dynamic RBAC changes.
+   */
+  static canOperateLoan(loan: ServerLoan, actor: ServerUser): boolean {
+    if (actor.role === 'Admin GABAH') return true;
+    if (actor.role === 'IT' && loan.owner_division === 'IT') return true;
+    if (actor.role === 'GA' && loan.owner_division === 'GA') return true;
+    if (actor.role === 'Supply Chain' && loan.owner_division === 'SC') return true;
+    if (actor.role === 'PIBC' && loan.owner_division === 'PIBC') return true;
+    return false;
+  }
+
+  /**
    * Loan Handover Execution (Fisik diserahkan)
+   *
+   * SECURITY: authorization and the state transition are enforced server-side
+   * (403 / 409). Knowing a loan ID grants no authority; denied attempts are
+   * recorded in the existing audit trail.
    */
   static handoverLoan(loanId: string, handoverNotes: string, actor: ServerUser): ServerLoan {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
+
+    // Authorization: only the owner-division custodian (IT/GA/SC/PIBC) or Admin GABAH.
+    if (!this.canOperateLoan(loan, actor)) {
+      this.recordAudit('LOAN_HANDOVER_DENIED', 'Loans', `Ditolak: ${actor.name} (${actor.role}) bukan penanggung jawab divisi ${loan.owner_division} untuk pinjaman ${loan.loan_number}`, actor, loan.id);
+      throw Object.assign(new Error('Akses ditolak: Hanya penanggung jawab divisi pemilik aset atau Admin GABAH yang berwenang melakukan serah terima.'), { statusCode: 403 });
+    }
+
+    // State transition: only an approved reservation can be handed over.
+    // Blocks handover from pending_approval and double handover of an already borrowed loan.
+    if (loan.status !== 'approved') {
+      this.recordAudit('LOAN_HANDOVER_INVALID_STATE', 'Loans', `Ditolak: serah terima pinjaman ${loan.loan_number} dari status "${loan.status}" bukan transisi valid`, actor, loan.id);
+      throw Object.assign(new Error(`Serah terima hanya dapat dilakukan pada pinjaman berstatus "approved" (status saat ini: "${loan.status}"). Pinjaman yang sudah diserahkan tidak dapat diserahkan ulang.`), { statusCode: 409 });
+    }
 
     loan.status = 'borrowed';
     loan.handover_by_id = actor.id;
@@ -604,10 +637,35 @@ export class GabahDomainService {
 
   /**
    * Loan Return & Inspection
+   *
+   * SECURITY: authorization and the state transition are enforced server-side
+   * (403 / 409). The borrower may return their OWN borrowed loan (existing
+   * "Portal Aset Saya" flow); anyone else needs owner-division custody or
+   * Admin GABAH. Denied attempts are recorded in the existing audit trail.
    */
-  static returnLoan(loanId: string, condition: 'good' | 'fair' | 'poor' | 'broken', returnNotes: string, actor: ServerUser): ServerLoan {
+  static returnLoan(loanId: string, condition: 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged', returnNotes: string, actor: ServerUser): ServerLoan {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
+
+    // Authorization: owner-division custodian, Admin GABAH, or the borrower
+    // returning their own loan (user A can never touch user B's loan).
+    const isBorrower = loan.borrower_id === actor.id;
+    if (!isBorrower && !this.canOperateLoan(loan, actor)) {
+      this.recordAudit('LOAN_RETURN_DENIED', 'Loans', `Ditolak: ${actor.name} (${actor.role}) bukan peminjam maupun penanggung jawab divisi ${loan.owner_division} untuk pinjaman ${loan.loan_number}`, actor, loan.id);
+      throw Object.assign(new Error('Akses ditolak: Hanya peminjam, penanggung jawab divisi pemilik aset, atau Admin GABAH yang berwenang mengembalikan pinjaman ini.'), { statusCode: 403 });
+    }
+
+    // State transition: only a physically handed-over (borrowed) unit can be
+    // returned. Blocks return of approved/pending loans and double return.
+    if (loan.status !== 'borrowed') {
+      this.recordAudit('LOAN_RETURN_INVALID_STATE', 'Loans', `Ditolak: pengembalian pinjaman ${loan.loan_number} dari status "${loan.status}" bukan transisi valid`, actor, loan.id);
+      throw Object.assign(new Error(`Pengembalian hanya dapat dilakukan pada pinjaman berstatus "borrowed" (status saat ini: "${loan.status}"). Pinjaman yang sudah dikembalikan tidak dapat dikembalikan ulang.`), { statusCode: 409 });
+    }
+
+    const allowedConditions = ['good', 'fair', 'poor', 'broken', 'excellent', 'damaged'] as const;
+    if (!allowedConditions.includes(condition as any)) {
+      throw Object.assign(new Error(`Kondisi pengembalian "${condition}" tidak valid. Pilihan: ${allowedConditions.join(', ')}.`), { statusCode: 400 });
+    }
 
     loan.status = 'returned';
     loan.actual_returned_at = new Date().toISOString();
@@ -617,7 +675,7 @@ export class GabahDomainService {
 
     const asset = db.assets.find(a => a.id === loan.asset_id);
     if (asset) {
-      asset.status = condition === 'broken' ? 'damaged' : 'available';
+      asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
       asset.condition = condition;
       asset.location = 'Head Office - Gudang Pool';
     }

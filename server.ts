@@ -1476,7 +1476,9 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      // SECURITY: 403 (authorization) / 409 (invalid state transition) are
+      // enforced by the domain service and surfaced verbatim to the client.
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1488,7 +1490,9 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: returned });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      // SECURITY: 403 (authorization) / 409 (invalid state transition) are
+      // enforced by the domain service and surfaced verbatim to the client.
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
