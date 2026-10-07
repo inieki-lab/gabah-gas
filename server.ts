@@ -2088,7 +2088,7 @@ async function startServer() {
       const updated = GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2119,7 +2119,7 @@ async function startServer() {
       const approved = GabahDomainService.approveRoomReservation(req.params.id, actor);
       res.json({ success: true, data: approved });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2129,7 +2129,7 @@ async function startServer() {
       const rejected = GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
       res.json({ success: true, data: rejected });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2139,7 +2139,7 @@ async function startServer() {
       const checkedIn = GabahDomainService.checkinRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedIn });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2149,7 +2149,7 @@ async function startServer() {
       const checkedOut = GabahDomainService.checkoutRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedOut });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2159,7 +2159,7 @@ async function startServer() {
       const cancelled = GabahDomainService.cancelRoomReservation(req.params.id, actor);
       res.json({ success: true, data: cancelled });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 

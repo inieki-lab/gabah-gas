@@ -1,5 +1,20 @@
 # Changelog — GABAH
 
+## [2026-10-07] — Tahap 3: Meeting Room Hardening & Regression
+- Server-side interruption: only Admin GABAH or Sekretaris Direksi with HIGH priority; GA cannot interrupt.
+- Running (`in_use`) meetings cannot be interrupted; alternative-room capacity uses the new agenda's attendee count.
+- VIP auto-approval is limited to Admin GABAH and Sekretaris Direksi; ordinary GA requests require approval.
+- Added server-side lifecycle/authorization guards for approve, reject, check-in, check-out, and cancel.
+- Meeting endpoints now preserve 403/409 status codes from the domain service.
+- Added `ROOM_RESERVATION_OVERRIDE_DENIED` audit action.
+- Added `scripts/meeting-room-stage3-verify.mjs` and `npm run test:meeting-room`.
+
+### Verification status — AKTUAL
+- Pre-change audit: GitHub `main` HEAD `2aaec09425bba27f270f9f2a77c1046618df9b9ad`.
+- Build/test were **not executable from the ChatGPT runtime** because the private repository cannot be cloned/resolved there. No unexecuted PASS result is claimed.
+- After `git pull` on the laptop run: `npm install`, `npm run lint`, `npm run build`, `npm run test:meeting-room`, `npm run test:loan-authz`, and `node scripts/menu-connectivity-verify.mjs`.
+
+
 Portal Aset & Helpdesk PT Food Station Tjipinang Jaya (BUMD DKI Jakarta).
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/) — dicatat per tanggal kerja,

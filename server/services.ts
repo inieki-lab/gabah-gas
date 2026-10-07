@@ -984,17 +984,24 @@ export class GabahDomainService {
       return payload.start_time < r.end_time && payload.end_time > r.start_time;
     });
 
-    const isPrivilegedInterrupter =
+    // Interruption is restricted to Admin GABAH or Sekretaris Direksi with HIGH priority.
+    const meetingType = (db.meetingTypes || []).find(t => t.code === payload.meeting_type);
+    const requestedPriority = payload.priority || meetingType?.priority_level || (actor.role === 'Sekretaris Direksi' ? 'high' : 'medium');
+    const canInterrupt =
       actor.role === 'Admin GABAH' ||
-      actor.role === 'GA' ||
-      actor.role === 'Sekretaris Direksi';
+      (actor.role === 'Sekretaris Direksi' && requestedPriority === 'high');
 
     if (conflicting) {
-      if (payload.override_conflict && isPrivilegedInterrupter) {
+      if (conflicting.status === 'in_use') {
+        const err: any = new Error(`Tabrakan Jadwal! Ruangan "${room.name}" sedang digunakan untuk rapat "${conflicting.title}".`);
+        err.statusCode = 409;
+        throw err;
+      }
+      if (payload.override_conflict && canInterrupt) {
         // Privileged Interruption: Find alternative room with sufficient capacity if available
         const altRoom = (db.rooms || []).find(other => {
           if (other.id === room.id) return false;
-          if (other.capacity < conflicting.attendees_count) return false;
+          if (other.capacity < Number(payload.attendees_count)) return false;
           if (other.status === 'maintenance') return false;
           // Check collision in other room
           const hasOverlap = (db.roomReservations || []).some(r => {
@@ -1062,7 +1069,14 @@ export class GabahDomainService {
           room_id: room.id,
           priority: conflicting.priority,
         };
-        err.can_override = isPrivilegedInterrupter;
+        err.can_override = canInterrupt;
+        if (payload.override_conflict && !canInterrupt) {
+          this.recordAudit('ROOM_RESERVATION_OVERRIDE_DENIED', 'MeetingRooms',
+            `Override/interupsi reservasi ${conflicting.reservation_number} ditolak untuk ${actor.name} (${actor.role}).`,
+            actor, conflicting.id);
+          err.statusCode = 403;
+          err.message = 'Akses ditolak: override/interupsi hanya untuk Admin GABAH atau Sekretaris Direksi dengan agenda prioritas HIGH.';
+        }
         throw err;
       }
     }
@@ -1070,7 +1084,7 @@ export class GabahDomainService {
     const year = new Date().getFullYear();
     const existingCount = (db.roomReservations || []).length + 1;
     const reservationNumber = `RSV-${year}-${String(existingCount).padStart(4, '0')}`;
-    const isAutoApproved = actor.role === 'Admin GABAH' || actor.role === 'GA' || actor.role === 'Sekretaris Direksi';
+    const isAutoApproved = actor.role === 'Admin GABAH' || actor.role === 'Sekretaris Direksi';
 
     const reservation: ServerRoomReservation = {
       id: `rsv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1089,7 +1103,7 @@ export class GabahDomainService {
       attendees_count: Number(payload.attendees_count) || 1,
       attendees_list: payload.attendees_list?.trim() || '',
       meeting_type: payload.meeting_type || 'internal',
-      priority: payload.priority || (actor.role === 'Sekretaris Direksi' ? 'high' : 'medium'),
+      priority: requestedPriority,
       date: payload.date,
       start_time: payload.start_time,
       end_time: payload.end_time,
@@ -1207,11 +1221,14 @@ export class GabahDomainService {
 
   static approveRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
     if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
-      throw new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menyetujui reservasi ruang rapat.');
+      throw Object.assign(new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menyetujui reservasi ruang rapat.'), { statusCode: 403 });
     }
 
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
+    if (reservation.status !== 'pending_approval') {
+      throw Object.assign(new Error(`Reservasi hanya dapat disetujui dari status "pending_approval" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
+    }
 
     // Re-verify no collision before approving
     const conflicting = (db.roomReservations || []).find(r => {
@@ -1292,6 +1309,9 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
+    if (reservation.status !== 'pending_approval') {
+      throw Object.assign(new Error(`Reservasi hanya dapat ditolak dari status "pending_approval" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
+    }
     reservation.status = 'rejected';
     reservation.rejection_reason = reason || 'Kapasitas penuh / prioritas rapat direksi';
     reservation.approver_id = actor.id;
@@ -1315,6 +1335,13 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
+      throw Object.assign(new Error('Akses ditolak: check-in hanya dapat dilakukan oleh pemohon, GA, atau Admin GABAH.'), { statusCode: 403 });
+    }
+    if (reservation.status !== 'approved') {
+      throw Object.assign(new Error(`Check-in hanya dapat dilakukan pada status "approved" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
+    }
+
     reservation.status = 'in_use';
     reservation.checkin_at = new Date().toISOString();
     reservation.updated_at = new Date().toISOString();
@@ -1332,6 +1359,13 @@ export class GabahDomainService {
   static checkoutRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
+
+    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
+      throw Object.assign(new Error('Akses ditolak: check-out hanya dapat dilakukan oleh pemohon, GA, atau Admin GABAH.'), { statusCode: 403 });
+    }
+    if (reservation.status !== 'in_use') {
+      throw Object.assign(new Error(`Check-out hanya dapat dilakukan pada status "in_use" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
+    }
 
     reservation.status = 'completed';
     reservation.checkout_at = new Date().toISOString();
@@ -1352,9 +1386,11 @@ export class GabahDomainService {
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
     if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
-      throw new Error('Akses ditolak: Anda hanya dapat membatalkan reservasi yang Anda buat sendiri.');
+      throw Object.assign(new Error('Akses ditolak: Anda hanya dapat membatalkan reservasi yang Anda buat sendiri.'), { statusCode: 403 });
     }
-
+    if (!['pending_approval', 'approved'].includes(reservation.status)) {
+      throw Object.assign(new Error(`Reservasi tidak dapat dibatalkan dari status "${reservation.status}".`), { statusCode: 409 });
+    }
     reservation.status = 'cancelled';
     reservation.updated_at = new Date().toISOString();
 
