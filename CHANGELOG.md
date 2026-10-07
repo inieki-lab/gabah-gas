@@ -79,6 +79,13 @@ apa yang sudah dikerjakan, di mana kodenya, dan bagaimana memverifikasinya.
   vendor role-guard 403 + create 201 + update rating, KB create/update,
   assign aset → entry movement tercatat.
 
+### Fixed
+- **Layar "Memulihkan sesi…" mengurung pengguna** (`src/App.tsx` `initAuth`): bila
+  request `/api/auth/me` menggantung (mis. dev server restart via tsx watch di
+  tengah request — koneksi yatim), pengguna terjebak di loading tanpa batas.
+  Kini `getMe()` di-race dengan timeout 10 detik → token dibersihkan dan pengguna
+  diantar ke halaman login; jalur exception juga kini dijamin mendarat di login.
+
 ### Changed
 - `docs/ops/OFFICE-VM-RUNBOOK.md` — menghapus referensi hash commit basi `dbedf08`.
 

@@ -177,7 +177,13 @@ export default function App() {
       try {
         const token = gabahApi.getToken();
         if (token) {
-          const me = await gabahApi.getMe().catch(() => null);
+          // Race with a hard timeout so a hung/orphaned request (mis. dev server
+          // restart di tengah request) tidak mengurung pengguna di layar
+          // "Memulihkan sesi…" selamanya. Setiap jalur selesai ≤ 10 detik.
+          const me = await Promise.race([
+            gabahApi.getMe().catch(() => null),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
+          ]);
           if (me) {
             setCurrentUser(me);
           } else {
@@ -197,6 +203,8 @@ export default function App() {
         }
       } catch (err) {
         console.warn('Auth initialization:', err);
+        gabahApi.setToken(null);
+        setViewMode('login');
       } finally {
         await refreshData();
       }
