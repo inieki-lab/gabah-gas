@@ -36,7 +36,7 @@ cd /opt/gabah-gas
 git fetch origin
 git reset --hard origin/main
 git clean -fd
-git log --oneline -3   # harus terlihat: dbedf08 di paling atas
+git log --oneline -3   # commit teratas harus sama dengan origin/main terbaru
 ```
 
 ---
