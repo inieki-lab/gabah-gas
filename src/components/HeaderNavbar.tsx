@@ -14,7 +14,8 @@ import {
   Camera,
   LogOut,
   Coffee,
-  CalendarClock
+  CalendarClock,
+  KeyRound
 } from 'lucide-react';
 import { UserProfile, UserRole, Ticket, Loan, RoomReservation } from '../types';
 import { GabahService } from '../services/gabahService';
@@ -27,6 +28,7 @@ interface HeaderNavbarProps {
   onOpenScannerModal: () => void;
   onOpenGlobalSearch: () => void;
   onLogout: () => void;
+  onChangePassword?: () => void;
   pendingLoans?: Loan[];
   urgentTickets?: Ticket[];
   roomReservations?: RoomReservation[];
@@ -43,6 +45,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   onOpenScannerModal,
   onOpenGlobalSearch,
   onLogout,
+  onChangePassword,
   pendingLoans = [],
   urgentTickets = [],
   roomReservations = [],
@@ -477,6 +480,21 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     </button>
                   </div>
                 )}
+
+                {/* Account actions */}
+                <div className="mt-2.5 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRoleDropdown(false);
+                      onChangePassword?.();
+                    }}
+                    className="w-full py-2 px-3 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-2"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Ganti Kata Sandi</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

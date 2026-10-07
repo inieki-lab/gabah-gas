@@ -25,7 +25,7 @@ import {
   Scale,
   Info
 } from 'lucide-react';
-import { Asset, UserProfile, Loan, Ticket } from '../../types';
+import { Asset, UserProfile, Loan, Ticket, AssetMovement } from '../../types';
 import { formatRupiah, formatDate, formatDateTime, calculateDepreciation, GabahService } from '../../services/gabahService';
 
 interface AssetDetailModalProps {
@@ -41,7 +41,7 @@ interface AssetDetailModalProps {
   allAssets?: Asset[];
   assetLoans?: Loan[];
   assetTickets?: Ticket[];
-}
+  assetMovements?: AssetMovement[];}
 
 export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   asset,
@@ -56,6 +56,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   allAssets = [],
   assetLoans = [],
   assetTickets = [],
+  assetMovements = [],
 }) => {
   const [isEditingCorpNumber, setIsEditingCorpNumber] = useState(false);
   const [editedCorpNumber, setEditedCorpNumber] = useState('');
@@ -575,7 +576,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           {/* Tab 4: Timeline Riwayat Lengkap (Snipe-IT style) */}
           {activeDetailTab === 'history' && (() => {
             type HistoryEntry = {
-              kind: 'creation' | 'loan' | 'ticket';
+              kind: 'creation' | 'loan' | 'ticket' | 'movement';
               date: number;
               title: string;
               subtitle: string;
@@ -621,6 +622,26 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               });
             });
 
+            (assetMovements || []).forEach(m => {
+              const userMove =
+                m.from_user_name !== (m.to_user_name || null) && (m.to_user_name || m.from_user_name);
+              const title =
+                m.from_location !== m.to_location
+                  ? `Mutasi lokasi: ${m.from_location} → ${m.to_location}`
+                  : userMove
+                    ? `Mutasi pengguna: ${m.from_user_name || 'Gudang/Pool'} → ${m.to_user_name}`
+                    : 'Pembaruan status aset';
+              entries.push({
+                kind: 'movement',
+                date: new Date(m.created_at || Date.now()).getTime(),
+                title,
+                subtitle: `Oleh: ${m.performed_by_name}${m.reason ? ` • ${m.reason}` : ''}`,
+                meta: `Pengguna: ${m.from_user_name || '—'} → ${m.to_user_name || '—'} • Lokasi: ${m.from_location || '—'} → ${m.to_location || '—'}`, 
+                tone: 'bg-amber-100 text-amber-700',
+                icon: Truck,
+              });
+            });
+
             entries.sort((a, b) => b.date - a.date);
 
             return (
@@ -631,7 +652,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     Timeline Riwayat Aset ({entries.length} peristiwa)
                   </h4>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    Rekap kronologis: pendaftaran, peminjaman, dan tiket gangguan yang terkait aset ini.
+                    Rekap kronologis: pendaftaran, mutasi (server-tracked), peminjaman, dan tiket gangguan yang terkait aset ini.
                   </p>
                 </div>
 

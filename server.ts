@@ -162,6 +162,138 @@ async function startServer() {
     }
   });
 
+  // Bulk import pegawai (IMPORT Excel/CSV). Upsert per email:
+  //  - email BARU    → akun dibuat (password CSPRNG server-side, out-of-band).
+  //  - email SUDAH ADA → data profil (nama/divisi/departemen/telepon/role) di-update,
+  //    password & status sesi TIDAK disentuh.
+  // Guard: hanya Admin GABAH. Setiap baris divalidasi individual agar satu
+  // baris buruk tidak menggagalkan seluruh batch.
+  app.post('/api/users/bulk-import', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+        return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang mengimpor data pegawai.' });
+      }
+
+      const rows: any[] = Array.isArray(req.body?.users) ? req.body.users : [];
+      if (rows.length === 0) {
+        return res.status(400).json({ success: false, message: 'Tidak ada baris data pegawai untuk diimpor.' });
+      }
+      if (rows.length > 500) {
+        return res.status(400).json({ success: false, message: 'Maksimal 500 baris per impor. Pisahkan menjadi beberapa berkas.' });
+      }
+
+      const validRoles = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'];
+      const roleLabels: Record<string, string> = {
+        'Admin GABAH': 'Super Admin',
+        'IT': 'IT Technical Support',
+        'GA': 'Fasilitas & Gedung',
+        'Sekretaris Direksi': 'Sekretariat Direksi',
+        'Humas': 'Humas & Protokoler',
+        'Supply Chain': 'Logistik Beras',
+        'PIBC': 'Pengawas Pasar PIBC',
+        'Auditor': 'Internal Auditor',
+        'Karyawan': 'Pegawai Operasional'
+      };
+
+      let created = 0;
+      let updated = 0;
+      const errors: string[] = [];
+      const warnings: string[] = [];
+      const importedUsers: ServerUser[] = [];
+      const seenEmails = new Set<string>();
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i] || {};
+        const rowNo = i + 1;
+        const name = String(row.name || '').trim();
+        const email = String(row.email || '').trim().toLowerCase();
+        const roleRaw = String(row.role || '').trim();
+        const division = String(row.division || '').trim() || 'Umum';
+        const department = String(row.department || '').trim() || 'Operasional';
+        const phone = String(row.phone || '').trim();
+
+        if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
+        if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
+        if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di dalam berkas (${email}).`); continue; }
+        seenEmails.add(email);
+
+        const role = roleRaw && validRoles.includes(roleRaw) ? roleRaw : 'Karyawan';
+        if (roleRaw && !validRoles.includes(roleRaw)) {
+          // Soft warning: baris TETAP diimpor dengan peran default Karyawan.
+          warnings.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenali (memakai Karyawan).`);
+        }
+
+        const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
+        if (existing) {
+          // UPDATE profil (password, is_active, dan sesi tidak disentuh)
+          existing.name = name;
+          existing.role = role as ServerUser['role'];
+          (existing as any).role_label = roleLabels[role] || role;
+          existing.division = division as ServerUser['division'];
+          existing.department = department;
+          if (phone) existing.phone = phone;
+          importedUsers.push(existing);
+          updated++;
+          GabahDomainService.recordAudit(
+            'USER_BULK_UPDATED',
+            'Users',
+            `Impor massal: profil ${existing.name} (${existing.email}) diperbarui (divisi: ${division}, departemen: ${department}).`,
+            actor,
+            existing.id
+          );
+        } else {
+          // CREATE — password CSPRNG server-side (CR-02), tidak pernah dikirim balik.
+          const generatedTempPassword = crypto.randomBytes(12).toString('base64url');
+          const { hash, salt } = hashPassword(generatedTempPassword);
+          const newUser: ServerUser = {
+            id: `USR-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`,
+            name,
+            email,
+            role: role as ServerUser['role'],
+            role_label: roleLabels[role] || 'Pegawai Operasional',
+            division: division as ServerUser['division'],
+            department,
+            phone,
+            avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
+            is_active: true,
+            password_hash: hash,
+            password_salt: salt,
+            authVersion: 1,
+          };
+          db.users.unshift(newUser);
+          importedUsers.push(newUser);
+          created++;
+          GabahDomainService.recordAudit(
+            'USER_BULK_CREATED',
+            'Users',
+            `Impor massal: pengguna baru ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}. Password awal dibuat server-side.`,
+            actor,
+            newUser.id
+          );
+        }
+      }
+
+      if (created > 0 || updated > 0) {
+        await persistDataStore();
+      }
+
+      res.json({
+        success: true,
+        data: {
+          created,
+          updated,
+          failed: errors.length,
+          errors: errors.slice(0, 50),
+          warnings: warnings.slice(0, 50),
+          users: importedUsers.map(u => sanitizeUser(u)),
+        },
+      });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
   app.patch('/api/users/:id', async (req, res) => {
     try {
       const actor = getActor(req);
@@ -535,6 +667,60 @@ async function startServer() {
         destroySession(token);
       }
       res.json({ success: true, message: 'Logout berhasil.' });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // Self-service password change (P1): the CURRENT user rotates their own
+  // password. Requires the current password; revokes all other sessions but
+  // issues a fresh token for THIS device so the user is not logged out.
+  app.post('/api/auth/change-password', (req, res) => {
+    try {
+      const actor = getActor(req);
+      const { currentPassword, newPassword } = req.body;
+      if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || !currentPassword || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Kata sandi lama dan baru wajib diisi.' });
+      }
+      if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'Kata sandi baru minimal 8 karakter.' });
+      }
+      if (newPassword === currentPassword) {
+        return res.status(400).json({ success: false, message: 'Kata sandi baru harus berbeda dari kata sandi lama.' });
+      }
+
+      const user = db.users.find(u => u.id === actor.id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+      }
+      if (!user.password_hash || !user.password_salt || !verifyPassword(currentPassword, user.password_hash, user.password_salt)) {
+        return res.status(401).json({ success: false, message: 'Kata sandi lama tidak cocok.' });
+      }
+
+      const { hash, salt } = hashPassword(newPassword);
+      user.password_hash = hash;
+      user.password_salt = salt;
+      delete user.temp_password;
+      if (typeof user.authVersion === 'number') user.authVersion += 1;
+
+      // SECURITY (CR-03 §3.4): rotate credentials ⇒ revoke ALL sessions, then
+      // re-issue one session for the calling device so it stays signed in.
+      revokeUserSessions(user.id);
+      const session = createSession(user.id, req);
+
+      GabahDomainService.recordAudit(
+        'USER_PASSWORD_SELF_CHANGED',
+        'Auth',
+        `Pengguna ${user.name} (${user.email}) mengganti kata sandinya sendiri; seluruh sesi lain dicabut`,
+        actor,
+        user.id
+      );
+      persistDataStore().catch(() => {});
+
+      res.json({
+        success: true,
+        data: { user: sanitizeUser(user), token: session.token, expires_at: session.expires_at },
+      });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
     }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -23,7 +23,8 @@ import {
   exportAssetsToCsv, 
   exportLoansToCsv, 
   exportTicketsToCsv,
-  exportMaintenanceToCsv 
+  exportMaintenanceToCsv,
+  exportDivisionSummaryToCsv
 } from '../../services/gabahService';
 
 interface ReportsViewProps {
@@ -35,25 +36,63 @@ interface ReportsViewProps {
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans, maintenanceSchedules = [] }) => {
-  const resolvedTickets = tickets.filter(t => t.status === 'resolved' || t.status === 'closed');
-  const slaOnTimePct = 96.8;
-
-  const totalAssetValue = assets.reduce((sum, a) => sum + (a.purchase_price || 0), 0);
   const safeAssets = Array.isArray(assets) ? assets : [];
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const safeMaintenances = Array.isArray(maintenanceSchedules) ? maintenanceSchedules : [];
 
-  const totalMaintenanceBudget = safeMaintenances.reduce((acc, curr) => acc + (curr.actual_cost || curr.estimated_cost || 0), 0);
-  const completedMaintenanceCount = safeMaintenances.filter(m => m.status === 'completed').length;
+  // FILTER LAPORAN per bagian/departemen/divisi — pilihan diambil DINAMIS dari
+  // data yang benar-benar ada (divisi pemilik aset + departemen penanggung
+  // jawab/peminjam/pelapor), sehingga laporan selalu mengikuti struktur
+  // organisasi yang berlaku tanpa hardcode.
+  const [divisionFilter, setDivisionFilter] = useState<string>('all');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
-  const totalAssetCount = safeAssets.length || 1;
+  const divisionOptions = useMemo(
+    () => Array.from(new Set(safeAssets.map(a => a.owner_division || 'Umum'))).sort(),
+    [safeAssets]
+  );
+  const departmentOptions = useMemo(
+    () => Array.from(new Set(safeAssets.map(a => a.assigned_to?.department).filter(Boolean) as string[])).sort(),
+    [safeAssets]
+  );
 
-  // Breakdown per Division (IT, GA, SC, PIBC)
-  const itAssets = safeAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
-  const gaAssets = safeAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
-  const scAssets = safeAssets.filter(a => a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('SC-'));
-  const pibcAssets = safeAssets.filter(a => a.owner_division === 'PIBC' || a.asset_number?.startsWith('PIBC-'));
+  const filteredAssets = useMemo(() => safeAssets.filter(a =>
+    (divisionFilter === 'all' || (a.owner_division || 'Umum') === divisionFilter) &&
+    (departmentFilter === 'all' || (a.assigned_to?.department || '') === departmentFilter)
+  ), [safeAssets, divisionFilter, departmentFilter]);
+
+  const filteredLoans = useMemo(() => safeLoans.filter(l =>
+    (divisionFilter === 'all' || (l.owner_division || l.asset_number?.split('-')[0]) === divisionFilter) &&
+    (departmentFilter === 'all' || (l.borrower_department || '') === departmentFilter)
+  ), [safeLoans, divisionFilter, departmentFilter]);
+
+  const filteredTickets = useMemo(() => safeTickets.filter(t =>
+    (divisionFilter === 'all' || t.category === divisionFilter) &&
+    (departmentFilter === 'all' || (t.reporter_department || '') === departmentFilter)
+  ), [safeTickets, divisionFilter, departmentFilter]);
+
+  const filteredMaintenances = useMemo(() => safeMaintenances.filter(m =>
+    divisionFilter === 'all' || (m.owner_division || 'Umum') === divisionFilter
+  ), [safeMaintenances, divisionFilter]);
+
+  const isFilterActive = divisionFilter !== 'all' || departmentFilter !== 'all';
+
+  const resolvedTickets = filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed');
+  const slaOnTimePct = 96.8;
+
+  const totalAssetValue = filteredAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
+
+  const totalMaintenanceBudget = filteredMaintenances.reduce((acc, curr) => acc + (curr.actual_cost || curr.estimated_cost || 0), 0);
+  const completedMaintenanceCount = filteredMaintenances.filter(m => m.status === 'completed').length;
+
+  const totalAssetCount = filteredAssets.length || 1;
+
+  // Breakdown per Division (IT, GA, SC, PIBC) — mengikuti filter aktif
+  const itAssets = filteredAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
+  const gaAssets = filteredAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
+  const scAssets = filteredAssets.filter(a => a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('SC-'));
+  const pibcAssets = filteredAssets.filter(a => a.owner_division === 'PIBC' || a.asset_number?.startsWith('PIBC-'));
 
   const itValue = itAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
   const gaValue = gaAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
@@ -72,7 +111,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
     { code: 'TNH', name: 'Tanah & Lahan Kawasan Pasar', filter: (a: Asset) => a.category_code?.startsWith('TNH') || a.asset_number?.includes('-TNH-') },
     { code: 'LNY', name: 'Lainnya (Perlengkapan Tambahan)', filter: (a: Asset) => a.category_code === 'LNY' || a.asset_number?.includes('-LNY-') },
   ].map(g => {
-    const matched = safeAssets.filter(g.filter);
+    const matched = filteredAssets.filter(g.filter);
     return {
       ...g,
       count: matched.length,
@@ -80,8 +119,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
     };
   });
 
-  // Akumulasi penyusutan seluruh aset
-  const depreciations = safeAssets.map(a => calculateDepreciation(a));
+  // Akumulasi penyusutan aset (mengikuti filter divisi/departemen aktif)
+  const depreciations = filteredAssets.map(a => calculateDepreciation(a));
   const totalAccumulatedDepreciation = depreciations.reduce((sum, d) => sum + d.accumulatedDepreciation, 0);
   const totalNetBookValue = depreciations.reduce((sum, d) => sum + d.netBookValue, 0);
   const totalMonthlyDepreciation = depreciations.reduce((sum, d) => sum + d.monthlyDepreciation, 0);
@@ -104,36 +143,45 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
         {/* Data Export & Print Buttons */}
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <button
-            onClick={() => exportAssetsToCsv(assets)}
+            onClick={() => exportDivisionSummaryToCsv(filteredAssets)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            title="Rekapitulasi jumlah aset, nilai perolehan, akumulasi depresiasi, dan nilai buku per divisi"
+          >
+            <PieChart className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Rekap Divisi</span>
+          </button>
+
+          <button
+            onClick={() => exportAssetsToCsv(filteredAssets)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition-all shadow-xs"
-            title="Download CSV Master Aset untuk Microsoft Excel"
+            title="Download CSV Master Aset untuk Microsoft Excel — hanya data sesuai filter divisi/departemen aktif"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Export Aset (CSV)</span>
           </button>
 
           <button
-            onClick={() => exportLoansToCsv(loans)}
+            onClick={() => exportLoansToCsv(filteredLoans)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
-            title="Download CSV Rekapitulasi Peminjaman Barang"
+            title="Download CSV Rekapitulasi Peminjaman Barang — mengikuti filter aktif"
           >
             <Download className="w-3.5 h-3.5 text-blue-600" />
             <span>Rekap Pinjam</span>
           </button>
 
           <button
-            onClick={() => exportTicketsToCsv(tickets)}
+            onClick={() => exportTicketsToCsv(filteredTickets)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
-            title="Download CSV Rekapitulasi Tiket Helpdesk & SLA"
+            title="Download CSV Rekapitulasi Tiket Helpdesk & SLA — mengikuti filter aktif"
           >
             <Download className="w-3.5 h-3.5 text-purple-600" />
             <span>Rekap Tiket</span>
           </button>
 
           <button
-            onClick={() => exportMaintenanceToCsv(safeMaintenances)}
+            onClick={() => exportMaintenanceToCsv(filteredMaintenances)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
-            title="Download CSV Rekapitulasi Pemeliharaan & Kalibrasi"
+            title="Download CSV Rekapitulasi Pemeliharaan & Kalibrasi — mengikuti filter aktif"
           >
             <Download className="w-3.5 h-3.5 text-amber-600" />
             <span>Rekap Servis</span>
@@ -142,10 +190,60 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            title="Simpan laporan jako PDF via dialog cetak browser"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Cetak PDF</span>
           </button>
+        </div>
+      </div>
+
+      {/* Filter Laporan per Bagian/Departemen/Divisi */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-4 flex flex-col md:flex-row md:items-center gap-3 shadow-xs print:hidden">
+        <div className="flex items-center gap-2 shrink-0">
+          <PieChart className="w-4 h-4 text-emerald-600" />
+          <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">Filter Laporan</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <select
+            value={divisionFilter}
+            onChange={e => setDivisionFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-semibold focus:outline-none focus:border-emerald-500"
+            title="Filter semua laporan berdasarkan divisi pemilik aset / kategori tiket"
+          >
+            <option value="all">Semua Divisi ({divisionOptions.length})</option>
+            {divisionOptions.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <select
+            value={departmentFilter}
+            onChange={e => setDepartmentFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-semibold focus:outline-none focus:border-emerald-500"
+            title="Filter berdasarkan departemen penanggung jawab / peminjam / pelapor"
+          >
+            <option value="all">Semua Departemen ({departmentOptions.length})</option>
+            {departmentOptions.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          {isFilterActive && (
+            <button
+              onClick={() => { setDivisionFilter('all'); setDepartmentFilter('all'); }}
+              className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 font-bold hover:bg-slate-200 transition-colors"
+            >
+              Reset Filter
+            </button>
+          )}
+        </div>
+        <div className="md:ml-auto flex items-center gap-3 text-[11px] text-slate-500 font-medium">
+          <span>{filteredAssets.length} aset</span>
+          <span>·</span>
+          <span>{filteredLoans.length} peminjaman</span>
+          <span>·</span>
+          <span>{filteredTickets.length} tiket</span>
+          <span>·</span>
+          <span>{filteredMaintenances.length} jadwal servis</span>
         </div>
       </div>
 
@@ -167,7 +265,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Total Reservasi Pinjam</div>
-          <div className="text-3xl font-black text-amber-600 mt-2">{loans.length} Sesi</div>
+          <div className="text-3xl font-black text-amber-600 mt-2">{filteredLoans.length} Sesi</div>
           <div className="text-xs text-slate-600 mt-1 font-medium">100% Jadwal Akurat &amp; Terverifikasi</div>
         </div>
 
@@ -387,7 +485,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
             </p>
           </div>
           <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 border border-slate-200">
-            Total {safeAssets.length} Aset Terdata
+            Total {filteredAssets.length} Aset Terdata
           </span>
         </div>
 
@@ -444,7 +542,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
             <tfoot>
               <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold text-slate-900">
                 <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px]">Total Seluruh Aktiva</td>
-                <td className="py-3 px-3 text-center">{safeAssets.length} Unit</td>
+                <td className="py-3 px-3 text-center">{filteredAssets.length} Unit</td>
                 <td className="py-3 px-3 text-right font-mono text-emerald-700">{formatRupiah(totalAssetValue)}</td>
               </tr>
             </tfoot>

@@ -23,6 +23,20 @@ class GabahApiClient {
     }
   }
 
+  /**
+   * Self-service password change (P1). On success the server revokes every
+   * session and re-issues a fresh token for this device, which we persist so
+   * the user stays signed in on the current browser only.
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<UserProfile> {
+    const res = await this.request<{ user: UserProfile; token: string; expires_at: string }>('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    this.setToken(res.token);
+    return res.user;
+  }
+
   getToken(): string | null {
     if (!this.authToken && typeof window !== 'undefined') {
       this.authToken = localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -95,6 +109,24 @@ class GabahApiClient {
     return this.request<UserProfile>('/api/users', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  }
+
+  /**
+   * IMPORT MASSAL pegawai dari file CSV/Excel.
+   * Upsert per email: akun baru dibuat, akun yang sudah ada di-update profilnya
+   * (tanpa menyentuh password/sesi). Response: { created, updated, failed, errors[] }.
+   */
+  async bulkImportUsers(users: Array<{ name: string; email: string; role?: string; division?: string; department?: string; phone?: string }>): Promise<{
+    created: number;
+    updated: number;
+    failed: number;
+    errors: string[];
+    users: UserProfile[];
+  }> {
+    return this.request<any>('/api/users/bulk-import', {
+      method: 'POST',
+      body: JSON.stringify({ users }),
     });
   }
 

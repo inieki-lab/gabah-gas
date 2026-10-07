@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Download,
+  Upload,
   RefreshCw,
   ChevronRight,
   Activity,
@@ -37,6 +38,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
+import { exportUsersToCsv, downloadUsersImportTemplate, parseUsersImportCsv } from '../../services/gabahService';
 
 export type AdminSection =
   | 'overview'
@@ -217,6 +219,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isSubmittingEditUser, setIsSubmittingEditUser] = useState(false);
+  // Import pegawai massal (CSV/Excel) state
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<{
+    valid: { name: string; email: string; role: string; division: string; department: string; phone: string }[];
+    errors: string[];
+  } | null>(null);
+  const [isSubmittingImport, setIsSubmittingImport] = useState(false);
+  const importFileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [editUserData, setEditUserData] = useState<{
     name: string;
     email: string;
@@ -888,6 +898,65 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     setIsEditUserOpen(true);
   };
 
+  // ============ IMPORT MASSAL PEGAWAI (CSV/Excel) ============
+  const validImportRoles = SYSTEM_ROLES.map(r => r.value as string);
+  const validImportDivisions = divisions.map(d => String(d.code));
+
+  const handleImportFilePicked = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = parseUsersImportCsv(text, validImportRoles, validImportDivisions);
+      setImportPreview(parsed);
+      if (parsed.valid.length === 0 && parsed.errors.length > 0) {
+        showToast(`Tidak ada baris valid. Periksa: ${parsed.errors[0]}`, 'warning');
+      }
+    } catch {
+      showToast('Gagal membaca berkas. Pastikan formatnya CSV.', 'warning');
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importPreview || importPreview.valid.length === 0) {
+      showToast('Tidak ada data valid untuk diimpor.', 'warning');
+      return;
+    }
+    try {
+      setIsSubmittingImport(true);
+      const res: any = await gabahApi.bulkImportUsers(importPreview.valid);
+      const created = res?.created ?? 0;
+      const updated = res?.updated ?? 0;
+      const failed = res?.failed ?? 0;
+      const serverErrors: string[] = res?.errors || [];
+      const serverWarnings: string[] = res?.warnings || [];
+      setUserList(prev => {
+        const byEmail = new Map<string, UserProfile>();
+        for (const u of prev) byEmail.set(String(u.email).toLowerCase(), u);
+        for (const u of (res?.users || []) as UserProfile[]) {
+          byEmail.set(String(u.email).toLowerCase(), u);
+        }
+        return Array.from(byEmail.values());
+      });
+      setImportPreview(null);
+      setIsImportOpen(false);
+      showToast(
+        `Impor selesai: ${created} akun baru dibuat, ${updated} profil diperbarui${failed > 0 ? `, ${failed} baris gagal` : ''}.`,
+        failed > 0 ? 'warning' : 'success'
+      );
+      if (serverWarnings.length > 0) {
+        showToast(serverWarnings.slice(0, 3).join(' | '), 'info');
+      }
+      if (serverErrors.length > 0) {
+        // Tampilkan 3 error pertama untuk perbaikan berkas
+        showToast(serverErrors.slice(0, 3).join(' | '), 'warning');
+      }
+      if (onRefreshData) await onRefreshData();
+    } catch (err: any) {
+      showToast(`Gagal impor: ${err.message}`, 'warning');
+    } finally {
+      setIsSubmittingImport(false);
+    }
+  };
+
   // Handle Edit User Submit
   const handleEditUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1261,21 +1330,163 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     ))}
                   </select>
                   {isCurrentUserAdmin ? (
-                    <button
-                      onClick={() => setIsAddUserOpen(true)}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] flex items-center gap-1.5 shadow-sm shadow-[#4ABDAC]/20 cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Tambah Pengguna</span>
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setIsImportOpen(v => !v)}
+                        className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                        title="Impor massal pegawai dari berkas CSV / Excel (upsert per email: akun baru dibuat, profil akun lama diperbarui)"
+                      >
+                        <Upload className="w-4 h-4 text-emerald-600" />
+                        <span>Import CSV</span>
+                      </button>
+                      <button
+                        onClick={() => exportUsersToCsv(userList)}
+                        className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                        title="Unduh daftar pegawai sebagai CSV siap Excel (juga bisa dipakai sebagai template impor)"
+                      >
+                        <Download className="w-4 h-4 text-emerald-600" />
+                        <span>Export CSV</span>
+                      </button>
+                      <button
+                        onClick={() => setIsAddUserOpen(true)}
+                        className="px-3.5 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] flex items-center gap-1.5 shadow-sm shadow-[#4ABDAC]/20 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Tambah Pengguna</span>
+                      </button>
+                    </>
                   ) : (
-                    <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed" title="Hanya Admin GABAH yang berhak menambah akun pengguna">
-                      <LockKeyhole className="w-3.5 h-3.5" />
-                      <span>Tambah Pengguna (Terkunci)</span>
-                    </div>
+                    <>
+                      <div className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5" title="Hanya Admin GABAH yang berhak mengimpor data pegawai">
+                        <LockKeyhole className="w-3.5 h-3.5" />
+                        <span>Import CSV (Terkunci)</span>
+                      </div>
+                      <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed" title="Hanya Admin GABAH yang berhak menambah akun pengguna">
+                        <LockKeyhole className="w-3.5 h-3.5" />
+                        <span>Tambah Pengguna (Terkunci)</span>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
+
+              {/* Import Pegawai Massal (CSV/Excel) Panel */}
+              {isImportOpen && (
+                <div className="bg-blue-50/60 p-4 rounded-2xl border border-blue-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-extrabold text-blue-950 uppercase tracking-wider flex items-center gap-2">
+                      <Upload className="w-4 h-4 text-blue-600" />
+                      Import Massal Data Pegawai (CSV / Excel)
+                    </h4>
+                    <button type="button" onClick={() => { setIsImportOpen(false); setImportPreview(null); }} className="text-slate-400 hover:text-slate-700">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Tidak perlu input karyawan satu per satu: unduh template, isi di Excel, lalu unggah di sini.
+                    <b> Email yang sudah terdaftar</b> akan <b>diperbarui</b> (nama, divisi, departemen, telepon, peran) tanpa mengubah sandi;
+                    <b> email baru</b> otomatis dibuatkan akun (sandi awal diterbitkan server, sampaikan via kanal aman).
+                    Setelah masuk, setiap pegawai tetap dapat diedit/dihapus satu per satu seperti biasa.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={downloadUsersImportTemplate}
+                      className="px-3 py-1.5 rounded-xl bg-white border border-blue-300 text-blue-800 text-xs font-bold hover:bg-blue-50 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Unduh Template CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => importFileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      <span>Pilih Berkas CSV/Excel</span>
+                    </button>
+                    <input
+                      ref={importFileInputRef}
+                      type="file"
+                      accept=".csv,text/csv,.txt"
+                      className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0];
+                        if (f) handleImportFilePicked(f);
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
+                  {importPreview && (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                        <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          {importPreview.valid.length} baris siap diimpor
+                        </span>
+                        {importPreview.errors.length > 0 && (
+                          <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 border border-amber-300">
+                            {importPreview.errors.length} baris bermasalah (dilewati)
+                          </span>
+                        )}
+                      </div>
+                      {importPreview.errors.length > 0 && (
+                        <ul className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2.5 list-disc list-inside max-h-24 overflow-y-auto">
+                          {importPreview.errors.slice(0, 10).map((e, i) => <li key={i}>{e}</li>)}
+                        </ul>
+                      )}
+                      {importPreview.valid.length > 0 && (
+                        <div className="max-h-44 overflow-y-auto rounded-xl border border-blue-200 bg-white">
+                          <table className="w-full text-left text-[11px]">
+                            <thead className="bg-slate-50 text-slate-500 uppercase tracking-wide">
+                              <tr>
+                                <th className="px-3 py-2">Nama</th>
+                                <th className="px-3 py-2">Email</th>
+                                <th className="px-3 py-2">Peran</th>
+                                <th className="px-3 py-2">Divisi</th>
+                                <th className="px-3 py-2">Departemen</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {importPreview.valid.slice(0, 50).map((r, i) => (
+                                <tr key={i}>
+                                  <td className="px-3 py-1.5 font-semibold text-slate-800">{r.name}</td>
+                                  <td className="px-3 py-1.5 text-slate-600">{r.email}</td>
+                                  <td className="px-3 py-1.5 text-slate-600">{r.role}</td>
+                                  <td className="px-3 py-1.5 text-slate-600">{r.division || '-'}</td>
+                                  <td className="px-3 py-1.5 text-slate-600">{r.department || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {importPreview.valid.length > 50 && (
+                            <div className="px-3 py-1.5 text-[10px] text-slate-400 border-t border-slate-100">
+                              …dan {importPreview.valid.length - 50} baris lainnya
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        disabled={isSubmittingImport || importPreview.valid.length === 0}
+                        onClick={handleConfirmImport}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        {isSubmittingImport ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Mengimpor…</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Proses Impor ({importPreview.valid.length} pegawai)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Add User Form Modal */}
               {isAddUserOpen && (

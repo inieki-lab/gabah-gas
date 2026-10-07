@@ -15,7 +15,8 @@ import {
   MeetingRoom,
   RoomReservation,
   UserRole,
-  Contract
+  Contract,
+  AssetMovement
 } from './types';
 import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_USERS, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
 import { gabahApi } from './services/gabahApi';
@@ -49,6 +50,7 @@ import { GlobalSearchModal } from './components/modals/GlobalSearchModal';
 import { EditAssetModal } from './components/modals/EditAssetModal';
 import { LandingPage } from './components/landing/LandingPage';
 import { LoginPage } from './components/auth/LoginPage';
+import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { CheckCircle2, AlertTriangle, Info, RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -66,6 +68,8 @@ export default function App() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isCreateContractModalOpen, setIsCreateContractModalOpen] = useState(false);
   const [contractForLinkedTicket, setContractForLinkedTicket] = useState<Contract | null>(null);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [movements, setMovements] = useState<AssetMovement[]>([]);
 
   // No default authenticated user: signed-out visitors get null until login
   // succeeds (prevents ghost sessions appearing after logout).
@@ -129,7 +133,7 @@ export default function App() {
   const refreshData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge] = await Promise.all([
+      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge, fetchedMovements] = await Promise.all([
         gabahApi.getAssets().catch(() => []),
         gabahApi.getLoans().catch(() => []),
         gabahApi.getTickets().catch(() => []),
@@ -141,6 +145,7 @@ export default function App() {
         gabahApi.getMaintenances().catch(() => []),
         gabahApi.getVendors().catch(() => []),
         gabahApi.getKnowledgeArticles().catch(() => []),
+        gabahApi.getMovements().catch(() => []),
       ]);
 
       if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
@@ -157,6 +162,7 @@ export default function App() {
       }
       if (Array.isArray(fetchedVendors) && fetchedVendors.length > 0) setVendors(fetchedVendors);
       if (Array.isArray(fetchedKnowledge) && fetchedKnowledge.length > 0) setKnowledgeBase(fetchedKnowledge);
+      if (Array.isArray(fetchedMovements)) setMovements(fetchedMovements);
     } catch (err: any) {
       console.error('Failed to fetch from backend:', err);
     } finally {
@@ -508,6 +514,36 @@ export default function App() {
     return res;
   };
 
+  const handleCreateVendor = async (payload: Partial<Vendor> & { name: string }) => {
+    const created = await gabahApi.createVendor(payload);
+    setVendors((prev) => [...prev, created]);
+    showToast(`Vendor "${created.name}" berhasil ditambahkan.`);
+  };
+
+  const handleUpdateVendor = async (id: string, updates: Partial<Vendor>) => {
+    const updated = await gabahApi.updateVendor(id, updates);
+    setVendors((prev) => prev.map((v) => (v.id === id ? updated : v)));
+    showToast(`Data vendor "${updated.name}" diperbarui.`);
+  };
+
+  const handleCreateKnowledgeArticle = async (payload: { title: string; category: string; content: string; tags: string[] }) => {
+    const created = await gabahApi.createKnowledgeArticle({
+      ...payload,
+      category: payload.category as KnowledgeArticle['category'],
+    });
+    setKnowledgeBase((prev) => [...prev, created]);
+    showToast(`Artikel "${created.title}" berhasil dipublikasikan.`);
+  };
+
+  const handleUpdateKnowledgeArticle = async (id: string, updates: Partial<KnowledgeArticle>) => {
+    const updated = await gabahApi.updateKnowledgeArticle(id, {
+      ...updates,
+      category: typeof updates.category === 'string' ? (updates.category as KnowledgeArticle['category']) : updates.category,
+    });
+    setKnowledgeBase((prev) => prev.map((a) => (a.id === id ? updated : a)));
+    showToast(`Artikel "${updated.title}" diperbarui.`);
+  };
+
   const pendingLoans = loans.filter(l => l.status === 'pending');
   const visibleTickets = tickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
   const urgentTickets = visibleTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
@@ -615,6 +651,7 @@ export default function App() {
         onSwitchRoleSimulation={handleSwitchRoleSimulation}
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
+        onChangePassword={() => setIsChangePasswordOpen(true)}
         onLogout={async () => {
           // Logout must ALWAYS succeed locally: even if the server rejects the
           // call (stale session, server restarted, network error), the client
@@ -809,12 +846,20 @@ export default function App() {
           )}
 
           {currentTab === 'vendors' && (
-            <VendorsView vendors={vendors} />
+            <VendorsView
+              vendors={vendors}
+              currentUser={currentUser}
+              onCreateVendor={handleCreateVendor}
+              onUpdateVendor={handleUpdateVendor}
+            />
           )}
 
           {currentTab === 'knowledge' && (
             <KnowledgeBaseView
               articles={knowledgeBase}
+              currentUser={currentUser}
+              onCreateArticle={handleCreateKnowledgeArticle}
+              onUpdateArticle={handleUpdateKnowledgeArticle}
               onOpenArticle={(id) => {
                 gabahApi.viewKnowledgeArticle(id).then(updated => {
                   setKnowledgeBase(prev => prev.map(a => a.id === id ? { ...a, view_count: updated.view_count } : a));
@@ -900,6 +945,7 @@ export default function App() {
         onOpenBastModal={handleGenerateBastForAsset}
         assetLoans={(loans || []).filter(l => l.asset_id === selectedAssetForDetail?.id)}
         assetTickets={(tickets || []).filter(t => t.related_asset_id === selectedAssetForDetail?.id)}
+        assetMovements={(movements || []).filter(m => m.asset_id === selectedAssetForDetail?.id)}
         onEditThisAsset={(ast) => {
           setSelectedAssetForEdit(ast);
         }}
@@ -997,6 +1043,12 @@ export default function App() {
         onDeleteUser={(userId) => setAllUsers(prev => prev.filter(u => u.id !== userId))}
         showToast={showToast}
         onRefreshData={refreshData}
+      />
+
+      <ChangePasswordModal
+        open={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        onSuccess={(msg) => showToast(msg, 'success')}
       />
 
       <GlobalSearchModal

@@ -106,98 +106,257 @@ export function calculateDepreciation(
 /**
  * CSV Exporters
  */
-export function exportAssetsToCsv(assets: Asset[]) {
-  const headers = ['Nomor Aset', 'Nomor Accurate', 'Nama Aset', 'Divisi Pemilik', 'Kategori', 'Kondisi', 'Status', 'Lokasi', 'Harga Beli'];
-  const rows = assets.map(a => [
-    `"${a.asset_number}"`,
-    `"${a.corporate_asset_number || '-'}"`,
-    `"${a.name}"`,
-    `"${a.owner_division}"`,
-    `"${a.category_type}"`,
-    `"${a.condition}"`,
-    `"${a.status}"`,
-    `"${a.location}"`,
-    `"${a.purchase_price || 0}"`,
-  ]);
 
-  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-  const encodedUri = encodeURI(csvContent);
+/**
+ * Trigger a client-side CSV file download.
+ * Uses UTF-8 BOM (\uFEFF) + CRLF so the file opens correctly in
+ * Microsoft Excel (including koma-desimal lokal) tanpa import wizard.
+ */
+export function downloadCsv(filename: string, headers: string[], rows: (string | number | null | undefined)[][]) {
+  const escapeCell = (v: string | number | null | undefined) => {
+    const s = String(v ?? '');
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const csvContent = '\uFEFF' + [headers, ...rows].map(r => r.map(escapeCell).join(',')).join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `gabah_assets_${new Date().toISOString().split('T')[0]}.csv`);
+  link.href = url;
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Minimal RFC-4180 CSV parser (menangani quoted cell, "," di dalam nilai,
+ * dan \r\n / \n line ending) untuk fitur IMPORT data dari Excel/CSV.
+ */
+export function parseCsvText(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { cell += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        cell += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      row.push(cell);
+      cell = '';
+    } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell);
+      cell = '';
+      if (row.some(c => c.trim() !== '')) rows.push(row);
+      row = [];
+    } else {
+      cell += ch;
+    }
+  }
+  row.push(cell);
+  if (row.some(c => c.trim() !== '')) rows.push(row);
+  return rows;
+}
+
+export function exportAssetsToCsv(assets: Asset[]) {
+  downloadCsv(
+    `gabah_assets_${new Date().toISOString().split('T')[0]}.csv`,
+    ['Nomor Aset', 'Nomor Accurate', 'Nama Aset', 'Divisi Pemilik', 'Kategori', 'Kondisi', 'Status', 'Lokasi', 'Penanggung Jawab', 'Harga Beli'],
+    assets.map(a => [
+      a.asset_number,
+      a.corporate_asset_number || '-',
+      a.name,
+      a.owner_division,
+      a.category_type,
+      a.condition,
+      a.status,
+      a.location,
+      a.assigned_to?.name || '-',
+      a.purchase_price || 0,
+    ])
+  );
 }
 
 export function exportLoansToCsv(loans: Loan[]) {
-  const headers = ['Nomor Peminjaman', 'Nomor Aset', 'Nama Aset', 'Peminjam', 'Divisi/Dept', 'Mulai', 'Batas Waktu', 'Status'];
-  const rows = loans.map(l => [
-    `"${l.loan_number}"`,
-    `"${l.asset_number}"`,
-    `"${l.asset_name}"`,
-    `"${l.borrower_name}"`,
-    `"${l.borrower_department}"`,
-    `"${l.start_date}"`,
-    `"${l.due_date}"`,
-    `"${l.status}"`,
-  ]);
-
-  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement('a');
-  link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `gabah_loans_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadCsv(
+    `gabah_loans_${new Date().toISOString().split('T')[0]}.csv`,
+    ['Nomor Peminjaman', 'Nomor Aset', 'Nama Aset', 'Peminjam', 'Divisi/Dept', 'Mulai', 'Batas Waktu', 'Status'],
+    loans.map(l => [
+      l.loan_number,
+      l.asset_number,
+      l.asset_name,
+      l.borrower_name,
+      l.borrower_department,
+      l.start_date,
+      l.due_date,
+      l.status,
+    ])
+  );
 }
 
 export function exportTicketsToCsv(tickets: Ticket[]) {
-  const headers = ['Nomor Tiket', 'Judul', 'Kategori', 'Prioritas', 'Status', 'Pelapor', 'Departemen', 'Target SLA (Jam)'];
-  const rows = tickets.map(t => [
-    `"${t.ticket_number}"`,
-    `"${t.title.replace(/"/g, '""')}"`,
-    `"${t.category}"`,
-    `"${t.priority}"`,
-    `"${t.status}"`,
-    `"${t.reporter_name}"`,
-    `"${t.reporter_department}"`,
-    `"${t.sla_hours}"`,
-  ]);
-
-  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement('a');
-  link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `gabah_tickets_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadCsv(
+    `gabah_tickets_${new Date().toISOString().split('T')[0]}.csv`,
+    ['Nomor Tiket', 'Judul', 'Kategori (Divisi)', 'Prioritas', 'Status', 'Pelapor', 'Departemen', 'Target SLA (Jam)'],
+    tickets.map(t => [
+      t.ticket_number,
+      t.title,
+      t.category,
+      t.priority,
+      t.status,
+      t.reporter_name,
+      t.reporter_department,
+      t.sla_hours,
+    ])
+  );
 }
 
 export function exportMaintenanceToCsv(schedules: any[]) {
-  const headers = ['Kode Jadwal', 'Aset', 'Nomor Aset', 'Divisi', 'Frekuensi', 'Tgl Pelaksanaan', 'Status', 'Teknisi / Rekanan', 'Estimasi Biaya'];
-  const rows = schedules.map(s => [
-    `"${s.schedule_code}"`,
-    `"${(s.asset_name || '').replace(/"/g, '""')}"`,
-    `"${s.asset_number || '-'}"`,
-    `"${s.owner_division}"`,
-    `"${s.frequency}"`,
-    `"${s.scheduled_date}"`,
-    `"${s.status}"`,
-    `"${(s.technician_name || s.vendor_name || '-').replace(/"/g, '""')}"`,
-    `"${s.estimated_cost || 0}"`,
-  ]);
+  downloadCsv(
+    `gabah_maintenance_${new Date().toISOString().split('T')[0]}.csv`,
+    ['Kode Jadwal', 'Aset', 'Nomor Aset', 'Divisi', 'Frekuensi', 'Tgl Pelaksanaan', 'Status', 'Teknisi / Rekanan', 'Estimasi Biaya'],
+    schedules.map(s => [
+      s.schedule_code,
+      s.asset_name || '',
+      s.asset_number || '-',
+      s.owner_division,
+      s.frequency,
+      s.scheduled_date,
+      s.status,
+      s.technician_name || s.vendor_name || '-',
+      s.estimated_cost || 0,
+    ])
+  );
+}
 
-  const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement('a');
-  link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `gabah_maintenance_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+/**
+ * Export daftar pengguna/pegawai (untuk backup master data pegawai
+ * atau sebagai template dasar IMPORT massal).
+ */
+export function exportUsersToCsv(users: any[]) {
+  downloadCsv(
+    `gabah_pegawai_${new Date().toISOString().split('T')[0]}.csv`,
+    ['Nama', 'Email', 'Peran (Role)', 'Divisi', 'Departemen', 'Telepon', 'Status'],
+    users.map(u => [
+      u.name,
+      u.email,
+      u.role,
+      u.division || '',
+      u.department || '',
+      u.phone || '',
+      u.is_active === false ? 'Nonaktif' : 'Aktif',
+    ])
+  );
+}
+
+/**
+ * Unduh TEMPLATE IMPORT PEGAWAI (CSV siap diisi di Excel).
+ * Baris kedua adalah contoh format yang benar.
+ */
+export function downloadUsersImportTemplate() {
+  downloadCsv(
+    'template_import_pegawai_gabah.csv',
+    ['Nama', 'Email', 'Peran (Role)', 'Divisi', 'Departemen', 'Telepon'],
+    [['Budi Karyawan', 'budi.karyawan@foodstation.co.id', 'Karyawan', 'SC', 'Pergudangan & Distribusi', '08123456789']]
+  );
+}
+
+/**
+ * Parse hasil upload CSV/Excel pegawai menjadi payload siap kirim ke
+ * POST /api/users/bulk-import. Baris pertama dianggap header.
+ * Kembalikan daftar error per baris agar admin bisa memperbaiki file.
+ */
+export function parseUsersImportCsv(
+  text: string,
+  validRoles: string[],
+  validDivisions: string[]
+): { valid: { name: string; email: string; role: string; division: string; department: string; phone: string }[]; errors: string[] } {
+  const rows = parseCsvText(text);
+  if (rows.length < 2) {
+    return { valid: [], errors: ['File kosong atau hanya berisi header.'] };
+  }
+  const header = rows[0].map(h => h.trim().toLowerCase());
+  const idx = (candidates: string[]) => header.findIndex(h => candidates.some(c => h.includes(c)));
+  const iName = idx(['nama', 'name']);
+  const iEmail = idx(['email']);
+  const iRole = idx(['peran', 'role']);
+  const iDiv = idx(['divisi', 'division']);
+  const iDept = idx(['departemen', 'department', 'dept']);
+  const iPhone = idx(['telepon', 'phone', 'telp']);
+  if (iName === -1 || iEmail === -1) {
+    return { valid: [], errors: ['Header tidak dikenali. Gunakan template: Nama, Email, Peran (Role), Divisi, Departemen, Telepon.'] };
+  }
+  const valid: { name: string; email: string; role: string; division: string; department: string; phone: string }[] = [];
+  const errors: string[] = [];
+  const seenEmails = new Set<string>();
+  const normRole = (v: string) => {
+    const s = (v || '').trim().toLowerCase();
+    return validRoles.find(r => r.toLowerCase() === s)
+      || validRoles.find(r => r.toLowerCase().startsWith(s) && s.length >= 2)
+      || 'Karyawan';
+  };
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const rowNo = i + 1;
+    const name = (r[iName] || '').trim();
+    const email = (r[iEmail] || '').trim().toLowerCase();
+    if (!name || !email) { errors.push(`Baris ${rowNo}: Nama dan Email wajib diisi.`); continue; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Format email "${email}" tidak valid.`); continue; }
+    if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di file (${email}).`); continue; }
+    seenEmails.add(email);
+    const roleRaw = iRole !== -1 ? (r[iRole] || '').trim() : '';
+    const role = roleRaw ? normRole(roleRaw) : 'Karyawan';
+    if (roleRaw && !validRoles.includes(role)) {
+      errors.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenali. Pilihan: ${validRoles.join(', ')}.`);
+      continue;
+    }
+    const divisionRaw = iDiv !== -1 ? (r[iDiv] || '').trim() : '';
+    const division = validDivisions.find(d => d.toLowerCase() === divisionRaw.toLowerCase()) || divisionRaw || 'Umum';
+    valid.push({
+      name,
+      email,
+      role,
+      division,
+      department: iDept !== -1 ? (r[iDept] || '').trim() : '',
+      phone: iPhone !== -1 ? (r[iPhone] || '').trim() : '',
+    });
+  }
+  return { valid, errors };
+}
+
+/**
+ * Rekap agregat per divisi (jumlah aset, nilai perolehan, akumulasi
+ * depresiasi, nilai buku) — untuk laporan per divisi/departemen.
+ */
+export function exportDivisionSummaryToCsv(assets: Asset[]) {
+  const byDivision = new Map<string, Asset[]>();
+  for (const a of assets) {
+    const key = a.owner_division || 'Umum';
+    if (!byDivision.has(key)) byDivision.set(key, []);
+    byDivision.get(key)!.push(a);
+  }
+  const rows: (string | number)[][] = [];
+  for (const [div, list] of byDivision) {
+    const totalValue = list.reduce((s, a) => s + (a.purchase_price || a.price || 0), 0);
+    const dep = list.map(a => calculateDepreciation(a));
+    const accDep = dep.reduce((s, d) => s + d.accumulatedDepreciation, 0);
+    const nbv = dep.reduce((s, d) => s + d.netBookValue, 0);
+    rows.push([div, list.length, totalValue, accDep, nbv]);
+  }
+  downloadCsv(
+    `gabah_rekap_divisi_${new Date().toISOString().split('T')[0]}.csv`,
+    ['Divisi', 'Jumlah Aset', 'Nilai Perolehan (Rp)', 'Akumulasi Depresiasi (Rp)', 'Nilai Buku Bersih (Rp)'],
+    rows
+  );
 }
 
 /**
