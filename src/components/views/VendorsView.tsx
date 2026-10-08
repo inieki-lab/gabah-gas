@@ -38,7 +38,7 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
   onCreateVendor,
   onUpdateVendor,
 }) => {
-  const canManage = currentUser.role === 'Admin GABAH' || currentUser.role === 'GA';
+  const canManage = ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
