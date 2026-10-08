@@ -81,7 +81,7 @@ export class GabahDomainService {
 
     // Operational scopes: owner and physical location are independent.
     const isItWorkstation = (asset: ServerAsset) => {
-      const code = String(asset.category_code || asset.asset_code || '').toUpperCase();
+      const code = String(asset.category_code || '').toUpperCase();
       const name = String(asset.name || '').toLowerCase();
       return ['HLT', 'HPC'].includes(code)
         || code.includes('LAP')
@@ -335,9 +335,22 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
-    // Corporate Security Rule: All IT assets belong to IT. GA only has read-only access.
-    if (asset.owner_division === 'IT' && actor.role === 'GA') {
-      throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang merelokasi aset IT.');
+    // Corporate Division Authority (RBAC matrix — Mutasi Lokasi): setiap divisi
+    // hanya boleh merelokasi aset miliknya sendiri; Admin GABAH bebas. View
+    // scope lintas divisi (mis. IT melihat aset GA) tidak memperluas hak mutasi.
+    if (actor.role !== 'Admin GABAH') {
+      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
+        throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang merelokasi aset IT.');
+      }
+      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
+        throw new Error('Aset General Affair (GA) hanya dapat direlokasi oleh personel GA atau Admin GABAH.');
+      }
+      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+        throw new Error('Aset Supply Chain hanya dapat direlokasi oleh personel Supply Chain atau Admin GABAH.');
+      }
+      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+        throw new Error('Aset PIBC hanya dapat direlokasi oleh personel PIBC atau Admin GABAH.');
+      }
     }
 
     const oldLocation = asset.location;
@@ -369,9 +382,22 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
-    // Corporate Security Rule: All IT assets belong to IT. GA only has read-only access.
-    if (asset.owner_division === 'IT' && actor.role === 'GA') {
-      throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang mengubah lifecycle aset IT.');
+    // Corporate Division Authority (RBAC matrix — Mutasi Siklus Hidup): setiap
+    // divisi hanya boleh memutasi lifecycle aset miliknya sendiri; Admin GABAH
+    // bebas. View scope lintas divisi tidak memperluas hak mutasi.
+    if (actor.role !== 'Admin GABAH') {
+      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
+        throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang mengubah lifecycle aset IT.');
+      }
+      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
+        throw new Error('Aset General Affair (GA) hanya dapat dimutasi lifecycle-nya oleh personel GA atau Admin GABAH.');
+      }
+      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+        throw new Error('Aset Supply Chain hanya dapat dimutasi lifecycle-nya oleh personel Supply Chain atau Admin GABAH.');
+      }
+      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+        throw new Error('Aset PIBC hanya dapat dimutasi lifecycle-nya oleh personel PIBC atau Admin GABAH.');
+      }
     }
 
     switch (action) {

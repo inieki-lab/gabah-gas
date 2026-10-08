@@ -27,9 +27,12 @@ async function main(){
   const low=await make(sek,'Stage3 Sekdir low',{priority:'low',override_conflict:true});rec('Sekdir LOW no interrupt','403',low.status,low.status===403);
   const vip=await make(sek,'Stage3 urgent Direksi',{meeting_type:high.code,priority:'high',attendees_count:5,override_conflict:true,interruption_reason:'Urgent Direksi'});rec('Sekdir HIGH interrupt','201 approved',`${vip.status} ${vip.json?.data?.status}`,vip.status===201&&vip.json?.data?.status==='approved');
   const list=(await req(b,'GET','/api/room-reservations',{token:admin})).json?.data||[],moved=list.find(x=>x.id===base.json?.data?.id);rec('moved to alternative',`${alt.id}+interrupted`,`${moved?.room_id}+${Boolean(moved?.is_interrupted)}`,Boolean(moved&&moved.room_id===alt.id&&moved.is_interrupted));
-  const run=await make(karyawan,'Stage3 running'),rid=run.json?.data?.id,app=await req(b,'POST',`/api/room-reservations/${rid}/approve`,{token:ga}),ci=await req(b,'POST',`/api/room-reservations/${rid}/checkin`,{token:karyawan});rec('checkin','200 in_use',`${ci.status} ${ci.json?.data?.status}`,ci.status===200&&ci.json?.data?.status==='in_use');
+  // FIXTURE (bukan assertion): slot 13:00-14:00 bebas bentrok dengan booking
+  // VIP Direksi (ROOM-01 10:00-11:00 approved) agar skenario in_use protection
+  // (running meeting) dapat dicapai tanpa melanggar aturan anti-collision.
+  const run=await make(karyawan,'Stage3 running',{start_time:'13:00',end_time:'14:00'}),rid=run.json?.data?.id,app=await req(b,'POST',`/api/room-reservations/${rid}/approve`,{token:ga}),ci=await req(b,'POST',`/api/room-reservations/${rid}/checkin`,{token:karyawan});rec('checkin','200 in_use',`${ci.status} ${ci.json?.data?.status}`,ci.status===200&&ci.json?.data?.status==='in_use');
   rec('GA approval','200 approved',`${app.status} ${app.json?.data?.status}`,app.status===200&&app.json?.data?.status==='approved');
-  const ri=await make(sek,'Stage3 running interrupt',{meeting_type:high.code,priority:'high',override_conflict:true});rec('running protected','409',ri.status,ri.status===409);
+  const ri=await make(sek,'Stage3 running interrupt',{meeting_type:high.code,priority:'high',override_conflict:true,start_time:'13:00',end_time:'14:00'});rec('running protected','409',ri.status,ri.status===409);
   const anon=await req(b,'POST',`/api/room-reservations/${rid}/checkin`);rec('anonymous checkin','401',anon.status,anon.status===401);
   const badout=await req(b,'POST',`/api/room-reservations/${rid}/checkout`,{token:humas});rec('unrelated checkout','403',badout.status,badout.status===403);
   const out=await req(b,'POST',`/api/room-reservations/${rid}/checkout`,{token:karyawan});rec('organizer checkout','200 completed',`${out.status} ${out.json?.data?.status}`,out.status===200&&out.json?.data?.status==='completed');

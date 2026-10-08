@@ -1640,8 +1640,10 @@ async function startServer() {
 
   app.post('/api/maintenances', (req, res) => {
     const actor = getActor(req);
-    if (actor.role === 'Auditor' || actor.role === 'Karyawan') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Peran Anda tidak memiliki hak membuat jadwal servis.' });
+    // RBAC: hanya Admin GABAH / IT / GA yang mendapat management action
+    // maintenance; peran lain (SC, PIBC, Sekdir, Humas, Auditor) tidak.
+    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengelola jadwal servis.' });
     }
     if (!req.body.asset_id) {
       return res.status(400).json({ success: false, message: 'Aset wajib dipilih untuk jadwal pemeliharaan.' });
@@ -1698,8 +1700,10 @@ async function startServer() {
 
   app.patch('/api/maintenances/:id', (req, res) => {
     const actor = getActor(req);
-    if (actor.role === 'Auditor' || actor.role === 'Karyawan') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Peran Anda tidak memiliki hak memperbarui jadwal servis.' });
+    // RBAC: hanya Admin GABAH / IT / GA yang mendapat management action
+    // maintenance; peran lain (SC, PIBC, Sekdir, Humas, Auditor) tidak.
+    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengubah jadwal servis.' });
     }
     const schedule = db.maintenances.find(m => m.id === req.params.id);
     if (!schedule) return res.status(404).json({ success: false, message: 'Jadwal servis tidak ditemukan' });
@@ -2127,7 +2131,10 @@ async function startServer() {
       const created = GabahDomainService.requestRoomReservation(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({
+      // RBAC: preserve domain-service status codes — 403 for override/interupsi
+      // denial (GA / Sekretaris Direksi non-HIGH), 409 for running (in_use)
+      // protection, 400 for ordinary validation/conflict errors.
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({
         success: false,
         message: err.message,
         conflict: err.conflict || null,

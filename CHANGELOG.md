@@ -1,5 +1,32 @@
 # Changelog — GABAH
 
+## [2026-10-08] — UAT/RBAC Matrix Audit (9 Role) — verifikasi & perbaikan gap
+
+### Context
+- Audit RBAC/UAT atas implementasi terbaru di `main`. Basis audit awal: `1f94cb7`; selama audit remote `main` bertambah commit paralel (refactor matriks RBAC, scope vendor/contract/maintenance/asset) yang diintegrasikan. Perbaikan di bawah hanya untuk gap yang masih FAIL setelah integrasi.
+- Scope: sidebar/menu per role, API authorization aset, helpdesk, maintenance, vendor, contract, meeting room, dan larangan mutasi Auditor. Tidak ada fitur baru di luar itu.
+
+### Fixed — API authorization (root cause RBAC)
+- **Meeting room** (`server.ts`): `POST /api/room-reservations` kini meneruskan `err.statusCode` dari domain service — penolakan override/interupsi (GA, Sekretaris Direksi non-HIGH, role lain) kini **403** dan proteksi rapat `in_use` kini **409** (sebelumnya selalu 400). Verifikasi: override ditolak 403 untuk GA/IT/Humas/SC/PIBC/Karyawan/Sekdir-LOW; Sekdir HIGH & Admin GABAH tetap bisa interupsi (201).
+- **Maintenance** (`server.ts`): management action kini dibatasi **Admin GABAH, IT, GA** (server-side allowlist di `POST`/`PATCH /api/maintenances`, tetap per-scope divisi pemilik aset). Sebelumnya deny-list hanya Auditor/Karyawan sehingga SC/PIBC/Sekdir/Humas masih bisa create/update jadwal via API — kini 403.
+- **Contract** (`server/contracts.ts`): `canEditContract` kini mensyaratkan peran manajemen kontrak (Admin GABAH, IT, GA, SC, PIBC). Sebelumnya Sekretaris Direksi/Humas (divisi GA) masih bisa **edit kontrak** dan **memutus renewal** kontrak divisi GA; kini ditolak (request/read-only).
+- **Aset — mutasi lintas scope** (`server/services.ts`): `moveAsset()` & `mutateLifecycle()` kini memiliki guard otoritas divisi eksplisit (mirror `assignAsset`/PATCH): setiap divisi hanya boleh memutasi aset miliknya sendiri; Admin GABAH bebas. Sebelumnya **IT bisa merelokasi & memutasi lifecycle aset GA** karena view scope IT mencakup aset GA — view kini tidak lagi memperluas hak mutasi.
+- **Lint** (`server/services.ts`, `src/components/views/MaintenanceView.tsx`): memperbaiki error kompilasi (`asset.asset_code` tidak ada di tipe `ServerAsset`; referensi `isStaff` yang sudah dihapus). `npm run lint` kini 0 error.
+
+### Fixed — Test fixture (bukan assertion)
+- `scripts/meeting-room-stage3-verify.mjs`: booking `Stage3 running` dan `Stage3 running interrupt` dipindah ke slot 13:00-14:00. Slot 10:00-11:00 ROOM-01 sudah terisi booking VIP Direksi (approved), sehingga skenario rapat berjalan (`in_use`) tidak pernah dapat dicapai dan 6 assertion hilir (checkin/approve/checkout/409) gagal berantai. Semua assertion dan nilainya tidak diubah.
+
+### Verification status — AKTUAL (2026-10-08)
+- `npm ci` — OK.
+- `npm run lint` (tsc --noEmit) — PASS, 0 error (sebelum perbaikan: FAIL 2 error).
+- `npm run build` — PASS.
+- `npm run test:loan-authz` — **37/37 PASS**.
+- `npm run test:meeting-room` — **18/18 PASS** (sebelum perbaikan: 10/18).
+- `node scripts/menu-connectivity-verify.mjs` — **23/23 PASS**.
+- Probe RBAC lintas 9 role (sementara, tidak di-commit) — **60/60 sesuai matriks**: sidebar per role sesuai RBAC.md; aset (GA read-only PC/Laptop IT, mutasi lintas divisi ditolak, Auditor read-only semua); vendor (IT=IT/License, GA=non-IT, Admin full); kontrak (Admin/IT/GA/SC/PIBC sesuai owner; Sekdir/Humas/Karyawan/Auditor tidak bisa create/edit/renewal); maintenance (hanya Admin/IT/GA); meeting room (override hanya Admin GABAH & Sekdir HIGH); Auditor 403 untuk semua mutasi API; helpdesk kategori hanya IT/GA/SC/PIBC (400 untuk kategori lain).
+
+---
+
 ## [2026-10-08] — RBAC Matrix Refactor: Role × Menu × Scope
 
 ### Changed

@@ -398,7 +398,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                       </button>
                     )}
 
-                    {isStaff && onUpdateScheduleStatus && (
+                    {canManage && onUpdateScheduleStatus && (
                       <div className="flex items-center gap-1">
                         {sch.status === 'scheduled' && (
                           <button
