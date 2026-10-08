@@ -1542,6 +1542,17 @@ async function startServer() {
       }
     }
 
+    // T2B-1: managing unit operasional (relasi ke org_units.id) — divalidasi
+    // terhadap master aktif; nullable untuk kasus ambigu. owner_division &
+    // asset_number tetap server-owned (tidak berubah), RBAC tetap owner_division.
+    if (req.body.managing_unit_id !== undefined) {
+      const uid = req.body.managing_unit_id ? String(req.body.managing_unit_id).trim() : null;
+      if (uid && !(db.orgUnits || []).some(x => x.id === uid && x.is_active)) {
+        return res.status(400).json({ success: false, message: `Unit "${uid}" tidak terdaftar atau sedang nonaktif.` });
+      }
+      asset.managing_unit_id = uid;
+    }
+
     // Update mutable fields (not asset_number or owner_division)
     const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
     for (const key of allowed) {

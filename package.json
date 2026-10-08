@@ -11,7 +11,8 @@
     "lint": "tsc --noEmit",
     "test:loan-authz": "node scripts/loan-authz-verify.mjs",
     "test:meeting-room": "node scripts/meeting-room-stage3-verify.mjs",
-    "test:org-model": "node scripts/org-model-verify.mjs"
+    "test:org-model": "node scripts/org-model-verify.mjs",
+    "test:t2b1": "node scripts/t2b1-managing-unit-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -1,6 +1,7 @@
 import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility } from './db';
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
+import { resolveManagingUnitForOwnerDivision, validateManagingUnit } from './managing-unit';
 import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
@@ -117,6 +118,9 @@ export class GabahDomainService {
     category_code?: string;
     category_name?: string;
     owner_division?: 'IT' | 'GA' | 'SC' | 'PIBC';
+    /** T2B-1: unit operasional pengelola aset (relasi org_units.id).
+     *  Tidak memengaruhi owner_division, RBAC, maupun asset numbering. */
+    managing_unit_id?: string | null;
     name: string;
     corporate_asset_number?: string | null;
     brand?: string;
@@ -191,6 +195,18 @@ export class GabahDomainService {
     // 3. Atomically generate official asset number
     const assetNumber = AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code);
 
+    // T2B-1: managing unit operasional — divalidasi terhadap master org_units
+    // (harus ada & aktif). Jika tidak dispesifikasikan, diisi hasil resolusi
+    // berbasis ownership (owner_division), BUKAN lokasi. owner_division, RBAC,
+    // dan asset number TIDAK berubah oleh field ini.
+    let managingUnitId: string | null;
+    if (payload.managing_unit_id !== undefined) {
+      // Melempar Error (→ 400 di route) bila unit tidak ada / nonaktif.
+      managingUnitId = validateManagingUnit(payload.managing_unit_id);
+    } else {
+      managingUnitId = resolveManagingUnitForOwnerDivision(resolvedOwnerDivision);
+    }
+
     // 4. Resolve assignment if provided
     let assignedObj = null;
     let initialStatus: ServerAsset['status'] = payload.is_loanable ? 'available' : 'active';
@@ -217,6 +233,7 @@ export class GabahDomainService {
       category_code: taxonomy.code,
       category_type: taxonomy.category_type,
       owner_division: resolvedOwnerDivision,
+      managing_unit_id: managingUnitId,
       brand: payload.brand?.trim() || '',
       model: payload.model?.trim() || '',
       serial_number: payload.serial_number?.trim() || `SN-${Date.now().toString().slice(-6)}`,

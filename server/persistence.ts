@@ -6,6 +6,7 @@ import path from 'node:path';
 import { db, seedInitialData, CANONICAL_USERS } from './db';
 import { hashPassword } from './crypto';
 import { AssetNumberingEngine } from './numbering';
+import { normalizeAssetManagingUnits } from './managing-unit';
 
 /**
  * SECURITY (CR-02): initial canonical-account passwords are provisioned from
@@ -412,10 +413,10 @@ async function backfillNormalizedTables(): Promise<void> {
         [a.category_code,a.category_code,a.category_type,a.owner_division],
       );
       await client.query(
-        `INSERT INTO assets (id,asset_number,corporate_asset_number,name,category_id,owner_division_id,brand,model,serial_number,specifications,purchase_date,purchase_price,warranty_until,status,condition,location,is_loanable,license_detail,notes,created_at,updated_at)
-         VALUES ($1,$2,$3,$4,(SELECT id FROM asset_categories WHERE code=$5),(SELECT id FROM divisions WHERE code=$6),$7,$8,$9,$10,NULLIF($11,'')::date,$12,NULLIF($13,'')::date,$14,$15,$16,$17,$18,$19,$20,$21)
-         ON CONFLICT (id) DO UPDATE SET asset_number=EXCLUDED.asset_number,corporate_asset_number=EXCLUDED.corporate_asset_number,name=EXCLUDED.name,category_id=EXCLUDED.category_id,owner_division_id=EXCLUDED.owner_division_id,brand=EXCLUDED.brand,model=EXCLUDED.model,serial_number=EXCLUDED.serial_number,specifications=EXCLUDED.specifications,purchase_date=EXCLUDED.purchase_date,purchase_price=EXCLUDED.purchase_price,warranty_until=EXCLUDED.warranty_until,status=EXCLUDED.status,condition=EXCLUDED.condition,location=EXCLUDED.location,is_loanable=EXCLUDED.is_loanable,license_detail=EXCLUDED.license_detail,notes=EXCLUDED.notes,updated_at=EXCLUDED.updated_at`,
-        [a.id,a.asset_number,a.corporate_asset_number,a.name,a.category_code,a.owner_division,a.brand,a.model,a.serial_number,a.specifications,a.purchase_date || '',Number(a.purchase_price || 0),a.warranty_until || '',a.status,a.condition,a.location,a.is_loanable,a.license_detail ? JSON.stringify(a.license_detail) : null,a.notes || null,a.created_at,a.updated_at],
+        `INSERT INTO assets (id,asset_number,corporate_asset_number,name,category_id,owner_division_id,brand,model,serial_number,specifications,purchase_date,purchase_price,warranty_until,status,condition,location,is_loanable,license_detail,notes,managing_unit_id,created_at,updated_at)
+         VALUES ($1,$2,$3,$4,(SELECT id FROM asset_categories WHERE code=$5),(SELECT id FROM divisions WHERE code=$6),$7,$8,$9,$10,NULLIF($11,'')::date,$12,NULLIF($13,'')::date,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+         ON CONFLICT (id) DO UPDATE SET asset_number=EXCLUDED.asset_number,corporate_asset_number=EXCLUDED.corporate_asset_number,name=EXCLUDED.name,category_id=EXCLUDED.category_id,owner_division_id=EXCLUDED.owner_division_id,brand=EXCLUDED.brand,model=EXCLUDED.model,serial_number=EXCLUDED.serial_number,specifications=EXCLUDED.specifications,purchase_date=EXCLUDED.purchase_date,purchase_price=EXCLUDED.purchase_price,warranty_until=EXCLUDED.warranty_until,status=EXCLUDED.status,condition=EXCLUDED.condition,location=EXCLUDED.location,is_loanable=EXCLUDED.is_loanable,license_detail=EXCLUDED.license_detail,notes=EXCLUDED.notes,managing_unit_id=EXCLUDED.managing_unit_id,updated_at=EXCLUDED.updated_at`,
+        [a.id,a.asset_number,a.corporate_asset_number,a.name,a.category_code,a.owner_division,a.brand,a.model,a.serial_number,a.specifications,a.purchase_date || '',Number(a.purchase_price || 0),a.warranty_until || '',a.status,a.condition,a.location,a.is_loanable,a.license_detail ? JSON.stringify(a.license_detail) : null,a.notes || null,a.managing_unit_id ?? null,a.created_at,a.updated_at],
       );
       if (a.assigned_to?.id) {
         const userExists = db.users.some(u => u.id === a.assigned_to!.id);
@@ -515,6 +516,9 @@ export async function initializePersistence(): Promise<void> {
     console.log('[GABAH Persistence] Standalone environment active. Utilizing resilient local file storage.');
 
     const loaded = loadStateFromFile();
+    // T2B-1: backfill managing_unit_id (ownership-based, idempoten) untuk aset
+    // yang belum punya nilai — nilai eksplisit tidak pernah ditimpa.
+    normalizeAssetManagingUnits();
     if (loaded) {
       console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
     } else {
@@ -544,6 +548,9 @@ export async function initializePersistence(): Promise<void> {
       if (!db.assets || db.assets.length === 0) {
         seedInitialData();
       }
+      // T2B-1: backfill managing_unit_id sebelum state di-persist (baik dari
+      // blob hasil hydrate maupun seed baru); idempoten & ownership-based.
+      normalizeAssetManagingUnits();
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
       await persistPostgresState();
@@ -575,6 +582,8 @@ export async function initializePersistence(): Promise<void> {
 
   // Hydrate from persistent file store if it exists
   const loaded = loadStateFromFile();
+  // T2B-1: backfill managing_unit_id (idempoten) — jalur fallback file store.
+  normalizeAssetManagingUnits();
   if (loaded) {
     console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
   } else {

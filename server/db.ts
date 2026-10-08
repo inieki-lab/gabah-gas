@@ -82,6 +82,12 @@ export interface ServerAsset {
   category_code: string;
   category_type: 'IT' | 'General' | 'License';
   owner_division: 'IT' | 'GA' | 'SC' | 'PIBC';
+  /** T2B-1: unit operasional yang mengelola lifecycle aset (relasi ke org_units.id).
+   *  owner_division (legacy/canonical ownership domain + numbering + RBAC) tetap
+   *  berdiri sendiri; keduanya independen dari location & custodian/PIC.
+   *  Nullable: hasil backfill ambigu (mis. divisi GA dengan dua kandidat unit)
+   *  dibiarkan kosong sampai ditentukan secara eksplisit. */
+  managing_unit_id?: string | null;
   brand: string;
   model: string;
   serial_number: string;

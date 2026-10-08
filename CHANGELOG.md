@@ -1,5 +1,34 @@
 # Changelog — GABAH
 
+## [2026-10-08] — T2B-1 — Asset Ownership Core Model
+
+### Ringkasan
+Field baru **`managing_unit_id`** pada aset: unit operasional yang mengelola lifecycle aset (ownership/management, maintenance responsibility, scope pengelolaan), berelasi ke master **`org_units`** (hasil org-model refactor — tidak ada master unit baru). **`owner_division` tetap** sebagai legacy/canonical ownership domain (RBAC + numbering). Prinsip: Owner/Managing Unit ≠ Asset Location ≠ Custodian/PIC ≠ Category.
+
+### Schema/model
+- **`ServerAsset`** (`server/db.ts`) & **`Asset`** (`src/types.ts`): field baru opsional `managing_unit_id?: string | null` (relasi ke `org_units.id`).
+- **Modul baru `server/managing-unit.ts`**: resolusi ownership-based (`resolveManagingUnitForOwnerDivision`), validasi master (`validateManagingUnit`, unit harus ada & aktif), dan normalisasi backfill idempoten (`normalizeAssetManagingUnits`).
+- **Migration `server/migrations/007_asset_managing_unit.sql`** (additive & idempoten): `ALTER TABLE assets ADD COLUMN IF NOT EXISTS managing_unit_id VARCHAR(64) REFERENCES org_units(id) ON DELETE SET NULL` + index `idx_assets_managing_unit` + backfill. Tidak mengubah kolom lama apa pun; `ON DELETE SET NULL` aman terhadap data aset existing.
+- **Backfill aman, berbasis OWNERSHIP (bukan lokasi)**: aturan deterministik — unit dengan id persis `UNIT-{DIVISION}` (SC → `UNIT-SC`, PIBC → `UNIT-PIBC`), selanjutnya tepat satu unit dengan `division_code` sama (IT → `UNIT-IT-MIS`), selain itu **dibiarkan NULL** (contoh: GA punya dua kandidat unit → unresolved, tidak ditebak). Nilai eksplisit tidak pernah ditimpa saat hydrate ulang.
+
+### API
+- `POST /api/assets` & `PATCH /api/assets/:id` menerima `managing_unit_id` (validasi: unit terdaftar & aktif, selain itu `400`); `GET /api/assets` & `GET /api/assets/:id` mengembalikannya. `null` eksplisit diterima (nullable).
+
+### Persistence
+- **PostgreSQL**: kolom `managing_unit_id` ikut di-INSERT/UPSERT pada `backfillNormalizedTables`; migration runner CR-04 menjalankan 007.
+- **JSON fallback**: hydrate/serialize mempertahankan field (aset lama tanpa field di-backfill saat boot, aset baru selalu tersimpan); normalisasi berjalan di seluruh jalur boot.
+
+### Tidak berubah (scope guard T2B-1)
+`owner_division` & artinya, `asset_number`/`corporate_asset_number`/sequence table (numbering tetap `{DIV}-{CODE}-{YEAR}-{SEQ}`), taxonomy, RBAC/asset scope/authorization, `assets.location` (masih teks bebas), serta domain Maintenance, Contract, Loan/Assignment, Meeting Room, Helpdesk, Notification, Vendor, KB, Procurement.
+
+### Tests / build / lint — hasil aktual
+- `npm run lint` (`tsc --noEmit`): **PASS** (0 error)
+- `npm run build` (vite + esbuild): **PASS**
+- `npm run test:t2b1` (baru — `scripts/t2b1-managing-unit-verify.mjs`): **18/18 PASS** — create/update `managing_unit_id`, validasi referensi (unit tak dikenal/nonaktif → 400), backfill ownership, aset IT di lokasi PIBC tetap IT, asset number identik setelah restart/backfill, JSON roundtrip.
+- Regresi: `test:org-model` **14/14**, `test:loan-authz` **37/37**, `test:meeting-room` **18/18**, `p0-security-verify` **37/37** — semua PASS.
+
+Catatan: T2B-2 (Asset Location Master), redesign RBAC/maintenance/contract/loan, dan kompatibilitas numbering (T2B-4) **belum** dikerjakan.
+
 ## [2026-10-08] — Rombak Struktur Master Organisasi: Role ≠ Jabatan/Level ≠ Unit ≠ Lokasi
 
 ### Ringkasan
