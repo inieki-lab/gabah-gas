@@ -104,6 +104,7 @@ export class GabahDomainService {
         const loc = String(a.location || '').toLowerCase();
         return a.owner_division === 'PIBC' || loc.includes('pibc') || (dept.length >= 3 && loc.includes(dept));
       });
+    }
 
     return db.assets;
   }
