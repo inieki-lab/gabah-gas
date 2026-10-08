@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole || 'Admin GABAH';
-  const isStaff = activeRole === 'Karyawan' || activeRole === 'Sekretaris Direksi' || activeRole === 'Humas';
+  const isStaff = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(activeRole);
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
   const isSuperAdmin = activeRole === 'Admin GABAH';
@@ -157,20 +157,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'assets',
-          label: 'Katalog Aset',
-          description: 'IT, GA, Kendaraan & SC',
+          label: 'Aset',
+          description: 'Katalog & pengelolaan aset sesuai scope',
           icon: Package,
           badge: null,
           roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
         },
         {
           id: 'maintenance',
-          label: 'Servis & Maintenance',
-          description: 'Jadwal Berkala & Uji Tera',
+          label: 'Maintenance',
+          description: 'Pemeliharaan & permintaan servis',
           icon: Wrench,
           badge: 'Rutin',
           badgeColor: 'bg-amber-100 text-amber-800 border border-amber-300',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'licenses',
@@ -220,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Depresiasi & SLA',
           icon: BarChart3,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
         },
       ],
     },
