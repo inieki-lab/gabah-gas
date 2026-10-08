@@ -61,7 +61,8 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     checklistText: '',
   });
 
-  const isStaff = currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain';
+  const canManage = ['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
+  const isRequestRole = ['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan'].includes(currentUser?.role || '');
 
   // Filtered schedules
   const filteredSchedules = schedules.filter((sch) => {
@@ -165,7 +166,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {isStaff && (
+          {canManage && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-[#4ABDAC] hover:bg-[#3ca89a] text-white rounded-xl font-bold text-xs shadow-md shadow-[#4ABDAC]/25 transition-all"
