@@ -70,6 +70,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   const [isRunningSweep, setIsRunningSweep] = useState(false);
 
   const isAdmin = currentUser.role === 'Admin GABAH';
+  const canManage = ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(currentUser.role);
 
   const vendors = useMemo(() => Array.from(new Set(contracts.map(c => c.vendor_name))).sort(), [contracts]);
   const types = useMemo(() => Array.from(new Set(contracts.map(c => c.contract_type))).sort(), [contracts]);
@@ -158,13 +159,15 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
               Jalankan Reminder Sweep
             </button>
           )}
-          <button
-            onClick={onCreateContract}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Kontrak Baru
-          </button>
+          {canManage && (
+            <button
+              onClick={onCreateContract}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Kontrak Baru
+            </button>
+          )}
         </div>
       </div>
 
