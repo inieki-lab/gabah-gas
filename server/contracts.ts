@@ -72,9 +72,8 @@ export function canSeeContract(user: ServerUser, contract: ServerContract): bool
 }
 
 export function canManageContracts(user: ServerUser): boolean {
-  // Ownership-based creation: any authenticated non-auditor staff may register contracts for their division;
-  // Admin GABAH manages all. Auditor is read-only.
-  return user.role !== 'Auditor';
+  // Contract management is limited to the operational owner roles.
+  return ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(user.role);
 }
 
 function canEditContract(user: ServerUser, contract: ServerContract): boolean {
