@@ -101,6 +101,32 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body;
+      // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
+      // independen dari role. Divalidasi terhadap master masing-masing.
+      let newJobLevel: string | undefined;
+      if (req.body.job_level_code) {
+        const code = String(req.body.job_level_code).trim().toUpperCase();
+        if (!(db.jobLevels || []).some(j => j.code === code && j.is_active)) {
+          return res.status(400).json({ success: false, message: `Jabatan "${code}" tidak terdaftar atau sedang nonaktif.` });
+        }
+        newJobLevel = code;
+      }
+      let newUnitId: string | undefined;
+      if (req.body.unit_id) {
+        const uid = String(req.body.unit_id).trim();
+        if (!(db.orgUnits || []).some(x => x.id === uid && x.is_active)) {
+          return res.status(400).json({ success: false, message: `Unit "${uid}" tidak terdaftar atau sedang nonaktif.` });
+        }
+        newUnitId = uid;
+      }
+      let newOfficeId: string | undefined;
+      if (req.body.office_location_id) {
+        const lid = String(req.body.office_location_id).trim();
+        if (!(db.officeLocations || []).some(x => x.id === lid && x.is_active)) {
+          return res.status(400).json({ success: false, message: `Lokasi kantor "${lid}" tidak terdaftar atau sedang nonaktif.` });
+        }
+        newOfficeId = lid;
+      }
       if (!name || !email) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi' });
       }
@@ -134,6 +160,9 @@ async function startServer() {
         role_label: roleLabels[role] || 'Pegawai Operasional',
         division: division || 'Umum',
         department: department || 'Operasional',
+        job_level_code: newJobLevel,
+        unit_id: newUnitId || null,
+        office_location_id: newOfficeId || null,
         phone: phone || '',
         avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
         is_active: true,
@@ -307,6 +336,32 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
+      // ORG-MODEL: jabatan/unit/lokasi ditugaskan independen — TIDAK mengubah
+      // role/permission (RBAC). Nilai divalidasi terhadap master masing-masing.
+      let orgJobLevel: string | undefined | null;
+      let orgUnit: string | undefined | null;
+      let orgOffice: string | undefined | null;
+      if (req.body.job_level_code !== undefined) {
+        const code = String(req.body.job_level_code || '').trim().toUpperCase() || null;
+        if (code && !(db.jobLevels || []).some(j => j.code === code && j.is_active)) {
+          return res.status(400).json({ success: false, message: `Jabatan "${code}" tidak terdaftar atau sedang nonaktif.` });
+        }
+        orgJobLevel = code;
+      }
+      if (req.body.unit_id !== undefined) {
+        const uid = req.body.unit_id ? String(req.body.unit_id).trim() : null;
+        if (uid && !(db.orgUnits || []).some(x => x.id === uid && x.is_active)) {
+          return res.status(400).json({ success: false, message: `Unit "${uid}" tidak terdaftar atau sedang nonaktif.` });
+        }
+        orgUnit = uid;
+      }
+      if (req.body.office_location_id !== undefined) {
+        const lid = req.body.office_location_id ? String(req.body.office_location_id).trim() : null;
+        if (lid && !(db.officeLocations || []).some(x => x.id === lid && x.is_active)) {
+          return res.status(400).json({ success: false, message: `Lokasi kantor "${lid}" tidak terdaftar atau sedang nonaktif.` });
+        }
+        orgOffice = lid;
+      }
       if (name !== undefined) targetUser.name = name.trim();
       // CR-05: Telegram chat id is an admin-managed profile field (server-side only);
       // it is NEVER accepted from non-admin input and never echoed in login flows.
@@ -339,6 +394,10 @@ async function startServer() {
       if (department !== undefined) targetUser.department = department.trim();
       if (is_active !== undefined) targetUser.is_active = Boolean(is_active);
       if (phone !== undefined) targetUser.phone = phone.trim();
+      // ORG-MODEL: atribut jabatan/unit/lokasi — independen dari role/permission.
+      if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
+      if (orgUnit !== undefined) targetUser.unit_id = orgUnit;
+      if (orgOffice !== undefined) targetUser.office_location_id = orgOffice;
 
       if (password) {
         const plain = String(password).trim();
@@ -1095,6 +1154,152 @@ async function startServer() {
       res.json({ success: true, message: `Divisi ${code} berhasil dihapus.` });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // =========================
+  // ORG-MODEL: Master Jabatan/Level, Unit, dan Kantor/Lokasi.
+  // Ketiganya master terpisah & configurable (tambah/edit/disable) oleh
+  // Admin GABAH. Jabatan TIDAK memberikan permission (RBAC tetap per role);
+  // Unit ≠ Jabatan ≠ Lokasi; lokasi tidak memengaruhi owner/numbering aset.
+  // =========================
+  app.get('/api/master/job-levels', (req, res) => {
+    res.json({ success: true, data: db.jobLevels || [] });
+  });
+
+  app.post('/api/master/job-levels', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master jabatan.' });
+      }
+      const code = String(req.body.code || '').trim().toUpperCase();
+      const label = String(req.body.label || '').trim();
+      if (!code || !label) return res.status(400).json({ success: false, message: 'Kode dan nama jabatan wajib diisi.' });
+      if (!db.jobLevels) db.jobLevels = [];
+      if (db.jobLevels.some(j => j.code === code)) {
+        return res.status(400).json({ success: false, message: `Jabatan dengan kode "${code}" sudah ada.` });
+      }
+      const maxOrder = db.jobLevels.reduce((m, j) => Math.max(m, j.order || 0), 0);
+      const level = { code, label, order: Number(req.body.order) || maxOrder + 1, is_active: true };
+      db.jobLevels.push(level);
+      GabahDomainService.recordAudit('JOB_LEVEL_CREATED', 'Organization', `Menambahkan master jabatan ${level.code} (${level.label})`, actor);
+      await persistDataStore();
+      res.status(201).json({ success: true, data: level });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.patch('/api/master/job-levels/:code', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master jabatan.' });
+      }
+      if (!db.jobLevels) db.jobLevels = [];
+      const level = db.jobLevels.find(j => j.code === req.params.code.trim().toUpperCase());
+      if (!level) return res.status(404).json({ success: false, message: 'Jabatan tidak ditemukan.' });
+      if (req.body.label !== undefined) level.label = String(req.body.label).trim() || level.label;
+      if (req.body.order !== undefined) level.order = Number(req.body.order);
+      if (req.body.is_active !== undefined) level.is_active = Boolean(req.body.is_active);
+      GabahDomainService.recordAudit('JOB_LEVEL_UPDATED', 'Organization', `Memperbarui master jabatan ${level.code} (${level.label}) — aktif: ${level.is_active}`, actor);
+      await persistDataStore();
+      res.json({ success: true, data: level });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.get('/api/master/org-units', (req, res) => {
+    res.json({ success: true, data: db.orgUnits || [] });
+  });
+
+  app.post('/api/master/org-units', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master unit.' });
+      }
+      const name = String(req.body.name || '').trim();
+      const divisionCode = String(req.body.division_code || 'Umum').trim().toUpperCase();
+      if (!name) return res.status(400).json({ success: false, message: 'Nama unit wajib diisi.' });
+      if (!db.orgUnits) db.orgUnits = [];
+      if (db.orgUnits.some(u => u.name.toLowerCase() === name.toLowerCase())) {
+        return res.status(400).json({ success: false, message: `Unit "${name}" sudah ada.` });
+      }
+      const unit = { id: `UNIT-${Date.now().toString(36).toUpperCase()}`, name, division_code: divisionCode as any, is_active: true };
+      db.orgUnits.push(unit);
+      GabahDomainService.recordAudit('ORG_UNIT_CREATED', 'Organization', `Menambahkan master unit ${unit.name} (divisi ${unit.division_code})`, actor);
+      await persistDataStore();
+      res.status(201).json({ success: true, data: unit });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.patch('/api/master/org-units/:id', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master unit.' });
+      }
+      if (!db.orgUnits) db.orgUnits = [];
+      const unit = db.orgUnits.find(u => u.id === req.params.id);
+      if (!unit) return res.status(404).json({ success: false, message: 'Unit tidak ditemukan.' });
+      if (req.body.name !== undefined) unit.name = String(req.body.name).trim() || unit.name;
+      if (req.body.division_code !== undefined) unit.division_code = String(req.body.division_code).trim().toUpperCase() as any;
+      if (req.body.is_active !== undefined) unit.is_active = Boolean(req.body.is_active);
+      GabahDomainService.recordAudit('ORG_UNIT_UPDATED', 'Organization', `Memperbarui master unit ${unit.name} — aktif: ${unit.is_active}`, actor);
+      await persistDataStore();
+      res.json({ success: true, data: unit });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.get('/api/master/office-locations', (req, res) => {
+    res.json({ success: true, data: db.officeLocations || [] });
+  });
+
+  app.post('/api/master/office-locations', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi kantor.' });
+      }
+      const name = String(req.body.name || '').trim();
+      if (!name) return res.status(400).json({ success: false, message: 'Nama lokasi kantor wajib diisi.' });
+      if (!db.officeLocations) db.officeLocations = [];
+      if (db.officeLocations.some(l => l.name.toLowerCase() === name.toLowerCase())) {
+        return res.status(400).json({ success: false, message: `Lokasi kantor "${name}" sudah ada.` });
+      }
+      const loc = { id: `OFF-${Date.now().toString(36).toUpperCase()}`, name, is_active: true };
+      db.officeLocations.push(loc);
+      GabahDomainService.recordAudit('OFFICE_LOCATION_CREATED', 'Organization', `Menambahkan master lokasi kantor ${loc.name}`, actor);
+      await persistDataStore();
+      res.status(201).json({ success: true, data: loc });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.patch('/api/master/office-locations/:id', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi kantor.' });
+      }
+      if (!db.officeLocations) db.officeLocations = [];
+      const loc = db.officeLocations.find(l => l.id === req.params.id);
+      if (!loc) return res.status(404).json({ success: false, message: 'Lokasi kantor tidak ditemukan.' });
+      if (req.body.name !== undefined) loc.name = String(req.body.name).trim() || loc.name;
+      if (req.body.is_active !== undefined) loc.is_active = Boolean(req.body.is_active);
+      GabahDomainService.recordAudit('OFFICE_LOCATION_UPDATED', 'Organization', `Memperbarui master lokasi kantor ${loc.name} — aktif: ${loc.is_active}`, actor);
+      await persistDataStore();
+      res.json({ success: true, data: loc });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
     }
   });
 

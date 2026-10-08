@@ -9,6 +9,15 @@ export interface ServerUser {
   role_label?: string;
   division: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
   department: string;
+  /** ORG-MODEL: Jabatan/Level organisasi — atribut independen, BUKAN permission.
+   *  Merujuk kode pada db.jobLevels (master configurable; direksi/kadiv/kadep/kasi/staf = seed default). */
+  job_level_code?: string;
+  /** ORG-MODEL: Unit organisasi — master terpisah dari jabatan & lokasi.
+   *  Merujuk id pada db.orgUnits. Role ≠ Unit: pegawai Staf dapat berada di unit apa pun. */
+  unit_id?: string | null;
+  /** ORG-MODEL: Lokasi/Kantor penempatan — master terpisah dari unit & jabatan.
+   *  Merujuk id pada db.officeLocations. Tidak memengaruhi owner aset / asset numbering. */
+  office_location_id?: string | null;
   phone?: string;
   avatar: string;
   is_active: boolean;
@@ -21,6 +30,29 @@ export interface ServerUser {
   temp_password?: string;
   /** Telegram chat id for contract reminder push (admin-managed via PATCH /api/users/:id). */
   telegram_chat_id?: string;
+}
+
+export interface OrgJobLevel {
+  /** Kode stabil untuk referensi user (mis. STAF, KADIV). */
+  code: string;
+  label: string;
+  /** Urutan senioritas (kecil = tinggi) untuk sorting UI. */
+  order: number;
+  is_active: boolean;
+}
+
+export interface OrgUnit {
+  id: string;
+  name: string;
+  /** Divisi pemilik unit (IT/GA/SC/PIBC/Audit/Umum) — unit milik divisi, jabatan tidak. */
+  division_code: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
+  is_active: boolean;
+}
+
+export interface OrgOfficeLocation {
+  id: string;
+  name: string;
+  is_active: boolean;
 }
 
 export interface ServerSession {
@@ -401,6 +433,45 @@ export const db = {
     { id: 'loc-3', name: 'Depo Armada & Transportasi', address: 'Pintu 3 Pasar Induk Cipinang', capacity: '35 Truk Fuso' },
     { id: 'loc-4', name: 'Data Center & Server Room', address: 'Gedung Utama Lt. 2, Cipinang', capacity: 'Tier 2 Redundant' }
   ] as any[],
+
+  // =========================
+  // ORG-MODEL: Master Jabatan/Level — configurable oleh Admin GABAH
+  // (tambah/edit/disable). Level TIDAK memberikan permission; permission
+  // tetap berasal dari RBAC per role.
+  // =========================
+  jobLevels: [
+    { code: 'DIREKSI', label: 'Direksi', order: 1, is_active: true },
+    { code: 'KADIV', label: 'Kepala Divisi', order: 2, is_active: true },
+    { code: 'KADEP', label: 'Kepala Departemen', order: 3, is_active: true },
+    { code: 'KASI', label: 'Kepala Seksi', order: 4, is_active: true },
+    { code: 'STAF', label: 'Staf', order: 5, is_active: true },
+  ] as OrgJobLevel[],
+
+  // ORG-MODEL: Master Unit/Bagian — terpisah dari jabatan & lokasi.
+  // PIBC / Supply Chain / Pangsub adalah UNIT, bukan jabatan.
+  orgUnits: [
+    { id: 'UNIT-SEKDIR', name: 'Sekretariat Direksi', division_code: 'Umum', is_active: true },
+    { id: 'UNIT-HUMAS', name: 'Humas & Protokoler', division_code: 'Umum', is_active: true },
+    { id: 'UNIT-IT-MIS', name: 'IT & MIS', division_code: 'IT', is_active: true },
+    { id: 'UNIT-GA-SARPRAS', name: 'GA / Sarpras', division_code: 'GA', is_active: true },
+    { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
+    { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
+    { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
+    { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
+    { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
+  ] as OrgUnit[],
+
+  // ORG-MODEL: Master Kantor/Lokasi penempatan — terpisah dari Unit.
+  // Satu lokasi dapat memuat banyak unit; unit tidak terkunci ke satu lokasi.
+  // Tidak ada mapping permanen level→lokasi (contoh kondisi organisasi, bukan aturan sistem).
+  officeLocations: [
+    { id: 'OFF-KP', name: 'Kantor Pusat', is_active: true },
+    { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
+    { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
+    { id: 'OFF-PANGSUB', name: 'Kantor Pangsub', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC/Supply Chain', is_active: true },
+  ] as OrgOfficeLocation[],
+
   divisions: [
     { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
     { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },

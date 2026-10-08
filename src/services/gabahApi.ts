@@ -300,6 +300,46 @@ class GabahApiClient {
     });
   }
 
+  // =========================
+  // ORG-MODEL: master Jabatan/Level, Unit, Kantor/Lokasi (terpisah & configurable).
+  // Jabatan TIDAK memberikan permission — RBAC tetap per role.
+  // =========================
+  async getJobLevels(): Promise<any[]> {
+    return this.request<any[]>('/api/master/job-levels');
+  }
+
+  async createJobLevel(payload: { code: string; label: string; order?: number }): Promise<any> {
+    return this.request<any>('/api/master/job-levels', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateJobLevel(code: string, payload: { label?: string; order?: number; is_active?: boolean }): Promise<any> {
+    return this.request<any>(`/api/master/job-levels/${encodeURIComponent(code)}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  }
+
+  async getOrgUnits(): Promise<any[]> {
+    return this.request<any[]>('/api/master/org-units');
+  }
+
+  async createOrgUnit(payload: { name: string; division_code: string }): Promise<any> {
+    return this.request<any>('/api/master/org-units', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateOrgUnit(id: string, payload: { name?: string; division_code?: string; is_active?: boolean }): Promise<any> {
+    return this.request<any>(`/api/master/org-units/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  }
+
+  async getOfficeLocations(): Promise<any[]> {
+    return this.request<any[]>('/api/master/office-locations');
+  }
+
+  async createOfficeLocation(payload: { name: string }): Promise<any> {
+    return this.request<any>('/api/master/office-locations', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateOfficeLocation(id: string, payload: { name?: string; is_active?: boolean }): Promise<any> {
+    return this.request<any>(`/api/master/office-locations/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  }
+
   // Assets
   async getAssets(): Promise<Asset[]> {
     return this.request<Asset[]>('/api/assets');

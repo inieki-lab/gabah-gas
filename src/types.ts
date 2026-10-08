@@ -256,6 +256,11 @@ export interface UserProfile {
   role_label: string;
   division?: OwnerDivision;
   department: string;
+  /** ORG-MODEL: atribut organisasi independen — jabatan TIDAK memberikan permission,
+   *  unit ≠ role, lokasi penempatan ≠ unit. */
+  job_level_code?: string;
+  unit_id?: string | null;
+  office_location_id?: string | null;
   avatar: string;
   // SECURITY (CR-02): temp_password removed from the client model — plaintext
   // credentials are never sent to or stored by the frontend.

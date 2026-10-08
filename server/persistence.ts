@@ -189,6 +189,74 @@ function hydrateDbFromState(state: any): void {
   if (Array.isArray(state.categories) && state.categories.length > 0) db.categories = state.categories;
   if (Array.isArray(state.locations) && state.locations.length > 0) db.locations = state.locations;
   if (Array.isArray(state.divisions) && state.divisions.length > 0) db.divisions = state.divisions;
+
+  // =========================
+  // ORG-MODEL migration (aman, idempoten):
+  // 1) Master jabatan/unit/lokasi: selalu di-merge dengan seed default —
+  //    master lama (tanpa field ini) tetap mendapat default sehingga data
+  //    existing tetap terbaca. Master baru dari state (jika ada) dipertahankan.
+  // 2) User lama tanpa job_level_code/unit_id/office_location_id di-backfill
+  //    default STAF/null TANPA mengubah role/divisi — kombinasi role+jabatan+
+  //    unit+lokasi kini atribut user, bukan role baru.
+  // =========================
+  const DEFAULT_JOB_LEVELS = [
+    { code: 'DIREKSI', label: 'Direksi', order: 1, is_active: true },
+    { code: 'KADIV', label: 'Kepala Divisi', order: 2, is_active: true },
+    { code: 'KADEP', label: 'Kepala Departemen', order: 3, is_active: true },
+    { code: 'KASI', label: 'Kepala Seksi', order: 4, is_active: true },
+    { code: 'STAF', label: 'Staf', order: 5, is_active: true },
+  ];
+  const stateJobLevels = Array.isArray(state.jobLevels) ? state.jobLevels : [];
+  db.jobLevels = DEFAULT_JOB_LEVELS.map(def => {
+    const existing = stateJobLevels.find((j: any) => j && j.code === def.code);
+    return existing ? { ...def, ...existing } : { ...def };
+  }).concat(stateJobLevels.filter((j: any) => j && !DEFAULT_JOB_LEVELS.some(d => d.code === j.code)) as any[]);
+
+  const DEFAULT_ORG_UNITS = [
+    { id: 'UNIT-SEKDIR', name: 'Sekretariat Direksi', division_code: 'Umum', is_active: true },
+    { id: 'UNIT-HUMAS', name: 'Humas & Protokoler', division_code: 'Umum', is_active: true },
+    { id: 'UNIT-IT-MIS', name: 'IT & MIS', division_code: 'IT', is_active: true },
+    { id: 'UNIT-GA-SARPRAS', name: 'GA / Sarpras', division_code: 'GA', is_active: true },
+    { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
+    { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
+    { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
+    { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
+    { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
+  ];
+  const stateOrgUnits = Array.isArray(state.orgUnits) ? state.orgUnits : [];
+  db.orgUnits = DEFAULT_ORG_UNITS.map(def => {
+    const existing = stateOrgUnits.find((u: any) => u && u.id === def.id);
+    return existing ? { ...def, ...existing } : { ...def };
+  }).concat(stateOrgUnits.filter((u: any) => u && !DEFAULT_ORG_UNITS.some(d => d.id === u.id)) as any[]);
+
+  const DEFAULT_OFFICE_LOCATIONS = [
+    { id: 'OFF-KP', name: 'Kantor Pusat', is_active: true },
+    { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
+    { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
+    { id: 'OFF-PANGSUB', name: 'Kantor Pangsub', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC/Supply Chain', is_active: true },
+  ];
+  const stateOfficeLocations = Array.isArray(state.officeLocations) ? state.officeLocations : [];
+  db.officeLocations = DEFAULT_OFFICE_LOCATIONS.map(def => {
+    const existing = stateOfficeLocations.find((l: any) => l && l.id === def.id);
+    return existing ? { ...def, ...existing } : { ...def };
+  }).concat(stateOfficeLocations.filter((l: any) => l && !DEFAULT_OFFICE_LOCATIONS.some(d => d.id === l.id)) as any[]);
+
+  // Backfill atribut user lama (migration non-destruktif — role/divisi tidak diubah).
+  const validJobLevelCodes = new Set(db.jobLevels.map(j => j.code));
+  const validUnitIds = new Set(db.orgUnits.map(u => u.id));
+  const validOfficeIds = new Set(db.officeLocations.map(l => l.id));
+  for (const u of db.users as any[]) {
+    if (typeof u.job_level_code !== 'string' || !validJobLevelCodes.has(u.job_level_code)) {
+      u.job_level_code = 'STAF';
+    }
+    if (u.unit_id !== null && (typeof u.unit_id !== 'string' || !validUnitIds.has(u.unit_id))) {
+      u.unit_id = null;
+    }
+    if (u.office_location_id !== null && (typeof u.office_location_id !== 'string' || !validOfficeIds.has(u.office_location_id))) {
+      u.office_location_id = null;
+    }
+  }
   if (Array.isArray(state.meetingTypes) && state.meetingTypes.length > 0) db.meetingTypes = state.meetingTypes;
   if (Array.isArray(state.meetingFacilities) && state.meetingFacilities.length > 0) db.meetingFacilities = state.meetingFacilities;
   if (Array.isArray(state.contracts) && state.contracts.length > 0) db.contracts = state.contracts;
@@ -244,6 +312,9 @@ function createPayload() {
     categories: db.categories,
     locations: db.locations,
     divisions: db.divisions,
+    jobLevels: db.jobLevels,
+    orgUnits: db.orgUnits,
+    officeLocations: db.officeLocations,
     meetingTypes: db.meetingTypes,
     meetingFacilities: db.meetingFacilities,
     contracts: db.contracts,

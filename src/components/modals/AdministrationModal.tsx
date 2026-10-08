@@ -34,7 +34,9 @@ import {
   RotateCcw,
   FileText,
   Sliders,
-  Info
+  Info,
+  Network,
+  Power
 } from 'lucide-react';
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
@@ -45,6 +47,7 @@ export type AdminSection =
   | 'users'
   | 'roles'
   | 'organization'
+  | 'org_masters'
   | 'master_data'
   | 'numbering'
   | 'notifications'
@@ -94,6 +97,25 @@ export interface MasterLocation {
   name: string;
   address: string;
   capacity: string;
+}
+
+// ORG-MODEL: master terpisah — Jabatan/Level, Unit, Kantor/Lokasi.
+export interface OrgJobLevel {
+  code: string;
+  label: string;
+  order: number;
+  is_active: boolean;
+}
+export interface OrgUnit {
+  id: string;
+  name: string;
+  division_code: string;
+  is_active: boolean;
+}
+export interface OrgOfficeLocation {
+  id: string;
+  name: string;
+  is_active: boolean;
 }
 
 export interface NotificationRule {
@@ -233,6 +255,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     role: UserRole;
     division: OwnerDivision;
     department: string;
+    job_level_code: string;
+    unit_id: string;
+    office_location_id: string;
     phone: string;
     is_active: boolean;
     telegram_chat_id: string;
@@ -243,6 +268,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     role: 'Karyawan',
     division: 'SC',
     department: '',
+    job_level_code: '',
+    unit_id: '',
+    office_location_id: '',
     phone: '',
     is_active: true,
     telegram_chat_id: '',
@@ -288,10 +316,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const [liveCats, liveLocs, liveDivs] = await Promise.all([
+        const [liveCats, liveLocs, liveDivs, liveJobLevels, liveOrgUnits, liveOffices] = await Promise.all([
           gabahApi.getCategories().catch(() => []),
           gabahApi.getLocations().catch(() => []),
           gabahApi.getDivisions().catch(() => []),
+          gabahApi.getJobLevels().catch(() => []),
+          gabahApi.getOrgUnits().catch(() => []),
+          gabahApi.getOfficeLocations().catch(() => []),
         ]);
         if (Array.isArray(liveCats) && liveCats.length > 0) {
           const mapped = liveCats.map((c: any) => ({
@@ -313,6 +344,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         if (Array.isArray(liveDivs) && liveDivs.length > 0) {
           setDivisions(liveDivs);
         }
+        // ORG-MODEL: masters terpisah jabatan/unit/lokasi kantor
+        if (Array.isArray(liveJobLevels) && liveJobLevels.length > 0) setJobLevels(liveJobLevels);
+        if (Array.isArray(liveOrgUnits) && liveOrgUnits.length > 0) setOrgUnits(liveOrgUnits);
+        if (Array.isArray(liveOffices) && liveOffices.length > 0) setOfficeLocations(liveOffices);
       } catch (e) {
         console.warn('Notice loading master data:', e);
       }
@@ -411,6 +446,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [editRoleRow, setEditRoleRow] = useState<RolePermissionRow | null>(null);
 
   // Organization State
+  // ORG-MODEL: master Jabatan/Level, Unit, dan Kantor/Lokasi (terpisah).
+  const [jobLevels, setJobLevels] = useState<OrgJobLevel[]>([]);
+  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
+  const [officeLocations, setOfficeLocations] = useState<OrgOfficeLocation[]>([]);
+  const [newJobLevelData, setNewJobLevelData] = useState({ code: '', label: '', order: '' });
+  const [newOrgUnitData, setNewOrgUnitData] = useState({ name: '', division_code: 'Umum' });
+  const [newOfficeData, setNewOfficeData] = useState({ name: '' });
+  const [isSubmittingOrgMaster, setIsSubmittingOrgMaster] = useState(false);
+
   const [divisions, setDivisions] = useState<OrgDivision[]>(() => {
     const saved = localStorage.getItem('gabah_org_divisions');
     if (saved) {
@@ -687,6 +731,104 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast(`Divisi "${code} - ${name}" berhasil dihapus.`, 'info');
   };
 
+  // =========================
+  // ORG-MODEL handlers: CRUD/disable master Jabatan, Unit, Kantor/Lokasi.
+  // Jabatan/level TIDAK memberikan permission — hanya atribut organisasi.
+  // =========================
+  const handleAddJobLevel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newJobLevelData.code.trim() || !newJobLevelData.label.trim()) {
+      showToast('Kode dan nama jabatan wajib diisi.', 'warning');
+      return;
+    }
+    try {
+      setIsSubmittingOrgMaster(true);
+      const created = await gabahApi.createJobLevel({
+        code: newJobLevelData.code.trim().toUpperCase(),
+        label: newJobLevelData.label.trim(),
+        order: newJobLevelData.order ? Number(newJobLevelData.order) : undefined,
+      });
+      setJobLevels(prev => [...prev, created].sort((a, b) => (a.order || 99) - (b.order || 99)));
+      setNewJobLevelData({ code: '', label: '', order: '' });
+      showToast(`Jabatan "${created.label}" berhasil ditambahkan.`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menambah jabatan.', 'warning');
+    } finally {
+      setIsSubmittingOrgMaster(false);
+    }
+  };
+
+  const handleToggleJobLevel = async (code: string, nextActive: boolean) => {
+    try {
+      const updated = await gabahApi.updateJobLevel(code, { is_active: nextActive });
+      setJobLevels(prev => prev.map(j => j.code === code ? updated : j));
+      showToast(`Jabatan "${updated.label}" ${nextActive ? 'diaktifkan' : 'dinonaktifkan'}.`, 'info');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengubah status jabatan.', 'warning');
+    }
+  };
+
+  const handleAddOrgUnit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOrgUnitData.name.trim()) {
+      showToast('Nama unit wajib diisi.', 'warning');
+      return;
+    }
+    try {
+      setIsSubmittingOrgMaster(true);
+      const created = await gabahApi.createOrgUnit({
+        name: newOrgUnitData.name.trim(),
+        division_code: newOrgUnitData.division_code,
+      });
+      setOrgUnits(prev => [...prev, created]);
+      setNewOrgUnitData({ name: '', division_code: 'Umum' });
+      showToast(`Unit "${created.name}" berhasil ditambahkan.`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menambah unit.', 'warning');
+    } finally {
+      setIsSubmittingOrgMaster(false);
+    }
+  };
+
+  const handleToggleOrgUnit = async (id: string, nextActive: boolean) => {
+    try {
+      const updated = await gabahApi.updateOrgUnit(id, { is_active: nextActive });
+      setOrgUnits(prev => prev.map(u => u.id === id ? updated : u));
+      showToast(`Unit "${updated.name}" ${nextActive ? 'diaktifkan' : 'dinonaktifkan'}.`, 'info');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengubah status unit.', 'warning');
+    }
+  };
+
+  const handleAddOffice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOfficeData.name.trim()) {
+      showToast('Nama lokasi kantor wajib diisi.', 'warning');
+      return;
+    }
+    try {
+      setIsSubmittingOrgMaster(true);
+      const created = await gabahApi.createOfficeLocation({ name: newOfficeData.name.trim() });
+      setOfficeLocations(prev => [...prev, created]);
+      setNewOfficeData({ name: '' });
+      showToast(`Lokasi kantor "${created.name}" berhasil ditambahkan.`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menambah lokasi kantor.', 'warning');
+    } finally {
+      setIsSubmittingOrgMaster(false);
+    }
+  };
+
+  const handleToggleOffice = async (id: string, nextActive: boolean) => {
+    try {
+      const updated = await gabahApi.updateOfficeLocation(id, { is_active: nextActive });
+      setOfficeLocations(prev => prev.map(l => l.id === id ? updated : l));
+      showToast(`Lokasi "${updated.name}" ${nextActive ? 'diaktifkan' : 'dinonaktifkan'}.`, 'info');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengubah status lokasi.', 'warning');
+    }
+  };
+
   const handleSaveDivision = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!divisionToEdit) return;
@@ -834,6 +976,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { id: 'users' as AdminSection, label: 'User Management', description: 'Kelola pengguna, peranan, divisi, dan sandi sementara', icon: Users, badge: `${userList.length} User` },
     { id: 'roles' as AdminSection, label: 'Role & Permission', description: 'Matriks otorisasi per modul & pembatasan scope divisi', icon: LockKeyhole, badge: `${DEFAULT_PERMISSIONS.length} Roles` },
     { id: 'organization' as AdminSection, label: 'Organization', description: 'Divisi operasional Food Station & struktur departemen', icon: Building2, badge: `${divisions.length} Divisi` },
+    { id: 'org_masters' as AdminSection, label: 'Jabatan, Unit & Lokasi', description: 'Master terpisah: Jabatan/Level, Unit, dan Kantor/Lokasi penempatan', icon: Network, badge: `${jobLevels.length} Jabatan` },
     { id: 'master_data' as AdminSection, label: 'Master Data', description: 'Kategori aset, master lokasi gedung PIBC, dan SLA Helpdesk', icon: Database, badge: `${categories.length} Kategori` },
     { id: 'numbering' as AdminSection, label: 'Asset Numbering', description: 'Format {DIV}-{CODE}-{YEAR}-{SEQ} & simulator sequence', icon: Hash, badge: 'Auto Sync' },
     { id: 'notifications' as AdminSection, label: 'Notification Center', description: 'Konfigurasi rule pengingat masa garansi, overdue loan, & SLA', icon: Bell, badge: 'Aktif' },
@@ -890,6 +1033,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       role: user.role,
       division: (user.division as OwnerDivision) || 'SC',
       department: user.department || '',
+      job_level_code: (user as any).job_level_code || '',
+      unit_id: (user as any).unit_id || '',
+      office_location_id: (user as any).office_location_id || '',
       phone: user.phone || '',
       is_active: user.is_active !== undefined ? user.is_active : true,
       telegram_chat_id: user.telegram_chat_id || '',
@@ -971,6 +1117,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         department: editUserData.department.trim(),
         phone: editUserData.phone.trim(),
         is_active: editUserData.is_active,
+        // ORG-MODEL: atribut jabatan/unit/lokasi independen dari role
+        job_level_code: editUserData.job_level_code || '',
+        unit_id: editUserData.unit_id || '',
+        office_location_id: editUserData.office_location_id || '',
         // Admin-managed Telegram chat id untuk pengiriman reminder (CR-05).
         telegram_chat_id: editUserData.telegram_chat_id.trim() || undefined,
       };
@@ -1844,6 +1994,52 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           />
                         </div>
 
+                        {/* ORG-MODEL: atribut jabatan/unit/lokasi — independen dari role */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Jabatan / Level</label>
+                          <select
+                            value={editUserData.job_level_code || ''}
+                            onChange={e => setEditUserData(prev => ({ ...prev, job_level_code: e.target.value }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                          >
+                            <option value="">— Tidak ditentukan —</option>
+                            {jobLevels.filter(j => j.is_active || j.code === editUserData.job_level_code).map(j => (
+                              <option key={j.code} value={j.code}>{j.label}</option>
+                            ))}
+                          </select>
+                          <p className="text-[10px] text-slate-400">Atribut organisasi — tidak mengubah permission/role.</p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Unit / Bagian</label>
+                          <select
+                            value={editUserData.unit_id || ''}
+                            onChange={e => setEditUserData(prev => ({ ...prev, unit_id: e.target.value }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                          >
+                            <option value="">— Tidak ditentukan —</option>
+                            {orgUnits.filter(u => u.is_active || u.id === editUserData.unit_id).map(u => (
+                              <option key={u.id} value={u.id}>{u.name} ({u.division_code})</option>
+                            ))}
+                          </select>
+                          <p className="text-[10px] text-slate-400">Unit ≠ role: pegawai Staf dapat berada di unit mana pun.</p>
+                        </div>
+
+                        <div className="space-y-1.5 md:col-span-2">
+                          <label className="text-xs font-bold text-slate-700">Lokasi / Kantor Penempatan</label>
+                          <select
+                            value={editUserData.office_location_id || ''}
+                            onChange={e => setEditUserData(prev => ({ ...prev, office_location_id: e.target.value }))}
+                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                          >
+                            <option value="">— Tidak ditentukan —</option>
+                            {officeLocations.filter(l => l.is_active || l.id === editUserData.office_location_id).map(l => (
+                              <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                          </select>
+                          <p className="text-[10px] text-slate-400">Lokasi penempatan tidak memengaruhi owner aset, asset number, atau permission.</p>
+                        </div>
+
                         <div className="space-y-1.5 md:col-span-2 pt-1">
                           <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input
@@ -2584,6 +2780,137 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           {/* =========================================================
               VIEW: 4. MASTER DATA (KATEGORI, LOKASI, SLA)
              ========================================================= */}
+          {/* ORG-MODEL: Master Jabatan/Unit/Lokasi — tiga master terpisah */}
+          {activeSection === 'org_masters' && (
+            <div className="space-y-4">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                <h3 className="text-sm font-black text-emerald-900">Master Organisasi: Jabatan ≠ Unit ≠ Lokasi</h3>
+                <p className="text-xs text-emerald-800 mt-1">
+                  Tiga master yang <strong>terpisah</strong>: Jabatan/Level, Unit, dan Kantor/Lokasi penempatan.
+                  Kombinasi role + jabatan + unit + lokasi disimpan sebagai <strong>atribut user</strong> — tidak membuat role baru.
+                  Jabatan <strong>tidak</strong> otomatis memberikan permission (RBAC tetap per role), dan lokasi penempatan
+                  <strong> tidak</strong> mengubah owner/asset number.
+                </p>
+              </div>
+
+              {/* Master Jabatan/Level */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Master Jabatan / Level ({jobLevels.length})</h4>
+                </div>
+                <form onSubmit={handleAddJobLevel} className="flex flex-wrap gap-2 items-end mb-3">
+                  <input type="text" placeholder="Kode (mis. MANAGER)" value={newJobLevelData.code}
+                    onChange={e => setNewJobLevelData(p => ({ ...p, code: e.target.value }))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-40 focus:outline-none focus:border-emerald-500" />
+                  <input type="text" placeholder="Nama jabatan" value={newJobLevelData.label}
+                    onChange={e => setNewJobLevelData(p => ({ ...p, label: e.target.value }))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-48 focus:outline-none focus:border-emerald-500" />
+                  <input type="number" placeholder="Urutan" value={newJobLevelData.order}
+                    onChange={e => setNewJobLevelData(p => ({ ...p, order: e.target.value }))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-24 focus:outline-none focus:border-emerald-500" />
+                  <button type="submit" disabled={isSubmittingOrgMaster}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1">
+                    <Plus className="w-3 h-3" /> Tambah
+                  </button>
+                </form>
+                <div className="space-y-1.5">
+                  {[...jobLevels].sort((a, b) => (a.order || 99) - (b.order || 99)).map(jl => (
+                    <div key={jl.code} className={`flex items-center justify-between p-2.5 rounded-xl border ${jl.is_active ? 'border-slate-200 bg-slate-50/70' : 'border-slate-100 bg-slate-100/60 opacity-60'} group`}>
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-7 h-7 rounded-lg bg-[#4ABDAC]/15 text-[#206f65] flex items-center justify-center text-[10px] font-black">{jl.order}</span>
+                        <div>
+                          <div className="text-xs font-extrabold text-slate-800">{jl.label}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">{jl.code}</div>
+                        </div>
+                      </div>
+                      {isCurrentUserAdmin && (
+                        <button type="button" onClick={() => handleToggleJobLevel(jl.code, !jl.is_active)}
+                          title={jl.is_active ? 'Nonaktifkan jabatan' : 'Aktifkan jabatan'}
+                          className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-colors ${jl.is_active ? 'text-emerald-700 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+                          <Power className="w-3.5 h-3.5" />
+                          {jl.is_active ? 'Aktif' : 'Nonaktif'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2">Jabatan dinonaktifkan tidak bisa dipilih untuk user baru, tetapi riwayat user tetap terbaca.</p>
+              </div>
+
+              {/* Master Unit */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Master Unit / Bagian ({orgUnits.length})</h4>
+                </div>
+                <form onSubmit={handleAddOrgUnit} className="flex flex-wrap gap-2 items-end mb-3">
+                  <input type="text" placeholder="Nama unit (mis. Logistik)" value={newOrgUnitData.name}
+                    onChange={e => setNewOrgUnitData(p => ({ ...p, name: e.target.value }))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-56 focus:outline-none focus:border-emerald-500" />
+                  <select value={newOrgUnitData.division_code}
+                    onChange={e => setNewOrgUnitData(p => ({ ...p, division_code: e.target.value }))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-emerald-500">
+                    {['IT', 'GA', 'SC', 'PIBC', 'Audit', 'Umum'].map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <button type="submit" disabled={isSubmittingOrgMaster}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1">
+                    <Plus className="w-3 h-3" /> Tambah
+                  </button>
+                </form>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {orgUnits.map(u => (
+                    <div key={u.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${u.is_active ? 'border-slate-200 bg-slate-50/70' : 'border-slate-100 bg-slate-100/60 opacity-60'}`}>
+                      <div>
+                        <div className="text-xs font-extrabold text-slate-800">{u.name}</div>
+                        <div className="text-[10px] text-slate-400">Divisi: {u.division_code}</div>
+                      </div>
+                      {isCurrentUserAdmin && (
+                        <button type="button" onClick={() => handleToggleOrgUnit(u.id, !u.is_active)}
+                          className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold ${u.is_active ? 'text-emerald-700 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+                          <Power className="w-3.5 h-3.5" />
+                          {u.is_active ? 'Aktif' : 'Nonaktif'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Master Kantor/Lokasi */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Master Kantor / Lokasi Penempatan ({officeLocations.length})</h4>
+                </div>
+                <form onSubmit={handleAddOffice} className="flex flex-wrap gap-2 items-end mb-3">
+                  <input type="text" placeholder="Nama lokasi kantor (mis. Kantor Wilayah Timur)" value={newOfficeData.name}
+                    onChange={e => setNewOfficeData(p => ({ ...p, name: e.target.value }))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-64 focus:outline-none focus:border-emerald-500" />
+                  <button type="submit" disabled={isSubmittingOrgMaster}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1">
+                    <Plus className="w-3 h-3" /> Tambah
+                  </button>
+                </form>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {officeLocations.map(loc => (
+                    <div key={loc.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${loc.is_active ? 'border-slate-200 bg-slate-50/70' : 'border-slate-100 bg-slate-100/60 opacity-60'}`}>
+                      <div className="flex items-center gap-2.5">
+                        <Building2 className="w-4 h-4 text-[#206f65]" />
+                        <span className="text-xs font-extrabold text-slate-800">{loc.name}</span>
+                      </div>
+                      {isCurrentUserAdmin && (
+                        <button type="button" onClick={() => handleToggleOffice(loc.id, !loc.is_active)}
+                          className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold ${loc.is_active ? 'text-emerald-700 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+                          <Power className="w-3.5 h-3.5" />
+                          {loc.is_active ? 'Aktif' : 'Nonaktif'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2">Satu lokasi dapat memuat banyak unit; lokasi penempatan tidak mengubah pemilik aset maupun nomor aset.</p>
+              </div>
+            </div>
+          )}
+
           {activeSection === 'master_data' && (
             <div className="space-y-6">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">

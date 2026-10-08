@@ -1,5 +1,54 @@
 # Changelog — GABAH
 
+## [2026-10-08] — Rombak Struktur Master Organisasi: Role ≠ Jabatan/Level ≠ Unit ≠ Lokasi
+
+### Ringkasan
+Role, Jabatan/Level, Unit, dan Lokasi/Kantor kini **empat master terpisah yang configurable**. Kombinasi role+jabatan+unit+lokasi disimpan sebagai **atribut user** — tidak membuat role kombinasi baru (tidak ada IT-PIBC/Kasi-GA/dll).
+
+### Schema/model yang berubah
+- **`ServerUser`** (`server/db.ts`, `src/types.ts`): field baru `job_level_code?`, `unit_id?`, `office_location_id?` — atribut independen dari role/division.
+- **Master baru** (`server/db.ts`): `db.jobLevels: OrgJobLevel[]` (kode+label+order+is_active), `db.orgUnits: OrgUnit[]` (id+name+division_code+is_active), `db.officeLocations: OrgOfficeLocation[]` (id+name+is_active).
+- Tipe interface baru: `OrgJobLevel`, `OrgUnit`, `OrgOfficeLocation`.
+- **Model aset TIDAK berubah**: `owner_division` tetap IT/GA/SC/PIBC; `location` bebas; asset numbering `{DIV}-{CODE}-{YEAR}-{SEQ}` tetap berbasis owner.
+
+### Migration
+- **JSON/file store (`server/persistence.ts`)**: hydrate merge master default (5 jabatan, 9 unit, 5 lokasi kantor) dengan state lama secara idempoten; backfill user lama tanpa `job_level_code` → `STAF` **tanpa mengubah role/divisi**; `unit_id`/`office_location_id` referensi invalid → `null`. Data existing tetap terbaca.
+- **PostgreSQL (`server/migrations/006_org_model_masters.sql`)**: tabel `org_job_levels`, `org_units` (FK divisions), `org_office_locations`; kolom users `job_level_code`/`unit_id`/`office_location_id` (FK) dengan backfill STAF; idempoten (`IF NOT EXISTS`/`ON CONFLICT DO NOTHING`). Dijalankan otomatis oleh migration runner CR-04.
+- Seed master default: Jabatan = Direksi, Kepala Divisi, Kepala Departemen, Kepala Seksi, Staf; Lokasi = Kantor Pusat, PIBC, Kantor Perawatan, Kantor Pangsub, RPC/Supply Chain. **Tanpa mapping permanen level→lokasi** (contoh kondisi organisasi, bukan aturan sistem).
+
+### API baru (Admin GABAH only; perubahan ter-audit)
+- `GET/POST /api/master/job-levels`, `PATCH /api/master/job-levels/:code` (tambah/edit/enable/disable).
+- `GET/POST /api/master/org-units`, `PATCH /api/master/org-units/:id`.
+- `GET/POST /api/master/office-locations`, `PATCH /api/master/office-locations/:id`.
+- `POST /api/users` & `PATCH /api/users/:id` kini menerima `job_level_code`/`unit_id`/`office_location_id` — divalidasi terhadap master aktif; assignment **tidak mengubah role/permission**.
+
+### UI Admin (`AdministrationModal.tsx`)
+- Section baru **"Jabatan, Unit & Lokasi"**: form tambah + toggle aktif/nonaktif untuk ketiga master.
+- Form Edit User: dropdown Jabatan/Unit/Lokasi dengan catatan eksplisit bahwa atribut ini tidak mengubah permission, owner aset, atau asset number.
+- `gabahApi.ts`: method `getJobLevels/createJobLevel/updateJobLevel`, `getOrgUnits/createOrgUnit/updateOrgUnit`, `getOfficeLocations/createOfficeLocation/updateOfficeLocation`.
+
+### Business rules yang ditegaskan (tidak berubah)
+- Jabatan/level **tidak** memberikan permission — RBAC tetap per role (user Karyawan berjabatan DIREKSI tetap 403 mutasi).
+- Jabatan nonaktif tidak dapat diassign ke user (400), riwayat tetap terbaca.
+- Lokasi penempatan tidak mengubah asset number; asset IT di PIBC tetap owner IT; asset GA di PIBC tetap owner GA.
+- GA tetap hanya melihat PC/Laptop IT (read-only) sesuai RBAC; server/network tetap 403.
+- Auditor tetap read-only (403 semua mutasi, termasuk master org).
+- 9 role kanonikal tetap ada, nama tidak berubah.
+
+### Test khusus baru: `npm run test:org-model` (`scripts/org-model-verify.mjs`)
+14 asersi: 12 kasus wajib + 2 regresi (disabled jabatan tidak assignable; non-admin tidak bisa kelola master) — **14/14 PASS**.
+
+### Hasil test aktual (2026-10-08)
+| Check | Hasil |
+|---|---|
+| `npm run lint` | PASS 0 error |
+| `npm run build` | PASS |
+| `npm run test:org-model` (baru) | **14/14 PASS** |
+| `npm run test:loan-authz` | **37/37 PASS** |
+| `npm run test:meeting-room` | **18/18 PASS** |
+| `node scripts/menu-connectivity-verify.mjs` | **23/23 PASS** |
+| `node scripts/p0-security-verify.mjs` (regresi keamanan) | **37/37 PASS** |
+
 ## [2026-10-08] — UAT/RBAC Matrix Audit (9 Role) — verifikasi & perbaikan gap
 
 ### Context
