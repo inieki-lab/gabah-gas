@@ -604,12 +604,12 @@ export class GabahService {
 
   // RBAC Permission helpers
   static canEditAsset(user?: UserProfile, asset?: Asset | null): boolean {
-    if (!user) return false;
+    if (!user || !asset) return false;
     if (user.role === 'Admin GABAH') return true;
-    if (!asset) return false;
     if (user.role === 'IT' && asset.owner_division === 'IT') return true;
     if (user.role === 'GA' && asset.owner_division === 'GA') return true;
     if (user.role === 'Supply Chain' && asset.owner_division === 'SC') return true;
+    if (user.role === 'PIBC' && asset.owner_division === 'PIBC') return true;
     return false;
   }
 
