@@ -114,6 +114,16 @@ const DATA_DIR = path.resolve(process.cwd(), 'server/data');
 const STATE_FILE = path.join(DATA_DIR, 'gabah_state.json');
 
 /**
+ * T2B-1: backfill managing_unit_id untuk aset yang belum punya nilai
+ * (ownership-based, idempoten, bukan lokasi) sekaligus melaporkan jumlah
+ * total / backfilled / unresolved di log boot.
+ */
+function backfillManagingUnits(tag: string): void {
+  const s = normalizeAssetManagingUnits();
+  console.log(`[GABAH Persistence] T2B-1 managing unit (${tag}): total=${s.total}, backfilled=${s.assigned}, unresolved=${s.unresolved}, preserved=${s.preserved}`);
+}
+
+/**
  * SECURITY (CR-03 §3.7): global revocation epoch. Incremented whenever exposed
  * or previously valid credentials must be force-invalidated (e.g. after the
  * committed gabah_state.json token leak). Sessions carry the epoch they were
@@ -518,7 +528,7 @@ export async function initializePersistence(): Promise<void> {
     const loaded = loadStateFromFile();
     // T2B-1: backfill managing_unit_id (ownership-based, idempoten) untuk aset
     // yang belum punya nilai — nilai eksplisit tidak pernah ditimpa.
-    normalizeAssetManagingUnits();
+    backfillManagingUnits('file store');
     if (loaded) {
       console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
     } else {
@@ -550,7 +560,7 @@ export async function initializePersistence(): Promise<void> {
       }
       // T2B-1: backfill managing_unit_id sebelum state di-persist (baik dari
       // blob hasil hydrate maupun seed baru); idempoten & ownership-based.
-      normalizeAssetManagingUnits();
+      backfillManagingUnits('postgresql');
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
       await persistPostgresState();
@@ -583,7 +593,7 @@ export async function initializePersistence(): Promise<void> {
   // Hydrate from persistent file store if it exists
   const loaded = loadStateFromFile();
   // T2B-1: backfill managing_unit_id (idempoten) — jalur fallback file store.
-  normalizeAssetManagingUnits();
+  backfillManagingUnits('file fallback');
   if (loaded) {
     console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
   } else {
