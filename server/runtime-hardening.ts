@@ -11,15 +11,32 @@ export function actorFor(req: Request): ServerUser | null {
   return result.user;
 }
 
+function isItWorkstation(asset: any): boolean {
+  const code = String(asset.category_code || asset.asset_code || '').toUpperCase();
+  const name = String(asset.name || '').toLowerCase();
+  return ['HLT', 'HPC'].includes(code)
+    || code.includes('LAP')
+    || code.includes('PC')
+    || /\blaptop\b|\bnotebook\b|\bpc\b|\bdesktop\b/.test(name);
+}
+
 function canSeeAsset(actor: ServerUser, assetId: string): boolean {
   const asset = db.assets.find(a => a.id === assetId);
   if (!asset) return false;
   if (isGlobalObserver(actor)) return true;
   if (actor.role === 'Karyawan') return asset.assigned_to?.id === actor.id || asset.is_loanable;
-  if (actor.role === 'IT') return asset.owner_division === 'IT';
-  if (actor.role === 'GA') return asset.owner_division === 'GA';
-  if (actor.role === 'Supply Chain') return asset.owner_division === 'SC';
-  if (actor.role === 'PIBC') return asset.owner_division === 'PIBC';
+  if (actor.role === 'IT') return asset.owner_division === 'IT' || asset.owner_division === 'GA';
+  if (actor.role === 'GA') return asset.owner_division === 'GA' || (asset.owner_division === 'IT' && isItWorkstation(asset));
+  if (actor.role === 'Supply Chain') {
+    const loc = String(asset.location || '').toLowerCase();
+    const dept = String(actor.department || '').toLowerCase();
+    return asset.owner_division === 'SC' || loc.includes('supply chain') || loc.includes('rpc') || (dept.length >= 3 && loc.includes(dept));
+  }
+  if (actor.role === 'PIBC') {
+    const loc = String(asset.location || '').toLowerCase();
+    const dept = String(actor.department || '').toLowerCase();
+    return asset.owner_division === 'PIBC' || loc.includes('pibc') || (dept.length >= 3 && loc.includes(dept));
+  }
   return false;
 }
 
