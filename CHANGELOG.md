@@ -1,5 +1,33 @@
 # Changelog — GABAH
 
+## [2026-10-08] — RBAC Matrix Refactor: Role × Menu × Scope
+
+### Changed
+- Sidebar/menu structure aligned to the current 9-role business matrix:
+  - Admin GABAH: full application + Administration Control Panel.
+  - IT: Aset, Pinjam, Helpdesk, Maintenance, License/Software, Vendor IT/License, KB, Contract IT, Meeting Room IT facilities, Reports.
+  - GA: Aset GA + read-only PC/Laptop IT, Pinjam, Helpdesk, Maintenance, Vendor non-IT, KB, Contract GA, Meeting Room Sarpras, Reports.
+  - Sekretaris Direksi: Dashboard, Aset Saya, Pinjam, Helpdesk, Maintenance request flow, Knowledge Base read, Contract view, Meeting Room/VIP workflow.
+  - Humas: Dashboard, Aset Saya hidden from catalog, Pinjam, Helpdesk, Knowledge Base read, Meeting Room + documentation/photo workflow.
+  - Supply Chain / PIBC: operational asset scope, Pinjam request, Helpdesk category scope, Maintenance request, Knowledge Base read, Contract scope, Meeting Room request, scoped Reports.
+  - Karyawan: self-service Dashboard, Aset Saya, Pinjam, Helpdesk, Knowledge Base, Meeting Room request; no executive override.
+  - Auditor: read-only global access; no mutation/admin menu.
+- Asset ownership vs location separated in access rules: physical location no longer determines ownership.
+- IT asset visibility: IT manages IT assets; GA may only view IT workstation assets (PC/Laptop) read-only, not servers/network/firewall/other IT equipment.
+- SC/PIBC asset visibility: scope now considers their operational owner and relevant physical location/department where available.
+- Asset edit buttons: frontend now uses the same authoritative GabahService.canEditAsset() rule as the intended role/object scope; PIBC edit authority is represented consistently.
+- Maintenance: menu renamed to Maintenance; schedule creation is limited to Admin GABAH, IT, and GA. Other operational/request roles do not receive the management action.
+- Vendor: IT can manage IT/License vendors; GA can manage non-IT vendors; Admin GABAH full; Auditor read-only. API GET/POST/PATCH now enforce the same domain scope.
+- Contract: management/create action is exposed only to Admin GABAH, IT, GA, Supply Chain, and PIBC; Auditor and request/read-only roles remain read-only.
+- Helpdesk remains a single menu with categories/routing IT, GA, SC, PIBC. Contract is not a Helpdesk category; Software/License/SaaS remains IT.
+
+### Verification
+- Changes are committed directly to GitHub main in small atomic commits so Freebuff can test each scope without a large token-consuming task.
+- Freebuff/UAT is required next to verify all 9 roles at both UI-menu and API authorization layers.
+- Do not treat menu visibility alone as authorization proof; test representative API actions for each role.
+
+---
+
 ## [2026-10-08] — Session Restore Fix & Stage 3 Test Follow-up
 
 ### Fixed
