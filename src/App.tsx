@@ -206,7 +206,10 @@ export default function App() {
         gabahApi.setToken(null);
         setViewMode('login');
       } finally {
-        await refreshData();
+        // Do not block auth initialization on the bulk data refresh. Each API
+        // request is best-effort, and a slow/hung endpoint must never keep the
+        // user on the "Memulihkan sesi…" screen.
+        void refreshData();
       }
     }
     initAuth();
