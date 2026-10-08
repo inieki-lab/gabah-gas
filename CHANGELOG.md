@@ -1,5 +1,15 @@
 # Changelog — GABAH
 
+## [2026-10-08] — Session Restore Fix & Stage 3 Test Follow-up
+
+### Fixed
+- **Session restore no longer waits for bulk data loading** (`src/App.tsx`): initial authentication now completes independently from the best-effort `refreshData()` call, so a slow/hung API endpoint cannot keep the UI trapped on **"Memulihkan sesi…"**.
+- The existing `/api/auth/me` 10-second timeout remains in place for stale/hung session validation.
+
+### Stage 3
+- Latest regression fixture adjustment is recorded at commit `1f94cb7` (`test: align meeting room alternative fixture capacity`).
+- Browser/UAT testing is still required after the latest meeting-room hardening; automated verification must be run locally and its actual PASS/FAIL result recorded.
+
 ## [2026-10-07] — Tahap 3: Meeting Room Hardening & Regression
 - Server-side interruption: only Admin GABAH or Sekretaris Direksi with HIGH priority; GA cannot interrupt.
 - Running (`in_use`) meetings cannot be interrupted; alternative-room capacity uses the new agenda's attendee count.
