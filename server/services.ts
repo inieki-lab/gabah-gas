@@ -79,12 +79,31 @@ export class GabahDomainService {
       return db.assets.filter(a => a.assigned_to?.id === user.id || a.is_loanable);
     }
 
-    // Operational Divisions: IT, GA, Supply Chain, PIBC
-    if (user.role === 'IT') return db.assets.filter(a => a.owner_division === 'IT');
-    // GA can see GA assets AND can view IT assets in read-only mode
-    if (user.role === 'GA') return db.assets.filter(a => a.owner_division === 'GA' || a.owner_division === 'IT');
-    if (user.role === 'Supply Chain') return db.assets.filter(a => a.owner_division === 'SC');
-    if (user.role === 'PIBC') return db.assets.filter(a => a.owner_division === 'PIBC' || a.location.toLowerCase().includes('pibc'));
+    // Operational scopes: owner and physical location are independent.
+    const isItWorkstation = (asset: ServerAsset) => {
+      const code = String(asset.category_code || asset.asset_code || '').toUpperCase();
+      const name = String(asset.name || '').toLowerCase();
+      return ['HLT', 'HPC'].includes(code)
+        || code.includes('LAP')
+        || code.includes('PC')
+        || /\blaptop\b|\bnotebook\b|\bpc\b|\bdesktop\b/.test(name);
+    };
+    if (user.role === 'IT') return db.assets.filter(a => a.owner_division === 'IT' || a.owner_division === 'GA');
+    // GA manages GA assets; IT workstation assets are visible read-only to GA.
+    if (user.role === 'GA') return db.assets.filter(a => a.owner_division === 'GA' || (a.owner_division === 'IT' && isItWorkstation(a)));
+    if (user.role === 'Supply Chain') {
+      const dept = String(user.department || '').toLowerCase();
+      return db.assets.filter(a => {
+        const loc = String(a.location || '').toLowerCase();
+        return a.owner_division === 'SC' || loc.includes('supply chain') || loc.includes('rpc') || (dept.length >= 3 && loc.includes(dept));
+      });
+    }
+    if (user.role === 'PIBC') {
+      const dept = String(user.department || '').toLowerCase();
+      return db.assets.filter(a => {
+        const loc = String(a.location || '').toLowerCase();
+        return a.owner_division === 'PIBC' || loc.includes('pibc') || (dept.length >= 3 && loc.includes(dept));
+      });
 
     return db.assets;
   }
