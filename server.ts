@@ -1748,8 +1748,14 @@ async function startServer() {
 
   app.post('/api/vendors', (req, res) => {
     const actor = getActor(req);
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH atau Divisi GA yang berwenang mengelola direktori vendor.' });
+    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang dapat mengelola vendor.' });
+    }
+    if (actor.role === 'IT' && req.body?.category && !['IT', 'License'].includes(String(req.body.category))) {
+      return res.status(403).json({ success: false, message: 'Divisi IT hanya dapat mengelola vendor domain IT/License.' });
+    }
+    if (actor.role === 'GA' && req.body?.category && ['IT', 'License'].includes(String(req.body.category))) {
+      return res.status(403).json({ success: false, message: 'Divisi GA tidak dapat mengelola vendor domain IT/License.' });
     }
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
     if (!name) {
@@ -1776,8 +1782,16 @@ async function startServer() {
 
   app.patch('/api/vendors/:id', (req, res) => {
     const actor = getActor(req);
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH atau Divisi GA yang berwenang mengubah vendor.' });
+    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang dapat mengelola vendor.' });
+    }
+    const existingVendor = db.vendors.find(v => v.id === req.params.id);
+    if (!existingVendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan.' });
+    if (actor.role === 'IT' && !['IT', 'License'].includes(String(existingVendor.category))) {
+      return res.status(403).json({ success: false, message: 'Divisi IT hanya dapat mengelola vendor domain IT/License.' });
+    }
+    if (actor.role === 'GA' && ['IT', 'License'].includes(String(existingVendor.category))) {
+      return res.status(403).json({ success: false, message: 'Divisi GA tidak dapat mengelola vendor domain IT/License.' });
     }
     const vendor = db.vendors.find(v => v.id === req.params.id);
     if (!vendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan' });
