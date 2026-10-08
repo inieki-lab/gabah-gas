@@ -1743,7 +1743,17 @@ async function startServer() {
   // Vendor Directory (server-authoritative)
   // =========================
   app.get('/api/vendors', (req, res) => {
-    res.json({ success: true, data: db.vendors });
+    const actor = getActor(req);
+    if (actor.role === 'Admin GABAH' || actor.role === 'Auditor') {
+      return res.json({ success: true, data: db.vendors });
+    }
+    if (actor.role === 'IT') {
+      return res.json({ success: true, data: db.vendors.filter(v => ['IT', 'License'].includes(String(v.category))) });
+    }
+    if (actor.role === 'GA') {
+      return res.json({ success: true, data: db.vendors.filter(v => !['IT', 'License'].includes(String(v.category))) });
+    }
+    return res.status(403).json({ success: false, message: 'Akses vendor tidak tersedia untuk peran ini.' });
   });
 
   app.post('/api/vendors', (req, res) => {
@@ -1793,8 +1803,7 @@ async function startServer() {
     if (actor.role === 'GA' && ['IT', 'License'].includes(String(existingVendor.category))) {
       return res.status(403).json({ success: false, message: 'Divisi GA tidak dapat mengelola vendor domain IT/License.' });
     }
-    const vendor = db.vendors.find(v => v.id === req.params.id);
-    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan' });
+    const vendor = existingVendor;
     // SECURITY (CR-06): explicit allowlist — id is server-owned.
     const allowedVendorFields = ['name', 'category', 'pic_name', 'pic_phone', 'pic_email', 'address', 'active_contracts_count', 'rating', 'notes'];
     for (const key of allowedVendorFields) {
