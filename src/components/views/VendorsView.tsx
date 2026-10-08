@@ -47,7 +47,10 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ ...emptyForm });
+    setForm({
+      ...emptyForm,
+      category: currentUser.role === 'IT' ? 'IT' : 'General',
+    });
     setError(null);
     setFormOpen(true);
   };
