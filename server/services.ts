@@ -1,5 +1,5 @@
 import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility } from './db';
-import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
+import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
 import { resolveManagingUnitForOwnerDivision, validateManagingUnit } from './managing-unit';
 import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-location';
@@ -142,9 +142,27 @@ export class GabahDomainService {
     license_detail?: any;
     notes?: string;
   }, actor: ServerUser): ServerAsset {
-    // 1. Resolve taxonomy strictly from server master
+    // 1. Resolve taxonomy strictly from server master.
+    // T2B-3: master kategori (`db.categories`, hasil CRUD Admin GABAH) adalah
+    // satu-satunya sumber kebenaran — kode/name kategori kustom, edit nama,
+    // dan status aktif/nonaktif semuanya berlaku di sini. CANONICAL_TAXONOMY
+    // tetap menjadi fallback bila master kosong.
     const rawCategory = payload.category_name_or_code || payload.category_code || payload.category_name || '';
-    const taxonomy = resolveTaxonomyByHumanName(rawCategory, payload.owner_division);
+    const categoryCatalog = (Array.isArray(db.categories) && db.categories.length > 0)
+      ? db.categories
+      : CANONICAL_TAXONOMY;
+    let taxonomy = resolveTaxonomyByHumanName(rawCategory, payload.owner_division, categoryCatalog);
+    // Kategori nonaktif ditolak sebagai pilihan BARU (400); input kosong tidak
+    // ditolak (resolusi default) — lihat fallback aktif di bawah.
+    assertCategoryUsableForNewAsset(taxonomy, rawCategory, categoryCatalog);
+    if (!rawCategory.trim() && taxonomy.is_active === false) {
+      // Kategori default untuk divisi ini sedang nonaktif → gunakan kategori
+      // aktif lain milik divisi yang sama (deterministik, tidak menebak di
+      // luar divisi), agar pembuatan aset tidak lumpuh oleh disable master.
+      const alt = categoryCatalog.find(c => c && c.is_active !== false && c.owner_division === taxonomy.owner_division)
+        || categoryCatalog.find(c => c && c.is_active !== false);
+      if (alt) taxonomy = alt;
+    }
 
     // Enforce Corporate Rules:
     // a) All IT items (IT-H & IT-S) belong to IT. GA only has read-only access.

@@ -4,7 +4,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
-import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './server/taxonomy';
+import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
@@ -886,9 +886,12 @@ async function startServer() {
   });
 
   // Master Taxonomy
+  // T2B-3: master kategori & aset tetap — respons selalu dinormalkan (kode
+  // uppercase, main_type pada domain kanonikal, is_active default true) sehingga
+  // data lama tanpa field baru tetap terbaca konsisten oleh UI.
   app.get('/api/taxonomy/categories', (req, res) => {
-    const list = (db.categories && db.categories.length > 0) ? db.categories : CANONICAL_TAXONOMY;
-    res.json({ success: true, data: list });
+    const source = (db.categories && db.categories.length > 0) ? db.categories : CANONICAL_TAXONOMY;
+    res.json({ success: true, data: normalizeCategoryMaster(source) });
   });
 
   app.post('/api/taxonomy/categories', async (req, res) => {
@@ -901,12 +904,28 @@ async function startServer() {
         });
       }
 
-      const { code, name, main_type, owner_division, category_type, description, is_loanable_by_default } = req.body;
+      const { code, name, main_type, owner_division, category_type, description, is_loanable_by_default, is_active } = req.body;
       if (!code || !name || !main_type || !owner_division) {
         return res.status(400).json({ 
           success: false, 
           message: 'Kode, Nama, Jenis Utama (main_type), dan Divisi Pemilik wajib diisi.' 
         });
+      }
+
+      // T2B-3: validasi domain master — jenis utama aset tetap (PSAK 16),
+      // divisi pemilik, dan tipe taksonomi harus berada pada enum kanonikal.
+      if (!isFixedAssetMainType(main_type)) {
+        return res.status(400).json({
+          success: false,
+          message: `Jenis utama aset "${main_type}" tidak dikenal. Nilai yang diizinkan: ${FIXED_ASSET_MAIN_TYPES.join(', ')}.`
+        });
+      }
+      if (!isOwnerDivision(owner_division)) {
+        return res.status(400).json({ success: false, message: `Divisi pemilik "${owner_division}" tidak dikenal. Nilai yang diizinkan: IT, GA, SC, PIBC.` });
+      }
+      const normalizedCategoryType = category_type || (owner_division === 'IT' ? 'IT' : 'General');
+      if (!isGabahCategoryType(normalizedCategoryType)) {
+        return res.status(400).json({ success: false, message: `Tipe taksonomi "${normalizedCategoryType}" tidak dikenal. Nilai yang diizinkan: IT, General, License.` });
       }
 
       const normalizedCode = code.trim().toUpperCase();
@@ -920,14 +939,28 @@ async function startServer() {
         });
       }
 
+      // Validasi duplikat nama (case-insensitive) — satu nama hanya boleh
+      // merepresentasikan satu kategori agar resolusi by-name tetap unik.
+      const normalizedName = String(name).trim().toLowerCase();
+      const dupName = db.categories.find(c => String(c && c.name || '').trim().toLowerCase() === normalizedName);
+      if (dupName) {
+        return res.status(400).json({
+          success: false,
+          message: `Kategori dengan nama "${name.trim()}" sudah terdaftar (${dupName.code}).`
+        });
+      }
+
       const newCategory = {
         code: normalizedCode,
         name: name.trim(),
         main_type,
         owner_division,
-        category_type: category_type || (owner_division === 'IT' ? 'IT' : 'General'),
+        category_type: normalizedCategoryType,
         description: description || `Kategori ${name.trim()} (Milik ${owner_division})`,
         is_loanable_by_default: Boolean(is_loanable_by_default),
+        // T2B-3: default aktif; nonaktif hanya lewat toggle PATCH (disable,
+        // bukan hapus permanen) agar relasi aset tidak pernah rusak.
+        is_active: is_active === undefined ? true : Boolean(is_active),
       };
 
       db.categories.push(newCategory);
@@ -951,15 +984,49 @@ async function startServer() {
       const target = db.categories.find(c => c.code.toUpperCase() === code);
       if (!target) return res.status(404).json({ success: false, message: `Kategori "${code}" tidak ditemukan.` });
 
-      const { name, main_type, owner_division, category_type, description, is_loanable_by_default } = req.body;
-      if (name) target.name = name.trim();
+      const { name, main_type, owner_division, category_type, description, is_loanable_by_default, is_active } = req.body;
+      // T2B-3: validasi domain (bila field dikirim) — nilai di luar enum
+      // kanonikal ditolak sehingga master tidak pernah menyimpan junk.
+      if (main_type !== undefined && !isFixedAssetMainType(main_type)) {
+        return res.status(400).json({
+          success: false,
+          message: `Jenis utama aset "${main_type}" tidak dikenal. Nilai yang diizinkan: ${FIXED_ASSET_MAIN_TYPES.join(', ')}.`
+        });
+      }
+      if (owner_division !== undefined && !isOwnerDivision(owner_division)) {
+        return res.status(400).json({ success: false, message: `Divisi pemilik "${owner_division}" tidak dikenal. Nilai yang diizinkan: IT, GA, SC, PIBC.` });
+      }
+      if (category_type !== undefined && !isGabahCategoryType(category_type)) {
+        return res.status(400).json({ success: false, message: `Tipe taksonomi "${category_type}" tidak dikenal. Nilai yang diizinkan: IT, General, License.` });
+      }
+      if (name !== undefined && !String(name).trim()) {
+        return res.status(400).json({ success: false, message: 'Nama kategori tidak boleh kosong.' });
+      }
+      if (name !== undefined) {
+        const normalizedName = String(name).trim().toLowerCase();
+        const dup = db.categories.find(c => c.code !== target.code && String(c && c.name || '').trim().toLowerCase() === normalizedName);
+        if (dup) {
+          return res.status(400).json({ success: false, message: `Kategori dengan nama "${String(name).trim()}" sudah terdaftar (${dup.code}).` });
+        }
+      }
+
+      if (name) target.name = String(name).trim();
       if (main_type) target.main_type = main_type;
       if (owner_division) target.owner_division = owner_division;
       if (category_type) target.category_type = category_type;
       if (description !== undefined) target.description = description;
       if (is_loanable_by_default !== undefined) target.is_loanable_by_default = Boolean(is_loanable_by_default);
+      // T2B-3: toggle enable/disable (bukan hard-delete). Kategori nonaktif
+      // tetap terbaca untuk aset historis, tetapi ditolak sebagai nilai baru.
+      if (is_active !== undefined) target.is_active = Boolean(is_active);
+      if (typeof target.is_active !== 'boolean') target.is_active = true;
 
-      GabahDomainService.recordAudit('CATEGORY_UPDATED', 'MasterData', `Memperbarui master kategori ${target.code} - ${target.name}`, actor);
+      GabahDomainService.recordAudit(
+        'CATEGORY_UPDATED',
+        'MasterData',
+        `Memperbarui master kategori ${target.code} - ${target.name}${is_active !== undefined ? (target.is_active ? ' (diaktifkan)' : ' (dinonaktifkan)') : ''}`,
+        actor,
+      );
       await persistDataStore();
       res.json({ success: true, data: target });
     } catch (err: any) {
@@ -1384,8 +1451,13 @@ async function startServer() {
 
   app.post('/api/taxonomy/resolve', (req, res) => {
     try {
-      const { nameOrCode } = req.body;
-      const resolved = resolveTaxonomyByHumanName(nameOrCode);
+      const { nameOrCode, owner_division } = req.body;
+      // T2B-3: resolve terhadap master kategori yang sedang berlaku.
+      const resolved = resolveTaxonomyByHumanName(
+        nameOrCode,
+        owner_division,
+        (db.categories && db.categories.length > 0) ? db.categories : CANONICAL_TAXONOMY,
+      );
       res.json({ success: true, data: resolved });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });

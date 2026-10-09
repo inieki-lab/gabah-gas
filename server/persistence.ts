@@ -8,6 +8,7 @@ import { hashPassword } from './crypto';
 import { AssetNumberingEngine } from './numbering';
 import { normalizeAssetManagingUnits } from './managing-unit';
 import { normalizeAssetAssetLocations } from './asset-location';
+import { normalizeCategoryMaster } from './taxonomy';
 
 /**
  * SECURITY (CR-02): initial canonical-account passwords are provisioned from
@@ -210,6 +211,16 @@ function hydrateDbFromState(state: any): void {
   if (Array.isArray(state.rooms) && state.rooms.length > 0) db.rooms = state.rooms;
   if (Array.isArray(state.roomReservations) && state.roomReservations.length > 0) db.roomReservations = state.roomReservations;
   if (Array.isArray(state.categories) && state.categories.length > 0) db.categories = state.categories;
+  // T2B-3: normalisasi idempoten master kategori — snapshot lama tanpa
+  // `is_active`/`main_type` kanonikal tetap terbaca (default aktif, main_type
+  // legacy dipetakan deterministik). Tidak ada kategori yang dihapus di sini;
+  // penghapusan hanya lewat API admin yang ter-guard.
+  db.categories = normalizeCategoryMaster(db.categories);
+  console.log(
+    `[GABAH Persistence] T2B-3 master kategori: total=${db.categories.length}, ` +
+    `aktif=${db.categories.filter((c: any) => c && c.is_active !== false).length}, ` +
+    `nonaktif=${db.categories.filter((c: any) => c && c.is_active === false).length}`,
+  );
   if (Array.isArray(state.locations) && state.locations.length > 0) db.locations = state.locations;
   if (Array.isArray(state.divisions) && state.divisions.length > 0) db.divisions = state.divisions;
 
@@ -448,10 +459,30 @@ async function backfillNormalizedTables(): Promise<void> {
         [l.id,l.name,l.parent_id || null,l.is_active],
       );
     }
-    for (const a of db.assets) {
+    // T2B-3: sinkron master kategori aset ke PostgreSQL SEBELUM aset, agar FK
+    // assets.category_id (subselect by code) selalu menemukan baris master dan
+    // tabel asset_categories mencerminkan hasil CRUD Admin GABAH (nama, jenis
+    // utama, tipe, deskripsi, status aktif/nonaktif). Idempoten.
+    for (const c of db.categories) {
+      if (!c || !c.code) continue;
       await client.query(
-        `INSERT INTO asset_categories (code,name,category_type,owner_division_id)
-         VALUES ($1,$2,$3,(SELECT id FROM divisions WHERE code=$4)) ON CONFLICT (code) DO NOTHING`,
+        `INSERT INTO asset_categories (code,name,category_type,main_type,description,owner_division_id,is_loanable_by_default,is_active,updated_at)
+         VALUES ($1,$2,$3,$4,$5,(SELECT id FROM divisions WHERE code=$6),$7,$8,NOW())
+         ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,category_type=EXCLUDED.category_type,
+           main_type=EXCLUDED.main_type,description=EXCLUDED.description,owner_division_id=EXCLUDED.owner_division_id,
+           is_loanable_by_default=EXCLUDED.is_loanable_by_default,is_active=EXCLUDED.is_active,updated_at=NOW()`,
+        [c.code, c.name || c.code, c.category_type || 'General', c.main_type || 'LNY',
+         c.description || null, c.owner_division || null, Boolean(c.is_loanable_by_default), c.is_active !== false],
+      );
+    }
+    for (const a of db.assets) {
+      // Kode kategori legacy yang tidak ada di master tetap dibuat agar FK
+      // assets.category_id tidak pernah NULL-gagal; main_type default 'LNY'
+      // (identik dengan fallback server/taxonomy.ts). Baris master yang sudah
+      // tersinkron di atas TIDAK ditimpa (ON CONFLICT DO NOTHING).
+      await client.query(
+        `INSERT INTO asset_categories (code,name,category_type,main_type,owner_division_id)
+         VALUES ($1,$2,$3,'LNY',(SELECT id FROM divisions WHERE code=$4)) ON CONFLICT (code) DO NOTHING`,
         [a.category_code,a.category_code,a.category_type,a.owner_division],
       );
       await client.query(

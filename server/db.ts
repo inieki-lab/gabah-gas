@@ -1,4 +1,4 @@
-import { CANONICAL_TAXONOMY } from './taxonomy';
+import { CANONICAL_TAXONOMY, normalizeCategoryMaster } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
 
 export interface ServerUser {
@@ -481,7 +481,10 @@ export const db = {
   users: [] as ServerUser[],
   sessions: [] as ServerSession[],
   assets: [] as ServerAsset[],
-  categories: [...CANONICAL_TAXONOMY] as any[],
+  // T2B-3: master kategori & aset tetap — seed dinormalkan (is_active=true,
+  // main_type pada domain kanonikal) sehingga bentuk seed identik dengan hasil
+  // hydrate state maupun respons API.
+  categories: normalizeCategoryMaster(CANONICAL_TAXONOMY) as any[],
   locations: [
     { id: 'loc-1', name: 'Kantor Pusat Food Station Cipinang', address: 'Jl. Pisangan Lama No. 1, Jakarta Timur', capacity: '120 Pegawai' },
     { id: 'loc-2', name: 'Gudang Beras Induk Blok A-D', address: 'Kawasan PIBC, Jakarta Timur', capacity: '48.000 Ton Beras' },

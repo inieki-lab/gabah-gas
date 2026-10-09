@@ -28,6 +28,88 @@ export interface AssetTaxonomyItem {
   category_type: 'IT' | 'General' | 'License';
   description: string;
   is_loanable_by_default: boolean;
+  /**
+   * T2B-3: status aktif master kategori. Nonaktif = tidak dapat dipilih untuk
+   * aset BARU (400), tetapi nilai historis pada aset existing tetap terbaca.
+   * Default true (master lama tanpa field ini dianggap aktif).
+   */
+  is_active?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// T2B-3 — MASTER KATEGORI & ASET TETAP
+// Domain nilai (enum) master kategori: satu sumber kebenaran untuk server,
+// API admin, dan form aset. `main_type` = klasifikasi jenis utama aset tetap
+// (PSAK 16 BUMD) yang menentukan kelompok depresiasi & pelaporan neraca.
+// ---------------------------------------------------------------------------
+export const FIXED_ASSET_MAIN_TYPES = [
+  'TNH', 'BGN', 'MSN', 'KDR', 'INV-F', 'INV-P', 'IT-H', 'IT-S', 'LNY',
+] as const;
+export type FixedAssetMainType = (typeof FIXED_ASSET_MAIN_TYPES)[number];
+
+export const ASSET_OWNER_DIVISIONS = ['IT', 'GA', 'SC', 'PIBC'] as const;
+export const ASSET_CATEGORY_TYPES = ['IT', 'General', 'License'] as const;
+
+export function isFixedAssetMainType(v: unknown): v is FixedAssetMainType {
+  return typeof v === 'string' && (FIXED_ASSET_MAIN_TYPES as readonly string[]).includes(v);
+}
+export function isOwnerDivision(v: unknown): v is AssetTaxonomyItem['owner_division'] {
+  return typeof v === 'string' && (ASSET_OWNER_DIVISIONS as readonly string[]).includes(v);
+}
+export function isGabahCategoryType(v: unknown): v is AssetTaxonomyItem['category_type'] {
+  return typeof v === 'string' && (ASSET_CATEGORY_TYPES as readonly string[]).includes(v);
+}
+
+/**
+ * Legacy map: dropdown admin lama (PSAK berbahasa Inggris) menulis `main_type`
+ * dengan vocabulary EQUIPMENT/VEHICLE/... yang bukan domain kanonikal. Master
+ * lama dinormalkan secara deterministik ke kode kanonikal saat hydrate —
+ * nilai kanonikal tidak pernah diubah.
+ */
+const LEGACY_MAIN_TYPE_MAP: Record<string, FixedAssetMainType> = {
+  EQUIPMENT: 'MSN',
+  VEHICLE: 'KDR',
+  FURNITURE: 'INV-F',
+  BUILDING: 'BGN',
+  LAND: 'TNH',
+  LICENSE: 'IT-S',
+  OTHER: 'LNY',
+};
+
+/**
+ * Normalisasi idempoten master kategori (dipanggil saat hydrate & seed):
+ * - `is_active`: default true bila belum ada (data lama tetap terbaca).
+ * - `main_type`: nilai legacy dipetakan deterministik; nilai tak dikenal → 'LNY'.
+ * - field wajib di-trim; `is_loanable_by_default` dipaksa boolean.
+ * TIDAK menghapus kategori apa pun (hapus hanya lewat API yang ter-guard).
+ */
+export function normalizeCategoryMaster(list: unknown): AssetTaxonomyItem[] {
+  if (!Array.isArray(list)) return CANONICAL_TAXONOMY.map(c => ({ ...c, is_active: true }));
+  const seen = new Set<string>();
+  const out: AssetTaxonomyItem[] = [];
+  for (const raw of list as any[]) {
+    if (!raw || typeof raw !== 'object') continue;
+    const code = String(raw.code || '').trim().toUpperCase();
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    const rawMain = String(raw.main_type || '').trim().toUpperCase();
+    const mainType: FixedAssetMainType = isFixedAssetMainType(rawMain)
+      ? rawMain
+      : (LEGACY_MAIN_TYPE_MAP[rawMain] || 'LNY');
+    out.push({
+      code,
+      name: String(raw.name || code).trim(),
+      main_type: mainType,
+      owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'GA',
+      category_type: isGabahCategoryType(raw.category_type)
+        ? raw.category_type
+        : (raw.owner_division === 'IT' ? 'IT' : 'General'),
+      description: String(raw.description || ''),
+      is_loanable_by_default: Boolean(raw.is_loanable_by_default),
+      is_active: raw.is_active !== false,
+    });
+  }
+  return out.length > 0 ? out : CANONICAL_TAXONOMY.map(c => ({ ...c, is_active: true }));
 }
 
 export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
@@ -76,18 +158,32 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
  * Resolve Category and Owner Division from human-readable name or code
  * User chooses human-readable "Jenis Aset", system derives canonical code and owner division.
  */
-export function resolveTaxonomyByHumanName(nameOrCode?: string, requestedDivision?: 'IT' | 'GA' | 'SC' | 'PIBC'): AssetTaxonomyItem {
+export function resolveTaxonomyByHumanName(
+  nameOrCode?: string,
+  requestedDivision?: 'IT' | 'GA' | 'SC' | 'PIBC',
+  catalog: AssetTaxonomyItem[] = CANONICAL_TAXONOMY,
+): AssetTaxonomyItem {
+  // T2B-3: `catalog` = master kategori yang sedang berlaku (`db.categories`,
+  // hasil CRUD Admin GABAH). Master kustom/hasil edit dipakai lebih dulu;
+  // kode kanonikal yang hilang dari master tetap jatuh ke CANONICAL_TAXONOMY
+  // (fail-safe) sehingga kategori yang dihapus admin tidak membuat resolusi
+  // gagal atau aset legacy gagal dibaca.
+  const pool: AssetTaxonomyItem[] = Array.isArray(catalog) && catalog.length > 0 ? catalog : CANONICAL_TAXONOMY;
+  const pick = (code: string): AssetTaxonomyItem =>
+    pool.find(t => t.code === code) || CANONICAL_TAXONOMY.find(t => t.code === code)!;
+
   if (!nameOrCode || typeof nameOrCode !== 'string' || !nameOrCode.trim()) {
-    if (requestedDivision === 'IT') return CANONICAL_TAXONOMY.find(t => t.code === 'HLT')!;
-    if (requestedDivision === 'GA') return CANONICAL_TAXONOMY.find(t => t.code === 'INV-P')!;
-    if (requestedDivision === 'SC') return CANONICAL_TAXONOMY.find(t => t.code === 'KDR-SC')!;
-    if (requestedDivision === 'PIBC') return CANONICAL_TAXONOMY.find(t => t.code === 'MSN-PIBC')!;
-    return CANONICAL_TAXONOMY[0];
+    if (requestedDivision === 'IT') return pick('HLT');
+    if (requestedDivision === 'GA') return pick('INV-P');
+    if (requestedDivision === 'SC') return pick('KDR-SC');
+    if (requestedDivision === 'PIBC') return pick('MSN-PIBC');
+    return pool[0] || CANONICAL_TAXONOMY[0];
   }
   const query = nameOrCode.trim().toLowerCase();
   
-  // 1. Check exact match by code
-  const byCode = CANONICAL_TAXONOMY.find(t => t.code.toLowerCase() === query);
+  // 1. Check exact match by code (master aktif lebih dulu, lalu kanonikal)
+  const byCode = pool.find(t => t.code.toLowerCase() === query)
+    || CANONICAL_TAXONOMY.find(t => t.code.toLowerCase() === query);
   if (byCode) {
     if (requestedDivision && (byCode.code === 'KDR' || byCode.code === 'MSN')) {
       // Allow division override for shared categories like KDR and MSN
@@ -97,30 +193,31 @@ export function resolveTaxonomyByHumanName(nameOrCode?: string, requestedDivisio
   }
 
   // 2. Exact match by name
-  const byName = CANONICAL_TAXONOMY.find(t => t.name.toLowerCase() === query);
+  const byName = pool.find(t => t.name.toLowerCase() === query)
+    || CANONICAL_TAXONOMY.find(t => t.name.toLowerCase() === query);
   if (byName) return byName;
 
   // 3. Normalized keyword match
-  if (query.includes('laptop') || query.includes('notebook')) return CANONICAL_TAXONOMY.find(t => t.code === 'HLT')!;
-  if (query.includes('komputer') || query.includes('pc') || query.includes('desktop')) return CANONICAL_TAXONOMY.find(t => t.code === 'HPC')!;
-  if (query.includes('server')) return CANONICAL_TAXONOMY.find(t => t.code === 'HSV')!;
-  if (query.includes('workstation')) return CANONICAL_TAXONOMY.find(t => t.code === 'HWS')!;
-  if (query.includes('monitor') || query.includes('display')) return CANONICAL_TAXONOMY.find(t => t.code === 'HMON')!;
-  if (query.includes('printer')) return CANONICAL_TAXONOMY.find(t => t.code === 'HPRN')!;
-  if (query.includes('scanner')) return CANONICAL_TAXONOMY.find(t => t.code === 'HSCN')!;
-  if (query.includes('network') || query.includes('switch') || query.includes('router')) return CANONICAL_TAXONOMY.find(t => t.code === 'HNET')!;
-  if (query.includes('firewall')) return CANONICAL_TAXONOMY.find(t => t.code === 'HFW')!;
-  if (query.includes('storage') || query.includes('nas') || query.includes('san')) return CANONICAL_TAXONOMY.find(t => t.code === 'HSTG')!;
-  if (query.includes('ups')) return CANONICAL_TAXONOMY.find(t => t.code === 'HUPS')!;
-  if (query.includes('rack')) return CANONICAL_TAXONOMY.find(t => t.code === 'HRCK')!;
+  if (query.includes('laptop') || query.includes('notebook')) return pick('HLT');
+  if (query.includes('komputer') || query.includes('pc') || query.includes('desktop')) return pick('HPC');
+  if (query.includes('server')) return pick('HSV');
+  if (query.includes('workstation')) return pick('HWS');
+  if (query.includes('monitor') || query.includes('display')) return pick('HMON');
+  if (query.includes('printer')) return pick('HPRN');
+  if (query.includes('scanner')) return pick('HSCN');
+  if (query.includes('network') || query.includes('switch') || query.includes('router')) return pick('HNET');
+  if (query.includes('firewall')) return pick('HFW');
+  if (query.includes('storage') || query.includes('nas') || query.includes('san')) return pick('HSTG');
+  if (query.includes('ups')) return pick('HUPS');
+  if (query.includes('rack')) return pick('HRCK');
   if (query.includes('license') || query.includes('lisensi') || query.includes('saas') || query.includes('software') || query.includes('it-s') || query.includes('slic')) {
-    return CANONICAL_TAXONOMY.find(t => t.code === 'SLIC')!;
+    return pick('SLIC');
   }
   if (query.includes('furniture') || query.includes('kursi') || query.includes('meja') || query.includes('lemari') || query.includes('inv-f')) {
-    return CANONICAL_TAXONOMY.find(t => t.code === 'INV-F')!;
+    return pick('INV-F');
   }
   if (query.includes('kompor') || query.includes('dispenser') || query.includes('peralatan') || query.includes('perlengkapan') || query.includes('dapur') || query.includes('inv-p') || query.includes('apar') || query.includes('ac')) {
-    return CANONICAL_TAXONOMY.find(t => t.code === 'INV-P')!;
+    return pick('INV-P');
   }
   if (query.includes('mobil') || query.includes('motor') || query.includes('kendaraan') || query.includes('truk') || query.includes('kdr')) {
     const div = requestedDivision || (query.includes('truk') ? 'SC' : 'GA');
@@ -135,7 +232,7 @@ export function resolveTaxonomyByHumanName(nameOrCode?: string, requestedDivisio
     };
   }
   if (query.includes('timbangan') || query.includes('tera') || (query.includes('mesin') && requestedDivision === 'PIBC')) {
-    return CANONICAL_TAXONOMY.find(t => t.code === 'MSN-PIBC')!;
+    return pick('MSN-PIBC');
   }
   if (query.includes('mesin') || query.includes('forklift') || query.includes('mill') || query.includes('packing') || query.includes('msn')) {
     const div = requestedDivision || 'SC';
@@ -149,11 +246,37 @@ export function resolveTaxonomyByHumanName(nameOrCode?: string, requestedDivisio
       is_loanable_by_default: false,
     };
   }
-  if (query.includes('tanah') || query.includes('lahan') || query.includes('tnh')) return CANONICAL_TAXONOMY.find(t => t.code === 'TNH')!;
-  if (query.includes('gedung') || query.includes('bangunan') || query.includes('gudang') || query.includes('bgn')) return CANONICAL_TAXONOMY.find(t => t.code === 'BGN')!;
-  if (query.includes('lainnya') || query.includes('lny')) return CANONICAL_TAXONOMY.find(t => t.code === 'LNY')!;
+  if (query.includes('tanah') || query.includes('lahan') || query.includes('tnh')) return pick('TNH');
+  if (query.includes('gedung') || query.includes('bangunan') || query.includes('gudang') || query.includes('bgn')) return pick('BGN');
+  if (query.includes('lainnya') || query.includes('lny')) return pick('LNY');
 
   // Default fail-safe
-  return CANONICAL_TAXONOMY.find(t => t.code === 'LNY')!;
+  return pick('LNY');
+}
+
+/**
+ * T2B-3: validasi pemakaian kategori sebagai nilai BARU pada aset.
+ * - Kategori terdaftar & aktif  → diperbolehkan.
+ * - Kategori terdaftar & NONAKTIF → ditolak (400): pilihan baru harus ke
+ *   kategori aktif; nilai historis yang sudah melekat pada aset tidak pernah
+ *   dipaksa berubah oleh aturan ini.
+ * - Tidak terdaftar / input kosong → dilewatkan (resolusi fallback legacy
+ *   tetap berlaku — aset lama tanpa kategori master harus tetap terbaca).
+ * Melempar Error agar tertangkap sebagai 400 oleh route.
+ */
+export function assertCategoryUsableForNewAsset(
+  resolved: AssetTaxonomyItem,
+  explicitInput: string,
+  catalog: AssetTaxonomyItem[] = CANONICAL_TAXONOMY,
+): void {
+  if (!explicitInput || !explicitInput.trim()) return;
+  const pool: AssetTaxonomyItem[] = Array.isArray(catalog) && catalog.length > 0 ? catalog : CANONICAL_TAXONOMY;
+  const master = pool.find(c => c.code === resolved.code);
+  if (master && master.is_active === false) {
+    throw Object.assign(
+      new Error(`Kategori "${master.code}" - ${master.name} sedang nonaktif dan tidak dapat dipilih untuk aset baru.`),
+      { statusCode: 400 },
+    );
+  }
 }
 

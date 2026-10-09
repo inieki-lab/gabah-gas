@@ -209,24 +209,87 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   const userRole = resolvedUser?.role || 'Karyawan';
   const isSuperadmin = userRole === 'Admin GABAH' || userRole === 'Superadmin' || userRole === 'Management';
 
+  // T2B-3: master kategori aset tetap dari server (`db.categories`, hasil CRUD
+  // Admin GABAH) — sumber kebenaran tunggal untuk pilihan kategori di form ini.
+  // null = gagal diambil (offline/masih memuat) → daftar statis tetap dipakai
+  // sebagai fallback sehingga form tidak pernah kosong.
+  const [masterCategories, setMasterCategories] = useState<any[] | null>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    let alive = true;
+    gabahApi.getCategories()
+      .then(list => { if (alive && Array.isArray(list) && list.length > 0) setMasterCategories(list); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [isOpen]);
+
+  const masterByCode = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const c of masterCategories || []) {
+      if (c && c.code) map.set(String(c.code).toUpperCase(), c);
+    }
+    return map;
+  }, [masterCategories]);
+
+  // Kode terpilih layak dipakai bila: master belum termuat (fallback), ATAU
+  // kode terdaftar di master dan berstatus aktif. Kategori nonaktif/dihapus
+  // admin tidak muncul sebagai pilihan baru (nilai historis aset tetap utuh).
+  const isCodeSelectable = (code: string): boolean => {
+    if (!masterCategories) return true;
+    const row = masterByCode.get(String(code || '').toUpperCase());
+    return Boolean(row) && row.is_active !== false;
+  };
+
   // Allowed fixed asset main categories according to corporate RBAC
-  const allowedMainCategories = useMemo(() => {
-    if (isSuperadmin) return FIXED_ASSET_TAXONOMY;
-    if (userRole === 'IT') {
-      return FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'IT-H' || cat.type === 'IT-S');
+  const allowedMainCategories = useMemo<FixedAssetCategoryDef[]>(() => {
+    let roleGroups = FIXED_ASSET_TAXONOMY;
+    if (!isSuperadmin) {
+      if (userRole === 'IT') {
+        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'IT-H' || cat.type === 'IT-S');
+      } else if (userRole === 'GA') {
+        // GA owns INV-F, INV-P, KDR, BGN, TNH, LNY (All IT items are owned by IT; GA has read-only)
+        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => ['INV-F', 'INV-P', 'KDR', 'BGN', 'TNH', 'LNY'].includes(cat.type));
+      } else if (userRole === 'Supply Chain') {
+        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'KDR');
+      } else if (userRole === 'PIBC') {
+        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'BGN');
+      }
     }
-    if (userRole === 'GA') {
-      // GA owns INV-F, INV-P, KDR, BGN, TNH, LNY (All IT items are owned by IT; GA has read-only)
-      return FIXED_ASSET_TAXONOMY.filter(cat => ['INV-F', 'INV-P', 'KDR', 'BGN', 'TNH', 'LNY'].includes(cat.type));
-    }
-    if (userRole === 'Supply Chain') {
-      return FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'KDR');
-    }
-    if (userRole === 'PIBC') {
-      return FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'BGN');
-    }
-    return FIXED_ASSET_TAXONOMY;
-  }, [userRole, isSuperadmin]);
+
+    // T2B-3: terapkan master —
+    // 1) subkategori statis yang nonaktif/dihapus di master dibuang;
+    // 2) kategori master BARU (dibuat admin, tidak ada di daftar statis)
+    //    ditambahkan ke kelompok main_type-nya — form selalu mencerminkan master;
+    // 3) is_loanable_by_default & category_type diambil dari bila ada di master.
+    return roleGroups
+      .map(group => {
+        const kept = group.subcategories
+          .filter(s => isCodeSelectable(s.code))
+          .map(s => {
+            const master = masterByCode.get(String(s.code).toUpperCase());
+            return {
+              ...s,
+              isLoanableDefault: master && master.is_loanable_by_default !== undefined
+                ? Boolean(master.is_loanable_by_default)
+                : s.isLoanableDefault,
+            };
+          });
+        const extras = (masterCategories || [])
+          .filter(c => c && c.is_active !== false
+            && String(c.main_type || '').toUpperCase() === group.type
+            && !group.subcategories.some(s => String(s.code).toUpperCase() === String(c.code).toUpperCase()))
+          .map(c => ({
+            code: String(c.code).toUpperCase(),
+            name: String(c.name || c.code),
+            placeholderName: String(c.name || c.code),
+            placeholderBrand: '',
+            placeholderModel: '',
+            isLoanableDefault: Boolean(c.is_loanable_by_default),
+          }));
+        return { ...group, subcategories: [...kept, ...extras] };
+      })
+      .filter(group => group.subcategories.length > 0);
+  }, [userRole, isSuperadmin, masterCategories, masterByCode]);
 
   // Selected state
   const [selectedMainType, setSelectedMainType] = useState<FixedAssetMainType>('IT-H');
@@ -342,7 +405,9 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
       name: name.trim(),
       owner_division: selectedDivision,
       category_code: subCode,
-      category_type: activeMainCat.categoryType,
+      // T2B-3: tipe taksonomi mengikuti master bila kategori terdaftar di sana.
+      category_type: (masterByCode.get(String(subCode).toUpperCase())?.category_type as Asset['category_type'])
+        || activeMainCat.categoryType,
       subcategory: activeSub.name,
       corporate_asset_number: corporateAssetNumber.trim() ? corporateAssetNumber.trim() : null,
       brand: brand.trim(),

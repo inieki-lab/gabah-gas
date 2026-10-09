@@ -216,6 +216,8 @@ class GabahApiClient {
     category_type?: string;
     description?: string;
     is_loanable_by_default?: boolean;
+    /** T2B-3: status aktif master; default true (nonaktif = tidak dapat dipilih untuk aset baru). */
+    is_active?: boolean;
   }): Promise<any> {
     return this.request<any>('/api/taxonomy/categories', {
       method: 'POST',
@@ -230,6 +232,8 @@ class GabahApiClient {
     category_type?: string;
     description?: string;
     is_loanable_by_default?: boolean;
+    /** T2B-3: toggle enable/disable kategori (disable, bukan hapus permanen). */
+    is_active?: boolean;
   }): Promise<any> {
     return this.request<any>(`/api/taxonomy/categories/${encodeURIComponent(code)}`, {
       method: 'PATCH',

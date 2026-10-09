@@ -143,14 +143,21 @@ export const SYSTEM_ROLES: { value: UserRole; label: string; desc: string }[] = 
   { value: 'Auditor', label: 'Auditor (Satuan Pengawas Internal)', desc: 'Audit Trail & Rekonsiliasi PSAK 16 Read-Only' },
 ];
 
+// T2B-3 — MASTER KATEGORI & ASET TETAP
+// Domain `main_type` kini diseragamkan dengan kode kanonikal di
+// server/taxonomy.ts (TNH/BGN/MSN/KDR/INV-F/INV-P/IT-H/IT-S/LNY) — satu
+// vocabulary yang dipakai bersama oleh API, form aset, dan pelaporan PSAK 16.
+// Label memuat istilah PSAK berbahasa Inggris agar konteks akuntansi tetap jelas.
 export const ASSET_MAIN_TYPES = [
-  { value: 'EQUIPMENT', label: 'EQUIPMENT (Peralatan, Mesin & Komputasi)', desc: 'Laptop, PC, Server, Mesin Pabrik, Timbangan, Forklift, Alat Berat' },
-  { value: 'VEHICLE', label: 'VEHICLE (Kendaraan Dinas & Operasional)', desc: 'Truk Logistik Beras, Mobil Dinas Operasional, Sepeda Motor Lapangan' },
-  { value: 'FURNITURE', label: 'FURNITURE (Mebel & Interior Kantor)', desc: 'Meja Rapat, Kursi Ergonomis, Lemari Arsip, Rak Pallet Gudang' },
-  { value: 'BUILDING', label: 'BUILDING (Gedung & Bangunan Fisik)', desc: 'Kantor Pusat Cipinang, Komplek Pergudangan Beras Induk, Pos Keamanan' },
-  { value: 'LAND', label: 'LAND (Tanah & Kawasan Korporat)', desc: 'Kawasan Pasar Induk Beras Cipinang, Lahan Pergudangan' },
-  { value: 'LICENSE', label: 'LICENSE (Hak Cipta & Lisensi Digital)', desc: 'Lisensi OS, Microsoft 365, Software Akuntansi SAP, Lisensi Antivirus' },
-  { value: 'OTHER', label: 'OTHER (Aset Tetap Khusus Lainnya)', desc: 'Genset Cadangan, Instalasi Listrik, Peralatan Lab Uji Beras' },
+  { value: 'TNH', label: 'TNH — Tanah (LAND)', desc: 'Lahan kawasan Pasar Induk Beras Cipinang, lahan pergudangan & sentra produksi' },
+  { value: 'BGN', label: 'BGN — Bangunan (BUILDING)', desc: 'Kantor Pusat Cipinang, komplek pergudangan beras induk, pos keamanan' },
+  { value: 'MSN', label: 'MSN — Mesin & Peralatan (EQUIPMENT)', desc: 'Mesin pabrik pengolahan, forklift, jembatan timbang, genset, komputer' },
+  { value: 'KDR', label: 'KDR — Kendaraan (VEHICLE)', desc: 'Truk logistik beras, mobil dinas operasional, sepeda motor lapangan' },
+  { value: 'INV-F', label: 'INV-F — Inventaris Furniture (FURNITURE)', desc: 'Meja rapat, kursi ergonomis, lemari arsip, rak pallet gudang' },
+  { value: 'INV-P', label: 'INV-P — Inventaris Peralatan (EQUIPMENT)', desc: 'Kompor, dispenser, AC, vacuum cleaner, APAR, toolkit bengkel' },
+  { value: 'IT-H', label: 'IT-H — IT Hardware (EQUIPMENT)', desc: 'Laptop, PC, server, monitor, printer, jaringan & firewall' },
+  { value: 'IT-S', label: 'IT-S — IT Software & Lisensi (LICENSE)', desc: 'Lisensi OS, Microsoft 365, software akuntansi ERP, antivirus' },
+  { value: 'LNY', label: 'LNY — Aset Tetap Lainnya (OTHER)', desc: 'Genset cadangan, instalasi listrik, peralatan lab uji, aset khusus' },
 ];
 
 export const GABAH_TAXONOMY_TYPES: { value: 'IT' | 'License' | 'General'; label: string; desc: string }[] = [
@@ -295,18 +302,18 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   // Master Data State
   const [categories, setCategories] = useState<any[]>([
-    { code: 'IT-HLT', name: 'Hardware Laptop & PC', type: 'IT', loanable: true, total: 42 },
-    { code: 'IT-SRV', name: 'Server & Infrastructure', type: 'IT', loanable: false, total: 18 },
-    { code: 'SC-FLT', name: 'Armada Truk Beras Cipinang', type: 'SC', loanable: true, total: 24 },
-    { code: 'GA-BLD', name: 'Gedung & Fasilitas Pasar', type: 'GA', loanable: false, total: 31 },
-    { code: 'LIC-ENT', name: 'Lisensi ERP SAP & OS', type: 'License', loanable: false, total: 15 },
+    { code: 'IT-HLT', name: 'Hardware Laptop & PC', type: 'IT', loanable: true, total: 42, is_active: true },
+    { code: 'IT-SRV', name: 'Server & Infrastructure', type: 'IT', loanable: false, total: 18, is_active: true },
+    { code: 'SC-FLT', name: 'Armada Truk Beras Cipinang', type: 'SC', loanable: true, total: 24, is_active: true },
+    { code: 'GA-BLD', name: 'Gedung & Fasilitas Pasar', type: 'GA', loanable: false, total: 31, is_active: true },
+    { code: 'LIC-ENT', name: 'Lisensi ERP SAP & OS', type: 'License', loanable: false, total: 15, is_active: true },
   ]);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const [newCategoryData, setNewCategoryData] = useState({
     code: '',
     name: '',
-    main_type: 'EQUIPMENT',
+    main_type: 'MSN',
     owner_division: 'IT',
     category_type: 'IT',
     description: '',
@@ -331,9 +338,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             code: c.code,
             name: c.name,
             type: c.owner_division || (c.category_type === 'IT' ? 'IT' : 'GA'),
-            main_type: c.main_type || 'EQUIPMENT',
+            main_type: c.main_type || 'LNY',
             owner_division: c.owner_division || 'IT',
             category_type: c.category_type || 'IT',
+            // T2B-3: status aktif master kategori (disable, bukan hapus).
+            is_active: c.is_active !== false,
             loanable: c.is_loanable_by_default ?? false,
             total: (assets || []).filter(a => (a.category_code === c.code || a.asset_number?.includes(c.code))).length,
             description: c.description || '',
@@ -388,6 +397,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           owner_division: created.owner_division,
           category_type: created.category_type,
           loanable: created.is_loanable_by_default,
+          is_active: created.is_active !== false,
           total: 0,
           description: created.description,
         }
@@ -396,7 +406,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       setNewCategoryData({
         code: '',
         name: '',
-        main_type: 'EQUIPMENT',
+        main_type: 'MSN',
         owner_division: 'IT',
         category_type: 'IT',
         description: '',
@@ -429,7 +439,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [editCategoryData, setEditCategoryData] = useState({
     code: '',
     name: '',
-    main_type: 'EQUIPMENT',
+    main_type: 'MSN',
     owner_division: 'IT',
     category_type: 'IT',
     description: '',
@@ -631,12 +641,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const handleEditCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryToEdit) return;
+    // T2B-3: kunci payload disesuaikan dengan kontrak API — sebelumnya
+    // `loanable` dikirim tetapi tidak pernah dibaca server (is_active/
+    // is_loanable_by_default adalah nama field yang benar).
     const payload = {
       name: editCategoryData.name.trim(),
       main_type: editCategoryData.main_type,
       owner_division: editCategoryData.owner_division,
       category_type: editCategoryData.category_type,
-      loanable: editCategoryData.is_loanable_by_default,
+      is_loanable_by_default: editCategoryData.is_loanable_by_default,
       description: editCategoryData.description.trim()
     };
     try {
@@ -649,7 +662,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       main_type: payload.main_type,
       owner_division: payload.owner_division,
       category_type: payload.category_type,
-      loanable: payload.loanable,
+      loanable: payload.is_loanable_by_default,
       description: payload.description
     } : c);
     setCategories(updated);
@@ -669,6 +682,25 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     } catch {}
     setCategories(prev => prev.filter(c => c.code !== code));
     showToast(`Kategori ${code} - ${name} berhasil dihapus.`, 'info');
+  };
+
+  // T2B-3: toggle aktif/nonaktif master kategori — jalur utama "hapus" untuk
+  // kategori yang sudah dipakai aset (disable, bukan hard-delete), sehingga
+  // relasi & data aset historis tidak pernah rusak. Kategori nonaktif tetap
+  // terbaca di semua tampilan, tetapi ditolak sebagai pilihan BARU (400).
+  const handleToggleCategoryActive = async (code: string, name: string, nextActive: boolean) => {
+    try {
+      await gabahApi.updateCategory(code, { is_active: nextActive });
+      setCategories(prev => prev.map(c => c.code === code ? { ...c, is_active: nextActive } : c));
+      showToast(
+        nextActive
+          ? `Kategori ${code} - ${name} diaktifkan kembali.`
+          : `Kategori ${code} - ${name} dinonaktifkan — tetap terbaca untuk aset historis, tidak dapat dipilih untuk aset baru.`,
+        'info',
+      );
+    } catch (err: any) {
+      showToast(err.message || `Gagal mengubah status kategori ${code}.`, 'warning');
+    }
   };
 
   // Role Permissions Handlers
@@ -3362,6 +3394,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-semibold">
                             {cat.type}
                           </span>
+                          {cat.is_active === false && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-600 font-bold">
+                              Nonaktif
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs font-bold text-slate-800 mt-1">{cat.name}</div>
                         <div className="text-[10px] text-slate-500 mt-0.5">
@@ -3376,12 +3413,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
+                              onClick={() => handleToggleCategoryActive(cat.code, cat.name, cat.is_active === false)}
+                              title={cat.is_active === false ? `Aktifkan kategori ${cat.name}` : `Nonaktifkan kategori ${cat.name} (tetap terbaca untuk aset historis)`}
+                              className="p-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 opacity-80 group-hover:opacity-100 transition-all cursor-pointer"
+                            >
+                              <Power className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => {
                                 setCategoryToEdit(cat);
                                 setEditCategoryData({
                                   code: cat.code,
                                   name: cat.name,
-                                  main_type: cat.main_type || 'EQUIPMENT',
+                                  main_type: cat.main_type || 'LNY',
                                   owner_division: cat.type || 'IT',
                                   category_type: cat.category_type || (cat.type === 'IT' ? 'IT' : 'General'),
                                   description: cat.description || '',

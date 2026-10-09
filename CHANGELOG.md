@@ -1,5 +1,53 @@
 # Changelog — GABAH
 
+## [2026-10-09] — T2B-3 — Master Kategori & Aset Tetap
+
+### Ringkasan
+Master **`asset_categories`** kini menjadi **satu-satunya sumber kebenaran** untuk kategori aset tetap: resolusi kategori & penomoran aset di server, form aset, dan panel admin semuanya membaca `db.categories` (hasil CRUD Admin GABAH) — bukan lagi array hardcoded (`CANONICAL_TAXONOMY` di server / `FIXED_ASSET_TAXONOMY` statis di form). Domain `main_type` diseragamkan ke **9 jenis aset tetap kanonikal** (TNH, BGN, MSN, KDR, INV-F, INV-P, IT-H, IT-S, LNY); vocabulary legacy dropdown admin (EQUIPMENT/VEHICLE/...) dipetakan deterministik. Kategori yang sudah dipakai aset dikelola dengan **disable/enable, bukan hapus permanen**. Prinsip: Kategori ≠ Lokasi Fisik ≠ Managing Unit ≠ Owner Division.
+
+### Schema/model
+- **`AssetTaxonomyItem`** (`server/taxonomy.ts`): field baru opsional **`is_active?: boolean`** (default true — data lama tetap terbaca).
+- Konstanta domain baru: `FIXED_ASSET_MAIN_TYPES` (9 kode), `ASSET_OWNER_DIVISIONS`, `ASSET_CATEGORY_TYPES` + guard `isFixedAssetMainType` / `isOwnerDivision` / `isGabahCategoryType`.
+- **`normalizeCategoryMaster()`** — normalisasi idempoten master (default aktif, `main_type` legacy → kanonikal, dedupe kode, trim field) dipakai pada seed `server/db.ts` dan hydrate `server/persistence.ts`.
+- **`resolveTaxonomyByHumanName(nameOrCode, requestedDivision, catalog)`** — kini menerima katalog master; kode yang hilang dari master jatuh ke `CANONICAL_TAXONOMY` (fail-safe) sehingga resolusi tidak pernah gagal.
+- **`assertCategoryUsableForNewAsset()`** — kategori nonaktif ditolak sebagai nilai BARU (400).
+
+### Migration
+- **`server/migrations/009_asset_category_master.sql`** (additive & idempotent): `ALTER TABLE asset_categories ADD COLUMN IF NOT EXISTS main_type / description / updated_at`; backfill `main_type` deterministik (kode kanonikal → kelompoknya; vocabulary legacy dipetakan; selain itu `LNY`) **hanya baris yang belum valid**; seed 22 baris kanonikal `ON CONFLICT (code) DO NOTHING`; `RAISE NOTICE` total/aktif/nonaktif. Tidak menyentuh `owner_division`, `managing_unit_id`, `asset_location_id`, `asset_number`, maupun `location`. Kolom `is_active` sudah ada sejak migration 001.
+
+### API
+- **`GET /api/taxonomy/categories`**: respons selalu dinormalkan (`is_active` boolean, `main_type` pada domain kanonikal).
+- **`POST`**: wajib `main_type` ∈ 9 kanonikal, `owner_division` ∈ IT/GA/SC/PIBC, `category_type` ∈ IT/General/License (di luar itu → 400); **duplikat kode & duplikat nama (case-insensitive) → 400**; `is_active` default true.
+- **`PATCH /api/taxonomy/categories/:code`**: validasi enum yang sama; dukungan **toggle `is_active`** (enable/disable); audit `CATEGORY_UPDATED` mencatat aktivasi/nonaktifasi.
+- **`DELETE`**: tetap ter-guard (400 bila kategori masih dipakai aset) — disable adalah jalur utama penghapusan.
+- **`POST /api/taxonomy/resolve`**: resolusi terhadap master (opsional `owner_division`).
+- **`POST /api/assets`, bulk-import, dan resolusi internal**: kategori di-resolve dari master; kategori **nonaktif ditolak (400)**; input kategori bebas legacy tetap jatuh ke fallback (aset tanpa kategori master tetap terbaca); `is_loanable_by_default` & `category_type` diambil dari master.
+
+### UI
+- **Administration Control Panel** (`AdministrationModal.tsx`): `ASSET_MAIN_TYPES` diseragamkan ke 9 kode kanonikal (label memuat istilah PSAK 16); kartu kategori kini memuat badge **"Nonaktif"** + tombol toggle (ikon Power) untuk mengaktifkan/menonaktifkan; fix payload edit: `loanable` → **`is_loanable_by_default`** (sebelumnya key salah dan tidak pernah terbaca server).
+- **Form aset** (`CreateAssetModal.tsx`): memuat master via `GET /api/taxonomy/categories` — kategori nonaktif/dihapus admin hilang dari pilihan, **kategori baru buatan admin otomatis muncul** pada kelompok `main_type`-nya, dan `is_loanable_by_default`/`category_type` diambil dari master; fallback ke daftar statis bila API gagal (form tidak pernah kosong).
+- Form edit aset tidak mengubah kategori (kategori ditentukan saat pembuatan; perubahan master tidak menulis ulang aset historis).
+
+### Persistence
+- **JSON**: `categories` ikut di-serialize (jalur yang sudah ada) + **normalisasi saat hydrate** — snapshot lama tanpa `is_active`/`main_type` kanonikal tetap terbaca, tidak ada kategori yang dihapus diam-diam.
+- **PostgreSQL**: `backfillNormalizedTables` meng-sync master kategori ke `asset_categories` (code, name, category_type, main_type, description, owner_division, is_loanable_by_default, is_active — idempoten) **sebelum** aset agar FK aman; kode kategori legacy yang tidak ada di master tetap dibuat (`main_type='LNY'`) sehingga `assets.category_id` tidak pernah gagal.
+
+### Kompatibilitas legacy
+- `db.categories` lama (tanpa field baru) dinormalkan saat hydrate; hasil resolve untuk input tak dikenal tetap fail-safe ke kanonikal (tidak error).
+- Aset existing: kategori, nomor aset, owner, unit, dan lokasi **tidak pernah diubah** oleh tahap ini (dibuktikan test 11b).
+- Vocabulary legacy `main_type` (EQUIPMENT/VEHICLE/FURNITURE/BUILDING/LAND/LICENSE/OTHER) dipetakan deterministik — bukan dihapus.
+
+### Tidak berubah (scope guard T2B-3)
+`owner_division`, `managing_unit_id` (T2B-1), `asset_location_id` (T2B-2), `asset_number`/`corporate_asset_number`/numbering engine & sequence table (T2B-4), RBAC/authorization lintas divisi, `assets.location` (teks bebas), serta domain Maintenance, Contract, Loan/Assignment, Helpdesk, Meeting Room, Vendor, KB, Procurement, dan skema office location user.
+
+### Tests / build / lint — hasil aktual
+- `npm run lint` (`tsc --noEmit`): **PASS** (0 error)
+- `npm run build` (vite + esbuild): **PASS**
+- `npm run test:t2b3` (baru — `scripts/t2b3-category-master-verify.mjs`): **26/26 PASS** — migration additive/idempotent (inspeksi statis), master seed tervalidasi (22 kode, domain `main_type`), CRUD admin (create/rename/disable/enable, duplikat kode & nama ditolak, `main_type` legacy ditolak 400), non-admin 403, auditor read-only, kategori baru admin langsung bisa dipakai buat aset (kode & owner dari master, nomor `SC-DRN-2026-0001`), rename terlihat oleh resolve & create by nama baru, kategori nonaktif ditolak untuk aset baru namun tetap terbaca + aset historis utuh, re-enable kembali berfungsi, hapus kategori terpakai ditolak, input bebas legacy tetap fallback, edit `is_loanable_by_default` berlaku untuk aset baru, penomoran regresi `IT-HLT-<tahun>-<seq>`, aset existing tidak berubah, roundtrip master+aset lewat restart (termasuk status nonaktif).
+- Regresi: `test:t2b1` **18/18**, `test:t2b2` **22/22**, `test:org-model` **14/14**, `test:loan-authz` **37/37**, `test:meeting-room` **18/18**, `p0-security-verify` **37/37**, `menu-connectivity-verify` **23/23**, `asset-import-verify` **20/20**, `bulk-import-verify` **14/14**, `p1-features-verify` **16/16** — semua PASS.
+
+Catatan: T2B-4 (kompatibilitas numbering) serta redesign RBAC/Maintenance/Contract/Loan **belum** dikerjakan.
+
 ## [2026-10-09] — T2B-2 — Asset Location Master
 
 ### Ringkasan
