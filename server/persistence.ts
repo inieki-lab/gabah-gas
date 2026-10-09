@@ -3,10 +3,11 @@ import { Pool } from 'pg';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
-import { db, seedInitialData, CANONICAL_USERS } from './db';
+import { db, seedInitialData, CANONICAL_USERS, DEFAULT_ASSET_LOCATIONS } from './db';
 import { hashPassword } from './crypto';
 import { AssetNumberingEngine } from './numbering';
 import { normalizeAssetManagingUnits } from './managing-unit';
+import { normalizeAssetAssetLocations } from './asset-location';
 
 /**
  * SECURITY (CR-02): initial canonical-account passwords are provisioned from
@@ -121,6 +122,17 @@ const STATE_FILE = path.join(DATA_DIR, 'gabah_state.json');
 function backfillManagingUnits(tag: string): void {
   const s = normalizeAssetManagingUnits();
   console.log(`[GABAH Persistence] T2B-1 managing unit (${tag}): total=${s.total}, backfilled=${s.assigned}, unresolved=${s.unresolved}, preserved=${s.preserved}`);
+}
+
+/**
+ * T2B-2: backfill asset_location_id (exact-match deterministik dari teks
+ * legacy `location`, idempoten) sekaligus melaporkan jumlah
+ * total / terpetakan / belum terpetak di log boot. Teks `location`,
+ * owner_division, managing_unit_id, dan asset_number tidak disentuh.
+ */
+function backfillAssetLocations(tag: string): void {
+  const s = normalizeAssetAssetLocations();
+  console.log(`[GABAH Persistence] T2B-2 asset location (${tag}): total=${s.total}, mapped=${s.assigned}, unresolved=${s.unresolved}, preserved=${s.preserved}`);
 }
 
 /**
@@ -253,6 +265,16 @@ function hydrateDbFromState(state: any): void {
     return existing ? { ...def, ...existing } : { ...def };
   }).concat(stateOfficeLocations.filter((l: any) => l && !DEFAULT_OFFICE_LOCATIONS.some(d => d.id === l.id)) as any[]);
 
+  // T2B-2: master lokasi fisik aset — merge seed default dengan state
+  // (master lama tanpa field ini tetap mendapat default; master baru dari
+  // state dipertahankan). Data aset lama tanpa asset_location_id tidak
+  // menyebabkan hydrate gagal — backfill menanganinya setelah hydrate.
+  const stateAssetLocations = Array.isArray(state.assetLocations) ? state.assetLocations : [];
+  db.assetLocations = DEFAULT_ASSET_LOCATIONS.map(def => {
+    const existing = stateAssetLocations.find((l: any) => l && l.id === def.id);
+    return existing ? { ...def, ...existing } : { ...def };
+  }).concat(stateAssetLocations.filter((l: any) => l && !DEFAULT_ASSET_LOCATIONS.some(d => d.id === l.id)) as any[]);
+
   // Backfill atribut user lama (migration non-destruktif — role/divisi tidak diubah).
   const validJobLevelCodes = new Set(db.jobLevels.map(j => j.code));
   const validUnitIds = new Set(db.orgUnits.map(u => u.id));
@@ -326,6 +348,7 @@ function createPayload() {
     jobLevels: db.jobLevels,
     orgUnits: db.orgUnits,
     officeLocations: db.officeLocations,
+    assetLocations: db.assetLocations,
     meetingTypes: db.meetingTypes,
     meetingFacilities: db.meetingFacilities,
     contracts: db.contracts,
@@ -416,6 +439,15 @@ async function backfillNormalizedTables(): Promise<void> {
     // SECURITY (CR-03): db.sessions are deliberately NOT backfilled into
     // user_sessions — bearer tokens must never be restored to a durable store
     // from the application runtime (they were previously committed to Git).
+    // T2B-2: sync master lokasi fisik aset lebih dulu agar FK
+    // assets.asset_location_id selalu terpenuhi (idempoten).
+    for (const l of db.assetLocations) {
+      await client.query(
+        `INSERT INTO asset_locations (id,name,parent_id,is_active) VALUES ($1,$2,$3,$4)
+         ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,parent_id=EXCLUDED.parent_id,is_active=EXCLUDED.is_active`,
+        [l.id,l.name,l.parent_id || null,l.is_active],
+      );
+    }
     for (const a of db.assets) {
       await client.query(
         `INSERT INTO asset_categories (code,name,category_type,owner_division_id)
@@ -423,10 +455,10 @@ async function backfillNormalizedTables(): Promise<void> {
         [a.category_code,a.category_code,a.category_type,a.owner_division],
       );
       await client.query(
-        `INSERT INTO assets (id,asset_number,corporate_asset_number,name,category_id,owner_division_id,brand,model,serial_number,specifications,purchase_date,purchase_price,warranty_until,status,condition,location,is_loanable,license_detail,notes,managing_unit_id,created_at,updated_at)
-         VALUES ($1,$2,$3,$4,(SELECT id FROM asset_categories WHERE code=$5),(SELECT id FROM divisions WHERE code=$6),$7,$8,$9,$10,NULLIF($11,'')::date,$12,NULLIF($13,'')::date,$14,$15,$16,$17,$18,$19,$20,$21,$22)
-         ON CONFLICT (id) DO UPDATE SET asset_number=EXCLUDED.asset_number,corporate_asset_number=EXCLUDED.corporate_asset_number,name=EXCLUDED.name,category_id=EXCLUDED.category_id,owner_division_id=EXCLUDED.owner_division_id,brand=EXCLUDED.brand,model=EXCLUDED.model,serial_number=EXCLUDED.serial_number,specifications=EXCLUDED.specifications,purchase_date=EXCLUDED.purchase_date,purchase_price=EXCLUDED.purchase_price,warranty_until=EXCLUDED.warranty_until,status=EXCLUDED.status,condition=EXCLUDED.condition,location=EXCLUDED.location,is_loanable=EXCLUDED.is_loanable,license_detail=EXCLUDED.license_detail,notes=EXCLUDED.notes,managing_unit_id=EXCLUDED.managing_unit_id,updated_at=EXCLUDED.updated_at`,
-        [a.id,a.asset_number,a.corporate_asset_number,a.name,a.category_code,a.owner_division,a.brand,a.model,a.serial_number,a.specifications,a.purchase_date || '',Number(a.purchase_price || 0),a.warranty_until || '',a.status,a.condition,a.location,a.is_loanable,a.license_detail ? JSON.stringify(a.license_detail) : null,a.notes || null,a.managing_unit_id ?? null,a.created_at,a.updated_at],
+        `INSERT INTO assets (id,asset_number,corporate_asset_number,name,category_id,owner_division_id,brand,model,serial_number,specifications,purchase_date,purchase_price,warranty_until,status,condition,location,is_loanable,license_detail,notes,managing_unit_id,asset_location_id,created_at,updated_at)
+         VALUES ($1,$2,$3,$4,(SELECT id FROM asset_categories WHERE code=$5),(SELECT id FROM divisions WHERE code=$6),$7,$8,$9,$10,NULLIF($11,'')::date,$12,NULLIF($13,'')::date,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+         ON CONFLICT (id) DO UPDATE SET asset_number=EXCLUDED.asset_number,corporate_asset_number=EXCLUDED.corporate_asset_number,name=EXCLUDED.name,category_id=EXCLUDED.category_id,owner_division_id=EXCLUDED.owner_division_id,brand=EXCLUDED.brand,model=EXCLUDED.model,serial_number=EXCLUDED.serial_number,specifications=EXCLUDED.specifications,purchase_date=EXCLUDED.purchase_date,purchase_price=EXCLUDED.purchase_price,warranty_until=EXCLUDED.warranty_until,status=EXCLUDED.status,condition=EXCLUDED.condition,location=EXCLUDED.location,is_loanable=EXCLUDED.is_loanable,license_detail=EXCLUDED.license_detail,notes=EXCLUDED.notes,managing_unit_id=EXCLUDED.managing_unit_id,asset_location_id=EXCLUDED.asset_location_id,updated_at=EXCLUDED.updated_at`,
+        [a.id,a.asset_number,a.corporate_asset_number,a.name,a.category_code,a.owner_division,a.brand,a.model,a.serial_number,a.specifications,a.purchase_date || '',Number(a.purchase_price || 0),a.warranty_until || '',a.status,a.condition,a.location,a.is_loanable,a.license_detail ? JSON.stringify(a.license_detail) : null,a.notes || null,a.managing_unit_id ?? null,a.asset_location_id ?? null,a.created_at,a.updated_at],
       );
       if (a.assigned_to?.id) {
         const userExists = db.users.some(u => u.id === a.assigned_to!.id);
@@ -529,6 +561,8 @@ export async function initializePersistence(): Promise<void> {
     // T2B-1: backfill managing_unit_id (ownership-based, idempoten) untuk aset
     // yang belum punya nilai — nilai eksplisit tidak pernah ditimpa.
     backfillManagingUnits('file store');
+    // T2B-2: backfill asset_location_id (exact-match dari teks location).
+    backfillAssetLocations('file store');
     if (loaded) {
       console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
     } else {
@@ -561,6 +595,8 @@ export async function initializePersistence(): Promise<void> {
       // T2B-1: backfill managing_unit_id sebelum state di-persist (baik dari
       // blob hasil hydrate maupun seed baru); idempoten & ownership-based.
       backfillManagingUnits('postgresql');
+      // T2B-2: backfill asset_location_id (idempoten, exact-match teks legacy).
+      backfillAssetLocations('postgresql');
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
       await persistPostgresState();
@@ -594,6 +630,8 @@ export async function initializePersistence(): Promise<void> {
   const loaded = loadStateFromFile();
   // T2B-1: backfill managing_unit_id (idempoten) — jalur fallback file store.
   backfillManagingUnits('file fallback');
+  // T2B-2: backfill asset_location_id — jalur fallback file store.
+  backfillAssetLocations('file fallback');
   if (loaded) {
     console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
   } else {

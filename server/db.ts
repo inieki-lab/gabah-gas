@@ -55,6 +55,22 @@ export interface OrgOfficeLocation {
   is_active: boolean;
 }
 
+/**
+ * T2B-2: Master Lokasi Fisik Aset — master TERPISAH dari org_office_locations
+ * (penempatan user) dan dari managing_unit_id (unit pengelola lifecycle).
+ * Mendukung hierarki sederhana via parent_id (self-reference); lokasi tidak
+ * boleh menjadi parent bagi dirinya sendiri maupun membentuk siklus.
+ * Keputusan penamaan: field relasi pada aset dipakai `asset_location_id`
+ * (sesuai pola `office_location_id` pada user).
+ */
+export interface AssetLocation {
+  id: string;
+  name: string;
+  /** Lokasi induk (self-reference ke asset_locations.id); null = lokasi root. */
+  parent_id?: string | null;
+  is_active: boolean;
+}
+
 export interface ServerSession {
   id: string;
   token: string;
@@ -98,6 +114,12 @@ export interface ServerAsset {
   status: 'active' | 'assigned' | 'available' | 'reserved' | 'in_repair' | 'damaged' | 'cannibalized' | 'pending_disposal' | 'pending_auction' | 'auctioned' | 'disposed' | 'lost' | 'inactive';
   condition: 'new' | 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged';
   location: string;
+  /** T2B-2: lokasi fisik aset (relasi ke asset_locations.id) — master TERPISAH
+   *  dari org_office_locations (penempatan user) dan dari managing_unit_id
+   *  (unit pengelola). Nullable: aset legacy yang teks `location`-nya tidak
+   *  cocok unik dengan master dibiarkan kosong (tidak ditebak). Teks `location`
+   *  lama dipertahankan sebagai compatibility free-text. */
+  asset_location_id?: string | null;
   is_loanable: boolean;
   assigned_to?: {
     id: string;
@@ -428,6 +450,33 @@ export interface ServerRoomReservation {
 }
 
 // In-Memory Authoritative Data Store
+/**
+ * T2B-2: seed master lokasi fisik aset — DITURUNKAN dari nilai `location`
+ * aktual pada seed aset (bukan karangan). Path lengkap "Induk - Anak"
+ * sengaja dibuat sama dengan teks legacy agar backfill deterministik
+ * (exact match) dapat memetakan seluruh aset seed tanpa menebak.
+ * Struktur hierarki: Head Office / Gudang Beras Cipinang / Pasar Induk
+ * Beras Cipinang sebagai root; ruang/area sebagai lokasi anak.
+ */
+export const DEFAULT_ASSET_LOCATIONS: AssetLocation[] = [
+  { id: 'ALOC-HO', name: 'Head Office', parent_id: null, is_active: true },
+  { id: 'ALOC-HO-PDK', name: 'Divisi Perdagangan & Komersial Lt. 2', parent_id: 'ALOC-HO', is_active: true },
+  { id: 'ALOC-HO-IT', name: 'Ruang IT & Server Lt. 2', parent_id: 'ALOC-HO', is_active: true },
+  { id: 'ALOC-HO-SEKDIR', name: 'Sekretariat Direksi Lt. 3', parent_id: 'ALOC-HO', is_active: true },
+  { id: 'ALOC-HO-HUMAS', name: 'Ruang Humas & Protokoler Lt. 2', parent_id: 'ALOC-HO', is_active: true },
+  { id: 'ALOC-HO-GA', name: 'Ruang General Affairs Lt. 1', parent_id: 'ALOC-HO', is_active: true },
+  { id: 'ALOC-HO-ITPOOL', name: 'Gudang IT Pool (Lt. 2)', parent_id: 'ALOC-HO', is_active: true },
+  { id: 'ALOC-HO-DC', name: 'Server Room Datacenter Lt. 2', parent_id: 'ALOC-HO', is_active: true },
+  { id: 'ALOC-HO-DIREKSI', name: 'Ruang Direksi', parent_id: 'ALOC-HO', is_active: true },
+  { id: 'ALOC-HO-PARKIR', name: 'Parkir Kendaraan Dinas', parent_id: 'ALOC-HO', is_active: true },
+  { id: 'ALOC-GBC', name: 'Gudang Beras Cipinang', parent_id: null, is_active: true },
+  { id: 'ALOC-GBC-TIMBANGAN', name: 'Pos Timbangan & Kontrol Distribusi', parent_id: 'ALOC-GBC', is_active: true },
+  { id: 'ALOC-GBC-WH-A', name: 'Warehouse A', parent_id: 'ALOC-GBC', is_active: true },
+  { id: 'ALOC-PIBC', name: 'Pasar Induk Beras Cipinang', parent_id: null, is_active: true },
+  { id: 'ALOC-PIBC-KANTOR-1', name: 'Kantor Pos 1', parent_id: 'ALOC-PIBC', is_active: true },
+  { id: 'ALOC-CLOUD', name: 'Cloud Tenant Microsoft Azure', parent_id: null, is_active: true },
+];
+
 export const db = {
   users: [] as ServerUser[],
   sessions: [] as ServerSession[],
@@ -477,6 +526,13 @@ export const db = {
     { id: 'OFF-PANGSUB', name: 'Kantor Pangsub', is_active: true },
     { id: 'OFF-RPC', name: 'RPC/Supply Chain', is_active: true },
   ] as OrgOfficeLocation[],
+
+  // T2B-2: Master Lokasi Fisik Aset (terpisah dari lokasi kantor user &
+  // managing unit). Seed DITURUNKAN dari nilai `location` aktual pada seed
+  // aset (bukan data karangan) agar backfill deterministik dapat memetakan
+  // seluruh aset seed; hierarki: root "Head Office"/"Gudang Beras Cipinang"/
+  // "Pasar Induk Beras Cipinang" dengan lokasi anak per ruang/area.
+  assetLocations: DEFAULT_ASSET_LOCATIONS,
 
   divisions: [
     { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },

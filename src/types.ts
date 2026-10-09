@@ -68,6 +68,10 @@ export interface Asset {
   owner_division_id?: number;
   /** T2B-1: unit operasional pengelola aset — relasi ke org_units.id (nullable). */
   managing_unit_id?: string | null;
+  /** T2B-2: lokasi fisik aset — relasi ke asset_locations.id (nullable).
+   *  Master terpisah dari lokasi kantor user dan dari managing unit.
+   *  Aset legacy tanpa relasi menampilkan teks `location` lama. */
+  asset_location_id?: string | null;
   asset_category_id?: string | number;
   category_code?: string; // e.g. HLT, HPC, HSV, INV-F, MSN
   asset_code?: string;

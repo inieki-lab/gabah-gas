@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Asset, UserProfile, AssetCondition, AssetStatus } from '../../types';
 import { GabahService } from '../../services/gabahService';
+import { gabahApi } from '../../services/gabahApi';
 
 interface EditAssetModalProps {
   isOpen: boolean;
@@ -48,6 +49,27 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   onOpenBastModal,
 }) => {
   const activeUsers = (users && users.length > 0) ? users : (allUsers || []);
+  // T2B-2: master lokasi fisik aset untuk pemilihan pada form edit.
+  const [assetLocations, setAssetLocations] = useState<any[]>([]);
+  useEffect(() => {
+    if (!isOpen) return;
+    let alive = true;
+    gabahApi.getAssetLocations()
+      .then(list => { if (alive && Array.isArray(list)) setAssetLocations(list); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [isOpen]);
+  const assetLocationPath = (id: string): string => {
+    const byId = new Map<string, any>(assetLocations.map((l: any): [string, any] => [l.id, l]));
+    const parts: string[] = [];
+    let cursor = byId.get(id);
+    for (let i = 0; cursor && i < 16; i++) {
+      parts.unshift(cursor.name);
+      cursor = cursor.parent_id ? byId.get(cursor.parent_id) : undefined;
+    }
+    return parts.join(' - ');
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
@@ -55,6 +77,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
     serial_number: '',
     corporate_asset_number: '',
     location: '',
+    asset_location_id: '' as string,
     condition: 'good' as AssetCondition,
     status: 'available' as AssetStatus,
     is_loanable: false,
@@ -76,6 +99,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         serial_number: asset.serial_number || '',
         corporate_asset_number: asset.corporate_asset_number || '',
         location: asset.location || '',
+        asset_location_id: asset.asset_location_id || '',
         condition: asset.condition || 'good',
         status: (asset.status === 'in_use' ? 'assigned' : asset.status) || 'available',
         is_loanable: Boolean(asset.is_loanable),
@@ -150,7 +174,9 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         model: formData.model.trim(),
         serial_number: formData.serial_number.trim(),
         corporate_asset_number: formData.corporate_asset_number.trim() ? formData.corporate_asset_number.trim() : null,
-        location: formData.location.trim(),
+        // T2B-2: relasi lokasi fisik + teks legacy (sinkron bila master dipilih).
+        asset_location_id: formData.asset_location_id || null,
+        location: (formData.asset_location_id ? assetLocationPath(formData.asset_location_id) : formData.location.trim()) || formData.location.trim(),
         condition: formData.condition,
         is_loanable: formData.is_loanable,
         specifications: formData.specifications.trim(),
@@ -469,13 +495,36 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
                     Lokasi Penempatan
                   </label>
-                  <input
-                    type="text"
+                  <select
                     disabled={!canEditThisAsset || isSubmitting}
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                    value={formData.asset_location_id}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setFormData(prev => ({
+                        ...prev,
+                        asset_location_id: id,
+                        location: id ? assetLocationPath(id) : prev.location,
+                      }));
+                    }}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  />
+                  >
+                    <option value="">— Di luar master (teks legacy) —</option>
+                    {assetLocations.filter((l: any) => l.is_active || l.id === asset.asset_location_id).map((l: any) => (
+                      <option key={l.id} value={l.id}>{assetLocationPath(l.id)}{l.is_active ? '' : ' (nonaktif)'}</option>
+                    ))}
+                  </select>
+                  {!formData.asset_location_id && (
+                    <input
+                      type="text"
+                      disabled={!canEditThisAsset || isSubmitting}
+                      value={formData.location}
+                      onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                      className="w-full px-3 py-2 mt-1.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  )}
+                  {asset.asset_location_id && !formData.asset_location_id && (
+                    <p className="text-[10px] text-amber-600 mt-1">Aset ini sebelumnya terpetakan ke master — pilihan "Di luar master" akan melepas relasinya.</p>
+                  )}
                 </div>
 
                 <div>

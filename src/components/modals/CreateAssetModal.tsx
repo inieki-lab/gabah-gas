@@ -281,7 +281,32 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   const [purchasePrice, setPurchasePrice] = useState<number>(15000000);
   const [warrantyUntil, setWarrantyUntil] = useState('');
   const [location, setLocation] = useState('Head Office Food Station');
+  // T2B-2: pemilihan lokasi fisik dari master aktif; "" = lokasi di luar
+  // master (teks bebas legacy). Saat master dipilih, teks `location` ikut
+  // disinkronkan ke path lengkap agar tampilan lama tetap konsisten.
+  const [assetLocations, setAssetLocations] = useState<any[]>([]);
+  const [assetLocationId, setAssetLocationId] = useState<string>('');
   const [custodianName, setCustodianName] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let alive = true;
+    gabahApi.getAssetLocations()
+      .then(list => { if (alive && Array.isArray(list)) setAssetLocations(list); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [isOpen]);
+
+  const assetLocationPath = (id: string): string => {
+    const byId = new Map<string, any>(assetLocations.map((l: any): [string, any] => [l.id, l]));
+    const parts: string[] = [];
+    let cursor = byId.get(id);
+    for (let i = 0; cursor && i < 16; i++) {
+      parts.unshift(cursor.name);
+      cursor = cursor.parent_id ? byId.get(cursor.parent_id) : undefined;
+    }
+    return parts.join(' - ');
+  };
   const [isLoanable, setIsLoanable] = useState(false);
   const [notes, setNotes] = useState('');
 
@@ -329,7 +354,10 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
       warranty_until: warrantyUntil || purchaseDate,
       status: 'available',
       condition: 'good',
-      location: location.trim(),
+      // T2B-2: master lokasi terpilih → relasi + teks path (sinkron);
+      // "" → hanya teks bebas legacy (tanpa relasi).
+      asset_location_id: assetLocationId || null,
+      location: (assetLocationId ? assetLocationPath(assetLocationId) : location.trim()) || location.trim(),
       is_loanable: isLoanable,
       notes: notes.trim(),
     };
@@ -633,13 +661,32 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
               <label className="text-slate-800 font-bold flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 text-slate-500" /> Lokasi Fisik Penempatan:
               </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Head Office Lt. 2, Gudang Cipinang Blok A, Pabrik Sragen"
+              <select
+                value={assetLocationId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setAssetLocationId(id);
+                  if (id) setLocation(assetLocationPath(id));
+                }}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600"
-              />
+              >
+                <option value="">— Di luar master (isi teks manual) —</option>
+                {assetLocations.filter(l => l.is_active).map(l => (
+                  <option key={l.id} value={l.id}>{assetLocationPath(l.id)}</option>
+                ))}
+              </select>
+              {!assetLocationId && (
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Head Office Lt. 2, Gudang Cipinang Blok A, Pabrik Sragen"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600"
+                />
+              )}
+              {assetLocationId && (
+                <p className="text-[10px] text-slate-400">Teks lokasi legacy otomatis mengikuti path master terpilih.</p>
+              )}
             </div>
 
             <div className="space-y-1">

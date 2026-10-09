@@ -4,6 +4,7 @@ import {
   Users,
   LockKeyhole,
   Building2,
+  MapPin,
   Database,
   Bell,
   ScrollText,
@@ -316,13 +317,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const [liveCats, liveLocs, liveDivs, liveJobLevels, liveOrgUnits, liveOffices] = await Promise.all([
+        const [liveCats, liveLocs, liveDivs, liveJobLevels, liveOrgUnits, liveOffices, liveAssetLocs] = await Promise.all([
           gabahApi.getCategories().catch(() => []),
           gabahApi.getLocations().catch(() => []),
           gabahApi.getDivisions().catch(() => []),
           gabahApi.getJobLevels().catch(() => []),
           gabahApi.getOrgUnits().catch(() => []),
           gabahApi.getOfficeLocations().catch(() => []),
+          gabahApi.getAssetLocations().catch(() => []),
         ]);
         if (Array.isArray(liveCats) && liveCats.length > 0) {
           const mapped = liveCats.map((c: any) => ({
@@ -348,6 +350,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         if (Array.isArray(liveJobLevels) && liveJobLevels.length > 0) setJobLevels(liveJobLevels);
         if (Array.isArray(liveOrgUnits) && liveOrgUnits.length > 0) setOrgUnits(liveOrgUnits);
         if (Array.isArray(liveOffices) && liveOffices.length > 0) setOfficeLocations(liveOffices);
+        if (Array.isArray(liveAssetLocs)) setAssetLocations(liveAssetLocs);
       } catch (e) {
         console.warn('Notice loading master data:', e);
       }
@@ -453,6 +456,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [newJobLevelData, setNewJobLevelData] = useState({ code: '', label: '', order: '' });
   const [newOrgUnitData, setNewOrgUnitData] = useState({ name: '', division_code: 'Umum' });
   const [newOfficeData, setNewOfficeData] = useState({ name: '' });
+  // T2B-2: master Lokasi Fisik Aset — hierarki sederhana (parent_id).
+  const [assetLocations, setAssetLocations] = useState<any[]>([]);
+  const [newAssetLocationData, setNewAssetLocationData] = useState({ name: '', parent_id: '' });
   const [isSubmittingOrgMaster, setIsSubmittingOrgMaster] = useState(false);
 
   const [divisions, setDivisions] = useState<OrgDivision[]>(() => {
@@ -826,6 +832,39 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast(`Lokasi "${updated.name}" ${nextActive ? 'diaktifkan' : 'dinonaktifkan'}.`, 'info');
     } catch (err: any) {
       showToast(err.message || 'Gagal mengubah status lokasi.', 'warning');
+    }
+  };
+
+  // T2B-2: handler master Lokasi Fisik Aset (create + toggle aktif).
+  const handleAddAssetLocation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAssetLocationData.name.trim()) {
+      showToast('Nama lokasi fisik wajib diisi.', 'warning');
+      return;
+    }
+    try {
+      setIsSubmittingOrgMaster(true);
+      const created = await gabahApi.createAssetLocation({
+        name: newAssetLocationData.name.trim(),
+        parent_id: newAssetLocationData.parent_id || null,
+      });
+      setAssetLocations(prev => [...prev, created]);
+      setNewAssetLocationData({ name: '', parent_id: '' });
+      showToast(`Lokasi fisik "${created.name}" berhasil ditambahkan.`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menambah lokasi fisik.', 'warning');
+    } finally {
+      setIsSubmittingOrgMaster(false);
+    }
+  };
+
+  const handleToggleAssetLocation = async (id: string, nextActive: boolean) => {
+    try {
+      const updated = await gabahApi.updateAssetLocation(id, { is_active: nextActive });
+      setAssetLocations(prev => prev.map(l => l.id === id ? updated : l));
+      showToast(`Lokasi fisik "${updated.name}" ${nextActive ? 'diaktifkan' : 'dinonaktifkan'}.`, 'info');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengubah status lokasi fisik.', 'warning');
     }
   };
 
@@ -2907,6 +2946,59 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   ))}
                 </div>
                 <p className="text-[10px] text-slate-400 mt-2">Satu lokasi dapat memuat banyak unit; lokasi penempatan tidak mengubah pemilik aset maupun nomor aset.</p>
+              </div>
+
+              {/* T2B-2: Master Lokasi Fisik Aset — terpisah dari lokasi kantor
+                  user; mendukung hierarki sederhana (induk → anak). */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Master Lokasi Fisik Aset ({assetLocations.length})</h4>
+                </div>
+                <form onSubmit={handleAddAssetLocation} className="flex flex-wrap gap-2 items-end mb-3">
+                  <input type="text" placeholder="Nama lokasi fisik (mis. Gudang Utama Lt. 1)" value={newAssetLocationData.name}
+                    onChange={e => setNewAssetLocationData(p => ({ ...p, name: e.target.value }))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-64 focus:outline-none focus:border-emerald-500" />
+                  <select value={newAssetLocationData.parent_id}
+                    onChange={e => setNewAssetLocationData(p => ({ ...p, parent_id: e.target.value }))}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-emerald-500">
+                    <option value="">— Lokasi induk (opsional) —</option>
+                    {assetLocations.map(l => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                  <button type="submit" disabled={isSubmittingOrgMaster}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1">
+                    <Plus className="w-3 h-3" /> Tambah
+                  </button>
+                </form>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {assetLocations.map(loc => {
+                    const parent = loc.parent_id ? assetLocations.find(p => p.id === loc.parent_id) : null;
+                    return (
+                      <div key={loc.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${loc.is_active ? 'border-slate-200 bg-slate-50/70' : 'border-slate-100 bg-slate-100/60 opacity-60'}`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <MapPin className="w-4 h-4 text-[#206f65] shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-xs font-extrabold text-slate-800">{loc.name}</span>
+                            {parent && <span className="text-[10px] text-slate-400 ml-1.5">← {parent.name}</span>}
+                          </div>
+                        </div>
+                        {isCurrentUserAdmin && (
+                          <button type="button" onClick={() => handleToggleAssetLocation(loc.id, !loc.is_active)}
+                            className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold ${loc.is_active ? 'text-emerald-700 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+                            <Power className="w-3.5 h-3.5" />
+                            {loc.is_active ? 'Aktif' : 'Nonaktif'}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2">
+                  Lokasi fisik aset terpisah dari lokasi kantor penempatan user dan dari unit pengelola.
+                  Lokasi nonaktif tidak dapat dipilih untuk aset baru, tetapi data historis tetap terbaca.
+                  Tidak ada penghapusan permanen — gunakan nonaktif agar relasi aset tidak rusak.
+                </p>
               </div>
             </div>
           )}

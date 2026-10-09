@@ -390,7 +390,11 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                   <div><strong>Serial Number:</strong> <span className="font-mono text-emerald-700 font-bold">{asset.serial_number}</span></div>
                   <div><strong>Kondisi:</strong> <span className="capitalize">{asset.condition}</span></div>
                   <div><strong>Status Saat Ini:</strong> <span className="capitalize font-bold text-slate-900">{asset.status}</span></div>
-                  <div><strong>Lokasi Penempatan:</strong> {asset.location}</div>
+                  <div><strong>Lokasi Penempatan:</strong> {asset.location}
+                    {asset.asset_location_id && (
+                      <span className="ml-1.5 text-[10px] font-bold text-[#206f65] bg-[#4ABDAC]/10 px-1.5 py-0.5 rounded-md align-middle">Master Lokasi</span>
+                    )}
+                  </div>
                 </div>
                 <div className="text-slate-500 text-[11px] pt-1 border-t border-slate-200">
                   <strong>Deskripsi:</strong> {asset.specifications}

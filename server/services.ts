@@ -2,6 +2,7 @@ import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerN
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
 import { resolveManagingUnitForOwnerDivision, validateManagingUnit } from './managing-unit';
+import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-location';
 import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
@@ -121,6 +122,10 @@ export class GabahDomainService {
     /** T2B-1: unit operasional pengelola aset (relasi org_units.id).
      *  Tidak memengaruhi owner_division, RBAC, maupun asset numbering. */
     managing_unit_id?: string | null;
+    /** T2B-2: lokasi fisik aset (relasi asset_locations.id) — master terpisah
+     *  dari unit & lokasi kantor user. Nullable; bila tidak dispesifikasikan,
+     *  resolusi deterministik dari teks `location` (exact-match, tidak menebak). */
+    asset_location_id?: string | null;
     name: string;
     corporate_asset_number?: string | null;
     brand?: string;
@@ -207,6 +212,19 @@ export class GabahDomainService {
       managingUnitId = resolveManagingUnitForOwnerDivision(resolvedOwnerDivision);
     }
 
+    // T2B-2: lokasi fisik aset — divalidasi terhadap master asset_locations
+    // (terdaftar; nonaktif tidak dapat dipilih untuk aset baru). Jika tidak
+    // dispesifikasikan, resolusi deterministik exact-match dari teks `location`
+    // (tidak cocok unik → null, tidak menebak). Lokasi fisik TIDAK
+    // memengaruhi owner_division, managing unit, RBAC, maupun asset number.
+    let assetLocationId: string | null;
+    if (payload.asset_location_id !== undefined) {
+      // Melempar Error (→ 400 di route) bila lokasi tidak ada / nonaktif.
+      assetLocationId = validateAssetLocation(payload.asset_location_id);
+    } else {
+      assetLocationId = resolveAssetLocationIdByText(payload.location);
+    }
+
     // 4. Resolve assignment if provided
     let assignedObj = null;
     let initialStatus: ServerAsset['status'] = payload.is_loanable ? 'available' : 'active';
@@ -234,6 +252,7 @@ export class GabahDomainService {
       category_type: taxonomy.category_type,
       owner_division: resolvedOwnerDivision,
       managing_unit_id: managingUnitId,
+      asset_location_id: assetLocationId,
       brand: payload.brand?.trim() || '',
       model: payload.model?.trim() || '',
       serial_number: payload.serial_number?.trim() || `SN-${Date.now().toString().slice(-6)}`,
@@ -372,6 +391,9 @@ export class GabahDomainService {
 
     const oldLocation = asset.location;
     asset.location = newLocation;
+    // T2B-2: reolusi deterministik relasi lokasi fisik dari teks baru
+    // (exact-match unik → set; selain itu null — tidak menebak).
+    asset.asset_location_id = resolveAssetLocationIdByText(newLocation);
     asset.updated_at = new Date().toISOString();
 
     const movement: ServerAssetMovement = {

@@ -340,6 +340,19 @@ class GabahApiClient {
     return this.request<any>(`/api/master/office-locations/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) });
   }
 
+  // T2B-2: master Lokasi Fisik Aset — terpisah dari lokasi kantor user.
+  async getAssetLocations(): Promise<any[]> {
+    return this.request<any[]>('/api/master/asset-locations');
+  }
+
+  async createAssetLocation(payload: { name: string; parent_id?: string | null }): Promise<any> {
+    return this.request<any>('/api/master/asset-locations', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateAssetLocation(id: string, payload: { name?: string; parent_id?: string | null; is_active?: boolean }): Promise<any> {
+    return this.request<any>(`/api/master/asset-locations/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  }
+
   // Assets
   async getAssets(): Promise<Asset[]> {
     return this.request<Asset[]>('/api/assets');
@@ -353,6 +366,8 @@ class GabahApiClient {
     category_name_or_code: string;
     owner_division?: OwnerDivision;
     name: string;
+    /** T2B-2: relasi lokasi fisik aset (asset_locations.id). */
+    asset_location_id?: string | null;
     corporate_asset_number?: string | null;
     brand?: string;
     model?: string;

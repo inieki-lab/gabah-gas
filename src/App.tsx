@@ -273,6 +273,8 @@ export default function App() {
         purchase_price: data.purchase_price,
         warranty_until: data.warranty_until || (data as any).warranty_expiry,
         location: data.location,
+        // T2B-2: relasi lokasi fisik aset diteruskan ke backend.
+        asset_location_id: data.asset_location_id,
         is_loanable: data.is_loanable,
         condition: data.condition || 'new',
         license_detail: data.license_detail,
@@ -293,6 +295,8 @@ export default function App() {
       const saved = await gabahApi.updateAsset(updatedAsset.id, {
         corporate_asset_number: updatedAsset.corporate_asset_number,
         location: updatedAsset.location,
+        // T2B-2: relasi lokasi fisik aset ikut diperbarui bila ada.
+        asset_location_id: updatedAsset.asset_location_id,
         condition: updatedAsset.condition,
         status: updatedAsset.status,
         notes: updatedAsset.notes,

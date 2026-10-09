@@ -1,5 +1,49 @@
 # Changelog — GABAH
 
+## [2026-10-09] — T2B-2 — Asset Location Master
+
+### Ringkasan
+Master baru **`asset_locations`**: lokasi fisik aset yang **terpisah** dari `org_office_locations` (lokasi kantor penempatan user) dan dari `managing_unit_id` (unit pengelola lifecycle, T2B-1). Mendukung **hierarki sederhana** (`parent_id` self-reference) dengan guard anti-siklus & anti-self-parent. Field relasi baru pada aset: **`asset_location_id`** (nullable). Prinsip: Lokasi Fisik ≠ Owner Division ≠ Managing Unit ≠ Custodian/PIC.
+
+### Keputusan penamaan
+Field relasi pada aset memakai **`asset_location_id`** (konsisten dengan pola `office_location_id` pada user); tabel memakai **`asset_locations`**. Master lama `org_office_locations` TIDAK diubah dan tetap khusus penempatan user.
+
+### Schema/model
+- **`AssetLocation`** (`server/db.ts`, `src/types.ts`): `id`, `name`, `parent_id?`, `is_active`. **`ServerAsset`/`Asset`**: field baru opsional `asset_location_id?: string | null`.
+- **Seed hierarkis** (`DEFAULT_ASSET_LOCATIONS` di `server/db.ts` + seed SQL): root Head Office / Gudang Beras Cipinang / Pasar Induk Beras Cipinang / Cloud Tenant Microsoft Azure; lokasi anak per ruang/area (mis. Ruang IT & Server Lt. 2, Warehouse A, Kantor Pos 1). Seed **diturunkan dari teks `location` aktual pada seed aset** (bukan karangan) sehingga backfill exact-match memetakan seluruh aset seed secara deterministik; Admin GABAH bebas menambah/mengubah.
+- **Modul baru `server/asset-location.ts`**: `resolveAssetLocationIdByText` (exact-match deterministik, ambigu → null), `getAssetLocationPath`, `validateAssetLocation` (harus terdaftar; nonaktif hanya untuk nilai historis yang sudah melekat), `assertValidLocationParent` (tolak self-parent & siklus), `normalizeAssetAssetLocations` (backfill idempoten).
+- **Migration `server/migrations/008_asset_location_master.sql`** (additive & idempoten): `CREATE TABLE IF NOT EXISTS asset_locations` (self-FK `parent_id ON DELETE SET NULL`), seed `ON CONFLICT DO NOTHING`, `ALTER TABLE assets ADD COLUMN IF NOT EXISTS asset_location_id VARCHAR(64) REFERENCES asset_locations(id) ON DELETE SET NULL` + index `idx_assets_asset_location` + backfill + `RAISE NOTICE` total/mapped/unresolved. Tidak menyentuh `owner_division`, `managing_unit_id`, `location` (teks bebas tetap), maupun `asset_number`.
+- **Backfill deterministik (identik SQL ↔ TS)**: teks legacy `location` dipetakan ke master HANYA bila cocok persis (normalisasi spasi/kapital) dengan path lengkap lokasi ("Induk - Anak") dan cocokan **unik**; ambigu/tidak dikenal → **NULL** (tidak ditebak, tidak membuat lokasi palsu). Nilai eksplisit tidak pernah ditimpa; referensi asing direset null. Aset lama tanpa field tetap terbaca (aman hydrate).
+
+### API
+- **Master (Admin GABAH only, ter-audit)**: `GET /api/master/asset-locations`, `POST /api/master/asset-locations` (validasi nama+induk unik per level; induk harus ada), `PATCH /api/master/asset-locations/:id` (rename/reparent/enable/disable; guard self-parent & siklus → 400). **Tidak ada hard-delete** — pola disable/nonaktif seperti master lain, sehingga relasi aset tidak pernah rusak.
+- **Aset**: `POST /api/assets` & `PATCH /api/assets/:id` menerima `asset_location_id` (harus terdaftar; **nonaktif ditolak** untuk perubahan baru — kecuali mempertahankan nilai historis yang sudah melekat; tidak dikenal → 400 tanpa mengubah nilai lama). `POST /api/assets/:id/move` me-resolve ulang relasi secara deterministik dari teks baru (non-master → null). GET mengembalikan field-nya; UI menampilkan nama master bila ada, fallback teks `location` legacy.
+
+### UI
+- **Administration Control Panel** (`AdministrationModal.tsx`, section org_masters): blok baru "Master Lokasi Fisik Aset" — form tambah (nama + pilihan lokasi induk), daftar dengan indikator "← Induk", toggle aktif/nonaktif.
+- **Form aset** (`CreateAssetModal`, `EditAssetModal`): pemilihan lokasi dari **master aktif** (label = path lengkap "Induk - Anak"); opsi "Di luar master" mempertahankan teks bebas legacy. Saat master dipilih, teks `location` legacy ikut disinkronkan ke path master (satu field, tanpa duplikasi membingungkan; edit form menampilkan nilai nonaktif yang sudah melekat dengan label "(nonaktif)").
+- **Daftar/detail aset**: nama lokasi master tampil (teks legacy ikut sinkron); detail aset menambah badge "Master Lokasi" bila terpetakan; aset legacy tanpa relasi menampilkan teks `location` lama apa adanya.
+
+### Persistence
+- **PostgreSQL**: `backfillNormalizedTables` meng-upsert `assets_locations` (sebelum `assets`, agar FK aman) dan kolom `asset_location_id` ikut INSERT/UPSERT `assets`; migration runner CR-04 menjalankan 008.
+- **JSON fallback**: hydrate merge seed default + state (idempoten), `assetLocations` ikut di-serialize, backfill berjalan di seluruh jalur boot dengan log total/mapped/unresolved/preserved.
+
+### Kompatibilitas legacy
+- `assets.location` (teks bebas) **tetap ada** dan tidak dihapus; aset lama tanpa `asset_location_id` tetap terbaca di semua tampilan/API.
+- Lokasi yang sudah direferensikan aset **tidak bisa dihapus permanen** lewat API (hanya nonaktif) → FK `ON DELETE SET NULL` sebagai jaring pengaman ekstra.
+- `org_office_locations` (kantor user) tidak berubah sama sekali.
+
+### Tidak berubah (scope guard T2B-2)
+`owner_division`, `managing_unit_id` & logika backfill T2B-1, `asset_number`/`corporate_asset_number`/numbering engine & sequence table, taxonomy kategori, RBAC/authorization lintas divisi, Maintenance, Contract, Loan/Assignment, Helpdesk, Meeting Room, Vendor, KB, Procurement, workflow PIBC/Supply Chain, skema office location user.
+
+### Tests / build / lint — hasil aktual
+- `npm run lint` (`tsc --noEmit`): **PASS** (0 error)
+- `npm run build` (vite + esbuild): **PASS**
+- `npm run test:t2b2` (baru — `scripts/t2b2-asset-location-verify.mjs`): **22/22 PASS** — migration additive/idempotent (inspeksi statis + guard), CRUD master (create/rename/disable/enable, duplikat ditolak, self-parent & siklus 400), non-admin 403, auditor read-only, referensi valid diterima, tidak dikenal ditolak tanpa mengubah nilai, lokasi nonaktif ditolak untuk perubahan baru namun nilai historis dipertahankan, backfill tidak menebak (teks non-master → null), aset legacy tetap terbaca, owner_division/managing_unit_id/asset_number/corporate_asset_number tidak berubah oleh lokasi, JSON roundtrip lewat restart, backfill idempoten.
+- Regresi: `test:t2b1` **18/18**, `test:org-model` **14/14**, `test:loan-authz` **37/37**, `test:meeting-room` **18/18**, `p0-security-verify` **37/37** — semua PASS.
+
+Catatan: T2B-3/T2B-4 (lanjutan roadmap) serta redesign RBAC/Maintenance/Contract/Loan **belum** dikerjakan.
+
 ## [2026-10-08] — T2B-1 — Asset Ownership Core Model
 
 ### Ringkasan

@@ -7,6 +7,7 @@ import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_
 import { CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService } from './server/services';
+import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
@@ -1303,6 +1304,84 @@ async function startServer() {
     }
   });
 
+  // =========================
+  // T2B-2: Master Lokasi Fisik Aset — TERPISAH dari office-locations
+  // (penempatan user) dan org-units (unit pengelola). Hierarki sederhana
+  // via parent_id; nonaktif = tidak dapat dipilih untuk aset baru, tetapi
+  // data historis tetap terbaca. Tidak ada hard-delete (pola disable,
+  // seperti master organisasi lain) — lokasi tereferensi aset aman.
+  // =========================
+  app.get('/api/master/asset-locations', (req, res) => {
+    res.json({ success: true, data: db.assetLocations || [] });
+  });
+
+  app.post('/api/master/asset-locations', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi aset.' });
+      }
+      const name = String(req.body.name || '').trim();
+      if (!name) return res.status(400).json({ success: false, message: 'Nama lokasi wajib diisi.' });
+      if (!db.assetLocations) db.assetLocations = [];
+      const parentId = req.body.parent_id ? String(req.body.parent_id).trim() : null;
+      if (parentId && !(db.assetLocations || []).some(l => l.id === parentId)) {
+        return res.status(400).json({ success: false, message: `Lokasi induk "${parentId}" tidak terdaftar.` });
+      }
+      // Duplikasi: nama + induk yang sama tidak boleh dobel (case-insensitive).
+      if ((db.assetLocations || []).some(l => l.name.trim().toLowerCase() === name.toLowerCase() && (l.parent_id || null) === parentId)) {
+        return res.status(400).json({ success: false, message: `Lokasi "${name}" sudah ada di level yang sama.` });
+      }
+      const loc = { id: `ALOC-${Date.now().toString(36).toUpperCase()}`, name, parent_id: parentId, is_active: true };
+      db.assetLocations.push(loc);
+      GabahDomainService.recordAudit('ASSET_LOCATION_CREATED', 'Assets', `Menambahkan master lokasi fisik aset ${getAssetLocationPath(loc)}`, actor);
+      await persistDataStore();
+      res.status(201).json({ success: true, data: loc });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  app.patch('/api/master/asset-locations/:id', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (actor.role !== 'Admin GABAH') {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi aset.' });
+      }
+      if (!db.assetLocations) db.assetLocations = [];
+      const loc = db.assetLocations.find(l => l.id === req.params.id);
+      if (!loc) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
+      if (req.body.name !== undefined) {
+        const newName = String(req.body.name).trim() || loc.name;
+        const newParent = req.body.parent_id !== undefined ? (req.body.parent_id ? String(req.body.parent_id).trim() : null) : (loc.parent_id || null);
+        if ((db.assetLocations || []).some(l => l.id !== loc.id && l.name.trim().toLowerCase() === newName.toLowerCase() && (l.parent_id || null) === newParent)) {
+          return res.status(400).json({ success: false, message: `Lokasi "${newName}" sudah ada di level yang sama.` });
+        }
+        loc.name = newName;
+      }
+      if (req.body.parent_id !== undefined) {
+        const parentId = req.body.parent_id ? String(req.body.parent_id).trim() : null;
+        if (parentId) {
+          if (!(db.assetLocations || []).some(l => l.id === parentId)) {
+            return res.status(400).json({ success: false, message: `Lokasi induk "${parentId}" tidak terdaftar.` });
+          }
+          // Guard hierarki: parent baru tidak boleh membentuk siklus.
+          assertValidLocationParent(loc.id, parentId);
+        }
+        if (parentId === loc.id) {
+          return res.status(400).json({ success: false, message: 'Lokasi tidak boleh menjadi induk bagi dirinya sendiri.' });
+        }
+        loc.parent_id = parentId;
+      }
+      if (req.body.is_active !== undefined) loc.is_active = Boolean(req.body.is_active);
+      GabahDomainService.recordAudit('ASSET_LOCATION_UPDATED', 'Assets', `Memperbarui master lokasi fisik aset ${getAssetLocationPath(loc)} — aktif: ${loc.is_active}`, actor);
+      await persistDataStore();
+      res.json({ success: true, data: loc });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
   app.post('/api/taxonomy/resolve', (req, res) => {
     try {
       const { nameOrCode } = req.body;
@@ -1551,6 +1630,19 @@ async function startServer() {
         return res.status(400).json({ success: false, message: `Unit "${uid}" tidak terdaftar atau sedang nonaktif.` });
       }
       asset.managing_unit_id = uid;
+    }
+
+    // T2B-2: lokasi fisik aset (relasi ke asset_locations.id) — divalidasi
+    // terhadap master; lokasi nonaktif hanya dipertahankan bila sama dengan
+    // nilai yang sudah melekat (data historis), tidak dapat dipilih sebagai
+    // perubahan baru. owner_division, managing_unit_id, asset_number, dan
+    // teks `location` legacy TIDAK berubah oleh field ini.
+    if (req.body.asset_location_id !== undefined) {
+      try {
+        asset.asset_location_id = validateAssetLocation(req.body.asset_location_id, undefined, asset.asset_location_id);
+      } catch (e: any) {
+        return res.status(400).json({ success: false, message: e.message });
+      }
     }
 
     // Update mutable fields (not asset_number or owner_division)
