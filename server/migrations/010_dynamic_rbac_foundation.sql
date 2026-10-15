@@ -3,8 +3,6 @@
 -- backfills stable role keys and the backend authorization layer is switched.
 -- Do not drop or rename legacy role data in this stage.
 
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS gabah_roles (
   id BIGSERIAL PRIMARY KEY,
   role_key VARCHAR(80) NOT NULL UNIQUE,
@@ -79,4 +77,3 @@ VALUES
   ('humas', 'Humas', 'Data awal role Humas; permission akan dimigrasikan pada tahap berikutnya.', FALSE)
 ON CONFLICT (role_key) DO NOTHING;
 
-COMMIT;
