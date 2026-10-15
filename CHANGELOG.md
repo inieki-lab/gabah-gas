@@ -1,3 +1,19 @@
+## [2026-10-15] — Dynamic RBAC Stage 6: Stable Superadmin Policy Cache
+
+### Perubahan
+- Tambah `server/rbac-policy.ts` sebagai cache baca-saja dari role assignment, permission, dan scope yang tersimpan di PostgreSQL.
+- Tambah fungsi policy dasar: `isRbacSuperadmin`, `hasRbacPermission`, `getUserRbacPolicies`, dan `hasRbacScope`.
+- Muat policy setelah persistence siap dan segarkan cache setelah perubahan konfigurasi role/permission/scope.
+- Endpoint administrasi Dynamic RBAC sekarang memverifikasi assignment role yang memiliki `is_superadmin = TRUE`, bukan hanya membandingkan nama tampilan role.
+- Tambah backfill idempoten setelah `backfillNormalizedTables()` agar instalasi PostgreSQL baru tidak kehilangan assignment role karena migration 011 dijalankan sebelum tabel user diisi.
+- Tambah pemeriksaan kontrak untuk policy cache dan urutan backfill tersebut.
+
+### Batas tahap
+- Cache policy belum menggantikan seluruh pemeriksaan role hardcoded pada endpoint bisnis dan domain service.
+- Belum ada endpoint assignment role dinamis yang diaktifkan untuk pengguna akhir; tahap berikutnya harus memigrasikan otorisasi runtime secara bertahap agar role baru tidak mewarisi atau kehilangan akses secara tidak sengaja.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 5: Complete Permission Catalogue
 
 ### Perubahan
