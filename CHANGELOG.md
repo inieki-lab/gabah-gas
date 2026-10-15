@@ -1,3 +1,20 @@
+## [2026-10-15] — Dynamic RBAC Stage 7: Stable Superadmin Enforcement
+
+### Perubahan
+- Tambah helper `isSuperadminActor` yang menggunakan assignment Superadmin database ketika PostgreSQL aktif dan mempertahankan perilaku Admin GABAH pada file-store development.
+- Ganti pemeriksaan Superadmin berbasis nama di `server.ts`, `server/services.ts`, dan `server/runtime-hardening.ts` dengan helper policy yang sama.
+- Tambah penghitungan Superadmin aktif dari cache policy.
+- Cegah penurunan role, penonaktifan, atau penghapusan Superadmin aktif terakhir melalui endpoint user.
+- Perbaiki rekonsiliasi assignment legacy: assignment role milik user yang sudah dihapus dibersihkan, role legacy disinkronkan mengikuti role user saat ini, dan role custom tidak dihapus oleh bridge legacy.
+- Segarkan policy cache setelah perubahan user dan konfigurasi RBAC.
+- Tambah pemeriksaan kontrak untuk memastikan guard Superadmin menggunakan identitas database dan Superadmin terakhir dilindungi.
+
+### Batas tahap
+- Pemeriksaan role spesifik selain Superadmin masih banyak di domain service dan endpoint. Role baru belum otomatis memperoleh akses bisnis hanya karena permission dipilih di UI.
+- Tahap berikutnya harus memigrasikan pemeriksaan per modul dan per aksi ke permission/scope, disertai pemetaan hak akses awal sembilan role dan pengujian regresi sebelum assignment dinamis user diaktifkan.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 6: Stable Superadmin Policy Cache
 
 ### Perubahan
