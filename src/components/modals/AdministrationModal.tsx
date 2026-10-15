@@ -502,6 +502,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   }, [activeSection, isCurrentUserAdmin]);
 
   const selectedRbacRole = rbacRoles.find(role => role.id === rbacSelectedRoleId) || null;
+  const rbacPermissionGroups = rbacPermissions.reduce<Record<string, any[]>>((groups, permission) => {
+    const moduleName = String(permission.module || 'other');
+    (groups[moduleName] ||= []).push(permission);
+    return groups;
+  }, {});
 
   const handleCreateRbacRole = async (e: React.FormEvent) => {
     e.preventDefault();
