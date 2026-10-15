@@ -1,8 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
+import { isSuperadminActor } from './rbac-policy';
 
-const isSuperadmin = (actor: ServerUser) => actor.role === 'Admin GABAH';
+const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
 const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || actor.role === 'Auditor';
 
 export function actorFor(req: Request): ServerUser | null {
