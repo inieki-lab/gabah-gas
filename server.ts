@@ -364,6 +364,7 @@ async function startServer() {
       );
 
       await persistDataStore();
+      await refreshRbacPolicy();
 
       res.status(201).json({
         success: true,
@@ -488,6 +489,7 @@ async function startServer() {
 
       if (created > 0 || updated > 0) {
         await persistDataStore();
+      await refreshRbacPolicy();
       }
 
       res.json({
@@ -607,6 +609,7 @@ async function startServer() {
       );
 
       await persistDataStore();
+      await refreshRbacPolicy();
 
       res.json({ success: true, data: sanitizeUser(targetUser) });
     } catch (err: any) {
@@ -681,6 +684,7 @@ async function startServer() {
       );
 
       await persistDataStore();
+      await refreshRbacPolicy();
 
       res.json({
         success: true,
