@@ -10,6 +10,7 @@ const backfill = fs.readFileSync('server/migrations/011_dynamic_rbac_legacy_back
 const catalogExpansion = fs.readFileSync('server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql', 'utf8');
 const dashboardPermissionSeed = fs.readFileSync('server/migrations/013_dynamic_rbac_dashboard_permission_seed.sql', 'utf8');
 const assetsReadPermissionSeed = fs.readFileSync('server/migrations/014_dynamic_rbac_assets_read_permission_seed.sql', 'utf8');
+const assetWritePermissionSeed = fs.readFileSync('server/migrations/016_dynamic_rbac_asset_write_permissions_seed.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -43,6 +44,17 @@ const checks = [
   ['asset read permission seed is idempotent and custom roles receive no implicit grant', /INSERT INTO gabah_role_permissions/i.test(assetsReadPermissionSeed) && /'assets\.read'/i.test(assetsReadPermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(assetsReadPermissionSeed) && /'superadmin'[\s\S]*'humas'/i.test(assetsReadPermissionSeed)],
   ['asset list and detail enforce assets.read', (server.match(/requireRbacPermission\(req, res, 'assets\.read'\)/g) || []).length === 2],
   ['asset detail uses the same scoped asset visibility as the list endpoint', /getScopedAssets\(actor\)\.find\(a => a\.id === req\.params\.id\)/.test(server)],
+  ['asset create endpoint enforces assets.create', /requireRbacPermission\(req, res, 'assets\.create'\)/.test(server)],
+  ['asset update endpoint enforces assets.update', /requireRbacPermission\(req, res, 'assets\.update'\)/.test(server)],
+  ['asset bulk import endpoint enforces assets.bulk_import', /requireRbacPermission\(req, res, 'assets\.bulk_import'\)/.test(server)],
+  ['asset assign endpoint enforces assets.assign', /requireRbacPermission\(req, res, 'assets\.assign'\)/.test(server)],
+  ['asset move endpoint enforces assets.move', /requireRbacPermission\(req, res, 'assets\.move'\)/.test(server)],
+  ['asset lifecycle endpoint enforces assets.lifecycle', /requireRbacPermission\(req, res, 'assets\.lifecycle'\)/.test(server)],
+  ['bulk import update path preserves division authority like PATCH', /hanya dapat diperbarui oleh personel IT atau Admin GABAH/.test(server) && /hanya dapat diperbarui oleh personel GA atau Admin GABAH/.test(server) && /hanya dapat diperbarui oleh personel Supply Chain atau Admin GABAH/.test(server) && /hanya dapat diperbarui oleh personel PIBC atau Admin GABAH/.test(server)],
+  ['asset write permission seed is additive and idempotent', /INSERT INTO gabah_role_permissions/i.test(assetWritePermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(assetWritePermissionSeed)],
+  ['asset write grants cover the six catalogue keys without duplicate permissions', ['assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign', 'assets.move', 'assets.lifecycle'].every(key => assetWritePermissionSeed.includes("'" + key + "'"))],
+  ['asset write grants cover exactly the division authority roles', /role_key IN \('superadmin',\s*'it',\s*'ga',\s*'supply_chain',\s*'pibc'\)/i.test(assetWritePermissionSeed)],
+  ['asset write grants expose no implicit access to denied legacy roles', !/karyawan|auditor|humas|sekretaris/i.test((assetWritePermissionSeed.match(/INSERT INTO[\s\S]*?ON CONFLICT \(role_id, permission_key\) DO NOTHING/) || [''])[0])],
   ['Superadmin-only role CRUD endpoints exist', /app\.post\('\/api\/admin\/rbac\/roles'/i.test(server) && /app\.patch\('\/api\/admin\/rbac\/roles\/:id'/i.test(server) && /app\.delete\('\/api\/admin\/rbac\/roles\/:id'/i.test(server)],
   ['permission and scope configuration endpoints exist', /\/roles\/:id\/permissions/i.test(server) && /\/roles\/:id\/scopes/i.test(server)],
   ['role administration is guarded by stable Superadmin assignment', /requireRbacSuperadmin[\s\S]{0,400}isRbacSuperadmin\(actor\.id\)/i.test(server)],

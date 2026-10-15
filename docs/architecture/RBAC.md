@@ -114,3 +114,55 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
 | **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | PIBC / Pengawas Pasar Induk |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Komersial / Staf Komersial |
 | **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Audit / Auditor Internal (SPI) |
+
+---
+
+## 5. Otorisasi Dinamis — Progres Enforcement Permission
+
+> Enformcen dinamis memakai `requireRbacPermission` di `server.ts` dengan gate
+> hanya aktif saat PostgreSQL aktif; development file-store tetap memakai
+> perilaku legacy. Superadmin selalu lolos melalui mekanisme policy
+> `is_superadmin` (bukan nama tampilan role).
+
+### 5.1 Enformcen yang sudah aktif
+
+| Permission | Endpoint | Migration grant | Status |
+|:---|:---|:---|:---|
+| `dashboard.read` | `GET /api/dashboard/stats` + `/api/dashboard/attention` | `013` (9 role legacy) | aktif |
+| `assets.read` | `GET /api/assets` + `GET /api/assets/:id` | `014` (9 role legacy) | aktif |
+| `assets.create` | `POST /api/assets` | `016` (superadmin/it/ga/supply_chain/pibc) | aktif |
+| `assets.update` | `PATCH /api/assets/:id` | `016` | aktif |
+| `assets.bulk_import` | `POST /api/assets/bulk-import` | `016` | aktif |
+| `assets.assign` | `POST /api/assets/:id/assign` | `016` | aktif |
+| `assets.move` | `POST /api/assets/:id/move` | `016` | aktif |
+| `assets.lifecycle` | `POST /api/assets/:id/lifecycle` | `016` | aktif |
+
+### 5.2 Lapisan di atas permission (tetap berlaku, tidak digantikan)
+
+1. **Authority divisi di domain service** (`server/services.ts`): `createAsset`,
+   `assignAsset`, `moveAsset`, `mutateLifecycle` menolak mutasi aset
+   lintas-divisi (IT/GA/SC/PIBC) untuk siapa pun selain pemilik divisi atau
+   Superadmin; `approve_disposal` tetap eksklusif Superadmin.
+2. **Jalur UPDATE bulk-import** kini meniru authority divisi `PATCH /api/assets/:id`
+   (sempurnaan dasar SEC-10) — impor massal tidak lagi melewati pembatasan
+   intradivisional saat memperbarui aset yang sudah ada.
+3. **Validasi duplikat** serial number & nomor aset Accurate/ERP tetap
+   server-authoritative di semua jalur tulis (create, patch, bulk import).
+4. **Allowlist field** operator pada PATCH dan bulk import tetap berlaku;
+   `owner_division` dan `asset_number` tetap server-owned.
+5. **Validasi master** managing unit (`org_units`) dan lokasi fisik asset
+   (`asset_locations`) pada PATCH tetap berjalan.
+6. **Blokir read-only legacy** (Auditor via middleware, Karyawan/Humas/
+   Sekretaris Direksi di handler) tetap berlaku sebelum permission gate.
+
+### 5.3 Role kustom & scope
+
+- Permission role kustom **tidak pernah otomatis**; hanya admin Superadmin yang
+  dapat memberikan grant melalui API `/api/admin/rbac/roles/:id/permissions`.
+- Scope per role (`gabah_role_division_scopes`) tersimpan dan dikelola pada
+  API administrasi, namun belum dipakai enformcen pada endpoint aset; scope
+  legacy berbasis `owner_division` di domain service tetap sumber kebenaran yang
+  berjalan.
+- Role Karyawan, Auditor, Humas, dan Sekretaris Direksi sengaja tidak menerima
+  grant tulis di migration `016`, mengikuti guard legacy yang menolak mereka.
+

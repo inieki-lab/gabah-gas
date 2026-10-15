@@ -1682,6 +1682,7 @@ async function startServer() {
   });
 
   app.post('/api/assets', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.create')) return;
     try {
       const actor = getActor(req);
       if (actor.role === 'Auditor') {
@@ -1706,6 +1707,7 @@ async function startServer() {
   // sudah terdaftar DIPERBARUI (allowlist sama dengan PATCH /api/assets/:id),
   // bukan ditolak.
   app.post('/api/assets/bulk-import', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.bulk_import')) return;
     try {
       const actor = getActor(req);
       const blockedRoles = ['Karyawan', 'Auditor', 'Humas', 'Sekretaris Direksi'];
@@ -1779,6 +1781,27 @@ async function startServer() {
           if (!allowUpdate) {
             errors.push(`Baris ${rowNo}: ${serial ? `Serial "${serial}"` : `Nomor Accurate "${corp}"`} sudah terdaftar pada aset ${existing.asset_number} (${existing.name}). Aktifkan opsi perbarui bila ingin memperbarui.`);
             continue;
+          }
+          // Otorisasi jalur UPDATE — authority divisi identik dengan PATCH
+          // /api/assets/:id (SEC-10): impor massal tidak boleh melewati
+          // pembatasan intradivisional saat mengubah baris aset yang sudah ada.
+          if (!isSuperadminActor(actor)) {
+            if (existing.owner_division === 'IT' && actor.role !== 'IT') {
+              errors.push(`Baris ${rowNo}: ${existing.asset_number} adalah barang IT dan hanya dapat diperbarui oleh personel IT atau Admin GABAH.`);
+              continue;
+            }
+            if (existing.owner_division === 'GA' && actor.role !== 'GA') {
+              errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi GA dan hanya dapat diperbarui oleh personel GA atau Admin GABAH.`);
+              continue;
+            }
+            if (existing.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+              errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi Supply Chain dan hanya dapat diperbarui oleh personel Supply Chain atau Admin GABAH.`);
+              continue;
+            }
+            if (existing.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+              errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi PIBC dan hanya dapat diperbarui oleh personel PIBC atau Admin GABAH.`);
+              continue;
+            }
           }
           // UPDATE path — allowlist eksplisit, asset_number & owner_division server-owned
           for (const key of UPDATE_FIELDS) {
@@ -1861,6 +1884,7 @@ async function startServer() {
   });
 
   app.patch('/api/assets/:id', (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.update')) return;
     const actor = getActor(req);
     const asset = db.assets.find(a => a.id === req.params.id);
     if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
@@ -1947,6 +1971,7 @@ async function startServer() {
   });
 
   app.post('/api/assets/:id/assign', (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.assign')) return;
     try {
       const actor = getActor(req);
       const { targetUserId, reason } = req.body;
@@ -1958,6 +1983,7 @@ async function startServer() {
   });
 
   app.post('/api/assets/:id/move', (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.move')) return;
     try {
       const actor = getActor(req);
       const { newLocation, reason } = req.body;
@@ -1969,6 +1995,7 @@ async function startServer() {
   });
 
   app.post('/api/assets/:id/lifecycle', (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.lifecycle')) return;
     try {
       const actor = getActor(req);
       const { action, notes } = req.body;

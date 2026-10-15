@@ -1,3 +1,21 @@
+## [2026-10-15] — Dynamic RBAC Stage 10: Asset Write Permissions
+
+### Perubahan
+- Enam endpoint tulis aset kini memeriksa permission dinamis via `requireRbacPermission` saat PostgreSQL aktif: `assets.create` (`POST /api/assets`), `assets.update` (`PATCH /api/assets/:id`), `assets.bulk_import` (bulk import), `assets.assign`, `assets.move`, dan `assets.lifecycle` (assign/move/lifecycle). Development file-store tetap memakai perilaku legacy (gate no-op) sehingga kompatibilitas tidak berubah.
+- Migration baru `016_dynamic_rbac_asset_write_permissions_seed.sql` bersifat additive dan idempotent: memberikan enam permission tersebut **hanya** kepada role legacy yang memang berhak mengikuti guard aktual (superadmin, it, ga, supply_chain, pibc; join `gabah_permissions`, hanya yang aktif). Role Karyawan/Auditor/Humas/Sekretaris Direksi serta role custom **tidak menerima grant otomatis**.
+- Jalur UPDATE pada bulk-import kini meniru authority divisi `PATCH /api/assets/:id` (IT/GA/SC/PIBC hanya memperbarui aset divisi miliknya; Admin GABAH bebas). Sebelumnya impor massal bisa memperbarui aset lintas divisi tanpa pemeriksaan — diperbaiki di tahap ini dan dicatat transparan di changelog (SEC-10).
+- `scripts/dynamic-rbac-foundation-verify.mjs` ditambah 12 pemeriksaan (total 58): gate per endpoint, authority divisi bulk-update, seed idempotent sesuai daftar role, dan tanpa grant implisit untuk role tanpa hak.
+
+### Yang dipertahankan (tidak berubah)
+- Guard role legacy tetap berlaku di atas permission gate: pembatasan Auditor/Karyawan/Humas/Sekretaris Direksi, authority divisi di domain service (`createAsset`, `assignAsset`, `moveAsset`, `mutateLifecycle`), dan `approve_disposal` eksklusif Superadmin.
+- Validasi duplikat serial number, nomor aset Accurate/ERP, allowlist field updates, validasi managing unit dan lokasi fisik, serta audit log semua jalur.
+
+### Batas tahap
+- Enformcen dinamis tetap belum tentang modul lain (loan, ticket, contract, maintenance, dsb.) — pendahuluannya telah pasti di audit.
+- Test runtime enformcen PostgreSQL (termasuk negasi permission per role custom) belum dapat dijalankan di CI tatap muka; pekerjaan CI masih file-store + pemeriksaan statis + P0 file-store seperti saat ini, dan pengujian integrasi PostgreSQL direkomendasikan sebelum produksi.
+
+---
+
 ## [2026-10-15] — Perbaikan Verifikasi CI, Kolisi Versi Migration, dan Typecheck
 
 ### Ringkasan
