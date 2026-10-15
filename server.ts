@@ -13,7 +13,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -521,6 +521,13 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
+      const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
+      const wouldDemoteSuperadmin = role !== undefined && role !== 'Admin GABAH';
+      const wouldDeactivateSuperadmin = is_active === false;
+      if (targetIsSuperadmin && (wouldDemoteSuperadmin || wouldDeactivateSuperadmin)
+        && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
+        return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh diturunkan atau dinonaktifkan.' });
+      }
       // ORG-MODEL: jabatan/unit/lokasi ditugaskan independen — TIDAK mengubah
       // role/permission (RBAC). Nilai divalidasi terhadap master masing-masing.
       let orgJobLevel: string | undefined | null;
@@ -640,6 +647,10 @@ async function startServer() {
       }
 
       const targetUser = db.users[userIndex];
+      if (targetUser.is_active && isRbacSuperadmin(targetUser.id)
+        && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
+        return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh dihapus.' });
+      }
 
       // Auto unassign any assets assigned to this user back to available pool
       let releasedAssetsCount = 0;
