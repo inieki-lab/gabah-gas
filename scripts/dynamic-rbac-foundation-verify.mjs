@@ -16,6 +16,7 @@ const checks = [
   ['Superadmin seed is keyed independently from display name', /\('superadmin',\s*'Admin GABAH'.*TRUE\)/i.test(migration)),
   ['role deletion is restricted while assigned', /gabah_user_roles[\s\S]*?REFERENCES gabah_roles\(id\) ON DELETE RESTRICT/i.test(migration)),
   ['migration does not drop legacy data', !/\bDROP\s+(TABLE|COLUMN|DATABASE)\b/i.test(migration)),
+  ['transaction is owned by the migration runner', !/^\\s*(BEGIN|COMMIT);\\s*$/im.test(migration)],
   ['legacy role field remains authoritative in this stage', /existing users\.role field remains authoritative/i.test(migration)),
   ['seed records are not overwritten on rerun', /ON CONFLICT \(role_key\) DO NOTHING/i.test(migration)),
 ];
