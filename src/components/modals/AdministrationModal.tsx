@@ -479,17 +479,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       const [roles, permissionRows] = await Promise.all([gabahApi.getRbacRoles(), gabahApi.getRbacPermissions()]);
       setRbacRoles(Array.isArray(roles) ? roles : []);
       setRbacPermissions(Array.isArray(permissionRows) ? permissionRows : []);
-      setRbacSelectedRoleId(current => {
-        const selected = Array.isArray(roles) ? roles.find((role: any) => role.id === current) : null;
-        if (selected) {
-          setRbacName(selected.name);
-          setRbacDescription(selected.description || '');
-          setRbacSelectedPermissionKeys(selected.permissions || []);
-          setRbacScopes(selected.scopes || []);
-          return current;
-        }
-        return null;
-      });
+      const selected = Array.isArray(roles) ? roles.find((role: any) => role.id === rbacSelectedRoleId) : null;
+      if (selected) {
+        setRbacName(selected.name);
+        setRbacDescription(selected.description || '');
+        setRbacSelectedPermissionKeys(selected.permissions || []);
+        setRbacScopes(selected.scopes || []);
+      } else if (rbacSelectedRoleId !== null) {
+        setRbacSelectedRoleId(null);
+      }
     } catch (error: any) {
       setRbacRoles([]);
       setRbacPermissions([]);
