@@ -1,5 +1,27 @@
 # Changelog — GABAH
 
+## [2026-10-15] — Dynamic RBAC Stage 1: Schema Foundation
+
+### Tujuan
+Memulai migrasi role statis ke Dynamic RBAC secara bertahap tanpa mengubah perilaku otorisasi aplikasi yang sedang berjalan.
+
+### Perubahan
+- Tambah migration additive dan idempotent `server/migrations/010_dynamic_rbac_foundation.sql`.
+- Tambah tabel `gabah_roles`, `gabah_permissions`, `gabah_role_permissions`, `gabah_role_division_scopes`, dan `gabah_user_roles`.
+- Kapabilitas Superadmin disimpan pada `is_superadmin`, terpisah dari nama tampilan role. Sembilan role lama hanya menjadi data awal, bukan batas jumlah role.
+- Assignment role memakai relasi terpisah dan penghapusan role yang masih di-assign ditolak oleh FK `ON DELETE RESTRICT`.
+- Tidak menghapus atau mengubah kolom legacy `users.role`; otorisasi runtime masih menggunakan mekanisme lama sampai tahap migrasi berikutnya.
+- Tambah `scripts/dynamic-rbac-foundation-verify.mjs`, npm script `test:dynamic-rbac-foundation`, dan pemeriksaan otomatis di GitHub Actions CI.
+
+### Verifikasi dan batas tahap
+- Pemeriksaan kontrak statis schema dimasukkan ke CI.
+- Tahap ini **belum** mengaktifkan CRUD role, belum memindahkan assignment user, dan belum mengganti pemeriksaan role hardcoded di backend.
+- Eksekusi migration terhadap PostgreSQL dan uji integrasi runtime harus dilakukan pada tahap lanjutan sebelum schema dipakai aplikasi.
+
+---
+
+# Changelog — GABAH
+
 ## [2026-10-09] — T2B-3 — Master Kategori & Aset Tetap
 
 ### Ringkasan
