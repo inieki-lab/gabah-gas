@@ -280,7 +280,7 @@ async function startServer() {
   app.post('/api/users', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body;
@@ -384,7 +384,7 @@ async function startServer() {
   app.post('/api/users/bulk-import', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang mengimpor data pegawai.' });
       }
 
@@ -511,7 +511,7 @@ async function startServer() {
   app.patch('/api/users/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang mengubah akun pengguna.' });
       }
 
@@ -627,7 +627,7 @@ async function startServer() {
   app.delete('/api/users/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menghapus pengguna.' });
       }
 
@@ -714,7 +714,7 @@ async function startServer() {
   app.post('/api/users/:id/reset-password', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang mereset sandi pengguna.' });
       }
 
@@ -1015,7 +1015,7 @@ async function startServer() {
         });
       }
 
-      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor)) {
         GabahDomainService.recordAudit(
           'AUTH_SWITCH_ROLE_DENIED',
           'Auth',
