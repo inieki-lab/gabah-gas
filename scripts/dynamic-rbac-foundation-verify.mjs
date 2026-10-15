@@ -10,6 +10,7 @@ const backfill = fs.readFileSync('server/migrations/011_dynamic_rbac_legacy_back
 const catalogExpansion = fs.readFileSync('server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
+const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
 const frontend = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
 const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const checks = [
@@ -40,6 +41,10 @@ const checks = [
   ['RBAC writes fail closed without PostgreSQL', /Dynamic RBAC memerlukan PostgreSQL aktif/i.test(persistence) && /withRbacTransaction/i.test(persistence)),
   ['role deactivation and deletion check current assignments', /RBAC_ROLE_IN_USE/i.test(server) && /FROM gabah_user_roles WHERE role_id = \$1/i.test(server)),
   ['role administration changes are audit logged', /RBAC_ROLE_CREATED/i.test(server) && /RBAC_ROLE_UPDATED/i.test(server) && /RBAC_PERMISSIONS_UPDATED/i.test(server)),
+  ['Superadmin authorization uses active database role assignment', /isRbacSuperadmin\(actor\.id\)/i.test(server) && /export function isRbacSuperadmin/i.test(policy) && /policy\.isSuperadmin/i.test(policy)),
+  ['policy cache loads roles, permissions, and scopes from PostgreSQL', /gabah_user_roles/i.test(policy) && /gabah_role_permissions/i.test(policy) && /gabah_role_division_scopes/i.test(policy) && /refreshRbacPolicy/i.test(server)),
+  ['fresh database backfills role assignments after normalized users exist', /backfillNormalizedTables\(\);\s*await backfillDynamicRbacUserRoles\(\);/i.test(persistence)),
+  ['RBAC policy refreshes after permission and scope changes', /await refreshRbacPolicy\(\);\s*GabahDomainService\.recordAudit\('RBAC_PERMISSIONS_UPDATED'/i.test(server) && /await refreshRbacPolicy\(\);\s*GabahDomainService\.recordAudit\('RBAC_SCOPES_UPDATED'/i.test(server)),
   ['frontend role manager uses live database APIs', /Dynamic Role Management/i.test(frontend) && /gabahApi\.getRbacRoles\(\)/i.test(frontend) && /gabahApi\.getRbacPermissions\(\)/i.test(frontend)),
   ['frontend supports create, rename, delete, deactivate, permissions, and scopes', /handleCreateRbacRole/i.test(frontend) && /handleSaveRbacRole/i.test(frontend) && /handleDeleteRbacRole/i.test(frontend) && /handleToggleRbacRole/i.test(frontend) && /handleSaveRbacPermissions/i.test(frontend) && /handleSaveRbacScopes/i.test(frontend)),
   ['frontend API client exposes Dynamic RBAC operations', /getRbacRoles/i.test(apiClient) && /createRbacRole/i.test(apiClient) && /deleteRbacRole/i.test(apiClient) && /setRbacRolePermissions/i.test(apiClient) && /setRbacRoleScopes/i.test(apiClient)),
