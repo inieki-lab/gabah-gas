@@ -75,6 +75,11 @@ export function isRbacSuperadmin(userId: string): boolean {
   return (policiesByUser.get(String(userId)) || []).some(policy => policy.isSuperadmin);
 }
 
+/** Preserve local file-store development while making PostgreSQL role identity authoritative. */
+export function isSuperadminActor(actor: { id: string; role?: string }): boolean {
+  return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : actor.role === 'Admin GABAH';
+}
+
 export function hasRbacPermission(userId: string, permissionKey: string): boolean {
   return isRbacSuperadmin(userId)
     || (policiesByUser.get(String(userId)) || []).some(policy => policy.permissions.has(permissionKey));
