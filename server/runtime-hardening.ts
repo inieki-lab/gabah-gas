@@ -27,6 +27,10 @@ function canSeeAsset(actor: ServerUser, assetId: string): boolean {
   if (actor.role === 'Karyawan') return asset.assigned_to?.id === actor.id || asset.is_loanable;
   if (actor.role === 'IT') return asset.owner_division === 'IT' || asset.owner_division === 'GA';
   if (actor.role === 'GA') return asset.owner_division === 'GA' || (asset.owner_division === 'IT' && isItWorkstation(asset));
+  if (actor.role === 'Sekretaris Direksi' || actor.role === 'Humas') {
+    // Sekretaris Direksi dan Humas hanya bisa lihat aset assigned/loanable (read-only)
+    return asset.assigned_to?.id === actor.id || asset.is_loanable;
+  }
   if (actor.role === 'Supply Chain') {
     const loc = String(asset.location || '').toLowerCase();
     const dept = String(actor.department || '').toLowerCase();
