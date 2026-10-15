@@ -12,6 +12,7 @@ const dashboardPermissionSeed = fs.readFileSync('server/migrations/013_dynamic_r
 const assetsReadPermissionSeed = fs.readFileSync('server/migrations/014_dynamic_rbac_assets_read_permission_seed.sql', 'utf8');
 const assetWritePermissionSeed = fs.readFileSync('server/migrations/016_dynamic_rbac_asset_write_permissions_seed.sql', 'utf8');
 const ticketReadCreatePermissionSeed = fs.readFileSync('server/migrations/017_dynamic_rbac_ticket_read_create_seed.sql', 'utf8');
+const ticketUpdatePermissionSeed = fs.readFileSync('server/migrations/018_dynamic_rbac_ticket_update_seed.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -82,6 +83,9 @@ const checks = [
   ['ticket creation endpoint has dynamic create permission gate', /app\.post\('\/api\/tickets'[\s\S]{0,180}requireRbacPermission\(req, res, 'tickets\.create'\)/i.test(server)],
   ['ticket permission seed grants read only to canonical legacy roles', /tickets\.read[\s\S]{0,450}superadmin[\s\S]{0,180}auditor/i.test(ticketReadCreatePermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(ticketReadCreatePermissionSeed)],
   ['ticket creation permission excludes Auditor and custom roles', /tickets\.create[\s\S]{0,450}karyawan/i.test(ticketReadCreatePermissionSeed) && !/tickets\.create[\s\S]{0,500}auditor/i.test(ticketReadCreatePermissionSeed) && !/INSERT INTO gabah_role_permissions[\s\S]{0,100}custom/i.test(ticketReadCreatePermissionSeed)],
+  ['ticket status endpoint has dynamic update permission gate', /app\.patch\('\/api\/tickets\/:id\/status'[\s\S]{0,180}requireRbacPermission\(req, res, 'tickets\.update'\)/i.test(server)],
+  ['ticket update seed grants only roles with legacy ticket management authority', /tickets\.update[\s\S]{0,400}superadmin[\s\S]{0,200}karyawan/i.test(ticketUpdatePermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(ticketUpdatePermissionSeed)],
+  ['ticket update seed excludes Auditor, Humas, Sekretaris Direksi and custom roles', !/tickets\.update[\s\S]{0,500}auditor/i.test(ticketUpdatePermissionSeed) && !/tickets\.update[\s\S]{0,500}humas/i.test(ticketUpdatePermissionSeed) && !/tickets\.update[\s\S]{0,500}sekretaris_direksi/i.test(ticketUpdatePermissionSeed)],
 ];
 
 let failed = 0;
