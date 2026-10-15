@@ -2138,13 +2138,17 @@ async function startServer() {
     if (actor.role === 'GA') {
       return res.json({ success: true, data: db.vendors.filter(v => !['IT', 'License'].includes(String(v.category))) });
     }
+    // Supply Chain & PIBC: can see all vendors for contract management
+    if (actor.role === 'Supply Chain' || actor.role === 'PIBC') {
+      return res.json({ success: true, data: db.vendors });
+    }
     return res.status(403).json({ success: false, message: 'Akses vendor tidak tersedia untuk peran ini.' });
   });
 
   app.post('/api/vendors', (req, res) => {
     const actor = getActor(req);
-    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang dapat mengelola vendor.' });
+    if (!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, GA, Supply Chain, atau PIBC yang dapat mengelola vendor.' });
     }
     if (actor.role === 'IT' && req.body?.category && !['IT', 'License'].includes(String(req.body.category))) {
       return res.status(403).json({ success: false, message: 'Divisi IT hanya dapat mengelola vendor domain IT/License.' });
@@ -2177,8 +2181,8 @@ async function startServer() {
 
   app.patch('/api/vendors/:id', (req, res) => {
     const actor = getActor(req);
-    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang dapat mengelola vendor.' });
+    if (!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, GA, Supply Chain, atau PIBC yang dapat mengelola vendor.' });
     }
     const existingVendor = db.vendors.find(v => v.id === req.params.id);
     if (!existingVendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan.' });

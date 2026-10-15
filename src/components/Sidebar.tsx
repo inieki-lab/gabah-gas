@@ -199,7 +199,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Register & Reminder Kontrak',
           icon: FileText,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Auditor'],
         },
         {
           id: 'knowledge',
