@@ -11,6 +11,8 @@ const catalogExpansion = fs.readFileSync('server/migrations/012_dynamic_rbac_per
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
+const domainServices = fs.readFileSync('server/services.ts', 'utf8');
+const runtimeHardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
 const frontend = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
 const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const checks = [
@@ -41,6 +43,10 @@ const checks = [
   ['RBAC writes fail closed without PostgreSQL', /Dynamic RBAC memerlukan PostgreSQL aktif/i.test(persistence) && /withRbacTransaction/i.test(persistence)),
   ['role deactivation and deletion check current assignments', /RBAC_ROLE_IN_USE/i.test(server) && /FROM gabah_user_roles WHERE role_id = \$1/i.test(server)),
   ['role administration changes are audit logged', /RBAC_ROLE_CREATED/i.test(server) && /RBAC_ROLE_UPDATED/i.test(server) && /RBAC_PERMISSIONS_UPDATED/i.test(server)),
+  ['Superadmin comparisons use the stable policy in server and domain services', !/actor\.role\s*(?:===|!==)\s*'Admin GABAH'/.test(server) && !/actor\.role\s*(?:===|!==)\s*'Admin GABAH'/.test(domainServices) && /isSuperadminActor\(actor\)/.test(domainServices)),
+  ['runtime security middleware uses stable Superadmin policy', /isSuperadminActor\(actor\)/.test(runtimeHardening) && /isSuperadminActor/.test(policy)),
+  ['last active Superadmin cannot be demoted, deactivated, or deleted', /Superadmin aktif terakhir tidak boleh diturunkan atau dinonaktifkan/i.test(server) && /Superadmin aktif terakhir tidak boleh dihapus/i.test(server) && /countRbacSuperadmins/.test(policy)),
+  ['deleted users lose stale role assignments', /DELETE FROM gabah_user_roles WHERE NOT \(user_id = ANY\(\$1::text\[\]\)\)/i.test(persistence)),
   ['Superadmin authorization uses active database role assignment', /isRbacSuperadmin\(actor\.id\)/i.test(server) && /export function isRbacSuperadmin/i.test(policy) && /policy\.isSuperadmin/i.test(policy)),
   ['policy cache loads roles, permissions, and scopes from PostgreSQL', /gabah_user_roles/i.test(policy) && /gabah_role_permissions/i.test(policy) && /gabah_role_division_scopes/i.test(policy) && /refreshRbacPolicy/i.test(server)),
   ['fresh database backfills role assignments after normalized users exist', /backfillNormalizedTables\(\);\s*await backfillDynamicRbacUserRoles\(\);/i.test(persistence)),
