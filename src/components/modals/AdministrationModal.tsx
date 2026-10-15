@@ -2518,6 +2518,194 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'roles' && (
             <div className="space-y-4">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Dynamic Role Management</h3>
+                  <p className="text-xs text-slate-500 mt-1">Role tidak dibatasi sembilan nama. Superadmin mengelola role, permission, dan cakupan data dari database.</p>
+                </div>
+                {isCurrentUserAdmin && (
+                  <button type="button" onClick={() => void refreshRbac()} disabled={rbacLoading} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold hover:bg-slate-50 disabled:opacity-50">
+                    {rbacLoading ? 'Memuat...' : 'Muat Ulang'}
+                  </button>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <strong>Catatan transisi:</strong> konfigurasi role tersimpan di PostgreSQL, tetapi permission baru belum menjadi sumber otorisasi endpoint bisnis sampai migrasi backend selesai. Jangan gunakan role baru untuk operasional sebelum tahap itu tuntas.
+              </div>
+
+              {!isCurrentUserAdmin ? (
+                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+                  <LockKeyhole className="w-6 h-6 mx-auto mb-2" />
+                  Hanya Superadmin yang dapat mengelola role dan permission.
+                </div>
+              ) : (
+                <>
+                  <form onSubmit={handleCreateRbacRole} className="bg-white p-4 rounded-2xl border border-slate-200 grid grid-cols-1 md:grid-cols-[1fr_1.5fr_auto] gap-3 items-end">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Nama role baru</label>
+                      <input value={rbacNewName} onChange={e => setRbacNewName(e.target.value)} required minLength={2} maxLength={120} placeholder="Contoh: Customer Service" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi</label>
+                      <input value={rbacNewDescription} onChange={e => setRbacNewDescription(e.target.value)} maxLength={500} placeholder="Tanggung jawab role" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                    </div>
+                    <button type="submit" disabled={rbacSaving} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                      <Plus className="w-4 h-4" /> Buat Role
+                    </button>
+                  </form>
+
+                  {rbacLoading && rbacRoles.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">Memuat role dan permission dari PostgreSQL...</div>
+                  ) : rbacRoles.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+                      Data Dynamic RBAC belum tersedia. Pastikan migration 010/011 telah dijalankan dan PostgreSQL aktif.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.6fr)] gap-4 items-start">
+                      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                          <h4 className="font-extrabold text-sm text-slate-900">Daftar Role</h4>
+                          <span className="text-[11px] text-slate-500">{rbacRoles.length} role</span>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {rbacRoles.map(role => (
+                            <div key={role.id} className={'p-3 ' + (rbacSelectedRoleId === role.id ? 'bg-emerald-50/70' : '')}>
+                              <button type="button" onClick={() => handleSelectRbacRole(role)} className="w-full text-left">
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className="font-bold text-sm text-slate-800">{role.name}</span>
+                                  <span className={'shrink-0 text-[10px] px-2 py-0.5 rounded-full font-bold ' + (role.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500')}>
+                                    {role.is_active ? 'Aktif' : 'Nonaktif'}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-1">{role.role_key} · {role.assigned_user_count} user</div>
+                                {role.description && <div className="text-xs text-slate-500 mt-1">{role.description}</div>}
+                              </button>
+                              <div className="flex items-center gap-2 mt-2">
+                                <button type="button" onClick={() => handleSelectRbacRole(role)} className="text-[11px] font-bold text-emerald-700 hover:underline">Kelola</button>
+                                {!role.is_superadmin && (
+                                  <>
+                                    <button type="button" disabled={rbacSaving || Number(role.assigned_user_count) > 0} onClick={() => void handleToggleRbacRole(role)} className="text-[11px] font-bold text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                                      {role.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                                    </button>
+                                    <button type="button" disabled={rbacSaving || Number(role.assigned_user_count) > 0} onClick={() => void handleDeleteRbacRole(role)} className="text-[11px] font-bold text-rose-700 disabled:opacity-40 disabled:cursor-not-allowed">Hapus</button>
+                                  </>
+                                )}
+                                {role.is_superadmin && <span className="text-[10px] font-bold text-emerald-800 inline-flex items-center gap-1"><LockKeyhole className="w-3 h-3" /> Dilindungi</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {selectedRbacRole ? (
+                        <div className="space-y-4">
+                          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <h4 className="font-extrabold text-sm text-slate-900">Detail Role</h4>
+                                <p className="text-[11px] text-slate-500">Kunci internal tidak berubah ketika nama role diganti.</p>
+                              </div>
+                              <span className="text-[10px] font-mono bg-slate-100 px-2 py-1 rounded-lg">{selectedRbacRole.role_key}</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Nama tampilan</label>
+                                <input value={rbacName} onChange={e => setRbacName(e.target.value)} minLength={2} maxLength={120} disabled={rbacSaving} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm disabled:bg-slate-50" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi</label>
+                                <input value={rbacDescription} onChange={e => setRbacDescription(e.target.value)} maxLength={500} disabled={rbacSaving} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm disabled:bg-slate-50" />
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <span className="text-xs text-slate-500">{selectedRbacRole.assigned_user_count} user ditetapkan</span>
+                              <button type="button" onClick={() => void handleSaveRbacRole()} disabled={rbacSaving || rbacName.trim().length < 2} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold disabled:opacity-50">Simpan Detail</button>
+                            </div>
+                            {selectedRbacRole.is_superadmin && <div className="text-xs rounded-lg bg-emerald-50 text-emerald-800 p-3">Ini role Superadmin. Hak kendali tertinggi dilindungi dan tidak dapat dihapus atau dinonaktifkan.</div>}
+                          </div>
+
+                          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <h4 className="font-extrabold text-sm text-slate-900">Permission per Modul</h4>
+                                <p className="text-[11px] text-slate-500">Pilih tindakan yang diizinkan untuk role ini.</p>
+                              </div>
+                              <span className="text-[11px] text-slate-500">{rbacSelectedPermissionKeys.length} dipilih</span>
+                            </div>
+                            {selectedRbacRole.is_superadmin ? (
+                              <p className="text-xs text-slate-500">Permission Superadmin dilindungi; hak tertingginya tidak dapat diubah melalui matriks role.</p>
+                            ) : (
+                              <>
+                                {Object.entries(rbacPermissionGroups).map(([moduleName, items]) => (
+                                  <div key={moduleName} className="border border-slate-100 rounded-xl p-3">
+                                    <h5 className="text-xs font-extrabold text-slate-700 uppercase tracking-wide mb-2">{moduleName.replace(/_/g, ' ')}</h5>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                      {items.map(permission => (
+                                        <label key={permission.permission_key} className="flex items-start gap-2 text-xs text-slate-700 p-2 rounded-lg hover:bg-slate-50">
+                                          <input type="checkbox" checked={rbacSelectedPermissionKeys.includes(permission.permission_key)} onChange={e => handleToggleRbacPermission(permission.permission_key, e.target.checked)} disabled={rbacSaving || !permission.is_active} className="mt-0.5" />
+                                          <span><span className="font-bold">{permission.action}</span><span className="block text-[10px] text-slate-500">{permission.description || permission.permission_key}</span></span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                                <div className="flex justify-end">
+                                  <button type="button" onClick={() => void handleSaveRbacPermissions()} disabled={rbacSaving} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">Simpan Permission</button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                            <div>
+                              <h4 className="font-extrabold text-sm text-slate-900">Cakupan Data (Scope)</h4>
+                              <p className="text-[11px] text-slate-500">Permission menentukan tindakan; scope membatasi data yang dapat disentuh.</p>
+                            </div>
+                            {selectedRbacRole.is_superadmin ? (
+                              <p className="text-xs text-slate-500">Scope Superadmin dilindungi dan tidak dapat dibatasi melalui konfigurasi role.</p>
+                            ) : (
+                              <>
+                                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr_auto] gap-2">
+                                  <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as any)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                                    <option value="division">Divisi</option>
+                                    <option value="unit">Unit</option>
+                                    <option value="location">Lokasi</option>
+                                    <option value="own">Data sendiri</option>
+                                    <option value="all">Semua data</option>
+                                  </select>
+                                  <input value={rbacScopeValue} onChange={e => setRbacScopeValue(e.target.value)} disabled={['all', 'own'].includes(rbacScopeType)} placeholder="Kode divisi / unit / lokasi" className="px-3 py-2 rounded-xl border border-slate-200 text-xs disabled:bg-slate-50" />
+                                  <button type="button" onClick={handleAddRbacScope} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold hover:bg-slate-50">Tambah Scope</button>
+                                </div>
+                                {rbacScopes.length === 0 ? <p className="text-xs text-slate-400">Belum ada scope yang dikonfigurasi.</p> : (
+                                  <div className="flex flex-wrap gap-2">
+                                    {rbacScopes.map((scope, index) => (
+                                      <span key={scope.type + ':' + (scope.value || '') + ':' + index} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-100 text-xs text-slate-700">
+                                        {scope.type}{scope.value ? ': ' + scope.value : ''}
+                                        <button type="button" onClick={() => setRbacScopes(current => current.filter((_, i) => i !== index))} className="text-rose-600 font-bold" aria-label="Hapus scope">×</button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="flex justify-end">
+                                  <button type="button" onClick={() => void handleSaveRbacScopes()} disabled={rbacSaving} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">Simpan Scope</button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">Pilih role di sebelah kiri untuk mengatur detail, permission, dan scope.</div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {false && activeSection === 'roles' && (
+            <div className="space-y-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <h3 className="text-base font-black text-slate-900">Role &amp; Permission Matrix</h3>
