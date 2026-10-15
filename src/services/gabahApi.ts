@@ -841,6 +841,36 @@ class GabahApiClient {
       method: 'DELETE',
     });
   }
+
+  // Dynamic RBAC administration — all writes are enforced by the server.
+  async getRbacRoles(): Promise<any[]> {
+    return this.request<any[]>('/api/admin/rbac/roles');
+  }
+
+  async getRbacPermissions(): Promise<any[]> {
+    return this.request<any[]>('/api/admin/rbac/permissions');
+  }
+
+  async createRbacRole(payload: { name: string; description?: string }): Promise<any> {
+    return this.request<any>('/api/admin/rbac/roles', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async updateRbacRole(id: number, payload: { name?: string; description?: string; is_active?: boolean }): Promise<any> {
+    return this.request<any>('/api/admin/rbac/roles/' + id, { method: 'PATCH', body: JSON.stringify(payload) });
+  }
+
+  async deleteRbacRole(id: number): Promise<any> {
+    return this.request<any>('/api/admin/rbac/roles/' + id, { method: 'DELETE' });
+  }
+
+  async setRbacRolePermissions(id: number, permission_keys: string[]): Promise<any> {
+    return this.request<any>('/api/admin/rbac/roles/' + id + '/permissions', { method: 'PUT', body: JSON.stringify({ permission_keys }) });
+  }
+
+  async setRbacRoleScopes(id: number, scopes: Array<{ type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null }>): Promise<any> {
+    return this.request<any>('/api/admin/rbac/roles/' + id + '/scopes', { method: 'PUT', body: JSON.stringify({ scopes }) });
+  }
+
 }
 
 export const gabahApi = new GabahApiClient();
