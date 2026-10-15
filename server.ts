@@ -12,7 +12,7 @@ import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocatio
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
-import { initializePersistence, persistDataStore, isPostgresPersistenceActive } from './server/persistence';
+import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -74,6 +74,175 @@ async function startServer() {
     if (verified) return verified;
     throw new Error('Pengguna tidak terautentikasi.');
   };
+
+  // Dynamic RBAC administration API. Runtime business authorization remains legacy
+  // until all endpoints are migrated and regression-tested.
+  const requireRbacSuperadmin = (req: express.Request, res: express.Response): ServerUser | null => {
+    const actor = (req as any).user as ServerUser | undefined;
+    if (!actor || actor.role !== 'Admin GABAH') {
+      res.status(403).json({ success: false, message: 'Hanya Superadmin yang berwenang mengelola role dan permission.' });
+      return null;
+    }
+    return actor;
+  };
+  const rbacFailure = (res: express.Response, error: any) => {
+    if (error?.code === '23505') return res.status(409).json({ success: false, message: 'Nama atau kunci role sudah digunakan.' });
+    if (error?.code === '23503') return res.status(409).json({ success: false, message: 'Role masih memiliki relasi yang digunakan.' });
+    const message = String(error?.message || '');
+    if (message.includes('memerlukan PostgreSQL aktif')) return res.status(503).json({ success: false, message });
+    if (message === 'RBAC_ROLE_NOT_FOUND') return res.status(404).json({ success: false, message: 'Role tidak ditemukan.' });
+    if (message === 'RBAC_SUPERADMIN_PROTECTED') return res.status(409).json({ success: false, message: 'Role Superadmin dilindungi dan tidak dapat dinonaktifkan, dihapus, atau kehilangan kendali tertingginya.' });
+    if (message === 'RBAC_ROLE_IN_USE') return res.status(409).json({ success: false, message: 'Role masih ditetapkan ke user. Pindahkan assignment terlebih dahulu.' });
+    if (message === 'RBAC_PERMISSION_INVALID') return res.status(400).json({ success: false, message: 'Satu atau lebih permission tidak terdaftar atau sudah nonaktif.' });
+    return res.status(400).json({ success: false, message: 'Permintaan Dynamic RBAC tidak valid atau gagal diproses.' });
+  };
+
+  app.get('/api/admin/rbac/permissions', async (req, res) => {
+    if (!requireRbacSuperadmin(req, res)) return;
+    try {
+      const result = await queryRbac('SELECT permission_key, module, action, description, is_active FROM gabah_permissions ORDER BY module, action, permission_key');
+      return res.json({ success: true, data: result.rows });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.get('/api/admin/rbac/roles', async (req, res) => {
+    if (!requireRbacSuperadmin(req, res)) return;
+    try {
+      const roles = await queryRbac<any>('SELECT r.id, r.role_key, r.name, r.description, r.is_superadmin, r.is_active, r.created_at, r.updated_at, (SELECT COUNT(*)::int FROM gabah_user_roles ur WHERE ur.role_id = r.id) AS assigned_user_count FROM gabah_roles r ORDER BY r.is_superadmin DESC, r.name');
+      const [permissions, scopes] = await Promise.all([
+        queryRbac<any>('SELECT rp.role_id, p.permission_key FROM gabah_role_permissions rp JOIN gabah_permissions p USING (permission_key) WHERE p.is_active = TRUE ORDER BY p.module, p.action'),
+        queryRbac<any>('SELECT role_id, scope_type, scope_value FROM gabah_role_division_scopes ORDER BY role_id, scope_type, scope_value')
+      ]);
+      return res.json({ success: true, data: roles.rows.map(role => ({
+        ...role,
+        permissions: permissions.rows.filter(p => p.role_id === role.id).map(p => p.permission_key),
+        scopes: scopes.rows.filter(s => s.role_id === role.id).map(s => ({ type: s.scope_type, value: s.scope_value }))
+      })) });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.post('/api/admin/rbac/roles', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    try {
+      const name = String(req.body?.name || '').trim();
+      const description = String(req.body?.description || '').trim() || null;
+      const roleKey = String(req.body?.role_key || name).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      if (name.length < 2 || name.length > 120 || !/^[a-z][a-z0-9_]{1,79}$/.test(roleKey) || roleKey === 'superadmin') {
+        return res.status(400).json({ success: false, message: 'Nama role harus 2–120 karakter dan kunci internal harus valid. Kunci superadmin dicadangkan.' });
+      }
+      const result = await queryRbac<any>('INSERT INTO gabah_roles (role_key, name, description, is_superadmin, is_active) VALUES ($1, $2, $3, FALSE, TRUE) RETURNING id, role_key, name, description, is_superadmin, is_active, created_at, updated_at', [roleKey, name, description]);
+      GabahDomainService.recordAudit('RBAC_ROLE_CREATED', 'Administration', 'Superadmin membuat role "' + name + '" (' + roleKey + ').', actor);
+      return res.status(201).json({ success: true, data: { ...result.rows[0], permissions: [], scopes: [], assigned_user_count: 0 } });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.patch('/api/admin/rbac/roles/:id', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ success: false, message: 'ID role tidak valid.' });
+    try {
+      const result = await withRbacTransaction(async client => {
+        const found = await client.query('SELECT id, role_key, name, description, is_superadmin, is_active FROM gabah_roles WHERE id = $1 FOR UPDATE', [id]);
+        const role = found.rows[0];
+        if (!role) throw new Error('RBAC_ROLE_NOT_FOUND');
+        if (role.is_superadmin && req.body?.is_active === false) throw new Error('RBAC_SUPERADMIN_PROTECTED');
+        if (req.body?.is_active === false) {
+          const assigned = await client.query('SELECT COUNT(*)::int AS count FROM gabah_user_roles WHERE role_id = $1', [id]);
+          if (Number(assigned.rows[0]?.count || 0) > 0) throw new Error('RBAC_ROLE_IN_USE');
+        }
+        const name = req.body?.name === undefined ? role.name : String(req.body.name).trim();
+        const description = req.body?.description === undefined ? role.description : (String(req.body.description).trim() || null);
+        const active = req.body?.is_active === undefined ? role.is_active : Boolean(req.body.is_active);
+        if (name.length < 2 || name.length > 120) throw new Error('Nama role harus 2–120 karakter.');
+        const updated = await client.query('UPDATE gabah_roles SET name = $2, description = $3, is_active = $4, updated_at = NOW() WHERE id = $1 RETURNING id, role_key, name, description, is_superadmin, is_active, created_at, updated_at', [id, name, description, active]);
+        return updated.rows[0];
+      });
+      GabahDomainService.recordAudit('RBAC_ROLE_UPDATED', 'Administration', 'Superadmin memperbarui role "' + result.name + '" (' + result.role_key + ').', actor);
+      return res.json({ success: true, data: result });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.delete('/api/admin/rbac/roles/:id', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ success: false, message: 'ID role tidak valid.' });
+    try {
+      const deleted = await withRbacTransaction(async client => {
+        const found = await client.query('SELECT id, role_key, name, is_superadmin FROM gabah_roles WHERE id = $1 FOR UPDATE', [id]);
+        const role = found.rows[0];
+        if (!role) throw new Error('RBAC_ROLE_NOT_FOUND');
+        if (role.is_superadmin || role.role_key === 'superadmin') throw new Error('RBAC_SUPERADMIN_PROTECTED');
+        const assigned = await client.query('SELECT COUNT(*)::int AS count FROM gabah_user_roles WHERE role_id = $1', [id]);
+        if (Number(assigned.rows[0]?.count || 0) > 0) throw new Error('RBAC_ROLE_IN_USE');
+        await client.query('DELETE FROM gabah_roles WHERE id = $1', [id]);
+        return role;
+      });
+      GabahDomainService.recordAudit('RBAC_ROLE_DELETED', 'Administration', 'Superadmin menghapus role "' + deleted.name + '" (' + deleted.role_key + ').', actor);
+      return res.json({ success: true, data: { id: deleted.id, role_key: deleted.role_key } });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.put('/api/admin/rbac/roles/:id/permissions', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const id = Number(req.params.id);
+    const keys = req.body?.permission_keys;
+    if (!Number.isSafeInteger(id) || id < 1 || !Array.isArray(keys) || keys.some((key: unknown) => typeof key !== 'string')) {
+      return res.status(400).json({ success: false, message: 'ID role atau daftar permission tidak valid.' });
+    }
+    try {
+      const result = await withRbacTransaction(async client => {
+        const found = await client.query('SELECT id, role_key, is_superadmin FROM gabah_roles WHERE id = $1 FOR UPDATE', [id]);
+        const role = found.rows[0];
+        if (!role) throw new Error('RBAC_ROLE_NOT_FOUND');
+        if (role.is_superadmin || role.role_key === 'superadmin') throw new Error('RBAC_SUPERADMIN_PROTECTED');
+        const uniqueKeys = [...new Set(keys as string[])];
+        const valid = await client.query('SELECT permission_key FROM gabah_permissions WHERE is_active = TRUE AND permission_key = ANY($1::varchar[])', [uniqueKeys]);
+        if (valid.rowCount !== uniqueKeys.length) throw new Error('RBAC_PERMISSION_INVALID');
+        await client.query('DELETE FROM gabah_role_permissions WHERE role_id = $1', [id]);
+        for (const key of uniqueKeys) await client.query('INSERT INTO gabah_role_permissions (role_id, permission_key) VALUES ($1, $2)', [id, key]);
+        await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
+        return { role_key: role.role_key, permission_keys: uniqueKeys };
+      });
+      GabahDomainService.recordAudit('RBAC_PERMISSIONS_UPDATED', 'Administration', 'Superadmin mengubah permission role "' + result.role_key + '".', actor);
+      return res.json({ success: true, data: result });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.put('/api/admin/rbac/roles/:id/scopes', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const id = Number(req.params.id);
+    const scopes = req.body?.scopes;
+    const validTypes = new Set(['all', 'own', 'division', 'unit', 'location']);
+    if (!Number.isSafeInteger(id) || id < 1 || !Array.isArray(scopes)) {
+      return res.status(400).json({ success: false, message: 'ID role atau daftar scope tidak valid.' });
+    }
+    if (scopes.some((scope: any) => !scope || !validTypes.has(scope.type)
+      || (['division', 'unit', 'location'].includes(scope.type) && (typeof scope.value !== 'string' || !scope.value.trim()))
+      || (['all', 'own'].includes(scope.type) && scope.value != null))) {
+      return res.status(400).json({ success: false, message: 'Scope harus all/own tanpa nilai, atau division/unit/location dengan nilai.' });
+    }
+    try {
+      const result = await withRbacTransaction(async client => {
+        const found = await client.query('SELECT id, role_key, is_superadmin FROM gabah_roles WHERE id = $1 FOR UPDATE', [id]);
+        const role = found.rows[0];
+        if (!role) throw new Error('RBAC_ROLE_NOT_FOUND');
+        if (role.is_superadmin || role.role_key === 'superadmin') throw new Error('RBAC_SUPERADMIN_PROTECTED');
+        await client.query('DELETE FROM gabah_role_division_scopes WHERE role_id = $1', [id]);
+        for (const scope of scopes) {
+          await client.query('INSERT INTO gabah_role_division_scopes (role_id, scope_type, scope_value) VALUES ($1, $2, $3)', [id, scope.type, ['all', 'own'].includes(scope.type) ? null : scope.value.trim()]);
+        }
+        await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
+        return { role_key: role.role_key, scopes };
+      });
+      GabahDomainService.recordAudit('RBAC_SCOPES_UPDATED', 'Administration', 'Superadmin mengubah scope role "' + result.role_key + '".', actor);
+      return res.json({ success: true, data: result });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
 
   // ==========================================
   // API ROUTES (FIRST)
