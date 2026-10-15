@@ -584,7 +584,19 @@ async function persistPostgresState(): Promise<void> {
 
 async function backfillDynamicRbacUserRoles(): Promise<void> {
   // The migration runner may seed roles before normalized users are backfilled
-  // on a brand-new database. Re-run this idempotent mapping after users exist.
+  // on a brand-new database. Reconcile the nine legacy role assignments after
+  // users exist so demoted users cannot retain a stale Superadmin assignment.
+  // Custom dynamic roles are deliberately untouched by this legacy bridge.
+  await pool.query(
+    "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
+    "WHERE ur.user_id = u.id::text AND assigned_role.id = ur.role_id " +
+    "AND assigned_role.role_key IN ('superadmin','it','ga','sekretaris_direksi','humas','supply_chain','pibc','karyawan','auditor') " +
+    "AND assigned_role.role_key IS DISTINCT FROM CASE u.role " +
+    "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
+    "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
+    "WHEN 'Supply Chain' THEN 'supply_chain' WHEN 'PIBC' THEN 'pibc' " +
+    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE NULL END",
+  );
   await pool.query(
     "INSERT INTO gabah_user_roles (user_id, role_id) " +
     "SELECT u.id::text, r.id FROM users u " +
