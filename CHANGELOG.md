@@ -1,3 +1,18 @@
+## [2026-10-15] — Dynamic RBAC Stage 11B: Ticket Status Update
+
+### Perubahan
+- Tambah permission gate dinamis `tickets.update` pada `PATCH /api/tickets/:id/status` saat PostgreSQL aktif.
+- Tambah migration `018_dynamic_rbac_ticket_update_seed.sql` yang memberi permission hanya kepada role kanonikal yang memang memiliki jalur pengelolaan tiket pada middleware legacy: Superadmin, IT, GA, Supply Chain, PIBC, dan Karyawan.
+- Middleware tetap memeriksa kewenangan pada tiket tertentu (`canManageTicket`); validasi transisi status dan audit log di handler tetap berlaku.
+- Auditor, Humas, Sekretaris Direksi, dan role custom tidak menerima grant `tickets.update` otomatis.
+
+### Verifikasi
+- Verify script menambah tiga contract checks untuk gate dan seed.
+- CI untuk commit sebelumnya pada cabang ini telah lulus; perubahan Stage 11B masih menunggu run CI baru.
+- PostgreSQL runtime integration belum dijalankan secara manual.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 11A: Ticket Read/Create Gates
 
 ### Perubahan
