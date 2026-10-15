@@ -13,7 +13,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -75,6 +75,18 @@ async function startServer() {
     const verified = (req as any).user || actorFor(req);
     if (verified) return verified;
     throw new Error('Pengguna tidak terautentikasi.');
+  };
+
+  // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
+  // production; JSON/file-store development retains legacy behavior during migration.
+  const requireRbacPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
+    if (!isPostgresPersistenceActive()) return true;
+    const actor = (req as any).user as ServerUser | undefined;
+    if (!actor || !hasRbacPermission(actor.id, permissionKey)) {
+      res.status(403).json({ success: false, message: 'Akses ditolak: permission ' + permissionKey + ' tidak diberikan kepada user ini.' });
+      return false;
+    }
+    return true;
   };
 
   // Dynamic RBAC administration API. Runtime business authorization remains legacy
@@ -2507,6 +2519,7 @@ async function startServer() {
 
   // Dashboard Stats & Attention Center
   app.get('/api/dashboard/stats', (req, res) => {
+    if (!requireRbacPermission(req, res, 'dashboard.read')) return;
     const actor = getActor(req);
     const assets = GabahDomainService.getScopedAssets(actor);
     const totalAssets = assets.length;
@@ -2534,6 +2547,7 @@ async function startServer() {
   });
 
   app.get('/api/dashboard/attention', (req, res) => {
+    if (!requireRbacPermission(req, res, 'dashboard.read')) return;
     const actor = getActor(req);
     const items = GabahDomainService.getAttentionCenter(actor);
     res.json({ success: true, data: items });
