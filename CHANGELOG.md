@@ -1,3 +1,17 @@
+## [2026-10-15] — Dynamic RBAC Stage 5: Complete Permission Catalogue
+
+### Perubahan
+- Tambah migration `server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql`.
+- Memperluas katalog permission agar mencakup API yang sudah ada untuk user/auth, mutasi aset, maintenance, vendor, knowledge base, notifikasi, dashboard, rekonsiliasi, ruang/reservasi rapat, master data, penomoran, dan pengelolaan kontrak.
+- Migration bersifat additive/idempotent dan tidak memberikan permission baru ke role secara otomatis.
+- Menambah pemeriksaan kontrak untuk memastikan cakupan modul dan sifat idempotent migration.
+
+### Batas tahap
+- Katalog permission adalah daftar kemampuan yang tersedia, bukan bukti bahwa semua endpoint sudah menegakkan permission tersebut.
+- Role assignment dan penggantian seluruh pemeriksaan role hardcoded masih harus diselesaikan sebelum Dynamic RBAC dianggap aktif penuh.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 4: Dynamic Role Management UI
 
 ### Perubahan
