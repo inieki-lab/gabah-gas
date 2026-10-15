@@ -1675,6 +1675,7 @@ async function startServer() {
 
   // Assets Management
   app.get('/api/assets', (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.read')) return;
     const actor = getActor(req);
     const scopedAssets = GabahDomainService.getScopedAssets(actor);
     res.json({ success: true, data: scopedAssets });
@@ -1850,8 +1851,12 @@ async function startServer() {
   });
 
   app.get('/api/assets/:id', (req, res) => {
-    const asset = db.assets.find(a => a.id === req.params.id);
-    if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
+    if (!requireRbacPermission(req, res, 'assets.read')) return;
+    const actor = getActor(req);
+    // Apply the same legacy division/ownership scope as the catalogue endpoint;
+    // a direct ID lookup must not bypass list-level visibility.
+    const asset = GabahDomainService.getScopedAssets(actor).find(a => a.id === req.params.id);
+    if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan atau tidak berada dalam cakupan akses Anda.' });
     res.json({ success: true, data: asset });
   });
 
