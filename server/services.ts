@@ -1080,6 +1080,9 @@ export class GabahDomainService {
     }
 
     // Anti-Collision Check: StartA < EndB && EndA > StartB on the same date for this room
+    // SEC-07: In-memory check remains for UI feedback, but database-level
+    // constraint (EXCLUDE with tstzrange) provides the authoritative protection
+    // against race conditions in concurrent requests.
     const conflicting = (db.roomReservations || []).find(r => {
       if (r.room_id !== room.id) return false;
       if (['rejected', 'cancelled'].includes(r.status)) return false;
