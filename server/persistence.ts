@@ -580,6 +580,7 @@ async function persistPostgresState(): Promise<void> {
     [JSON.stringify(payload)],
   );
   await backfillNormalizedTables();
+  await backfillDynamicRbacUserRoles();
 }
 
 async function backfillDynamicRbacUserRoles(): Promise<void> {
@@ -659,7 +660,6 @@ export async function initializePersistence(): Promise<void> {
       provisionCanonicalUserPasswords();
       await persistPostgresState();
       await backfillNormalizedTables();
-      await backfillDynamicRbacUserRoles();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
