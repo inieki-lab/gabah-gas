@@ -13,6 +13,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
+import { refreshRbacPolicy, isRbacSuperadmin } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -35,6 +36,7 @@ seedInitialData();
 
 async function startServer() {
   await initializePersistence();
+  await refreshRbacPolicy();
   AssetNumberingEngine.syncFromExistingRecords({ tickets: db.tickets, loans: db.loans, contracts: db.contracts });
 
   // CR-05 STEP 4: internal production scheduler for contract reminders.
@@ -79,8 +81,12 @@ async function startServer() {
   // until all endpoints are migrated and regression-tested.
   const requireRbacSuperadmin = (req: express.Request, res: express.Response): ServerUser | null => {
     const actor = (req as any).user as ServerUser | undefined;
-    if (!actor || actor.role !== 'Admin GABAH') {
-      res.status(403).json({ success: false, message: 'Hanya Superadmin yang berwenang mengelola role dan permission.' });
+    if (!isPostgresPersistenceActive()) {
+      res.status(503).json({ success: false, message: 'Dynamic RBAC memerlukan PostgreSQL aktif.' });
+      return null;
+    }
+    if (!actor || !isRbacSuperadmin(actor.id)) {
+      res.status(403).json({ success: false, message: 'Hanya user dengan assignment Superadmin aktif yang berwenang mengelola role dan permission.' });
       return null;
     }
     return actor;
@@ -132,6 +138,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Nama role harus 2–120 karakter dan kunci internal harus valid. Kunci superadmin dicadangkan.' });
       }
       const result = await queryRbac<any>('INSERT INTO gabah_roles (role_key, name, description, is_superadmin, is_active) VALUES ($1, $2, $3, FALSE, TRUE) RETURNING id, role_key, name, description, is_superadmin, is_active, created_at, updated_at', [roleKey, name, description]);
+      await refreshRbacPolicy();
       GabahDomainService.recordAudit('RBAC_ROLE_CREATED', 'Administration', 'Superadmin membuat role "' + name + '" (' + roleKey + ').', actor);
       return res.status(201).json({ success: true, data: { ...result.rows[0], permissions: [], scopes: [], assigned_user_count: 0 } });
     } catch (error: any) { return rbacFailure(res, error); }
@@ -160,6 +167,7 @@ async function startServer() {
         const updated = await client.query('UPDATE gabah_roles SET name = $2, description = $3, is_active = $4, updated_at = NOW() WHERE id = $1 RETURNING id, role_key, name, description, is_superadmin, is_active, created_at, updated_at', [id, name, description, active]);
         return updated.rows[0];
       });
+      await refreshRbacPolicy();
       GabahDomainService.recordAudit('RBAC_ROLE_UPDATED', 'Administration', 'Superadmin memperbarui role "' + result.name + '" (' + result.role_key + ').', actor);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
@@ -181,6 +189,7 @@ async function startServer() {
         await client.query('DELETE FROM gabah_roles WHERE id = $1', [id]);
         return role;
       });
+      await refreshRbacPolicy();
       GabahDomainService.recordAudit('RBAC_ROLE_DELETED', 'Administration', 'Superadmin menghapus role "' + deleted.name + '" (' + deleted.role_key + ').', actor);
       return res.json({ success: true, data: { id: deleted.id, role_key: deleted.role_key } });
     } catch (error: any) { return rbacFailure(res, error); }
@@ -208,6 +217,7 @@ async function startServer() {
         await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
         return { role_key: role.role_key, permission_keys: uniqueKeys };
       });
+      await refreshRbacPolicy();
       GabahDomainService.recordAudit('RBAC_PERMISSIONS_UPDATED', 'Administration', 'Superadmin mengubah permission role "' + result.role_key + '".', actor);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
@@ -240,6 +250,7 @@ async function startServer() {
         await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
         return { role_key: role.role_key, scopes };
       });
+      await refreshRbacPolicy();
       GabahDomainService.recordAudit('RBAC_SCOPES_UPDATED', 'Administration', 'Superadmin mengubah scope role "' + result.role_key + '".', actor);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
