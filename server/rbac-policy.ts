@@ -80,6 +80,16 @@ export function isSuperadminActor(actor: { id: string; role?: string }): boolean
   return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : actor.role === 'Admin GABAH';
 }
 
+export function countRbacSuperadmins(activeUserIds?: string[]): number {
+  const active = activeUserIds ? new Set(activeUserIds.map(String)) : null;
+  let count = 0;
+  for (const [userId, policies] of policiesByUser.entries()) {
+    if (active && !active.has(userId)) continue;
+    if (policies.some(policy => policy.isSuperadmin)) count++;
+  }
+  return count;
+}
+
 export function hasRbacPermission(userId: string, permissionKey: string): boolean {
   return isRbacSuperadmin(userId)
     || (policiesByUser.get(String(userId)) || []).some(policy => policy.permissions.has(permissionKey));
