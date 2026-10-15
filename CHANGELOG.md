@@ -1,3 +1,23 @@
+## [2026-10-15] — Dynamic RBAC Stage 2: Permission Catalogue & Legacy Assignment Backfill
+
+### Tujuan
+Menyiapkan katalog permission dan relasi role-user dari data legacy tanpa mengaktifkan otorisasi baru sebelum pemetaan endpoint selesai.
+
+### Perubahan
+- Tambah migration `server/migrations/011_dynamic_rbac_legacy_backfill.sql`.
+- Seed katalog permission untuk dashboard, user, role, aset, peminjaman, tiket, lisensi, kontrak, laporan, audit, organisasi, master data, notifikasi, dan pengaturan.
+- Backfill relasi `gabah_user_roles` berdasarkan nilai `users.role` yang dikenal; assignment yang sudah ada tidak diduplikasi dan nilai role tak dikenal tidak dipetakan secara diam-diam.
+- Pertahankan `users.role` dan seluruh otorisasi runtime legacy sebagai sumber perilaku sementara.
+- Perluas pemeriksaan kontrak statis untuk memeriksa migrasi backfill.
+
+### Verifikasi dan batas tahap
+- Migration mengikuti transaksi yang dikelola oleh migration runner yang sudah ada.
+- Katalog permission belum dihubungkan ke role melalui `gabah_role_permissions`; pemberian akses harus dilakukan setelah pemetaan endpoint dan matriks akses legacy diverifikasi.
+- Tahap ini belum mengaktifkan CRUD role atau mengganti pemeriksaan role hardcoded di backend.
+- Eksekusi migration dan pengujian PostgreSQL/CI tetap harus dikonfirmasi pada lingkungan yang menjalankan project.
+
+---
+
 # Changelog — GABAH
 
 ## [2026-10-15] — Dynamic RBAC Stage 1: Schema Foundation
