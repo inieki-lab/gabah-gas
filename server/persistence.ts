@@ -582,6 +582,21 @@ async function persistPostgresState(): Promise<void> {
   await backfillNormalizedTables();
 }
 
+async function backfillDynamicRbacUserRoles(): Promise<void> {
+  // The migration runner may seed roles before normalized users are backfilled
+  // on a brand-new database. Re-run this idempotent mapping after users exist.
+  await pool.query(
+    "INSERT INTO gabah_user_roles (user_id, role_id) " +
+    "SELECT u.id::text, r.id FROM users u " +
+    "JOIN gabah_roles r ON r.role_key = CASE u.role " +
+    "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
+    "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
+    "WHEN 'Supply Chain' THEN 'supply_chain' WHEN 'PIBC' THEN 'pibc' " +
+    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE NULL END " +
+    "ON CONFLICT (user_id, role_id) DO NOTHING",
+  );
+}
+
 export async function initializePersistence(): Promise<void> {
   // If PostgreSQL is not configured with an external address, operate standalone with local persistent file store
   if (!dbConfig.isConfigured) {
@@ -632,6 +647,7 @@ export async function initializePersistence(): Promise<void> {
       provisionCanonicalUserPasswords();
       await persistPostgresState();
       await backfillNormalizedTables();
+      await backfillDynamicRbacUserRoles();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
