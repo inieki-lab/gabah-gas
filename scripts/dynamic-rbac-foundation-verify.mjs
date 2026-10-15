@@ -9,6 +9,7 @@ const migration = fs.readFileSync('server/migrations/010_dynamic_rbac_foundation
 const backfill = fs.readFileSync('server/migrations/011_dynamic_rbac_legacy_backfill.sql', 'utf8');
 const catalogExpansion = fs.readFileSync('server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql', 'utf8');
 const dashboardPermissionSeed = fs.readFileSync('server/migrations/013_dynamic_rbac_dashboard_permission_seed.sql', 'utf8');
+const assetsReadPermissionSeed = fs.readFileSync('server/migrations/014_dynamic_rbac_assets_read_permission_seed.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -39,6 +40,9 @@ const checks = [
   ['catalog expansion does not grant permissions automatically', !/INSERT INTO gabah_role_permissions/i.test(catalogExpansion)),
   ['dashboard permission seed is idempotent and limited to canonical legacy roles', /INSERT INTO gabah_role_permissions/i.test(dashboardPermissionSeed) && /'dashboard\.read'/i.test(dashboardPermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(dashboardPermissionSeed) && /'superadmin'[\s\S]*'humas'/i.test(dashboardPermissionSeed)),
   ['dashboard stats and attention endpoints enforce dashboard.read in PostgreSQL mode', (server.match(/requireRbacPermission\(req, res, 'dashboard\.read'\)/g) || []).length === 2 && /export function hasRbacPermission/.test(policy)),
+  ['asset read permission seed is idempotent and custom roles receive no implicit grant', /INSERT INTO gabah_role_permissions/i.test(assetsReadPermissionSeed) && /'assets\.read'/i.test(assetsReadPermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(assetsReadPermissionSeed) && /'superadmin'[\s\S]*'humas'/i.test(assetsReadPermissionSeed)),
+  ['asset list and detail enforce assets.read', (server.match(/requireRbacPermission\(req, res, 'assets\.read'\)/g) || []).length === 2),
+  ['asset detail uses the same scoped asset visibility as the list endpoint', /getScopedAssets\(actor\)\.find\(a => a\.id === req\.params\.id\)/.test(server)),
   ['Superadmin-only role CRUD endpoints exist', /app\.post\('\/api\/admin\/rbac\/roles'/i.test(server) && /app\.patch\('\/api\/admin\/rbac\/roles\/:id'/i.test(server) && /app\.delete\('\/api\/admin\/rbac\/roles\/:id'/i.test(server)),
   ['permission and scope configuration endpoints exist', /\/roles\/:id\/permissions/i.test(server) && /\/roles\/:id\/scopes/i.test(server)),
   ['role administration is guarded by stable Superadmin assignment', /requireRbacSuperadmin[\s\S]{0,400}isRbacSuperadmin\(actor\.id\)/i.test(server)),
