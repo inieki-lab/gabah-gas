@@ -36,7 +36,7 @@ const checks = [
   ['catalog expansion does not grant permissions automatically', !/INSERT INTO gabah_role_permissions/i.test(catalogExpansion)),
   ['Superadmin-only role CRUD endpoints exist', /app\.post\('\/api\/admin\/rbac\/roles'/i.test(server) && /app\.patch\('\/api\/admin\/rbac\/roles\/:id'/i.test(server) && /app\.delete\('\/api\/admin\/rbac\/roles\/:id'/i.test(server)),
   ['permission and scope configuration endpoints exist', /\/roles\/:id\/permissions/i.test(server) && /\/roles\/:id\/scopes/i.test(server)),
-  ['role administration is guarded by verified Admin GABAH identity', /requireRbacSuperadmin[\s\S]{0,300}actor\.role !== 'Admin GABAH'/i.test(server)),
+  ['role administration is guarded by stable Superadmin assignment', /requireRbacSuperadmin[\s\S]{0,400}isRbacSuperadmin\(actor\.id\)/i.test(server)),
   ['Superadmin role cannot be deleted or have its permissions overwritten', /role\.is_superadmin \|\| role\.role_key === 'superadmin'/i.test(server)),
   ['RBAC writes fail closed without PostgreSQL', /Dynamic RBAC memerlukan PostgreSQL aktif/i.test(persistence) && /withRbacTransaction/i.test(persistence)),
   ['role deactivation and deletion check current assignments', /RBAC_ROLE_IN_USE/i.test(server) && /FROM gabah_user_roles WHERE role_id = \$1/i.test(server)),
