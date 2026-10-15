@@ -44,6 +44,7 @@ const checks = [
   ['role deactivation and deletion check current assignments', /RBAC_ROLE_IN_USE/i.test(server) && /FROM gabah_user_roles WHERE role_id = \$1/i.test(server)),
   ['role administration changes are audit logged', /RBAC_ROLE_CREATED/i.test(server) && /RBAC_ROLE_UPDATED/i.test(server) && /RBAC_PERMISSIONS_UPDATED/i.test(server)),
   ['Superadmin comparisons use the stable policy in server and domain services', !/actor\.role\s*(?:===|!==)\s*'Admin GABAH'/.test(server) && !/actor\.role\s*(?:===|!==)\s*'Admin GABAH'/.test(domainServices) && /isSuperadminActor\(actor\)/.test(domainServices)),
+  ['legacy Superadmin string bypasses are removed from API guards', !/\(actor as any\)\.role !== 'Superadmin'/.test(server)),
   ['runtime security middleware uses stable Superadmin policy', /isSuperadminActor\(actor\)/.test(runtimeHardening) && /isSuperadminActor/.test(policy)),
   ['last active Superadmin cannot be demoted, deactivated, or deleted', /Superadmin aktif terakhir tidak boleh diturunkan atau dinonaktifkan/i.test(server) && /Superadmin aktif terakhir tidak boleh dihapus/i.test(server) && /countRbacSuperadmins/.test(policy)),
   ['deleted users lose stale role assignments', /DELETE FROM gabah_user_roles WHERE NOT \(user_id = ANY\(\$1::text\[\]\)\)/i.test(persistence)),
