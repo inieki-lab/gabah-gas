@@ -8,6 +8,7 @@ import fs from 'node:fs';
 const migration = fs.readFileSync('server/migrations/010_dynamic_rbac_foundation.sql', 'utf8');
 const backfill = fs.readFileSync('server/migrations/011_dynamic_rbac_legacy_backfill.sql', 'utf8');
 const catalogExpansion = fs.readFileSync('server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql', 'utf8');
+const dashboardPermissionSeed = fs.readFileSync('server/migrations/013_dynamic_rbac_dashboard_permission_seed.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -36,6 +37,8 @@ const checks = [
   ['permission catalogue expansion is additive and idempotent', /INSERT INTO gabah_permissions/i.test(catalogExpansion) && /ON CONFLICT \(permission_key\) DO NOTHING/i.test(catalogExpansion) && !/\bDROP\s+(TABLE|COLUMN|DATABASE)\b/i.test(catalogExpansion)),
   ['permission catalogue covers rooms, reservations, maintenance, knowledge, vendors, and contracts', ['room_reservations.approve','meeting_rooms.update','maintenances.update','knowledge.create','vendors.create','contracts.documents.upload'].every(key => catalogExpansion.includes("'" + key + "'"))),
   ['catalog expansion does not grant permissions automatically', !/INSERT INTO gabah_role_permissions/i.test(catalogExpansion)),
+  ['dashboard permission seed is idempotent and limited to canonical legacy roles', /INSERT INTO gabah_role_permissions/i.test(dashboardPermissionSeed) && /'dashboard\.read'/i.test(dashboardPermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(dashboardPermissionSeed) && /'superadmin'[\s\S]*'humas'/i.test(dashboardPermissionSeed)),
+  ['dashboard stats and attention endpoints enforce dashboard.read in PostgreSQL mode', (server.match(/requireRbacPermission\(req, res, 'dashboard\.read'\)/g) || []).length === 2 && /export function hasRbacPermission/.test(policy)),
   ['Superadmin-only role CRUD endpoints exist', /app\.post\('\/api\/admin\/rbac\/roles'/i.test(server) && /app\.patch\('\/api\/admin\/rbac\/roles\/:id'/i.test(server) && /app\.delete\('\/api\/admin\/rbac\/roles\/:id'/i.test(server)),
   ['permission and scope configuration endpoints exist', /\/roles\/:id\/permissions/i.test(server) && /\/roles\/:id\/scopes/i.test(server)),
   ['role administration is guarded by stable Superadmin assignment', /requireRbacSuperadmin[\s\S]{0,400}isRbacSuperadmin\(actor\.id\)/i.test(server)),
