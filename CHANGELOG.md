@@ -457,6 +457,43 @@ node scripts/asset-import-verify.mjs        # 20 tes import aset
 Skrip boot `dist/server.cjs` di port acak 39000+, backup/restore state file,
 dan self-terminating (aman dijalankan berulang).
 
+## [2026-10-15] \u0014 Vendor RBAC Fix: SC & PIBC Access + Contract Menu for Sekdir/Humas
+
+### Ringkasan
+Perbaikan ketidaksesuaian menu Vendor dengan server-side RBAC untuk Supply Chain dan PIBC, serta penambahan menu Contract Management untuk Sekretaris Direksi & Humas (read-only).
+
+### Root Cause
+- Sidebar menampilkan menu Vendor untuk SC & PIBC, tetapi GET /api/vendors hanya mengizinkan Admin GABAH, IT, GA, Auditor
+- SC & PIBC mendapatkan 403 saat mengakses menu Vendor
+- Sekretaris Direksi & Humas tidak bisa melihat menu Contract Management, padahal punya akses read-only
+
+### Perubahan
+
+#### 1. Vendor API RBAC (`server.ts`)
+- **GET /api/vendors**: Tambah SC & PIBC ke allowed roles - kini dapat melihat semua vendor
+- **POST /api/vendors**: Tambah SC & PIBC ke allowed roles - kini dapat membuat vendor
+- **PATCH /api/vendors/:id**: Tambah SC & PIBC ke allowed roles - kini dapat update vendor
+
+#### 2. Contract Management Menu (`Sidebar.tsx`)
+- **Tambah**: Sekretaris Direksi & Humas ke roles
+- **Alasan**: Kedua role punya akses read-only via `canSeeContract()` (non-restricted contracts visible org-wide)
+
+### Server-Side RBAC Rules
+- `canManageContracts()`: Admin GABAH, IT, GA, Supply Chain, PIBC
+- `canSeeContract()`: Admin, Auditor, PIC, owner division, atau non-restricted (org-wide)
+- `canSeeAsset()`: GA hanya bisa lihat aset IT yang merupakan workstation (Laptop/PC) via `isItWorkstation()`
+
+### Dampak
+- SC & PIBC **SEKARANG DAPAT** mengakses menu Vendor dan semua API vendor
+- Sekretaris Direksi & Humas **SEKARANG DAPAT** melihat menu Contract Management (read-only)
+- Menu visibility **SEKARANG KONSISTEN** dengan server-side RBAC
+
+### Files Changed
+- `server.ts`: Vendor endpoint RBAC (GET, POST, PATCH)
+- `src/components/Sidebar.tsx`: Contract Management menu roles
+
+---
+
 ## [2026-10-15] \u0014 CR-04: Fix PostgreSQL Contract Persistence
 
 ### Ringkasan
