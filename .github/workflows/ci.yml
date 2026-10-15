@@ -24,6 +24,9 @@ jobs:
       - name: Typecheck (lint)
         run: npm run lint
 
+      - name: Dynamic RBAC foundation contract checks
+        run: npm run test:dynamic-rbac-foundation
+
       - name: Production build (frontend + server bundle)
         run: npm run build
 
