@@ -161,7 +161,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Katalog & pengelolaan aset sesuai scope',
           icon: Package,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Auditor'],
         },
         {
           id: 'maintenance',
@@ -191,7 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Kontrak Servis & Mitra',
           icon: Briefcase,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Auditor'],
+          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
         },
         {
           id: 'contracts',

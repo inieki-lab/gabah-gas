@@ -408,6 +408,43 @@ Akun: `admin@`, `it.support@`, `ga@`, `sc.warehouse@`, `pibc.admin@`,
 **Wajib** diganti di produksi via `GABAH_INITIAL_ADMIN_PASSWORD` /
 `GABAH_INITIAL_USER_PASSWORD`.
 
+## [2026-10-14]  Perbaikan Menu RBAC Sidebar
+
+### Ringkasan
+Perbaikan ketidaksesuaian menu Sidebar dengan RBAC matrix yang terdefinisi di server-side.
+Menu kini sepenuhnya sinkron dengan izin akses yang dimiliki masing-masing role.
+
+### Perubahan Menu
+
+#### 1. Aset (Assets)  Tambah Sekretaris Direksi & Humas
+- **Sebelum**: Hanya Admin GABAH, IT, GA, Supply Chain, PIBC, Auditor
+- **Sesudah**: Tambah Sekretaris Direksi & Humas
+- **Alasan**: Kedua role ini seharusnya bisa lihat aset assigned/loanable sesuai scope (read-only)
+
+#### 2. Vendor Rekanan  Tambah Supply Chain & PIBC
+- **Sebelum**: Hanya Admin GABAH, IT, GA, Auditor
+- **Sesudah**: Tambah Supply Chain & PIBC
+- **Alasan**: SC & PIBC perlu akses vendor untuk kontrak di divisinya
+
+#### 3. Contract Management  Tetap tanpa Sekretaris Direksi & Humas
+- **Keputusan**: Menu Contract Management **tidak ditampilkan** untuk Sekretaris Direksi & Humas
+- **Alasan**: Kedua role ini **tidak punya izin** untuk manage kontrak (canManageContracts = false)
+- **Catatan**: Jika diperlukan read-only, perlu penambahan logic server-side
+
+### Server-Side RBAC Konsistensi
+- `canManageContracts()`: Hanya Admin GABAH, IT, GA, Supply Chain, PIBC
+- `canSeeContract()`: Admin, Auditor, PIC, owner division, atau non-restricted (org-wide)
+- `canSeeAsset()`: Setiap role punya scope sesuai divisinya
+
+### Tests / Verifikasi
+- `npm run lint`: **PASS** (0 error)
+- `npm run build`: **PASS**
+- Menu connectivity: Semua menu yang ditampilkan kini punya backing RBAC di server
+
+### Catatan
+Perbaikan ini memastikan **konsistensi UI vs Server**: user tidak akan melihat menu
+yang tidak bisa diakses di server-side. Menu yang muncul = menu yang berfungsi.
+
 ### Cara menjalankan verifikasi (lokal)
 ```bash
 npm install
