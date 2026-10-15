@@ -2119,6 +2119,7 @@ async function startServer() {
 
   // Helpdesk Tickets
   app.get('/api/tickets', (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
     const actorId = actor.id || '';
     const actorName = (actor.name || '').trim().toLowerCase();
@@ -2167,6 +2168,7 @@ async function startServer() {
   });
 
   app.post('/api/tickets', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.create')) return;
     try {
       const actor = getActor(req);
       const newTicket = GabahDomainService.createTicket(req.body, actor);
