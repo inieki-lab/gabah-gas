@@ -1,3 +1,29 @@
+## [2026-10-15] — Dynamic RBAC Stage 3: Superadmin Role Administration API
+
+### Perubahan
+- Tambah helper PostgreSQL `queryRbac` dan `withRbacTransaction` di `server/persistence.ts`. Operasi Dynamic RBAC gagal tertutup jika PostgreSQL tidak aktif; tidak ada fallback konfigurasi role ke browser atau file-store.
+- Tambah endpoint Superadmin:
+  - `GET /api/admin/rbac/roles` — daftar role, permission, scope, dan jumlah assignment.
+  - `GET /api/admin/rbac/permissions` — katalog permission.
+  - `POST /api/admin/rbac/roles` — membuat role baru.
+  - `PATCH /api/admin/rbac/roles/:id` — mengubah nama/deskripsi atau menonaktifkan role.
+  - `DELETE /api/admin/rbac/roles/:id` — menghapus role yang tidak digunakan.
+  - `PUT /api/admin/rbac/roles/:id/permissions` — mengganti permission role secara transaksional.
+  - `PUT /api/admin/rbac/roles/:id/scopes` — mengganti cakupan data secara transaksional.
+- Kunci internal role dipertahankan ketika nama tampilan diubah.
+- Role Superadmin dilindungi dari penghapusan, penonaktifan, dan pengubahan permission melalui endpoint ini.
+- Role yang masih ditetapkan ke user tidak dapat dinonaktifkan atau dihapus.
+- Perubahan role dan konfigurasi permission/scope dicatat ke audit log.
+- Tambah pemeriksaan kontrak statis untuk route dan guard keamanan.
+
+### Batas tahap
+- Endpoint administrasi ini hanya mengizinkan akun legacy `Admin GABAH` sampai identitas Superadmin dinamis selesai dimigrasikan.
+- API ini belum mengubah otorisasi endpoint bisnis yang masih memakai pemeriksaan role hardcoded.
+- UI administrasi belum terhubung ke endpoint baru; assignment role-user dinamis juga belum diaktifkan.
+- Build TypeScript, test suite, dan pengujian integrasi PostgreSQL perlu dijalankan pada checkout project sebelum fitur dianggap siap produksi.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 2: Permission Catalogue & Legacy Assignment Backfill
 
 ### Tujuan
