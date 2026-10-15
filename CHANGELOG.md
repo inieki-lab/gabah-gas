@@ -1,3 +1,21 @@
+## [2026-10-15] — Dynamic RBAC Stage 4: Dynamic Role Management UI
+
+### Perubahan
+- Tambah metode client API Dynamic RBAC pada `src/services/gabahApi.ts`.
+- Ganti tampilan Role & Permission Matrix berbasis `localStorage` pada layar aktif menjadi **Dynamic Role Management** yang membaca dan menyimpan konfigurasi melalui backend/PostgreSQL.
+- UI menyediakan pembuatan role, edit nama/deskripsi, aktivasi/nonaktivasi, penghapusan role yang tidak digunakan, pemilihan permission per modul, dan pengaturan scope data.
+- Kunci internal role ditampilkan tetapi tidak dapat diedit; nama tampilan dapat diubah tanpa mengubah identitas internal.
+- UI menandai role Superadmin sebagai dilindungi dan tidak menyediakan kontrol untuk menghapus/menonaktifkan atau mengubah permission/scope Superadmin.
+- Menampilkan peringatan bahwa permission baru belum menjadi otorisasi endpoint bisnis sampai tahap migrasi runtime selesai.
+- Menambah pemeriksaan kontrak statis untuk memastikan UI dan API client terhubung ke endpoint Dynamic RBAC.
+
+### Batas tahap
+- UI memerlukan PostgreSQL aktif dan migration 010/011 sudah dijalankan; tidak ada fallback ke `localStorage` untuk konfigurasi role yang baru.
+- Assignment role ke user dan migrasi otorisasi runtime belum selesai. Role baru belum boleh dianggap aktif untuk akses modul bisnis.
+- Build TypeScript dan uji browser belum dapat diklaim berhasil sampai GitHub Actions selesai menjalankan CI.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 3: Superadmin Role Administration API
 
 ### Perubahan
