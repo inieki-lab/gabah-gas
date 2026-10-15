@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -710,3 +710,35 @@ export function isPostgresPersistenceActive(): boolean {
   return isPostgresAvailable;
 }
 
+
+
+/**
+ * Dynamic RBAC administrative persistence helpers.
+ * These APIs intentionally fail closed when PostgreSQL is not active: role
+ * configuration must never silently fall back to browser/local JSON state.
+ */
+export async function queryRbac<T = any>(sql: string, params: unknown[] = []): Promise<{ rows: T[]; rowCount: number }> {
+  if (!isPostgresAvailable) {
+    throw new Error('Dynamic RBAC memerlukan PostgreSQL aktif; perubahan role tidak disimpan ke file-store.');
+  }
+  const result = await pool.query(sql, params);
+  return { rows: result.rows as T[], rowCount: result.rowCount || 0 };
+}
+
+export async function withRbacTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  if (!isPostgresAvailable) {
+    throw new Error('Dynamic RBAC memerlukan PostgreSQL aktif; transaksi dibatalkan.');
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
