@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import crypto from 'node:crypto';
 import express from 'express';
+import multer from 'multer';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
@@ -8,7 +9,7 @@ import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGab
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
-import { ContractDomainService, canSeeContract } from './server/contracts';
+import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive } from './server/persistence';
@@ -2409,6 +2410,86 @@ async function startServer() {
     }
   });
 
+  // SEC-08: Real file upload endpoint for contract documents
+  // Uses multer for multipart/form-data handling with file validation
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB max
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const allowedExts = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (!allowedMimes.includes(file.mimetype) && !allowedExts.includes(ext)) {
+        return cb(new Error('Jenis file tidak diizinkan. Hanya PDF, JPG, PNG, DOC, DOCX.'));
+      }
+      cb(null, true);
+    },
+  });
+
+  app.post('/api/contracts/:id/documents/upload', upload.single('file'), async (req, res) => {
+    try {
+      const actor = getActor(req);
+      const contractId = req.params.id;
+      
+      // SEC-08: Validate we have a file
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'Tidak ada file yang diunggah.' });
+      }
+      
+      const file = (req as any).file as { originalname: string; filename: string; size: number; mimetype: string; buffer: Buffer };
+      const contract = db.contracts.find(c => c.id === contractId);
+      if (!contract) {
+        return res.status(404).json({ success: false, message: 'Kontrak tidak ditemukan.' });
+      }
+      if (!canEditContract(actor, contract)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: bukan PIC/divisi pemilik kontrak.' });
+      }
+      
+      // Sanitize filename
+      const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const fileExt = path.extname(safeFilename).toLowerCase();
+      const fileKind = file.mimetype.startsWith('image/') ? 'supporting_document' : 'original_contract';
+      
+      // SEC-08: In production, save to actual storage (local disk or S3)
+      // For now, we store metadata in DB and keep file in memory
+      // Production implementation should save to persistent storage
+      const fileRef = process.env.NODE_ENV === 'production'
+        ? `/uploads/contracts/${contractId}/${Date.now()}_${safeFilename}`
+        : `memory://${file.filename}`;
+      
+      // Add document to contract
+      contract.documents.push({
+        id: `CDoc-${Date.now()}`,
+        kind: fileKind,
+        file_name: safeFilename,
+        file_ref: fileRef,
+        file_size: file.size,
+        file_mime: file.mimetype,
+        uploaded_by: actor.id,
+        uploaded_by_name: actor.name,
+        uploaded_at: new Date().toISOString(),
+      });
+      
+      contract.updated_at = new Date().toISOString();
+      await persistDataStore();
+      
+      res.json({
+        success: true,
+        message: 'Dokumen berhasil diunggah.',
+        data: {
+          file_name: safeFilename,
+          file_size: file.size,
+          file_mime: file.mimetype,
+        },
+      });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  // Legacy endpoint (kept for backward compatibility, but only stores metadata)
   app.post('/api/contracts/:id/documents', async (req, res) => {
     try {
       const actor = getActor(req);

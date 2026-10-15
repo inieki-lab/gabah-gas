@@ -76,7 +76,8 @@ export function canManageContracts(user: ServerUser): boolean {
   return ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(user.role);
 }
 
-function canEditContract(user: ServerUser, contract: ServerContract): boolean {
+// SEC-08: Expose canEditContract for server.ts file upload validation
+export function canEditContract(user: ServerUser, contract: ServerContract): boolean {
   // RBAC: management kontrak hanya untuk peran operasional pemilik
   // (Admin GABAH, IT, GA, Supply Chain, PIBC). Peran request/read-only
   // (Sekretaris Direksi, Humas, Karyawan, Auditor) tidak boleh edit.

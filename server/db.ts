@@ -232,6 +232,8 @@ export interface ServerContractDocument {
   kind: ContractDocumentKind;
   file_name: string;
   file_ref: string; // storage reference / URL
+  file_size?: number; // SEC-08: file size in bytes
+  file_mime?: string; // SEC-08: MIME type
   uploaded_by: string;
   uploaded_by_name: string;
   uploaded_at: string;
