@@ -9,6 +9,8 @@ const migration = fs.readFileSync('server/migrations/010_dynamic_rbac_foundation
 const backfill = fs.readFileSync('server/migrations/011_dynamic_rbac_legacy_backfill.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
+const frontend = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
+const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const checks = [
   ['roles table is additive/idempotent', /CREATE TABLE IF NOT EXISTS gabah_roles/i.test(migration)],
   ['permission catalogue exists', /CREATE TABLE IF NOT EXISTS gabah_permissions/i.test(migration)],
@@ -34,6 +36,10 @@ const checks = [
   ['RBAC writes fail closed without PostgreSQL', /Dynamic RBAC memerlukan PostgreSQL aktif/i.test(persistence) && /withRbacTransaction/i.test(persistence)),
   ['role deactivation and deletion check current assignments', /RBAC_ROLE_IN_USE/i.test(server) && /FROM gabah_user_roles WHERE role_id = \$1/i.test(server)),
   ['role administration changes are audit logged', /RBAC_ROLE_CREATED/i.test(server) && /RBAC_ROLE_UPDATED/i.test(server) && /RBAC_PERMISSIONS_UPDATED/i.test(server)),
+  ['frontend role manager uses live database APIs', /Dynamic Role Management/i.test(frontend) && /gabahApi\.getRbacRoles\(\)/i.test(frontend) && /gabahApi\.getRbacPermissions\(\)/i.test(frontend)),
+  ['frontend supports create, rename, delete, deactivate, permissions, and scopes', /handleCreateRbacRole/i.test(frontend) && /handleSaveRbacRole/i.test(frontend) && /handleDeleteRbacRole/i.test(frontend) && /handleToggleRbacRole/i.test(frontend) && /handleSaveRbacPermissions/i.test(frontend) && /handleSaveRbacScopes/i.test(frontend)),
+  ['frontend API client exposes Dynamic RBAC operations', /getRbacRoles/i.test(apiClient) && /createRbacRole/i.test(apiClient) && /deleteRbacRole/i.test(apiClient) && /setRbacRolePermissions/i.test(apiClient) && /setRbacRoleScopes/i.test(apiClient)),
+  ['legacy browser-only role matrix is hidden from the live roles screen', /\{false && activeSection === 'roles' && \(/i.test(frontend)),
   ['legacy backfill does not assign permissions before authorization mapping', !/INSERT INTO gabah_role_permissions/i.test(backfill)),
 ];
 
