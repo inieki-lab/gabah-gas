@@ -11,8 +11,8 @@
 - Validasi duplikat serial number, nomor aset Accurate/ERP, allowlist field updates, validasi managing unit dan lokasi fisik, serta audit log semua jalur.
 
 ### Batas tahap
-- Enformcen dinamis tetap belum tentang modul lain (loan, ticket, contract, maintenance, dsb.) — pendahuluannya telah pasti di audit.
-- Test runtime enformcen PostgreSQL (termasuk negasi permission per role custom) belum dapat dijalankan di CI tatap muka; pekerjaan CI masih file-store + pemeriksaan statis + P0 file-store seperti saat ini, dan pengujian integrasi PostgreSQL direkomendasikan sebelum produksi.
+- Enforcement dinamis tetap belum diterapkan pada modul lain (loan, ticket, contract, maintenance, dsb.) — sesuai batas tahap.
+- Test runtime enforcement PostgreSQL (termasuk negasi permission per role custom) belum dapat dijalankan di lingkungan CI saat ini; pekerjaan CI masih file-store + pemeriksaan statis + P0 file-store seperti saat ini, dan pengujian integrasi PostgreSQL direkomendasikan sebelum produksi.
 
 ---
 

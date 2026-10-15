@@ -119,12 +119,12 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
 
 ## 5. Otorisasi Dinamis — Progres Enforcement Permission
 
-> Enformcen dinamis memakai `requireRbacPermission` di `server.ts` dengan gate
+> Enforcement dinamis memakai `requireRbacPermission` di `server.ts` dengan gate
 > hanya aktif saat PostgreSQL aktif; development file-store tetap memakai
 > perilaku legacy. Superadmin selalu lolos melalui mekanisme policy
 > `is_superadmin` (bukan nama tampilan role).
 
-### 5.1 Enformcen yang sudah aktif
+### 5.1 Enforcement yang sudah aktif
 
 | Permission | Endpoint | Migration grant | Status |
 |:---|:---|:---|:---|
@@ -144,7 +144,7 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
    lintas-divisi (IT/GA/SC/PIBC) untuk siapa pun selain pemilik divisi atau
    Superadmin; `approve_disposal` tetap eksklusif Superadmin.
 2. **Jalur UPDATE bulk-import** kini meniru authority divisi `PATCH /api/assets/:id`
-   (sempurnaan dasar SEC-10) — impor massal tidak lagi melewati pembatasan
+   (perbaikan SEC-10) — impor massal tidak lagi melewati pembatasan
    intradivisional saat memperbarui aset yang sudah ada.
 3. **Validasi duplikat** serial number & nomor aset Accurate/ERP tetap
    server-authoritative di semua jalur tulis (create, patch, bulk import).
