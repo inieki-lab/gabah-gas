@@ -1,3 +1,18 @@
+## [2026-10-15] — Dynamic RBAC Stage 9: Asset Catalogue Read Access
+
+### Perubahan
+- Tambah migration idempoten `014_dynamic_rbac_assets_read_permission_seed.sql` untuk memberi `assets.read` ke role legacy yang sudah ada; role custom tidak memperoleh permission otomatis.
+- Endpoint daftar aset dan detail aset memeriksa permission `assets.read` saat PostgreSQL aktif.
+- Detail aset kini menggunakan filter `GabahDomainService.getScopedAssets(actor)` yang sama dengan daftar aset, sehingga akses langsung berdasarkan ID tidak melewati cakupan visibilitas lama.
+- Tambah pemeriksaan statis untuk seed permission, guard daftar/detail, dan penerapan scope pada detail aset.
+
+### Batas tahap
+- Ini baru otorisasi baca aset. Operasi tambah/ubah/hapus, impor, tiket, peminjaman, dan modul lain belum sepenuhnya menggunakan permission dinamis.
+- Role contoh tetap dapat diedit; penghapusan role harus ditolak selama masih ada assignment. Penetapan role custom ke user belum dibuka karena sebagian endpoint bisnis masih mengandalkan `users.role` legacy; membuka assignment sebelum migrasi otorisasi lengkap berisiko memberi akses yang tidak konsisten.
+- Pemeriksaan belum dijalankan di runtime/CI pada commit ini; build dan integrasi PostgreSQL belum terkonfirmasi.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 8: Dashboard Read Permission
 
 ### Perubahan
