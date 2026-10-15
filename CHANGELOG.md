@@ -6,7 +6,7 @@
 Memulai migrasi role statis ke Dynamic RBAC secara bertahap tanpa mengubah perilaku otorisasi aplikasi yang sedang berjalan.
 
 ### Perubahan
-- Tambah migration additive dan idempotent `server/migrations/010_dynamic_rbac_foundation.sql`.
+- Tambah migration additive dan idempotent `server/migrations/010_dynamic_rbac_foundation.sql`; transaksi dikelola oleh migration runner yang sudah ada (tanpa `BEGIN`/`COMMIT` bersarang).
 - Tambah tabel `gabah_roles`, `gabah_permissions`, `gabah_role_permissions`, `gabah_role_division_scopes`, dan `gabah_user_roles`.
 - Kapabilitas Superadmin disimpan pada `is_superadmin`, terpisah dari nama tampilan role. Sembilan role lama hanya menjadi data awal, bukan batas jumlah role.
 - Assignment role memakai relasi terpisah dan penghapusan role yang masih di-assign ditolak oleh FK `ON DELETE RESTRICT`.
