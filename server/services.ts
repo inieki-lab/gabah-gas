@@ -6,6 +6,7 @@ import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-loc
 import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
+import { isSuperadminActor } from './rbac-policy';
 
 export class GabahDomainService {
   /**
@@ -180,7 +181,7 @@ export class GabahDomainService {
     if (actor.role === 'Karyawan' || actor.role === 'Auditor' || actor.role === 'Humas' || actor.role === 'Sekretaris Direksi') {
       throw new Error('Peran Anda tidak berwenang mendaftarkan aset baru.');
     }
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       if (resolvedOwnerDivision === 'IT' && actor.role !== 'IT') {
         throw new Error(`Semua barang IT adalah milik Divisi IT. Divisi ${actor.role} hanya memiliki izin lihat (read-only).`);
       }
@@ -305,7 +306,7 @@ export class GabahDomainService {
     if (!asset) throw new Error('Aset tidak ditemukan');
 
     // Corporate Division Authority
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
       if (isITAsset && actor.role !== 'IT') {
         throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang menugaskan aset ini.');
@@ -392,7 +393,7 @@ export class GabahDomainService {
     // Corporate Division Authority (RBAC matrix — Mutasi Lokasi): setiap divisi
     // hanya boleh merelokasi aset miliknya sendiri; Admin GABAH bebas. View
     // scope lintas divisi (mis. IT melihat aset GA) tidak memperluas hak mutasi.
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       if (asset.owner_division === 'IT' && actor.role !== 'IT') {
         throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang merelokasi aset IT.');
       }
@@ -442,7 +443,7 @@ export class GabahDomainService {
     // Corporate Division Authority (RBAC matrix — Mutasi Siklus Hidup): setiap
     // divisi hanya boleh memutasi lifecycle aset miliknya sendiri; Admin GABAH
     // bebas. View scope lintas divisi tidak memperluas hak mutasi.
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       if (asset.owner_division === 'IT' && actor.role !== 'IT') {
         throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang mengubah lifecycle aset IT.');
       }
@@ -473,7 +474,7 @@ export class GabahDomainService {
         asset.status = 'pending_disposal';
         break;
       case 'approve_disposal':
-        if (actor.role !== 'Admin GABAH') {
+        if (!isSuperadminActor(actor)) {
           throw new Error('Hanya Admin GABAH yang berwenang menyetujui penghapusan aset.');
         }
         asset.status = 'disposed';
@@ -575,7 +576,7 @@ export class GabahDomainService {
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
     // Authority verification: IT for IT assets, GA for GA assets, Admin GABAH everywhere
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       if (loan.owner_division === 'IT' && actor.role !== 'IT') {
         throw new Error('Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang menyetujui peminjaman aset IT (laptop/proyektor).');
       }
@@ -644,7 +645,7 @@ export class GabahDomainService {
     }
 
     // Authority verification: same matrix as approveLoan
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       if (loan.owner_division === 'IT' && actor.role !== 'IT') {
         throw new Error('Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang menolak peminjaman aset IT.');
       }
@@ -690,7 +691,7 @@ export class GabahDomainService {
    * assets owned by their own division. No new roles, no dynamic RBAC changes.
    */
   static canOperateLoan(loan: ServerLoan, actor: ServerUser): boolean {
-    if (actor.role === 'Admin GABAH') return true;
+    if (isSuperadminActor(actor)) return true;
     if (actor.role === 'IT' && loan.owner_division === 'IT') return true;
     if (actor.role === 'GA' && loan.owner_division === 'GA') return true;
     if (actor.role === 'Supply Chain' && loan.owner_division === 'SC') return true;
@@ -1094,7 +1095,7 @@ export class GabahDomainService {
     const meetingType = (db.meetingTypes || []).find(t => t.code === payload.meeting_type);
     const requestedPriority = payload.priority || meetingType?.priority_level || (actor.role === 'Sekretaris Direksi' ? 'high' : 'medium');
     const canInterrupt =
-      actor.role === 'Admin GABAH' ||
+      isSuperadminActor(actor) ||
       (actor.role === 'Sekretaris Direksi' && requestedPriority === 'high');
 
     if (conflicting) {
@@ -1190,7 +1191,7 @@ export class GabahDomainService {
     const year = new Date().getFullYear();
     const existingCount = (db.roomReservations || []).length + 1;
     const reservationNumber = `RSV-${year}-${String(existingCount).padStart(4, '0')}`;
-    const isAutoApproved = actor.role === 'Admin GABAH' || actor.role === 'Sekretaris Direksi';
+    const isAutoApproved = isSuperadminActor(actor) || actor.role === 'Sekretaris Direksi';
 
     const reservation: ServerRoomReservation = {
       id: `rsv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1326,7 +1327,7 @@ export class GabahDomainService {
   }
 
   static approveRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
+    if (!isSuperadminActor(actor) && actor.role !== 'GA') {
       throw Object.assign(new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menyetujui reservasi ruang rapat.'), { statusCode: 403 });
     }
 
@@ -1408,7 +1409,7 @@ export class GabahDomainService {
   }
 
   static rejectRoomReservation(reservationId: string, reason: string, actor: ServerUser): ServerRoomReservation {
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
+    if (!isSuperadminActor(actor) && actor.role !== 'GA') {
       throw new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menolak reservasi ruang rapat.');
     }
 
@@ -1441,7 +1442,7 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
+    if (!isSuperadminActor(actor) && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
       throw Object.assign(new Error('Akses ditolak: check-in hanya dapat dilakukan oleh pemohon, GA, atau Admin GABAH.'), { statusCode: 403 });
     }
     if (reservation.status !== 'approved') {
@@ -1466,7 +1467,7 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
+    if (!isSuperadminActor(actor) && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
       throw Object.assign(new Error('Akses ditolak: check-out hanya dapat dilakukan oleh pemohon, GA, atau Admin GABAH.'), { statusCode: 403 });
     }
     if (reservation.status !== 'in_use') {
@@ -1491,7 +1492,7 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
+    if (!isSuperadminActor(actor) && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
       throw Object.assign(new Error('Akses ditolak: Anda hanya dapat membatalkan reservasi yang Anda buat sendiri.'), { statusCode: 403 });
     }
     if (!['pending_approval', 'approved'].includes(reservation.status)) {
@@ -1511,7 +1512,7 @@ export class GabahDomainService {
   }
 
   static updateMeetingRoom(roomId: string, updates: Partial<ServerMeetingRoom>, actor: ServerUser): ServerMeetingRoom {
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA') {
+    if (!isSuperadminActor(actor) && actor.role !== 'GA') {
       throw new Error('Akses ditolak: Hanya GA dan Admin GABAH yang berwenang mengubah status ruangan.');
     }
 
@@ -1540,7 +1541,7 @@ export class GabahDomainService {
   }
 
   static createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menambah tipe rapat.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama tipe rapat wajib diisi.');
@@ -1561,7 +1562,7 @@ export class GabahDomainService {
   }
 
   static updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang mengubah tipe rapat.');
     }
     const item = (db.meetingTypes || []).find(m => m.id === id);
@@ -1577,7 +1578,7 @@ export class GabahDomainService {
   }
 
   static deleteMeetingType(id: string, actor: ServerUser): { success: boolean } {
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menghapus tipe rapat.');
     }
     const idx = (db.meetingTypes || []).findIndex(m => m.id === id);
@@ -1595,7 +1596,7 @@ export class GabahDomainService {
   }
 
   static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && actor.role !== 'IT') {
+    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
       throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menambah fasilitas.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
@@ -1615,7 +1616,7 @@ export class GabahDomainService {
   }
 
   static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && actor.role !== 'IT') {
+    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
       throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang mengubah fasilitas.');
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
@@ -1630,7 +1631,7 @@ export class GabahDomainService {
   }
 
   static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
-    if (actor.role !== 'Admin GABAH' && actor.role !== 'GA' && actor.role !== 'IT') {
+    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
       throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menghapus fasilitas.');
     }
     const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);
