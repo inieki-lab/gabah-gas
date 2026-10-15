@@ -14,7 +14,8 @@
     "test:org-model": "node scripts/org-model-verify.mjs",
     "test:t2b1": "node scripts/t2b1-managing-unit-verify.mjs",
     "test:t2b2": "node scripts/t2b2-asset-location-verify.mjs",
-    "test:t2b3": "node scripts/t2b3-category-master-verify.mjs"
+    "test:t2b3": "node scripts/t2b3-category-master-verify.mjs",
+    "test:dynamic-rbac-foundation": "node scripts/dynamic-rbac-foundation-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
