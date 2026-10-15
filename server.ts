@@ -13,7 +13,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -280,7 +280,7 @@ async function startServer() {
   app.post('/api/users', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body;
@@ -383,7 +383,7 @@ async function startServer() {
   app.post('/api/users/bulk-import', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang mengimpor data pegawai.' });
       }
 
@@ -509,7 +509,7 @@ async function startServer() {
   app.patch('/api/users/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang mengubah akun pengguna.' });
       }
 
@@ -617,7 +617,7 @@ async function startServer() {
   app.delete('/api/users/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menghapus pengguna.' });
       }
 
@@ -699,7 +699,7 @@ async function startServer() {
   app.post('/api/users/:id/reset-password', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang mereset sandi pengguna.' });
       }
 
@@ -747,7 +747,7 @@ async function startServer() {
   app.get('/api/contracts/reminders/overview', (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat melihat overview reminder.' });
       }
       const logs = db.contractNotificationLogs || [];
@@ -1000,7 +1000,7 @@ async function startServer() {
         });
       }
 
-      if (actor.role !== 'Admin GABAH' && (actor as any).role !== 'Superadmin') {
+      if (!isSuperadminActor(actor) && (actor as any).role !== 'Superadmin') {
         GabahDomainService.recordAudit(
           'AUTH_SWITCH_ROLE_DENIED',
           'Auth',
@@ -1079,7 +1079,7 @@ async function startServer() {
   app.post('/api/taxonomy/categories', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ 
           success: false, 
           message: 'Akses ditolak: Hanya Super Admin (Admin GABAH) yang berwenang menambahkan Master Kategori Aset.' 
@@ -1158,7 +1158,7 @@ async function startServer() {
   app.patch('/api/taxonomy/categories/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin (Admin GABAH) yang berwenang mengubah Master Kategori.' });
       }
       const code = req.params.code.trim().toUpperCase();
@@ -1219,7 +1219,7 @@ async function startServer() {
   app.delete('/api/taxonomy/categories/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin (Admin GABAH) yang berwenang menghapus Master Kategori.' });
       }
       const code = req.params.code.trim().toUpperCase();
@@ -1254,7 +1254,7 @@ async function startServer() {
   app.post('/api/master/locations', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menambah master lokasi.' });
       }
       const { name, address, capacity } = req.body;
@@ -1280,7 +1280,7 @@ async function startServer() {
   app.patch('/api/master/locations/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang mengedit master lokasi.' });
       }
       if (!db.locations) db.locations = [];
@@ -1303,7 +1303,7 @@ async function startServer() {
   app.delete('/api/master/locations/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menghapus master lokasi.' });
       }
       if (!db.locations) db.locations = [];
@@ -1327,7 +1327,7 @@ async function startServer() {
   app.post('/api/master/divisions', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menambah divisi.' });
       }
       const { code, name, leader, depts } = req.body;
@@ -1358,7 +1358,7 @@ async function startServer() {
   app.patch('/api/master/divisions/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang mengubah struktur divisi.' });
       }
       const code = req.params.code.trim().toUpperCase();
@@ -1382,7 +1382,7 @@ async function startServer() {
   app.delete('/api/master/divisions/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menghapus divisi.' });
       }
       const code = req.params.code.trim().toUpperCase();
@@ -1420,7 +1420,7 @@ async function startServer() {
   app.post('/api/master/job-levels', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master jabatan.' });
       }
       const code = String(req.body.code || '').trim().toUpperCase();
@@ -1444,7 +1444,7 @@ async function startServer() {
   app.patch('/api/master/job-levels/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master jabatan.' });
       }
       if (!db.jobLevels) db.jobLevels = [];
@@ -1468,7 +1468,7 @@ async function startServer() {
   app.post('/api/master/org-units', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master unit.' });
       }
       const name = String(req.body.name || '').trim();
@@ -1491,7 +1491,7 @@ async function startServer() {
   app.patch('/api/master/org-units/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master unit.' });
       }
       if (!db.orgUnits) db.orgUnits = [];
@@ -1515,7 +1515,7 @@ async function startServer() {
   app.post('/api/master/office-locations', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi kantor.' });
       }
       const name = String(req.body.name || '').trim();
@@ -1537,7 +1537,7 @@ async function startServer() {
   app.patch('/api/master/office-locations/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi kantor.' });
       }
       if (!db.officeLocations) db.officeLocations = [];
@@ -1567,7 +1567,7 @@ async function startServer() {
   app.post('/api/master/asset-locations', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi aset.' });
       }
       const name = String(req.body.name || '').trim();
@@ -1594,7 +1594,7 @@ async function startServer() {
   app.patch('/api/master/asset-locations/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi aset.' });
       }
       if (!db.assetLocations) db.assetLocations = [];
@@ -1842,7 +1842,7 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Karyawan tidak memiliki wewenang mengubah aset.' });
     }
     // Enforce Division Authority
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       if (asset.owner_division === 'IT' && actor.role !== 'IT') {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Aset IT hanya dapat diubah oleh personel IT atau Admin GABAH.' });
       }
@@ -1961,7 +1961,7 @@ async function startServer() {
   app.get('/api/loans', (req, res) => {
     const actor = getActor(req);
     // Scoping loans:
-    if (actor.role === 'Admin GABAH' || actor.role === 'Auditor') {
+    if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.loans });
     }
     if (actor.role === 'Karyawan') {
@@ -2073,7 +2073,7 @@ async function startServer() {
     };
 
     // 1. IT and Super Admin (Admin GABAH) can see all tickets
-    if (actor.role === 'Admin GABAH' || actor.role === 'IT') {
+    if (isSuperadminActor(actor) || actor.role === 'IT') {
       return res.json({ success: true, data: db.tickets });
     }
 
@@ -2185,7 +2185,7 @@ async function startServer() {
   // Maintenance & Calibration Schedules
   app.get('/api/maintenances', (req, res) => {
     const actor = getActor(req);
-    if (actor.role === 'Admin GABAH' || actor.role === 'Auditor') {
+    if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.maintenances });
     }
     if (actor.role === 'IT') {
@@ -2216,7 +2216,7 @@ async function startServer() {
     }
 
     // Enforce Division Authority
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       if (asset.owner_division === 'IT' && actor.role !== 'IT') {
         return res.status(403).json({ success: false, message: 'Jadwal servis aset IT hanya dapat dibuat oleh Divisi IT.' });
       }
@@ -2270,7 +2270,7 @@ async function startServer() {
     const schedule = db.maintenances.find(m => m.id === req.params.id);
     if (!schedule) return res.status(404).json({ success: false, message: 'Jadwal servis tidak ditemukan' });
 
-    if (actor.role !== 'Admin GABAH') {
+    if (!isSuperadminActor(actor)) {
       if (schedule.owner_division === 'IT' && actor.role !== 'IT') {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang mengubah jadwal ini.' });
       }
@@ -2310,7 +2310,7 @@ async function startServer() {
   // =========================
   app.get('/api/vendors', (req, res) => {
     const actor = getActor(req);
-    if (actor.role === 'Admin GABAH' || actor.role === 'Auditor') {
+    if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.vendors });
     }
     if (actor.role === 'IT') {
@@ -2465,7 +2465,7 @@ async function startServer() {
         return actor.role === 'Humas';
       }
 
-      if (actor.role === 'Admin GABAH') return true;
+      if (isSuperadminActor(actor)) return true;
       if (n.recipient_user_id && n.recipient_user_id === actor.id) return true;
       if (n.recipient_role && n.recipient_role === actor.role) return true;
       if (n.recipient_division && n.recipient_division === actor.division) return true;
@@ -2483,7 +2483,7 @@ async function startServer() {
   app.post('/api/notifications/read-all', (req, res) => {
     const actor = getActor(req);
     for (const n of db.notifications) {
-      if (actor.role === 'Admin GABAH' || n.recipient_role === actor.role || n.recipient_user_id === actor.id) {
+      if (isSuperadminActor(actor) || n.recipient_role === actor.role || n.recipient_user_id === actor.id) {
         n.is_read = true;
       }
     }
@@ -2716,7 +2716,7 @@ async function startServer() {
   app.post('/api/contracts/reminders/run', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat menjalankan reminder sweep manual.' });
       }
       const result = await ContractDomainService.runReminderSweep(actor);
@@ -2730,7 +2730,7 @@ async function startServer() {
   app.get('/api/contracts/reminders/scheduler-status', (req, res) => {
     try {
       const actor = getActor(req);
-      if (actor.role !== 'Admin GABAH') {
+      if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat melihat status scheduler.' });
       }
       res.json({ success: true, data: getSchedulerStatus() });
