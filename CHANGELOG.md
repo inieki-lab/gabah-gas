@@ -500,3 +500,67 @@ Perbaikan ini memastikan bahwa:
 1. Skema contracts di migrasi 001 sudah benar (VARCHAR owner_division)
 2. Migrasi 004 tidak mencoba membuat index dengan kolom yang tidak ada
 3. Data kontrak bisa disimpan di PostgreSQL, bukan hanya di JSON
+
+## [2026-10-15] — SEC-07: Anti Double-Booking Room Reservations
+
+### Ringkasan
+Perbaikan race condition double-booking ruangan dengan menambahkan tabel PostgreSQL
+untuk room_reservations dan constraint EXCLUDE dengan tstzrange.
+
+### Root Cause SEC-07
+- Collision check saat ini hanya **in-memory** di services.ts
+- Pada concurrent requests, dua user bisa sama-sama lolos check dan melakukan double-booking
+- Tidak ada constraint database level untuk mencegah overlapping reservations
+
+### Perubahan
+
+#### 1. Migrasi 010 (`server/migrations/010_room_reservations.sql`)
+- **Buat tabel room_reservations** di PostgreSQL (sebelumnya hanya di JSON)
+- **Tambah EXCLUDE constraint** dengan tstzrange untuk mencegah overlapping
+- **Tambah btree_gist extension** untuk support tstzrange
+- **Tambah trigger** untuk validasi tambahan
+- **Tambah indexes** untuk query performance
+
+#### 2. Code Documentation (`server/services.ts`)
+- Tambah komentar bahwa DB-level constraint menyediakan authoritative protection
+
+### Dampak
+- Double-booking **TIDAK LAGI MUNGKIN** meskipun ada concurrent requests
+- Data reservasi ruangan **SEKARANG DI POSTGRESQL** (bukan hanya JSON)
+
+## [2026-10-15] — SEC-08: Real Contract Document Upload
+
+### Ringkasan
+Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata string).
+
+### Root Cause SEC-08
+- Endpoint `/api/contracts/:id/documents` hanya menyimpan `file_name` + `file_ref` string
+- Tidak ada validasi file yang benar
+- Tidak ada batasan ukuran file
+- Tidak ada penyimpanan file yang sesungguhnya
+
+### Perubahan
+
+#### 1. Dependency (`package.json`)
+- **Tambah multer**: `multer@^1.4.5-lts.1` untuk multipart/form-data handling
+- **Tambah @types/multer**: untuk TypeScript support
+
+#### 2. New Endpoint (`server.ts`)
+- **`POST /api/contracts/:id/documents/upload`**:
+  - Gunakan multer middleware
+  - File size limit: **10MB**
+  - MIME type validation: **PDF, JPG, PNG, DOC, DOCX**
+  - Filename sanitization
+  - RBAC validation via `canEditContract()`
+
+#### 3. Data Model (`server/db.ts`)
+- **Extend ServerContractDocument**: tambah `file_size` dan `file_mime`
+
+#### 4. Contract Service (`server/contracts.ts`)
+- **Expose canEditContract**: untuk validasi RBAC
+
+### Dampak
+- Dokumen kontrak **SEKARANG BENAR-BENAR DIUPLOAD**
+- Validasi file yang ketat mencegah upload file berbahaya
+
+## [2026-10-14] — Perbaikan Menu RBAC Sidebar
