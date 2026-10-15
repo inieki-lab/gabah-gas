@@ -1,3 +1,28 @@
+## [2026-10-15] — Perbaikan Verifikasi CI, Kolisi Versi Migration, dan Typecheck
+
+### Ringkasan
+CI `main` gagal 70 run sekaligus sejak Dynamic RBAC Stage 2 karena dua cacat infrastruktur, ditambah satu error typecheck riil yang tertutup kegagalan tersebut. Ketiganya kini diperbaiki tanpa mengubah perilaku authorization sama sekali.
+
+### Perbaikan
+- **Skrip verifikasi Dynamic RBAC** (`scripts/dynamic-rbac-foundation-verify.mjs`): hapus tanda kurung ganda (`))` → `)]`) pada 39 baris di array `checks` sehingga skrip kembali eksekusi. Tidak ada assertion yang diubah, dilemahkan, atau dihapus — hasil run ulang: **47/47 PASS**.
+- **Kolisi versi migration**: rename `010_room_reservations.sql` → `015_room_reservations.sql`. Migration runner menandai status versi dari angka depan nama file dan melewati versi yang sudah tercatat, sehingga dua file dengan prefix `010` membuat `CREATE TABLE room_reservations` + constraint anti-collision (EXCLUDE/tstzrange dari SEC-07) berisiko ter-skip permanen pada database baru.
+- **Typecheck** (`npm run lint`): setelah lint CI kembali berjalan, muncul error riil `TS2339: Property 'map' does not exist on type 'unknown'` di `src/components/modals/AdministrationModal.tsx` (destructuring `Object.entries` pada hasil `reduce`). Diperbaiki dengan annotasi tipe eksplisit `Record<string, any[]>` pada variabel hasil `reduce` — tanpa `any`-cast pada panggilan maupun suppression.
+- Referensi historic SEC-07 di changelog diperbarui mengikuti nama file baru.
+
+### Hasil verifikasi lokal
+| Check | Command | Hasil |
+|---|---|---|
+| Verify Dynamic RBAC | `node scripts/dynamic-rbac-foundation-verify.mjs` | 47/47 PASS |
+| Typecheck | `npm run lint` | PASS, 0 error |
+| Build | `npm run build` | PASS (frontend + `dist/server.cjs`) |
+| P0 security | `node scripts/p0-security-verify.mjs` | 37/37 PASS |
+
+### Batas / catatan
+- Verify script tetap contract-statis; eksekusi integrasi PostgreSQL di CI belum termasuk tahap ini.
+- Nomor `015` dipilih karena belum terpakai; tidak ada file migration yang dihapus atau isinya diubah.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 9: Asset Catalogue Read Access
 
 ### Perubahan
@@ -715,7 +740,7 @@ untuk room_reservations dan constraint EXCLUDE dengan tstzrange.
 
 ### Perubahan
 
-#### 1. Migrasi 010 (`server/migrations/010_room_reservations.sql`)
+#### 1. Migrasi SEC-07 (awalnya `server/migrations/010_room_reservations.sql`; sekarang `015_room_reservations.sql` untuk menghindari kolisi versi dengan `010_dynamic_rbac_foundation.sql` pada migration runner)
 - **Buat tabel room_reservations** di PostgreSQL (sebelumnya hanya di JSON)
 - **Tambah EXCLUDE constraint** dengan tstzrange untuk mencegah overlapping
 - **Tambah btree_gist extension** untuk support tstzrange
