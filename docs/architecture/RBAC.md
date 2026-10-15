@@ -136,6 +136,16 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
 | `assets.assign` | `POST /api/assets/:id/assign` | `016` | aktif |
 | `assets.move` | `POST /api/assets/:id/move` | `016` | aktif |
 | `assets.lifecycle` | `POST /api/assets/:id/lifecycle` | `016` | aktif |
+| `tickets.read` | `GET /api/tickets` | `017` (9 role legacy) | aktif |
+| `tickets.create` | `POST /api/tickets` | `017` (8 role legacy; Auditor dikecualikan) | aktif |
+| `tickets.update` | `PATCH /api/tickets/:id/status` | `018` (6 role legacy) | aktif |
+
+### 5.1.1 Cakupan Stage 11A — tiket
+
+- `tickets.read` dan `tickets.create` menjadi permission gate dinamis pada PostgreSQL.
+- Filter legacy daftar tiket berdasarkan reporter/kategori tetap berjalan; permission `tickets.read` tidak memperluas cakupan data.
+- `tickets.create` tidak diberikan otomatis kepada Auditor atau role custom. Grant custom role tetap harus dilakukan secara eksplisit oleh Superadmin.
+- Perubahan status (`PATCH /api/tickets/:id/status`) kini memiliki gate `tickets.update`; middleware tetap menegakkan otorisasi objek dan handler tetap memvalidasi transisi status.
 
 ### 5.2 Lapisan di atas permission (tetap berlaku, tidak digantikan)
 

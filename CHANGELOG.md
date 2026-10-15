@@ -1,3 +1,32 @@
+## [2026-10-15] — Dynamic RBAC Stage 11B: Ticket Status Update
+
+### Perubahan
+- Tambah permission gate dinamis `tickets.update` pada `PATCH /api/tickets/:id/status` saat PostgreSQL aktif.
+- Tambah migration `018_dynamic_rbac_ticket_update_seed.sql` yang memberi permission hanya kepada role kanonikal yang memang memiliki jalur pengelolaan tiket pada middleware legacy: Superadmin, IT, GA, Supply Chain, PIBC, dan Karyawan.
+- Middleware tetap memeriksa kewenangan pada tiket tertentu (`canManageTicket`); validasi transisi status dan audit log di handler tetap berlaku.
+- Auditor, Humas, Sekretaris Direksi, dan role custom tidak menerima grant `tickets.update` otomatis.
+
+### Verifikasi
+- Verify script menambah tiga contract checks untuk gate dan seed.
+- CI untuk commit sebelumnya pada cabang ini telah lulus; perubahan Stage 11B masih menunggu run CI baru.
+- PostgreSQL runtime integration belum dijalankan secara manual.
+
+---
+
+## [2026-10-15] — Dynamic RBAC Stage 11A: Ticket Read/Create Gates
+
+### Perubahan
+- Tambah permission gate dinamis `tickets.read` pada `GET /api/tickets` dan `tickets.create` pada `POST /api/tickets` saat PostgreSQL aktif.
+- Tambah migration `017_dynamic_rbac_ticket_read_create_seed.sql` yang memberi `tickets.read` kepada sembilan role kanonikal yang sudah ada, serta `tickets.create` kepada role kanonikal selain Auditor. Seed additive/idempotent dan tidak memberi permission otomatis kepada role custom.
+- Filter daftar tiket berdasarkan reporter/kategori/divisi dan validasi domain tiket tetap berjalan setelah permission gate. Endpoint perubahan status tiket tidak termasuk tahap ini.
+
+### Verifikasi
+- Verify script diperbarui dengan empat contract checks untuk gate endpoint dan seed permission.
+- Tes belum dijalankan di lingkungan runtime pada saat perubahan ini dibuat. Hasil CI dan integrasi PostgreSQL harus diperiksa sebelum merge; penambahan static checks saja bukan bukti enforcement runtime.
+- Cakupan tahap ini terbatas pada baca dan pembuatan tiket; endpoint update status serta modul lain masih memerlukan audit/migrasi terpisah.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 10: Asset Write Permissions
 
 ### Perubahan
