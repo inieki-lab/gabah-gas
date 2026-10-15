@@ -2199,6 +2199,7 @@ async function startServer() {
   };
 
   app.patch('/api/tickets/:id/status', (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.update')) return;
     try {
       const actor = getActor(req);
       if (actor.role === 'Auditor') {
