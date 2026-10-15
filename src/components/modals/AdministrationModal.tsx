@@ -2585,7 +2585,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                 <button type="button" onClick={() => handleSelectRbacRole(role)} className="text-[11px] font-bold text-emerald-700 hover:underline">Kelola</button>
                                 {!role.is_superadmin && (
                                   <>
-                                    <button type="button" disabled={rbacSaving || Number(role.assigned_user_count) > 0} onClick={() => void handleToggleRbacRole(role)} className="text-[11px] font-bold text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                                    <button type="button" disabled={rbacSaving || (role.is_active && Number(role.assigned_user_count) > 0)} onClick={() => void handleToggleRbacRole(role)} className="text-[11px] font-bold text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed">
                                       {role.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                                     </button>
                                     <button type="button" disabled={rbacSaving || Number(role.assigned_user_count) > 0} onClick={() => void handleDeleteRbacRole(role)} className="text-[11px] font-bold text-rose-700 disabled:opacity-40 disabled:cursor-not-allowed">Hapus</button>
