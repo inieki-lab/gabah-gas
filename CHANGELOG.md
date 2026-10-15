@@ -1,3 +1,18 @@
+## [2026-10-15] — Dynamic RBAC Stage 8: Dashboard Read Permission
+
+### Perubahan
+- Tambah migration idempoten `013_dynamic_rbac_dashboard_permission_seed.sql` untuk memberi permission `dashboard.read` kepada sembilan role legacy yang sudah ada, tanpa memberi permission modul lain.
+- Tambah guard `requireRbacPermission` untuk endpoint statistik dashboard dan pusat perhatian.
+- Pada mode PostgreSQL, kedua endpoint sekarang memeriksa permission dari policy RBAC database; user tanpa permission menerima HTTP 403.
+- Mode file-store tetap memakai perilaku lama selama migrasi otorisasi berlangsung.
+- Tambah pemeriksaan statis untuk seed permission dan kedua endpoint yang dilindungi.
+
+### Batas tahap
+- Ini baru migrasi pertama pada modul dashboard. Permission/scope aset, tiket, peminjaman, kontrak, dan modul lain belum seluruhnya ditegakkan oleh policy dinamis.
+- Pemeriksaan ini baru berupa kontrak statis; hasil build, integrasi PostgreSQL, dan uji regresi runtime tetap perlu dikonfirmasi melalui CI atau lingkungan aplikasi.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 7: Stable Superadmin Enforcement
 
 ### Perubahan
