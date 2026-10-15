@@ -3,6 +3,7 @@
 ### Perubahan
 - Tambah helper `isSuperadminActor` yang menggunakan assignment Superadmin database ketika PostgreSQL aktif dan mempertahankan perilaku Admin GABAH pada file-store development.
 - Ganti pemeriksaan Superadmin berbasis nama di `server.ts`, `server/services.ts`, dan `server/runtime-hardening.ts` dengan helper policy yang sama.
+- Hapus fallback otorisasi berbasis string `(actor as any).role === 'Superadmin'` pada endpoint API agar tidak ada bypass tanpa assignment Superadmin aktif di database.
 - Tambah penghitungan Superadmin aktif dari cache policy.
 - Cegah penurunan role, penonaktifan, atau penghapusan Superadmin aktif terakhir melalui endpoint user.
 - Perbaiki rekonsiliasi assignment legacy: assignment role milik user yang sudah dihapus dibersihkan, role legacy disinkronkan mengikuti role user saat ini, dan role custom tidak dihapus oleh bridge legacy.
