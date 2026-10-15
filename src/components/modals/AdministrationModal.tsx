@@ -458,6 +458,172 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
   const [editRoleRow, setEditRoleRow] = useState<RolePermissionRow | null>(null);
 
+  // Dynamic RBAC state — persisted in PostgreSQL through the authenticated API.
+  const [rbacRoles, setRbacRoles] = useState<any[]>([]);
+  const [rbacPermissions, setRbacPermissions] = useState<any[]>([]);
+  const [rbacLoading, setRbacLoading] = useState(false);
+  const [rbacSaving, setRbacSaving] = useState(false);
+  const [rbacSelectedRoleId, setRbacSelectedRoleId] = useState<number | null>(null);
+  const [rbacName, setRbacName] = useState('');
+  const [rbacDescription, setRbacDescription] = useState('');
+  const [rbacNewName, setRbacNewName] = useState('');
+  const [rbacNewDescription, setRbacNewDescription] = useState('');
+  const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
+  const [rbacScopes, setRbacScopes] = useState<Array<{ type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null }>>([]);
+  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'unit' | 'location'>('division');
+  const [rbacScopeValue, setRbacScopeValue] = useState('');
+
+  const refreshRbac = async () => {
+    setRbacLoading(true);
+    try {
+      const [roles, permissionRows] = await Promise.all([gabahApi.getRbacRoles(), gabahApi.getRbacPermissions()]);
+      setRbacRoles(Array.isArray(roles) ? roles : []);
+      setRbacPermissions(Array.isArray(permissionRows) ? permissionRows : []);
+      setRbacSelectedRoleId(current => {
+        const selected = Array.isArray(roles) ? roles.find((role: any) => role.id === current) : null;
+        if (selected) {
+          setRbacName(selected.name);
+          setRbacDescription(selected.description || '');
+          setRbacSelectedPermissionKeys(selected.permissions || []);
+          setRbacScopes(selected.scopes || []);
+          return current;
+        }
+        return null;
+      });
+    } catch (error: any) {
+      setRbacRoles([]);
+      setRbacPermissions([]);
+      showToast(error?.message || 'Gagal memuat konfigurasi Dynamic RBAC. Pastikan PostgreSQL aktif dan akun memiliki akses Superadmin.', 'warning');
+    } finally {
+      setRbacLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'roles' && isCurrentUserAdmin) void refreshRbac();
+  }, [activeSection, isCurrentUserAdmin]);
+
+  const selectedRbacRole = rbacRoles.find(role => role.id === rbacSelectedRoleId) || null;
+
+  const handleCreateRbacRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rbacNewName.trim()) return showToast('Nama role wajib diisi.', 'warning');
+    setRbacSaving(true);
+    try {
+      const created = await gabahApi.createRbacRole({ name: rbacNewName.trim(), description: rbacNewDescription.trim() });
+      setRbacNewName('');
+      setRbacNewDescription('');
+      await refreshRbac();
+      setRbacSelectedRoleId(created.id);
+      setRbacName(created.name);
+      setRbacDescription(created.description || '');
+      setRbacSelectedPermissionKeys([]);
+      setRbacScopes([]);
+      showToast('Role baru berhasil dibuat. Atur permission dan scope sebelum digunakan.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal membuat role.', 'warning');
+    } finally {
+      setRbacSaving(false);
+    }
+  };
+
+  const handleSelectRbacRole = (role: any) => {
+    setRbacSelectedRoleId(role.id);
+    setRbacName(role.name);
+    setRbacDescription(role.description || '');
+    setRbacSelectedPermissionKeys(role.permissions || []);
+    setRbacScopes(role.scopes || []);
+  };
+
+  const handleSaveRbacRole = async () => {
+    if (!selectedRbacRole) return;
+    setRbacSaving(true);
+    try {
+      await gabahApi.updateRbacRole(selectedRbacRole.id, { name: rbacName.trim(), description: rbacDescription.trim() });
+      await refreshRbac();
+      showToast('Nama dan deskripsi role berhasil disimpan.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal menyimpan role.', 'warning');
+    } finally {
+      setRbacSaving(false);
+    }
+  };
+
+  const handleSaveRbacPermissions = async () => {
+    if (!selectedRbacRole) return;
+    setRbacSaving(true);
+    try {
+      await gabahApi.setRbacRolePermissions(selectedRbacRole.id, rbacSelectedPermissionKeys);
+      await refreshRbac();
+      showToast('Permission role berhasil disimpan ke database.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal menyimpan permission role.', 'warning');
+    } finally {
+      setRbacSaving(false);
+    }
+  };
+
+  const handleSaveRbacScopes = async () => {
+    if (!selectedRbacRole) return;
+    setRbacSaving(true);
+    try {
+      await gabahApi.setRbacRoleScopes(selectedRbacRole.id, rbacScopes);
+      await refreshRbac();
+      showToast('Cakupan data role berhasil disimpan ke database.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal menyimpan cakupan data role.', 'warning');
+    } finally {
+      setRbacSaving(false);
+    }
+  };
+
+  const handleToggleRbacPermission = (key: string, checked: boolean) => {
+    setRbacSelectedPermissionKeys(current => checked ? [...new Set([...current, key])] : current.filter(item => item !== key));
+  };
+
+  const handleAddRbacScope = () => {
+    const value = rbacScopeValue.trim();
+    if (['division', 'unit', 'location'].includes(rbacScopeType) && !value) {
+      showToast('Isi nilai divisi, unit, atau lokasi untuk scope ini.', 'warning');
+      return;
+    }
+    const scope = { type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
+    if (!rbacScopes.some(item => item.type === scope.type && (item.value || null) === (scope.value || null))) {
+      setRbacScopes(current => [...current, scope]);
+    }
+    setRbacScopeValue('');
+  };
+
+  const handleDeleteRbacRole = async (role: any) => {
+    if (role.is_superadmin) return showToast('Role Superadmin dilindungi.', 'warning');
+    if (!window.confirm('Hapus role "' + role.name + '"? Role hanya bisa dihapus jika tidak digunakan user.')) return;
+    setRbacSaving(true);
+    try {
+      await gabahApi.deleteRbacRole(role.id);
+      if (rbacSelectedRoleId === role.id) setRbacSelectedRoleId(null);
+      await refreshRbac();
+      showToast('Role berhasil dihapus.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal menghapus role.', 'warning');
+    } finally {
+      setRbacSaving(false);
+    }
+  };
+
+  const handleToggleRbacRole = async (role: any) => {
+    if (role.is_superadmin) return showToast('Superadmin tidak dapat dinonaktifkan.', 'warning');
+    setRbacSaving(true);
+    try {
+      await gabahApi.updateRbacRole(role.id, { is_active: !role.is_active });
+      await refreshRbac();
+      showToast(role.is_active ? 'Role dinonaktifkan.' : 'Role diaktifkan kembali.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal mengubah status role. Pastikan role tidak sedang ditetapkan ke user.', 'warning');
+    } finally {
+      setRbacSaving(false);
+    }
+  };
+
   // Organization State
   // ORG-MODEL: master Jabatan/Level, Unit, dan Kantor/Lokasi (terpisah).
   const [jobLevels, setJobLevels] = useState<OrgJobLevel[]>([]);
