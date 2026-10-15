@@ -95,12 +95,17 @@ export function hasRbacScope(
   module?: string | null,
 ): boolean {
   if (isRbacSuperadmin(userId)) return true;
-  return (policiesByUser.get(String(userId)) || []).some(policy =>
-    policy.scopes.some(scope =>
-      (scope.module == null || module == null || scope.module === module)
-      && (scope.type === 'all' || (scope.type === 'own' && type === 'own')
-        || (scope.type === type && scope.value === (value == null ? null : String(value)))),
-  );
+  const policies = policiesByUser.get(String(userId)) || [];
+  for (const policy of policies) {
+    for (const scope of policy.scopes) {
+      const moduleMatches = scope.module == null || module == null || scope.module === module;
+      const scopeMatches = scope.type === 'all'
+        || (scope.type === 'own' && type === 'own')
+        || (scope.type === type && scope.value === (value == null ? null : String(value)));
+      if (moduleMatches && scopeMatches) return true;
+    }
+  }
+  return false;
 }
 
 export function getRbacPolicyStatus(): { source: 'postgresql' | 'unavailable'; loaded_at: string | null; cached_users: number } {
