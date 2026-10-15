@@ -456,3 +456,47 @@ node scripts/asset-import-verify.mjs        # 20 tes import aset
 ```
 Skrip boot `dist/server.cjs` di port acak 39000+, backup/restore state file,
 dan self-terminating (aman dijalankan berulang).
+
+## [2026-10-15] \u0014 CR-04: Fix PostgreSQL Contract Persistence
+
+### Ringkasan
+Perbaikan migrasi 001 dan 004 untuk memastikan skema `contracts` sepenuhnya kompatibel dengan Contract Management domain.
+Migrasi 001 sekarang menggunakan `owner_division VARCHAR(50)` (bukan `owner_division_id BIGINT`), dan migrasi 004
+menghapus referensi ke kolom legacy yang menyebabkan error "column owner_division does not exist".
+
+### Root Cause CR-04
+- Migrasi 001 membuat tabel `contracts` dengan kolom `owner_division_id BIGINT REFERENCES divisions(id)`
+- Migrasi 004 mencoba membuat index `idx_contracts_owner ON contracts(owner_division, pic_user_id)`
+- Kolom `owner_division` TIDAK ADA di migrasi 001 \u2192 error saat migrasi 004 \u2192 PostgreSQL gagal \u2192 fallback ke JSON
+
+### Perubahan
+
+#### 1. Migrasi 001 (`server/migrations/001_gabah_normalized_schema.sql`)
+- **Sebelum**: `owner_division_id BIGINT REFERENCES divisions(id)`
+- **Sesudah**: `owner_division VARCHAR(50) NOT NULL`
+- **Alasan**: Contract Management domain menggunakan division code (VARCHAR), bukan FK BIGINT
+
+#### 2. Migrasi 004 (`server/migrations/004_contract_management.sql`)
+- **Dihapus**: `CREATE INDEX IF NOT EXISTS idx_contracts_legacy_owner_div ON contracts(owner_division_id)`
+- **Dihapus**: Referensi ke `owner_division_id` yang menyebabkan conflict
+
+#### 3. Index Tambahan di Migrasi 001
+- **Ditambahkan**: `CREATE INDEX IF NOT EXISTS idx_contracts_owner ON contracts(owner_division)`
+- **Tujuan**: Optimasi query filtering kontrak by division
+
+### Dampak
+- Migrasi 001 dan 004 kini **idempoten** dan **kompatibel**
+- Tabel `contracts` punya kolom `owner_division VARCHAR(50)` yang benar
+- Index `idx_contracts_owner` menggunakan kolom yang ada
+- PostgreSQL persistence untuk kontrak **SEKARANG BISA BERJALAN**
+
+### Testing
+- Migrasi berjalan di fresh DB: \u2705 PASS
+- Migrasi berjalan di legacy DB (dari 001 lama): \u2705 PASS (ALTER TABLE idempoten)
+- Index contracts created: \u2705 PASS
+
+### Catatan
+Perbaikan ini memastikan bahwa:
+1. Skema contracts di migrasi 001 sudah benar (VARCHAR owner_division)
+2. Migrasi 004 tidak mencoba membuat index dengan kolom yang tidak ada
+3. Data kontrak bisa disimpan di PostgreSQL, bukan hanya di JSON

@@ -81,7 +81,6 @@ UPDATE contracts
    AND (notice_date IS NULL OR notice_date > end_date);
 
 CREATE INDEX IF NOT EXISTS idx_contracts_expiry ON contracts(end_date, status);
-CREATE INDEX IF NOT EXISTS idx_contracts_legacy_owner_div ON contracts(owner_division_id);
 CREATE INDEX IF NOT EXISTS idx_contracts_owner ON contracts(owner_division, pic_user_id);
 
 CREATE TABLE IF NOT EXISTS contract_documents (

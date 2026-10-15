@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS contracts (
   start_date DATE,
   end_date DATE NOT NULL,
   status VARCHAR(30) NOT NULL DEFAULT 'active',
-  owner_division_id BIGINT REFERENCES divisions(id),
+  owner_division VARCHAR(50) NOT NULL,
   document_ref TEXT,
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -220,3 +220,4 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(recipien
 CREATE INDEX IF NOT EXISTS idx_notifications_division_read ON notifications(recipient_division_id, is_read, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity, entity_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_contracts_expiry ON contracts(end_date, status);
+CREATE INDEX IF NOT EXISTS idx_contracts_owner ON contracts(owner_division);
