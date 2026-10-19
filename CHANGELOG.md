@@ -1,3 +1,29 @@
+## [2026-10-19] — Dynamic RBAC Stage 13A: Hardcoded Role Audit (Read-Only)
+
+### Ringkasan
+Audit **read-only** terhadap ~117 perbandingan nama role yang menentukan otorisasi/perilaku (`server.ts` 53, `server/services.ts` 49, `server/runtime-hardening.ts` 15). HEAD diperiksa: `8b7a8e2222e307d752030adb3ca1b2be0fa67006` — bukan commit acuan `2d87f4e` (HEAD sudah maju). Tidak ada perubahan kode, skema, atau konfigurasi pada tahap ini; laporan lengkap tersimpan di `docs/progress/dynamic-rbac-progress.md` bagian Tahap 13A.
+
+### Hasil audit (30 temuan teratas, dikompilasi dari pola berulang)
+| Kategori | Jumlah | Contoh lokasi |
+|---|---|---|
+| **Security gate** | 12 | `runtime-hardening.ts:135-144` (blok non-GET Auditor, allowlist + regex), `:7 isGlobalObserver` + guard `/api/audit-logs` & `/api/reconciliation`, `canSeeAsset` (unknown → `return false`, aman) & `canManageTicket`, `server.ts:1745/1748` bulk-import blokir, `1846-1858` authority bulk UPDATE, `1950-1968` PATCH assets, hard-list `maintenances` (2324/2384), `vendors` (2448/2482), `knowledge` (2513/2540) |
+| **Business rule** | 11 | `services.ts` createAsset (termasuk pengecualian khusus GA→INV-F), assign/move/mutateLifecycle/approveLoan/requestLoan + map role→divisi; VIP Sekretaris Direksi (auto-approve 1260, prioritas 1162-65); room approve/reject (1395/1477); notifikasi khusus Humas (server.ts:2582); filter list tickets/maintenances/vendors |
+| **Compatibility mapping** | 4 | Backfill 9 mapping legacy (`persistence.ts`), last-superadmin guard PATCH users (~590-594, hitungan tidak mencakup superadmin-capable custom), `validRoles` 9 legacy POST /api/users (468-470), alias login 907 |
+| **Display/UI logic** | 2 | Label "Super Admin" (390/470/643), teks audit detail |
+
+**Kondisi role custom hari ini:** tidak dapat menembus gate mana pun yang berbasis string legacy; beberapa gate justru deny-by-default aman (`canSeeAsset`, `canManageTicket`, filter list). Namun dua kebocoran nyata ditemukan: (a) role custom dengan permission `assets.bulk_import`/`assets.update` dari grant admin **menembus authority divisi** jalur UPDATE bulk-import & PATCH (8/9) — pemilik divisi tak terdefinisi bagi mereka; (b) middleware Auditor (#1) tidak mengenali role read-only custom.
+
+### Kandidat paling aman & kecil untuk Stage 13B
+Ganti hard list di `POST /api/knowledge` (`server.ts:2513`) dan `PATCH /api/knowledge/:id` (`server.ts:2540`) menjadi `requireRbacPermission('knowledge.create'/'knowledge.update')` + migration seed `018_*` additive grant `[superadmin, it, ga]` (mirror hard list). Permission sudah ada di katalog 011/012; gate no-op di file-store; perilaku 9 legacy role invarian; blast radius terkecil. Modul yang serupa tapi belakangan: `maintenances` (#10), `vendors` (#11).
+
+### Sengaja belum disentuh
+Gate read-only Auditor & global observer (#1–3 — kontrak CR-01, butuh perancangan read-mode dinamis), authority divisi & rule bisnis khusus (VIP SekDir, Humas, INV-F — keputusan produk), kompatibilitas `users.role` (#26–29 — jembatan arsitektur).
+
+### Verifikasi
+Diff di-scoped ke docs saja; `npm run lint` tetap lolos (tidak ada perubahan kode); CI tidak mewajibkan rerun khusus.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 12: User-to-Role Assignment
 
 ### Perubahan
