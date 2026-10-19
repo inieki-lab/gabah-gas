@@ -74,7 +74,7 @@ Memberi Superadmin kemampuan menetapkan/mengubah assignment role (termasuk role 
 #### Kategori 1 — Security gate (12)
 | # | Lokasi | Perilaku sekarang | Dampak role custom | Rekomendasi |
 |---|---|---|---|---|
-| 1 | `runtime-hardening.ts:135-144` (middleware global) | `actor.role === 'Auditor' && method !== GET` → 403 seluruh non-GET; allowlist `['/api/auth/logout','/api/notifications/read-all']` + regex read notifikasi | Role custom **tidak tersentuh** (gate match nama legacy) — role custom pintar-tulis selangkah di middleware ini; sebaliknya read-only custom tidak bisa diwujudkan setara Auditor | Konversi ke flag dinamis (mis. scope/type `read_only` di `gabah_roles`) yang dihitung `getUserRbacPolicies()`; file-store pertahankan legacy string |
+| 1 | `runtime-hardening.ts:135-144` (middleware global) | `actor.role === 'Auditor' && method !== GET` → 403 seluruh non-GET; allowlist `['/api/auth/logout','/api/notifications/read-all']` + regex read notifikasi | Role custom **tidak tersentuh** (gate match nama legacy) — detailnya itu justru dampak terpentingnya: role custom tidak diblok (bisa menulis jika handler lain mengizinkan), dan sebaliknya role read-only custom tidak bisa diwujudkan setara Auditor | Konversi ke flag dinamis (mis. scope/type `read_only` di `gabah_roles`) yang dihitung `getUserRbacPolicies()`; file-store pertahankan legacy string |
 | 2 | `runtime-hardening.ts:7 isGlobalObserver` | `isSuperadmin(actor) \|\| role === 'Auditor'` | Custom role tak bisa jadi global observer | Permission dinamis (katalog belum punya `audit.read`; tambahkan atau pakai `audit.export` khusus) |
 | 3 | `runtime-hardening.ts:149-155` | `/api/audit-logs` & `/api/reconciliation` di-gate `isGlobalObserver` | Sama dengan #2 | Ikut `isGlobalObserver` jika #2 dikerjakan |
 | 4 | `runtime-hardening.ts:157-161` | `/api/assets/:id` → 403 bila `!canSeeAsset` | Tercek di canSeeAsset (#5) | Perbaiki lewat #5/Stage 11 scope dinamis |
@@ -93,7 +93,7 @@ Memberi Superadmin kemampuan menetapkan/mengubah assignment role (termasuk role 
 | 13 | `services.ts:247-260 createAsset` | Blok 4 role read-only + authority divisi kategori; pengecualian khusus: GA boleh membuat INV-F(N) `services.ts:254` | Custom tak lolos blok read-only & authority tak terdefinisi | Biarkan; aturan bisnis divisi dipertahankan | 
 | 14 | `services.ts:377-386 assignAsset` | Authority divisi + guard aset IT hanya IT | Sama | Pertahankan; nanti rujuk scope `division` |
 | 15 | `services.ts:463-472 & 513-522 (moveAsset, mutateLifecycle)` | Authority divisi owner (pola berulang, 1 grup) | Sama | Pertahankan |
-| 16 | `services.ts:368-370 approve_disposal` | Sudah dinamis via `isSuperadminActor` (bukan string) — contoh yang benar | Custom role superadmin-capable otomatis dinolongi jalan | Siap pakai sebagai pola acuan modul lain |
+| 16 | `services.ts:368-370 approve_disposal` | Sudah dinamis via `isSuperadminActor` (bukan string) — contoh yang benar | Custom role superadmin-capable otomatis diakomodasi jalan | Siap pakai sebagai pola acuan modul lain |
 | 17 | `services.ts:646-652 approveLoan`, `715-724 requestLoan` | Authority divisi owner loan | Sama | Pertahankan |
 | 18 | `services.ts:761-764` | Map role→divisi persetujuan loan (IT/GA/SC/PIBC) | Custom tak terpetakan | Pertahankan; petakan via scope saat migrasi |
 | 19 | `services.ts:729 cancelLoan`, `runtime-hardening.ts:68` | Auditor tolak cancel; Karyawan lihat loan sendiri | Kecil; custom blind | Ikut migrasi loan nanti |
@@ -115,8 +115,7 @@ Memberi Superadmin kemampuan menetapkan/mengubah assignment role (termasuk role 
 #### Kategori 4 — Display/UI logic (2)
 | # | Lokasi | Perilaku sekarang | Dampak role custom | Rekomendasi |
 |---|---|---|---|---|
-| 30a | `server.ts:390,470,643` | Map label tampilan role ('Super Admin', 'Admin GABAH (Super Admin)') | Label custom tahun tampil default | Amankan saat frontend role custom |
-| 30b | `server.ts:594-dll (pesan AUUDIT/log)` | Teks detail audit pakai nama role | Kecil | Biarkan |
+| 30 | `server.ts:390,470,643` (label) & teks detail audit (mis. `server.ts:594-dll`) | Map label tampilan role ('Super Admin', 'Admin GABAH (Super Admin)') dan teks audit memakai nama role | Label custom menggunakan fallback; teks audit hanya isi pesan | Murni tampilan/non-otorisasi — biarkan sampai frontend role custom |
 
 ### Kandidat paling aman dan kecil untuk Stage 13B
 **#12 — ganti hard list di `POST /api/knowledge` (`server.ts:2513`) & `PATCH /api/knowledge/:id` (`server.ts:2540`) menjadi `requireRbacPermission('knowledge.create' / 'knowledge.update')`.** Alasan: permission **sudah ada di katalog** (011/012, tanpa migration catalogue baru — cukup migration seed `018_*` additive: grant `[superadmin, it, ga]` mirror hard list); gate no-op di file-store (P0 tetap hijau); perilaku legacy role invarians (9 legacy tetap terkeha), hanya membuka jalur yang tadinya mustahil bagi role custom; blast radius terkecil (modul knowledge, 2 handler).
