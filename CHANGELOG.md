@@ -1,3 +1,32 @@
+## [2026-10-15] — Dynamic RBAC Stage 12: User-to-Role Assignment
+
+### Perubahan
+- Endpoint baru `PUT /api/admin/rbac/users/:id/roles` (superadmin-only via `requireRbacSuperadmin`, PostgreSQL-only): Superadmin dapat menetapkan/mengganti sekaligus seluruh assignment role sebuah user, termasuk role custom. Body: `{ role_ids: number[] }` (set penuh, bukan delta).
+- Validasi server-authoritative: user target harus ada di tabel `users` (`RBAC_USER_NOT_FOUND` → 404); semua `role_id` harus terdaftar dan aktif (`RBAC_ROLE_INVALID` → 400); duplikat id di-dedup anti masuk.
+- Perubahan assignment dilakukan **atomik** dalam satu `withRbacTransaction` (DELETE set lama + INSERT set baru `ON CONFLICT DO NOTHING`) — tidak ada assignment parsial saat gagal; rollback otomatis.
+- Perlindungan Superadmin terakhir: bila target satu-satunya pemegang role superadmin-capable dan set baru tidak memuatnya → ditolak `RBAC_LAST_SUPERADMIN` (409), konsisten dengan guard PATCH/DELETE `/api/users/:id`.
+- Assignment membubuhkan `assigned_by_user_id` Superadmin pelaksana; audit event `RBAC_USER_ROLES_UPDATED` mencatat user target, email, dan daftar role baru setelah `refreshRbacPolicy()`.
+- `rbacFailure` diperluas pesan 404/400/409 untuk `RBAC_USER_NOT_FOUND`, `RBAC_ROLE_INVALID`, `RBAC_LAST_SUPERADMIN`.
+- `scripts/dynamic-rbac-foundation-verify.mjs` ditambah 8 pemeriksaan (65 → 73): keberadaan endpoint, guard superadmin, validasi user & role, atomicity, stamping assigned_by, last-superadmin guard, audit event + refresh.
+
+### Yang dipertahankan
+- Kolom `users.role` legacy tetap otoritatif untuk logic bisnis — assignment dinamis adalah layer RBAC paralel; backfill `gabah_user_roles` di `persistence.ts` tetap terjadi pada persist dan berperan sebagai bridge kompatibilitas untuk sembilan mapping legacy.
+- Tidak ada perubahan pada modul loan/ticket/contract/maintenance/room, tidak ada migration baru, tidak ada perubahan skema.
+
+### Hasil tes aktual (dijalankan)
+| Check | Command | Hasil |
+|---|---|---|
+| Verify Dynamic RBAC | `node scripts/dynamic-rbac-foundation-verify.mjs` | 73/73 PASS |
+| Typecheck | `npm run lint` | PASS, 0 error |
+| Build | `npm run build` | PASS |
+| P0 security file-store | `node scripts/p0-security-verify.mjs` | 37/37 PASS |
+
+### Batas / keterbatasan
+- Endpoint hanya aktif saat PostgreSQL aktif (pola konsisten dengan seluruh RBAC admin API); file-store tidak mensimulasikan assignment — verifikasi superadmin/gate/statik + P0 file-store; **trolling runtime PostgreSQL live belum dijalankan** (CI tanpa instance PG), pengujian integrasi tetap direkomendasikan.
+- Tes runtime terhadap endpoint ini belum tersedia (peru tes integrasi PG); pemeriksaan saat ini contract-statis.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 11: Dynamic Scope Enforcement & Movements Read Gate
 
 ### Perubahan

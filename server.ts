@@ -112,6 +112,9 @@ async function startServer() {
     if (message === 'RBAC_SUPERADMIN_PROTECTED') return res.status(409).json({ success: false, message: 'Role Superadmin dilindungi dan tidak dapat dinonaktifkan, dihapus, atau kehilangan kendali tertingginya.' });
     if (message === 'RBAC_ROLE_IN_USE') return res.status(409).json({ success: false, message: 'Role masih ditetapkan ke user. Pindahkan assignment terlebih dahulu.' });
     if (message === 'RBAC_PERMISSION_INVALID') return res.status(400).json({ success: false, message: 'Satu atau lebih permission tidak terdaftar atau sudah nonaktif.' });
+    if (message === 'RBAC_USER_NOT_FOUND') return res.status(404).json({ success: false, message: 'User target tidak ditemukan.' });
+    if (message === 'RBAC_ROLE_INVALID') return res.status(400).json({ success: false, message: 'Satu atau lebih role tidak terdaftar atau sudah nonaktif.' });
+    if (message === 'RBAC_LAST_SUPERADMIN') return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh kehilangan role Superadmin.' });
     return res.status(400).json({ success: false, message: 'Permintaan Dynamic RBAC tidak valid atau gagal diproses.' });
   };
 
@@ -264,6 +267,60 @@ async function startServer() {
       });
       await refreshRbacPolicy();
       GabahDomainService.recordAudit('RBAC_SCOPES_UPDATED', 'Administration', 'Superadmin mengubah scope role "' + result.role_key + '".', actor);
+      return res.json({ success: true, data: result });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.put('/api/admin/rbac/users/:id/roles', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const userId = String(req.params.id || '');
+    const roleIds = req.body?.role_ids;
+    if (!userId || !Array.isArray(roleIds) || roleIds.some((value: unknown) => !Number.isSafeInteger(value) || (value as number) < 1)) {
+      return res.status(400).json({ success: false, message: 'ID user atau daftar role tidak valid.' });
+    }
+    try {
+      const result = await withRbacTransaction(async client => {
+        const target = await client.query('SELECT id, name, email FROM users WHERE id = $1', [userId]);
+        const user = target.rows[0];
+        if (!user) throw new Error('RBAC_USER_NOT_FOUND');
+        const uniqueIds = [...new Set((roleIds as number[]).map(Number))];
+        const valid = await client.query('SELECT id, name, is_superadmin FROM gabah_roles WHERE is_active = TRUE AND id = ANY($1::bigint[])', [uniqueIds]);
+        if (valid.rowCount !== uniqueIds.length) throw new Error('RBAC_ROLE_INVALID');
+        // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
+        // target must keep a superadmin-capable role if it is the only holder.
+        const current = await client.query('SELECT ur.role_id FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE ur.user_id = $1 AND r.is_superadmin = TRUE', [userId]);
+        if (current.rowCount > 0 && !valid.rows.some(row => row.is_superadmin)) {
+          const remaining = await client.query(
+            'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE r.is_superadmin = TRUE AND ur.user_id <> $1',
+            [userId],
+          );
+          if (Number(remaining.rows[0]?.count || 0) === 0) throw new Error('RBAC_LAST_SUPERADMIN');
+        }
+        // Replace whole assignment set in one transaction: partial writes roll
+        // back together, so a user is never left with half of a new set.
+        await client.query('DELETE FROM gabah_user_roles WHERE user_id = $1', [userId]);
+        for (const roleId of uniqueIds) {
+          await client.query(
+            'INSERT INTO gabah_user_roles (user_id, role_id, assigned_by_user_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, role_id) DO NOTHING',
+            [userId, roleId, actor.id],
+          );
+        }
+        return {
+          user_id: userId,
+          user_name: String(user.name),
+          user_email: String(user.email),
+          role_ids: uniqueIds,
+          role_names: valid.rows.map(row => String(row.name)),
+        };
+      });
+      await refreshRbacPolicy();
+     GabahDomainService.recordAudit(
+        'RBAC_USER_ROLES_UPDATED',
+        'Administration',
+        'Superadmin mengubah assignment role untuk user "' + result.user_name + '" (' + result.user_email + ') menjadi: ' + result.role_names.join(', ') + '.',
+        actor,
+      );
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });

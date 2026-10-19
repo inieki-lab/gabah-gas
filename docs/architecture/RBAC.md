@@ -159,7 +159,15 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
 ### 5.3 Role kustom & scope
 
 - Permission role kustom **tidak pernah otomatis**; hanya admin Superadmin yang
-  dapat memberikan grant melalui API `/api/admin/rbac/roles/:id/permissions`.- Scope per role (`gabah_role_division_scopes`) tersimpan dan dikelola via API
+  dapat memberikan grant melalui API `/api/admin/rbac/roles/:id/permissions`.
+- Assignment role ke user dikelola Superadmin via
+  `PUT /api/admin/rbac/users/:id/roles` (set penuh `role_ids`, atomik,
+  role-nonaktif/tak-dikenal ditolak, Superadmin aktif terakhir terlindungi,
+  audit `RBAC_USER_ROLES_UPDATED`, policy cache di-refresh setelah tersimpan).
+  Catatan kompatibilitas: `users.role` legacy tetap otoritatif untuk business
+  logic — assignment legacy yang dihapus akan dipulihkan oleh backfill
+  persist berikutnya sesuai `users.role`; assignment ke role custom tidak
+  pernah disentuh backfill.- Scope per role (`gabah_role_division_scopes`) tersimpan dan dikelola via API
   administrasi. Sejak Stage 11, scope dinamis dipakai enforcement untuk
   visibilitas aset role dinamis (non-legacy) saat PostgreSQL aktif: `all` (semua
   aset), `own` (aset yang ditugaskan), `division` (`owner_division`), `unit`
