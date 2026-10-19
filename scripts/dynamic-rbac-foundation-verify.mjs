@@ -11,6 +11,7 @@ const catalogExpansion = fs.readFileSync('server/migrations/012_dynamic_rbac_per
 const dashboardPermissionSeed = fs.readFileSync('server/migrations/013_dynamic_rbac_dashboard_permission_seed.sql', 'utf8');
 const assetsReadPermissionSeed = fs.readFileSync('server/migrations/014_dynamic_rbac_assets_read_permission_seed.sql', 'utf8');
 const assetWritePermissionSeed = fs.readFileSync('server/migrations/016_dynamic_rbac_asset_write_permissions_seed.sql', 'utf8');
+const movementsReadPermissionSeed = fs.readFileSync('server/migrations/017_dynamic_rbac_movements_read_permission_seed.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -51,6 +52,13 @@ const checks = [
   ['asset move endpoint enforces assets.move', /requireRbacPermission\(req, res, 'assets\.move'\)/.test(server)],
   ['asset lifecycle endpoint enforces assets.lifecycle', /requireRbacPermission\(req, res, 'assets\.lifecycle'\)/.test(server)],
   ['bulk import update path preserves division authority like PATCH', /hanya dapat diperbarui oleh personel IT atau Admin GABAH/.test(server) && /hanya dapat diperbarui oleh personel GA atau Admin GABAH/.test(server) && /hanya dapat diperbarui oleh personel Supply Chain atau Admin GABAH/.test(server) && /hanya dapat diperbarui oleh personel PIBC atau Admin GABAH/.test(server)],
+  ['movements endpoint enforces movements.read in PostgreSQL mode', /app\.get\('\/api\/movements', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'movements\.read'\)\) return;/i.test(server)],
+  ['movements read permission seed is idempotent and covers the canonical legacy roles', /INSERT INTO gabah_role_permissions/i.test(movementsReadPermissionSeed) && /'movements\.read'/i.test(movementsReadPermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(movementsReadPermissionSeed) && /'superadmin'[\s\S]*'humas'/i.test(movementsReadPermissionSeed)],
+  ['custom roles resolve asset visibility from dynamic scopes instead of the all-seeing fallback', /isPostgresPersistenceActive\(\) && !isLegacyScopedRole\(user\.role\)\) \{\s*return filterAssetsByDynamicScopes/i.test(domainServices)],
+  ['dynamic scope resolution fails closed for unscoped dynamic roles', /policies\.length === 0\) return \[\];/i.test(domainServices) && /scopes\.length === 0\) return \[\];/i.test(domainServices)],
+  ['dynamic scope resolution honors a superadmin dynamic policy', /policies\.some\(policy => policy\.isSuperadmin\)\) return assets;/i.test(domainServices)],
+  ['dynamic scope matching covers own, division, unit, and location scope types', ['case \'own\'','case \'division\'','case \'unit\'','case \'location\''].every(needle => domainServices.includes(needle))],
+  ['legacy nine-role scoping is preserved before the dynamic fallback', /if \(user\.role === 'Admin GABAH' \|\| user\.role === 'Auditor'\)/i.test(domainServices) && /return filterAssetsByDynamicScopes\(db\.assets, user\);\s*\}\s*\n\s*return db\.assets;/.test(domainServices)],
   ['asset write permission seed is additive and idempotent', /INSERT INTO gabah_role_permissions/i.test(assetWritePermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(assetWritePermissionSeed)],
   ['asset write grants cover the six catalogue keys without duplicate permissions', ['assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign', 'assets.move', 'assets.lifecycle'].every(key => assetWritePermissionSeed.includes("'" + key + "'"))],
   ['asset write grants cover exactly the division authority roles', /role_key IN \('superadmin',\s*'it',\s*'ga',\s*'supply_chain',\s*'pibc'\)/i.test(assetWritePermissionSeed)],

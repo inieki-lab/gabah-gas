@@ -136,6 +136,7 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
 | `assets.assign` | `POST /api/assets/:id/assign` | `016` | aktif |
 | `assets.move` | `POST /api/assets/:id/move` | `016` | aktif |
 | `assets.lifecycle` | `POST /api/assets/:id/lifecycle` | `016` | aktif |
+| `movements.read` | `GET /api/movements` | `017` (9 role legacy) | aktif |
 
 ### 5.2 Lapisan di atas permission (tetap berlaku, tidak digantikan)
 
@@ -158,11 +159,16 @@ Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `
 ### 5.3 Role kustom & scope
 
 - Permission role kustom **tidak pernah otomatis**; hanya admin Superadmin yang
-  dapat memberikan grant melalui API `/api/admin/rbac/roles/:id/permissions`.
-- Scope per role (`gabah_role_division_scopes`) tersimpan dan dikelola pada
-  API administrasi, namun belum dipakai enformcen pada endpoint aset; scope
-  legacy berbasis `owner_division` di domain service tetap sumber kebenaran yang
-  berjalan.
+  dapat memberikan grant melalui API `/api/admin/rbac/roles/:id/permissions`.- Scope per role (`gabah_role_division_scopes`) tersimpan dan dikelola via API
+  administrasi. Sejak Stage 11, scope dinamis dipakai enforcement untuk
+  visibilitas aset role dinamis (non-legacy) saat PostgreSQL aktif: `all` (semua
+  aset), `own` (aset yang ditugaskan), `division` (`owner_division`), `unit`
+  (`managing_unit_id` atau nama unit), dan `location`
+  (`asset_location_id`/nama/teks lokasi). Failure mode: role dinamis tanpa scope
+  atau tanpa assignment tidak melihat aset apa pun (deny-by-default), menggantikan
+  fallback all-seeing lama. Perilaku sembilan role legacy tetap diatur rule
+  `getScopedAssets()` yang berjalan di atasnya — tidak ada perubahan visibilitas
+  bagi mereka.
 - Role Karyawan, Auditor, Humas, dan Sekretaris Direksi sengaja tidak menerima
   grant tulis di migration `016`, mengikuti guard legacy yang menolak mereka.
 

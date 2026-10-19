@@ -6,7 +6,65 @@ import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-loc
 import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
-import { isSuperadminActor } from './rbac-policy';
+import { isSuperadminActor, getUserRbacPolicies } from './rbac-policy';
+import { isPostgresPersistenceActive } from './persistence';
+
+/** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
+const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
+
+function isLegacyScopedRole(role: string): boolean {
+  return LEGACY_SCOPED_ROLES.has(String(role));
+}
+
+interface AssetScopeSpec { type: string; value: string | null }
+
+function textEquals(left: unknown, right: unknown): boolean {
+  if (left == null || right == null) return false;
+  return String(left).trim().toLowerCase() === String(right).trim().toLowerCase();
+}
+
+/**
+ * Dynamic RBAC Stage 11: resolve asset visibility for a synthetic/custom role
+ * from gabah_role_division_scopes. Rules (mirror hasRbacScope semantics on
+ * data rows, evaluated per asset):
+ * - policy dinamis dengan is_superadmin → semua aset.
+ * - scope 'all' → semua aset.
+ * - scope 'own' → aset yang ditugaskan ke user.
+ * - scope 'division:V' → owner_division === V (case-insensitive).
+ * - scope 'unit:V' → managing_unit_id identik atau nama unit pengelola identik.
+ * - scope 'location:V' → asset_location_id/text/lokasi master identik.
+ * Role dinamis tanpa scope sama sekali tidak melihat aset apa pun
+ * (secure fallback yang sempit, menggantikan fallback all-seeing lama).
+ */
+function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): ServerAsset[] {
+  const policies = getUserRbacPolicies(String(user.id));
+  if (policies.length === 0) return [];
+  if (policies.some(policy => policy.isSuperadmin)) return assets;
+  const scopes = policies
+    .flatMap(policy => policy.scopes)
+    .map(scope => ({ type: String(scope.type), value: scope.value == null ? null : String(scope.value) } as AssetScopeSpec));
+  if (scopes.length === 0) return [];
+  if (scopes.some(scope => scope.type === 'all')) return assets;
+  const managingUnitNameById = new Map(db.orgUnits.map(unit => [String(unit.id), String(unit.name)]));
+  const assetLocationNameById = new Map(db.assetLocations.map(location => [String(location.id), String(location.name)]));
+  return assets.filter(asset => scopes.some(scope => {
+    switch (scope.type) {
+      case 'own':
+        return asset.assigned_to?.id === String(user.id);
+      case 'division':
+        return textEquals(asset.owner_division, scope.value);
+      case 'unit':
+        return textEquals(asset.managing_unit_id, scope.value)
+          || (asset.managing_unit_id != null && textEquals(managingUnitNameById.get(String(asset.managing_unit_id)), scope.value));
+      case 'location':
+        return textEquals(asset.asset_location_id, scope.value)
+          || (asset.asset_location_id != null && textEquals(assetLocationNameById.get(String(asset.asset_location_id)), scope.value))
+          || textEquals(asset.location, scope.value);
+      default:
+        return false;
+    }
+  }));
+}
 
 export class GabahDomainService {
   /**
@@ -107,6 +165,14 @@ export class GabahDomainService {
         const loc = String(a.location || '').toLowerCase();
         return a.owner_division === 'PIBC' || loc.includes('pibc') || (dept.length >= 3 && loc.includes(dept));
       });
+    }
+
+    // Dynamic RBAC Stage 11: bila PostgreSQL persistensi aktif, role yang bukan
+    // salah satu dari sembilan role legacy TIDAK pernah jatuh ke fallback
+    // legacy yang "melihat semua". Visibilitasnya diambil dari
+    // gabah_role_division_scopes via policy dinamis (deny-by-default).
+    if (isPostgresPersistenceActive() && !isLegacyScopedRole(user.role)) {
+      return filterAssetsByDynamicScopes(db.assets, user);
     }
 
     return db.assets;

@@ -2008,6 +2008,7 @@ async function startServer() {
 
   // Movements
   app.get('/api/movements', (req, res) => {
+    if (!requireRbacPermission(req, res, 'movements.read')) return;
     const { assetId } = req.query;
     if (assetId) {
       const filtered = db.movements.filter(m => m.asset_id === assetId);

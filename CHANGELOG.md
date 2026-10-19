@@ -1,3 +1,18 @@
+## [2026-10-15] — Dynamic RBAC Stage 11: Dynamic Scope Enforcement & Movements Read Gate
+
+### Perubahan
+- `GET /api/movements` kini memeriksa permission dinamis `movements.read` via `requireRbacPermission` saat PostgreSQL aktif. Migration baru `017_dynamic_rbac_movements_read_permission_seed.sql` (additive, idempotent) memberi grant ke sembilan role legacy — mencerminkan perilaku aktual endpoint ini sebelumnya (GET tanpa pembatasan peran), sehingga tidak ada perubahan akses bagi pengguna legacy. Role custom tidak menerima grant otomatis.
+- Visibilitas aset untuk role dinamis (non-legacy) saat PostgreSQL aktif kini di-resolve dari `gabah_role_division_scopes` di `GabahDomainService.getScopedAssets()`, bukan lagi fallback all-seeing: `all` (semua), `own` (aset yang ditugaskan ke user), `division` (owner_division), `unit` (managing_unit_id atau nama unit pengelola), dan `location` (asset_location_id, nama lokasi fisik, atau teks location). Role dinamis tanpa scope/assignment tidak melihat aset apa pun (deny-by-default). Menutup catatan risiko "fallback all-seeing untuk role tak-dikenal" dari Stage 10.
+- Sembilan role legacy mempertahankan rule `getScopedAssets()` yang berjalan di atas permission gate — visibilitas Admin GABAH/Auditor/Humas/Karyawan/Sekdir/IT/GA/SC/PIBC tidak berubah sama sekali. Filter scope dinamis ini juga berlaku konsisten pada `GET /api/assets`, `GET /api/assets/:id`, dan lihat perhatian dashboard (`/api/dashboard/attention`) karena semuanya lewat fungsi yang sama.
+- `scripts/dynamic-rbac-foundation-verify.mjs` ditambah 7 pemeriksaan (total 65): gate movements, seed 017 idempotent 9 role, resolusi scope dinamis deny-by-default, passthrough superadmin dinamis, coverage tipe scope, dan preservasi rule legacy.
+
+### Batas tahap
+- Enforcement dinamis tetap belum diterapkan pada modul lain (loan, ticket, contract, maintenance, dsb.) — sesuai batas tahap.
+- Scope dinamis belum menyempitkan visibilitas role legacy (sengaja dipertahankan legacy); pemetaan penuh action→permission→scope per modul masih agenda tahap berikut.
+- Test runtime enforcement PostgreSQL belum dapat dijalankan di CI saat ini (lihat catatan Stage 10). Pemeriksaan tetap contract-statis + P0 file-store.
+
+---
+
 ## [2026-10-15] — Dynamic RBAC Stage 10: Asset Write Permissions
 
 ### Perubahan
