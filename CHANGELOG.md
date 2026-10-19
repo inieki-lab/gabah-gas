@@ -23,7 +23,7 @@
 | P0 security file-store | `node scripts/p0-security-verify.mjs` | 37/37 PASS |
 
 ### Batas / keterbatasan
-- Endpoint hanya aktif saat PostgreSQL aktif (pola konsisten dengan seluruh RBAC admin API); file-store tidak mensimulasikan assignment — verifikasi superadmin/gate/statik + P0 file-store; **trolling runtime PostgreSQL live belum dijalankan** (CI tanpa instance PG), pengujian integrasi tetap direkomendasikan.
+- Endpoint hanya aktif saat PostgreSQL aktif (pola konsisten dengan seluruh RBAC admin API); file-store tidak mensimulasikan assignment — verifikasi superadmin/gate/statik + P0 file-store; **uji runtime PostgreSQL live belum dijalankan** (CI tanpa instance PG), pengujian integrasi tetap direkomendasikan.
 - Tes runtime terhadap endpoint ini belum tersedia (peru tes integrasi PG); pemeriksaan saat ini contract-statis.
 
 ---
