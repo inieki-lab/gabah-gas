@@ -8,6 +8,7 @@
 - Assignment membubuhkan `assigned_by_user_id` Superadmin pelaksana; audit event `RBAC_USER_ROLES_UPDATED` mencatat user target, email, dan daftar role baru setelah `refreshRbacPolicy()`.
 - `rbacFailure` diperluas pesan 404/400/409 untuk `RBAC_USER_NOT_FOUND`, `RBAC_ROLE_INVALID`, `RBAC_LAST_SUPERADMIN`.
 - `scripts/dynamic-rbac-foundation-verify.mjs` ditambah 8 pemeriksaan (65 → 73): keberadaan endpoint, guard superadmin, validasi user & role, atomicity, stamping assigned_by, last-superadmin guard, audit event + refresh.
+- Implementasi tersimpan dalam commit **`2d87f4e`** (`2d87f4e18c890547e13f190fc6c2fb177dce96ff`, ter-push ke `main`; CI SUCCESS). Catatan progres permanen: `docs/progress/dynamic-rbac-progress.md` (baru).
 
 ### Yang dipertahankan
 - Kolom `users.role` legacy tetap otoritatif untuk logic bisnis — assignment dinamis adalah layer RBAC paralel; backfill `gabah_user_roles` di `persistence.ts` tetap terjadi pada persist dan berperan sebagai bridge kompatibilitas untuk sembilan mapping legacy.

@@ -54,4 +54,6 @@ Memberi Superadmin kemampuan menetapkan/mengubah assignment role (termasuk role 
 5. Uji multi-instance: cache policy `refreshRbacPolicy()` hanya Barang lokal; deployment multi-node dengan PostgreSQL berisiko cache policy yang tidak saling bisa ter-hitung (temuan audit tahap 11, belum ditangani).
 
 ### Commit
-- Commit kode fitur + tes + docs (entri ini dibuat di commit yang sama): lihat `git log --oneline -- docs/progress/dynamic-rbac-progress.md` di `main` untuk hash aktual — file ini sengaja tidak mencantumkan hash yang diperkirakan karena hash baru diketahui setelah commit dibuat. Entri hash aktual akan ditulis di entri tahap berikutnya setelah push terverifikasi.
+- **`2d87f4e18c890547e13f190fc6c2fb177dce96ff`** (`2d87f4e`, "feat(rbac): add superadmin user-to-role assignment endpoint") — ter-push ke `main` (`7a5cedb..2d87f4e`), 5 file, 160 insertion / 1 deletion.
+- CI GitHub pada commit tersebut: **SUCCESS** (11/11 step success: checkout, Node 20, install, typecheck/lint, Dynamic RBAC contract checks 73/73, production build, P0 security verification 37/37, dan langkah post-jobs).
+- Verifikasi hash dilakukan terhadap `git rev-parse HEAD` aktual saat push, bukan tebakan; update ini masuk di commit docs terpisah agar hash tidak pernah ditulis berbeda dengan push yang nyata.
