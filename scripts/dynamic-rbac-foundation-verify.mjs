@@ -13,6 +13,7 @@ const assetsReadPermissionSeed = fs.readFileSync('server/migrations/014_dynamic_
 const assetWritePermissionSeed = fs.readFileSync('server/migrations/016_dynamic_rbac_asset_write_permissions_seed.sql', 'utf8');
 const movementsReadPermissionSeed = fs.readFileSync('server/migrations/017_dynamic_rbac_movements_read_permission_seed.sql', 'utf8');
 const knowledgePermissionSeed = fs.readFileSync('server/migrations/018_dynamic_rbac_knowledge_permissions_seed.sql', 'utf8');
+const vendorPermissionSeed = fs.readFileSync('server/migrations/019_dynamic_rbac_vendor_write_permissions_seed.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -99,6 +100,10 @@ const checks = [
   ['knowledge seed does not implicitly grant permissions to other legacy or custom roles', !/karyawan|auditor|humas|supply_chain|pibc|sekretaris/i.test(knowledgePermissionSeed)],
   ['knowledge create endpoint enforces dynamic permission and preserves file-store allowlist', (() => { const route = server.slice(server.indexOf("app.post('/api/knowledge'"), server.indexOf("app.patch('/api/knowledge/:id'")); return route.includes("requireRbacPermission(req, res, 'knowledge.create')") && route.includes("isPostgresPersistenceActive()") && route.includes("!['Admin GABAH', 'IT', 'GA'].includes(actor.role)"); })()],
   ['knowledge update endpoint enforces dynamic permission and preserves file-store allowlist', (() => { const route = server.slice(server.indexOf("app.patch('/api/knowledge/:id'"), server.indexOf("app.post('/api/knowledge/:id/vote'")); return route.includes("requireRbacPermission(req, res, 'knowledge.update')") && route.includes("isPostgresPersistenceActive()") && route.includes("!['Admin GABAH', 'IT', 'GA'].includes(actor.role)"); })()],
+  ['vendor write permission seed is additive and idempotent', vendorPermissionSeed.includes('INSERT INTO gabah_role_permissions') && vendorPermissionSeed.includes('ON CONFLICT (role_id, permission_key) DO NOTHING')],
+  ['vendor seed grants create/update only to superadmin, IT, GA, Supply Chain, and PIBC', vendorPermissionSeed.includes("'vendors.create'") && vendorPermissionSeed.includes("'vendors.update'") && vendorPermissionSeed.includes("r.role_key IN ('superadmin', 'it', 'ga', 'supply_chain', 'pibc')")],
+  ['vendor create endpoint enforces dynamic permission and preserves file-store allowlist', (() => { const route = server.slice(server.indexOf("app.post('/api/vendors'"), server.indexOf("app.patch('/api/vendors/:id'")); return route.includes("requireRbacPermission(req, res, 'vendors.create')") && route.includes("isPostgresPersistenceActive()") && route.includes("!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)"); })()],
+  ['vendor update endpoint enforces dynamic permission and preserves file-store allowlist', (() => { const route = server.slice(server.indexOf("app.patch('/api/vendors/:id'"), server.indexOf("app.get('/api/knowledge'")); return route.includes("requireRbacPermission(req, res, 'vendors.update')") && route.includes("isPostgresPersistenceActive()") && route.includes("!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)"); })()],
 ];
 
 let failed = 0;
