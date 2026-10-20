@@ -1,3 +1,19 @@
+## [2026-10-20] — Dynamic RBAC Stage 13C: Vendor Write Permissions
+
+### Perubahan
+- `POST /api/vendors` memakai permission `vendors.create` saat PostgreSQL aktif.
+- `PATCH /api/vendors/:id` memakai permission `vendors.update` saat PostgreSQL aktif.
+- Mode file-store tetap memakai allowlist legacy Admin GABAH, IT, GA, Supply Chain, dan PIBC.
+- Migration `019_dynamic_rbac_vendor_write_permissions_seed.sql` memberi grant awal secara idempoten hanya kepada lima role legacy yang sebelumnya dapat mengelola vendor. Role custom tidak mendapat grant otomatis.
+- Pemeriksaan domain IT/GA pada kategori vendor dan allowlist field update tetap dipertahankan.
+- Verify script ditambah empat pemeriksaan statis. Pengujian PostgreSQL live tetap diperlukan.
+
+### Verifikasi
+- Perubahan dibuat pada branch `work/stage-13c-vendor-rbac`; tunggu CI sebelum merge.
+- Static contract checks bukan pengganti integrasi database/runtime.
+
+---
+
 ## [2026-10-20] — Dynamic RBAC Stage 13B: Knowledge Write Permissions
 
 ### Perubahan

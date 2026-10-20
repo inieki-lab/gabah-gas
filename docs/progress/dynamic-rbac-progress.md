@@ -4,6 +4,34 @@ Catatan progres permanen per tahap. Pemeriksa berikutnya dapat melanjutkan peker
 
 ---
 
+## Tahap 13C — Dynamic RBAC untuk Vendor Writes (2026-10-20)
+
+### Tujuan dan cakupan
+Memigrasikan endpoint create/update vendor ke permission dinamis pada mode PostgreSQL, dengan perubahan terbatas pada dua operasi tulis.
+
+### Perubahan kode
+- `POST /api/vendors` memeriksa `vendors.create` melalui `requireRbacPermission` ketika PostgreSQL aktif.
+- `PATCH /api/vendors/:id` memeriksa `vendors.update` ketika PostgreSQL aktif.
+- Mode file-store mempertahankan allowlist legacy Admin GABAH, IT, GA, Supply Chain, dan PIBC.
+- Migration `019_dynamic_rbac_vendor_write_permissions_seed.sql` memberi grant awal hanya ke role canonical `superadmin`, `it`, `ga`, `supply_chain`, dan `pibc`; role custom tidak memperoleh grant implisit.
+- Pengecekan domain IT/GA dan allowlist field pada update tetap ada. Perilaku baca vendor tidak diubah.
+- Verify script mendapat pemeriksaan statis untuk seed dan kedua endpoint.
+
+### Status verifikasi
+- Perubahan berada pada branch `work/stage-13c-vendor-rbac`; belum merge.
+- Menunggu CI untuk lint/typecheck, Dynamic RBAC contract checks, production build, dan P0 security verification.
+- Pengujian integrasi PostgreSQL live belum dilakukan oleh sesi ini.
+
+### Gap tetap terbuka
+- Vendor read masih menggunakan role legacy dan penyaringan kategori; belum dimigrasikan karena memerlukan rancangan permission/scope baca.
+- Enforcement permission dinamis di modul lain (maintenance, contracts, loan, ticket, room) belum disentuh.
+- Endpoint baca assignment user dan UI assignment role masih belum ada.
+- Kolom `users.role` masih menjadi sumber kompatibilitas legacy; backfill dapat memulihkan assignment legacy.
+- Cache policy masih lokal per proses; invalidasi multi-instance belum diselesaikan.
+- Risiko authority divisi pada PATCH/bulk update aset dan desain role read-only/global observer tetap mengikuti catatan Tahap 13A.
+
+---
+
 ## Tahap 13B — Dynamic RBAC untuk Knowledge (2026-10-20)
 
 ### Tujuan dan cakupan
