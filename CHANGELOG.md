@@ -1,3 +1,17 @@
+## [2026-10-20] — Dynamic RBAC Stage 13B: Knowledge Write Permissions
+
+### Perubahan
+- `POST /api/knowledge` memakai permission `knowledge.create` saat PostgreSQL aktif.
+- `PATCH /api/knowledge/:id` memakai permission `knowledge.update` saat PostgreSQL aktif.
+- Migration `018_dynamic_rbac_knowledge_permissions_seed.sql` bersifat additive/idempotent dan memberi grant hanya kepada role legacy `superadmin`, `it`, dan `ga`, sesuai allowlist sebelumnya. Role legacy lain dan role custom tidak mendapat grant otomatis.
+- Mode file-store tetap menggunakan allowlist legacy yang sama, sehingga perilaku pengembangan lokal tidak terbuka tanpa sengaja. Validasi isi artikel, field allowlist, dan audit event tetap dipertahankan.
+- Pemeriksaan statis ditambah untuk seed, daftar grant, dan kedua endpoint. PostgreSQL runtime belum diverifikasi pada tahap ini.
+
+### Verifikasi
+- Perubahan dibuat di branch `work/stage-13b-knowledge-rbac`; hasil CI dan pengujian runtime harus diperiksa sebelum merge.
+- Tidak mengklaim `lint`, build, verify script, atau P0 security test lulus sampai benar-benar dijalankan oleh CI.
+
+---
 ## [2026-10-19] — Dynamic RBAC Stage 13A: Hardcoded Role Audit (Read-Only)
 
 ### Ringkasan
