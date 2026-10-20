@@ -4,6 +4,33 @@ Catatan progres permanen per tahap. Pemeriksa berikutnya dapat melanjutkan peker
 
 ---
 
+## Tahap 13B — Dynamic RBAC untuk Knowledge (2026-10-20)
+
+### Tujuan dan cakupan
+Migrasi dua operasi tulis Knowledge Base ke permission dinamis, sebagai tahap kecil setelah audit role statis Tahap 13A. Perubahan dibatasi pada create/update artikel; endpoint read, vote, dan view tidak diubah.
+
+### Perubahan kode
+- `POST /api/knowledge` memeriksa `knowledge.create` melalui `requireRbacPermission` ketika PostgreSQL aktif.
+- `PATCH /api/knowledge/:id` memeriksa `knowledge.update` ketika PostgreSQL aktif.
+- Mode file-store mempertahankan allowlist sebelumnya (`Admin GABAH`, `IT`, `GA`) secara eksplisit. Ini penting karena helper permission memang no-op di file-store; menghapus allowlist tanpa fallback akan memperluas akses lokal secara tidak sengaja.
+- Migration `018_dynamic_rbac_knowledge_permissions_seed.sql` menambahkan grant idempoten untuk `superadmin`, `it`, `ga` saja, dan hanya untuk permission create/update Knowledge. Role lain dan role custom tidak memperoleh grant implisit.
+- Validasi input, allowlist field update, audit event, dan persist behavior tidak diubah.
+- Verify script ditambah lima pemeriksaan statis untuk migration, daftar grant, dan guard kedua endpoint.
+
+### Status verifikasi
+- Perubahan tersimpan di branch `work/stage-13b-knowledge-rbac`; belum dinyatakan merged ke `main`.
+- Pengujian `npm run lint`, `npm run build`, `node scripts/dynamic-rbac-foundation-verify.mjs`, dan `node scripts/p0-security-verify.mjs` belum dijalankan secara lokal oleh sesi ini. Tunggu hasil GitHub Actions pada PR sebelum merge.
+- Integrasi PostgreSQL live tetap belum dijalankan; CI sebelumnya tidak menyediakan instance PostgreSQL. Jangan anggap static contract checks sebagai pengganti runtime integration test.
+
+### Gap tetap terbuka
+- Enforcement permission dinamis di modul lain (maintenance, vendors, loan, ticket, contract, room) belum disentuh.
+- Endpoint baca assignment user dan UI assignment role masih belum ada.
+- Kolom `users.role` masih menjadi sumber kompatibilitas legacy; backfill dapat memulihkan assignment legacy.
+- Cache policy masih lokal per proses; invalidasi multi-instance belum diselesaikan.
+- Risiko authority divisi pada PATCH/bulk update aset dan desain role read-only/global observer tetap mengikuti catatan Tahap 13A.
+
+---
+
 ## Tahap 12 — Dynamic RBAC User-to-Role Assignment (2026-10-15)
 
 ### Tujuan
