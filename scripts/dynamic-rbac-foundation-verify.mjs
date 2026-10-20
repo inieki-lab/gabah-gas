@@ -12,6 +12,7 @@ const dashboardPermissionSeed = fs.readFileSync('server/migrations/013_dynamic_r
 const assetsReadPermissionSeed = fs.readFileSync('server/migrations/014_dynamic_rbac_assets_read_permission_seed.sql', 'utf8');
 const assetWritePermissionSeed = fs.readFileSync('server/migrations/016_dynamic_rbac_asset_write_permissions_seed.sql', 'utf8');
 const movementsReadPermissionSeed = fs.readFileSync('server/migrations/017_dynamic_rbac_movements_read_permission_seed.sql', 'utf8');
+const knowledgePermissionSeed = fs.readFileSync('server/migrations/018_dynamic_rbac_knowledge_permissions_seed.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -93,6 +94,11 @@ const checks = [
   ['frontend API client exposes Dynamic RBAC operations', /getRbacRoles/i.test(apiClient) && /createRbacRole/i.test(apiClient) && /deleteRbacRole/i.test(apiClient) && /setRbacRolePermissions/i.test(apiClient) && /setRbacRoleScopes/i.test(apiClient)],
   ['legacy browser-only role matrix is hidden from the live roles screen', /\{false && activeSection === 'roles' && \(/i.test(frontend)],
   ['legacy backfill does not assign permissions before authorization mapping', !/INSERT INTO gabah_role_permissions/i.test(backfill)],
+  ['knowledge create/update permission seed is additive and idempotent', knowledgePermissionSeed.includes('INSERT INTO gabah_role_permissions') && knowledgePermissionSeed.includes('ON CONFLICT (role_id, permission_key) DO NOTHING')],
+  ['knowledge seed grants only create/update to superadmin, IT, and GA', knowledgePermissionSeed.includes("'knowledge.create'") && knowledgePermissionSeed.includes("'knowledge.update'") && knowledgePermissionSeed.includes("r.role_key IN ('superadmin', 'it', 'ga')")],
+  ['knowledge seed does not implicitly grant permissions to other legacy or custom roles', !/karyawan|auditor|humas|supply_chain|pibc|sekretaris/i.test(knowledgePermissionSeed)],
+  ['knowledge create endpoint enforces dynamic permission and preserves file-store allowlist', (() => { const route = server.slice(server.indexOf("app.post('/api/knowledge'"), server.indexOf("app.patch('/api/knowledge/:id'")); return route.includes("requireRbacPermission(req, res, 'knowledge.create')") && route.includes("isPostgresPersistenceActive()") && route.includes("!['Admin GABAH', 'IT', 'GA'].includes(actor.role)"); })()],
+  ['knowledge update endpoint enforces dynamic permission and preserves file-store allowlist', (() => { const route = server.slice(server.indexOf("app.patch('/api/knowledge/:id'"), server.indexOf("app.post('/api/knowledge/:id/vote'")); return route.includes("requireRbacPermission(req, res, 'knowledge.update')") && route.includes("isPostgresPersistenceActive()") && route.includes("!['Admin GABAH', 'IT', 'GA'].includes(actor.role)"); })()],
 ];
 
 let failed = 0;

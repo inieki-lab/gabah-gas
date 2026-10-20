@@ -2510,7 +2510,9 @@ async function startServer() {
 
   app.post('/api/knowledge', (req, res) => {
     const actor = getActor(req);
-    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+    if (isPostgresPersistenceActive()) {
+      if (!requireRbacPermission(req, res, 'knowledge.create')) return;
+    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH, IT, atau GA yang berwenang menulis artikel panduan.' });
     }
     const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
@@ -2537,7 +2539,9 @@ async function startServer() {
 
   app.patch('/api/knowledge/:id', (req, res) => {
     const actor = getActor(req);
-    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+    if (isPostgresPersistenceActive()) {
+      if (!requireRbacPermission(req, res, 'knowledge.update')) return;
+    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH, IT, atau GA yang berwenang mengubah artikel.' });
     }
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
