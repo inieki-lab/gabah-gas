@@ -2445,7 +2445,9 @@ async function startServer() {
 
   app.post('/api/vendors', (req, res) => {
     const actor = getActor(req);
-    if (!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)) {
+    if (isPostgresPersistenceActive()) {
+      if (!requireRbacPermission(req, res, 'vendors.create')) return;
+    } else if (!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, GA, Supply Chain, atau PIBC yang dapat mengelola vendor.' });
     }
     if (actor.role === 'IT' && req.body?.category && !['IT', 'License'].includes(String(req.body.category))) {
@@ -2479,7 +2481,9 @@ async function startServer() {
 
   app.patch('/api/vendors/:id', (req, res) => {
     const actor = getActor(req);
-    if (!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)) {
+    if (isPostgresPersistenceActive()) {
+      if (!requireRbacPermission(req, res, 'vendors.update')) return;
+    } else if (!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, GA, Supply Chain, atau PIBC yang dapat mengelola vendor.' });
     }
     const existingVendor = db.vendors.find(v => v.id === req.params.id);
