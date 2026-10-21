@@ -7,7 +7,7 @@ import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, getDynamicAssetWriteAuthority } from './server/services';
+import { GabahDomainService, getDynamicAssetWriteAuthority, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -2314,6 +2314,10 @@ async function startServer() {
   // Maintenance & Calibration Schedules
   app.get('/api/maintenances', (req, res) => {
     const actor = getActor(req);
+    // Dynamic RBAC Stage 13F: pada mode PostgreSQL, baca jadwal memerlukan
+    // permission `maintenances.read` (seed 020 memberinya ke sembilan canonical
+    // role agar perilaku legacy invarian); file-store tetap memakai rule legacy.
+    if (isPostgresPersistenceActive() && !requireRbacPermission(req, res, 'maintenances.read')) return;
     if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.maintenances });
     }
@@ -2326,14 +2330,23 @@ async function startServer() {
     if (actor.role === 'Supply Chain') {
       return res.json({ success: true, data: db.maintenances.filter(m => m.owner_division === 'SC' || m.owner_division === 'Supply Chain') });
     }
+    // Dynamic RBAC Stage 13F: actor non-legacy tidak mewarisi fallback
+    // "lihat semua" — visibilitas jadwalnya mengikuti scope dinamis atas aset
+    // yang dirujuk (Stage 11 semantics), tanpa kebocoran lintas divisi.
+    if (isPostgresPersistenceActive() && !isLegacyScopedRole(actor.role)) {
+      return res.json({ success: true, data: filterMaintenanceSchedulesByDynamicScopes(db.maintenances, actor) });
+    }
     res.json({ success: true, data: db.maintenances });
   });
 
   app.post('/api/maintenances', (req, res) => {
     const actor = getActor(req);
-    // RBAC: hanya Admin GABAH / IT / GA yang mendapat management action
-    // maintenance; peran lain (SC, PIBC, Sekdir, Humas, Auditor) tidak.
-    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+    // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
+    // GA) secara eksplisit; mode PostgreSQL beralih ke permission dinamis
+    // `maintenances.create` (Stage 13F, seed 020 mirror daftar yang sama).
+    if (isPostgresPersistenceActive()) {
+      if (!requireRbacPermission(req, res, 'maintenances.create')) return;
+    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengelola jadwal servis.' });
     }
     if (!req.body.asset_id) {
@@ -2344,18 +2357,25 @@ async function startServer() {
       return res.status(400).json({ success: false, message: 'Aset yang dipilih tidak ditemukan.' });
     }
 
-    // Enforce Division Authority
+    // Enforce Division Authority atas aset rujukan. Rule legacy sembilan role
+    // tetap utuh; Dynamic RBAC Stage 13F menambahkan authority dinamis dari
+    // scope 'all'/'division' (semantik identik dengan write authority aset
+    // Stage 13E) — deny-by-default tanpa scope yang mencakup. Jadwal mewarisi
+    // divisi aset; permission maintenance tidak pernah memberi hak tulis aset.
     if (!isSuperadminActor(actor)) {
-      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
+      const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
+      const hasDynamicDivisionAuthority = (division: string): boolean =>
+        dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
+      if (asset.owner_division === 'IT' && actor.role !== 'IT' && !hasDynamicDivisionAuthority('IT')) {
         return res.status(403).json({ success: false, message: 'Jadwal servis aset IT hanya dapat dibuat oleh Divisi IT.' });
       }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
+      if (asset.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
         return res.status(403).json({ success: false, message: 'Jadwal servis aset GA hanya dapat dibuat oleh Divisi GA.' });
       }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain' && !hasDynamicDivisionAuthority('SC')) {
         return res.status(403).json({ success: false, message: 'Jadwal servis aset Supply Chain hanya dapat dibuat oleh Divisi Supply Chain.' });
       }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC' && !hasDynamicDivisionAuthority('PIBC')) {
         return res.status(403).json({ success: false, message: 'Jadwal servis aset PIBC hanya dapat dibuat oleh Divisi PIBC.' });
       }
     }
@@ -2391,25 +2411,32 @@ async function startServer() {
 
   app.patch('/api/maintenances/:id', (req, res) => {
     const actor = getActor(req);
-    // RBAC: hanya Admin GABAH / IT / GA yang mendapat management action
-    // maintenance; peran lain (SC, PIBC, Sekdir, Humas, Auditor) tidak.
-    if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+    // RBAC: file-store mempertahankan allowlist legacy; PostgreSQL beralih ke
+    // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
+    if (isPostgresPersistenceActive()) {
+      if (!requireRbacPermission(req, res, 'maintenances.update')) return;
+    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengubah jadwal servis.' });
     }
     const schedule = db.maintenances.find(m => m.id === req.params.id);
     if (!schedule) return res.status(404).json({ success: false, message: 'Jadwal servis tidak ditemukan' });
 
+    // Authority divisi atas jadwal: rule legacy utuh + union authority dinamis
+    // (Stage 13E semantics; jadwal mewarisi divisi asetnya).
     if (!isSuperadminActor(actor)) {
-      if (schedule.owner_division === 'IT' && actor.role !== 'IT') {
+      const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
+      const hasDynamicDivisionAuthority = (division: string): boolean =>
+        dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
+      if (schedule.owner_division === 'IT' && actor.role !== 'IT' && !hasDynamicDivisionAuthority('IT')) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang mengubah jadwal ini.' });
       }
-      if (schedule.owner_division === 'GA' && actor.role !== 'GA') {
+      if (schedule.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi GA atau Admin GABAH yang berwenang mengubah jadwal ini.' });
       }
-      if ((schedule.owner_division === 'SC' || schedule.owner_division === 'Supply Chain') && actor.role !== 'Supply Chain') {
+      if ((schedule.owner_division === 'SC' || schedule.owner_division === 'Supply Chain') && actor.role !== 'Supply Chain' && !hasDynamicDivisionAuthority('SC')) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi Supply Chain atau Admin GABAH yang berwenang mengubah jadwal ini.' });
       }
-      if (schedule.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+      if (schedule.owner_division === 'PIBC' && actor.role !== 'PIBC' && !hasDynamicDivisionAuthority('PIBC')) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi PIBC atau Admin GABAH yang berwenang mengubah jadwal ini.' });
       }
     }
