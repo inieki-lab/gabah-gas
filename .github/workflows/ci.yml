@@ -32,3 +32,6 @@ jobs:
 
       - name: P0 security verification (37 live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
+
+      - name: Maintenance authorization verification (live HTTP assertions)
+        run: node scripts/maintenance-authz-verify.mjs

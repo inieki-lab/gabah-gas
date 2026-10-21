@@ -1,3 +1,14 @@
+## [2026-10-21] — Dynamic RBAC Stage 13F: Maintenance Authorization (reconciled after Stage 13E merge)
+
+### Status / provenance
+- Stage 13E / PR #6 telah MERGED pada `c769420e6b65afbfcca5ac6acbc839eff3b41f64`.
+- Implementasi Stage 13F dipindahkan ke branch baru `work/stage-13f-reconciled-main` yang berbasis main setelah PR #6 dan dokumentasi UAT masuk. Branch lama PR #7 masih OPEN saat rekonsiliasi; jangan menganggap PR #7 merged.
+- Perubahan kode Stage 13F mempertahankan cakupan sebelumnya: permission gate maintenance, filter scope dinamis untuk role kustom di PostgreSQL mode, migration seed 020, dan verifikasi HTTP file-store.
+- CI untuk branch rekonsiliasi ini **belum diverifikasi** pada saat catatan ini ditulis. Tunggu hasil CI terbaru sebelum merge.
+- PostgreSQL live integration, UAT pengguna, deployment, dan backup/restore tetap belum diverifikasi.
+
+---
+
 ## [2026-10-21] — Repo handoff: Stage 13E merged, Stage 13F blocked pending branch reconciliation
 
 ### Status aktual dari GitHub

@@ -1,3 +1,24 @@
+## Tahap 13F — Maintenance Authorization, rekonsiliasi setelah merge Stage 13E (2026-10-21)
+
+### Status
+- Stage 13E / PR #6 merged ke `main`: `c769420e6b65afbfcca5ac6acbc839eff3b41f64`.
+- Karena branch lama Stage 13F dibuat dari tip PR #6 sebelum squash-merge, metadata GitHub menandai PR #7 `mergeable=false`. Untuk menghindari force-push atau merge berisiko, implementasi Stage 13F direkonsiliasi ke branch baru `work/stage-13f-reconciled-main` yang berangkat dari main terkini.
+- Branch rekonsiliasi membawa perubahan kode Stage 13F (server/services, server routes, migration 020, package script, static verifier, HTTP verifier, CI step). Dokumentasi progres disinkronkan terpisah dari kode agar status tidak tertinggal.
+- **CI branch rekonsiliasi belum diverifikasi** pada saat catatan ini ditulis. Jangan merge sebelum CI terbaru sukses dan diff final ditinjau.
+
+### Verifikasi dan batasan
+- CI sebelumnya pada head PR #7: SUCCESS, termasuk lint/build, dynamic RBAC foundation 97/97, P0 37/37, maintenance HTTP file-store 33/33. Ini adalah hasil branch lama, bukan bukti bahwa branch rekonsiliasi sudah lulus.
+- PostgreSQL live integration belum dijalankan; permission/scope mode PostgreSQL masih perlu uji runtime.
+- Checklist UAT tersedia di `docs/testing/gabah-uat-checklist.md`; seluruh kasus masih perlu dijalankan oleh penguji yang punya akses lingkungan. Backup/restore dan deployment juga belum diverifikasi.
+
+### Langkah berikutnya
+1. Periksa diff branch rekonsiliasi terhadap main, khususnya tidak ada kehilangan Stage 13E.
+2. Tunggu CI terbaru branch/PR baru.
+3. Bila CI gagal, perbaiki dan rerun; bila lulus, tutup PR #7 lama setelah PR pengganti dibuat, bukan sebelum.
+4. Setelah merge, lanjutkan UAT termasuk PostgreSQL live integration.
+
+---
+
 ## Status handoff — 2026-10-21 (verifikasi GitHub)
 
 - **Main**: `c769420e6b65afbfcca5ac6acbc839eff3b41f64`.

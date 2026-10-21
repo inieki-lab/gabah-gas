@@ -1,4 +1,4 @@
-import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility } from './db';
+import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility, ServerMaintenance } from './db';
 import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
 import { resolveManagingUnitForOwnerDivision, validateManagingUnit } from './managing-unit';
@@ -12,7 +12,8 @@ import { isPostgresPersistenceActive } from './persistence';
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
 const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
 
-function isLegacyScopedRole(role: string): boolean {
+/** Dibagikan agar guard rute (mis. Maintenance Stage 13F) memakai satu definisi. */
+export function isLegacyScopedRole(role: string): boolean {
   return LEGACY_SCOPED_ROLES.has(String(role));
 }
 
@@ -70,34 +71,69 @@ function textEquals(left: unknown, right: unknown): boolean {
  * Role dinamis tanpa scope sama sekali tidak melihat aset apa pun
  * (secure fallback yang sempit, menggantikan fallback all-seeing lama).
  */
-function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): ServerAsset[] {
+function dynamicScopesForUser(user: ServerUser): AssetScopeSpec[] | null {
   const policies = getUserRbacPolicies(String(user.id));
-  if (policies.length === 0) return [];
-  if (policies.some(policy => policy.isSuperadmin)) return assets;
+  if (policies.length === 0) return null;
+  if (policies.some(policy => policy.isSuperadmin)) return null; // handled by caller
   const scopes = policies
     .flatMap(policy => policy.scopes)
     .map(scope => ({ type: String(scope.type), value: scope.value == null ? null : String(scope.value) } as AssetScopeSpec));
-  if (scopes.length === 0) return [];
-  if (scopes.some(scope => scope.type === 'all')) return assets;
+  return scopes.length === 0 ? null : scopes;
+}
+
+function assetMatchesAssetScope(asset: ServerAsset, scope: AssetScopeSpec, user: ServerUser): boolean {
   const managingUnitNameById = new Map(db.orgUnits.map(unit => [String(unit.id), String(unit.name)]));
   const assetLocationNameById = new Map(db.assetLocations.map(location => [String(location.id), String(location.name)]));
-  return assets.filter(asset => scopes.some(scope => {
-    switch (scope.type) {
-      case 'own':
-        return asset.assigned_to?.id === String(user.id);
-      case 'division':
-        return textEquals(asset.owner_division, scope.value);
-      case 'unit':
-        return textEquals(asset.managing_unit_id, scope.value)
-          || (asset.managing_unit_id != null && textEquals(managingUnitNameById.get(String(asset.managing_unit_id)), scope.value));
-      case 'location':
-        return textEquals(asset.asset_location_id, scope.value)
-          || (asset.asset_location_id != null && textEquals(assetLocationNameById.get(String(asset.asset_location_id)), scope.value))
-          || textEquals(asset.location, scope.value);
-      default:
-        return false;
-    }
-  }));
+  switch (scope.type) {
+    case 'own':
+      return asset.assigned_to?.id === String(user.id);
+    case 'division':
+      return textEquals(asset.owner_division, scope.value);
+    case 'unit':
+      return textEquals(asset.managing_unit_id, scope.value)
+        || (asset.managing_unit_id != null && textEquals(managingUnitNameById.get(String(asset.managing_unit_id)), scope.value));
+    case 'location':
+      return textEquals(asset.asset_location_id, scope.value)
+        || (asset.asset_location_id != null && textEquals(assetLocationNameById.get(String(asset.asset_location_id)), scope.value))
+        || textEquals(asset.location, scope.value);
+    default:
+      return false;
+  }
+}
+
+/**
+ * Dynamic RBAC Stage 11 (diperbarui Stage 13F): resolver visibilitas aset role
+ * dinamis dari gabah_role_division_scopes dengan semantik sisi baca yang dapat
+ * dipakai ulang oleh modul lain (mis. Maintenance) tanpa mengubah perilaku.
+ */
+export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAsset): boolean {
+  const scopes = dynamicScopesForUser(user);
+  if (scopes == null) return false; // tanpa policy/scope: deny-by-default
+  if (scopes.some(scope => scope.type === 'all')) return true;
+  return scopes.some(scope => assetMatchesAssetScope(asset, scope, user));
+}
+
+function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): ServerAsset[] {
+  if (getUserRbacPolicies(String(user.id)).some(policy => policy.isSuperadmin)) return assets;
+  const scopes = dynamicScopesForUser(user);
+  if (scopes == null) return [];
+  if (scopes.some(scope => scope.type === 'all')) return assets;
+  return assets.filter(asset => scopes.some(scope => assetMatchesAssetScope(asset, scope, user)));
+}
+
+/**
+ * Dynamic RBAC Stage 13F: resolver visibilitas jadwal pemeliharaan untuk actor
+ * non-legacy. Jadwal adalah turunan datanya aset (owner_division & kategori)
+ * sehingga scope-nya mengikuti semantik visibilitas aset Stage 11 atas aset
+ * yang dirujuk schedule.asset_id. Jadwal tanpa aset yang dikenal disembunyikan
+ * (fail closed). Superadmin dinilai di sisi pemanggil sebelum helper ini.
+ */
+export function filterMaintenanceSchedulesByDynamicScopes(schedules: ServerMaintenance[], user: ServerUser): ServerMaintenance[] {
+  const assetById = new Map(db.assets.map(asset => [String(asset.id), asset]));
+  return schedules.filter(schedule => {
+    const asset = assetById.get(String(schedule.asset_id));
+    return asset != null && assetVisibleUnderDynamicScopes(user, asset);
+  });
 }
 
 export class GabahDomainService {
