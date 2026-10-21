@@ -1,3 +1,34 @@
+## [2026-10-21] — Dynamic RBAC Stage 13F: Maintenance Module Authorization
+
+### Kondisi awal (diverifikasi dari GitHub)
+- `main` @ `d30315d3a9df4242f98685866df55c97b2d81683`; working tree bersih.
+- **PR #6 (Stage 13E) berstatus OPEN — BELUM MERGED**: CI `verify` pass (run 39532805595), status `MERGEABLE`. Branch 13F dibuat di atas tip PR #6 (`321e028c75785402fd5dc6cefe80c1ed24dbb1a2`) karena implementasi memakai helper authority tulis aset Stage 13E; PR #6 tidak disentuh maupun di-merge otomatis.
+
+### Temuan audit (kode aktual; matriks perilaku)
+- **GET /api/maintenances** (baca): tidak ada gate sama sekali; rantai filter IT/GA/Supply Chain untuk string legacy, lalu **fallback “lihat semua” untuk siapa pun** — termasuk PIBC, Karyawan, dan pemegang role kustom. Di mode PostgreSQL ini adalah bocoran baca nyata: role kustom tanpa scope melihat seluruh jadwal.
+- **POST /api/maintenances** (create): hard-list `[Admin GABAH, IT, GA]` + authority divisi atas aset rujukan (string legacy). Role kustom dengan permission katalog `maintenances.create` tidak terpantau sama sekali (deny; tidak terbukti bypass).
+- **PATCH /api/maintenances/:id** (update): hard-list sama + authority divisi atas jadwal. Catatan: cabang Supply Chain di authority divisi PATCH adalah dead code karena hard-list sudah menolak SC lebih dulu (SC tidak pernah bisa PATCH secara legacy).
+- Katalog `maintenances.read/create/update` sudah ada sejak Stage 5 (migration 012), tetapi tanpa seed grant — pemakaiannya menuntut migration baru.
+
+### Perubahan
+- `server/services.ts`: ekstraksi semantik scope baca Stage 11 (`dynamicScopesForUser`, `assetMatchesAssetScope`, `assetVisibleUnderDynamicScopes`) tanpa mengubah perilaku getScopedAssets; helper baru `filterMaintenanceSchedulesByDynamicScopes` — visibilitas jadwal mengikuti scope dinamis atas aset yang dirujuk (jadwal tanpa aset dikenal disembunyikan, fail closed); `isLegacyScopedRole` diekspor untuk pemakaian guard rute.
+- `server.ts` GET: mode PostgreSQL menuntut permission `maintenances.read` lebih dulu; rantai filter legacy utuh; fallback mode PostgreSQL untuk aktor non-legacy kini memakai filter scope dinamis (tidak lagi “lihat semua”). File-store tidak berubah.
+- `server.ts` POST & PATCH: mode PostgreSQL memakai `requireRbacPermission('maintenances.create'/'update')`; file-store tetap memakai allowlist legacy eksplisit. Authority divisi menjadikan rule legacy + union authority dinamis `all`/`division` dari Stage 13E (deny-by-default). Permission maintenance tidak pernah memberi hak tulis data aset.
+- Migration baru `020_dynamic_rbac_maintenance_permissions_seed.sql` (additive & idempotent): `maintenances.read` ke sembilan role canonical demi invarian legacy; `maintenances.create`+`update` hanya ke `superadmin`/`it`/`ga` (mirror allowlist; SC & PIBC sengaja dikecualikan). Role kustom tidak mendapat grant implisit.
+- `scripts/dynamic-rbac-foundation-verify.mjs`: +8 check statis (97 total).
+- `scripts/maintenance-authz-verify.mjs` (baru): 33 assertion via HTTP live dalam mode file-store untuk memastikan invarian legacy.
+- `.github/workflows/ci.yml`: menambahkan langkah verifikasi Maintenance setelah P0 verification; `package.json`: skrip `test:maintenance-authz`.
+
+### Hasil tes (benar-benar dijalankan)
+- `npm run lint` PASS · `npm run build` PASS · `node scripts/dynamic-rbac-foundation-verify.mjs` **97/97 PASS** · `node scripts/p0-security-verify.mjs` **37/37 PASS** · `node scripts/maintenance-authz-verify.mjs` **33/33 PASS**.
+- Pengujian integrasi PostgreSQL live **tetap tidak dijalankan** (CI tidak menyediakan instance PG); enforcement mode PostgreSQL diverifikasi secara statis (contract checks).
+
+### Sisa risiko / pertanyaan kebijakan
+- Baca penuh untuk Karyawan/Sekdir/Humas/PIBC pada mode file-store adalah perilaku legacy (fall-through) yang dipertahankan; jika produk menghendaki sebaliknya, pindahkan ke tahap kebijakan.
+- Dead code cabang SC pada PATCH tetap ada demi kompatibilitas; tidak mengubah aturan bisnis.
+
+---
+
 ## [2026-10-21] — Dynamic RBAC Stage 13E: Audit dan Perbaikan Authority Divisi Aset
 
 ### Temuan audit (re-verifikasi kode pada HEAD `d30315d`, tidak menerima catatan lama mentah-mentah)

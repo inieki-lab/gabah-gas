@@ -4,6 +4,54 @@ Catatan progres permanen per tahap. Pemeriksa berikutnya dapat melanjutkan peker
 
 ---
 
+## Tahap 13F — Audit dan Implementasi Dynamic RBAC Modul Maintenance (2026-10-21)
+
+### Kondisi awal (diverifikasi dari GitHub, bukan catatan lama)
+- `main` @ `d30315d3a9df4242f98685866df55c97b2d81683`; working tree bersih.
+- **PR #6 (Stage 13E) berstatus `OPEN` — BELUM MERGED** (CI job `verify` pass, state `MERGEABLE`). Branch 13F dibuat di atas tip PR #6 (`321e028c75785402fd5dc6cefe80c1ed24dbb1a2`) karena implementasi memakai helper `getDynamicAssetWriteAuthority` Stage 13E; PR #6 tidak disentuh maupun dimerged otomatis.
+
+### Hasil audit kode Maintenance (matriks perilaku aktual)
+| Skenario | GET /api/maintenances | POST | PATCH :id |
+|---|---|---|---|
+| Superadmin (dinamis/legacy) | full list | boleh (authority bypass sah) | boleh |
+| Auditor | full list (eksplisit) | 403 | 403 |
+| IT / GA / SC (legacy string) | filter per divisi (utuh) | IT/GA boleh; SC 403 (allowlist; deliberate) | IT/GA boleh; SC 403 (dead-branch SC hanya puing rule) |
+| PIBC / Karyawan (legacy string) | **full list via fall-through** (dipertahankan, dikonfirmasi perilaku legacy) | 403 | 403 |
+| Role kustom + permission katalog | fallback full list (**bocoran baca**; katalog `maintenances.*` tidak pernah dipakai) | 403 (deny — tidak terbukti bypass) | 403 |
+| Role kustom tanpa permission | full list (bocoran) | 403 | 403 |
+- Kesimpulan: masalah utama di **baca** (tanpa gate + fallback all-seeing bagi aktor non-legacy) dan **absennya pemakaian permission katalog** di tulis. Katalog `maintenances.read/create/update` sudah ada sejak migration 012; tanpa seed grant.
+
+### Keputusan implementasi
+- Pola konsisten dengan 13B/13C: mode PostgreSQL → permission gate; file-store → allowlist legacy eksplisit tetap.
+- Baca: gate `maintenances.read` di mode PostgreSQL + seed grant ke 9 role canonical demi invarian legacy; fallback "{lihat semua}" mode PostgreSQL untuk aktor non-legacy diganti filter scope dinamis atas aset rujukan (Stage 11 semantics, fail closed untuk jadwal tanpa aset dikenal). Fallback file-store dipertahankan (invarian legacy).
+- Tulis: gate `maintenances.create`/`update`; seed grant hanya `superadmin`/`it`/`ga` (mirror allowlist legacy; SC/PIBC sengaja dikecualikan). Authority divisi memakai rule legacy + union authority dinamis `all`/`division` (Stage 13E). Permission maintenance TIDAK memberi hak tulis data aset.
+
+### Perubahan file
+- `server/services.ts`: ekstraksi semantik scope baca Stage 11 (`dynamicScopesForUser`, `assetMatchesAssetScope`, `assetVisibleUnderDynamicScopes`); `filterMaintenanceSchedulesByDynamicScopes`; ekspor `isLegacyScopedRole`. getScopedAssets invarian.
+- `server.ts`: GET/POST/PATCH maintenance sesuai keputusan di atas.
+- `server/migrations/020_dynamic_rbac_maintenance_permissions_seed.sql`: baru, additive/idempotent.
+- `scripts/dynamic-rbac-foundation-verify.mjs`: +8 check (97 total), dengan penyesuaian regex 2 check lama agar tetap memverifikasi semantik yang sama setelah ekstraksi helper (tidak ada assertion dilemahkan).
+- `scripts/maintenance-authz-verify.mjs`: baru, 33 assertion HTTP live (file-store) — rantai baca legacy, allowlist tulis, authority divisi, blokir read-only, anti asset-binding drift.
+- `package.json` (`test:maintenance-authz`) & `.github/workflows/ci.yml` (langkah verify Maintenance setelah P0).
+- Tidak ada perubahan UI, skema DB di luar seed, konfigurasi produksi, atau modul lain (Vendor/Knowledge/Loan/Ticket/Contract/Room tidak disentuh).
+
+### Hasil tes (benar-benar dijalankan pada branch ini)
+| Command | Hasil |
+|---|---|
+| `npm run lint` | PASS (exit 0) |
+| `npm run build` | PASS (exit 0) |
+| `node scripts/dynamic-rbac-foundation-verify.mjs` | **97/97 PASS** |
+| `node scripts/p0-security-verify.mjs` | **37/37 PASS** (exit 0) |
+| `node scripts/maintenance-authz-verify.mjs` | **33/33 PASS** (exit 0) |
+- Hasil CI GitHub pada PR: dilengkapi setelah PR dibuat.
+
+### Limitasi dan sisa risiko
+- **Pengujian PostgreSQL live tetap belum pernah dijalankan** (CI tanpa instance PG); enforcement mode PostgreSQL bersifat contract-statis.
+- Baca penuh Karyawan/Sekdir/Humas/PIBC (fall-through file-store) dipertahankan sebagai perilaku legacy; bila produk menilai itu keliru, butuh keputusan kebijakan tersendiri.
+- Dead-branch SC pada PATCH (unreachable karena hard-list) dipertahankan demi kompatibilitas.
+
+---
+
 ## Tahap 13E — Audit dan Perbaikan Authority Divisi Aset (2026-10-21)
 
 ### Kondisi awal
