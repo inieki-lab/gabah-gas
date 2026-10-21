@@ -1,3 +1,23 @@
+## [2026-10-21] — Dynamic RBAC Stage 13E: Audit dan Perbaikan Authority Divisi Aset
+
+### Temuan audit (re-verifikasi kode pada HEAD `d30315d`, tidak menerima catatan lama mentah-mentah)
+- **Klaim Stage 13A tentang "bypass" ditelusuri ulang dan TIDAK terbukti sebagaimana tertulis**: pemegang role kustom dengan permission `assets.update`/`assets.bulk_import` tetap DITOLAK pada aset milik divisi (IT/GA/SC/PIBC) karena guard membandingkan `actor.role` — dan pada mode PostgreSQL `actor.role` selalu berasal dari `users.role` legacy (compat bridge yang memang disengaja sejak Stage 5/12).
+- **Celah yang benar-benar terbukti** adalah asimetri baca/tulis: baca aset (Stage 11) menghormati scope dinamis `all`/`division` dari `gabah_role_division_scopes`, tetapi tulis (PATCH dan bulk import UPDATE) sama sekali tidak — role dinamis dengan authority divisi yang sah tidak bisa memperbarui aset yang bisa mereka baca; role dinamis tanpa scope memang tidak mendapat apa pun, tetapi scope yang sah juga tidak diakui.
+
+### Perubahan
+- Helper baru `getDynamicAssetWriteAuthority()` di `server/services.ts`: menyelesaikan authority tulis dari scope dinamis `all`/`division` (case-insensitive); scope `own`/`unit`/`location` sengaja TIDAK memberi wewenang tulis (keputusan kebijakan terdokumentasi: visibility tidak sama dengan mutability). Tanpa policy yang memberi authority, hasilnya set kosong (deny-by-default).
+- `PATCH /api/assets/:id` dan jalur UPDATE `POST /api/assets/bulk-import`: rule legacy sembilan role TIDAK berubah, hanya ditambah authority dinamis (union) bila PostgreSQL aktif; permission gate operasi tetap wajib; blokir eksplisit Auditor/Karyawan di PATCH dan empat role di bulk-import tetap.
+- Verifikasi: +7 pemeriksaan statis di `scripts/dynamic-rbac-foundation-verify.mjs` (semantik helper, deny-by-default, PATCH dan bulk UPDATE, blokir role terbatas, gate permission, hanya aktif di mode PostgreSQL). Tidak ada perubahan UI, skema, atau modul lain.
+
+### Hasil tes
+- `npm run lint` PASS; `npm run build` PASS; `node scripts/dynamic-rbac-foundation-verify.mjs` 89/89 PASS; `node scripts/p0-security-verify.mjs` 37/37 PASS (file-store).
+- Pengujian integrasi PostgreSQL live tetap TIDAK tersedia (CI tanpa instance PG), sehingga perbaikan ini belum dapat dieksekusi live pada mode PostgreSQL di tahap ini.
+
+### Sisa risiko / pertanyaan kebijakan
+- Authority legacy via `users.role` masih tak dapat dicabut lewat assignment dinamis (compat bridge — pekerjaan arsitektur berikutnya); CREATE asset, assign/move/lifecycle masih rule legacy-string murni (tahap ini sengaja terbatas pada PATCH dan bulk import UPDATE sesuai cakupan).
+
+---
+
 ## [2026-10-21] — Dynamic RBAC Stage 13D: Verifikasi CI & Sinkronisasi Progres
 
 ### Ringkasan

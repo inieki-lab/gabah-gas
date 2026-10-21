@@ -7,7 +7,7 @@ import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService } from './server/services';
+import { GabahDomainService, getDynamicAssetWriteAuthority } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -1842,20 +1842,25 @@ async function startServer() {
           // Otorisasi jalur UPDATE — authority divisi identik dengan PATCH
           // /api/assets/:id (SEC-10): impor massal tidak boleh melewati
           // pembatasan intradivisional saat mengubah baris aset yang sudah ada.
+          // Dynamic RBAC Stage 13E: rule legacy tetap utuh ditambah authority
+          // dinamis dari scope 'all'/'division'; deny-by-default tanpa scope.
           if (!isSuperadminActor(actor)) {
-            if (existing.owner_division === 'IT' && actor.role !== 'IT') {
+            const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
+            const hasDynamicDivisionAuthority = (division: string): boolean =>
+              dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
+            if (existing.owner_division === 'IT' && actor.role !== 'IT' && !hasDynamicDivisionAuthority('IT')) {
               errors.push(`Baris ${rowNo}: ${existing.asset_number} adalah barang IT dan hanya dapat diperbarui oleh personel IT atau Admin GABAH.`);
               continue;
             }
-            if (existing.owner_division === 'GA' && actor.role !== 'GA') {
+            if (existing.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
               errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi GA dan hanya dapat diperbarui oleh personel GA atau Admin GABAH.`);
               continue;
             }
-            if (existing.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+            if (existing.owner_division === 'SC' && actor.role !== 'Supply Chain' && !hasDynamicDivisionAuthority('SC')) {
               errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi Supply Chain dan hanya dapat diperbarui oleh personel Supply Chain atau Admin GABAH.`);
               continue;
             }
-            if (existing.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+            if (existing.owner_division === 'PIBC' && actor.role !== 'PIBC' && !hasDynamicDivisionAuthority('PIBC')) {
               errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi PIBC dan hanya dapat diperbarui oleh personel PIBC atau Admin GABAH.`);
               continue;
             }
@@ -1954,18 +1959,25 @@ async function startServer() {
     if (actor.role === 'Karyawan') {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Karyawan tidak memiliki wewenang mengubah aset.' });
     }
-    // Enforce Division Authority
+    // Enforce Division Authority (SEC-10). Legacy rule (kompatibilitas sembilan
+    // role legacy via users.role) TETAP UTUH, dan Dynamic RBAC Stage 13E
+    // menambahkan authority dinamis dari scope 'all'/'division' (cerminkan
+    // semantik baca Stage 11). Deny-by-default: scope yang tidak mencakup aset
+    // ini tidak pernah menambah kewenangan.
     if (!isSuperadminActor(actor)) {
-      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
+      const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
+      const hasDynamicDivisionAuthority = (division: string): boolean =>
+        dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
+      if (asset.owner_division === 'IT' && actor.role !== 'IT' && !hasDynamicDivisionAuthority('IT')) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Aset IT hanya dapat diubah oleh personel IT atau Admin GABAH.' });
       }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
+      if (asset.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Aset GA hanya dapat diubah oleh personel GA atau Admin GABAH.' });
       }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
+      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain' && !hasDynamicDivisionAuthority('SC')) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Aset Supply Chain hanya dapat diubah oleh personel Supply Chain atau Admin GABAH.' });
       }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
+      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC' && !hasDynamicDivisionAuthority('PIBC')) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Aset PIBC hanya dapat diubah oleh personel PIBC atau Admin GABAH.' });
       }
     }

@@ -4,6 +4,50 @@ Catatan progres permanen per tahap. Pemeriksa berikutnya dapat melanjutkan peker
 
 ---
 
+## Tahap 13E — Audit dan Perbaikan Authority Divisi Aset (2026-10-21)
+
+### Kondisi awal
+- Branch kerja `work/stage-13e-asset-division-authority` dari `main` @ `d30315d3a9df4242f98685866df55c97b2d81683` (Stage 13D); working tree bersih, tidak ada perubahan lokal asing yang tersentuh.
+
+### Hasil audit terarah (kode HEAD `d30315d`, klaim lama diperiksa ulang)
+Klaim Tahap 13A bahwa pemegang permission `assets.update`/`assets.bulk_import` via role kustom "menembus authority divisi" **diperiksa ulang dan TIDAK terbukti** pada kode aktual:
+
+| Skenario actor | Perilaku PATCH & bulk import UPDATE (sesudah Stage 13C, sebelum 13E) |
+|---|---|
+| Role legacy sembilan role | Rule legacy string utuh; aset divisi lain ditolak (mis. aset IT hanya bisa diubah oleh string `IT`), aset tanpa owner divisi boleh |
+| Superadmin (dinamis atau legacy `Admin GABAH`) | Bypass authority (bypass sah, authoritative) |
+| Role kustom + permission operasi, string legacy NON-divisi | Ditolak pada aset IT/GA/SC/PIBC (deny; klaim bypass tidak tampak) tetapi boleh pada aset tanpa owner divisi |
+| Role kustom + permission + scope dinamis `division:X` / `all` | Scope TETAP DIABAIKAN di jalur tulis → asimetri vs baca (Stage 11): yang bisa dibaca tak bisa diperbarui |
+| Role kustom yang memakai alias string legacy (mis. string `IT`) | Authority itu berasal dari `users.role` compat bridge, bukan assignment dinamis; tidak bisa dicabut via Stage 12 |
+
+Kesimpulan: masalah sebenarnya adalah **kebijakan tulis buta terhadap scope dinamis yang sudah bermakna di jalur baca**, bukan bypass.
+
+### Keputusan kebijakan (terdokumentasi)
+- Authority tulis dinamis hanya berasal dari scope `all` (semua aset) dan `division:X` (aset owner_division sama dengan X, case-insensitive) — mengikuti semantik baca Stage 11.
+- Scope `own`, `unit`, `location` TETAP BACA SAJA: visibilitas tidak sama dengan mutabilitas. Superadmin yang ingin wewenang tulis perlu scope `division`/`all`. Bila nanti dianggap perlu oleh produk, penambahan wewenang tulis `own`/`unit`/`location` harus melewati tahap kebijakan tersendiri.
+- Rule legacy sembilan role DAN bridge `users.role` tidak diubah pada tahap ini — pencabutan bridge adalah pekerjaan arsitektur tersendiri.
+
+### Perubahan kode
+- `server/services.ts`: helper `getDynamicAssetWriteAuthority(user)` — union scope dinamis `all`/`division`; tanpa policy berisi authority → set kosong (deny-by-default). Komentar menjelaskan keputusan visibility ≠ mutability.
+- `server.ts` (PATCH `/api/assets/:id` + jalur UPDATE bulk-import): tiap pengecekan divisi kini `string legacy ATAU match-dynamic-scope`; dinamis hanya dihitung bila PostgreSQL aktif; gate permission operasi dan blokir Auditor/Karyawan/bulk empat role tetap di posisi semula.
+- `scripts/dynamic-rbac-foundation-verify.mjs`: +7 pemeriksaan statis (semantik helper & deny-by-default, PATCH, bulk UPDATE, blokir role terbatas, gate permission, gate PG).
+- Tidak ada perubahan UI, skema DB, konfigurasi produksi, atau modul lain.
+
+### Hasil tes (benar-benar dijalankan pada branch ini)
+| Command | Hasil |
+|---|---|
+| `npm run lint` | PASS (0 error) |
+| `npm run build` | PASS |
+| `node scripts/dynamic-rbac-foundation-verify.mjs` | **89/89 PASS** (7 check baru) |
+| `node scripts/p0-security-verify.mjs` | **37/37 PASS** (file-store) |
+- Basis tes akan dilengkapi hasil CI GitHub pada PR; hasilnya dicatat di bagian ini setelah CI berjalan.
+
+### Limitasi dan sisa risiko
+- **Uji runtime PostgreSQL live tetap belum pernah dijalankan**; seluruh pemeriksaan tahap ini statis + file-store. Jalur tulis dinamis menunggu environment PG.
+- CREATE aset, assign/move/lifecycle masih murni rule string legacy — asimetri serupa menunggu tahap berikutnya bila dianggap diperlukan.
+
+---
+
 ## Tahap 13D — Verifikasi CI dan Sinkronisasi Progres (2026-10-21)
 
 ### Tujuan

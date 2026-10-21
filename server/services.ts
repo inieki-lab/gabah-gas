@@ -18,6 +18,40 @@ function isLegacyScopedRole(role: string): boolean {
 
 interface AssetScopeSpec { type: string; value: string | null }
 
+/**
+ * Dynamic RBAC Stage 13E: resolve the dynamic asset write authority of a user
+ * from gabah_role_division_scopes. This mirrors the Stage 11 read semantics for
+ * the scope types that denote *authority over a division area*:
+ * - policy dinamis dengan is_superadmin → authority atas semua divisi.
+ * - scope 'all' → authority atas semua aset.
+ * - scope 'division:V' → authority atas aset owner_division === V (case-insensitive).
+ * Scope 'own', 'unit', dan 'location' tetap pigura VISIBILITAS semata (Stage 11)
+ * dan tidak pernah memberi wewenang tulis; keputusan kebijakan ini dibuat
+ * eksplisit di docs/progress/dynamic-rbac-progress.md Tahap 13E — visibility bukan
+ * mutability. Tanpa policy dinamis yang memberi authority → set kosong
+ * (deny-by-default; pemanggil tetap memeriksa permission operasi & rule legacy).
+ */
+export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean; divisions: Set<string> } {
+  const result = { all: false, divisions: new Set<string>() };
+  const policies = getUserRbacPolicies(String(user.id));
+  for (const policy of policies) {
+    if (policy.isSuperadmin) {
+      result.all = true;
+      result.divisions.clear();
+      return result;
+    }
+    for (const scope of policy.scopes) {
+      if (scope.type === 'all') result.all = true;
+      else if (scope.type === 'division') {
+        const value = scope.value == null ? '' : String(scope.value).trim().toUpperCase();
+        if (value) result.divisions.add(value);
+      }
+    }
+  }
+  if (result.all) result.divisions.clear();
+  return result;
+}
+
 function textEquals(left: unknown, right: unknown): boolean {
   if (left == null || right == null) return false;
   return String(left).trim().toLowerCase() === String(right).trim().toLowerCase();
