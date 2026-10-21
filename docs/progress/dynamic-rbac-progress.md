@@ -1,3 +1,13 @@
+## Status final — Stage 13F merged (2026-10-21)
+
+- PR #9 **MERGED**; main commit `921d3bb5bcdc32874a556260865e047a0af10868`.
+- CI PR #9 **SUCCESS**: lint PASS, dynamic RBAC foundation verify PASS, build PASS, P0 security 37 HTTP assertions PASS, maintenance authorization HTTP assertions PASS. Hasil ini berlaku untuk CI yang dijalankan pada head PR #9.
+- PR #7 lama ditutup sebagai superseded oleh PR #9.
+- Checklist UAT: `docs/testing/gabah-uat-checklist.md`; status awal sebagian besar `NOT RUN`, PostgreSQL live / restore / deployment masih `BLOCKED`.
+- Status aplikasi: **READY FOR UAT PREPARATION**, bukan production-ready. Perlu uji PostgreSQL live, UAT pengguna, deployment/rollback, dan backup/restore sebelum go-live.
+
+---
+
 ## Tahap 13F — Maintenance Authorization, rekonsiliasi setelah merge Stage 13E (2026-10-21)
 
 ### Status
