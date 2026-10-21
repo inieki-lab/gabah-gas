@@ -1,3 +1,13 @@
+## Status handoff — 2026-10-21 (verifikasi GitHub)
+
+- **Main**: `c769420e6b65afbfcca5ac6acbc839eff3b41f64`.
+- **Stage 13E / PR #6**: merged. Scope perubahan adalah dynamic asset write authority untuk PATCH dan bulk-import UPDATE; hasil CI PR #6 SUCCESS sebelum merge.
+- **Stage 13F / PR #7**: masih OPEN dan belum merged. CI pada head yang diperiksa SUCCESS, tetapi setelah PR #6 merged, metadata GitHub menunjukkan `mergeable=false`. Jangan merge sampai branch konflik/out-of-date diselesaikan dan CI terbaru terverifikasi.
+- **Tes yang belum dibuktikan**: PostgreSQL live integration; UAT pengguna; deployment produksi; backup/restore recovery.
+- **Next step**: rekonsiliasi PR #7 dengan `main`, jalankan ulang CI, review diff final, lalu merge hanya jika clean dan checks pass. Setelah itu jalankan UAT checklist di `docs/testing/gabah-uat-checklist.md`.
+
+---
+
 # Progres Dynamic RBAC — GABAH-GAS
 
 Catatan progres permanen per tahap. Pemeriksa berikutnya dapat melanjutkan pekerjaan hanya dari file ini + `CHANGELOG.md`.
