@@ -40,7 +40,7 @@ Kesimpulan: masalah sebenarnya adalah **kebijakan tulis buta terhadap scope dina
 | `npm run build` | PASS |
 | `node scripts/dynamic-rbac-foundation-verify.mjs` | **89/89 PASS** (7 check baru) |
 | `node scripts/p0-security-verify.mjs` | **37/37 PASS** (file-store) |
-- Basis tes akan dilengkapi hasil CI GitHub pada PR; hasilnya dicatat di bagian ini setelah CI berjalan.
+- Hasil CI GitHub pada PR: **pass** (run 39532655819, https://github.com/inieki-lab/gabah-gas/actions/runs/39532655819/job/119001957474) — satu-satunya workflow CI repo (job `verify`: lint + build + kedua verify script). PR #6 dibuka pada state `OPEN`, `MERGEABLE` status: menunggu review/merge (bukan force-merge, sesuai aturan kerja).
 
 ### Limitasi dan sisa risiko
 - **Uji runtime PostgreSQL live tetap belum pernah dijalankan**; seluruh pemeriksaan tahap ini statis + file-store. Jalur tulis dinamis menunggu environment PG.
