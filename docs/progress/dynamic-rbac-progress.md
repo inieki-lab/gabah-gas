@@ -4,6 +4,42 @@ Catatan progres permanen per tahap. Pemeriksa berikutnya dapat melanjutkan peker
 
 ---
 
+## Tahap 13D — Verifikasi CI dan Sinkronisasi Progres (2026-10-21)
+
+### Tujuan
+Verifikasi status aktual Stage 13B/13C di GitHub (bukan catatan lama), jalankan seluruh pemeriksaan yang memungkinkan secara lokal, dan sinkronkan dokumentasi. Tidak ada perubahan kode, skema, atau konfigurasi produksi pada tahap ini.
+
+### Status aktual yang diverifikasi dari GitHub (HEAD main: `9bd52863829c9371d6e34465c65d6d1b44c4156f`)
+- **Stage 13B (Knowledge):** branch `work/stage-13b-knowledge-rbac`, PR #4 **MERGED**, merge commit `3f075da13328bbffb1d2c174a1e1f31218c0f1ad`, CI push-merge **SUCCESS** (run 39353093753).
+- **Stage 13C (Vendor):** branch `work/stage-13c-vendor-rbac`, PR #5 **MERGED**, merge commit `9bd52863829c9371d6e34465c65d6d1b44c4156f`, CI push-merge **SUCCESS** (run 39353550039).
+- Seluruh run CI terakhir pada `main` berstatus `success`; tidak ditemukan check yang gagal, jadi tidak ada perbaikan yang diperlukan.
+
+### Audit implementasi (baca kode, HEAD `9bd5286`)
+- `POST /api/knowledge` & `PATCH /api/knowledge/:id`: gate `requireRbacPermission('knowledge.create'/'knowledge.update')` hanya saat PostgreSQL aktif; allowlist file-store `['Admin GABAH','IT','GA']` dipertahankan sebagai else-branch eksplisit.
+- `POST /api/vendors` & `PATCH /api/vendors/:id`: gate `vendors.create`/`vendors.update` dengan pola identik; allowlist file-store lima role dipertahankan.
+- Migration `018_*`: grant `knowledge.create`+`knowledge.update` hanya ke `superadmin`, `it`, `ga` (role aktif + permission aktif). Migration `019_*`: grant `vendors.create`+`vendors.update` hanya ke `superadmin`, `it`, `ga`, `supply_chain`, `pibc`. Keduanya additive/idempotent (`ON CONFLICT DO NOTHING`), tidak memberi grant implisit ke role lain/kustom.
+- Gate permission bersifat no-op di file-store (`requireRbacPermission` langsung `return true` tanpa PG), sehingga fallback tetap ditentukan oleh allowlist legacy — kompatibilitas role legacy terjaga jalur-lokal.
+- Guard domain IT/GA pada kategori vendor tetap dieksekusi **setelah** gate permission juga di mode PG; karena berbasis string `actor.role`, ia hanya aktif bagi role legacy `IT`/`GA` (role kustom pemegang permission tidak terkena restriksi kategori — lihat Gap).
+
+### Hasil tes yang benar-benar dijalankan (sesi ini, HEAD `9bd5286`)
+| Command | Hasil |
+|---|---|
+| `npm run lint` (tsc --noEmit) | PASS (0 error) |
+| `npm run build` (vite build + build-server) | PASS |
+| `node scripts/dynamic-rbac-foundation-verify.mjs` | **82/82 PASS** (termasuk 5 check knowledge + 4 check vendor) |
+| `node scripts/p0-security-verify.mjs` (file-store live) | **37/37 PASS** |
+
+### Limitasi
+- **Pengujian integrasi PostgreSQL live masih belum pernah dijalankan** (berlaku sejak Stage 5; CI tidak menyediakan instance PostgreSQL). Tidak ada klaim PASS runtime-PG — verifikasi endpoint 13B/13C bersifat contract-statis dengan pola kode identik dengan endpoint RBAC yang sudah berjalan sejak Stage 5–8.
+
+### Gap tetap terbuka (kumulatif, ringkas)
+- Vendor read, maintenances (create/update/read), dan gate read-only/global observer masih hard-coded role (Tahap 13A; kontrak CR-01 untuk read-mode dinamis).
+- Authority divisi pada PATCH/bulk import UPDATE aset tidak berlaku bagi role kustom pemegang permission — butuh rancangan authority dinamis.
+- Restriksi kategori vendor berbasis string legacy hanya menjangkau role `IT`/`GA` legacy, bukan role kustom pemegang permission vendor.
+- Endpoint baca assignment user, UI assignment role, pengujian integrasi PG, dan invalidasi cache multi-instance.
+
+---
+
 ## Tahap 13C — Dynamic RBAC untuk Vendor Writes (2026-10-20)
 
 ### Tujuan dan cakupan
@@ -17,9 +53,9 @@ Memigrasikan endpoint create/update vendor ke permission dinamis pada mode Postg
 - Pengecekan domain IT/GA dan allowlist field pada update tetap ada. Perilaku baca vendor tidak diubah.
 - Verify script mendapat pemeriksaan statis untuk seed dan kedua endpoint.
 
-### Status verifikasi
-- Perubahan berada pada branch `work/stage-13c-vendor-rbac`; belum merge.
-- Menunggu CI untuk lint/typecheck, Dynamic RBAC contract checks, production build, dan P0 security verification.
+### Status verifikasi (diperbarui Tahap 13D, 2026-10-21)
+- Lengkap di-merge ke `main` melalui PR #5 (branch `work/stage-13c-vendor-rbac`); merge commit `9bd52863829c9371d6e34465c65d6d1b44c4156f`.
+- CI GitHub pada push merge ke `main`: **SUCCESS** (run 39353550039, https://github.com/inieki-lab/gabah-gas/actions/runs/39353550039).
 - Pengujian integrasi PostgreSQL live belum dilakukan oleh sesi ini.
 
 ### Gap tetap terbuka
@@ -45,10 +81,10 @@ Migrasi dua operasi tulis Knowledge Base ke permission dinamis, sebagai tahap ke
 - Validasi input, allowlist field update, audit event, dan persist behavior tidak diubah.
 - Verify script ditambah lima pemeriksaan statis untuk migration, daftar grant, dan guard kedua endpoint.
 
-### Status verifikasi
-- Perubahan tersimpan di branch `work/stage-13b-knowledge-rbac`; belum dinyatakan merged ke `main`.
-- Pengujian `npm run lint`, `npm run build`, `node scripts/dynamic-rbac-foundation-verify.mjs`, dan `node scripts/p0-security-verify.mjs` belum dijalankan secara lokal oleh sesi ini. Tunggu hasil GitHub Actions pada PR sebelum merge.
-- Integrasi PostgreSQL live tetap belum dijalankan; CI sebelumnya tidak menyediakan instance PostgreSQL. Jangan anggap static contract checks sebagai pengganti runtime integration test.
+### Status verifikasi (diperbarui Tahap 13D, 2026-10-21)
+- Lengkap di-merge ke `main` melalui PR #4 (branch `work/stage-13b-knowledge-rbac`); merge commit `3f075da13328bbffb1d2c174a1e1f31218c0f1ad`.
+- CI GitHub pada push merge ke `main`: **SUCCESS** (run 39353093753, https://github.com/inieki-lab/gabah-gas/actions/runs/39353093753).
+- Pengujian integrasi PostgreSQL live tetap belum pernah dijalankan (CI tidak menyediakan instance PostgreSQL); hasil verifikasi selanjutnya tercatat di Tahap 13D.
 
 ### Gap tetap terbuka
 - Enforcement permission dinamis di modul lain (maintenance, vendors, loan, ticket, contract, room) belum disentuh.
