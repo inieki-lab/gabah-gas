@@ -1,3 +1,13 @@
+## [2026-10-21] — Repo handoff: Stage 13E merged, Stage 13F blocked pending branch reconciliation
+
+### Status aktual dari GitHub
+- Stage 13E / PR #6 **MERGED** via squash commit `c769420e6b65afbfcca5ac6acbc839eff3b41f64`.
+- Stage 13F / PR #7 **OPEN, belum merged**. CI pada head PR terakhir terlapor SUCCESS, tetapi setelah PR #6 masuk `main`, GitHub menandai PR #7 `mergeable=false`. Perlu rekonsiliasi branch dan rerun CI sebelum merge; jangan menganggap status CI lama cukup.
+- Checklist UAT ditambahkan dalam commit dokumentasi terpisah; checklist bukan bukti UAT selesai.
+- PostgreSQL live integration, deployment, restore test, dan UAT end-to-end tetap belum diverifikasi di sini.
+
+---
+
 ## [2026-10-21] — Dynamic RBAC Stage 13E: Audit dan Perbaikan Authority Divisi Aset
 
 ### Temuan audit (re-verifikasi kode pada HEAD `d30315d`, tidak menerima catatan lama mentah-mentah)
