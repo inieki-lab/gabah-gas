@@ -43,7 +43,7 @@ Catatan progres permanen per tahap. Pemeriksa berikutnya dapat melanjutkan peker
 | `node scripts/dynamic-rbac-foundation-verify.mjs` | **97/97 PASS** |
 | `node scripts/p0-security-verify.mjs` | **37/37 PASS** (exit 0) |
 | `node scripts/maintenance-authz-verify.mjs` | **33/33 PASS** (exit 0) |
-- Hasil CI GitHub pada PR: dilengkapi setelah PR dibuat.
+- Hasil CI GitHub pada PR #7: **pass** — run 39537648319 (https://github.com/inieki-lab/gabah-gas/actions/runs/39537648319/job/119017891766); langkah "Maintenance authorization verification (live HTTP assertions)" terbukti berjalan dan sukses (bukan skipped). PR dalam state `OPEN`, `MERGEABLE`; tidak di-merge oleh sesi ini.
 
 ### Limitasi dan sisa risiko
 - **Pengujian PostgreSQL live tetap belum pernah dijalankan** (CI tanpa instance PG); enforcement mode PostgreSQL bersifat contract-statis.
