@@ -12,6 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate Docker Compose configuration
+        env:
+          PGPASSWORD: ci-validation-only-not-a-secret
+        run: docker compose config --quiet
+
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
