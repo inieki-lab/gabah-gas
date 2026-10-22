@@ -7,8 +7,8 @@
 - Kesimpulan: konteks "perubahan lokal Antigravity sudah di-commit" tidak pernah menyentuh workspace repo ini. Tidak ada yang bisa di-push untuk commit itu; tidak dibuat commit duplikat/palsu.
 
 ### Temuan audit teknis terfokus (file yang benar-benar ada)
-1. **docker-compose.yml — blocker start nyata**: `app` berjalan `npm install && npm run build` dengan `NODE_ENV: production`. npm melewati devDependencies dalam mode production; `vite`/`esbuild` di devDependencies → `npm run build` gagal "vite: not found" di container baru. **Diperbaiki**: `npm install --include=dev`.
-2. **docker-compose.yml — password DB kosong**: `POSTGRES_PASSWORD: ${PGPASSWORD}` tanpa guard; `.env.example` bawaan berisi `PGPASSWORD=` kosong → Postgres 17 menolak init ("superuser password is not specified") dan container langsung exit. **Diperbaiki**: `${PGPASSWORD:?...}` fail-fast dengan pesan jelas di services `database` dan `app`.
+1. **docker-compose.yml — blocker start nyata**: `app` berjalan `npm install && npm run build` dengan `NODE_ENV: production`. npm melewati devDependencies dalam mode production; `vite`/`esbuild` di devDependencies → `npm run build` gagal dengan "vite: not found" di container baru. **Diperbaiki**: `npm install --include=dev`.
+2. **docker-compose.yml — sandi DB kosong**: `POSTGRES_PASSWORD: ${PGPASSWORD}` tanpa guard; `.env.example` bawaan berisi `PGPASSWORD=` kosong → Postgres 17 menolak init ("superuser password is not specified") dan container langsung exit. **Diperbaiki**: `${PGPASSWORD:?...}` fail-fast dengan pesan jelas di services `database` dan `app`.
 3. **docker-compose.yml — tanpa healthcheck**: `depends_on` hanya menjamin urutan start, bukan kesiapan; app bisa mencoba konek saat database masih inisialisasi. **Diperbaiki**: healthcheck `pg_isready` + `depends_on: condition: service_healthy`.
 4. **SSL PostgreSQL**: `resolveDbConfig()` (server/persistence.ts) tidak menyetel opsi SSL; image PostgreSQL 17 di compose default non-TLS → **konsisten**. DATABASE_URL dengan `sslmode=` dari env tetap dihormati driver pg. TLS untuk produksi di luar scope commit ini (keputusan infrastruktur).
 5. **Jalur runtime**: compose menjalankan `npm run build` (vite build + `scripts/build-server.cjs` esbuild outfile `dist/server.cjs`) lalu `npm start` = `node dist/server.cjs` — **konsisten, tidak ada ts-node**, sesuai arah hardening yang diinginkan. Namun **Dockerfile tidak ada**; klaim "Docker image berhasil dibangun" tidak dapat direplikasi dari repo ini.
@@ -22,6 +22,9 @@
 ### Yang benar-benar dijalankan ulang (sandbox)
 - `npm run lint` PASS (exit 0); `npm run build` PASS (exit 0); `node scripts/menu-connectivity-verify.mjs` **23/23 PASS** — server `dist/server.cjs` dibangun lalu diuji HTTP live per titik menu (HTTP 200 + tipe data respons), bukan hitung statis. Tes ini yang paling dekat dengan klaim "tes menu"; **skrip `test-all-menus-9-roles.mjs` sekalipun 222 assertion tidak pernah ada di repo**.
 - `docker compose config` **tidak dijalankan**: CLI docker tidak tersedia di sandbox. Validasi compose harus dilakukan di komputer host dengan Docker.
+
+### Hasil CI PR
+- PR terbuka; CI `verify` **PASS** (run 39711620330, ±7m22s) pada head `b6880f0` — lint, build, foundation checks, P0 HTTP, dan maintenance authorization semuanya sukses. COMMIT CATATAN: hasil CI direkam setelah commit kecil perbaikan kalimat di atas (menyusul di push berikutnya).
 
 ### Tidak dilakukan (disengaja)
 - Tidak membuat commit duplikat atas konteks Antigravity; tidak mengubah main; tidak merge PR apa pun; tidak deploy ke produksi; tidak mengulang 222 tes; tidak mengubah file env aktual.
