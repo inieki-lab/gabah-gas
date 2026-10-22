@@ -24,7 +24,7 @@
 - `docker compose config` **tidak dijalankan**: CLI docker tidak tersedia di sandbox. Validasi compose harus dilakukan di komputer host dengan Docker.
 
 ### Hasil CI PR
-- PR terbuka (`MERGEABLE`); CI `verify` **PASS** pada dua head: run 39711620330 (±7m22s, head `b6880f0`) dan run 39712388544 (±3m31s, head `a442fd8`, hasil akhir) — lint, build, foundation checks, P0 HTTP, dan maintenance authorization semuanya sukses.
+- PR terbuka (`MERGEABLE`); CI `verify` **PASS**: run 39711620330 (±7m22s, head `b6880f0`), run 39712388544 (±3m31s, head `a442fd8`), run 39712968118 (±7m22s, head `b7793af`) — lint, build, foundation checks, P0 HTTP, dan maintenance authorization semuanya sukses.
 
 ### Tidak dilakukan (disengaja)
 - Tidak membuat commit duplikat atas konteks Antigravity; tidak mengubah main; tidak merge PR apa pun; tidak deploy ke produksi; tidak mengulang 222 tes; tidak mengubah file env aktual.
