@@ -29,6 +29,21 @@
 ### Tidak dilakukan (disengaja)
 - Tidak membuat commit duplikat atas konteks Antigravity; tidak mengubah main; tidak merge PR apa pun; tidak deploy ke produksi; tidak mengulang 222 tes; tidak mengubah file env aktual.
 
+## [2026-10-22] — Finalisasi UAT-readiness: Rangkuman Pengujian Lengkap di PR #11
+
+### Kondisi awal
+- `main` @ `e35cdf4`; PR #11 tetap `OPEN`/`MERGEABLE`, kini 9 commit — termasuk 3 commit lanjutan dari operator: pembersihan placeholder env example, langkah CI `docker compose config --quiet` (nilai dummy), dan laporan `docs/ops/DEPLOYMENT-VALIDATION-FOLLOWUP-2026-10-22.md`. Tidak ada duplikasi PR baru.
+
+### Yang dijalankan (HEAD `af956f8`, semua exit 0)
+- Lint PASS; build produksi PASS (`dist/server.cjs`).
+- Verifikasi estatik + HTTP live: RBAC foundation 97/97, P0 security 37/37, maintenance authz 33/33, loan authz 37/37, meeting-room 18/18, org-model 14/14, T2B1/2/3 18+22+26.
+- Konektivitas menu 23/23 PASS: login admin nyata (`/api/auth/login`), token Bearer, cek HTTP 200 + tipe data per titik menu — alur login/session/otorisasi dasar terbukti di level sandbox.
+- `docker compose config` divalidasi sebagai PASS di CI (slot Docker sandbox tidak tersedia); PostgreSQL live integration dan UAT pengguna tetap BELUM dibuktikan.
+
+### Keputusan
+- Tidak ada blocker kode baru; tidak ada perubahan konfigurasi tambahan — semua temuan startup sudah ditangani commit sebelumnya di PR ini (`npm install --include=dev`, fail-fast sandi, healthcheck `pg_isready`, `service_healthy`).
+- Status: **siap diajukan UAT** (bukan siap produksi) — sisa verifikasi: PG live, UAT end-to-end, staging deploy/rollback, backup/restore.
+
 ## [2026-10-21] — Finalisasi Stage 13F: Maintenance Authorization merged
 
 ### Hasil akhir terverifikasi
