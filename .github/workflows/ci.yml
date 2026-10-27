@@ -9,6 +9,20 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -30,8 +44,34 @@ jobs:
       - name: Production build (frontend + server bundle)
         run: npm run build
 
-      - name: P0 security verification (37 live HTTP assertions)
+      - name: PostgreSQL 17 persistence and reminder integration (CR-04/CR-05)
+        env:
+          GABAH_TEST_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: node scripts/cr04-cr05-verify.mjs
+
+      - name: P0 security verification (live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
 
-      - name: Maintenance authorization verification (live HTTP assertions)
-        run: node scripts/maintenance-authz-verify.mjs
+      - name: Loan authorization and state transitions
+        run: npm run test:loan-authz
+
+      - name: Meeting room reservation regression
+        run: npm run test:meeting-room
+
+      - name: Organization model regression
+        run: npm run test:org-model
+
+      - name: Asset managing-unit regression
+        run: npm run test:t2b1
+
+      - name: Asset location master regression
+        run: npm run test:t2b2
+
+      - name: Asset category master regression
+        run: npm run test:t2b3
+
+      - name: Sidebar menu API connectivity
+        run: node scripts/menu-connectivity-verify.mjs
+
+      - name: Maintenance authorization verification
+        run: npm run test:maintenance-authz

@@ -46,13 +46,29 @@ CREATE TABLE IF NOT EXISTS contracts (
 -- Idempotent: no-op on databases already migrated; data-preserving ALTERs.
 -- ---------------------------------------------------------------------
 
--- Legacy owner_division_id (BIGINT FK) -> owner_division (VARCHAR code).
+-- Align both supported starting schemas:
+-- 1) fresh 001 schema already has owner_division (VARCHAR) and no owner_division_id;
+-- 2) older legacy schema may have owner_division_id (BIGINT FK).
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS owner_division VARCHAR(50);
-UPDATE contracts
-   SET owner_division = COALESCE(
-         (SELECT d.code FROM divisions d WHERE d.id = contracts.owner_division_id),
-         'GA')
- WHERE owner_division IS NULL;
+
+DO $migration$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = 'contracts'
+       AND column_name = 'owner_division_id'
+  ) THEN
+    UPDATE contracts
+       SET owner_division = COALESCE(
+             (SELECT d.code FROM divisions d WHERE d.id = contracts.owner_division_id),
+             'GA')
+     WHERE owner_division IS NULL;
+  END IF;
+END
+$migration$;
+
+UPDATE contracts SET owner_division = 'GA' WHERE owner_division IS NULL;
 ALTER TABLE contracts ALTER COLUMN owner_division SET DEFAULT 'GA';
 ALTER TABLE contracts ALTER COLUMN owner_division SET NOT NULL;
 
