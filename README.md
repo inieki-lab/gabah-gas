@@ -154,4 +154,3 @@ Seluruh dokumentasi telah disinkronkan secara presisi dengan source code aktual:
   - [AUDIT_NOTES.md](./AUDIT_NOTES.md) — Catatan rekam jejak pembaruan dan changelog audit
 
 ---
-*PT Food Station Tjipinang Jaya (Perseroda) — Ketahanan & Kedaulatan Pangan DKI Jakarta*
