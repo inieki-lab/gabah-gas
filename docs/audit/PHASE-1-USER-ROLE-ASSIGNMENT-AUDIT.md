@@ -98,3 +98,30 @@ ORDER BY u.name, r.name;
 - No broad dashboard/sidebar redesign during Phase 1.
 - Preserve existing features; make the smallest safe changes.
 - Every code change must include focused tests and a regression check.
+
+
+## Update — agent workflow and assignment UI re-check
+
+Latest repository review on the working branch confirms:
+
+- The repository now contains the Agent Skills-compatible file `.agents/skills/gabah-maintainer/SKILL.md`.
+- Root `AGENTS.md` instructs coding agents to read that skill and the project guardrails before making changes.
+- `src/services/gabahApi.ts` exposes both `getRbacUserAssignments()` (GET inventory) and `setRbacUserRoles(userId, role_ids)` (PUT assignment replacement).
+- `AdministrationModal.tsx` still has no references to either method, no selected-user role-assignment state, and no assignment UI. Therefore the assignment management workflow is **not complete** despite the backend endpoint and API client being present.
+- No live application, PostgreSQL, or multi-role test accounts were available during this repository-only review. The assignment inventory has not been checked against real user data.
+- The latest GitHub combined commit-status response contained no status checks. This is not evidence of a passing build or test suite.
+
+## Next implementation gate
+
+Before wiring the assignment UI, inspect the complete `AdministrationModal.tsx` user-management section and its state/effect lifecycle. Implement a focused user-role assignment panel that:
+
+1. Loads the user/assignment inventory and available roles only for an authorized Superadmin view.
+2. Shows legacy role and dynamic role assignments distinctly; never silently treat one as the other.
+3. Supports selecting a user, selecting one or more active roles, and saving the complete selected role set through `setRbacUserRoles()`.
+4. Handles loading, empty, API error, validation, and save-success states.
+5. Refreshes the inventory after a successful save.
+6. Does not alter `users.role`, browser localStorage role permissions, or any production data outside the explicit user action.
+7. Warns clearly that role replacement replaces the entire dynamic assignment set.
+8. Is tested for duplicate selection, empty selection, inactive roles, last-Superadmin protection, unauthorized API access, and persistence.
+
+Do not wire a second role-management interface or change the existing legacy user editor until its role-field behavior and callers have been traced. The UI change remains pending because a previous large component write was blocked; use a local working tree/approved coding environment for a focused patch rather than forcing a broad replacement through the GitHub file API.
