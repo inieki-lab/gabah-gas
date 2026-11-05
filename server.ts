@@ -271,6 +271,22 @@ async function startServer() {
     } catch (error: any) { return rbacFailure(res, error); }
   });
 
+  // Read-only inventory for Phase 1: compare the legacy user.role field with
+  // the PostgreSQL role assignments before any account mapping is changed.
+  app.get('/api/admin/rbac/user-assignments', async (req, res) => {
+    if (!requireRbacSuperadmin(req, res)) return;
+    try {
+      const result = await queryRbac<any>(
+        'SELECT u.id, u.name, u.email, u.role AS legacy_role, u.is_active, ' +
+        "COALESCE(json_agg(json_build_object('id', r.id, 'role_key', r.role_key, 'name', r.name, 'is_superadmin', r.is_superadmin, 'is_active', r.is_active)) FILTER (WHERE r.id IS NOT NULL), '[]'::json) AS assigned_roles " +
+        'FROM users u LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id ' +
+        'LEFT JOIN gabah_roles r ON r.id = ur.role_id ' +
+        'GROUP BY u.id, u.name, u.email, u.role, u.is_active ORDER BY u.name, u.email'
+      );
+      return res.json({ success: true, data: result.rows });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
   app.put('/api/admin/rbac/users/:id/roles', async (req, res) => {
     const actor = requireRbacSuperadmin(req, res);
     if (!actor) return;
