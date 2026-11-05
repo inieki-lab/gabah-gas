@@ -86,8 +86,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   gaRequestsCount = 0,
   onOpenAdministration,
 }) => {
-  const activeRole = currentUserRole || userRole || 'Admin GABAH';
-  const isStaff = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(activeRole);
+  // Fail closed: missing role identity must never inherit Admin GABAH navigation.
+  // Backend authorization remains authoritative; this only controls navigation visibility.
+  const activeRole = currentUserRole || userRole;
+  const isStaff = Boolean(activeRole && ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(activeRole));
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
   const isSuperAdmin = activeRole === 'Admin GABAH';
@@ -229,7 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const visibleSections = sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => item.roles.includes(activeRole)),
+      items: section.items.filter(item => Boolean(activeRole && item.roles.includes(activeRole))),
     }))
     .filter(section => section.items.length > 0);
 
