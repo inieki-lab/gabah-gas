@@ -18,16 +18,19 @@ Establish one reliable identity and role-assignment model before changing naviga
    - `gabah_user_roles`
 2. `PUT /api/admin/rbac/users/:id/roles` replaces a user's complete role assignment set inside a transaction, validates active role IDs, and protects the last superadmin assignment.
 3. `AdministrationModal.tsx` contains Dynamic RBAC role/permission state, but the inspected file has no reference to `role_ids`, `rbacSelectedUser`, or the assignment endpoint. The user-to-role assignment UI therefore appears unimplemented/unconnected in this component.
+4. A read-only Superadmin-protected endpoint, `GET /api/admin/rbac/user-assignments`, has now been added on this branch. It returns each normalized user, the legacy `users.role`, and their dynamic role assignments (including role activity and superadmin metadata). It is an inventory endpoint only; it does not change assignments.
+5. The frontend API client now exposes `getRbacUserAssignments()` so the administration UI can consume this inventory in a subsequent UI step.
 4. `AdministrationModal.tsx` still initializes a legacy `permissions` state from browser `localStorage` key `gabah_role_permissions`, separate from the PostgreSQL Dynamic RBAC state. Trace all reads/writes before deciding how to retire it; do not remove it blindly.
-5. `GET /api/users` currently returns `db.users` and has no visible route-level authentication/authorization check in the inspected handler. This must be verified against any global middleware and then corrected if it is genuinely reachable anonymously or by unauthorized principals.
-6. `GET /api/auth/me` returns `sanitizeUser(actor)`; inspect whether this exposes effective multi-role assignments and effective permissions. Do not assume that it does.
-7. Repository review cannot reveal the live PostgreSQL user population or prove deployment state. Production database reconciliation remains pending until executed in the intended environment.
+6. `GET /api/users` is behind `gabahSecurityMiddleware`, which rejects unauthenticated API requests. The handler itself does not apply a narrower role check, so the exact business need for exposing the full user directory to every authenticated account remains to be assessed.
+7. `GET /api/auth/me` returns `sanitizeUser(actor)`; inspect whether this exposes effective multi-role assignments and effective permissions. Do not assume that it does.
+8. Repository review cannot reveal the live PostgreSQL user population or prove deployment state. Production database reconciliation remains pending until executed in the intended environment.
 
 ## Required audit outputs
 
 - [ ] Inventory every user: stable ID, display name, email, active/disabled status, division/unit/location, legacy `users.role`.
 - [ ] Inventory every active and inactive RBAC role, role key, superadmin flag, and assignment count.
-- [ ] Inventory every user-role assignment in `gabah_user_roles`.
+- [x] Add a read-only Superadmin-protected API inventory for users and their dynamic role assignments.
+- [ ] Inventory every user-role assignment in `gabah_user_roles` using the new endpoint against the intended live PostgreSQL database.
 - [ ] Produce a discrepancy report: no role, inactive role, unknown legacy role, legacy/dynamic mismatch, duplicate assignment, inactive account with active session, and unexpected superadmin.
 - [ ] Confirm canonical role mapping with business owners; do not infer role from job title or division alone.
 - [ ] Confirm whether multi-role is permitted per user and define how effective permissions are combined.
