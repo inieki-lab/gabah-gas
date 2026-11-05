@@ -847,6 +847,10 @@ class GabahApiClient {
     return this.request<any[]>('/api/admin/rbac/roles');
   }
 
+  async getRbacUserAssignments(): Promise<any[]> {
+    return this.request<any[]>('/api/admin/rbac/user-assignments');
+  }
+
   async getRbacPermissions(): Promise<any[]> {
     return this.request<any[]>('/api/admin/rbac/permissions');
   }
