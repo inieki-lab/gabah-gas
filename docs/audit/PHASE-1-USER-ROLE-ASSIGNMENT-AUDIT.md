@@ -10,20 +10,16 @@ Establish one reliable identity and role-assignment model before changing naviga
 
 ## Confirmed code observations (repository review)
 
-1. Dynamic RBAC tables and routes are present in `server.ts`, including:
-   - `gabah_roles`
-   - `gabah_permissions`
-   - `gabah_role_permissions`
-   - `gabah_role_division_scopes`
-   - `gabah_user_roles`
+1. Dynamic RBAC tables and routes are present in `server.ts`, including `gabah_roles`, `gabah_permissions`, `gabah_role_permissions`, `gabah_role_division_scopes`, and `gabah_user_roles`.
 2. `PUT /api/admin/rbac/users/:id/roles` replaces a user's complete role assignment set inside a transaction, validates active role IDs, and protects the last superadmin assignment.
-3. `AdministrationModal.tsx` contains Dynamic RBAC role/permission state, but the inspected file has no reference to `role_ids`, `rbacSelectedUser`, or the assignment endpoint. The user-to-role assignment UI therefore appears unimplemented/unconnected in this component.
-4. A read-only Superadmin-protected endpoint, `GET /api/admin/rbac/user-assignments`, has now been added on this branch. It returns each normalized user, the legacy `users.role`, and their dynamic role assignments (including role activity and superadmin metadata). It is an inventory endpoint only; it does not change assignments.
-5. The frontend API client now exposes `getRbacUserAssignments()` so the administration UI can consume this inventory in a subsequent UI step.
-4. `AdministrationModal.tsx` still initializes a legacy `permissions` state from browser `localStorage` key `gabah_role_permissions`, separate from the PostgreSQL Dynamic RBAC state. Trace all reads/writes before deciding how to retire it; do not remove it blindly.
-6. `GET /api/users` is behind `gabahSecurityMiddleware`, which rejects unauthenticated API requests. The handler itself does not apply a narrower role check, so the exact business need for exposing the full user directory to every authenticated account remains to be assessed.
-7. `GET /api/auth/me` returns `sanitizeUser(actor)`; inspect whether this exposes effective multi-role assignments and effective permissions. Do not assume that it does.
-8. Repository review cannot reveal the live PostgreSQL user population or prove deployment state. Production database reconciliation remains pending until executed in the intended environment.
+3. `AdministrationModal.tsx` contains Dynamic RBAC role/permission state, but no reference to `role_ids`, `rbacSelectedUser`, or the assignment endpoint. The user-to-role assignment UI is therefore not implemented/connected in this component.
+4. A read-only Superadmin-protected endpoint, `GET /api/admin/rbac/user-assignments`, has been added on this branch. It returns each normalized user, the legacy `users.role`, and dynamic role assignments (including role activity and superadmin metadata). It does not change assignments.
+5. The frontend API client exposes `getRbacUserAssignments()` so the administration UI can consume this inventory in a subsequent UI step.
+6. The `users.is_active` column used by the new inventory endpoint is confirmed in `server/migrations/001_gabah_normalized_schema.sql`; it is not an assumed column.
+7. `AdministrationModal.tsx` still initializes a legacy `permissions` state from browser `localStorage` key `gabah_role_permissions`, separate from PostgreSQL Dynamic RBAC. Trace all reads/writes before deciding how to retire it; do not remove it blindly.
+8. `GET /api/users` is behind `gabahSecurityMiddleware`, which rejects unauthenticated API requests. The handler itself does not apply a narrower role check, so the business need for exposing the full user directory to every authenticated account remains to be assessed.
+9. `GET /api/auth/me` returns `sanitizeUser(actor)`. This returns the sanitized user object, not an explicit effective multi-role/permission contract. The frontend's exact reliance on legacy fields still needs tracing.
+10. Repository review cannot reveal the live PostgreSQL user population or prove deployment state. Production database reconciliation remains pending until executed in the intended environment.
 
 ## Required audit outputs
 
@@ -43,7 +39,7 @@ Establish one reliable identity and role-assignment model before changing naviga
 
 ## Data inspection SQL (read-only)
 
-Run against the intended PostgreSQL database after confirming the database name and environment. These queries are read-only and should be used to prepare the discrepancy report.
+Run against the intended PostgreSQL database after confirming the database name and environment. These queries are read-only and should be used to prepare the discrepancy report. The normalized schema migration defines `users.is_active`.
 
 ```sql
 -- Users and their legacy role
@@ -83,8 +79,6 @@ JOIN gabah_roles r ON r.id = ur.role_id
 WHERE r.is_active = FALSE
 ORDER BY u.name, r.name;
 ```
-
-Before running these queries, verify actual column names from the live schema/migrations. If `users.is_active` differs or does not exist, adjust the read-only inventory query to the actual schema; do not guess or mutate data.
 
 ## Acceptance criteria — Phase 1 complete
 
