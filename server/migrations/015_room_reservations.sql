@@ -107,12 +107,4 @@ CREATE TRIGGER trg_prevent_double_booking
   BEFORE INSERT OR UPDATE ON room_reservations
   FOR EACH ROW EXECUTE FUNCTION prevent_double_booking();
 
--- 5. Record migration
-CREATE TABLE IF NOT EXISTS schema_migrations (
-  version VARCHAR(16) PRIMARY KEY,
-  name VARCHAR(120) NOT NULL,
-  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-INSERT INTO schema_migrations (version, name, applied_at)
-VALUES ('010', 'room_reservations', NOW())
-ON CONFLICT (version) DO NOTHING;
+-- Migration version is recorded centrally by server/persistence.ts using filename prefix 015.
