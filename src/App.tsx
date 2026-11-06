@@ -655,6 +655,7 @@ export default function App() {
         )}
         <LoginPage
           availableUsers={allUsers}
+          initialEmail={selectedLoginEmail}
           onLoginSuccess={(u) => {
             setCurrentUser(u);
             setViewMode('portal');
