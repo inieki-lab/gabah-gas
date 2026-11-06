@@ -108,6 +108,11 @@ npm run dev
 Migrasi skema (16 tabel) jalan **otomatis** saat boot. Data aman di Docker volume
 `postgres_data` walau container di-restart. Cek: `docker compose ps`, log: `docker compose logs -f database`.
 
+**Hardening compose (2026-10-22, commit antigravity-sync):**
+- `PGPASSWORD` wajib diisi di `.env` — compose kini **fail-fast dengan pesan jelas**; Postgres 17 menolak init dengan password kosong (container langsung exit).
+- `database` memakai healthcheck `pg_isready`; service `app` menunggu `condition: service_healthy` (bukan lagi urutan start saja).
+- `app` menginstall dengan `npm install --include=dev` — `vite`/`esbuild` ada di devDependencies, dan dengan `NODE_ENV: production`, install biasa melewatinya sehingga build in-container gagal.
+
 ---
 
 ## 5. Rutinitas harian — selalu sync dengan GitHub

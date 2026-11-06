@@ -1,3 +1,49 @@
+## [2026-10-22] — Sinkronisasi GitHub Antigravity: Audit Deployment & Hardening Docker Compose
+
+### Kondisi awal (diverifikasi dari GitHub + working tree)
+- `origin/main` @ `e35cdf4` (Stage 13F sudah ter-merge sebagai 921d3bb; tip main berisi "docs: finalize Stage 13F status and UAT gates"). Semua branch `work/stage-13*` sudah ter-push.
+- **Commit antigravity `feat: harden deployment and add nine-role menu tests` TIDAK DITEMUKAN DI MANA PUN**: tidak sebagai commit lokal (grep `--all`), tidak di reflog/stash, tidak di remote heads GitHub, dan tidak ada PR apa pun terkait. Working tree bersih (0 perubahan).
+- Sumber file yang diklaim commit tersebut tidak lengkap: `.env.example` dan `docker-compose.yml` ada di `main`, tetapi `Dockerfile` dan `scripts/test-all-menus-9-roles.mjs` **tidak pernah ada dalam repo**. Laporan `docs/reports/` juga tidak ada.
+- Kesimpulan: konteks "perubahan lokal Antigravity sudah di-commit" tidak pernah menyentuh workspace repo ini. Tidak ada yang bisa di-push untuk commit itu; tidak dibuat commit duplikat/palsu.
+
+### Temuan audit teknis terfokus (file yang benar-benar ada)
+1. **docker-compose.yml — blocker start nyata**: `app` berjalan `npm install && npm run build` dengan `NODE_ENV: production`. npm melewati devDependencies dalam mode production; `vite`/`esbuild` di devDependencies → `npm run build` gagal dengan "vite: not found" di container baru. **Diperbaiki**: `npm install --include=dev`.
+2. **docker-compose.yml — sandi DB kosong**: `POSTGRES_PASSWORD: ${PGPASSWORD}` tanpa guard; `.env.example` bawaan berisi `PGPASSWORD=` kosong → Postgres 17 menolak init ("superuser password is not specified") dan container langsung exit. **Diperbaiki**: `${PGPASSWORD:?...}` fail-fast dengan pesan jelas di services `database` dan `app`.
+3. **docker-compose.yml — tanpa healthcheck**: `depends_on` hanya menjamin urutan start, bukan kesiapan; app bisa mencoba konek saat database masih inisialisasi. **Diperbaiki**: healthcheck `pg_isready` + `depends_on: condition: service_healthy`.
+4. **SSL PostgreSQL**: `resolveDbConfig()` (server/persistence.ts) tidak menyetel opsi SSL; image PostgreSQL 17 di compose default non-TLS → **konsisten**. DATABASE_URL dengan `sslmode=` dari env tetap dihormati driver pg. TLS untuk produksi di luar scope commit ini (keputusan infrastruktur).
+5. **Jalur runtime**: compose menjalankan `npm run build` (vite build + `scripts/build-server.cjs` esbuild outfile `dist/server.cjs`) lalu `npm start` = `node dist/server.cjs` — **konsisten, tidak ada ts-node**, sesuai arah hardening yang diinginkan. Namun **Dockerfile tidak ada**; klaim "Docker image berhasil dibangun" tidak dapat direplikasi dari repo ini.
+6. **Health check**: `/api/health` mengekspos status persistence (`postgresql`/`file-store fallback`) dan scheduler, layak menjadi dasar healthcheck app di compose; healthcheck app sendiri belum ditambahkan (build berjalan saat boot sehingga perlu start_period panjang — dicatat sebagai tindak lanjut).
+7. **222 tes menu (`scripts/test-all-menus-9-roles.mjs`) tidak ada** → klaim 222/222 tidak dapat direplikasi dan *tidak diulang* dari nol (sesuai batasan tugas). Hasil terbaru yang terverifikasi dari CI main tetap: verifikasi RBAC dinamis (97/97 statis), P0 security 37/37, Maintenance authorization 33/33.
+8. **`.env.example`**: placeholder AI Studio (`GEMINI_API_KEY`, `APP_URL`) tidak dipakai di kode server maupun frontend. Pembersihan berkas env dihambat oleh guard sandbox anti-berkas-sensitif — **langkah manual tersisa**: hapus kedua baris placeholder dan tambahkan catatan "PGPASSWORD wajib diisi".
+
+### Perubahan commit
+- `docker-compose.yml`: fail-fast password, healthcheck database + kondisi `service_healthy`, `npm install --include=dev`, komentar penjelas.
+
+### Yang benar-benar dijalankan ulang (sandbox)
+- `npm run lint` PASS (exit 0); `npm run build` PASS (exit 0); `node scripts/menu-connectivity-verify.mjs` **23/23 PASS** — server `dist/server.cjs` dibangun lalu diuji HTTP live per titik menu (HTTP 200 + tipe data respons), bukan hitung statis. Tes ini yang paling dekat dengan klaim "tes menu"; **skrip `test-all-menus-9-roles.mjs` sekalipun 222 assertion tidak pernah ada di repo**.
+- `docker compose config` **tidak dijalankan**: CLI docker tidak tersedia di sandbox. Validasi compose harus dilakukan di komputer host dengan Docker.
+
+### Hasil CI PR
+- PR terbuka (`MERGEABLE`); CI `verify` **PASS**: run 39711620330 (±7m22s, head `b6880f0`), run 39712388544 (±3m31s, head `a442fd8`), run 39712968118 (±7m22s, head `b7793af`) — lint, build, foundation checks, P0 HTTP, dan maintenance authorization semuanya sukses.
+
+### Tidak dilakukan (disengaja)
+- Tidak membuat commit duplikat atas konteks Antigravity; tidak mengubah main; tidak merge PR apa pun; tidak deploy ke produksi; tidak mengulang 222 tes; tidak mengubah file env aktual.
+
+## [2026-10-22] — Finalisasi UAT-readiness: Rangkuman Pengujian Lengkap di PR #11
+
+### Kondisi awal
+- `main` @ `e35cdf4`; PR #11 tetap `OPEN`/`MERGEABLE`, kini 9 commit — termasuk 3 commit lanjutan dari operator: pembersihan placeholder env example, langkah CI `docker compose config --quiet` (nilai dummy), dan laporan `docs/ops/DEPLOYMENT-VALIDATION-FOLLOWUP-2026-10-22.md`. Tidak ada duplikasi PR baru.
+
+### Yang dijalankan (HEAD `af956f8`, semua exit 0)
+- Lint PASS; build produksi PASS (`dist/server.cjs`).
+- Verifikasi estatik + HTTP live: RBAC foundation 97/97, P0 security 37/37, maintenance authz 33/33, loan authz 37/37, meeting-room 18/18, org-model 14/14, T2B1/2/3 18+22+26.
+- Konektivitas menu 23/23 PASS: login admin nyata (`/api/auth/login`), token Bearer, cek HTTP 200 + tipe data per titik menu — alur login/session/otorisasi dasar terbukti di level sandbox.
+- `docker compose config` divalidasi sebagai PASS di CI (slot Docker sandbox tidak tersedia); PostgreSQL live integration dan UAT pengguna tetap BELUM dibuktikan.
+
+### Keputusan
+- Tidak ada blocker kode baru; tidak ada perubahan konfigurasi tambahan — semua temuan startup sudah ditangani commit sebelumnya di PR ini (`npm install --include=dev`, fail-fast sandi, healthcheck `pg_isready`, `service_healthy`).
+- Status: **siap diajukan UAT** (bukan siap produksi) — sisa verifikasi: PG live, UAT end-to-end, staging deploy/rollback, backup/restore.
+
 ## [2026-10-21] — Finalisasi Stage 13F: Maintenance Authorization merged
 
 ### Hasil akhir terverifikasi
