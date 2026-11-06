@@ -107,6 +107,7 @@ export default function App() {
   // No default authenticated user: signed-out visitors get null until login
   // succeeds (prevents ghost sessions appearing after logout).
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [selectedLoginEmail, setSelectedLoginEmail] = useState<string>('');
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [meetingCategoryFilter, setMeetingCategoryFilter] = useState<'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities' | 'high_priority'>('all');
   // Default to 'portal' to show working application immediately
@@ -622,12 +623,12 @@ export default function App() {
         )}
         <LandingPage
           onOpenLogin={() => setViewMode('login')}
-          onQuickLogin={async (u) => {
-            // Wait for handleSelectUser to finish (it sets currentUser after
-            // switch-role succeeds) BEFORE entering portal. This prevents the
-            // "Memulihkan sesi…" deadlock: viewMode 'portal' + currentUser null.
-            await handleSelectUser(u);
-            setViewMode('portal');
+          onQuickLogin={(u) => {
+            // Demo-role selection is only a shortcut to the login form.
+            // Never call switch-role before authentication or enter the portal
+            // unless the server has authenticated the user.
+            setSelectedLoginEmail(u.email || '');
+            setViewMode('login');
           }}
           demoUsers={allUsers}
         />
