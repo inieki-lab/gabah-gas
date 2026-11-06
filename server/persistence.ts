@@ -580,34 +580,30 @@ async function persistPostgresState(): Promise<void> {
     [JSON.stringify(payload)],
   );
   await backfillNormalizedTables();
-  await backfillDynamicRbacUserRoles();
 }
 
-async function backfillDynamicRbacUserRoles(): Promise<void> {
-  // Do not wipe assignments if the in-memory user store is unexpectedly empty.
+async function bootstrapDynamicRbacUserRoles(): Promise<void> {
+  // ONE-TIME bootstrap (choice B: multi-role). Called exactly once at
+  // initializePersistence() after ensureNormalizedSchema(). Never called from
+  // persistPostgresState(), so a durable multi-role assignment cannot be
+  // silently deleted by the recurring compatibility bridge.
+  //
+  // Only valid rows are kept: assignments for users no longer in `users` are
+  // removed, and a canonical role row is inserted only where missing. Every
+  // other dynamic assignment (custom roles, multi-role) is left untouched.
   const userIds = db.users.map(user => String(user.id));
   if (userIds.length === 0) return;
 
-  // Remove assignments for deleted application users. This prevents a deleted
-  // Superadmin's role assignment from being inherited if an ID is reused later.
+  // Drop assignments for deleted application users. Reuse of a deleted user's
+  // ID cannot resurrect a stale role assignment.
   await pool.query(
     'DELETE FROM gabah_user_roles WHERE NOT (user_id = ANY($1::text[]))',
     [userIds],
   );
 
-  // Reconcile only the nine legacy role assignments. Custom dynamic roles are
-  // deliberately untouched by this compatibility bridge.
-  await pool.query(
-    "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
-    "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
-    "AND assigned_role.role_key IN ('superadmin','it','ga','sekretaris_direksi','humas','supply_chain','pibc','karyawan','auditor') " +
-    "AND assigned_role.role_key IS DISTINCT FROM CASE u.role " +
-    "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
-    "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
-    "WHEN 'Supply Chain' THEN 'supply_chain' WHEN 'PIBC' THEN 'pibc' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE NULL END",
-    [userIds],
-  );
+  // Idempotent canonical backfill: insert the role implied by `users.role`
+  // only where it is missing. No deletion of existing rows, so multi-role
+  // canonical assignments survive this bootstrap.
   await pool.query(
     "INSERT INTO gabah_user_roles (user_id, role_id) " +
     "SELECT u.id::text, r.id FROM users u " +
@@ -670,6 +666,10 @@ export async function initializePersistence(): Promise<void> {
       backfillAssetLocations('postgresql');
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
+      // ONE-TIME RBAC bootstrap (choice B: multi-role). Runs once after the
+      // normalized schema is ready and once per process (success branch returns);
+      // never run on every persistence cycle. See bootstrapDynamicRbacUserRoles().
+      await bootstrapDynamicRbacUserRoles();
       await persistPostgresState();
       await backfillNormalizedTables();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);

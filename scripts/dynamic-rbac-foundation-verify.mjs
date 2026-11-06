@@ -81,8 +81,8 @@ const checks = [
   ['deleted users lose stale role assignments', /DELETE FROM gabah_user_roles WHERE NOT \(user_id = ANY\(\$1::text\[\]\)\)/i.test(persistence)],
   ['Superadmin authorization uses active database role assignment', /isRbacSuperadmin\(actor\.id\)/i.test(server) && /export function isRbacSuperadmin/i.test(policy) && /policy\.isSuperadmin/i.test(policy)],
   ['policy cache loads roles, permissions, and scopes from PostgreSQL', /gabah_user_roles/i.test(policy) && /gabah_role_permissions/i.test(policy) && /gabah_role_division_scopes/i.test(policy) && /refreshRbacPolicy/i.test(server)],
-  ['fresh database backfills role assignments after normalized users exist', /backfillNormalizedTables\(\);\s*await backfillDynamicRbacUserRoles\(\);/i.test(persistence)],
-  ['legacy backfill reconciles stale canonical roles without deleting custom roles', /DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role/i.test(persistence) && /assigned_role\.role_key IN \('superadmin','it','ga','sekretaris_direksi','humas','supply_chain','pibc','karyawan','auditor'\)/i.test(persistence)],
+  ['fresh database backfills role assignments after normalized users exist', persistence.includes('backfillNormalizedTables()') && persistence.includes('await bootstrapDynamicRbacUserRoles();')],
+  ['legacy bootstrap reconciles canonical roles without deleting custom roles', persistence.includes('ON CONFLICT (user_id, role_id) DO NOTHING') && !persistence.includes('DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role') && persistence.includes('bootstrapDynamicRbacUserRoles();')],
   ['RBAC policy refreshes after permission and scope changes', /await refreshRbacPolicy\(\);\s*GabahDomainService\.recordAudit\('RBAC_PERMISSIONS_UPDATED'/i.test(server) && /await refreshRbacPolicy\(\);\s*GabahDomainService\.recordAudit\('RBAC_SCOPES_UPDATED'/i.test(server)],
   ['user role assignment endpoint exists for Superadmin', /app\.put\('\/api\/admin\/rbac\/users\/:id\/roles'/i.test(server)],
   ['user role assignment is guarded by the stable Superadmin policy', /app\.put\('\/api\/admin\/rbac\/users\/:id\/roles'[\s\S]{0,200}requireRbacSuperadmin\(req, res\)/i.test(server)],
@@ -126,6 +126,7 @@ const checks = [
   ['maintenance create/update gates dynamic permission while preserving file-store allowlist', (() => { const createRoute = server.slice(server.indexOf("app.post('/api/maintenances'"), server.indexOf("app.patch('/api/maintenances/:id'")); const patchRoute = server.slice(server.indexOf("app.patch('/api/maintenances/:id'"), server.indexOf("app.get('/api/vendors'")); return createRoute.includes("requireRbacPermission(req, res, 'maintenances.create')") && createRoute.includes("!['Admin GABAH', 'IT', 'GA'].includes(actor.role)") && patchRoute.includes("requireRbacPermission(req, res, 'maintenances.update')") && patchRoute.includes("!['Admin GABAH', 'IT', 'GA'].includes(actor.role)"); })()],
   ['maintenance division authority mirrors asset write authority via all/division scopes', server.includes("hasDynamicDivisionAuthority") && server.split('hasDynamicDivisionAuthority').length >= 7],
   ['dynamic read scopes are reusable via one Stage 11 asset matcher', domainServices.includes('export function assetVisibleUnderDynamicScopes') && domainServices.includes('export function filterMaintenanceSchedulesByDynamicScopes')],
+  ['backfill is one-time bootstrap: no recurring canonical delete in persistPostgresState', !persistence.includes('await backfillDynamicRbacUserRoles();') && persistence.includes('bootstrapDynamicRbacUserRoles();')],
 ];
 
 let failed = 0;

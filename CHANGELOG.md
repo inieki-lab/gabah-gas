@@ -1,3 +1,15 @@
+## [2026-11-06] — Autonom: Phase 1 RBAC konsistensi (backfill multi-role)
+
+### 1. Backfill durabilitas (temuan 1: assignment multi-role hilang)
+- Kebijakan: multi-role aktif (`gabah_user_roles` otoritatif). Legacy `users.role` dipetakan sekali pada bootstrap, bukan sinkronisasi berulang.
+- Perubahan: `backfillDynamicRbacUserRoles()` dinonaktifkan dari siklus persistiv biasa. `persistPostgresState()` tidak memanggilnya. Ada satu kali bootstrap di `initializePersistence()` setelah skema PG siap.
+- Catatan: keputusan B (multi-role) eksplisit dan terdokumentasi; dapat ditinjau ulang.
+
+### 2. Cek verifikasi baru
+- `scripts/dynamic-rbac-foundation-verify.mjs` dapatkan cek ke reliability backfill (satu kali bootstrap, tanpa hapus kanonik berulang).
+
+---
+
 ## [2026-10-21] — Finalisasi Stage 13F: Maintenance Authorization merged
 
 ### Hasil akhir terverifikasi
