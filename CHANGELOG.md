@@ -1007,3 +1007,10 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Validasi file yang ketat mencegah upload file berbahaya
 
 ## [2026-10-14] — Perbaikan Menu RBAC Sidebar
+### 3. Deadlock cepat login (temuan 4 — Sesi restore)
+- `onQuickLogin` (LandingPage) memanggil `handleSelectUser(u)` (async) lalu
+  `setViewMode('portal')` dalam tick yang sama. `currentUser` tetap null, jadi
+  render jatuh ke *"Memulihkan sesi…"* dan macet.
+- Perbaikan: `await handleSelectUser(u)` sebelum `setViewMode('portal')`.
+- `initAuth` sudah dilindungi timeout 10 detik & guard login page.
+- `npm run lint` PASS.
