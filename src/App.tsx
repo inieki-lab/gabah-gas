@@ -622,8 +622,11 @@ export default function App() {
         )}
         <LandingPage
           onOpenLogin={() => setViewMode('login')}
-          onQuickLogin={(u) => {
-            handleSelectUser(u);
+          onQuickLogin={async (u) => {
+            // Wait for handleSelectUser to finish (it sets currentUser after
+            // switch-role succeeds) BEFORE entering portal. This prevents the
+            // "Memulihkan sesi…" deadlock: viewMode 'portal' + currentUser null.
+            await handleSelectUser(u);
             setViewMode('portal');
           }}
           demoUsers={allUsers}
