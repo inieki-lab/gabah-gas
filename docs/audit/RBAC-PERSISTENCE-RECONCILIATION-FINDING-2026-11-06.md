@@ -59,9 +59,28 @@ A user switching from a role that can open a page (for example Reports) to a rol
 - Test switching between every pair of representative roles while positioned on a restricted tab.
 - Do not treat this frontend guard as a replacement for server-side authorization.
 
+
+## Finding 3 — Medium/High priority: authenticated user directory is broader than necessary
+
+Repository evidence:
+
+1. `GET /api/users` returns `db.users.map(u => sanitizeUser(u))`.
+2. The route has no explicit role/permission check in its handler; it relies on the general authentication middleware.
+3. `sanitizeUser()` removes password hashes, salts, and temporary passwords, then returns the remaining user object unchanged.
+4. The returned user object therefore includes directory/profile attributes such as email, phone, division, department, and organizational attributes where populated.
+
+Any authenticated account can therefore request the full user directory, although ordinary staff features generally need only the current user's own profile and perhaps a narrowly scoped directory. This is not an unauthenticated exposure, and credential fields are stripped, but the authorization/data-minimization boundary is too broad.
+
+### Required correction
+
+- Define separate API contracts: current-user profile, limited employee directory (only if business workflows require it), and Superadmin user administration.
+- Restrict full user inventory and sensitive profile fields to an explicit permission (e.g. `users.read` / `users.manage`) enforced server-side.
+- Return only the fields each consumer actually needs; do not expose phone or organizational metadata by default.
+- Add tests for ordinary authenticated staff, Auditor, operational roles, and Superadmin.
+
 ## Status
 
-- Both findings confirmed by repository code inspection.
+- All three findings confirmed by repository code inspection.
 - No live database mutation performed.
 - No production role assignment changed.
 - No runtime/browser test performed in this review.
