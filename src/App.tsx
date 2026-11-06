@@ -24,6 +24,37 @@ import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
+
+/** Safe landing tab for a role, used when identity/role changes or a tab is denied. */
+export function getSafeLandingTab(role: UserRole): NavTab {
+  // Humas & Protokoler dilarang membuka Aset / Aset Saya; redirect ke Ruang Rapat.
+  if (role === 'Humas') return 'meeting_rooms';
+  // Seluruh role lain (termasuk Admin GABAH) beranda di dashboard.
+  return 'dashboard';
+}
+
+/**
+ * Fail-closed tab-access policy: the active tab must appear in the role's
+ * Sidebar menu (mirroring the menu allowlist). This is frontend state guard
+ * ONLY — backend endpoint checks remain the final authorization.
+ */
+export function canOpenTab(role: UserRole, tab: NavTab): boolean {
+  const allowed: Record<NavTab, UserRole[]> = {
+    dashboard: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+    my_assets: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+    meeting_rooms: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+    assets: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Auditor'],
+    maintenance: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+    loans: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+    tickets: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+    licenses: ['Admin GABAH', 'IT', 'Auditor'],
+    vendors: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Auditor'],
+    knowledge: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
+    reports: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
+    contracts: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Auditor'],
+  };
+  return (allowed[tab] || []).includes(role);
+}
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
 import { MaintenanceView } from './components/views/MaintenanceView';
@@ -228,6 +259,7 @@ export default function App() {
       }
       setCurrentUser(targetUser);
       showToast(`Berpindah akun aktif: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
+      setCurrentTab(getSafeLandingTab(targetUser.role));
       await refreshData();
     } catch (err: any) {
       showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
@@ -244,16 +276,20 @@ export default function App() {
       }
       setCurrentUser(targetUser);
       showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
+      setCurrentTab(getSafeLandingTab(targetUser.role));
       await refreshData();
     } catch (err: any) {
       showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
     }
   };
 
-  // Guard Humas: Sesuai instruksi user, Humas tidak perlu bisa melihat aset
+  // Central tab-access guard (CR-03): fail-closed. The active tab must be
+  // allowed for the current role (mirrors the Sidebar menu allowlist).
+  // On a denied tab, redirect to the role's safe landing tab.
   useEffect(() => {
-    if (currentUser?.role === 'Humas' && (currentTab === 'my_assets' || currentTab === 'assets')) {
-      setCurrentTab('meeting_rooms');
+    if (!currentUser) return;
+    if (!canOpenTab(currentUser.role, currentTab)) {
+      setCurrentTab(getSafeLandingTab(currentUser.role));
     }
   }, [currentUser?.role, currentTab]);
 
