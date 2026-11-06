@@ -24,14 +24,16 @@ interface LoginPageProps {
   onLoginSuccess: (user: UserProfile) => void;
   onBackToLanding: () => void;
   availableUsers?: UserProfile[];
+  initialEmail?: string;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
   onLoginSuccess,
   onBackToLanding,
   availableUsers = INITIAL_USERS,
+  initialEmail = '',
 }) => {
-  const [emailInput, setEmailInput] = useState<string>('');
+  const [emailInput, setEmailInput] = useState<string>(initialEmail);
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(true);
