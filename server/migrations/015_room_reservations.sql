@@ -11,7 +11,9 @@
 CREATE TABLE IF NOT EXISTS room_reservations (
   id VARCHAR(64) PRIMARY KEY,
   reservation_number VARCHAR(100) NOT NULL UNIQUE,
-  room_id VARCHAR(64) NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  -- Room master is still stored in the application datastore, not a PostgreSQL table.
+  -- Keep the room identifier as an application-level reference until rooms are normalized.
+  room_id VARCHAR(64) NOT NULL,
   room_name VARCHAR(255) NOT NULL,
   room_code VARCHAR(50),
   room_location VARCHAR(255),
@@ -105,12 +107,4 @@ CREATE TRIGGER trg_prevent_double_booking
   BEFORE INSERT OR UPDATE ON room_reservations
   FOR EACH ROW EXECUTE FUNCTION prevent_double_booking();
 
--- 5. Record migration
-CREATE TABLE IF NOT EXISTS schema_migrations (
-  version VARCHAR(16) PRIMARY KEY,
-  name VARCHAR(120) NOT NULL,
-  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-INSERT INTO schema_migrations (version, name, applied_at)
-VALUES ('010', 'room_reservations', NOW())
-ON CONFLICT (version) DO NOTHING;
+-- Migration version is recorded centrally by server/persistence.ts using filename prefix 015.
