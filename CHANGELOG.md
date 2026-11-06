@@ -8,6 +8,19 @@
 ### 2. Cek verifikasi baru
 - `scripts/dynamic-rbac-foundation-verify.mjs` dapatkan cek ke reliability backfill (satu kali bootstrap, tanpa hapus kanonik berulang).
 
+## [2026-11-06] — Autonom: RBAC scope fix & central tab/route guard
+
+### 1. Daftar pengguna di-private ke Superadmin (temuan 3)
+- `GET /api/users` kini memerlukan `isSuperadminActor`; role lain menerima 403.
+- Skrip baru `scripts/rbac-scoping-verify.mjs`: 5 cek HTTP (server up, admin login, staff login, admin mendapat directory, staff 403).
+- `npm run lint` 0 error; `npm run build` PASS.
+
+### 2. Tab/route guard (temuan 2)
+- Dua fungsi bantu `getSafeLandingTab()` + `canOpenTab()` (fail-closed, mencerminkan menu Sidebar).
+- Setiap alih role mereset `currentTab` ke laman aman peran.
+- Efek `useEffect` mengarahkan tab yang tidak diizinkan peran ke laman aman.
+- `AdministrationModal` belum terhubung ke `getRbacUserAssignments()`/`setRbacUserRoles()` (lanjut: wiring UI).
+
 ---
 
 ## [2026-10-21] — Finalisasi Stage 13F: Maintenance Authorization merged
