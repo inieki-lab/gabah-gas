@@ -359,7 +359,11 @@ async function startServer() {
 
   // Auth / Users
   app.get('/api/users', (req, res) => {
-    res.json({ success: true, data: db.users.map(u => sanitizeUser(u)) });
+    const actor = actorFor(req);
+    if (!actor || !isSuperadminActor(actor)) {
+      return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang melihat daftar pengguna.' });
+    }
+    res.json({ success: true, data: db.users.map((u) => sanitizeUser(u)) });
   });
 
   app.post('/api/users', async (req, res) => {
