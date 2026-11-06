@@ -128,3 +128,13 @@ Koreksi yang dibuat pada branch `fix/contract-migration-fresh-db`:
 Catatan tambahan: file bernama `015_room_reservations.sql` merekam versi `010` di `schema_migrations`. Perbedaan nama file dan nomor versi perlu ditelusuri pada migration runner dan diseragamkan hanya setelah dipastikan tidak memicu re-apply pada database yang sudah berjalan.
 
 **Status:** PR #14 masih open; tidak merge. Perbaikan kedua blocker masih menunggu CI fresh PostgreSQL terbaru.
+
+
+## 11. Update tindak lanjut migration reservasi
+
+Workflow #150 pada commit `29656a5` selesai dengan status FAIL. Setelah seed divisi diperbaiki, error berikutnya adalah `relation "rooms" does not exist` pada `015_room_reservations.sql` karena tabel `rooms` belum dinormalisasi ke PostgreSQL.
+
+Tindak lanjut pada branch `fix/contract-migration-fresh-db`:
+- `22434a1`: hapus FK `room_id -> rooms(id)` yang mengacu pada tabel yang belum ada; `room_id` tetap NOT NULL dan referensi divalidasi pada level aplikasi.
+- `6b5303d`: hapus blok pencatatan migration internal yang salah menulis versi `010`; runner pusat membaca prefix file `015` dan mencatat versi yang benar.
+- Perubahan tersebut belum memiliki hasil CI terkonfirmasi pada saat laporan ini diperbarui. PR #14 tetap open dan tidak boleh merge sebelum workflow pada HEAD terbaru PASS.
