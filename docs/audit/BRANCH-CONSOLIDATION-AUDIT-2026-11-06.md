@@ -91,3 +91,18 @@ Perbandingan `work/stage-13f-reconciled-main` dengan `work/stage-13f-maintenance
 - Patch PR #11, #13, #14, #15, dan #3 diperiksa.
 - Audit ini tidak menjalankan build, lint, CI, browser, PostgreSQL, atau UAT. Tidak ada klaim bahwa tes lulus.
 - Status merge/CI terkini untuk semua PR harus diperiksa kembali sebelum tindakan integrasi.
+
+
+## 8. Update CI setelah pemeriksaan run GitHub Actions
+
+Pemeriksaan workflow run pada HEAD PR:
+- PR #13 (`905aa13`): CI **FAIL**. Lint, Dynamic RBAC contract checks, dan production build PASS; PostgreSQL 17 persistence/reminder integration FAIL; langkah sesudahnya skipped.
+- PR #14 (`7f2675c`): CI **FAIL** pada langkah PostgreSQL 17 persistence/reminder integration yang sama; lint, static RBAC checks, dan build PASS.
+- PR #15 (`861a07c`): CI **PASS** untuk lint, Dynamic RBAC contract checks, build, P0 HTTP verification, dan maintenance authorization.
+
+Log kegagalan PR #14 memperlihatkan `org_units_division_code_fkey` gagal karena `division_code='Umum'` belum ada pada `divisions`. Migration `001` hanya seed `SC`, `PIBC`, `IT`, dan `GA`, sedangkan migration `006` memasukkan unit `Umum` dan `Audit`. Ini adalah blocker migration organisasi yang terpisah dari perbaikan contract migration `004`.
+
+Tindakan koreksi:
+- Commit `29656a5` pada branch PR #14 menambahkan seed idempotent untuk kode divisi `Umum` dan `Audit` di migration `006`, sebelum insert `org_units`.
+- Commit tersebut sudah tersimpan di branch PR #14. Pada saat dokumen ini diperbarui, workflow baru untuk commit tersebut belum muncul pada endpoint workflow-runs; perbaikan **belum dinyatakan terverifikasi**.
+- Jangan merge PR #14 sebelum workflow terbaru pada HEAD `29656a5` selesai PASS dan migration fresh database terbukti berjalan sampai selesai.
