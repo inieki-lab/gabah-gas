@@ -627,6 +627,61 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
+  // User Role Assignments (Dynamic RBAC assignment API) — persisted to PostgreSQL.
+  const [userAssignments, setUserAssignments] = useState<Record<string, number[]>>({});
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [assignmentsSaving, setAssignmentsSaving] = useState(false);
+
+  const refreshUserAssignments = async () => {
+    setAssignmentsLoading(true);
+    try {
+      const assignments = await gabahApi.getRbacUserAssignments();
+      const map: Record<string, number[]> = {};
+      for (const a of Array.isArray(assignments) ? assignments : []) {
+        map[String(a.user_id)] = Array.isArray(a.role_ids) ? a.role_ids : [];
+      }
+      setUserAssignments(map);
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal memuat daftar assignment role.', 'warning');
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  };
+
+  const handleToggleUserAssignment = (userId: string, roleId: number, checked: boolean) => {
+    setUserAssignments(prev => {
+      const next = { ...prev };
+      const currentRoles = next[userId] || [];
+      if (checked && !currentRoles.includes(roleId)) {
+        next[userId] = [...currentRoles, roleId];
+      } else if (!checked) {
+        next[userId] = currentRoles.filter((r: number) => r !== roleId);
+      }
+      return next;
+    });
+  };
+
+  const handleSaveUserAssignments = async () => {
+    const entries = Object.entries(userAssignments) as [string, number[]][];
+    if (entries.length === 0) return;
+    setAssignmentsSaving(true);
+    try {
+      for (const [userId, roleIds] of entries) {
+        await gabahApi.setRbacUserRoles(userId, roleIds);
+      }
+      await refreshUserAssignments();
+      showToast('Daftar assignment role berhasil disimpan.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal menyimpan assignment role.', 'warning');
+    } finally {
+      setAssignmentsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'roles' && isCurrentUserAdmin) void refreshUserAssignments();
+  }, [activeSection, isCurrentUserAdmin]);
+
   // Organization State
   // ORG-MODEL: master Jabatan/Level, Unit, dan Kantor/Lokasi (terpisah).
   const [jobLevels, setJobLevels] = useState<OrgJobLevel[]>([]);
