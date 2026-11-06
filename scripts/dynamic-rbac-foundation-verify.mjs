@@ -22,6 +22,7 @@ const domainServices = fs.readFileSync('server/services.ts', 'utf8');
 const runtimeHardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
 const frontend = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
 const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
+const sidebar = fs.readFileSync('src/components/Sidebar.tsx', 'utf8');
 const checks = [
   ['roles table is additive/idempotent', /CREATE TABLE IF NOT EXISTS gabah_roles/i.test(migration)],
   ['permission catalogue exists', /CREATE TABLE IF NOT EXISTS gabah_permissions/i.test(migration)],
@@ -98,6 +99,8 @@ const checks = [
   ['frontend API client exposes the read-only user assignment inventory', /getRbacUserAssignments/i.test(apiClient) && /\/api\/admin\/rbac\/user-assignments/i.test(apiClient)],
   ['frontend API client exposes Dynamic RBAC operations', /getRbacRoles/i.test(apiClient) && /createRbacRole/i.test(apiClient) && /deleteRbacRole/i.test(apiClient) && /setRbacRolePermissions/i.test(apiClient) && /setRbacRoleScopes/i.test(apiClient)],
   ['legacy browser-only role matrix is hidden from the live roles screen', /\{false && activeSection === 'roles' && \(/i.test(frontend)],
+  ['sidebar never defaults a missing role identity to Admin GABAH', !/currentUserRole\s*\|\|\s*userRole\s*\|\|\s*'Admin GABAH'/.test(sidebar)],
+  ['sidebar hides role-filtered menu items when role identity is missing', /items:\s*section\.items\.filter\(item\s*=>\s*Boolean\(activeRole\s*&&\s*item\.roles\.includes\(activeRole\)\)\)/.test(sidebar)],
   ['legacy backfill does not assign permissions before authorization mapping', !/INSERT INTO gabah_role_permissions/i.test(backfill)],
   ['knowledge create/update permission seed is additive and idempotent', knowledgePermissionSeed.includes('INSERT INTO gabah_role_permissions') && knowledgePermissionSeed.includes('ON CONFLICT (role_id, permission_key) DO NOTHING')],
   ['knowledge seed grants only create/update to superadmin, IT, and GA', knowledgePermissionSeed.includes("'knowledge.create'") && knowledgePermissionSeed.includes("'knowledge.update'") && knowledgePermissionSeed.includes("r.role_key IN ('superadmin', 'it', 'ga')")],
