@@ -104,5 +104,13 @@ Log kegagalan PR #14 memperlihatkan `org_units_division_code_fkey` gagal karena 
 
 Tindakan koreksi:
 - Commit `29656a5` pada branch PR #14 menambahkan seed idempotent untuk kode divisi `Umum` dan `Audit` di migration `006`, sebelum insert `org_units`.
-- Commit tersebut sudah tersimpan di branch PR #14. Pada saat dokumen ini diperbarui, workflow baru untuk commit tersebut belum muncul pada endpoint workflow-runs; perbaikan **belum dinyatakan terverifikasi**.
+- Commit tersebut sudah tersimpan di branch PR #14. Workflow run #150 (ID `42143184393`) untuk HEAD `29656a5` sudah dimulai; pada pemeriksaan terakhir masih berjalan di tahap install dependency. Perbaikan **belum dinyatakan terverifikasi**.
 - Jangan merge PR #14 sebelum workflow terbaru pada HEAD `29656a5` selesai PASS dan migration fresh database terbukti berjalan sampai selesai.
+
+
+## 9. Perubahan lanjutan pada branch audit
+
+- Commit `701ac75` menerapkan fail-closed Sidebar pada `fix/phase-1-user-role-audit`.
+- Commit `0a28c6b` menambahkan dua static checks untuk mencegah fallback Admin kembali.
+- Dokumen `ROLE-NAVIGATION-UI-AUDIT-2026-11-06.md` mencatat matriks menu, gap assignment UI, dan kebutuhan route guard.
+- Branch audit setelah pembaruan terakhir: 17 commits ahead, 0 behind dari `main`. Tidak ada merge ke `main`.
