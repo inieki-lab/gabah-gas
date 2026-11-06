@@ -11,7 +11,9 @@
 CREATE TABLE IF NOT EXISTS room_reservations (
   id VARCHAR(64) PRIMARY KEY,
   reservation_number VARCHAR(100) NOT NULL UNIQUE,
-  room_id VARCHAR(64) NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  -- Room master is still stored in the application datastore, not a PostgreSQL table.
+  -- Keep the room identifier as an application-level reference until rooms are normalized.
+  room_id VARCHAR(64) NOT NULL,
   room_name VARCHAR(255) NOT NULL,
   room_code VARCHAR(50),
   room_location VARCHAR(255),
