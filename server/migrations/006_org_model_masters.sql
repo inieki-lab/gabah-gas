@@ -32,6 +32,14 @@ INSERT INTO org_job_levels (code, label, order_num, is_active) VALUES
   ('STAF',    'Staf', 5, TRUE)
 ON CONFLICT (code) DO NOTHING;
 
+-- Unit organisasi memakai kode divisi Umum dan Audit. Migration 001 hanya
+-- men-seed SC/PIBC/IT/GA; pastikan seluruh kode FK tersedia sebelum seed unit.
+-- Idempotent untuk database fresh maupun database lama yang belum memiliki kode ini.
+INSERT INTO divisions (code, name) VALUES
+  ('Umum', 'Keuangan & Umum'),
+  ('Audit', 'Satuan Pengawas Internal')
+ON CONFLICT (code) DO NOTHING;
+
 -- Master Unit/Bagian (terpisah dari jabatan & lokasi)
 CREATE TABLE IF NOT EXISTS org_units (
   id            VARCHAR(64) PRIMARY KEY,
