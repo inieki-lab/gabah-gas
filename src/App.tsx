@@ -76,6 +76,7 @@ export default function App() {
   // No default authenticated user: signed-out visitors get null until login
   // succeeds (prevents ghost sessions appearing after logout).
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [loginEmail, setLoginEmail] = useState('');
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [meetingCategoryFilter, setMeetingCategoryFilter] = useState<'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities' | 'high_priority'>('all');
   // Default to 'portal' to show working application immediately
@@ -562,7 +563,9 @@ export default function App() {
   };
 
   const pendingLoans = loans.filter(l => l.status === 'pending');
-  const visibleTickets = tickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
+  const visibleTickets = currentUser
+    ? tickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser))
+    : [];
   const urgentTickets = visibleTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
   const openTickets = visibleTickets.filter(t => t.status === 'open' || t.status === 'in_progress');
   const pendingReservations = roomReservations.filter(r => r.status === 'pending_approval');
@@ -587,8 +590,10 @@ export default function App() {
         <LandingPage
           onOpenLogin={() => setViewMode('login')}
           onQuickLogin={(u) => {
-            handleSelectUser(u);
-            setViewMode('portal');
+            // A demo-role button must never call the authenticated role-switch API
+            // before login. Prefill the selected account and require its password.
+            setLoginEmail(u.email || '');
+            setViewMode('login');
           }}
           demoUsers={allUsers}
         />
@@ -615,6 +620,7 @@ export default function App() {
         )}
         <LoginPage
           availableUsers={allUsers}
+          initialEmail={loginEmail}
           onLoginSuccess={(u) => {
             setCurrentUser(u);
             setViewMode('portal');
