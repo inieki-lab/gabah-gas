@@ -114,3 +114,17 @@ Tindakan koreksi:
 - Commit `0a28c6b` menambahkan dua static checks untuk mencegah fallback Admin kembali.
 - Dokumen `ROLE-NAVIGATION-UI-AUDIT-2026-11-06.md` mencatat matriks menu, gap assignment UI, dan kebutuhan route guard.
 - Branch audit setelah pembaruan terakhir: 17 commits ahead, 0 behind dari `main`. Tidak ada merge ke `main`.
+
+
+## 10. Blocker lanjutan PostgreSQL fresh-install: migration reservasi ruangan
+
+Setelah seed `Umum` dan `Audit` ditambahkan (commit `29656a5`), workflow #150 masih gagal pada migration reservasi ruangan. Log PostgreSQL menyatakan `relation "rooms" does not exist`; migration `015_room_reservations.sql` membuat FK `room_reservations.room_id REFERENCES rooms(id)`, sementara tidak ada migration PostgreSQL yang membuat tabel `rooms` (master ruangan masih berada pada application datastore/JSON).
+
+Koreksi yang dibuat pada branch `fix/contract-migration-fresh-db`:
+- Commit `22434a1` menghapus FK ke tabel `rooms` yang belum tersedia, mempertahankan `room_id VARCHAR(64) NOT NULL` sebagai referensi aplikasi, dan menambahkan komentar eksplisit bahwa normalisasi tabel rooms belum dilakukan.
+- Ini menghilangkan ketergantungan migration pada tabel yang tidak ada; integritas referensi room tetap harus divalidasi oleh service/API sampai tabel rooms dinormalisasi.
+- Workflow untuk commit `22434a1` belum muncul pada pemeriksaan terakhir. Belum ada klaim CI PASS.
+
+Catatan tambahan: file bernama `015_room_reservations.sql` merekam versi `010` di `schema_migrations`. Perbedaan nama file dan nomor versi perlu ditelusuri pada migration runner dan diseragamkan hanya setelah dipastikan tidak memicu re-apply pada database yang sudah berjalan.
+
+**Status:** PR #14 masih open; tidak merge. Perbaikan kedua blocker masih menunggu CI fresh PostgreSQL terbaru.
