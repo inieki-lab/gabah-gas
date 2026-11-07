@@ -34,10 +34,10 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
     'loans', 'tickets', 'contracts', 'vendors', 'knowledge', 'reports',
   ],
   'Sekretaris Direksi': [
-    'dashboard', 'meeting_rooms', 'loans', 'knowledge',
+    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
   ],
   Humas: [
-    'dashboard', 'meeting_rooms', 'knowledge',
+    'dashboard', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
   ],
   'Supply Chain': [
     'dashboard', 'my_assets', 'assets', 'maintenance', 'loans',
