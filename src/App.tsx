@@ -25,6 +25,7 @@ import { GabahService } from './services/gabahService';
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { isNavTabAllowedForRole } from './navigation/roleNavigation';
+import { filterDashboardAssets, filterDashboardLoans, filterPersonalAssets, filterPersonalLoans, filterMaintenanceForRole, filterContractsForRole } from './dashboard/roleDashboardScope';
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
 import { MaintenanceView } from './components/views/MaintenanceView';
@@ -579,6 +580,23 @@ export default function App() {
   const visibleTickets = currentUser
     ? tickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser))
     : [];
+  const selfServiceRoles: UserRole[] = ['Karyawan', 'Sekretaris Direksi', 'Humas'];
+  const visibleAssets = currentUser
+    ? (selfServiceRoles.includes(currentUser.role)
+        ? filterPersonalAssets(assets, loans, currentUser)
+        : filterDashboardAssets(assets, currentUser.role))
+    : [];
+  const visibleLoans = currentUser
+    ? (selfServiceRoles.includes(currentUser.role)
+        ? filterPersonalLoans(loans, currentUser)
+        : filterDashboardLoans(loans, currentUser.role))
+    : [];
+  const visibleMaintenanceSchedules = currentUser
+    ? filterMaintenanceForRole(maintenanceSchedules, currentUser.role)
+    : [];
+  const visibleContracts = currentUser
+    ? filterContractsForRole(contracts, currentUser)
+    : [];
   const urgentTickets = visibleTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
   const openTickets = visibleTickets.filter(t => t.status === 'open' || t.status === 'in_progress');
   const pendingReservations = roomReservations.filter(r => r.status === 'pending_approval');
@@ -755,9 +773,9 @@ export default function App() {
 
           {activeTab === 'dashboard' && (
             <DashboardView
-              assets={assets}
-              loans={loans}
-              tickets={tickets}
+              assets={visibleAssets}
+              loans={visibleLoans}
+              tickets={visibleTickets}
               currentUser={currentUser}
               auditLogs={auditLogs}
               roomReservations={roomReservations}
@@ -800,7 +818,7 @@ export default function App() {
 
           {activeTab === 'assets' && (
             <AssetsView
-              assets={assets}
+              assets={visibleAssets}
               currentUser={currentUser}
               onSelectAsset={setSelectedAssetForDetail}
               onEditAsset={setSelectedAssetForEdit}
@@ -818,8 +836,8 @@ export default function App() {
 
           {activeTab === 'maintenance' && (
             <MaintenanceView
-              schedules={maintenanceSchedules}
-              assets={assets}
+              schedules={visibleMaintenanceSchedules}
+              assets={visibleAssets}
               currentUser={currentUser}
               onOpenAssetDetail={setSelectedAssetForDetail}
               showToast={showToast}
@@ -850,8 +868,8 @@ export default function App() {
 
           {activeTab === 'loans' && (
             <LoansView
-              loans={loans}
-              assets={assets}
+              loans={visibleLoans}
+              assets={visibleAssets}
               currentUser={currentUser}
               onOpenNewLoanModal={() => setIsCreateLoanModalOpen(true)}
               onApproveLoan={handleApproveLoan}
@@ -864,8 +882,8 @@ export default function App() {
 
           {activeTab === 'tickets' && (
             <TicketsView
-              tickets={tickets}
-              assets={assets}
+              tickets={visibleTickets}
+              assets={visibleAssets}
               currentUser={currentUser}
               onOpenNewTicketModal={handleOpenNewTicketModal}
               onUpdateTicketStatus={handleUpdateTicketStatus}
@@ -874,7 +892,7 @@ export default function App() {
 
           {activeTab === 'licenses' && (
             <LicensesView
-              assets={assets}
+              assets={visibleAssets}
               currentUser={currentUser}
               onSelectAsset={setSelectedAssetForDetail}
               onOpenNewAssetModal={() => setIsCreateAssetModalOpen(true)}
@@ -911,17 +929,17 @@ export default function App() {
 
           {activeTab === 'reports' && (
             <ReportsView
-              assets={assets}
-              loans={loans}
-              tickets={tickets}
+              assets={visibleAssets}
+              loans={visibleLoans}
+              tickets={visibleTickets}
               auditLogs={auditLogs}
-              maintenanceSchedules={maintenanceSchedules}
+              maintenanceSchedules={visibleMaintenanceSchedules}
             />
           )}
 
           {activeTab === 'contracts' && (
             <ContractsView
-              contracts={contracts}
+              contracts={visibleContracts}
               currentUser={currentUser}
               onRefresh={refreshData}
               showToast={showToast}
@@ -979,8 +997,8 @@ export default function App() {
         onClose={() => setSelectedAssetForDetail(null)}
         onOpenQrModal={setSelectedAssetForQr}
         onOpenBastModal={handleGenerateBastForAsset}
-        assetLoans={(loans || []).filter(l => l.asset_id === selectedAssetForDetail?.id)}
-        assetTickets={(tickets || []).filter(t => t.related_asset_id === selectedAssetForDetail?.id)}
+        assetLoans={(visibleLoans || []).filter(l => l.asset_id === selectedAssetForDetail?.id)}
+        assetTickets={(visibleTickets || []).filter(t => t.related_asset_id === selectedAssetForDetail?.id)}
         assetMovements={(movements || []).filter(m => m.asset_id === selectedAssetForDetail?.id)}
         onEditThisAsset={(ast) => {
           setSelectedAssetForEdit(ast);
@@ -994,7 +1012,7 @@ export default function App() {
         }}
         onUpdateAsset={handleUpdateAsset}
         currentUser={currentUser}
-        allAssets={assets}
+        allAssets={visibleAssets}
       />
 
       <EditAssetModal
@@ -1045,7 +1063,7 @@ export default function App() {
       <QRScannerModal
         isOpen={isScannerModalOpen}
         onClose={() => setIsScannerModalOpen(false)}
-        assets={assets}
+        assets={visibleAssets}
         onSelectAsset={(ast) => {
           setSelectedAssetForDetail(ast);
           setIsScannerModalOpen(false);
@@ -1056,7 +1074,7 @@ export default function App() {
         isOpen={!!selectedLoanForBast}
         onClose={() => setSelectedLoanForBast(null)}
         loan={selectedLoanForBast}
-        asset={(assets || []).find(a => a.id === selectedLoanForBast?.asset_id) || null}
+        asset={(visibleAssets || []).find(a => a.id === selectedLoanForBast?.asset_id) || null}
       />
 
       <AdministrationModal
@@ -1096,8 +1114,8 @@ export default function App() {
       <GlobalSearchModal
         isOpen={isGlobalSearchOpen}
         onClose={() => setIsGlobalSearchOpen(false)}
-        assets={isNavTabAllowedForRole(currentUser.role, 'assets') || isNavTabAllowedForRole(currentUser.role, 'my_assets') ? assets : []}
-        loans={isNavTabAllowedForRole(currentUser.role, 'loans') ? loans : []}
+        assets={isNavTabAllowedForRole(currentUser.role, 'assets') || isNavTabAllowedForRole(currentUser.role, 'my_assets') ? visibleAssets : []}
+        loans={isNavTabAllowedForRole(currentUser.role, 'loans') ? visibleLoans : []}
         tickets={isNavTabAllowedForRole(currentUser.role, 'tickets') ? visibleTickets : []}
         onSelectAsset={(ast) => {
           if (!isNavTabAllowedForRole(currentUser.role, 'assets') && !isNavTabAllowedForRole(currentUser.role, 'my_assets')) {
