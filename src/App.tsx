@@ -985,8 +985,8 @@ export default function App() {
       <CreateLoanModal
         isOpen={isCreateLoanModalOpen}
         onClose={() => setIsCreateLoanModalOpen(false)}
-        assets={assets}
-        existingLoans={loans}
+        assets={visibleAssets}
+        existingLoans={visibleLoans}
         currentUser={currentUser}
         preselectedAssetId={selectedAssetForDetail?.id}
         onRequestLoan={handleRequestLoan}
