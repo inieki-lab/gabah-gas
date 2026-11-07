@@ -27,6 +27,12 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: Role navigation policy checks
+        run: npm run test:navigation-policy
+
+      - name: Role dashboard scope checks
+        run: npm run test:dashboard-scope
+
       - name: Production build (frontend + server bundle)
         run: npm run build
 
