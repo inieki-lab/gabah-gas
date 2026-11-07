@@ -17,7 +17,8 @@
     "test:t2b3": "node scripts/t2b3-category-master-verify.mjs",
     "test:dynamic-rbac-foundation": "node scripts/dynamic-rbac-foundation-verify.mjs",
     "test:maintenance-authz": "node scripts/maintenance-authz-verify.mjs",
-    "test:navigation-policy": "tsx scripts/navigation-policy-verify.ts"
+    "test:navigation-policy": "tsx scripts/navigation-policy-verify.ts",
+    "test:dashboard-scope": "tsx scripts/dashboard-scope-verify.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
