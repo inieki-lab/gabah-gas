@@ -90,7 +90,7 @@ const contracts = [
   { id: 'pic-contract', owner_division: 'SC', pic_user_id: 'user-1' },
 ];
 const gaUser = { ...user, role: 'GA' } as UserProfile;
-assert.deepEqual(filterContractsForRole(contracts, gaUser).map(x => x.id), ['ga-contract']);
+assert.deepEqual(filterContractsForRole(contracts, gaUser).map(x => x.id), ['ga-contract', 'pic-contract'], 'division owners and assigned PICs can view their contracts');
 assert.deepEqual(filterContractsForRole(contracts, user).map(x => x.id), ['pic-contract']);
 assert.equal(filterContractsForRole(contracts, { ...user, role: 'Auditor' } as UserProfile).length, contracts.length);
 
