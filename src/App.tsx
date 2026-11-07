@@ -1101,13 +1101,13 @@ export default function App() {
         tickets={visibleTickets}
         onSelectAsset={(ast) => {
           setSelectedAssetForDetail(ast);
-          setCurrentTab('assets');
+          navigateToTab('assets');
         }}
         onSelectLoan={(_loan) => {
-          setCurrentTab('loans');
+          navigateToTab('loans');
         }}
         onSelectTicket={(_ticket) => {
-          setCurrentTab('tickets');
+          navigateToTab('tickets');
         }}
       />
     </div>
