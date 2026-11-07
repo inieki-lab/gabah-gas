@@ -1096,12 +1096,16 @@ export default function App() {
       <GlobalSearchModal
         isOpen={isGlobalSearchOpen}
         onClose={() => setIsGlobalSearchOpen(false)}
-        assets={assets}
-        loans={loans}
-        tickets={visibleTickets}
+        assets={isNavTabAllowedForRole(currentUser.role, 'assets') || isNavTabAllowedForRole(currentUser.role, 'my_assets') ? assets : []}
+        loans={isNavTabAllowedForRole(currentUser.role, 'loans') ? loans : []}
+        tickets={isNavTabAllowedForRole(currentUser.role, 'tickets') ? visibleTickets : []}
         onSelectAsset={(ast) => {
+          if (!isNavTabAllowedForRole(currentUser.role, 'assets') && !isNavTabAllowedForRole(currentUser.role, 'my_assets')) {
+            showToast('Akses pencarian aset tidak tersedia untuk peran Anda.', 'warning');
+            return;
+          }
           setSelectedAssetForDetail(ast);
-          navigateToTab('assets');
+          navigateToTab(isNavTabAllowedForRole(currentUser.role, 'assets') ? 'assets' : 'my_assets');
         }}
         onSelectLoan={(_loan) => {
           navigateToTab('loans');
