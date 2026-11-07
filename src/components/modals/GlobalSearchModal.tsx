@@ -147,7 +147,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
             <div className="py-10 text-center text-slate-400 space-y-2">
               <Search className="w-8 h-8 mx-auto text-slate-300" />
               <p className="text-xs font-medium text-slate-500">
-                Ketikkan kata kunci untuk mencari seluruh data sistem GABAH
+                Ketikkan kata kunci untuk mencari data yang tersedia bagi akun Anda
               </p>
               <div className="flex flex-wrap justify-center gap-2 pt-2">
                 {['ThinkPad', 'Avanza', 'TKT-2026', 'IT-HLT', 'Dewi Lestari'].map((tag) => (
