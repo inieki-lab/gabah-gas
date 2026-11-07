@@ -788,8 +788,8 @@ export default function App() {
 
           {activeTab === 'my_assets' && (
             <MyAssetsView
-              assets={assets}
-              loans={loans}
+              assets={visibleAssets}
+              loans={visibleLoans}
               currentUser={currentUser}
               onSelectAsset={setSelectedAssetForDetail}
               onReportAsset={handleReportAssetTicket}
@@ -976,8 +976,8 @@ export default function App() {
           setContractForLinkedTicket(null);
           setLinkedTicketContractId(undefined);
         }}
-        assets={assets}
-        loans={loans}
+        assets={visibleAssets}
+        loans={visibleLoans}
         currentUser={currentUser}
         preselectedAssetId={preselectedTicketAssetId}
         linkedContract={contractForLinkedTicket}
@@ -1021,7 +1021,7 @@ export default function App() {
         onClose={() => setSelectedAssetForEdit(null)}
         currentUser={currentUser}
         allUsers={allUsers}
-        allAssets={assets}
+        allAssets={visibleAssets}
         onSaveAsset={async (assetId, updates, assignUserId, assignReason) => {
           try {
             if (updates && Object.keys(updates).length > 0) {
