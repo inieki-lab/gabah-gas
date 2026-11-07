@@ -59,7 +59,3 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
 export function isNavTabAllowedForRole(role: UserRole | null | undefined, tab: AppNavTab): boolean {
   return Boolean(role && ROLE_NAVIGATION[role]?.includes(tab));
 }
-
-export function getDefaultNavTabForRole(_role: UserRole): AppNavTab {
-  return 'dashboard';
-}
