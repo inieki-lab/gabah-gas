@@ -50,11 +50,11 @@ export function filterDashboardTickets(items: Ticket[], role: UserRole): Ticket[
       // IT is the enterprise helpdesk queue; Auditor is read-only.
       return items;
     case 'GA':
-      return items.filter(item => item.category === 'GA');
     case 'Supply Chain':
-      return items.filter(item => item.category === 'SC');
     case 'PIBC':
-      return items.filter(item => item.category === 'PIBC');
+      // gabahService already applies each division's visibility rule,
+      // including tickets reported by the current user.
+      return items;
     default:
       return [];
   }
