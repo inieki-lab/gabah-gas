@@ -55,6 +55,8 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     return [];
   }, [loanableAssets, assets]);
 
+  const isAuditor = currentUser?.role === 'Auditor';
+
   // Selected asset IDs (supports multiple selections, e.g. 1 Laptop IT + 1 Mobil GA)
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(() => {
     if (preselectedAssetId) return [preselectedAssetId];
@@ -135,7 +137,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasAnyConflict) return;
+    if (isAuditor || hasAnyConflict) return;
     if (selectedAssetIds.length === 0 || !purpose.trim()) return;
 
     onRequestLoan({
