@@ -24,6 +24,7 @@ import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
+import { isNavTabAllowedForRole } from './navigation/roleNavigation';
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
 import { MaintenanceView } from './components/views/MaintenanceView';
@@ -228,6 +229,8 @@ export default function App() {
         return;
       }
       setCurrentUser(targetUser);
+      setCurrentTab('dashboard');
+      setMeetingCategoryFilter('all');
       showToast(`Berpindah akun aktif: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
@@ -244,6 +247,8 @@ export default function App() {
         return;
       }
       setCurrentUser(targetUser);
+      setCurrentTab('dashboard');
+      setMeetingCategoryFilter('all');
       showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
@@ -251,12 +256,20 @@ export default function App() {
     }
   };
 
-  // Guard Humas: Sesuai instruksi user, Humas tidak perlu bisa melihat aset
-  useEffect(() => {
-    if (currentUser?.role === 'Humas' && (currentTab === 'my_assets' || currentTab === 'assets')) {
-      setCurrentTab('meeting_rooms');
+  // Keep the rendered page inside the authenticated user's navigation policy.
+  // This is a UI guard only; server-side authorization remains authoritative.
+  const activeTab: NavTab = currentUser && isNavTabAllowedForRole(currentUser.role, currentTab)
+    ? currentTab
+    : 'dashboard';
+
+  const navigateToTab = (tab: NavTab) => {
+    if (!currentUser || !isNavTabAllowedForRole(currentUser.role, tab)) {
+      showToast('Menu tersebut tidak tersedia untuk peran Anda.', 'warning');
+      return;
     }
-  }, [currentUser?.role, currentTab]);
+    if (tab === 'meeting_rooms') setMeetingCategoryFilter('all');
+    setCurrentTab(tab);
+  };
 
   // 1. Create Asset (Handled Authoritatively by Backend Engine)
   const handleCreateAsset = async (data: Partial<Asset>) => {
@@ -692,13 +705,13 @@ export default function App() {
         pendingLoans={pendingLoans}
         urgentTickets={urgentTickets}
         roomReservations={roomReservations}
-        onNavigateToLoans={() => setCurrentTab('loans')}
-        onNavigateToTickets={() => setCurrentTab('tickets')}
+        onNavigateToLoans={() => navigateToTab('loans')}
+        onNavigateToTickets={() => navigateToTab('tickets')}
         onNavigateToMeetingRooms={(category) => {
           if (category) {
             setMeetingCategoryFilter(category);
           }
-          setCurrentTab('meeting_rooms');
+          navigateToTab('meeting_rooms');
         }}
       />
 
@@ -707,13 +720,8 @@ export default function App() {
         
         {/* Left Navigation Sidebar */}
         <Sidebar
-          currentTab={currentTab}
-          onTabChange={(tab) => {
-            if (tab === 'meeting_rooms') {
-              setMeetingCategoryFilter('all');
-            }
-            setCurrentTab(tab);
-          }}
+          currentTab={activeTab}
+          onTabChange={navigateToTab}
           pendingLoansCount={pendingLoans.length}
           openTicketsCount={openTickets.length}
           pendingReservationsCount={pendingReservations.length}
@@ -741,7 +749,7 @@ export default function App() {
             </div>
           )}
 
-          {currentTab === 'dashboard' && (
+          {activeTab === 'dashboard' && (
             <DashboardView
               assets={assets}
               loans={loans}
@@ -749,14 +757,14 @@ export default function App() {
               currentUser={currentUser}
               auditLogs={auditLogs}
               roomReservations={roomReservations}
-              onNavigate={setCurrentTab}
+              onNavigate={navigateToTab}
               onOpenNewLoanModal={() => setIsCreateLoanModalOpen(true)}
               onOpenNewTicketModal={handleOpenNewTicketModal}
               onOpenNewAssetModal={() => setIsCreateAssetModalOpen(true)}
             />
           )}
 
-          {currentTab === 'my_assets' && (
+          {activeTab === 'my_assets' && (
             <MyAssetsView
               assets={assets}
               loans={loans}
@@ -769,7 +777,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'meeting_rooms' && (
+          {activeTab === 'meeting_rooms' && (
             <MeetingRoomsView
               rooms={meetingRooms}
               reservations={roomReservations}
@@ -786,7 +794,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'assets' && (
+          {activeTab === 'assets' && (
             <AssetsView
               assets={assets}
               currentUser={currentUser}
@@ -804,7 +812,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'maintenance' && (
+          {activeTab === 'maintenance' && (
             <MaintenanceView
               schedules={maintenanceSchedules}
               assets={assets}
@@ -836,7 +844,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'loans' && (
+          {activeTab === 'loans' && (
             <LoansView
               loans={loans}
               assets={assets}
@@ -850,7 +858,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'tickets' && (
+          {activeTab === 'tickets' && (
             <TicketsView
               tickets={tickets}
               assets={assets}
@@ -860,7 +868,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'licenses' && (
+          {activeTab === 'licenses' && (
             <LicensesView
               assets={assets}
               currentUser={currentUser}
@@ -869,7 +877,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'vendors' && (
+          {activeTab === 'vendors' && (
             <VendorsView
               vendors={vendors}
               currentUser={currentUser}
@@ -878,7 +886,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'knowledge' && (
+          {activeTab === 'knowledge' && (
             <KnowledgeBaseView
               articles={knowledgeBase}
               currentUser={currentUser}
@@ -897,7 +905,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'reports' && (
+          {activeTab === 'reports' && (
             <ReportsView
               assets={assets}
               loans={loans}
@@ -907,7 +915,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'contracts' && (
+          {activeTab === 'contracts' && (
             <ContractsView
               contracts={contracts}
               currentUser={currentUser}
