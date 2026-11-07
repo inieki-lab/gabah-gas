@@ -23,6 +23,7 @@ import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation }
 import { formatRupiah, formatDateTime, formatDate, GabahService } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
 import { filterDashboardAssets, filterDashboardLoans, filterDashboardTickets } from '../../dashboard/roleDashboardScope';
+import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -115,7 +116,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const bName = (l.borrower_name || '').toLowerCase();
     return (
       l.borrower_id === currentUserId ||
-      (bName && currentUserName && (bName.includes(currentUserName) || currentUserName.includes(bName)))
+      isExactIdentityNameMatch(l.borrower_name, currentUser.name)
     );
   });
   const myActiveLoans = myLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
@@ -125,7 +126,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const rName = (t.reporter_name || '').toLowerCase();
     return (
       t.reporter_id === currentUserId ||
-      (rName && currentUserName && (rName.includes(currentUserName) || currentUserName.includes(rName)))
+      isExactIdentityNameMatch(t.reporter_name, currentUser.name)
     );
   });
   const myOpenTickets = myTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
@@ -139,7 +140,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return (
       assignedId === currentUserId ||
       (assignedEmail && currentEmail && assignedEmail === currentEmail) ||
-      (assignedName && currentUserName && (assignedName.includes(currentUserName) || currentUserName.includes(assignedName)))
+      isExactIdentityNameMatch(a.assigned_to.name, currentUser.name)
     );
   });
 
