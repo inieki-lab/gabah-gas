@@ -204,12 +204,12 @@ export const LoansView: React.FC<LoansViewProps> = ({
                     'bg-rose-100 text-rose-800 border border-rose-300'
                   }`}>
                     {loan.status === 'approved' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    {(loan.status === 'pending' || false) && <Clock className="w-3.5 h-3.5" />}
+                    {(loan.status === 'pending') && <Clock className="w-3.5 h-3.5" />}
                     {(loan.status === 'active' || loan.status === 'overdue') && <UserCheck className="w-3.5 h-3.5" />}
                     {loan.status === 'returned' && <CheckSquare className="w-3.5 h-3.5" />}
                     {loan.status === 'approved' ? 'Disetujui' :
-                     (loan.status === 'pending' || (loan.status as any) === 'pending_approval') ? 'Menunggu Approval' :
-                     (loan.status === 'active' || (loan.status as any) === 'borrowed') ? 'Sedang Dipinjam' :
+                     (loan.status === 'pending') ? 'Menunggu Approval' :
+                     (loan.status === 'active' || loan.status === 'overdue') ? 'Sedang Dipinjam' :
                      loan.status === 'returned' ? 'Dikembalikan' :
                      loan.status}
                   </span>
@@ -269,7 +269,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 <div className="flex items-center gap-2">
                   
                   {/* Status: Pending -> Approve or Reject */}
-                  {(loan.status === 'pending' || (loan.status as any) === 'pending_approval') && userCanApprove && (
+                  {(loan.status === 'pending') && userCanApprove && (
                     <>
                       <button
                         onClick={() => onApproveLoan(loan.id)}
