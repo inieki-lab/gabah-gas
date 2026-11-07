@@ -13,7 +13,7 @@ for (const role of expectedRoles) {
 
 const mustNotSee: Record<string, string[]> = {
   'Sekretaris Direksi': ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
-  Humas: ['my_assets', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'reports'],
+  Humas: ['my_assets', 'assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Karyawan: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Auditor: ['my_assets', 'meeting_rooms'],
 };
@@ -33,6 +33,10 @@ assert.ok(isNavTabAllowedForRole('GA', 'meeting_rooms'));
 assert.ok(isNavTabAllowedForRole('Supply Chain', 'assets'));
 assert.ok(isNavTabAllowedForRole('PIBC', 'maintenance'));
 assert.ok(isNavTabAllowedForRole('Karyawan', 'tickets'));
+assert.ok(isNavTabAllowedForRole('Sekretaris Direksi', 'my_assets'));
+assert.ok(isNavTabAllowedForRole('Sekretaris Direksi', 'tickets'));
+assert.ok(isNavTabAllowedForRole('Humas', 'loans'));
+assert.ok(isNavTabAllowedForRole('Humas', 'tickets'));
 assert.ok(isNavTabAllowedForRole('Auditor', 'reports'));
 assert.equal(isNavTabAllowedForRole(undefined, 'dashboard'), false);
 
