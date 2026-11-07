@@ -19,7 +19,7 @@ import {
   Building2,
   Camera
 } from 'lucide-react';
-import { Asset, Loan, Ticket, UserProfile, AuditLog, RoomReservation } from '../../types';
+import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation } from '../../types';
 import { formatRupiah, formatDateTime, formatDate, GabahService } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
 
@@ -52,6 +52,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isEmployee = isStaff;
   const isHumas = currentUser?.role === 'Humas';
   const isSekdir = currentUser?.role === 'Sekretaris Direksi';
+  const roleDescriptions: Record<UserRole, string> = {
+    'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
+    IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
+    GA: 'Pantau fasilitas kantor, kendaraan dinas, ruang rapat, peminjaman, dan layanan umum.',
+    'Sekretaris Direksi': 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan fasilitas kegiatan Direksi.',
+    Humas: 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat dari seluruh unit kerja.',
+    'Supply Chain': 'Pantau aset produksi, gudang, armada logistik, pemeliharaan, dan layanan Supply Chain.',
+    PIBC: 'Pantau aset dan fasilitas operasional kawasan Pasar Induk Beras Cipinang.',
+    Karyawan: 'Akses layanan mandiri untuk aset yang ditugaskan, peminjaman, tiket bantuan, dan reservasi ruang.',
+    Auditor: 'Pemantauan read-only atas aset, peminjaman, tiket, laporan, dan jejak audit.',
+  };
 
   const safeAssets = Array.isArray(assets) ? assets : [];
   const safeLoans = Array.isArray(loans) ? loans : [];
@@ -129,22 +140,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Selamat Datang, {currentUser.name}
             </h1>
             <p className="text-sm text-slate-600 mt-1 max-w-2xl font-normal">
-              {isEmployee 
-                ? `Portal layanan mandiri pegawai PT Food Station Tjipinang Jaya: ajukan pinjaman kendaraan operasional, laptop cadangan, atau sampaikan kendala fasilitas.`
-                : `Portal terpadu aset Pasar Induk Beras Cipinang (PIBC): Aset IT, Armada Logistik GA, Lisensi Software, Helpdesk SLA, dan Peminjaman Terjadwal.`
-              }
+              {roleDescriptions[currentUser.role]}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              id="btn-quick-loan"
-              onClick={onOpenNewLoanModal}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
-            >
-              <CalendarClock className="w-4 h-4" />
-              Pinjam Aset
-            </button>
+            {currentUser.role !== 'Auditor' && (
+              <button
+                id="btn-quick-loan"
+                onClick={onOpenNewLoanModal}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+              >
+                <CalendarClock className="w-4 h-4" />
+                Pinjam Aset
+              </button>
+            )}
             {currentUser?.role !== 'Auditor' ? (
               <button
                 id="btn-quick-ticket"
@@ -316,7 +326,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-black text-slate-900">{assets.length} Item</div>
+              <div className="text-2xl font-black text-slate-900">{safeAssets.length} Item</div>
               <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between font-medium flex-wrap gap-1">
                 <span>{itAssets.length} IT • {gaAssets.length} GA • {scAssets.length} SC • {pibcAssets.length} PIBC • {licenseAssets.length} Lisensi</span>
               </div>
@@ -665,7 +675,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="space-y-3">
-              {loans.slice(0, 4).map((loan) => {
+              {safeLoans.slice(0, 4).map((loan) => {
                 return (
                   <div 
                     key={loan.id}
@@ -741,7 +751,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="space-y-3">
-                {tickets.slice(0, 3).map((t) => (
+                {safeTickets.slice(0, 3).map((t) => (
                   <div 
                     key={t.id}
                     className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5"
