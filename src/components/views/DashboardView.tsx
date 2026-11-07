@@ -101,10 +101,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
-  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending' || l.status === 'pending_approval');
-  const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'borrowed');
+  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending');
+  const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
 
-  const openTickets = dashboardTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'assigned');
+  const openTickets = dashboardTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
   const urgentTickets = dashboardTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
 
   // Employee-specific filtered lists
