@@ -118,8 +118,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       (bName && currentUserName && (bName.includes(currentUserName) || currentUserName.includes(bName)))
     );
   });
-  const myActiveLoans = myLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'borrowed');
-  const myPendingLoans = myLoans.filter(l => l.status === 'pending' || l.status === 'pending_approval');
+  const myActiveLoans = myLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
+  const myPendingLoans = myLoans.filter(l => l.status === 'pending');
 
   const myTickets = safeTickets.filter(t => {
     const rName = (t.reporter_name || '').toLowerCase();
@@ -128,7 +128,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       (rName && currentUserName && (rName.includes(currentUserName) || currentUserName.includes(rName)))
     );
   });
-  const myOpenTickets = myTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'assigned');
+  const myOpenTickets = myTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
 
   const myAssignedAssets = safeAssets.filter(a => {
     if (!a.assigned_to) return false;
