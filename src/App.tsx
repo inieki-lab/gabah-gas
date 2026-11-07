@@ -636,6 +636,8 @@ export default function App() {
           initialEmail={loginEmail}
           onLoginSuccess={(u) => {
             setCurrentUser(u);
+            setCurrentTab('dashboard');
+            setMeetingCategoryFilter('all');
             setViewMode('portal');
             showToast(`Berhasil masuk sebagai ${u.name} (${u.role_label || u.role})`, 'success');
             refreshData();
@@ -699,6 +701,8 @@ export default function App() {
           }
           gabahApi.setToken(null);
           setCurrentUser(null);
+          setCurrentTab('dashboard');
+          setMeetingCategoryFilter('all');
           setViewMode('login');
           showToast('Sesi selesai, berhasil logout.', 'info');
         }}
