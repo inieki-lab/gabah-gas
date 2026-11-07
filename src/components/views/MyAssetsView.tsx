@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Asset, Loan, UserProfile } from '../../types';
 import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
+import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface MyAssetsViewProps {
   assets: Asset[];
@@ -51,13 +52,11 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
     const assignedId = asset.assigned_to.id;
     const assignedEmail = asset.assigned_to.email?.toLowerCase();
     const currentEmail = currentUser.email?.toLowerCase();
-    const assignedName = asset.assigned_to.name?.toLowerCase();
-    const currentName = currentUser.name?.toLowerCase();
 
     return (
       assignedId === currentUser.id ||
       (assignedEmail && currentEmail && assignedEmail === currentEmail) ||
-      (assignedName && currentName && (assignedName.includes(currentName) || currentName.includes(assignedName)))
+      isExactIdentityNameMatch(asset.assigned_to.name, currentUser.name)
     );
   });
 
@@ -65,10 +64,14 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
   const myCurrentLoans = loans.filter((loan) => {
     const isBorrower =
       loan.borrower_id === currentUser.id ||
-      loan.borrower_name?.toLowerCase().includes(currentUser.name.toLowerCase());
-    const isActive = ['approved', 'borrowed', 'active'].includes(loan.status);
+      isExactIdentityNameMatch(loan.borrower_name, currentUser.name);
+    const isActive = ['approved', 'active', 'overdue'].includes(loan.status);
     return isBorrower && isActive;
   });
+
+  const assetsNeedingAttention = assignedAssets.filter(asset =>
+    ['in_repair', 'damaged', 'maintenance', 'lost'].includes(asset.status)
+  );
 
   // Calculate total value
   const totalAssignedValue = assignedAssets.reduce(
@@ -179,8 +182,8 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
             </div>
           </div>
           <div className="mt-2.5">
-            <div className="text-2xl font-black text-slate-900">100% Siap</div>
-            <div className="text-xs text-[#206f65] font-semibold mt-0.5">Kondisi Prima &amp; Bergaransi</div>
+            <div className="text-2xl font-black text-slate-900">{assetsNeedingAttention.length} Unit</div>
+            <div className="text-xs text-[#206f65] font-semibold mt-0.5">{assetsNeedingAttention.length === 0 ? 'Tidak ada masalah tercatat' : 'Perlu pemeriksaan / tindak lanjut'}</div>
           </div>
         </div>
       </div>
