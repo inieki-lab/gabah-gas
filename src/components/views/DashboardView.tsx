@@ -22,6 +22,7 @@ import {
 import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation } from '../../types';
 import { formatRupiah, formatDateTime, formatDate, GabahService } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
+import { filterDashboardAssets, filterDashboardLoans, filterDashboardTickets } from '../../dashboard/roleDashboardScope';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -68,6 +69,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeTickets = (Array.isArray(tickets) ? tickets : []).filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
+  const dashboardAssets = filterDashboardAssets(safeAssets, currentUser.role);
+  const dashboardLoans = filterDashboardLoans(safeLoans, currentUser.role);
+  const dashboardTickets = filterDashboardTickets(safeTickets, currentUser.role);
+  const isDivisionDashboard = ['IT', 'GA', 'Supply Chain', 'PIBC'].includes(currentUser.role);
+  const divisionLabel = currentUser.role === 'Supply Chain' ? 'Supply Chain' : currentUser.role;
+  const attentionAssets = dashboardAssets.filter(a =>
+    ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
+  );
+  const isLicenseDashboard = ['Admin GABAH', 'IT', 'Auditor'].includes(currentUser.role);
+  const expiringLicenses = dashboardAssets.filter(asset => {
+    const expiry = asset.license_detail?.expiration_date;
+    if (!expiry) return false;
+    const expiryDate = new Date(`${expiry}T00:00:00`);
+    if (Number.isNaN(expiryDate.getTime())) return false;
+    const daysRemaining = Math.ceil((expiryDate.getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000);
+    return daysRemaining >= 0 && daysRemaining <= 60;
+  });
 
   const docReservations = safeReservations.filter(
     r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
@@ -75,19 +93,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const todayStr = new Date().toISOString().split('T')[0];
   const todayMeetings = safeReservations.filter(r => r.date === todayStr && !['cancelled', 'rejected'].includes(r.status));
 
-  const itAssets = safeAssets.filter(a => a.owner_division === 'IT' || a.category_type === 'IT');
-  const gaAssets = safeAssets.filter(a => a.owner_division === 'GA' || a.category_type === 'GA');
-  const scAssets = safeAssets.filter(a => a.owner_division === 'SC');
-  const pibcAssets = safeAssets.filter(a => a.owner_division === 'PIBC');
-  const licenseAssets = safeAssets.filter(a => a.category_type === 'License');
+  const itAssets = dashboardAssets.filter(a => a.owner_division === 'IT' || a.category_type === 'IT');
+  const gaAssets = dashboardAssets.filter(a => a.owner_division === 'GA' || a.category_type === 'GA');
+  const scAssets = dashboardAssets.filter(a => a.owner_division === 'SC');
+  const pibcAssets = dashboardAssets.filter(a => a.owner_division === 'PIBC');
+  const licenseAssets = dashboardAssets.filter(a => a.category_type === 'License');
 
-  const totalAssetValue = safeAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
+  const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
-  const pendingLoans = safeLoans.filter(l => l.status === 'pending' || l.status === 'pending_approval');
-  const activeLoans = safeLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'borrowed');
+  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending' || l.status === 'pending_approval');
+  const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'borrowed');
 
-  const openTickets = safeTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'assigned');
-  const urgentTickets = safeTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
+  const openTickets = dashboardTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'assigned');
+  const urgentTickets = dashboardTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
 
   // Employee-specific filtered lists
   const currentUserName = (currentUser?.name || '').toLowerCase();
@@ -326,7 +344,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-black text-slate-900">{safeAssets.length} Item</div>
+              <div className="text-2xl font-black text-slate-900">{dashboardAssets.length} Item</div>
               <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between font-medium flex-wrap gap-1">
                 <span>{itAssets.length} IT • {gaAssets.length} GA • {scAssets.length} SC • {pibcAssets.length} PIBC • {licenseAssets.length} Lisensi</span>
               </div>
@@ -378,7 +396,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {urgentTickets.length} Prioritas Darurat (SLA 4 Jam)
               </div>
               <div className="text-[11px] text-slate-500 font-medium mt-2 pt-2 border-t border-slate-100">
-                Target Penyelesaian: 98.4% On-Time
+                {urgentTickets.length} tiket prioritas darurat belum selesai
               </div>
             </div>
           </div>
@@ -389,19 +407,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-300 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Lisensi &amp; Subscription</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                {isLicenseDashboard ? 'Lisensi &amp; Subscription' : 'Aset Perlu Perhatian'}
+              </span>
               <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <KeyRound className="w-5 h-5" />
+                {isLicenseDashboard ? <KeyRound className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-black text-slate-900">{licenseAssets.length} Kontrak Aktif</div>
+              <div className="text-2xl font-black text-slate-900">
+                {isLicenseDashboard ? `${licenseAssets.length} Lisensi` : `${attentionAssets.length} Aset`}
+              </div>
               <div className="text-xs text-indigo-700 font-medium mt-1">
-                M365, Adobe CC, Sophos XDR, AWS
+                {isLicenseDashboard ? 'Lisensi terdaftar pada cakupan Anda' : 'Rusak, maintenance, hilang, atau perbaikan'}
               </div>
               <div className="text-[11px] text-amber-700 font-medium mt-2 pt-2 border-t border-slate-100 flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                1 Lisensi mendekati renewal (54 hari)
+                {isLicenseDashboard ? `${expiringLicenses.length} lisensi jatuh tempo dalam 60 hari` : 'Perlu pemeriksaan dan tindak lanjut'}
               </div>
             </div>
           </div>
@@ -662,9 +684,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <CalendarClock className="w-4 h-4 text-emerald-600" />
-                  Jadwal Peminjaman Aset Terintegrasi
+                  {isDivisionDashboard ? `Jadwal Peminjaman ${divisionLabel}` : currentUser.role === 'Auditor' ? 'Pemantauan Peminjaman Lintas Divisi' : 'Jadwal Peminjaman Aset Terintegrasi'}
                 </h3>
-                <p className="text-xs text-slate-500">Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat</p>
+                <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : currentUser.role === 'Auditor' ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
               </div>
               <button
                 onClick={() => onNavigate('loans')}
@@ -675,7 +697,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="space-y-3">
-              {safeLoans.slice(0, 4).map((loan) => {
+              {dashboardLoans.slice(0, 4).map((loan) => {
                 return (
                   <div 
                     key={loan.id}
@@ -730,7 +752,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <LifeBuoy className="w-4 h-4 text-rose-600" />
-                  Antrean Helpdesk
+                  {currentUser.role === 'IT' ? 'Antrean Helpdesk Seluruh Divisi' : currentUser.role === 'Auditor' ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
                   {currentUser?.role !== 'Auditor' && (
@@ -751,7 +773,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="space-y-3">
-                {safeTickets.slice(0, 3).map((t) => (
+                {dashboardTickets.slice(0, 3).map((t) => (
                   <div 
                     key={t.id}
                     className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5"
@@ -780,7 +802,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
               <h3 className="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                Audit Log Aktivitas Terakhir
+                {currentUser.role === 'Auditor' ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
               </h3>
               <div className="space-y-2.5 text-xs">
                 {auditLogs.slice(0, 4).map((log) => (
