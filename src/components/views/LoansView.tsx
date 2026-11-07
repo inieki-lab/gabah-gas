@@ -75,8 +75,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
   const filteredLoans = baseLoans.filter((loan) => {
     if (statusFilter === 'ALL') return true;
-    if (statusFilter === 'pending') return loan.status === 'pending' || loan.status === 'pending_approval';
-    if (statusFilter === 'active') return loan.status === 'active' || loan.status === 'borrowed';
+    if (statusFilter === 'pending') return loan.status === 'pending';
+    if (statusFilter === 'active') return loan.status === 'active' || loan.status === 'overdue';
     return loan.status === statusFilter;
   });
 
@@ -204,8 +204,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
                     'bg-rose-100 text-rose-800 border border-rose-300'
                   }`}>
                     {loan.status === 'approved' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    {(loan.status === 'pending' || (loan.status as any) === 'pending_approval') && <Clock className="w-3.5 h-3.5" />}
-                    {(loan.status === 'active' || (loan.status as any) === 'borrowed') && <UserCheck className="w-3.5 h-3.5" />}
+                    {(loan.status === 'pending' || false) && <Clock className="w-3.5 h-3.5" />}
+                    {(loan.status === 'active' || loan.status === 'overdue') && <UserCheck className="w-3.5 h-3.5" />}
                     {loan.status === 'returned' && <CheckSquare className="w-3.5 h-3.5" />}
                     {loan.status === 'approved' ? 'Disetujui' :
                      (loan.status === 'pending' || (loan.status as any) === 'pending_approval') ? 'Menunggu Approval' :
