@@ -796,6 +796,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
+            {!isDivisionDashboard && (
             {/* Audit Trail Activity */}
             <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
               <h3 className="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
@@ -814,6 +815,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ))}
               </div>
             </div>
+            )}
 
           </div>
 
