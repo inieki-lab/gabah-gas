@@ -17,7 +17,7 @@ export function filterDashboardAssets(items: Asset[], role: UserRole): Asset[] {
     case 'GA':
       return items.filter(item => item.owner_division === 'GA' || item.category_type === 'GA');
     case 'Supply Chain':
-      return items.filter(item => item.owner_division === 'SC');
+      return items.filter(item => item.owner_division === 'SC' || item.owner_division === 'Supply Chain');
     case 'PIBC':
       return items.filter(item => item.owner_division === 'PIBC');
     default:
@@ -35,7 +35,7 @@ export function filterDashboardLoans(items: Loan[], role: UserRole): Loan[] {
     case 'GA':
       return items.filter(item => item.owner_division === 'GA' || item.category_type === 'GA');
     case 'Supply Chain':
-      return items.filter(item => item.owner_division === 'SC');
+      return items.filter(item => item.owner_division === 'SC' || item.owner_division === 'Supply Chain');
     case 'PIBC':
       return items.filter(item => item.owner_division === 'PIBC');
     default:
@@ -89,7 +89,7 @@ export function filterMaintenanceForRole<T extends { owner_division?: string }>(
   if (role === 'Admin GABAH' || role === 'Auditor') return items;
   const division = role === 'Supply Chain' ? 'SC' : role;
   if (['IT', 'GA', 'SC', 'PIBC'].includes(division)) {
-    return items.filter(item => item.owner_division === division);
+    return items.filter(item => item.owner_division === division || (role === 'Supply Chain' && item.owner_division === 'Supply Chain'));
   }
   return [];
 }
@@ -101,6 +101,6 @@ export function filterContractsForRole<T extends { owner_division?: string; pic_
   if (user.role === 'Admin GABAH' || user.role === 'Auditor') return items;
   const division = user.role === 'Supply Chain' ? 'SC' : user.role;
   return items.filter(item =>
-    item.owner_division === division || item.pic_user_id === user.id
+    item.owner_division === division || (user.role === 'Supply Chain' && item.owner_division === 'Supply Chain') || item.pic_user_id === user.id
   );
 }
