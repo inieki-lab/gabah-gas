@@ -412,7 +412,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={hasAnyConflict || selectedAssetIds.length === 0}
+              disabled={isAuditor || hasAnyConflict || selectedAssetIds.length === 0}
               className={`px-5 py-2 rounded-xl font-bold transition-all ${
                 hasAnyConflict || selectedAssetIds.length === 0
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
