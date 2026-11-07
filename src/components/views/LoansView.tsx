@@ -58,18 +58,17 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
   const [returnNotes, setReturnNotes] = useState<string>('');
 
-  const isEmployee = currentUser?.role === 'Karyawan';
+  const isEmployee = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
+  const isAuditor = currentUser?.role === 'Auditor';
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeAssets = Array.isArray(assets) ? assets : [];
-  const currentUserName = (currentUser?.name || '').toLowerCase();
   const currentUserId = currentUser?.id || '';
 
   const baseLoans = isEmployee
     ? safeLoans.filter(l => {
-        const bName = (l.borrower_name || '').toLowerCase();
         return (
           l.borrower_id === currentUserId ||
-          (bName && currentUserName && (bName.includes(currentUserName) || currentUserName.includes(bName)))
+          isExactIdentityNameMatch(l.borrower_name, currentUser.name)
         );
       })
     : safeLoans;
@@ -112,14 +111,16 @@ export const LoansView: React.FC<LoansViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          <button
-            id="btn-create-loan"
-            onClick={handleOpenCreate}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            Ajukan Peminjaman Baru
-          </button>
+          {!isAuditor && (
+            <button
+              id="btn-create-loan"
+              onClick={handleOpenCreate}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              Ajukan Peminjaman Baru
+            </button>
+          )}
         </div>
       </div>
 
@@ -151,9 +152,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
             }`}
           >
             {status === 'ALL' ? (isEmployee ? 'Semua Peminjaman Saya' : 'Semua Reservasi') :
-             status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => l.status === 'pending' || (l.status as any) === 'pending_approval').length})` :
+             status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => l.status === 'pending').length})` :
              status === 'approved' ? `Disetujui (${baseLoans.filter(l => l.status === 'approved').length})` :
-             status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => l.status === 'active' || (l.status as any) === 'borrowed').length})` :
+             status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => l.status === 'active' || l.status === 'overdue').length})` :
              'Selesai Dikembalikan'}
           </button>
         ))}
@@ -197,8 +198,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 <div>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                     loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                    (loan.status === 'pending' || (loan.status as any) === 'pending_approval') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                    (loan.status === 'active' || (loan.status as any) === 'borrowed') ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
+                    (loan.status === 'pending') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                    (loan.status === 'active' || loan.status === 'overdue') ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
                     loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                     'bg-rose-100 text-rose-800 border border-rose-300'
                   }`}>
@@ -299,7 +300,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Status: Active -> Return inspection */}
-                  {(loan.status === 'active' || (loan.status as any) === 'borrowed') && (
+                  {!isAuditor && (loan.status === 'active' || loan.status === 'overdue') &&
+                    (userCanApprove || loan.borrower_id === currentUser.id || isExactIdentityNameMatch(loan.borrower_name, currentUser.name)) && (
                     <button
                       onClick={() => setReturningLoan(loan)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
