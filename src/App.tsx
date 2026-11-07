@@ -232,6 +232,18 @@ export default function App() {
       setCurrentUser(targetUser);
       setCurrentTab('dashboard');
       setMeetingCategoryFilter('all');
+      setSelectedAssetForDetail(null);
+      setSelectedAssetForEdit(null);
+      setSelectedAssetForQr(null);
+      setSelectedLoanForBast(null);
+      setPreselectedTicketAssetId(undefined);
+      setContractForLinkedTicket(null);
+      setLinkedTicketContractId(undefined);
+      setIsCreateAssetModalOpen(false);
+      setIsCreateLoanModalOpen(false);
+      setIsCreateTicketModalOpen(false);
+      setIsGlobalSearchOpen(false);
+      setIsAdministrationModalOpen(false);
       showToast(`Berpindah akun aktif: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
@@ -250,6 +262,18 @@ export default function App() {
       setCurrentUser(targetUser);
       setCurrentTab('dashboard');
       setMeetingCategoryFilter('all');
+      setSelectedAssetForDetail(null);
+      setSelectedAssetForEdit(null);
+      setSelectedAssetForQr(null);
+      setSelectedLoanForBast(null);
+      setPreselectedTicketAssetId(undefined);
+      setContractForLinkedTicket(null);
+      setLinkedTicketContractId(undefined);
+      setIsCreateAssetModalOpen(false);
+      setIsCreateLoanModalOpen(false);
+      setIsCreateTicketModalOpen(false);
+      setIsGlobalSearchOpen(false);
+      setIsAdministrationModalOpen(false);
       showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
