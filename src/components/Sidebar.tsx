@@ -29,21 +29,9 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { AdministrationModal } from './modals/AdministrationModal';
-import { isNavTabAllowedForRole } from '../navigation/roleNavigation';
+import { AppNavTab, isNavTabAllowedForRole } from '../navigation/roleNavigation';
 
-export type NavTab = 
-  | 'dashboard'
-  | 'my_assets'
-  | 'meeting_rooms'
-  | 'assets'
-  | 'maintenance'
-  | 'loans'
-  | 'tickets'
-  | 'licenses'
-  | 'contracts'
-  | 'vendors'
-  | 'knowledge'
-  | 'reports';
+export type NavTab = AppNavTab;
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -87,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const isStaff = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(activeRole);
+  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(activeRole) : false;
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
   const isSuperAdmin = activeRole === 'Admin GABAH';
