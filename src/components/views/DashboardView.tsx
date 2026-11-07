@@ -109,11 +109,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const urgentTickets = dashboardTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
 
   // Employee-specific filtered lists
-  const currentUserName = (currentUser?.name || '').toLowerCase();
   const currentUserId = currentUser?.id || '';
 
   const myLoans = safeLoans.filter(l => {
-    const bName = (l.borrower_name || '').toLowerCase();
     return (
       l.borrower_id === currentUserId ||
       isExactIdentityNameMatch(l.borrower_name, currentUser.name)
@@ -123,7 +121,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const myPendingLoans = myLoans.filter(l => l.status === 'pending');
 
   const myTickets = safeTickets.filter(t => {
-    const rName = (t.reporter_name || '').toLowerCase();
     return (
       t.reporter_id === currentUserId ||
       isExactIdentityNameMatch(t.reporter_name, currentUser.name)
@@ -136,7 +133,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const assignedId = a.assigned_to.id;
     const assignedEmail = a.assigned_to.email?.toLowerCase();
     const currentEmail = currentUser?.email?.toLowerCase();
-    const assignedName = a.assigned_to.name?.toLowerCase();
     return (
       assignedId === currentUserId ||
       (assignedEmail && currentEmail && assignedEmail === currentEmail) ||
