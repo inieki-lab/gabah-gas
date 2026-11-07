@@ -91,7 +91,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const docReservations = safeReservations.filter(
     r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
   );
-  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const todayMeetings = safeReservations.filter(r => r.date === todayStr && !['cancelled', 'rejected'].includes(r.status));
 
   const itAssets = dashboardAssets.filter(a => a.owner_division === 'IT' || a.category_type === 'IT');
