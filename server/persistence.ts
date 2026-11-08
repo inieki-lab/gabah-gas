@@ -604,20 +604,26 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
     "AND assigned_role.role_key IS DISTINCT FROM CASE u.role " +
     "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
     "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
-    "WHEN 'Supply Chain' THEN 'supply_chain' WHEN 'PIBC' THEN 'pibc' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE NULL END",
+    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
+    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END",
+    [userIds],
+  );
+  // The users.role field is the primary application role; additional roles
+  // remain assigned but are never marked primary by this compatibility bridge.
+  await pool.query(
+    'UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = ANY($1::text[])',
     [userIds],
   );
   await pool.query(
-    "INSERT INTO gabah_user_roles (user_id, role_id) " +
-    "SELECT u.id::text, r.id FROM users u " +
+    "INSERT INTO gabah_user_roles (user_id, role_id, is_primary) " +
+    "SELECT u.id::text, r.id, TRUE FROM users u " +
     "JOIN gabah_roles r ON r.role_key = CASE u.role " +
     "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
     "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
-    "WHEN 'Supply Chain' THEN 'supply_chain' WHEN 'PIBC' THEN 'pibc' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE NULL END " +
+    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
+    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END " +
     "WHERE u.id::text = ANY($1::text[]) " +
-    "ON CONFLICT (user_id, role_id) DO NOTHING",
+    "ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE",
     [userIds],
   );
 }
