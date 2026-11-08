@@ -31,6 +31,9 @@ jobs:
           PGPASSWORD: ci-validation-only-not-a-secret
         run: docker compose config --quiet
 
+      - name: Validate deployment shell script
+        run: bash -n deploy.sh
+
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
