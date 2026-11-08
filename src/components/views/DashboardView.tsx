@@ -20,9 +20,8 @@ import {
   Camera
 } from 'lucide-react';
 import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation } from '../../types';
-import { formatRupiah, formatDateTime, formatDate, GabahService } from '../../services/gabahService';
+import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
-import { filterDashboardAssets, filterDashboardLoans, filterDashboardTickets } from '../../dashboard/roleDashboardScope';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface DashboardViewProps {
@@ -60,25 +59,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     GA: 'Pantau fasilitas kantor, kendaraan dinas, ruang rapat, peminjaman, dan layanan umum.',
     'Sekretaris Direksi': 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan fasilitas kegiatan Direksi.',
     Humas: 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat dari seluruh unit kerja.',
-    'Supply Chain': 'Pantau aset produksi, gudang, armada logistik, pemeliharaan, dan layanan Supply Chain.',
-    PIBC: 'Pantau aset dan fasilitas operasional kawasan Pasar Induk Beras Cipinang.',
     Karyawan: 'Akses layanan mandiri untuk aset yang ditugaskan, peminjaman, tiket bantuan, dan reservasi ruang.',
     Auditor: 'Pemantauan read-only atas aset, peminjaman, tiket, laporan, dan jejak audit.',
   };
 
-  const safeAssets = Array.isArray(assets) ? assets : [];
-  const safeLoans = Array.isArray(loans) ? loans : [];
-  const safeTickets = (Array.isArray(tickets) ? tickets : []).filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
+  // All collections arrive pre-scoped by backend permissions and module scope.
+  // Do not re-filter them by a single legacy role name in the browser.
+  const dashboardAssets = Array.isArray(assets) ? assets : [];
+  const dashboardLoans = Array.isArray(loans) ? loans : [];
+  const dashboardTickets = Array.isArray(tickets) ? tickets : [];
+  const safeLoans = dashboardLoans;
+  const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const dashboardAssets = filterDashboardAssets(safeAssets, currentUser.role);
-  const dashboardLoans = filterDashboardLoans(safeLoans, currentUser.role);
-  const dashboardTickets = filterDashboardTickets(safeTickets, currentUser.role);
-  const isDivisionDashboard = ['IT', 'GA', 'Supply Chain', 'PIBC'].includes(currentUser.role);
-  const divisionLabel = currentUser.role === 'Supply Chain' ? 'Supply Chain' : currentUser.role;
+  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || currentUser.role === 'Auditor';
+  const isDivisionDashboard = currentUser.role === 'IT' || currentUser.role === 'GA';
+  const divisionLabel = isDivisionDashboard ? currentUser.role : 'Unit kerja';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
-  const isLicenseDashboard = ['Admin GABAH', 'IT', 'Auditor'].includes(currentUser.role);
+  const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
   const expiringLicenses = dashboardAssets.filter(asset => {
     const expiry = asset.license_detail?.expiration_date;
     if (!expiry) return false;
@@ -95,15 +94,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const todayMeetings = safeReservations.filter(r => r.date === todayStr && !['cancelled', 'rejected'].includes(r.status));
 
-  const itAssets = dashboardAssets.filter(a => a.owner_division === 'IT' || a.category_type === 'IT');
-  const gaAssets = dashboardAssets.filter(a => a.owner_division === 'GA' || a.category_type === 'GA');
+  const itAssets = dashboardAssets.filter(a => a.owner_division === 'IT');
+  const gaAssets = dashboardAssets.filter(a => a.owner_division === 'GA');
   const scAssets = dashboardAssets.filter(a => a.owner_division === 'SC');
   const pibcAssets = dashboardAssets.filter(a => a.owner_division === 'PIBC');
   const licenseAssets = dashboardAssets.filter(a => a.category_type === 'License');
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
-  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending');
+  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending_approval');
   const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
 
   const openTickets = dashboardTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
@@ -119,7 +118,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
   });
   const myActiveLoans = myLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
-  const myPendingLoans = myLoans.filter(l => l.status === 'pending');
+  const myPendingLoans = myLoans.filter(l => l.status === 'pending_approval');
 
   const myTickets = safeTickets.filter(t => {
     return (
@@ -750,7 +749,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <LifeBuoy className="w-4 h-4 text-rose-600" />
-                  {currentUser.role === 'IT' ? 'Antrean Helpdesk Seluruh Divisi' : currentUser.role === 'Auditor' ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
+                  {currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : currentUser.role === 'Auditor' ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
                   {currentUser?.role !== 'Auditor' && (
