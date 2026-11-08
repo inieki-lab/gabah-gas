@@ -2566,11 +2566,17 @@ async function startServer() {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
     }
     const requestedCategory = String(req.body?.category || '').trim();
-    if (!requestedCategory) return res.status(400).json({ success: false, message: 'Kategori vendor wajib dipilih.' });
-    const requestedOwner = String(req.body?.owner_division || '').trim();
-    if (!requestedOwner || !(db.divisions || []).some(d => d.code === requestedOwner && d.is_active !== false)) {
+    if (!requestedCategory || requestedCategory.length > 80) {
+      return res.status(400).json({ success: false, message: 'Kategori vendor wajib diisi (maksimal 80 karakter).' });
+    }
+    const requestedOwnerInput = String(req.body?.owner_division || '').trim().toUpperCase();
+    const ownerMaster = (db.divisions || []).find(d =>
+      String(d.code || '').trim().toUpperCase() === requestedOwnerInput && d.is_active !== false
+    );
+    if (!ownerMaster) {
       return res.status(400).json({ success: false, message: 'Owner vendor wajib dipilih dari master fungsi pemilik yang aktif.' });
     }
+    const requestedOwner = String(ownerMaster.code).trim().toUpperCase();
     const canManageRequestedOwner = isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors')
       : actor.role === requestedOwner);
@@ -2578,21 +2584,25 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor yang dipilih.' });
     }
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
-    if (!name) {
-      return res.status(400).json({ success: false, message: 'Nama vendor wajib diisi.' });
+    if (!name || name.length > 180) {
+      return res.status(400).json({ success: false, message: 'Nama vendor wajib diisi (maksimal 180 karakter).' });
+    }
+    const rating = Number(req.body.rating ?? 4);
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ success: false, message: 'Rating vendor harus berada pada rentang 1 sampai 5.' });
     }
     const count = db.vendors.length + 1;
     const vendor = {
       id: `VND-${String(count).padStart(2, '0')}-${Date.now().toString(36)}`,
       name,
-      category: req.body.category || 'General',
+      category: requestedCategory,
       owner_division: requestedOwner,
       pic_name: req.body.pic_name || '',
       pic_phone: req.body.pic_phone || '',
       pic_email: req.body.pic_email || '',
       address: req.body.address || '',
       active_contracts_count: Number(req.body.active_contracts_count) || 0,
-      rating: Number(req.body.rating) || 4.0,
+      rating,
       notes: req.body.notes || '',
     };
     db.vendors.push(vendor);
@@ -2608,18 +2618,32 @@ async function startServer() {
     }
     const existingVendor = db.vendors.find(v => v.id === req.params.id);
     if (!existingVendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan.' });
-    const existingOwner = String(existingVendor.owner_division || '').trim();
+    const existingOwner = String(existingVendor.owner_division || '').trim().toUpperCase();
     const requestedCategory = req.body?.category === undefined
-      ? String(existingVendor.category)
-      : String(req.body.category);
-    const requestedOwner = req.body?.owner_division === undefined
+      ? String(existingVendor.category || '').trim()
+      : String(req.body.category || '').trim();
+    const requestedOwnerInput = req.body?.owner_division === undefined
       ? existingOwner
-      : String(req.body.owner_division || '').trim();
+      : String(req.body.owner_division || '').trim().toUpperCase();
+    const ownerMaster = (db.divisions || []).find(d =>
+      String(d.code || '').trim().toUpperCase() === requestedOwnerInput && d.is_active !== false
+    );
+    const requestedOwner = ownerMaster ? String(ownerMaster.code).trim().toUpperCase() : '';
+    const requestedName = req.body?.name === undefined
+      ? String(existingVendor.name || '').trim()
+      : String(req.body.name || '').trim();
+    const requestedRating = req.body?.rating === undefined ? Number(existingVendor.rating) : Number(req.body.rating);
     if (!existingOwner && !isSuperadminActor(actor)) {
       return res.status(403).json({ success: false, message: 'Vendor lama belum memiliki owner; klasifikasi hanya dapat dilakukan Super Admin.' });
     }
-    if (!requestedOwner || !(db.divisions || []).some(d => d.code === requestedOwner && d.is_active !== false)) {
+    if (!requestedOwner) {
       return res.status(400).json({ success: false, message: 'Owner vendor wajib dipilih dari master fungsi pemilik yang aktif.' });
+    }
+    if (!requestedCategory || requestedCategory.length > 80 || !requestedName || requestedName.length > 180) {
+      return res.status(400).json({ success: false, message: 'Nama dan kategori vendor wajib valid.' });
+    }
+    if (!Number.isFinite(requestedRating) || requestedRating < 1 || requestedRating > 5) {
+      return res.status(400).json({ success: false, message: 'Rating vendor harus berada pada rentang 1 sampai 5.' });
     }
     const canManageExisting = isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacScope(String(actor.id), 'division', existingOwner, 'vendors')
@@ -2636,6 +2660,10 @@ async function startServer() {
     for (const key of allowedVendorFields) {
       if (req.body[key] !== undefined) (vendor as any)[key] = req.body[key];
     }
+    vendor.name = requestedName;
+    vendor.category = requestedCategory;
+    vendor.owner_division = requestedOwner;
+    vendor.rating = requestedRating;
     GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
     persistDataStore().catch(() => {});
     res.json({ success: true, data: vendor });
