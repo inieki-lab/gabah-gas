@@ -49,7 +49,10 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
   const [votedArticles, setVotedArticles] = useState<Record<string, number>>({});
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  const canWrite = ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  // Dynamic RBAC is authoritative when permission_keys are present; legacy role fallback is file-store only.
+  const canWrite = Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('knowledge.create') || currentUser.permission_keys.includes('knowledge.update')
+    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
