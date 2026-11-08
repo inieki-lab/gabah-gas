@@ -166,16 +166,6 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     return res.status(403).json({ success: false, message: 'Pengguna tidak berwenang mengubah tiket ini.' });
   }
 
-  if (req.method === 'POST' && req.path === '/api/notifications/read-all') {
-    for (const n of db.notifications) {
-      const isRecipient = isGlobalObserver(actor)
-        || (n.recipient_user_id ? n.recipient_user_id === actor.id
-          : n.recipient_role ? n.recipient_role === actor.role
-            : n.recipient_division ? n.recipient_division === actor.division : false);
-      if (isRecipient) n.is_read = true;
-    }
-  }
-
   if (req.path === '/api/dashboard/attention') {
     const originalJson = res.json.bind(res);
     res.json = ((body: any) => {
