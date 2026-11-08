@@ -362,6 +362,7 @@ export class GabahDomainService {
     }
 
     const configuredOwner = (db.divisions || []).some(division =>
+      division.is_active !== false &&
       String(division.code || '').trim().toUpperCase() === String(resolvedOwnerDivision || '').trim().toUpperCase()
     );
     if (!configuredOwner) {
