@@ -402,6 +402,12 @@ async function main() {
     record('Super Admin can create custom role with selected permissions atomically', '201 + role id + 3 permissions', `HTTP ${vendorRole.status} permissions=${(vendorRole.json?.data?.permissions || []).length}`,
       vendorRole.status === 201 && vendorRoleId > 0 && ['vendors.read', 'vendors.create', 'vendors.update'].every(key => (vendorRole.json?.data?.permissions || []).includes(key)));
 
+    const protectedRolePermission = await req(base, 'PUT', `/api/admin/rbac/roles/${vendorRoleId}/permissions`, {
+      token: adminToken,
+      body: { permission_keys: ['system.super_admin'] },
+    });
+    record('Custom roles cannot receive protected system-superadmin permission', '409', `HTTP ${protectedRolePermission.status}`, protectedRolePermission.status === 409);
+
     const vendorRolePermissions = await req(base, 'PUT', `/api/admin/rbac/roles/${vendorRoleId}/permissions`, {
       token: adminToken,
       body: { permission_keys: ['vendors.read', 'vendors.create', 'vendors.update'] },
