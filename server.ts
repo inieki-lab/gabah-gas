@@ -145,12 +145,12 @@ async function startServer() {
       const roles = await queryRbac<any>('SELECT r.id, r.role_key, r.name, r.description, r.is_superadmin, r.is_active, r.created_at, r.updated_at, (SELECT COUNT(*)::int FROM gabah_user_roles ur WHERE ur.role_id = r.id) AS assigned_user_count FROM gabah_roles r ORDER BY r.is_superadmin DESC, r.name');
       const [permissions, scopes] = await Promise.all([
         queryRbac<any>('SELECT rp.role_id, p.permission_key FROM gabah_role_permissions rp JOIN gabah_permissions p USING (permission_key) WHERE p.is_active = TRUE ORDER BY p.module, p.action'),
-        queryRbac<any>('SELECT role_id, scope_type, scope_value FROM gabah_role_division_scopes ORDER BY role_id, scope_type, scope_value')
+        queryRbac<any>('SELECT role_id, module, scope_type, scope_value FROM gabah_role_division_scopes ORDER BY role_id, module, scope_type, scope_value')
       ]);
       return res.json({ success: true, data: roles.rows.map(role => ({
         ...role,
         permissions: permissions.rows.filter(p => p.role_id === role.id).map(p => p.permission_key),
-        scopes: scopes.rows.filter(s => s.role_id === role.id).map(s => ({ type: s.scope_type, value: s.scope_value }))
+        scopes: scopes.rows.filter(s => s.role_id === role.id).map(s => ({ module: s.module || '*', type: s.scope_type, value: s.scope_value }))
       })) });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -261,9 +261,10 @@ async function startServer() {
       return res.status(400).json({ success: false, message: 'ID role atau daftar scope tidak valid.' });
     }
     if (scopes.some((scope: any) => !scope || !validTypes.has(scope.type)
+      || (scope.module !== undefined && (typeof scope.module !== 'string' || !scope.module.trim()))
       || (['division', 'unit', 'location'].includes(scope.type) && (typeof scope.value !== 'string' || !scope.value.trim()))
       || (['all', 'own'].includes(scope.type) && scope.value != null))) {
-      return res.status(400).json({ success: false, message: 'Scope harus all/own tanpa nilai, atau division/unit/location dengan nilai.' });
+      return res.status(400).json({ success: false, message: 'Scope harus memiliki modul, tipe all/own tanpa nilai, atau division/unit/location dengan nilai.' });
     }
     try {
       const result = await withRbacTransaction(async client => {
@@ -271,9 +272,17 @@ async function startServer() {
         const role = found.rows[0];
         if (!role) throw new Error('RBAC_ROLE_NOT_FOUND');
         if (role.is_superadmin || role.role_key === 'superadmin') throw new Error('RBAC_SUPERADMIN_PROTECTED');
+        const moduleRows = await client.query('SELECT DISTINCT module FROM gabah_permissions WHERE is_active = TRUE');
+        const validModules = new Set(['*', ...moduleRows.rows.map((row: any) => String(row.module))]);
+        if (scopes.some((scope: any) => !validModules.has(scope.module || '*'))) {
+          throw new Error('RBAC_SCOPE_MODULE_INVALID');
+        }
         await client.query('DELETE FROM gabah_role_division_scopes WHERE role_id = $1', [id]);
         for (const scope of scopes) {
-          await client.query('INSERT INTO gabah_role_division_scopes (role_id, scope_type, scope_value) VALUES ($1, $2, $3)', [id, scope.type, ['all', 'own'].includes(scope.type) ? null : scope.value.trim()]);
+          await client.query(
+            'INSERT INTO gabah_role_division_scopes (role_id, module, scope_type, scope_value) VALUES ($1, $2, $3, $4)',
+            [id, scope.module || '*', scope.type, ['all', 'own'].includes(scope.type) ? null : scope.value.trim()]
+          );
         }
         await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
         return { role_key: role.role_key, scopes };
