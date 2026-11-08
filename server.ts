@@ -13,7 +13,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -2001,7 +2001,7 @@ async function startServer() {
           }
           // Bulk UPDATE uses the same owner-domain authorization as PATCH.
           // No role-name or physical-location shortcut grants mutation rights.
-          if (actor.role === 'Auditor' || !canMutateAssetOwner(actor, existing.owner_division, 'assets.update')) {
+          if (isAuditorActor(actor) || !canMutateAssetOwner(actor, existing.owner_division, 'assets.update')) {
             errors.push(`Baris ${rowNo}: ${existing.asset_number} ditolak. Permission assets.update dan scope owner "${existing.owner_division}" wajib dimiliki.`);
             continue;
           }
@@ -2094,7 +2094,7 @@ async function startServer() {
     // Auditor remains strictly read-only. Every other user, including a
     // Karyawan with an explicitly assigned additional capability, is judged
     // by the same permission + owner-scope policy used by domain mutations.
-    if (actor.role === 'Auditor') {
+    if (isAuditorActor(actor)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
     }
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.update')) {
@@ -2214,7 +2214,7 @@ async function startServer() {
       const filtered = db.movements.filter(m => m.asset_id === assetId);
       return res.json({ success: true, data: filtered });
     }
-    const filtered = isSuperadminActor(actor) || actor.role === 'Auditor'
+    const filtered = isSuperadminActor(actor) || isAuditorActor(actor)
       ? db.movements
       : db.movements.filter(m => visibleAssetIds.has(m.asset_id));
     res.json({ success: true, data: filtered });
@@ -2225,7 +2225,7 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'loans.read')) return;
     const actor = getActor(req);
-    if (isSuperadminActor(actor) || actor.role === 'Auditor') {
+    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
       return res.json({ success: true, data: db.loans });
     }
     // Loan visibility follows borrower ownership or an explicit owner scope
@@ -2337,7 +2337,7 @@ async function startServer() {
       ticket.reporter_id === actor.id
       || (Boolean(ticket.reporter_name) && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
 
-    if (isSuperadminActor(actor) || actor.role === 'Auditor') {
+    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
       return res.json({ success: true, data: db.tickets });
     }
     const canReadTicketOwner = (owner: string) =>
@@ -2389,7 +2389,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'tickets.update')) return;
     const actor = getActor(req);
-      if (actor.role === 'Auditor') {
+      if (isAuditorActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
       }
       const ticket = db.tickets.find(t => t.id === req.params.id);
@@ -2435,7 +2435,7 @@ async function startServer() {
   app.get('/api/maintenances', (req, res) => {
     const actor = getActor(req);
     if (!requireRbacPermission(req, res, 'maintenances.read')) return;
-    if (isSuperadminActor(actor) || actor.role === 'Auditor') {
+    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
       return res.json({ success: true, data: db.maintenances });
     }
 
@@ -2549,7 +2549,7 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'vendors.read')) return;
     const actor = getActor(req);
-    if (isSuperadminActor(actor) || actor.role === 'Auditor') {
+    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
       return res.json({ success: true, data: db.vendors });
     }
     const data = db.vendors.filter(v => {
@@ -2816,13 +2816,13 @@ async function startServer() {
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, module)
         : actor.role === owner;
-    const visibleLoans = isSuperadminActor(actor) || actor.role === 'Auditor'
+    const visibleLoans = isSuperadminActor(actor) || isAuditorActor(actor)
       ? db.loans
       : db.loans.filter(loan =>
         loan.borrower_id === actor.id
         || canReadOwnerScope(loan.owner_division, 'loans')
       );
-    const visibleTickets = isSuperadminActor(actor) || actor.role === 'Auditor'
+    const visibleTickets = isSuperadminActor(actor) || isAuditorActor(actor)
       ? db.tickets
       : db.tickets.filter(ticket =>
         ticket.reporter_id === actor.id
@@ -2859,7 +2859,7 @@ async function startServer() {
   app.get('/api/reconciliation', (req, res) => {
     if (!requireRbacPermission(req, res, 'reconciliation.read')) return;
     const actor = getActor(req);
-    const visibleAssets = isSuperadminActor(actor) || actor.role === 'Auditor'
+    const visibleAssets = isSuperadminActor(actor) || isAuditorActor(actor)
       ? db.assets
       : GabahDomainService.getScopedAssets(actor);
     const reconData = GabahDomainService.getReconciliationData(visibleAssets);
