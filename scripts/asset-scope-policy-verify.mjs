@@ -11,6 +11,8 @@ const hardeningSource = read('server/runtime-hardening.ts');
 const persistence = read('server/persistence.ts');
 const dbSeed = read('server/db.ts');
 const contracts = read('server/contracts.ts');
+const vendorUi = read('src/components/views/VendorsView.tsx');
+const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 
 const checks = [
@@ -23,6 +25,11 @@ const checks = [
   ['Owner domains are synchronized from the configurable division master before PostgreSQL FK-backed data', /for \(const division of db\.divisions \|\| \[\]\)/.test(persistence) && /INSERT INTO divisions \(code,name,is_active\)/.test(persistence)],
   ['Asset categories and new assets require owner codes from the configured master', /db\.divisions \|\| \[\]\)\.some\(d => String\(d\.code\)/.test(server) && /const configuredOwner = \(db\.divisions \|\| \[\]\)\.some/.test(services)],
   ['Contract visibility and edits follow any explicit owner scope, not IT/GA whitelist', /if \(!owner\) return false;/.test(contracts) && !/owner !== 'IT' && owner !== 'GA'/.test(contracts) && /hasRbacScope\(String\(user\.id\), 'division', owner, 'contracts'\)/.test(contracts)],
+  ['Vendor ownership is explicit and independent from category', /owner_division\?: string \| null/.test(read('server/db.ts')) && /owner_division\?: string \| null/.test(vendorTypes) && !/\['IT', 'License'\]\.includes\(String\(v\.category\)\)/.test(server)],
+  ['Vendor list uses explicit owner scope and keeps unclassified legacy rows global-only', /const owner = String\(v\.owner_division \|\| ''\)\.trim\(\);[\s\S]*if \(!owner\) return false;[\s\S]*hasRbacScope\(String\(actor\.id\), 'division', owner, 'vendors'\)/.test(server)],
+  ['Vendor create requires active owner master and explicit vendors scope', /requestedOwner = String\(req\.body\?\.owner_division \|\| ''\)\.trim\(\);[\s\S]*d\.code === requestedOwner && d\.is_active !== false[\s\S]*hasRbacScope\(String\(actor\.id\), 'division', requestedOwner, 'vendors'\)/.test(server)],
+  ['Vendor update requires old and new owner scopes and persists owner_division', /canManageExisting[\s\S]*canManageRequested[\s\S]*'owner_division'[\s\S]*vendor as any\)\[key\]/.test(server)],
+  ['Vendor UI loads configurable owner master and uses effective permission keys', /gabahApi\.getDivisions\(\)/.test(vendorUi) && /currentUser\.permission_keys\?\.includes\('vendors\.create'\)/.test(vendorUi) && !/\['Admin GABAH', 'IT', 'GA'\]\.includes\(currentUser\.role\)/.test(vendorUi)],
 
   ['ERP reconciliation reads only the actor visible asset scope', /const visibleAssets = isSuperadminActor\(actor\) \|\| actor\.role === 'Auditor'[\s\S]*GabahDomainService\.getScopedAssets\(actor\)[\s\S]*getReconciliationData\(visibleAssets\)/.test(server) && /static getReconciliationData\(assets: ServerAsset\[\] = db\.assets\)/.test(services)],
   ['ERP reconciliation linking requires asset update permission and matching owner scope', /app\.post\('\/api\/reconciliation\/link'[\s\S]*canMutateAssetOwner\(actor, asset\.owner_division, 'assets\.update'\)/.test(server)],
