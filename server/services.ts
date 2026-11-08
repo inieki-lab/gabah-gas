@@ -1105,10 +1105,10 @@ export class GabahDomainService {
   /**
    * Accurate ERP Reconciliation Query
    */
-  static getReconciliationData() {
-    const totalAssets = db.assets.length;
-    const matched = db.assets.filter(a => a.corporate_asset_number && a.corporate_asset_number.trim().length > 0);
-    const unmatched = db.assets.filter(a => !a.corporate_asset_number || a.corporate_asset_number.trim().length === 0);
+  static getReconciliationData(assets: ServerAsset[] = db.assets) {
+    const totalAssets = assets.length;
+    const matched = assets.filter(a => a.corporate_asset_number && a.corporate_asset_number.trim().length > 0);
+    const unmatched = assets.filter(a => !a.corporate_asset_number || a.corporate_asset_number.trim().length === 0);
 
     return {
       stats: {
@@ -1117,7 +1117,7 @@ export class GabahDomainService {
         unmatched_count: unmatched.length,
         reconciliation_percentage: totalAssets > 0 ? Math.round((matched.length / totalAssets) * 100) : 100,
       },
-      items: db.assets.map(a => ({
+      items: assets.map(a => ({
         id: a.id,
         asset_number: a.asset_number,
         corporate_asset_number: a.corporate_asset_number || null,
