@@ -139,7 +139,7 @@
 ### Skenario 7: Preventive Maintenance & Uji Tera
 - **Tujuan**: Memvalidasi pencatatan pemeliharaan berkala dan tera resmi PIBC.
 - **Langkah Pengujian**:
-  1. Login sebagai `PIBC` $\to$ buka tab *Servis & Maintenance*.
+  1. Login sebagai pegawai Karyawan unit/lokasi PIBC dengan permission dan scope maintenance yang disahkan $\to$ buka tab *Servis & Maintenance*.
   2. Daftarkan jadwal kalibrasi tera untuk "Jembatan Timbang Truk 60 Ton".
   3. Masukkan nama vendor/balai metrologi, estimasi biaya, dan frekuensi tahunan.
   4. Selesaikan jadwal servis dengan mengisi biaya riil dan checklist teknis.
@@ -150,7 +150,7 @@
 ### Skenario 8: Reservasi Ruang Rapat VIP & Notifikasi Multi-Divisi
 - **Tujuan**: Memverifikasi alur VIP auto-approval dan notifikasi otomatis lintas divisi.
 - **Langkah Pengujian**:
-  1. Login sebagai `Sekretaris Direksi`. Buka modul *Ruang Rapat* $\to$ buat reservasi di "Ruang Rapat VIP Direksi".
+  1. Login sebagai Karyawan dengan capability tambahan Sekretaris Direksi yang telah disahkan. Buka modul *Ruang Rapat* $\to$ buat reservasi di "Ruang Rapat VIP Direksi".
   2. Centang:
      - Fasilitas IT: *Polycom Studio Video Conference* & *Smart TV 85" 4K*
      - Fasilitas GA: *Sound System & Wireless Mic*
