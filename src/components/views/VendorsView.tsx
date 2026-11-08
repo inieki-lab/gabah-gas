@@ -50,7 +50,12 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
     });
     return () => { active = false; };
   }, []);
-  const canManage = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH' || currentUser.permission_keys?.includes('vendors.create') || currentUser.permission_keys?.includes('vendors.update');
+  const legacyVendorManager = currentUser.permission_keys === undefined
+    && ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const canCreate = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH'
+    || currentUser.permission_keys?.includes('vendors.create') === true || legacyVendorManager;
+  const canUpdate = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH'
+    || currentUser.permission_keys?.includes('vendors.update') === true || legacyVendorManager;
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -132,10 +137,10 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
             Direktori Rekanan &amp; Vendor Kontrak
           </h2>
           <p className="text-xs text-slate-600 mt-1">
-            Daftar rekanan resmi pengadaan perangkat IT, armada GA, pemeliharaan gedung, dan lisensi software.
+            Daftar rekanan perusahaan berdasarkan fungsi pemilik yang ditetapkan pada master owner domain.
           </p>
         </div>
-        {canManage && (
+        {canCreate && (
           <button
             onClick={openCreate}
             className="self-start md:self-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 transition-colors shadow-sm"
@@ -154,9 +159,10 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
           >
             <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-3">
               <div>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300">
-                  {v.category} Partner
-                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300">{v.category}</span>
+                  <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">Owner: {ownerDomains.find(item => item.code === v.owner_division)?.name || v.owner_division || 'Belum diklasifikasikan'}</span>
+                </div>
                 <h3 className="font-extrabold text-slate-900 text-base mt-1.5">{v.name}</h3>
               </div>
               <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 text-amber-800 text-xs font-bold shrink-0">
@@ -191,12 +197,12 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700">
               <div className="flex items-center justify-between font-semibold text-slate-600 mb-1 text-[11px]">
                 <span>Kontrak Berjalan: <strong className="text-slate-900">{v.active_contracts_count} Perjanjian</strong></span>
-                <span className="text-emerald-700 font-bold">SLA Compliance: 99%</span>
+                
               </div>
               <p className="text-[11px] text-slate-500 italic">{v.notes}</p>
             </div>
 
-            {canManage && (
+            {canUpdate && (
               <button
                 onClick={() => openEdit(v)}
                 className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl border border-slate-300 text-[11px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
@@ -212,7 +218,7 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
       {vendors.length === 0 && (
         <div className="text-center py-16 text-xs text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
           Belum ada vendor terdaftar.
-          {canManage && ' Klik "Tambah Vendor" untuk menambahkan rekanan pertama.'}
+          {canCreate && ' Klik "Tambah Vendor" untuk menambahkan rekanan pertama.'}
         </div>
       )}
 
