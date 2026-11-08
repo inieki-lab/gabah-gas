@@ -1,3 +1,12 @@
+## [2026-11-09] — Align asset movement history with dynamic asset scope
+
+- The movement-history endpoint now uses the canonical `getScopedAssets()` result without a second filter based on legacy primary-role labels.
+- Employees with explicit additional asset scopes can see movement history for assets in those scopes; personal asset visibility remains governed by the canonical resolver.
+- Added `test:movement-scope` and a CI step to prevent a duplicate legacy filter from returning.
+- CI for this follow-up branch has not run yet.
+
+---
+
 ## [2026-11-08] — Align dashboard loan attention with explicit owner scope
 
 - The defense-in-depth Dashboard Attention middleware now preserves the borrower's own loan cards and honors explicit PostgreSQL `loans` division scope for owner-division cards.
