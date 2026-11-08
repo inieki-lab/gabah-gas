@@ -1133,3 +1133,11 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Legacy vendor rows without owner classification remain visible to Super Admin/Auditor only and cannot be edited by scoped users until Super Admin classifies them. No automatic owner backfill is performed.
 - `VendorsView` now loads owner choices from the master division API and uses effective permission keys / Super Admin capability rather than the fixed Admin/IT/GA role allowlist.
 - Added regression checks for owner/category separation, dynamic scope, unclassified legacy handling, and UI permission behavior. Latest CI run must be checked before marking this change verified.
+
+
+### Room reservation authorization correction — 2026-11-08
+- Replaced room-reservation operational queue visibility based on GA/IT/Humas role labels with explicit capabilities: `room_reservations.approve` / `reject` for the redacted GA operations queue, `room_reservations.it_facilities.read` for the redacted IT-facility queue, and `room_reservations.documentation.read` for the Humas documentation queue. Personal reservations remain visible to their organizer; Super Admin/Auditor read access remains as before.
+- Added migration 034 with additive grants: IT facility queue to `it`, documentation queue to `humas`, and `room_reservations.override_priority` to `sekretaris_direksi`. Super Admin can grant these permissions to custom roles.
+- Room approve/reject/check-in/check-out/cancel and room update domain guards now use effective permissions with narrow file-store compatibility fallback. Priority interruption is controlled by `room_reservations.override_priority` plus HIGH priority, not a hardcoded Sekretaris Direksi role-name comparison.
+- Preserved redaction of agenda, description, attendee list, phone, consumption notes, documentation notes, and rejection/interruption reasons for operational queues.
+- Added regression assertions for queue capabilities, privacy redaction, operation permission checks, and migration grants. CI pending on latest head.
