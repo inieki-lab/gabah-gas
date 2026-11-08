@@ -473,3 +473,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The new scope is supported by the role editor, RBAC API validation, backend asset visibility/mutation checks, generic module owner-scope checks, and PostgreSQL migration 032.
 - Existing policies are preserved; no automatic permission expansion to GA or other teams is applied. Super Admin remains the authority to activate the new rule.
 - Verification pending on the newest CI head. No production migration has been run.
+
+
+### Follow-up verification — owner exclusions and owner-master safety
+- CI run #402 completed SUCCESS on head `b437abf78abdcf2c607f65943f2ba95a4c3b4b3f`.
+- Passed: TypeScript lint; Dynamic RBAC foundation contracts; branch migration safety; asset scope policy checks (including owner exclusions and inactive owner master); navigation/dashboard checks; production build; 37 P0 HTTP security assertions; 33 maintenance authorization assertions.
+- Owner-master sync now preserves inactive status, and new asset creation rejects inactive owner domains. Existing assets/history remain untouched.
+- This is code/CI verification only. Migration 032 has not been run against production PostgreSQL; production backup, dry-run, impact review, and approval are still required.
