@@ -25,7 +25,7 @@ import { GabahService } from './services/gabahService';
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { isNavTabAllowedForRole } from './navigation/roleNavigation';
-import { filterDashboardAssets, filterDashboardLoans, filterPersonalAssets, filterPersonalLoans, filterMaintenanceForRole, filterContractsForRole } from './dashboard/roleDashboardScope';
+// API collections are already scoped by the authoritative backend policy.
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
 import { MaintenanceView } from './components/views/MaintenanceView';
@@ -600,27 +600,15 @@ export default function App() {
     showToast(`Artikel "${updated.title}" diperbarui.`);
   };
 
-  const pendingLoans = loans.filter(l => l.status === 'pending');
-  const visibleTickets = currentUser
-    ? tickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser))
-    : [];
-  const selfServiceRoles: UserRole[] = ['Karyawan', 'Sekretaris Direksi', 'Humas'];
-  const visibleAssets = currentUser
-    ? (selfServiceRoles.includes(currentUser.role)
-        ? filterPersonalAssets(assets, loans, currentUser)
-        : filterDashboardAssets(assets, currentUser.role))
-    : [];
-  const visibleLoans = currentUser
-    ? (selfServiceRoles.includes(currentUser.role)
-        ? filterPersonalLoans(loans, currentUser)
-        : filterDashboardLoans(loans, currentUser.role))
-    : [];
-  const visibleMaintenanceSchedules = currentUser
-    ? filterMaintenanceForRole(maintenanceSchedules, currentUser.role)
-    : [];
-  const visibleContracts = currentUser
-    ? filterContractsForRole(contracts, currentUser)
-    : [];
+  // These API collections are already filtered by the backend's effective
+  // permission + module-specific data scope. Do not apply a second, stale
+  // role-name filter in the browser: a Karyawan may hold additional job roles.
+  const pendingLoans = loans.filter(l => l.status === 'pending_approval');
+  const visibleTickets = currentUser ? tickets : [];
+  const visibleAssets = currentUser ? assets : [];
+  const visibleLoans = currentUser ? loans : [];
+  const visibleMaintenanceSchedules = currentUser ? maintenanceSchedules : [];
+  const visibleContracts = currentUser ? contracts : [];
   const urgentTickets = visibleTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
   const openTickets = visibleTickets.filter(t => t.status === 'open' || t.status === 'in_progress');
   const pendingReservations = roomReservations.filter(r => r.status === 'pending_approval');
