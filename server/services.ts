@@ -715,7 +715,7 @@ export class GabahDomainService {
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
     if (!this.canOperateLoan(loan, actor, 'loans.approve')) {
-      throw Object.assign(new Error('Akses ditolak: hanya pengelola owner IT/GA yang memiliki permission approve atau Super Admin yang dapat menyetujui pinjaman.'), { statusCode: 403 });
+      throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission approve dan scope owner aset yang sesuai atau Super Admin yang dapat menyetujui pinjaman.'), { statusCode: 403 });
     }
 
     // Re-verify no collision with other ALREADY APPROVED / BORROWED loans for THIS specific asset
@@ -775,7 +775,7 @@ export class GabahDomainService {
     }
 
     if (!this.canOperateLoan(loan, actor, 'loans.reject')) {
-      throw Object.assign(new Error('Akses ditolak: hanya pengelola owner IT/GA yang memiliki permission reject atau Super Admin yang dapat menolak pinjaman.'), { statusCode: 403 });
+      throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission reject dan scope owner aset yang sesuai atau Super Admin yang dapat menolak pinjaman.'), { statusCode: 403 });
     }
 
     loan.status = 'rejected';
@@ -798,11 +798,9 @@ export class GabahDomainService {
   }
 
   /**
-   * Loan custody authority — the existing application authorization model
-   * (docs/architecture/RBAC.md §2 "Serah Terima / Pengembalian" rows and the
-   * client helper GabahService.canApproveLoan): Admin GABAH acts on all loans;
-   * division custodians (IT, GA, Supply Chain, PIBC) act only on loans for
-   * assets owned by their own division. No new roles, no dynamic RBAC changes.
+   * Loan custody authority follows dynamic RBAC: Super Admin is global; every
+   * other actor needs the operation permission and an explicit matching owner
+   * scope for the Loans module. Physical site and employee office do not grant access.
    */
   static canOperateLoan(loan: ServerLoan, actor: ServerUser, permissionKey: 'loans.approve' | 'loans.reject' | 'loans.handover' | 'loans.return' = 'loans.handover'): boolean {
     if (isSuperadminActor(actor)) return true;
@@ -830,7 +828,7 @@ export class GabahDomainService {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
-    // Authorization: only the owner-division custodian (IT/GA/SC/PIBC) or Admin GABAH.
+    // Authorization is enforced by the operation permission and matching owner scope.
     if (!this.canOperateLoan(loan, actor, 'loans.handover')) {
       this.recordAudit('LOAN_HANDOVER_DENIED', 'Loans', `Ditolak: ${actor.name} (${actor.role}) bukan penanggung jawab divisi ${loan.owner_division} untuk pinjaman ${loan.loan_number}`, actor, loan.id);
       throw Object.assign(new Error('Akses ditolak: Hanya penanggung jawab divisi pemilik aset atau Admin GABAH yang berwenang melakukan serah terima.'), { statusCode: 403 });
@@ -901,7 +899,8 @@ export class GabahDomainService {
     if (asset) {
       asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
       asset.condition = condition;
-      asset.location = 'Head Office - Gudang Pool';
+      // Preserve the recorded physical location. Returning a loan changes custody/status,
+      // not the asset's site; a real relocation must use the asset-mutation workflow.
     }
 
     this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id);
