@@ -20,12 +20,12 @@ const checks = [
   ['GA read permission didaftarkan khusus untuk role GA', /'assets\.read\.it_workstations'[\s\S]*?WHERE r\.role_key = 'ga'/.test(migration)],
   ['Permission khusus tidak memberi permission mutasi', !/assets\.(create|update|delete|assign|move|lifecycle)/.test(migration)],
   ['RBAC policy mengevaluasi permission efektif per user', /export function hasRbacPermission/.test(policy)],
-  ['Supply Chain/PIBC accounts migrate to Karyawan with office-location attributes', /WHEN 'Supply Chain' THEN 'OFF-RPC'[\\s\\S]*WHEN 'PIBC' THEN 'OFF-PIBC'[\\s\\S]*role = 'Karyawan'/.test(branchMigration)],
-  ['Legacy branch roles and branch units are retired without deleting historical rows', /UPDATE gabah_roles[\\s\\S]*role_key IN \\('supply_chain', 'pibc'\\)[\\s\\S]*UPDATE org_units[\\s\\S]*UNIT-SC[\\s\\S]*UNIT-PIBC/.test(branchMigration)],
-  ['Branch role migration does not rewrite historical asset ownership', !/UPDATE assets|UPDATE gabah_assets|owner_division\\s*=/.test(branchMigration)],
-  ['Movement history is restricted to the same visible asset scope', /visibleAssetIds[\\s\\S]*db\\.movements\\.filter\\(m => visibleAssetIds\\.has\\(m\\.asset_id\\)\\)/.test(server)],
-  ['Maintenance schedules follow visible asset scope and exclude branch-wide fallback', /visibleAssetIds[\\s\\S]*db\\.maintenances\\.filter\\(item => visibleAssetIds\\.has\\(item\\.asset_id\\)\\)/.test(server)],
-  ['Unknown roles fail closed for asset list and direct asset access', /Unknown or unconfigured roles must fail closed[\\s\\S]*return \\[\\];/.test(services) && /return assetVisibleUnderDynamicScopes\\(actor, asset\\);/.test(hardeningSource)],
+  ['Supply Chain/PIBC accounts migrate to Karyawan with office-location attributes', /WHEN 'Supply Chain' THEN 'OFF-RPC'[\s\S]*WHEN 'PIBC' THEN 'OFF-PIBC'[\s\S]*role = 'Karyawan'/.test(branchMigration)],
+  ['Legacy branch roles and branch units are retired without deleting historical rows', /UPDATE gabah_roles[\s\S]*role_key IN \('supply_chain', 'pibc'\)[\s\S]*UPDATE org_units[\s\S]*UNIT-SC[\s\S]*UNIT-PIBC/.test(branchMigration)],
+  ['Branch role migration does not rewrite historical asset ownership', !/UPDATE assets|UPDATE gabah_assets|owner_division\s*=/.test(branchMigration)],
+  ['Movement history is restricted to the same visible asset scope', /visibleAssetIds[\s\S]*db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(server)],
+  ['Maintenance schedules follow visible asset scope and exclude branch-wide fallback', /visibleAssetIds[\s\S]*db\.maintenances\.filter\(item => visibleAssetIds\.has\(item\.asset_id\)\)/.test(server)],
+  ['Unknown roles fail closed for asset list and direct asset access', /Unknown or unconfigured roles must fail closed[\s\S]*return \[\];/.test(services) && /return assetVisibleUnderDynamicScopes\(actor, asset\);/.test(hardeningSource)],
 ];
 
 let failed = 0;
