@@ -1148,3 +1148,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Corrected migration 015: `rooms` is still an application datastore collection, not a PostgreSQL table. Removed the invalid foreign key `room_id REFERENCES rooms(id)` so fresh PostgreSQL startup is not blocked by a nonexistent table.
 - Expanded CI to provision PostgreSQL 17 and run `scripts/cr04-cr05-verify.mjs` against an isolated fresh database, then run loan, room, org model, asset master, menu connectivity, security, and maintenance regressions in addition to lint/build and RBAC scope checks.
 - Added static regression guards against reintroducing the unsafe contract owner default or invalid room foreign key. Live PostgreSQL result is pending; do not claim database integration passes until CI completes.
+
+
+### PostgreSQL fresh-boot blocker found by live CI — 2026-11-08
+- First PostgreSQL 17 CI run failed on a real fresh database: `backfillDynamicRbacUserRoles()` queried `assigned_role.is_primary`, but `assigned_role` aliases `gabah_roles`; the column belongs to `gabah_user_roles` alias `ur`.
+- Corrected the SQL predicate to `ur.is_primary = TRUE`. This is the actual root cause of the fresh PostgreSQL boot failure after migrations; not a missing migration 030.
+- Added a regression assertion that the primary marker is read from the assignment table and that migration 030 creates it. Re-run the PostgreSQL-backed workflow; do not mark PostgreSQL integration green until the new run passes.
