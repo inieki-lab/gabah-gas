@@ -304,3 +304,85 @@ Memberi Superadmin kemampuan menetapkan/mengubah assignment role (termasuk role 
 
 ### Konfirmasi
 Tahap 13A **tidak mengubah** file `server.ts`, `server/services.ts`, `server/runtime-hardening.ts`, `server/rbac-policy.ts`, migration, CI, maupun konfigurasi. Seluruh perubahan commit ini hanya `CHANGELOG.md` dan `docs/*` (setelah diff review).
+
+
+---
+
+## Addendum — Handoff & koreksi keputusan bisnis (2026-11-08)
+
+> **Bagian ini lebih baru dan mengesampingkan catatan lama yang bertentangan di atas.** AI/pengembang berikutnya wajib membaca bagian ini sebelum mengubah RBAC, migrasi organisasi, atau data aset.
+
+### Status branch dan perubahan terakhir yang terverifikasi
+
+- Repository: `inieki-lab/gabah-gas`
+- Branch kerja: `fix/role-based-navigation`
+- PR: [#18](https://github.com/inieki-lab/gabah-gas/pull/18) — masih **Draft / Open**, belum merge.
+- HEAD saat catatan ini dibuat: `656dc36d952af918415b9c4eea385ca988b566ad`.
+- CI terakhir yang diperiksa: [run 42475092479](https://github.com/inieki-lab/gabah-gas/actions/runs/42475092479) — **success**. Ini hanya membuktikan job CI yang tersedia lulus, bukan UAT seluruh role atau kesiapan produksi.
+- Commit terbaru yang relevan:
+  - `61c1bc1` — GA inventory mengikuti explicit dynamic asset scope; akses baca IT workstation dipisahkan.
+  - `3014c90` — POST asset tidak lagi menolak berdasarkan label role Auditor/Karyawan; otorisasi tetap harus diputuskan oleh permission dan domain service.
+  - `656dc36` — verifikasi source asset scope diperbarui.
+- Perubahan GA: GA mengelola aset owner GA; IT laptop/desktop dapat terlihat oleh GA hanya jika permission `assets.read.it_workstations` diberikan. Kategori yang dibaca dibatasi kode `HLT` dan `HPC`; akses ini read-only.
+
+### Koreksi penting atas catatan migrasi sebelumnya
+
+Catatan tahap 13/8 November sebelumnya menyebut migration `026_map_branch_accounts_to_employee_location.sql` memetakan seluruh akun Supply Chain/PIBC ke role Karyawan. **Jangan menganggap pendekatan itu sebagai keputusan bisnis final.**
+
+Keputusan user yang paling baru dan menjadi acuan:
+- Supply Chain dan PIBC adalah **lokasi kerja/cabang**, bukan role aplikasi dan bukan otomatis unit pemilik aset.
+- Di setiap lokasi terdapat jabatan/fungsi seperti Kadiv, Kadep, Kasi, dan Staf.
+- Jangan mengubah seluruh pegawai SC/PIBC menjadi Karyawan hanya karena lokasi kerjanya.
+- Role aplikasi ditentukan oleh fungsi pekerjaan dan permission yang disetujui; jabatan, unit organisasi, lokasi kerja, role aplikasi, dan scope data adalah atribut terpisah.
+- Sebelum migration 026 dijalankan di database mana pun, audit ulang isi SQL dan data target. Buat pemetaan aman berdasarkan fungsi/jabatan dan pertahankan role tambahan. Jangan menghapus/mengganti akun, histori, atau role lama secara massal. Bila mapping tidak dapat dibuktikan, tandai untuk review Super Admin.
+- Migration 026 dan 027 belum boleh dianggap sudah diterapkan di produksi. Backup, dry-run, row-count, dan persetujuan tetap wajib.
+
+### Model organisasi dan otorisasi yang wajib dipertahankan
+
+Pisahkan dimensi berikut; jangan gabungkan menjadi satu kolom/label:
+1. Perusahaan.
+2. Lokasi kantor/kerja (HO, Supply Chain, PIBC, dan lokasi lain).
+3. Unit organisasi/fungsi.
+4. Jabatan/level (Direksi, Kadiv, Kadep, Kasi, Staf).
+5. Role aplikasi (template kapabilitas).
+6. Permission tindakan.
+7. Data scope per modul.
+8. Owner division aset (IT atau GA untuk klasifikasi yang sudah terbukti).
+9. Lokasi fisik aset.
+10. Pegawai/PIC/custodian aset.
+
+Matriks kepemilikan aset yang disetujui:
+- Super Admin: akses global sesuai permission.
+- IT: kelola aset owner IT di seluruh lokasi.
+- GA: kelola aset owner GA di seluruh lokasi.
+- GA dapat diberi permission baca IT Laptop/PC saja; tidak boleh melakukan mutasi atas aset tersebut. Super Admin dapat mengaktifkan/nonaktifkan akses baca tersebut melalui permission/menu.
+- Lokasi SC/PIBC tidak memberikan hak kelola aset.
+- Aset owner SC/PIBC historis tidak boleh otomatis dialihkan ke IT/GA. Review per aset dengan bukti; data ambigu tetap dibatasi untuk review Super Admin.
+- Auditor read-only.
+- Humas dan Sekretaris Direksi tetap pegawai dengan fungsi dasar personal sesuai permission, ditambah kapabilitas pekerjaan yang eksplisit; bukan asset owner.
+
+### Pekerjaan lanjutan — urutan wajib
+
+1. **Audit migration dan model organisasi:** periksa migration 026, migration 006/master org, migration 030/031, seed, data existing, dan UI Administration. Pastikan SC/PIBC tidak diperlakukan sebagai role/owner dan mapping pegawai tidak massal ke Karyawan.
+2. **Backend authorization:** audit seluruh list dan direct-ID endpoint. Backend wajib menegakkan permission + scope; filter frontend hanya UX. Fokus users/master data, assets, loans, tickets, maintenance, rooms, vendors, contracts, licenses, reports, search, exports, dashboard aggregates, notifications, audit, dan BAST.
+3. **Asset mutation:** pastikan assign/move/lifecycle/edit/delete/bulk import hanya dapat dilakukan oleh Super Admin atau pemilik fungsi IT/GA dengan permission + scope yang benar. GA read-only IT workstation tidak boleh lolos mutasi. SC/PIBC location tidak boleh menjadi grant.
+4. **Loan/ticket/maintenance/reservation:** hilangkan keputusan akses berdasarkan label lokasi/role lama jika bertentangan dengan permission dan scope; pertahankan aturan bisnis khusus yang telah dikonfirmasi (mis. prioritas Sekretaris Direksi) sebagai capability/workflow eksplisit.
+5. **Dynamic navigation:** menu, halaman, tombol, dan landing/workspace harus mengikuti permission efektif dan scope. Pegawai, termasuk Humas/Sekdir, perlu fungsi personal yang sesuai seperti My Assets, permintaan pinjaman, tiket, dan reservasi ruang bila permission diberikan.
+6. **Administration UI:** role template, permission, user-role assignment, scope per modul, jabatan, unit, dan lokasi harus jelas serta dapat dikelola Super Admin tanpa daftar role statis yang bertentangan dengan backend.
+7. **Regression test & UAT:** tes kombinasi role/permission/scope untuk list, detail ID, create/update/delete, dashboard, export, dan navigasi. CI hijau bukan pengganti UAT dengan akun representatif.
+8. **Workflow Humas:** baru dikerjakan setelah fondasi RBAC stabil. Permintaan dokumentasi harus menjadi work item yang terkait agenda/reservasi, punya PIC, assignment ke satu/beberapa Humas, accept/reject dengan alasan, status/progress, notifikasi, dan audit trail — bukan notifikasi lepas.
+9. Jangan migrasi backend ke Rust sekarang. Stabilkan dan rapikan sistem yang ada lebih dahulu.
+
+### Instruksi kerja untuk AI/agent berikutnya
+
+- Mulai dengan membaca `PROJECT-RULES.md`, `docs/audits/RBAC-DATA-SCOPE-AUDIT-2026-11.md`, dokumen ini (bagian addendum terbaru), migration terkait, lalu source code aktual pada branch terbaru.
+- Jangan percaya catatan lama bila bertentangan dengan keputusan user terbaru atau implementasi aktual. Tandai konflik dokumentasi dan selesaikan dengan bukti.
+- Jangan mengubah database produksi atau menjalankan migration destruktif tanpa backup, dry-run, laporan dampak, dan persetujuan eksplisit.
+- Jangan membuat perubahan besar sekaligus. Kerjakan satu domain, tulis test yang menguji perilaku, jalankan CI, lalu lanjut.
+- Jangan mengklaim selesai hanya karena TypeScript/build/CI lulus. Laporkan cakupan yang benar-benar diuji dan yang belum.
+- Setiap sesi wajib memperbarui `docs/progress/dynamic-rbac-progress.md` dan `CHANGELOG.md` bila ada perubahan aplikasi. Catat tanggal, branch/HEAD, file/commit, tes/hasil, keputusan baru, risiko, dan next action.
+- Jangan merge PR #18 sampai model organisasi, seluruh backend scope kritis, navigasi, CI, dan UAT role utama telah diverifikasi. User memang mengizinkan merge jika sudah benar; izin tersebut bukan instruksi untuk merge sebelum acceptance criteria terpenuhi.
+
+### Penjelasan singkat mengapa pekerjaan ini sulit bagi agent coding
+
+GABAH bukan satu bug terisolasi. Aturan akses tersebar di middleware, route Express, domain service, resolver RBAC, migration SQL, seed, frontend navigation, dashboard, dan modal Administration. Ada beberapa generasi model role (legacy role, dynamic role, primary/additional role, jabatan, unit, lokasi) yang hidup bersamaan dan beberapa dokumen masih saling bertentangan. Agent yang hanya membaca satu file, mengandalkan skill umum, atau mengerjakan prompt per fitur akan mudah memperbaiki tampilan tetapi melewatkan jalur API lain atau malah memperkuat aturan lama yang salah. Solusinya adalah audit lintas lapisan, satu keputusan bisnis yang otoritatif, tes matriks permission/scope, dan log handoff yang selalu diperbarui.
