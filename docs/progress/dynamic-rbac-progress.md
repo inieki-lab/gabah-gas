@@ -416,3 +416,16 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 6. Sebelum mengubah migration atau data existing, inventarisasi nilai owner saat ini, lokasi, kategori, dan pemilik proses. Jangan menjalankan perubahan produksi tanpa backup, dry-run, laporan dampak, dan persetujuan.
 
 **Prinsip ringkas:** lokasi menjawab *aset berada di mana*; owner menjawab *fungsi/unit mana yang bertanggung jawab atas aset*; role dan permission menjawab *siapa boleh melakukan apa*; data scope menjawab *data mana yang boleh dijangkau*. Keempatnya independen dan harus fleksibel.
+
+
+---
+
+## Addendum — Proteksi migration role cabang (2026-11-08)
+
+- User menegaskan bahwa GA saat ini hanya menangani aset yang memang menjadi tanggung jawab GA dan sesuai kapasitas personel; tidak boleh diasumsikan sebagai pengelola semua aset non-IT. Model owner harus dapat berkembang untuk RPC/SC dan fungsi operasional lain.
+- Audit menemukan draft lama `server/migrations/026_map_branch_accounts_to_employee_location.sql` melakukan perubahan destruktif: mengubah seluruh `users.role` Supply Chain/PIBC menjadi Karyawan, menghapus role assignment supply_chain/pibc, dan menonaktifkan `UNIT-SC`/`UNIT-PIBC` berdasarkan label role. Ini tidak aman karena lokasi tidak membuktikan jabatan/fungsi pegawai.
+- Pada commit `e058e4743340395099966259b95ea721fb4503ea`, migration 026 diubah menjadi no-op compatibility marker. Tidak ada perubahan role/user/unit yang dilakukan otomatis.
+- Ditambahkan `scripts/branch-migration-safety-verify.mjs`, npm script `test:branch-migration-safety`, dan CI step pada commit `c6c3b5946de8a72d5a13fcaf02cf7c202018c2b3`.
+- **Peringatan:** jika versi lama migration 026 sudah pernah diterapkan di suatu database, mengubah file tidak membatalkan perubahan historis. Jangan mencoba memulihkan role secara tebakan. Cocokkan backup, audit trail, HR master, dan penugasan aktual sebelum membuat recovery plan.
+- CI run 42477031571 pada head tersebut masih berjalan saat catatan dibuat. Belum ada klaim PASS.
+- PR #18 tetap Draft/Open; belum merge. Tahap berikutnya: verifikasi hasil CI, lalu audit model owner dan semua jalur aset/loan/ticket berdasarkan permission + module scope + owner scope.
