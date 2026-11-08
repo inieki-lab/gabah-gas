@@ -70,6 +70,9 @@ jobs:
       - name: P0 security verification (live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
 
+      - name: User directory read scope verification
+        run: node scripts/rbac-scoping-verify.mjs
+
       - name: Loan authorization and state transitions
         run: npm run test:loan-authz
 
