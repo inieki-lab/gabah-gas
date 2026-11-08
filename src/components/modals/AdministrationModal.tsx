@@ -298,7 +298,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     role: 'Karyawan',
     role_label: 'Pegawai Operasional',
     division: 'SC',
-    department: 'Pergudangan & Distribusi'
+    department: 'Pergudangan & Distribusi',
+    office_location_id: null,
+    job_level_code: '',
+    unit_id: null
   });
 
   useEffect(() => {
@@ -1328,7 +1331,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         role: 'Karyawan',
         role_label: 'Pegawai Operasional',
         division: 'SC',
-        department: 'Pergudangan & Distribusi'
+        department: 'Pergudangan & Distribusi',
+        office_location_id: null,
+        job_level_code: '',
+        unit_id: null
       });
       if (onRefreshData) await onRefreshData();
     } catch (err: any) {
