@@ -31,9 +31,9 @@ Sebelum adanya GABAH, pencatatan aset inventaris, penjadwalan pemeliharaan armad
 
 ---
 
-## 2. Persona & Pengguna Sasaran (9 Peran Resmi)
+## 2. Persona & Pengguna Sasaran (Role Existing — Model Transisi)
 
-Sistem GABAH mengimplementasikan **9 peran pengguna aktif** dengan kredensial kanonikal yang terdaftar pada sistem:
+Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun dan data lama. Daftar ini bukan batas jumlah role dan bukan model organisasi target. Model target mengikuti keputusan pada Bagian 2.1–2.2; role legacy akan dipetakan bertahap tanpa menghapus akun atau histori:
 
 | No | Peran (Role) | Persona Uji | Divisi Utama | Lingkup Tanggung Jawab & Hak Akses |
 |:---|:---|:---|:---|:---|
@@ -42,8 +42,8 @@ Sistem GABAH mengimplementasikan **9 peran pengguna aktif** dengan kredensial ka
 | 3 | **GA** | Siti Rahmawati | General Affairs | Pengelola aset umum (furniture, peralatan kantor, kendaraan dinas, gedung), persetujuan pinjaman kendaraan kantor, pengelolaan tiket GA, persetujuan reservasi ruang rapat, dan koordinasi konsumsi pantry. |
 | 4 | **Sekretaris Direksi** | Dewi Anggraini, S.Sos | GA (Sekretariat Direksi) | Pemesanan ruang rapat prioritas tinggi untuk jajaran Direksi & Dewan Komisaris (otomatis disetujui / auto-approved), peminjaman perlengkapan rapat, dan pelaporan kendala eksekutif. |
 | 5 | **Humas** | Rina Kartika, M.I.Kom | GA (Humas & Protokoler) | Menerima notifikasi khusus permintaan peliputan dan dokumentasi acara/rapat VIP (foto, video, press release). Akses menu aset disembunyikan sesuai SOP protokoler. |
-| 6 | **Supply Chain** | Agus Pratama | Supply Chain | Pengelola aset mesin pabrik beras, conveyor packaging, forklift gudang, armada truk tronton beras, tiket operasional pergudangan, dan pemeliharaan mesin produksi. |
-| 7 | **PIBC** | Bambang Hermawan | PIBC (Pasar Induk) | Pengawas sarana prasarana Pasar Induk Beras Cipinang, mesin jembatan timbang truk 60 ton, kalibrasi tera resmi, dan penanganan kendala fasilitas los/kios pedagang. |
+| 6 | **Supply Chain (legacy)** | Agus Pratama | Lokasi Supply Chain | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
+| 7 | **PIBC (legacy)** | Bambang Hermawan | Lokasi PIBC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
 | 8 | **Karyawan** | Hendra Wijaya | Komersial / Operasional | Staf umum perusahaan. Melihat aset kerja yang ditugaskan (*Aset Saya*), mengajukan peminjaman barang dinas, membuat tiket bantuan IT/GA, dan mereservasi ruang rapat. |
 | 9 | **Auditor** | Maya Indriani, SE, Ak, CA | Audit (SPI) | Pengawas kepatuhan internal. Hak akses **Read-Only** ke seluruh modul katalog aset, log sirkulasi, log audit, rekonsiliasi Accurate, dan riwayat helpdesk. Dilarang melakukan mutasi data (403 Forbidden). |
 
@@ -93,11 +93,27 @@ Sistem GABAH mengimplementasikan **9 peran pengguna aktif** dengan kredensial ka
 - Nama kantor/lokasi Supply Chain dan PIBC tidak boleh dipakai sebagai filter kepemilikan aset secara otomatis. Filter lokasi boleh digunakan untuk menemukan aset berdasarkan tempat fisiknya, tanpa mengubah hak kelola.
 - Akses harus dibedakan secara eksplisit antara read, create, update, delete, approve, assign, dan admin. Hak read tidak boleh dianggap memberi hak mutasi atau persetujuan.
 - Setiap perubahan RBAC, filter data, dashboard, menu, dan endpoint API wajib mengikuti prinsip di atas. Filter frontend hanya untuk pengalaman pengguna; otorisasi final tetap wajib ditegakkan di backend.
+### 2.2 Model Target Role Aplikasi, Jabatan, Unit Kerja, dan Lokasi
+
+Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy pada Bagian 2 tidak boleh ditafsirkan sebagai struktur organisasi permanen.
+
+- **Role aplikasi bukan jabatan dan bukan lokasi.** Role aplikasi adalah paket fungsi yang dapat diberikan kepada pengguna sesuai pekerjaan. Pengguna dapat memperoleh lebih dari satu role aplikasi bila memang diperlukan.
+- **Jabatan** adalah Direksi, Kadiv, Kadep, Kasi, Staf, atau jabatan lain yang dikelola melalui master. Jabatan tidak otomatis memberikan permission.
+- **Unit kerja** menunjukkan bidang/fungsi organisasi dan dapat berada di kantor pusat maupun cabang.
+- **Lokasi kerja** menunjukkan kantor/cabang penempatan pegawai, misalnya HO, Supply Chain, PIBC, atau lokasi lain. Lokasi tidak otomatis memberi akses ke seluruh data di lokasi itu.
+- **Permission** menentukan tindakan yang boleh dilakukan (read, create, update, delete, approve, assign, administer). **Data scope** menentukan objek/data yang boleh dijangkau (own, unit, lokasi, owner domain, atau global).
+- Menu frontend diturunkan dari permission efektif pengguna. Backend tetap memeriksa permission dan scope pada setiap endpoint dan objek.
+- Pengalaman dasar pegawai mencakup Aset Saya, pengajuan peminjaman, tiket bantuan, dan reservasi sesuai permission. Sekretaris Direksi dan Humas mendapat fungsi tambahan sesuai pekerjaan.
+- Supply Chain dan PIBC bukan role aplikasi permanen. Akun yang sekarang memakai label tersebut dipertahankan sebagai data transisi, lalu dipetakan ke jabatan/unit/lokasi dan role aplikasi yang tepat oleh Super Admin.
+- **Tidak ada migrasi massal owner aset SC/PIBC berdasarkan lokasi.** Nilai owner legacy harus ditinjau per aset dan dipetakan ke pengelola yang benar. Sampai review selesai, aset yang belum jelas kepemilikannya tidak boleh otomatis dipindahkan ke GA atau IT.
+- Penambahan cabang atau lokasi baru tidak boleh memerlukan penambahan role aplikasi baru. Super Admin cukup mengelola master organisasi, penempatan pegawai, role, permission, dan scope.
+
 ---
 
 ## 3. Fitur Utama Sistem (Core Capabilities)
 
 ### 3.1 Manajemen Aset Multi-Divisi & Taksonomi PSAK 16
+- **Catatan transisi owner:** kode owner SC/PIBC pada data lama tidak otomatis dianggap sebagai lokasi maupun dialihkan ke owner baru. Pembuatan aset baru harus mengikuti domain pemilik yang disahkan; data historis owner SC/PIBC menunggu review klasifikasi per aset.
 - Pencatatan spesifikasi lengkap: Merek, Model, Nomor Seri, Tanggal Perolehan, Nilai Pembelian, Masa Garansi, Lokasi Fisik, dan Penanggung Jawab (*Custodian*).
 - Klasifikasi Aset Tetap PSAK 16:
   - `TNH`: Tanah & Lahan
