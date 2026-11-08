@@ -217,6 +217,24 @@ async function startServer() {
     } catch (error: any) { return rbacFailure(res, error); }
   });
 
+  app.get('/api/admin/rbac/user-assignments', async (req, res) => {
+    if (!requireRbacSuperadmin(req, res)) return;
+    try {
+      const result = await queryRbac<any>(
+        'SELECT u.id AS user_id, u.name, u.email, u.role AS primary_profile_role, ' +
+        'COALESCE(array_agg(ur.role_id ORDER BY ur.is_primary DESC, ur.role_id) FILTER (WHERE ur.role_id IS NOT NULL), ARRAY[]::bigint[]) AS role_ids, ' +
+        'MAX(ur.role_id) FILTER (WHERE ur.is_primary = TRUE) AS primary_role_id ' +
+        'FROM users u LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id::text ' +
+        'GROUP BY u.id, u.name, u.email, u.role ORDER BY u.name'
+      );
+      return res.json({ success: true, data: result.rows.map(row => ({
+        ...row,
+        role_ids: (row.role_ids || []).map(Number),
+        primary_role_id: row.primary_role_id == null ? null : Number(row.primary_role_id),
+      })) });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
   app.post('/api/admin/rbac/roles', async (req, res) => {
     const actor = requireRbacSuperadmin(req, res);
     if (!actor) return;
