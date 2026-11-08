@@ -780,8 +780,9 @@ export default function App() {
           )).length}
           currentUserRole={currentUser.role}
           currentUserPermissions={currentUser.permission_keys}
+          currentUserIsSuperAdmin={currentUser.is_superadmin}
           onOpenAdministration={() => {
-            if (currentUser.role === 'Admin GABAH') {
+            if (currentUser.is_superadmin || currentUser.role === 'Admin GABAH') {
               setIsAdministrationModalOpen(true);
             }
           }}
