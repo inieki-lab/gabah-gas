@@ -143,10 +143,16 @@ export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAs
   if (!owner) return false;
   const scopes = dynamicScopesForUser(user);
   if (scopes == null) return false; // tanpa policy/scope: deny-by-default
-  const hasExplicitMatch = scopes.some(scope => scope.type !== 'all' && scope.type !== 'division_except' && assetMatchesAssetScope(asset, scope, user));
   const excluded = scopes.some(scope => scope.type === 'division_except' && textEquals(asset.owner_division, scope.value));
-  return hasExplicitMatch || (scopes.some(scope => scope.type === 'all') && !excluded)
-    || (!scopes.some(scope => scope.type === 'all') && !excluded && scopes.some(scope => scope.type === 'division_except' && assetMatchesAssetScope(asset, scope, user)));
+  const explicitOwnerGrant = scopes.some(scope => scope.type === 'division' && assetMatchesAssetScope(asset, scope, user));
+  const otherScopedGrant = !excluded && scopes.some(scope =>
+    !['all', 'division', 'division_except'].includes(scope.type) && assetMatchesAssetScope(asset, scope, user)
+  );
+  return explicitOwnerGrant || (!excluded && (
+    scopes.some(scope => scope.type === 'all') ||
+    otherScopedGrant ||
+    scopes.some(scope => scope.type === 'division_except' && assetMatchesAssetScope(asset, scope, user))
+  ));
 }
 
 function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): ServerAsset[] {
@@ -155,11 +161,16 @@ function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): S
   if (scopes == null) return [];
   const classifiedOwnerAssets = assets.filter(asset => String(asset.owner_division || '').trim().length > 0);
   return classifiedOwnerAssets.filter(asset => {
-    const explicitMatch = scopes.some(scope => scope.type !== 'all' && scope.type !== 'division_except' && assetMatchesAssetScope(asset, scope, user));
     const excluded = scopes.some(scope => scope.type === 'division_except' && textEquals(asset.owner_division, scope.value));
-    const includesAll = scopes.some(scope => scope.type === 'all');
-    const includesExcept = !includesAll && scopes.some(scope => scope.type === 'division_except' && assetMatchesAssetScope(asset, scope, user));
-    return explicitMatch || (!excluded && (includesAll || includesExcept));
+    const explicitOwnerGrant = scopes.some(scope => scope.type === 'division' && assetMatchesAssetScope(asset, scope, user));
+    const otherScopedGrant = !excluded && scopes.some(scope =>
+      !['all', 'division', 'division_except'].includes(scope.type) && assetMatchesAssetScope(asset, scope, user)
+    );
+    return explicitOwnerGrant || (!excluded && (
+      scopes.some(scope => scope.type === 'all') ||
+      otherScopedGrant ||
+      scopes.some(scope => scope.type === 'division_except' && assetMatchesAssetScope(asset, scope, user))
+    ));
   });
 }
 
