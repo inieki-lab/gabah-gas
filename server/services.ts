@@ -61,7 +61,9 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
 function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
   if (isSuperadminActor(actor)) return true;
   const owner = String(ownerDivision || '').trim().toUpperCase();
-  if (!owner) return false;
+  // Only IT and GA are active asset-owner domains. SC/PIBC values remain
+  // historical records pending per-asset review and are Super Admin-only.
+  if (owner !== 'IT' && owner !== 'GA') return false;
 
   if (isPostgresPersistenceActive()) {
     const authority = getDynamicAssetWriteAuthority(actor);
@@ -323,6 +325,10 @@ export class GabahDomainService {
       resolvedOwnerDivision = 'GA';
     } else if (payload.owner_division) {
       resolvedOwnerDivision = payload.owner_division;
+    }
+
+    if (resolvedOwnerDivision !== 'IT' && resolvedOwnerDivision !== 'GA') {
+      throw new Error('Owner aset baru hanya boleh IT atau GA. Supply Chain dan PIBC adalah lokasi kerja; data owner lama menunggu review Super Admin.');
     }
 
     // Authorization is based on the effective create permission AND explicit owner scope.
