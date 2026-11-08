@@ -1413,7 +1413,7 @@ export function seedInitialData() {
       id: 'mnt-003',
       schedule_code: 'MNT-2026-003',
       title: 'Kalibrasi Berkala Timbangan Truk Beras 60 Ton Gudang Cipinang',
-      asset_id: 'AST-MSN-001',
+      asset_id: 'asset-010',
       asset_name: 'Toyota 8FBN25 Electric Forklift 2.5 Ton',
       asset_number: 'SC-WGH-2026-0001',
       category_type: 'General',
