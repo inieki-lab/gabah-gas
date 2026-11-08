@@ -76,8 +76,7 @@ JOIN (VALUES
   ('room_reservations.checkout'),
   ('room_reservations.cancel'),
   ('meeting_types.manage'),
-  ('meeting_facilities.manage'),
-  ('reconciliation.link')
+  ('meeting_facilities.manage')
 ) AS p(permission_key) ON TRUE
 WHERE r.role_key IN ('superadmin', 'ga')
   AND r.is_active = TRUE
