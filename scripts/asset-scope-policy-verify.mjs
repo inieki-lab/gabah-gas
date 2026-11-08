@@ -10,7 +10,7 @@ const server = read('server.ts');
 const hardeningSource = read('server/runtime-hardening.ts');
 
 const checks = [
-  ['IT and other owner roles use explicit dynamic owner scopes', /const dynamicAssets = filterAssetsByDynamicScopes\(db\.assets, user\)/.test(services) && !/if \(user\.role === 'IT'\)/.test(services)],
+  ['Dynamic asset visibility is owner-code agnostic and scope-driven', /const owner = String\(asset\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\);\s*if \(!owner\) return false;/.test(services) && /scope\.type === 'division'/.test(services) && /assetMatchesAssetScope\(asset, scope, user\)/.test(services)],
   ['GA and additional capabilities retain explicitly scoped owner domains', /const dynamicAssets = filterAssetsByDynamicScopes\(db\.assets, user\)/.test(services) && /\.\.\.dynamicAssets, \.\.\.readOnlyItWorkstations/.test(services)],
   ['GA IT read scope memerlukan permission khusus', /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)],
   ['GA IT read scope dibatasi taxonomy HLT dan HPC', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(services) && /readOnlyItWorkstations/.test(services)],
@@ -22,7 +22,7 @@ const checks = [
   ['Permission khusus tidak memberi permission mutasi', !/assets\.(create|update|delete|assign|move|lifecycle)/.test(migration)],
   ['RBAC policy mengevaluasi permission efektif per user', /export function hasRbacPermission/.test(policy)],
   ['Branch migration does not rewrite user role or work-unit assignments', !/\b(UPDATE|DELETE|INSERT|MERGE)\b/i.test(branchMigration.replace(/--[^\n]*/g, ''))],
-  ['Branch migration leaves role templates and operational units intact', /RPC\/SC can also be an operational asset-owning function/i.test(branchMigration) && !/UPDATE gabah_roles|UPDATE org_units/i.test(branchMigration)],
+  ['Branch migration preserves role templates and operational units', /RPC\/SC may also be an operational asset-owning function/i.test(branchMigration) && !/UPDATE gabah_roles|UPDATE org_units/i.test(branchMigration)],
   ['Branch role migration does not rewrite historical asset ownership', !/UPDATE assets|UPDATE gabah_assets|owner_division\s*=/.test(branchMigration)],
   ['Movement history is restricted to the same visible asset scope', /visibleAssetIds[\s\S]*db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(server)],
   ['Maintenance schedules follow visible asset scope and exclude branch-wide fallback', /visibleAssetIds[\s\S]*db\.maintenances\.filter\(item => visibleAssetIds\.has\(item\.asset_id\)\)/.test(server)],
