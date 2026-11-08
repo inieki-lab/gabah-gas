@@ -269,7 +269,14 @@ export class GabahDomainService {
         return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
       }
       if (user.role === 'GA') {
-        return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'GA');
+        // File-store compatibility mirrors the conservative legacy default:
+        // GA owns GA assets and may read IT laptops/desktops only. PostgreSQL
+        // deployments use the explicit assets.read.it_workstations capability.
+        return db.assets.filter(asset =>
+          String(asset.owner_division || '').toUpperCase() === 'GA'
+          || (String(asset.owner_division || '').toUpperCase() === 'IT'
+            && ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase()))
+        );
       }
       return [];
     }
