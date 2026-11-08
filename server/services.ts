@@ -53,7 +53,6 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
       }
     }
   }
-  if (result.all) result.divisions.clear();
   return result;
 }
 
