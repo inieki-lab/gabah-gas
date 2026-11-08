@@ -1062,3 +1062,10 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Reconciliation GET now calculates statistics and rows only from the caller's visible asset set (Super Admin/Auditor retain global read access).
 - ERP number linking now requires both `reconciliation.link` and the shared `assets.update` permission + matching owner scope; client-side permission alone cannot mutate another owner's asset.
 - CI run #409 passed on head `c5d71a0e7e20f6c1dfbe146af2a8d8fa1d4b0a3f`.
+
+
+### Office location master correction — 2026-11-08
+- Current active office locations are exactly HO, PIBC, RPC/SC, and Pangsub.
+- The retired Kantor Perawatan office is inactive, not deleted. Existing location IDs are preserved so user references and history remain intact.
+- Future locations remain configurable by Super Admin; Subang is not seeded or treated as an active site.
+- Added migration 033 and regression assertions. Migration has not been applied to production.
