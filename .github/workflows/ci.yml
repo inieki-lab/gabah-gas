@@ -35,10 +35,10 @@ jobs:
         run: bash -n deploy.sh
 
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -64,6 +64,9 @@ jobs:
 
       - name: Production build (frontend + server bundle)
         run: npm run build
+
+      - name: Build production Docker image
+        run: docker build --tag gabah-gas:ci .
 
       - name: PostgreSQL 17 fresh-database and persistence integration (CR-04/CR-05)
         env:
