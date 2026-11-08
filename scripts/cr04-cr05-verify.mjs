@@ -391,6 +391,25 @@ async function main() {
         && (karyawanVendors.json.data || []).some(v => v.owner_division === 'GA')
         && !(karyawanVendors.json.data || []).some(v => v.owner_division === 'IT'));
 
+    // Auditor is a deny-write capability even when assigned as an additional role.
+    // Preserve the employee primary role and all other approved capabilities.
+    const auditorRole = (roleCatalog.json?.data || []).find(role => role.role_key === 'auditor' && role.is_active);
+    const addAuditorRole = await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
+      token: adminToken,
+      body: { role_ids: [Number(gaRole?.id), vendorRoleId, Number(auditorRole?.id)] },
+    });
+    record('Auditor additional role can be assigned without replacing Karyawan primary', '200 + auditor capability',
+      `HTTP ${addAuditorRole.status}`, addAuditorRole.status === 200 && addAuditorRole.json?.data?.role_ids?.includes(Number(auditorRole?.id)));
+    const additionalAuditorWrite = await req(base, 'POST', '/api/tickets', {
+      token: karyawanToken,
+      body: { title: 'VERIFY Auditor additional role write denial', description: 'must be denied', category: 'IT', priority: 'low' },
+    });
+    record('Auditor additional role enforces global read-only on API writes', '403',
+      `HTTP ${additionalAuditorWrite.status}`, additionalAuditorWrite.status === 403);
+    const additionalAuditorRead = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
+    record('Auditor additional role receives authorized audit read access', '200',
+      `HTTP ${additionalAuditorRead.status}`, additionalAuditorRead.status === 200);
+
     const deleteReferencedOwner = await req(base, 'DELETE', '/api/master/divisions/RPCSC', { token: adminToken });
     record('Owner domain referenced by vendor cannot be deleted', '400', `HTTP ${deleteReferencedOwner.status}`, deleteReferencedOwner.status === 400);
 
