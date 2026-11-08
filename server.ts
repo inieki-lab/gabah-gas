@@ -2208,7 +2208,7 @@ async function startServer() {
       .map(asset => asset.id));
     const { assetId } = req.query;
     if (assetId) {
-      if (!visibleAssetIds.has(String(assetId)) && !isSuperadminActor(actor) && actor.role !== 'Auditor') {
+      if (!visibleAssetIds.has(String(assetId)) && !isSuperadminActor(actor) && !isAuditorActor(actor)) {
         return res.status(404).json({ success: false, message: 'Aset tidak ditemukan.' });
       }
       const filtered = db.movements.filter(m => m.asset_id === assetId);
@@ -3142,7 +3142,7 @@ async function startServer() {
 
     // Agenda details are private by default. Operational queues are granted
     // by explicit capabilities, never by the employee's primary role label.
-    if (!isSuperadminActor(actor) && actor.role !== 'Auditor') {
+    if (!isSuperadminActor(actor) && !isAuditorActor(actor)) {
       const canOperateRooms = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.approve')
           || hasRbacPermission(String(actor.id), 'room_reservations.reject')
