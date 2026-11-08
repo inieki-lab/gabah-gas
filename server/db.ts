@@ -530,8 +530,7 @@ export const db = {
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
     { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
     { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
-    // Lokasi lama dinonaktifkan, bukan dihapus, untuk menjaga histori.
-    { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: false },
+    { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
   ] as OrgOfficeLocation[],
 
   // T2B-2: Master Lokasi Fisik Aset (terpisah dari lokasi kantor user &
