@@ -18,6 +18,7 @@ import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSupera
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
+import { filterDashboardAttentionItems } from './server/dashboard-attention-scope';
 import {
   createSession,
   destroySession,
@@ -2853,7 +2854,21 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'dashboard.read')) return;
     const actor = getActor(req);
     const items = GabahDomainService.getAttentionCenter(actor);
-    res.json({ success: true, data: items });
+    const isGlobalReader = isSuperadminActor(actor) || isAuditorActor(actor);
+    const visibleAssets = isGlobalReader ? db.assets : GabahDomainService.getScopedAssets(actor);
+    const canReadOwnerScope = (module: 'loans' | 'tickets', owner: string) =>
+      isPostgresPersistenceActive()
+        ? hasRbacScope(String(actor.id), 'division', owner, module)
+        : actor.role === owner;
+    const visibleItems = filterDashboardAttentionItems(items, {
+      actorId: String(actor.id),
+      isGlobalReader,
+      visibleAssetIds: new Set(visibleAssets.map(asset => asset.id)),
+      loans: db.loans,
+      tickets: db.tickets,
+      canReadOwnerScope,
+    });
+    res.json({ success: true, data: visibleItems });
   });
 
   // Accurate ERP Reconciliation
