@@ -32,15 +32,13 @@ USING gabah_roles r, users u
 WHERE ur.role_id = r.id
   AND ur.user_id = u.id::text
   AND r.role_key IN ('supply_chain', 'pibc')
-  AND u.role = 'Karyawan'
-  AND u.office_location_id IN ('OFF-RPC', 'OFF-PIBC');
+  AND u.role = 'Karyawan';
 
 INSERT INTO gabah_user_roles (user_id, role_id)
 SELECT u.id::text, r.id
 FROM users u
 JOIN gabah_roles r ON r.role_key = 'karyawan' AND r.is_active = TRUE
 WHERE u.role = 'Karyawan'
-  AND u.office_location_id IN ('OFF-RPC', 'OFF-PIBC')
 ON CONFLICT (user_id, role_id) DO NOTHING;
 
 -- Retire old role templates from assignment pickers; do not delete history.
