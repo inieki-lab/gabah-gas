@@ -458,3 +458,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 2. Rapikan menu, landing page, dan tindakan tiap halaman berdasarkan effective permissions + scope; role label saja tidak boleh menjadi sumber kebenaran.
 3. UAT lintas role untuk mesin produksi RPC/SC di Subang, aset GA, aset IT, dan pengecualian baca-only GA atas laptop/desktop IT.
 4. Rekonsiliasi data historis hanya berdasarkan backup, audit trail, dan data HR terverifikasi. Jangan lakukan mass remapping.
+
+
+### Final handoff status (2026-11-08)
+- Documentation head at this handoff: 016c1a7be8740c4b5ff0273be00b2b6d629e0fc7.
+- CI #383 / run 42479231928 completed SUCCESS on that head. This run includes the latest source changes and documentation: typecheck, all RBAC/asset-scope/navigation/dashboard checks, production build, 37 P0 HTTP assertions, and maintenance authorization assertions passed.
+- PR #18 remains Draft/Open and intentionally unmerged pending the remaining vendor/report/reconciliation/admin authorization audit and end-to-end per-user UAT.
