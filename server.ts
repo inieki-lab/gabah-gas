@@ -2442,9 +2442,26 @@ async function startServer() {
       return res.json({ success: true, data: db.maintenances });
     }
 
-    // Maintenance visibility follows the same asset scope as inventory.
-    // Branch names are not owner domains; GA's optional IT workstation
-    // read-only permission does not grant access to IT maintenance records.
+    // PostgreSQL: dynamic owner/unit/location scopes are authoritative for
+    // maintenance records. Do not re-filter by the user's primary role: an
+    // employee may hold additional operational scopes without changing identity.
+    // The GA read-only IT-workstation exception is intentionally excluded here:
+    // it grants inventory visibility, not access to IT maintenance records.
+    if (isPostgresPersistenceActive()) {
+      const dynamicallyScopedScheduleIds = new Set(
+        filterMaintenanceSchedulesByDynamicScopes(db.maintenances, actor).map(schedule => schedule.id)
+      );
+      const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+      const personalAssetIds = new Set(employeeBaselineRoles.includes(actor.role)
+        ? db.assets.filter(asset => asset.assigned_to?.id === actor.id).map(asset => asset.id)
+        : []);
+      const filtered = db.maintenances.filter(schedule =>
+        dynamicallyScopedScheduleIds.has(schedule.id) || personalAssetIds.has(schedule.asset_id)
+      );
+      return res.json({ success: true, data: filtered });
+    }
+
+    // File-store compatibility: preserve the established legacy behavior.
     const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
     const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor)
       .filter(asset => !employeeBaseline || asset.assigned_to?.id === actor.id)
