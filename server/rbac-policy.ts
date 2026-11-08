@@ -131,13 +131,13 @@ export function hasRbacScope(
   // Owner-domain scopes support broad grants with explicit exclusions:
   // "all except IT" must not be mistaken for unrestricted "all".
   if (type === 'division') {
-    const owner = value == null ? '' : String(value);
+    const owner = value == null ? '' : String(value).trim().toUpperCase();
     const relevant = policies.flatMap(policy => policy.scopes.filter(moduleMatches));
-    if (relevant.some(scope => scope.type === 'division' && scope.value === owner)) return true;
-    const excluded = relevant.some(scope => scope.type === 'division_except' && scope.value === owner);
+    if (relevant.some(scope => scope.type === 'division' && String(scope.value || '').trim().toUpperCase() === owner)) return true;
+    const excluded = relevant.some(scope => scope.type === 'division_except' && String(scope.value || '').trim().toUpperCase() === owner);
     if (excluded) return false;
     return relevant.some(scope => scope.type === 'all'
-      || (scope.type === 'division_except' && scope.value !== owner));
+      || (scope.type === 'division_except' && String(scope.value || '').trim().toUpperCase() !== owner));
   }
 
   for (const policy of policies) {
