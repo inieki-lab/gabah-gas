@@ -654,3 +654,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 ### CI verifier follow-up — 2026-11-08
 - The first rerun after the SQL alias correction failed before PostgreSQL integration because `scripts/dynamic-rbac-foundation-verify.mjs` still asserted the old alias `assigned_role.is_primary` in the reconciliation query.
 - Updated the assertion to `ur.is_primary`. This is a stale verifier expectation, not a new runtime defect. The next run must pass the 111 Dynamic RBAC checks before the PostgreSQL integration step can execute.
+
+
+### Branch consolidation checkpoint — 2026-11-08
+- Canonical working branch remains `fix/role-based-navigation`; PR #18 remains the single integration branch for RBAC/org-model/vendor/room/migration remediation.
+- Closed superseded PRs:
+  - PR #13 `ci/expand-regression-gates`: expanded CI now included in PR #18 with PostgreSQL service and additional regression suites.
+  - PR #14 `fix/contract-migration-fresh-db`: migration 004 compatibility fix and migration 015 room FK fix copied into PR #18; unknown contract owner is `UNASSIGNED`, not silently GA.
+  - PR #15 `fix/rbac-sidebar-fail-closed`: PR #18 sidebar already defaults to no navigation when role identity is missing and uses permission-aware tab visibility.
+- Closed PR branches are not deleted; history remains preserved. This session's available GitHub actions can close PRs but do not expose branch deletion. They are not to be used for new work.
+- PR #11 deployment hardening, PR #12 finalization checklist, PR #17 user/role assignment audit, and PR #3 legacy ticket gate remain open for careful consolidation. No parallel work branch should be created.
