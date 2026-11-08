@@ -35,6 +35,9 @@ const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const checks = [
+  ['custom role creation accepts selected permissions atomically and validates the permission catalogue', /requestedKeys = req\.body\?\.permission_keys/.test(server) && /withRbacTransaction\(async client =>/.test(server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"))) && /INSERT INTO gabah_role_permissions/.test(server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"))))],
+  ['Superadmin create-role form displays grouped permission checkboxes and refuses empty catalogue/selection', /Pilih Permission/.test(frontend) && /rbacNewPermissionKeys\.includes/.test(frontend) && /Buat Role \+ Simpan Hak Akses/.test(frontend) && /Katalog permission kosong/.test(frontend) && /Pilih minimal satu permission/.test(frontend)],
+
   ['roles table is additive/idempotent', /CREATE TABLE IF NOT EXISTS gabah_roles/i.test(migration)],
   ['permission catalogue exists', /CREATE TABLE IF NOT EXISTS gabah_permissions/i.test(migration)],
   ['role-permission mapping exists', /CREATE TABLE IF NOT EXISTS gabah_role_permissions/i.test(migration)],
