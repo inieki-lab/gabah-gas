@@ -3021,7 +3021,8 @@ async function startServer() {
       const fileKind = file.mimetype.startsWith('image/') ? 'supporting_document' : 'original_contract';
       const documentId = 'CDoc-' + crypto.randomUUID();
       const storedFilename = crypto.randomUUID() + fileExt;
-      const relativeFileRef = path.join('contracts', contractId, storedFilename);
+      const contractStorageKey = crypto.createHash('sha256').update(String(contractId)).digest('hex').slice(0, 24);
+      const relativeFileRef = path.join('contracts', contractStorageKey, storedFilename);
       const absoluteFilePath = path.resolve(uploadRoot(), relativeFileRef);
 
       await fs.mkdir(path.dirname(absoluteFilePath), { recursive: true, mode: 0o700 });
@@ -3080,8 +3081,10 @@ async function startServer() {
     }
 
     const root = uploadRoot();
+    const contractStorageKey = crypto.createHash('sha256').update(String(contract.id)).digest('hex').slice(0, 24);
+    const contractRoot = path.resolve(root, 'contracts', contractStorageKey) + path.sep;
     const absoluteFilePath = path.resolve(root, document.file_ref);
-    if (!absoluteFilePath.startsWith(root + path.sep)) {
+    if (!absoluteFilePath.startsWith(contractRoot)) {
       return res.status(404).json({ success: false, message: 'Dokumen tidak ditemukan.' });
     }
 
