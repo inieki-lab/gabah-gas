@@ -47,8 +47,14 @@ function scopedAttention(actor: ServerUser, items: any[]) {
     if (item.link_type === 'loan') {
       const loan = db.loans.find(l => l.id === item.link_id);
       if (!loan) return false;
-      if (actor.role === 'IT' || actor.role === 'GA') return loan.owner_division === actor.role;
-      return loan.borrower_id === actor.id;
+      if (loan.borrower_id === actor.id) return true;
+      if (isPostgresPersistenceActive()) {
+        const owner = String(loan.owner_division || '').trim();
+        return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'loans');
+      }
+      // File-store compatibility only. Production PostgreSQL uses explicit
+      // module scope, never a primary-role label, for owner-division visibility.
+      return (actor.role === 'IT' || actor.role === 'GA') && loan.owner_division === actor.role;
     }
     if (item.link_type === 'ticket') return canManageTicket(actor, item.link_id);
     return false;
