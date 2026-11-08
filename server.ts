@@ -189,6 +189,7 @@ async function startServer() {
     if (message === 'RBAC_SUPERADMIN_PROTECTED') return res.status(409).json({ success: false, message: 'Role Superadmin dilindungi dan tidak dapat dinonaktifkan, dihapus, atau kehilangan kendali tertingginya.' });
     if (message === 'RBAC_ROLE_IN_USE') return res.status(409).json({ success: false, message: 'Role masih ditetapkan ke user. Pindahkan assignment terlebih dahulu.' });
     if (message === 'RBAC_PERMISSION_INVALID') return res.status(400).json({ success: false, message: 'Satu atau lebih permission tidak terdaftar atau sudah nonaktif.' });
+    if (message === 'RBAC_PERMISSION_PROTECTED') return res.status(409).json({ success: false, message: 'Permission sistem inti hanya dapat dikelola melalui konfigurasi Superadmin dan tidak dapat diberikan ke role kustom.' });
     if (message === 'RBAC_USER_NOT_FOUND') return res.status(404).json({ success: false, message: 'User target tidak ditemukan.' });
     if (message === 'RBAC_ROLE_INVALID') return res.status(400).json({ success: false, message: 'Satu atau lebih role tidak terdaftar atau sudah nonaktif.' });
     if (message === 'RBAC_LAST_SUPERADMIN') return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh kehilangan role Superadmin.' });
@@ -198,7 +199,7 @@ async function startServer() {
   app.get('/api/admin/rbac/permissions', async (req, res) => {
     if (!requireRbacSuperadmin(req, res)) return;
     try {
-      const result = await queryRbac('SELECT permission_key, module, action, description, is_active FROM gabah_permissions ORDER BY module, action, permission_key');
+      const result = await queryRbac("SELECT permission_key, module, action, description, is_active FROM gabah_permissions WHERE is_active = TRUE AND permission_key NOT IN ('system.authentication', 'system.audit', 'system.super_admin') ORDER BY module, action, permission_key");
       return res.json({ success: true, data: result.rows });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -252,6 +253,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Daftar permission role tidak valid.' });
       }
       const permissionKeys = [...new Set(requestedKeys as string[])];
+      if (permissionKeys.some(key => ['system.authentication', 'system.audit', 'system.super_admin'].includes(key))) throw new Error('RBAC_PERMISSION_PROTECTED');
       const result = await withRbacTransaction(async client => {
         if (permissionKeys.length > 0) {
           const valid = await client.query('SELECT permission_key FROM gabah_permissions WHERE is_active = TRUE AND permission_key = ANY($1::varchar[])', [permissionKeys]);
@@ -338,6 +340,7 @@ async function startServer() {
         if (!role) throw new Error('RBAC_ROLE_NOT_FOUND');
         if (role.is_superadmin || role.role_key === 'superadmin') throw new Error('RBAC_SUPERADMIN_PROTECTED');
         const uniqueKeys = [...new Set(keys as string[])];
+        if (uniqueKeys.some(key => ['system.authentication', 'system.audit', 'system.super_admin'].includes(key))) throw new Error('RBAC_PERMISSION_PROTECTED');
         const valid = await client.query('SELECT permission_key FROM gabah_permissions WHERE is_active = TRUE AND permission_key = ANY($1::varchar[])', [uniqueKeys]);
         if (valid.rowCount !== uniqueKeys.length) throw new Error('RBAC_PERMISSION_INVALID');
         await client.query('DELETE FROM gabah_role_permissions WHERE role_id = $1', [id]);
