@@ -13,6 +13,9 @@ import {
   CheckCircle2,
   XCircle,
   BellRing,
+  Upload,
+  Download,
+  Paperclip,
 } from 'lucide-react';
 import { Contract, ContractStatus, UserProfile } from '../../types';
 import { formatRupiah, formatDate, formatDateTime } from '../../services/gabahService';
@@ -68,9 +71,21 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [notifLogs, setNotifLogs] = useState<Record<string, any[]>>({});
   const [isRunningSweep, setIsRunningSweep] = useState(false);
+  const [uploadingContractId, setUploadingContractId] = useState<string | null>(null);
+  const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(null);
 
-  const isAdmin = currentUser.role === 'Admin GABAH';
-  const canManage = ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(currentUser.role);
+  const isAdmin = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH';
+  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+  const hasPermission = (permission: string, legacyRoles: string[] = []) => {
+    if (isAdmin) return true;
+    if (Array.isArray(currentUser.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permission);
+    }
+    return legacyRoles.includes(currentUser.role);
+  };
+  const canManage = !isAuditor && hasPermission('contracts.create', ['IT', 'GA', 'Supply Chain', 'PIBC']);
+  const canUploadDocuments = !isAuditor && hasPermission('contracts.documents.upload', ['IT', 'GA', 'Supply Chain', 'PIBC']);
+
 
   const vendors = useMemo(() => Array.from(new Set(contracts.map(c => c.vendor_name))).sort(), [contracts]);
   const types = useMemo(() => Array.from(new Set(contracts.map(c => c.contract_type))).sort(), [contracts]);
@@ -131,6 +146,42 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
       setExpandedId(expandedId === contract.id ? null : contract.id);
     } catch (err: any) {
       showToast(err.message || 'Gagal memuat log notifikasi', 'warning');
+    }
+  };
+
+  const handleUploadDocument = async (contract: Contract, file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Ukuran dokumen maksimal 10 MB.', 'warning');
+      return;
+    }
+    setUploadingContractId(contract.id);
+    try {
+      await gabahApi.uploadContractDocument(contract.id, file);
+      showToast('Dokumen kontrak berhasil disimpan.', 'success');
+      onRefresh();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengunggah dokumen kontrak.', 'warning');
+    } finally {
+      setUploadingContractId(null);
+    }
+  };
+
+  const handleDownloadDocument = async (contract: Contract, document: Contract['documents'][number]) => {
+    setDownloadingDocumentId(document.id);
+    try {
+      const blob = await gabahApi.downloadContractDocument(contract.id, document.id);
+      const objectUrl = window.URL.createObjectURL(blob);
+      const anchor = window.document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = document.file_name;
+      window.document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengunduh dokumen kontrak.', 'warning');
+    } finally {
+      setDownloadingDocumentId(null);
     }
   };
 
@@ -227,7 +278,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           const rb = reminderBadge(contract);
           const st = STATUS_META[contract.status] || STATUS_META.active;
           const isOpen = expandedId === contract.id;
-          const canDecide = (isAdmin || contract.pic_user_id === currentUser.id || contract.owner_division === currentUser.division) && currentUser.role !== 'Auditor';
+          const canDecide = !isAuditor && hasPermission('contracts.renewal.decide', ['IT', 'GA', 'Supply Chain', 'PIBC']);
 
           return (
             <div key={contract.id} className="rounded-2xl bg-white border border-slate-200 shadow-xs overflow-hidden">
@@ -299,6 +350,51 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                         <XCircle className="w-3.5 h-3.5" /> Tidak Diperbarui
                       </button>
                     </>
+                  )}
+                </div>
+
+                {/* Contract documents: download is always server-authorized; upload requires explicit capability. */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5" /> Dokumen Kontrak ({(contract.documents || []).length})
+                    </div>
+                    {canUploadDocuments && (
+                      <label className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-white text-emerald-800 text-[10px] font-bold cursor-pointer hover:bg-emerald-50 ${uploadingContractId === contract.id ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <Upload className="w-3.5 h-3.5" />
+                        {uploadingContractId === contract.id ? 'Mengunggah…' : 'Unggah PDF / Dokumen'}
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,application/pdf,image/jpeg,image/png,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                          className="hidden"
+                          disabled={uploadingContractId === contract.id}
+                          onChange={event => {
+                            const file = event.target.files?.[0];
+                            if (file) void handleUploadDocument(contract, file);
+                            event.target.value = '';
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  {(contract.documents || []).length === 0 ? (
+                    <p className="text-[11px] text-slate-400">Belum ada dokumen terlampir.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {(contract.documents || []).map(doc => (
+                        <button
+                          key={doc.id}
+                          type="button"
+                          onClick={() => void handleDownloadDocument(contract, doc)}
+                          disabled={downloadingDocumentId === doc.id}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                          title="Unduh dokumen melalui pemeriksaan akses kontrak"
+                        >
+                          <Download className="w-3 h-3" />
+                          {downloadingDocumentId === doc.id ? 'Mengunduh…' : doc.file_name}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
 
