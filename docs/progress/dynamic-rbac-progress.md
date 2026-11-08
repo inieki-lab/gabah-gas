@@ -538,3 +538,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - `/api/loans` create/approve/reject routes now propagate domain `statusCode`, so a domain-level 403 is not misreported as 400.
 - Added source regression checks for borrower impersonation protection and approve/reject status propagation.
 - These are source-level regression checks; CI must pass on the newest branch head before claiming verified. No production data changed.
+
+
+### Office master verification refinement — 2026-11-08
+- Clarified the live baseline: five confirmed active office locations (HO, PIBC, RPC/SC, Pangsub, Kantor Perawatan). Future sites remain allowed; therefore API verification checks that these five exist and are active rather than forbidding all future additions.
+- Migration 033 now retires a legacy `org_office_locations` row named Subang by setting `is_active=FALSE` if such a row exists. It does not delete the row and does not touch the separate `asset_locations` table or asset history.
+- Updated `scripts/org-model-verify.mjs` to stop treating the nine legacy role labels as the target organization model; they are retained only for account/history compatibility. Updated its HO location lookup and added the five-active-office/Subang-closed API assertion.
+- Added regression coverage to ensure migration 033 keeps Kantor Perawatan active, retires Subang only in the office master, and preserves historical rows.
