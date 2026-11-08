@@ -3,19 +3,22 @@
 -- remain intact; Karyawan becomes the primary employee baseline while Humas /
 -- Sekretaris Direksi stay as additional permission packages.
 
-UPDATE users
-SET role = 'Karyawan'
-WHERE role IN ('Humas', 'Sekretaris Direksi');
-
--- Keep the function role as an additional (non-primary) assignment.
+-- First demote the function-role assignment while the old profile role is
+-- still available for an unambiguous mapping.
 UPDATE gabah_user_roles ur
 SET is_primary = FALSE
 FROM users u, gabah_roles r
 WHERE ur.user_id = u.id::text
   AND ur.role_id = r.id
-  AND u.role = 'Karyawan'
-  AND u.role_label IN ('Staf Humas & Protokoler', 'Staf Sekretariat Direksi')
-  AND r.role_key IN ('humas', 'sekretaris_direksi');
+  AND u.role IN ('Humas', 'Sekretaris Direksi')
+  AND r.role_key = CASE u.role
+    WHEN 'Humas' THEN 'humas'
+    WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi'
+  END;
+
+UPDATE users
+SET role = 'Karyawan'
+WHERE role IN ('Humas', 'Sekretaris Direksi');
 
 INSERT INTO gabah_user_roles (user_id, role_id, is_primary)
 SELECT u.id::text, r.id, FALSE
