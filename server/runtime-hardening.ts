@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isSuperadminActor, hasRbacPermission } from './rbac-policy';
+import { assetVisibleUnderDynamicScopes } from './services';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
 const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || actor.role === 'Auditor';
@@ -35,7 +36,9 @@ function canSeeAsset(actor: ServerUser, assetId: string): boolean {
       && String(asset.owner_division || '').toUpperCase() === 'IT'
       && isItWorkstation(asset);
   }
-  return false;
+
+  // Custom roles use the same dynamic scope resolver as the asset list endpoint.
+  return assetVisibleUnderDynamicScopes(actor, asset);
 }
 
 function canManageTicket(actor: ServerUser, ticketId: string): boolean {
