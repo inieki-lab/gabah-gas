@@ -3006,7 +3006,7 @@ async function startServer() {
     // Humas receives the full detail only for documentation work items.
     if (!isSuperadminActor(actor) && actor.role !== 'Auditor') {
       if (actor.role === 'GA') {
-        data = data.map(item => ({
+        data = data.map(item => item.organizer_id === actor.id ? item : ({
           ...item,
           title: 'Reservasi ruang rapat',
           description: undefined,
@@ -3025,7 +3025,7 @@ async function startServer() {
           .map(facility => facility.name));
         data = data.filter(item => item.organizer_id === actor.id
           || (item.facilities_requested || []).some(name => itFacilityNames.has(name)))
-          .map(item => ({
+          .map(item => item.organizer_id === actor.id ? item : ({
             ...item,
             title: 'Reservasi dengan kebutuhan fasilitas IT',
             description: undefined,
