@@ -35,6 +35,8 @@ const checks = [
   ['Private agenda fields are redacted from GA/IT operational queues', /title: 'Reservasi ruang rapat'[\s\S]*description: undefined[\s\S]*attendees_list: undefined[\s\S]*documentation_notes: undefined/.test(server)],
   ['Employee directory is gated by users.read', /app\.get\('\/api\/users', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'users\.read'\)\) return;/i.test(server)],
   ['Knowledge vote and view actions require their read/action permissions', /app\.post\('\/api\/knowledge\/:id\/vote', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'knowledge\.vote'\)\) return;/i.test(server) && /app\.post\('\/api\/knowledge\/:id\/view', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'knowledge\.read'\)\) return;/i.test(server)],
+  ['Ticket list and status access follow reporter, assignee, and IT/GA scope', /hasRbacScope\(String\(actor\.id\), 'division', 'IT', 'tickets'\)/.test(server) && /hasRbacScope\(String\(actor\.id\), 'division', 'GA', 'tickets'\)/.test(server) && /ticket\.assigned_agent_id === actor\.id/.test(hardeningSource)],
+  ['Dashboard ticket counts use the same IT/GA and personal ticket scope', /canReadITTickets[\s\S]*canReadGATickets[\s\S]*ticket\.reporter_id === actor\.id/.test(server)],
 ];
 
 let failed = 0;
