@@ -578,11 +578,24 @@ async function startServer() {
         const division = String(row.division || '').trim() || 'Umum';
         const department = String(row.department || '').trim() || 'Operasional';
         const phone = String(row.phone || '').trim();
+        const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
+        const unitId = String(row.unit_id || '').trim();
+        const requestedOfficeLocation = String(row.office_location_id || '').trim();
+        const officeLocationId = requestedOfficeLocation || (roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '');
 
         if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
         if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
         if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di dalam berkas (${email}).`); continue; }
         seenEmails.add(email);
+        if (jobLevelCode && !(db.jobLevels || []).some(item => item.code === jobLevelCode && item.is_active)) {
+          errors.push(`Baris ${rowNo}: Jabatan "${jobLevelCode}" tidak terdaftar/aktif.`); continue;
+        }
+        if (unitId && !(db.orgUnits || []).some(item => item.id === unitId && item.is_active)) {
+          errors.push(`Baris ${rowNo}: Unit "${unitId}" tidak terdaftar/aktif.`); continue;
+        }
+        if (officeLocationId && !(db.officeLocations || []).some(item => item.id === officeLocationId && item.is_active)) {
+          errors.push(`Baris ${rowNo}: Lokasi kantor "${officeLocationId}" tidak terdaftar/aktif.`); continue;
+        }
 
         const requestedRole = roleRaw && validRoles.includes(roleRaw) ? roleRaw : 'Karyawan';
         const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
@@ -602,6 +615,9 @@ async function startServer() {
           if (requestedRole === 'PIBC' && !existing.office_location_id) existing.office_location_id = 'OFF-PIBC';
           existing.division = division as ServerUser['division'];
           existing.department = department;
+          if (jobLevelCode) existing.job_level_code = jobLevelCode;
+          if (unitId) existing.unit_id = unitId;
+          if (officeLocationId) existing.office_location_id = officeLocationId;
           if (phone) existing.phone = phone;
           importedUsers.push(existing);
           updated++;
@@ -624,7 +640,9 @@ async function startServer() {
             role_label: roleLabels[role] || 'Pegawai Operasional',
             division: division as ServerUser['division'],
             department,
-            office_location_id: requestedRole === 'Supply Chain' ? 'OFF-RPC' : requestedRole === 'PIBC' ? 'OFF-PIBC' : undefined,
+            job_level_code: jobLevelCode || undefined,
+            unit_id: unitId || null,
+            office_location_id: officeLocationId || undefined,
             phone,
             avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
             is_active: true,
