@@ -12,6 +12,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Vendor, UserProfile } from '../../types';
+import { gabahApi } from '../../services/gabahApi';
 
 interface VendorsViewProps {
   vendors: Vendor[];
@@ -23,6 +24,7 @@ interface VendorsViewProps {
 const emptyForm = {
   name: '',
   category: 'General',
+  owner_division: '',
   pic_name: '',
   pic_phone: '',
   pic_email: '',
@@ -38,7 +40,17 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
   onCreateVendor,
   onUpdateVendor,
 }) => {
-  const canManage = ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const [ownerDomains, setOwnerDomains] = useState<Array<{ code: string; name: string; is_active?: boolean }>>([]);
+  useEffect(() => {
+    let active = true;
+    gabahApi.getDivisions().then(items => {
+      if (active) setOwnerDomains(items.filter((item: any) => item.is_active !== false));
+    }).catch(() => {
+      if (active) setOwnerDomains([]);
+    });
+    return () => { active = false; };
+  }, []);
+  const canManage = currentUser.role === 'Admin GABAH' || currentUser.permissions?.includes('vendors.create') || currentUser.permissions?.includes('vendors.update');
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -49,7 +61,8 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
     setEditingId(null);
     setForm({
       ...emptyForm,
-      category: currentUser.role === 'IT' ? 'IT' : 'General',
+      category: 'General',
+      owner_division: '',
     });
     setError(null);
     setFormOpen(true);
@@ -60,6 +73,7 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
     setForm({
       name: v.name,
       category: v.category || 'General',
+      owner_division: v.owner_division || '',
       pic_name: v.pic_name || '',
       pic_phone: v.pic_phone || '',
       pic_email: v.pic_email || '',
@@ -84,6 +98,7 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
       const payload = {
         name: form.name.trim(),
         category: form.category,
+        owner_division: form.owner_division,
         pic_name: form.pic_name.trim(),
         pic_phone: form.pic_phone.trim(),
         pic_email: form.pic_email.trim(),
@@ -233,6 +248,18 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
                 </div>
               )}
 
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1.5">Fungsi Pemilik Vendor *</label>
+                <select
+                  value={form.owner_division}
+                  onChange={(e) => setForm({ ...form, owner_division: e.target.value })}
+                  className={inputClass}
+                  required
+                >
+                  <option value="">Pilih fungsi pemilik</option>
+                  {ownerDomains.map((item) => <option key={item.code} value={item.code}>{item.name} ({item.code})</option>)}
+                </select>
+              </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 mb-1.5">Nama Vendor *</label>
                 <input
