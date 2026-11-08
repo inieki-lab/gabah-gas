@@ -68,6 +68,12 @@ jobs:
       - name: Build production Docker image
         run: docker build --tag gabah-gas:ci .
 
+      - name: Validate Docker runtime smoke script
+        run: bash -n scripts/docker-runtime-smoke.sh
+
+      - name: Production image runtime smoke (Node 22 + PostgreSQL 17 + uploads volume)
+        run: bash scripts/docker-runtime-smoke.sh
+
       - name: PostgreSQL 17 fresh-database and persistence integration (CR-04/CR-05)
         env:
           GABAH_TEST_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
