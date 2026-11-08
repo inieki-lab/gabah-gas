@@ -1141,3 +1141,10 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Room approve/reject/check-in/check-out/cancel and room update domain guards now use effective permissions with narrow file-store compatibility fallback. Priority interruption is controlled by `room_reservations.override_priority` plus HIGH priority, not a hardcoded Sekretaris Direksi role-name comparison.
 - Preserved redaction of agenda, description, attendee list, phone, consumption notes, documentation notes, and rejection/interruption reasons for operational queues.
 - Added regression assertions for queue capabilities, privacy redaction, operation permission checks, and migration grants. CI pending on latest head.
+
+
+### PostgreSQL migration hardening and live CI — 2026-11-08
+- Replaced migration 004's unconditional reference to `contracts.owner_division_id` with an information_schema-guarded compatibility backfill for both fresh and legacy schemas. Unknown/unmapped legacy contract owners are set to `UNASSIGNED`, not silently assigned to GA; Super Admin must review and classify them.
+- Corrected migration 015: `rooms` is still an application datastore collection, not a PostgreSQL table. Removed the invalid foreign key `room_id REFERENCES rooms(id)` so fresh PostgreSQL startup is not blocked by a nonexistent table.
+- Expanded CI to provision PostgreSQL 17 and run `scripts/cr04-cr05-verify.mjs` against an isolated fresh database, then run loan, room, org model, asset master, menu connectivity, security, and maintenance regressions in addition to lint/build and RBAC scope checks.
+- Added static regression guards against reintroducing the unsafe contract owner default or invalid room foreign key. Live PostgreSQL result is pending; do not claim database integration passes until CI completes.
