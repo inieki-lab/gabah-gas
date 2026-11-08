@@ -65,6 +65,9 @@ jobs:
       - name: Dashboard attention data-scope checks
         run: npm run test:dashboard-attention-scope
 
+      - name: Dashboard attention middleware scope consistency
+        run: npm run test:dashboard-attention-middleware
+
       - name: Production build (frontend + server bundle)
         run: npm run build
 
