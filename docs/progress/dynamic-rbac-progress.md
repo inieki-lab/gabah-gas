@@ -557,3 +557,17 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Found an inconsistency between ticket list scope and ticket status mutation: list visibility accepted arbitrary owner codes through dynamic scope, but `runtime-hardening.ts::canManageTicket()` only recognized IT/GA scopes in PostgreSQL. This blocked operational functions such as RPC/SC despite explicit permission + owner scope.
 - Fixed PostgreSQL guard to check the ticket's category/owner code generically with `hasRbacScope(actor, 'division', owner, 'tickets')`; legacy IT/GA role-label checks now apply only in file-store compatibility mode. Reporter/assignee self-access remains; Auditor stays read-only.
 - Added regression assertion. CI status for the newest head is pending; do not claim this ticket change verified until CI completes.
+
+
+### Verification checkpoint and next audit finding — 2026-11-08
+
+#### Verified CI
+- CI #441 / run `42487422969` passed on source head `9f3faf86f7f23f40ea8db167a9554f0abf8ef48e`.
+- Verified in that run: TypeScript lint; Dynamic RBAC foundation checks; branch-migration safety; asset-scope policy 46/46; navigation/dashboard policy checks; production build; P0 HTTP security 37/37; maintenance authorization 33/33.
+- CI #443 / run `42487486675` passed on documentation head `6f3e2b2a772d632d6f17ea82d1f5cb90859ac746`, including migration 033 office tests and the updated office baseline.
+- Ticket dynamic-owner scope fix was then added and source regression added. CI #446 on the latest head is pending at this update; verify before reporting green.
+
+#### Next domain: Vendor ownership
+- Audit found `/api/vendors` still derives vendor ownership from `category`: `IT`/`License` => IT, every other category => GA. This hardcodes an IT-vs-GA dichotomy and would mis-scope vendors belonging to RPC/SC or future owner domains.
+- Do not patch by simply treating category text as owner. Vendor category/type and responsible owner domain are separate business attributes. Inspect current vendor data, frontend form/types, persistence, and any external contract linkage; design an explicit `owner_division` field and migration/backfill only when historical mapping is verified. Ambiguous existing vendor records must be reviewed, not auto-assigned to GA.
+- Room reservation visibility still has legacy role/function branches (GA/IT/Humas) for privacy/operations. Audit those against effective permission/scope without weakening the privacy redaction rules.
