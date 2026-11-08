@@ -2225,15 +2225,20 @@ async function startServer() {
       ticket.reporter_id === actor.id
       || (Boolean(ticket.reporter_name) && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
 
-    if (isSuperadminActor(actor) || actor.role === 'Auditor' || actor.role === 'IT') {
+    if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.tickets });
     }
-    if (actor.role === 'GA') {
-      return res.json({ success: true, data: db.tickets.filter(t => t.category === 'GA' || isReporter(t)) });
-    }
-    // Branch/location and employee identities do not grant access to every
-    // ticket in that location or category. Users see their own reports only.
-    return res.json({ success: true, data: db.tickets.filter(isReporter) });
+    const canReadIT = actor.role === 'IT' || (isPostgresPersistenceActive()
+      && hasRbacScope(String(actor.id), 'division', 'IT', 'tickets'));
+    const canReadGA = actor.role === 'GA' || (isPostgresPersistenceActive()
+      && hasRbacScope(String(actor.id), 'division', 'GA', 'tickets'));
+    const data = db.tickets.filter(ticket =>
+      isReporter(ticket)
+      || ticket.assigned_agent_id === actor.id
+      || (canReadIT && ticket.category === 'IT')
+      || (canReadGA && ticket.category === 'GA')
+    );
+    return res.json({ success: true, data });
   });
 
   app.post('/api/tickets', async (req, res) => {
@@ -2691,11 +2696,18 @@ async function startServer() {
       : actor.role === 'IT' || actor.role === 'GA'
         ? db.loans.filter(l => l.owner_division === actor.role)
         : db.loans.filter(l => l.borrower_id === actor.id);
-    const visibleTickets = isSuperadminActor(actor) || actor.role === 'Auditor' || actor.role === 'IT'
+    const canReadITTickets = actor.role === 'IT' || (isPostgresPersistenceActive()
+      && hasRbacScope(String(actor.id), 'division', 'IT', 'tickets'));
+    const canReadGATickets = actor.role === 'GA' || (isPostgresPersistenceActive()
+      && hasRbacScope(String(actor.id), 'division', 'GA', 'tickets'));
+    const visibleTickets = isSuperadminActor(actor) || actor.role === 'Auditor'
       ? db.tickets
-      : actor.role === 'GA'
-        ? db.tickets.filter(t => t.category === 'GA' || t.reporter_id === actor.id)
-        : db.tickets.filter(t => t.reporter_id === actor.id);
+      : db.tickets.filter(ticket =>
+        ticket.reporter_id === actor.id
+        || ticket.assigned_agent_id === actor.id
+        || (canReadITTickets && ticket.category === 'IT')
+        || (canReadGATickets && ticket.category === 'GA')
+      );
 
     const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;
     const pendingLoans = visibleLoans.filter(l => l.status === 'pending_approval').length;
