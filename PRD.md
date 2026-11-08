@@ -49,6 +49,38 @@ Sistem GABAH mengimplementasikan **9 peran pengguna aktif** dengan kredensial ka
 
 ---
 
+## 2.1 Klarifikasi Struktur Organisasi, Lokasi, dan Kewenangan Role (Keputusan Bisnis)
+
+> Bagian ini menjadi acuan utama apabila ada uraian persona atau implementasi lama yang menafsirkan Supply Chain/PIBC sebagai pemilik kewenangan aset berdasarkan nama role.
+
+### A. Role bukan otomatis pemilik aset atau lokasi
+- **Supply Chain** dan **PIBC** pada konteks organisasi ini adalah nama kantor/unit lokasi operasional (kantor cabang/lokasi kerja), bukan bukti bahwa seluruh aset yang berada di lokasi tersebut dimiliki atau dikelola oleh role tersebut.
+- Lokasi fisik aset harus dicatat sebagai atribut tersendiri (`location`/lokasi aset), terpisah dari `owner_division` (unit pemilik/pengelola aset) dan dari identitas role pengguna.
+- Aset milik GA yang ditempatkan di kantor/lokasi Supply Chain atau PIBC tetap merupakan aset GA. GA tetap menjadi pengelola dan pemegang kewenangan perubahan data/lifecycle aset tersebut, meskipun lokasinya berada di cabang.
+- Penentuan kewenangan harus berdasarkan unit pemilik aset dan penugasan tanggung jawab yang sah, bukan semata-mata lokasi fisik atau nama role pengguna.
+
+### B. Kewenangan GA terhadap aset IT
+- GA dapat melihat data aset IT, khususnya laptop dan PC, untuk kebutuhan inventarisasi/pemantauan lintas unit.
+- Akses GA terhadap aset IT bersifat **read-only**: melihat daftar dan detail aset serta informasi penempatan/lokasi yang diizinkan.
+- GA tidak boleh membuat, mengubah, menghapus, memindahkan kepemilikan, atau mengubah lifecycle/status aset IT. Seluruh perubahan dan pengelolaan aset IT tetap menjadi kewenangan IT.
+- Hak baca ini tidak otomatis memberikan akses GA ke seluruh domain/operasi IT seperti konfigurasi teknis, kredensial, lisensi, atau administrasi infrastruktur.
+
+### C. Sekretaris Direksi dan Humas adalah pengguna/karyawan, bukan kelas pegawai terpisah
+- Pengguna dengan role **Sekretaris Direksi** dan **Humas** tetap merupakan karyawan/staf perusahaan. Keduanya menggunakan kebutuhan dasar karyawan seperti melihat aset yang ditugaskan kepada dirinya, mengajukan peminjaman, membuat tiket bantuan, dan menggunakan fasilitas/reservasi sesuai kebijakan.
+- Perbedaan dari role Karyawan terletak pada **kewenangan tambahan dan alur kerja tertentu**, bukan pada status kepegawaian atau hak untuk memperoleh aplikasi yang sepenuhnya berbeda.
+- Sekretaris Direksi dapat memiliki kewenangan khusus untuk mengajukan reservasi/agenda Direksi dan prioritas atau auto-approval sesuai kebijakan perusahaan yang berlaku. Kewenangan khusus ini tidak menghapus fungsi dasar sebagai karyawan.
+- Humas dapat menerima/menangani permintaan peliputan dan dokumentasi serta mengakses informasi yang diperlukan untuk tugas tersebut. Kewenangan ini tidak menjadikan Humas pemilik aset GA/IT dan tidak otomatis menghilangkan fungsi dasar sebagai karyawan.
+
+### D. Prinsip desain menu dan akses
+- Menu dan halaman harus dibentuk dari kombinasi **fungsi pekerjaan + permission + cakupan data**, bukan hanya nama role.
+- Pengalaman dasar karyawan dapat digunakan bersama (misalnya Aset Saya, Pengajuan/Peminjaman, Tiket Bantuan, dan Reservasi); role Sekretaris Direksi dan Humas memperoleh menu/aksi tambahan yang relevan dengan kewenangannya.
+- Pengelolaan aset GA mengikuti `owner_division = GA` dan dapat mencakup aset GA di seluruh lokasi, termasuk kantor/cabang Supply Chain dan PIBC.
+- Akses lintas unit harus dibedakan secara eksplisit antara `read`, `create`, `update`, `approve`, dan `admin`. Hak `read` tidak boleh dianggap memberi hak mutasi atau persetujuan.
+- Lokasi kerja pengguna, lokasi fisik aset, unit pemilik aset, dan role/permission adalah dimensi berbeda. Jangan menyatukannya ke satu field atau menyimpulkan satu sama lain.
+- Setiap perubahan implementasi RBAC, filter data, dashboard, menu, dan endpoint API wajib mengikuti prinsip di atas. Filter frontend hanya untuk pengalaman pengguna; otorisasi final tetap wajib ditegakkan di backend.
+
+---
+
 ## 3. Fitur Utama Sistem (Core Capabilities)
 
 ### 3.1 Manajemen Aset Multi-Divisi & Taksonomi PSAK 16
