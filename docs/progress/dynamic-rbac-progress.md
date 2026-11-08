@@ -613,3 +613,21 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 **Regression checks added:** explicit owner field, no category-to-owner inference, scope enforcement on list/create/update, owner field persistence, and permission-driven UI. Check CI result on latest head before claiming pass.
 
 **Important domain caveat:** current master `divisions` contains legacy SC/PIBC entries alongside IT/GA and other functions. This UI only presents configured master entries; it does not infer owner from employee location. Super Admin must select the actual responsible owner for each vendor.
+
+
+### Room reservation RBAC remediation — 2026-11-08
+
+**Defect:** reservation list filtering and domain mutations relied on role labels GA, IT, Humas, and Sekretaris Direksi even though route permissions were already dynamic. This caused inconsistent access: permission grants alone could not enable the corresponding workflow, and custom roles could not participate.
+
+**Implementation:**
+- Reservation list operational queues now use effective capabilities:
+  - `room_reservations.approve` or `room_reservations.reject`: GA-style operational queue, with agenda/private fields redacted.
+  - `room_reservations.it_facilities.read`: IT-facility requests only, with private agenda fields redacted.
+  - `room_reservations.documentation.read`: documentation-request queue only.
+  - Other users: own reservations only. Super Admin/Auditor global read remains unchanged.
+- Added migration `034_dynamic_rbac_room_reservation_capabilities.sql`: grants IT facility queue read to canonical IT role, documentation queue read to Humas, and `room_reservations.override_priority` to Sekretariat Direksi. Custom roles can receive these permissions through RBAC administration.
+- Domain service guards for approve/reject/check-in/check-out/cancel and room status update now consult effective permission in PostgreSQL; legacy file-store fallback remains limited to GA. Reservation create checks `room_reservations.create` in PostgreSQL; Auditor remains blocked in file-store.
+- Director-priority interruption now requires the separate `room_reservations.override_priority` permission and HIGH priority. It is no longer inferred from the primary role label.
+- Privacy redaction fields are unchanged; this change only changes how the operational queue capability is granted.
+
+**Validation:** added source regression checks for queue permissions, privacy redaction, domain operation checks, and migration grants. Run CI on latest head before claiming verified. PostgreSQL runtime migration and live API integration still need to be exercised before production.
