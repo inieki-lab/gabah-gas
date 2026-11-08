@@ -116,6 +116,46 @@ async function startServer() {
     }
     return actor;
   };
+  const primaryRoleKey = (label: string): string => {
+    const normalized = String(label || 'Karyawan').trim();
+    const canonical: Record<string, string> = {
+      'Admin GABAH': 'superadmin',
+      'Superadmin': 'superadmin',
+      'IT': 'it',
+      'GA': 'ga',
+      'Karyawan': 'karyawan',
+      'Auditor': 'auditor',
+      'Humas': 'humas',
+      'Sekretaris Direksi': 'sekretaris_direksi',
+      'Supply Chain': 'karyawan',
+      'PIBC': 'karyawan',
+    };
+    return canonical[normalized] || normalized.toLowerCase().normalize('NFKD')
+      .replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  };
+
+  // Keep users.role and the primary dynamic RBAC assignment synchronized,
+  // while preserving any additional job-function roles assigned by Super Admin.
+  const syncPrimaryRbacRole = async (userId: string, roleLabel: string): Promise<void> => {
+    if (!isPostgresPersistenceActive()) return;
+    const roleKey = primaryRoleKey(roleLabel);
+    const result = await queryRbac<any>(
+      'SELECT id FROM gabah_roles WHERE is_active = TRUE AND (role_key = $1 OR name = $2) ORDER BY CASE WHEN role_key = $1 THEN 0 ELSE 1 END LIMIT 1',
+      [roleKey, roleLabel]
+    );
+    const roleId = Number(result.rows[0]?.id);
+    if (!Number.isSafeInteger(roleId) || roleId < 1) {
+      throw new Error('Role aplikasi "' + roleLabel + '" belum tersedia/aktif di master RBAC.');
+    }
+    await withRbacTransaction(async client => {
+      await client.query('UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = $1 AND is_primary = TRUE', [userId]);
+      await client.query(
+        'INSERT INTO gabah_user_roles (user_id, role_id, is_primary) VALUES ($1, $2, TRUE) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE',
+        [userId, roleId]
+      );
+    });
+  };
+
   const rbacFailure = (res: express.Response, error: any) => {
     if (error?.code === '23505') return res.status(409).json({ success: false, message: 'Nama atau kunci role sudah digunakan.' });
     if (error?.code === '23503') return res.status(409).json({ success: false, message: 'Role masih memiliki relasi yang digunakan.' });
