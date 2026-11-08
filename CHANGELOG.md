@@ -1154,3 +1154,8 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - First PostgreSQL 17 CI run failed on a real fresh database: `backfillDynamicRbacUserRoles()` queried `assigned_role.is_primary`, but `assigned_role` aliases `gabah_roles`; the column belongs to `gabah_user_roles` alias `ur`.
 - Corrected the SQL predicate to `ur.is_primary = TRUE`. This is the actual root cause of the fresh PostgreSQL boot failure after migrations; not a missing migration 030.
 - Added a regression assertion that the primary marker is read from the assignment table and that migration 030 creates it. Re-run the PostgreSQL-backed workflow; do not mark PostgreSQL integration green until the new run passes.
+
+
+### Follow-up CI assertion alignment — 2026-11-08
+- After correcting the primary-role SQL to `ur.is_primary`, the next CI attempt stopped earlier in the static Dynamic RBAC verifier: one assertion still expected the old incorrect `assigned_role.is_primary` alias. Updated that assertion to expect `ur.is_primary`.
+- This was a stale test expectation; the live PostgreSQL step had not yet been reached in that run. Re-run CI on the new head to verify both the source checks and actual PostgreSQL startup.
