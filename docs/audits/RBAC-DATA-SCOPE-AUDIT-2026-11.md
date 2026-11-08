@@ -200,6 +200,3 @@ Middleware `server/runtime-hardening.ts` sebelumnya memiliki implementasi `canSe
 ### Status verifikasi
 Perubahan sudah diajukan pada branch `ai/codex/unify-asset-scope-guard`. CI belum dijalankan pada exact head; jangan menganggap pemeriksaan lulus sebelum workflow CI selesai.
 
-### Temuan tambahan — legacy reporter fallback pada guard tiket
-
-Daftar tiket dan filter Dashboard Attention mendukung fallback reporter legacy dengan nama yang sama persis setelah trim/lowercase ketika `reporter_id` belum tersedia. Middleware direct-ID `canManageTicket()` sebelumnya hanya memeriksa reporter ID, assignee, atau owner scope. Akibatnya, tiket legacy milik pengguna dapat terlihat tetapi aksi status ditolak meskipun identitas reporter cocok. Guard kini menggunakan fallback nama exact-normalized yang sama; pencocokan mirip/parsial tidak diizinkan. Regression contract ditambahkan. CI exact head masih menunggu.
