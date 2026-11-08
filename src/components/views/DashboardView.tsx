@@ -345,7 +345,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="mt-3">
               <div className="text-2xl font-black text-slate-900">{dashboardAssets.length} Item</div>
               <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between font-medium flex-wrap gap-1">
-                <span>{isDivisionDashboard ? `${divisionLabel} • ${dashboardAssets.length} aset dalam cakupan` : `${itAssets.length} IT • ${gaAssets.length} GA • ${scAssets.length} SC • ${pibcAssets.length} PIBC • ${licenseAssets.length} Lisensi`}</span>
+                <span>{isGlobalDashboard ? `${itAssets.length} IT • ${gaAssets.length} GA • ${scAssets.length} owner legacy SC • ${pibcAssets.length} owner legacy PIBC • ${licenseAssets.length} Lisensi` : isDivisionDashboard ? `${divisionLabel} • ${dashboardAssets.length} aset dalam cakupan` : `${dashboardAssets.length} aset dalam cakupan`}</span>
               </div>
               <div className="text-[11px] text-emerald-700 font-bold mt-2 pt-2 border-t border-slate-100">
                 Valuasi: {formatRupiah(totalAssetValue)}
