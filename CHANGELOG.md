@@ -1,3 +1,27 @@
+## [2026-11-08] — Auditor multi-role enforcement, documentation alignment, and PostgreSQL verification
+
+### Perubahan
+- Auditor read-only kini dihitung dari role efektif yang ditetapkan ke user, termasuk role tambahan. Middleware menolak seluruh operasi tulis API untuk user dengan capability Auditor; aturan juga dipakai pada asset scope, contract visibility/logs, reconciliation, dan room reservations.
+- Menambahkan regression integration test PostgreSQL: Karyawan diberi role GA + custom vendor + Auditor; assignment tetap mempertahankan primary Karyawan, API write ditolak HTTP 403, dan audit read yang diizinkan tetap HTTP 200.
+- Menyelaraskan PRD, requirement, RBAC spec, audit data-scope, UAT, dan skill/guardrails AI dengan keputusan owner domain fleksibel, lima lokasi aktif, role tambahan, serta pemisahan lokasi kerja/lokasi aset/owner.
+- Menambahkan AGENTS.md dan skill .agents/skills/gabah-maintainer/SKILL.md sebagai instruksi wajib untuk AI coding agent. Agent lain memakai branch ai/<agent>/<work-item> dan PR ke branch integrasi.
+- Menegaskan release status tetap NO-GO sampai UAT browser, upgrade snapshot legacy, backup/restore, staging deployment, dan persetujuan bisnis selesai.
+
+### Verifikasi terukur
+- CI run #544 pada code SHA 398ba8fa61ddef9f5cf63dc22ff330cd7d1a0f33: SUCCESS.
+- PostgreSQL 17 fresh DB: migration ledger 35 migration entries; CR-04/CR-05 integration 57/57 PASS; restart persistence dan production fail-fast checks PASS.
+- Tambahan role Auditor: assignment 200, API write 403, authorized audit read 200.
+- Regression suites pada run #544: Dynamic RBAC foundation 63/63, asset scope policy 37/37, P0 security 37/37, maintenance authorization 33/33, serta org/navigation/dashboard/loan/room checks PASS.
+- CI run #545 pada dokumentasi/RBAC head 408d922968be84980026f7a346f7e3992c6346f4: SUCCESS. Perubahan UAT dan audit documentation setelahnya memiliki run CI tersendiri yang masih berjalan saat catatan ini dibuat.
+
+### Batas yang belum ditutup
+- Belum ada UAT manual browser dengan persona pengguna sebenarnya.
+- Belum ada rehearsal migrasi upgrade dari snapshot database produksi/legacy.
+- Belum ada backup/restore rehearsal, staging deployment, TLS/monitoring verification, atau sign-off pemilik proses.
+- Jangan deploy branch draft; deployment produksi hanya dari commit/tag yang telah di-review dan di-merge.
+
+---
+
 ## [2026-10-21] — Finalisasi Stage 13F: Maintenance Authorization merged
 
 ### Hasil akhir terverifikasi
