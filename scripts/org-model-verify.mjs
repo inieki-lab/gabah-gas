@@ -2,7 +2,7 @@
  * ORG-MODEL VERIFY — Rombak struktur master organisasi (2026-10-08)
  * Memverifikasi 12 kasus wajib: Role ≠ Jabatan ≠ Unit ≠ Lokasi,
  * CRUD/disable master, jabatan tidak = permission, lokasi tidak mengubah
- * asset number, owner rules, GA scope, auditor read-only, 9 roles utuh.
+ * asset number, owner rules, GA scope, auditor read-only, legacy account compatibility.
  *
  * Butuh `npm run build` dulu (boot dist/server.cjs).
  */
@@ -34,21 +34,24 @@ async function main() {
     const emails = ['admin@foodstation.co.id', 'it.support@foodstation.co.id', 'ga@foodstation.co.id', 'auditor@foodstation.co.id'];
     const [admin, it, ga, aud] = await Promise.all(emails.map(login));
 
-    // Case 12: 9 roles tetap ada & namanya tidak berubah
+    // Case 12: 9 legacy role labels remain for account/history compatibility (not the target org model)
     const users = (await req(b, 'GET', '/api/users', { token: admin })).json?.data || [];
     const EXPECTED_ROLES = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'];
     const presentRoles = EXPECTED_ROLES.filter(r => users.some(u => u.role === r));
-    rec('12: 9 roles utuh & tidak berubah', '9/9', `${presentRoles.length}/9`, presentRoles.length === 9);
+    rec('12: 9 legacy role labels remain for compatibility', '9/9', `${presentRoles.length}/9`, presentRoles.length === 9);
 
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
     const units = (await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data || [];
     const offices = (await req(b, 'GET', '/api/master/office-locations', { token: admin })).json?.data || [];
     const levels = (await req(b, 'GET', '/api/master/job-levels', { token: admin })).json?.data || [];
+    const activeOfficeNames = offices.filter(l => l.is_active !== false).map(l => l.name).sort();
+    const expectedActiveOfficeNames = ['HO', 'Kantor Perawatan', 'PIBC', 'Pangsub', 'RPC/SC'].sort();
+    rec('13: lima lokasi kantor aktif sesuai keputusan bisnis', expectedActiveOfficeNames.join('|'), activeOfficeNames.join('|'), JSON.stringify(activeOfficeNames) === JSON.stringify(expectedActiveOfficeNames));
     const unitPIBC = units.find(u => u.name === 'PIBC');
     const unitSC = units.find(u => u.name === 'Supply Chain');
     const offPIBC = offices.find(l => l.name === 'PIBC');
-    const offKP = offices.find(l => l.name === 'Kantor Pusat');
+    const offKP = offices.find(l => l.name === 'HO');
     const itUser = users.find(u => u.role === 'IT');
     // Staf + IT + PIBC: role IT, jabatan Staf, unit PIBC, lokasi PIBC
     const u1 = await req(b, 'PATCH', `/api/users/${itUser.id}`, { token: admin, body: { job_level_code: 'STAF', unit_id: unitPIBC?.id, office_location_id: offPIBC?.id } });
