@@ -9,10 +9,15 @@ const branchMigration = read('server/migrations/026_map_branch_accounts_to_emplo
 const server = read('server.ts');
 const hardeningSource = read('server/runtime-hardening.ts');
 const persistence = read('server/persistence.ts');
+const dbSeed = read('server/db.ts');
 const contracts = read('server/contracts.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 
 const checks = [
+  ['Current office master seeds exactly HO, PIBC, RPC/SC and Pangsub as active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC\/SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: false/.test(dbSeed)],
+  ['Persistence fallback agrees with current office sites and keeps closed office inactive', /id: 'OFF-KP', name: 'HO', is_active: true/.test(persistence) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(persistence) && /id: 'OFF-RPC', name: 'RPC\/SC', is_active: true/.test(persistence) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(persistence) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: false/.test(persistence)],
+  ['Office migration deactivates retired Perawatan without deleting history', /UPDATE org_office_locations[\s\S]*WHEN 'OFF-PERAWATAN' THEN FALSE/.test(read('server/migrations/033_current_office_location_master.sql')) && !/DELETE FROM org_office_locations/.test(read('server/migrations/033_current_office_location_master.sql'))],
+
   ['Fresh schema seeds Umum and Audit divisions before their org-unit foreign keys', /INSERT INTO divisions \(code, name\)[\s\S]*'Umum'[\s\S]*'Audit'[\s\S]*CREATE TABLE IF NOT EXISTS org_units/.test(orgMasterMigration)],
 
   ['Owner domains are synchronized from the configurable division master before PostgreSQL FK-backed data', /for \(const division of db\.divisions \|\| \[\]\)/.test(persistence) && /INSERT INTO divisions \(code,name,is_active\)/.test(persistence)],
