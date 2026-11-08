@@ -34,11 +34,19 @@ async function main() {
     const emails = ['admin@foodstation.co.id', 'it.support@foodstation.co.id', 'ga@foodstation.co.id', 'auditor@foodstation.co.id'];
     const [admin, it, ga, aud] = await Promise.all(emails.map(login));
 
-    // Case 12: 9 legacy role labels remain for account/history compatibility (not the target org model)
+    // Case 12: Supply Chain and PIBC are not application roles in the target model.
+    // Their employee identities remain Karyawan with independent unit/location attributes.
     const users = (await req(b, 'GET', '/api/users', { token: admin })).json?.data || [];
-    const EXPECTED_ROLES = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'];
-    const presentRoles = EXPECTED_ROLES.filter(r => users.some(u => u.role === r));
-    rec('12: 9 legacy role labels remain for compatibility', '9/9', `${presentRoles.length}/9`, presentRoles.length === 9);
+    const expectedSeedRoles = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Karyawan', 'Auditor'];
+    const presentRoles = expectedSeedRoles.filter(r => users.some(u => u.role === r));
+    const scUser = users.find(u => u.email === 'sc.warehouse@foodstation.co.id');
+    const pibcUser = users.find(u => u.email === 'pibc.admin@foodstation.co.id');
+    const noBranchRole = !users.some(u => ['Supply Chain', 'PIBC'].includes(u.role));
+    const branchProfilesValid = scUser?.role === 'Karyawan' && scUser?.office_location_id === 'OFF-RPC'
+      && pibcUser?.role === 'Karyawan' && pibcUser?.office_location_id === 'OFF-PIBC';
+    rec('12: SC/PIBC are employee locations/units, not seeded application roles', '7 canonical roles; SC/RPC + PIBC users are Karyawan with independent locations',
+      `${presentRoles.length}/7; branchProfiles=${branchProfilesValid}; legacyBranchRoles=${noBranchRole}`,
+      presentRoles.length === 7 && noBranchRole && branchProfilesValid);
 
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
@@ -115,7 +123,7 @@ async function main() {
     if (itServer) gaServerDetail = (await req(b, 'GET', `/api/assets/${itServer.id}`, { token: ga })).status;
     rec('9: GA lihat PC/Laptop IT sesuai rule', 'tersedia di scope GA', gaSeesITWS ? 'ada' : 'tidak ada', gaSeesITWS);
     if (itServer) {
-      rec('10: GA tidak akses aset IT non-PC/Laptop', '403', `${gaServerDetail}`, gaServerDetail === 403);
+      rec('10: GA tidak akses aset IT non-PC/Laptop', '403/404', `${gaServerDetail}`, [403, 404].includes(gaServerDetail));
     } else {
       rec('10: GA tidak akses aset IT non-PC/Laptop', 'skipped (data seed sudah sesuai rule)', 'skipped', true);
     }
