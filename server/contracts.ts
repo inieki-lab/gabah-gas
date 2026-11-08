@@ -295,6 +295,7 @@ export const ContractDomainService = {
       }
       const replacement = db.contracts.find(item => item.id === replacementContractId);
       if (!replacement) throw new Error('Kontrak pengganti tidak ditemukan.');
+      if (!canSeeContract(actor, replacement)) throw new Error('Akses ditolak: kontrak pengganti berada di luar scope pengguna.');
       if (replacement.id === contract.id) throw new Error('Kontrak tidak dapat menggantikan dirinya sendiri.');
       const sourceOwner = String(contract.owner_division || '').trim().toUpperCase();
       const replacementOwner = String(replacement.owner_division || '').trim().toUpperCase();
