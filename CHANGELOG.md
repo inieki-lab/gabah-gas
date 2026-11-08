@@ -1,3 +1,14 @@
+## [2026-11-08] — Unify asset visibility for list and direct-ID access
+
+### Perbaikan keamanan dan konsistensi
+- Direct-ID middleware tidak lagi memakai resolver aset kedua yang bercabang berdasarkan role primer GA/IT.
+- List, detail, direct URL, dan linked attention asset checks kini menggunakan `GabahDomainService.getScopedAssets(actor)` yang sama, termasuk scope dari role tambahan.
+- Permission mutasi tetap menjadi pemeriksaan terpisah; akses baca tidak memberikan hak mengubah aset.
+- Regression contract diperbarui untuk mencegah resolver scope ganda muncul kembali.
+- Perubahan diajukan pada branch `ai/codex/unify-asset-scope-guard`; CI exact head masih menunggu.
+
+---
+
 ## [2026-11-08] — Dashboard attention record-level scope
 
 ### Perbaikan keamanan
