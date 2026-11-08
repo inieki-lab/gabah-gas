@@ -7,8 +7,8 @@ if (start < 0 || end < 0) throw new Error('GET /api/movements route not found');
 const route = source.slice(start, end);
 const checks = [
   ['Movement history uses the canonical dynamic asset-scope resolver', /GabahDomainService\.getScopedAssets\(actor\)/.test(route)],
-  ['Visible movement asset IDs derive directly from canonical scoped assets', /new Set\(scopedAssets\.map\(asset => asset\.id\)\)/.test(route)],
-  ['Movement history has no legacy primary-role re-filter', !/employeeBaseline|Supply Chain.*PIBC|assigned_to\?\.id === actor\.id/.test(route)],
+  ['Employee movement scope keeps assigned assets and independently granted dynamic scopes', /isEmployeeBaseline[\s\S]*scopedAssets\.filter\(asset =>[\s\S]*asset\.assigned_to\?\.id === actor\.id \|\| assetVisibleUnderDynamicScopes\(actor, asset\)/.test(route)],
+  ['Unassigned loan-pool catalogue visibility is excluded from employee movement history', /const movementAssets = isEmployeeBaseline[\s\S]*\? scopedAssets\.filter\([\s\S]*asset\.assigned_to\?\.id === actor\.id \|\| assetVisibleUnderDynamicScopes\(actor, asset\)[\s\S]*: scopedAssets/.test(route)],
   ['Single-asset movement lookup checks visibility before returning history', /if \(assetId\)[\s\S]*!visibleAssetIds\.has\(String\(assetId\)\)/.test(route)],
   ['Collection movement lookup filters by visible asset IDs', /db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(route)],
 ];
