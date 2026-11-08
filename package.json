@@ -23,7 +23,8 @@
     "test:asset-scope-policy": "node scripts/asset-scope-policy-verify.mjs",
     "test:branch-migration-safety": "node scripts/branch-migration-safety-verify.mjs",
     "test:contract-renewal-integrity": "node scripts/contract-renewal-integrity-verify.mjs",
-    "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs"
+    "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
+    "test:movement-scope": "node scripts/movement-scope-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
