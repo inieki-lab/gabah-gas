@@ -18,6 +18,7 @@ const maintenancePermissionSeed = fs.readFileSync('server/migrations/020_dynamic
 const gaItWorkstationPermissionSeed = fs.readFileSync('server/migrations/021_dynamic_rbac_ga_it_workstation_read.sql', 'utf8');
 const itGaOwnerScopeSeed = fs.readFileSync('server/migrations/022_dynamic_rbac_it_ga_asset_owner_scopes.sql', 'utf8');
 const employeeNavigationPermissionSeed = fs.readFileSync('server/migrations/023_dynamic_rbac_employee_and_navigation_permissions.sql', 'utf8');
+const moduleScopeMigration = fs.readFileSync('server/migrations/029_rbac_module_scoped_data_scopes.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -83,6 +84,8 @@ const checks = [
   ['deleted users lose stale role assignments', /DELETE FROM gabah_user_roles WHERE NOT \(user_id = ANY\(\$1::text\[\]\)\)/i.test(persistence)],
   ['Superadmin authorization uses active database role assignment', /isRbacSuperadmin\(actor\.id\)/i.test(server) && /export function isRbacSuperadmin/i.test(policy) && /policy\.isSuperadmin/i.test(policy)],
   ['policy cache loads roles, permissions, and scopes from PostgreSQL', /gabah_user_roles/i.test(policy) && /gabah_role_permissions/i.test(policy) && /gabah_role_division_scopes/i.test(policy) && /refreshRbacPolicy/i.test(server)],
+  ['RBAC scopes are module-specific in storage, policy cache, API, and role manager', /ADD COLUMN IF NOT EXISTS module VARCHAR\(80\)/.test(moduleScopeMigration) && /s\.module/.test(policy) && /scope\.module === module/.test(policy) && /scope\.module === module/.test(policy) && /SELECT role_id, module, scope_type, scope_value FROM gabah_role_division_scopes/.test(server) && /INSERT INTO gabah_role_division_scopes \(role_id, module, scope_type, scope_value\)/.test(server) && /rbacScopeModule/.test(frontend)],
+  ['Canonical IT/GA owner scopes are narrowed to assets, loans, tickets, vendors, and contracts modules', /CROSS JOIN \(VALUES \('assets'\), \('loans'\), \('tickets'\), \('vendors'\), \('contracts'\)\)/.test(moduleScopeMigration) && /DELETE FROM gabah_role_division_scopes/.test(moduleScopeMigration)],
   ['fresh database backfills role assignments after normalized users exist', /backfillNormalizedTables\(\);\s*await backfillDynamicRbacUserRoles\(\);/i.test(persistence)],
   ['legacy backfill reconciles stale canonical roles without deleting custom roles', /DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role/i.test(persistence) && /assigned_role\.role_key IN \('superadmin','it','ga','sekretaris_direksi','humas','supply_chain','pibc','karyawan','auditor'\)/i.test(persistence)],
   ['RBAC policy refreshes after permission and scope changes', /await refreshRbacPolicy\(\);\s*GabahDomainService\.recordAudit\('RBAC_PERMISSIONS_UPDATED'/i.test(server) && /await refreshRbacPolicy\(\);\s*GabahDomainService\.recordAudit\('RBAC_SCOPES_UPDATED'/i.test(server)],
