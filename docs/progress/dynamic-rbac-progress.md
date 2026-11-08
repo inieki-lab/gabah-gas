@@ -495,3 +495,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - ID lokasi lama dipertahankan. Kantor Perawatan dinonaktifkan, bukan dihapus.
 - Super Admin tetap dapat menambah lokasi baru melalui master data; tidak ada daftar lokasi permanen di kode kebijakan akses.
 - Seed `server/db.ts`, fallback `server/persistence.ts`, migration 033, dan regression test diselaraskan. Migration produksi belum dijalankan.
+
+
+### Correction — Kantor Perawatan remains active (2026-11-08)
+- User clarified that Kantor Perawatan is still operational. This supersedes the immediately preceding assumption that it should be inactive.
+- Current active office locations: HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang remains closed/not an active office location.
+- Corrected seed (`server/db.ts`), persistence fallback, migration 033, and regression assertions. No user or asset references are reassigned or deleted.
+- Validation status: CI for the correction is pending; do not claim pass until the run completes.
