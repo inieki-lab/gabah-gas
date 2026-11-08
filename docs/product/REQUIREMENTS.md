@@ -3,7 +3,7 @@
 **Dokumen:** `docs/product/REQUIREMENTS.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Authoritative Requirement Specification (Tervalidasi dengan Source Code Aktual)  
+**Status:** Baseline requirement; implementation and role-based UAT are being reconciled. Do not interpret this document as proof that every requirement is already implemented.  
 
 ---
 
@@ -17,17 +17,14 @@
 - **FR-01.5**: Sistem harus menerapkan rate limiting login (maksimal 5 kali percobaan gagal sebelum lockout 5 menit pada lingkungan produksi) dan API rate limiting (maksimal 200 req/menit per client IP).
 
 ### FR-02: Katalog Aset & Klasifikasi Akuntansi PSAK 16
-- **FR-02.1**: Sistem harus mencatat aset dengan atribut identitas: nomor aset kanonikal, nomor ERP Accurate (`corporate_asset_number`), nama aset, kode kategori, tipe taksonomi (`IT`, `General`, `License`), divisi pemilik (`IT`, `GA`, `SC`, `PIBC`), merek, model, nomor seri, spesifikasi teknis, tanggal pembelian, harga perolehan, masa garansi, status, kondisi, lokasi fisik, status loanable, dan catatan.
-- **FR-02.2**: Sistem harus membatasi akses melihat katalog aset berdasarkan peran pengguna (`GabahDomainService.getScopedAssets()`):
-  - `Admin GABAH` & `Auditor`: Seluruh aset semua divisi.
-  - `IT`: Aset milik Divisi IT.
-  - `GA`: Aset milik Divisi GA dan aset IT (khusus aset IT bersifat *read-only*).
-  - `Supply Chain`: Aset milik Divisi SC (mesin pabrik, truk beras).
-  - `PIBC`: Aset milik Divisi PIBC atau berlokasi di kawasan PIBC.
-  - `Karyawan` & `Sekretaris Direksi`: Hanya aset yang ditugaskan kepada dirinya atau aset dalam pool peminjaman (`is_loanable`).
-  - `Humas`: Akses menu aset disembunyikan / dikosongkan sesuai tugas fungsional.
+- **FR-02.1**: Sistem harus mencatat aset dengan atribut identitas: nomor aset kanonikal, nomor ERP Accurate (`corporate_asset_number`), nama aset, kategori, tipe taksonomi, owner domain dari master dinamis, unit pengelola, lokasi fisik dari master lokasi aset, custodian/PIC, merek, model, nomor seri, spesifikasi teknis, tanggal pembelian, harga perolehan, masa garansi, status, kondisi, status loanable, dan catatan. Owner domain tidak boleh dibatasi enum IT/GA/SC/PIBC atau disimpulkan dari lokasi kantor, lokasi fisik, unit, kategori, maupun pegawai pemegang aset.
+- **FR-02.2**: Sistem membatasi akses katalog aset berdasarkan permission efektif dan data scope per modul, bukan label role atau lokasi kerja semata. Super Admin memiliki akses global; IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. GA hanya dapat memperoleh akses baca tambahan ke Laptop/PC owner IT melalui permission khusus `assets.read.it_workstations`. Owner operasional lain dapat ditambahkan melalui master dan diberi scope eksplisit. Karyawan melihat aset pribadi/pool sesuai permission; Auditor hanya membaca data yang secara eksplisit diotorisasi. Backend wajib menerapkan scope untuk list dan detail-by-ID.
 - **FR-02.3**: Sistem harus mendukung filter cepat berdasarkan kategori dan counter badge dinamis.
 - **FR-02.4**: Sistem harus mendukung pembuatan dan pencetakan label QR Code aset standar inventaris BUMD serta pemindaian QR menggunakan kamera web.
+- **FR-02.5**: Master lokasi kantor mendukung lokasi aktif HO, PIBC, RPC/SC, Pangsub, dan Kantor Perawatan; lokasi masa depan dapat ditambahkan tanpa perubahan kode. Lokasi yang tutup dinonaktifkan, bukan dihapus. Subang tidak aktif.
+- **FR-02.6**: Lokasi kerja pegawai, lokasi fisik aset, unit organisasi, owner domain, dan custodian adalah dimensi terpisah. Perpindahan lokasi fisik tidak mengubah owner atau kewenangan.
+- **FR-02.7**: Super Admin dapat mengatur scope owner dinamis, termasuk pola pengecualian seperti semua owner kecuali IT. Kebijakan luas tidak boleh diaktifkan otomatis tanpa persetujuan bisnis.
+- **FR-02.8**: Data historis dengan owner ambigu tidak boleh dimigrasikan massal berdasarkan lokasi atau kategori. Sistem harus menyediakan proses review dan audit untuk klasifikasi ulang.
 
 ### FR-03: Mesin Penomoran Kanonikal & Integritas Duplikasi
 - **FR-03.1**: Sistem harus meng-generate nomor aset otomatis dengan format `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` (Contoh: `IT-HLT-2026-0001`).
