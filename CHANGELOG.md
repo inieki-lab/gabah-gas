@@ -1069,3 +1069,8 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - The retired Kantor Perawatan office is inactive, not deleted. Existing location IDs are preserved so user references and history remain intact.
 - Future locations remain configurable by Super Admin; Subang is not seeded or treated as an active site.
 - Added migration 033 and regression assertions. Migration has not been applied to production.
+
+
+### Corrected office master — 2026-11-08
+- User correction: **Kantor Perawatan is still active**. The five active office locations are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is closed and is not seeded as an active office location.
+- Corrected `server/db.ts`, persistence fallback, migration 033, and asset-scope regression assertions. No users or assets are reassigned.
