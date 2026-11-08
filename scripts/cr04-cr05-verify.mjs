@@ -295,6 +295,88 @@ async function main() {
       assignment.status === 200 && (persistedAssignment?.role_ids || []).includes(Number(gaRole?.id))
         && Number(persistedAssignment?.primary_role_id) === Number(assignment.json?.data?.primary_role_id));
 
+    // Vendor ownership is independent from category and employee work location.
+    const itVendor = await req(base, 'POST', '/api/vendors', {
+      token: itToken,
+      body: { name: 'VERIFY Vendor IT', category: 'Maintenance', owner_division: 'IT', rating: 4.2 },
+    });
+    const itVendorId = itVendor.json?.data?.id || '';
+    record('IT can create IT-owned vendor independent of service category', '201 + owner IT', `HTTP ${itVendor.status} owner=${itVendor.json?.data?.owner_division || '-'}`,
+      itVendor.status === 201 && itVendor.json?.data?.owner_division === 'IT');
+
+    const gaVendor = await req(base, 'POST', '/api/vendors', {
+      token: await (async () => {
+        const login = await req(base, 'POST', '/api/auth/login', { body: { email: GA_EMAIL, password: USER_PASS } });
+        return login.json?.data?.token || '';
+      })(),
+      body: { name: 'VERIFY Vendor GA', category: 'IT Hardware', owner_division: 'GA', rating: 4.5 },
+    });
+    record('GA can create GA-owned vendor even when category text says IT Hardware', '201 + owner GA', `HTTP ${gaVendor.status} owner=${gaVendor.json?.data?.owner_division || '-'}`,
+      gaVendor.status === 201 && gaVendor.json?.data?.owner_division === 'GA');
+
+    const gaLoginForVendor = await req(base, 'POST', '/api/auth/login', { body: { email: GA_EMAIL, password: USER_PASS } });
+    const gaTokenForVendor = gaLoginForVendor.json?.data?.token || '';
+    const gaCrossOwner = await req(base, 'POST', '/api/vendors', {
+      token: gaTokenForVendor,
+      body: { name: 'VERIFY Forbidden GA to IT', category: 'Maintenance', owner_division: 'IT' },
+    });
+    record('GA cannot create IT-owned vendor outside GA owner scope', '403', `HTTP ${gaCrossOwner.status}`, gaCrossOwner.status === 403);
+
+    const karyawanVendorDenied = await req(base, 'POST', '/api/vendors', {
+      token: karyawanToken,
+      body: { name: 'VERIFY Forbidden Karyawan', category: 'General', owner_division: 'GA' },
+    });
+    record('Karyawan without vendors.create cannot create vendor', '403', `HTTP ${karyawanVendorDenied.status}`, karyawanVendorDenied.status === 403);
+
+    const newOwner = await req(base, 'POST', '/api/master/divisions', {
+      token: adminToken,
+      body: { code: 'RPCSC', name: 'RPC/SC Operations', leader: 'Kepala Operasional RPC/SC', depts: ['Gudang', 'Produksi'] },
+    });
+    record('Super Admin can add future owner domain without code change', '201', `HTTP ${newOwner.status}`, newOwner.status === 201);
+
+    const vendorRole = await req(base, 'POST', '/api/admin/rbac/roles', {
+      token: adminToken,
+      body: { role_key: 'vendor_rpcsc_test', name: 'Vendor RPC/SC Test', description: 'CI-only custom owner role' },
+    });
+    const vendorRoleId = Number(vendorRole.json?.data?.id || 0);
+    record('Super Admin can create custom owner-scoped role', '201 + role id', `HTTP ${vendorRole.status}`, vendorRole.status === 201 && vendorRoleId > 0);
+
+    const vendorRolePermissions = await req(base, 'PUT', `/api/admin/rbac/roles/${vendorRoleId}/permissions`, {
+      token: adminToken,
+      body: { permission_keys: ['vendors.read', 'vendors.create', 'vendors.update'] },
+    });
+    record('Custom role can receive explicit vendor permissions', '200', `HTTP ${vendorRolePermissions.status}`, vendorRolePermissions.status === 200);
+
+    const vendorRoleScopes = await req(base, 'PUT', `/api/admin/rbac/roles/${vendorRoleId}/scopes`, {
+      token: adminToken,
+      body: { scopes: [{ module: 'vendors', type: 'division', value: 'RPCSC' }] },
+    });
+    record('Custom role can receive future owner domain scope', '200', `HTTP ${vendorRoleScopes.status}`, vendorRoleScopes.status === 200);
+
+    const assignVendorRole = await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
+      token: adminToken,
+      body: { role_ids: [Number(gaRole?.id), vendorRoleId] },
+    });
+    record('Karyawan can receive a separate vendor owner capability without changing primary role', '200', `HTTP ${assignVendorRole.status}`, assignVendorRole.status === 200);
+
+    const rpcscVendor = await req(base, 'POST', '/api/vendors', {
+      token: karyawanToken,
+      body: { name: 'VERIFY Vendor RPCSC', category: 'IT Hardware', owner_division: 'RPCSC', rating: 4.1 },
+    });
+    const rpcscVendorId = rpcscVendor.json?.data?.id || '';
+    record('Custom RPC/SC owner can manage vendor; category does not determine owner', '201 + owner RPCSC',
+      `HTTP ${rpcscVendor.status} owner=${rpcscVendor.json?.data?.owner_division || '-'}`,
+      rpcscVendor.status === 201 && rpcscVendor.json?.data?.owner_division === 'RPCSC');
+
+    const karyawanVendors = await req(base, 'GET', '/api/vendors', { token: karyawanToken });
+    record('Custom role vendor list is limited to RPCSC owner scope', 'only RPCSC',
+      (karyawanVendors.json?.data || []).map(v => v.owner_division).join(','),
+      karyawanVendors.status === 200 && (karyawanVendors.json?.data || []).length === 1
+        && karyawanVendors.json.data[0].owner_division === 'RPCSC');
+
+    const deleteReferencedOwner = await req(base, 'DELETE', '/api/master/divisions/RPCSC', { token: adminToken });
+    record('Owner domain referenced by vendor cannot be deleted', '400', `HTTP ${deleteReferencedOwner.status}`, deleteReferencedOwner.status === 400);
+
     const linkedTicket = await req(base, 'POST', '/api/tickets', {
       token: adminToken,
       body: { title: 'linked to verify contract', description: 'verify linkage', category: 'IT', priority: 'low', contract_id: contractId },
