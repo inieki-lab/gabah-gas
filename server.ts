@@ -2101,6 +2101,8 @@ async function startServer() {
 
   // Loans
   app.get('/api/loans', (req, res) => {
+    
+    if (!requireRbacPermission(req, res, 'loans.read')) return;
     const actor = getActor(req);
     if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.loans });
@@ -2117,7 +2119,9 @@ async function startServer() {
 
   app.post('/api/loans', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'loans.create')) return;
+    const actor = getActor(req);
       const { asset_ids, asset_id } = req.body;
 
       if (Array.isArray(asset_ids) && asset_ids.length > 0) {
@@ -2146,7 +2150,9 @@ async function startServer() {
 
   app.post('/api/loans/:id/approve', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'loans.approve')) return;
+    const actor = getActor(req);
       const approved = GabahDomainService.approveLoan(req.params.id, actor);
       await persistDataStore();
       res.json({ success: true, data: approved });
@@ -2157,7 +2163,9 @@ async function startServer() {
 
   app.post('/api/loans/:id/reject', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'loans.reject')) return;
+    const actor = getActor(req);
       const rejected = GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
       await persistDataStore();
       res.json({ success: true, data: rejected });
@@ -2168,7 +2176,9 @@ async function startServer() {
 
   app.post('/api/loans/:id/handover', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'loans.handover')) return;
+    const actor = getActor(req);
       const { handoverNotes } = req.body;
       const handedOver = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
       await persistDataStore();
@@ -2182,7 +2192,9 @@ async function startServer() {
 
   app.post('/api/loans/:id/return', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'loans.return')) return;
+    const actor = getActor(req);
       const { condition, returnNotes } = req.body;
       const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
       await persistDataStore();
@@ -2196,6 +2208,8 @@ async function startServer() {
 
   // Helpdesk Tickets
   app.get('/api/tickets', (req, res) => {
+    
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
     const isReporter = (ticket: any) =>
       ticket.reporter_id === actor.id
@@ -2214,7 +2228,9 @@ async function startServer() {
 
   app.post('/api/tickets', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'tickets.create')) return;
+    const actor = getActor(req);
       const newTicket = GabahDomainService.createTicket(req.body, actor);
       // Optional contract linkage: Contract = data, Ticket = pekerjaan (action).
       // SECURITY: linkage is only honored when the actor may actually see the
@@ -2244,7 +2260,9 @@ async function startServer() {
 
   app.patch('/api/tickets/:id/status', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'tickets.update')) return;
+    const actor = getActor(req);
       if (actor.role === 'Auditor') {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
       }
@@ -2441,6 +2459,8 @@ async function startServer() {
   // Vendor Directory (server-authoritative)
   // =========================
   app.get('/api/vendors', (req, res) => {
+    
+    if (!requireRbacPermission(req, res, 'vendors.read')) return;
     const actor = getActor(req);
     if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.vendors });
@@ -2451,10 +2471,7 @@ async function startServer() {
     if (actor.role === 'GA') {
       return res.json({ success: true, data: db.vendors.filter(v => !['IT', 'License'].includes(String(v.category))) });
     }
-    // Supply Chain & PIBC: can see all vendors for contract management
-    if (actor.role === 'Supply Chain' || actor.role === 'PIBC') {
-      return res.json({ success: true, data: db.vendors });
-    }
+    // Branch/location labels do not grant global vendor visibility.
     return res.status(403).json({ success: false, message: 'Akses vendor tidak tersedia untuk peran ini.' });
   });
 
@@ -2462,7 +2479,7 @@ async function startServer() {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)) {
+    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, GA, Supply Chain, atau PIBC yang dapat mengelola vendor.' });
     }
     if (actor.role === 'IT' && req.body?.category && !['IT', 'License'].includes(String(req.body.category))) {
@@ -2524,6 +2541,8 @@ async function startServer() {
   // Knowledge Base (SOP & panduan operasional)
   // =========================
   app.get('/api/knowledge', (req, res) => {
+    if (!requireRbacPermission(req, res, 'knowledge.read')) return;
+    
     res.json({ success: true, data: db.knowledgeArticles });
   });
 
@@ -2594,6 +2613,8 @@ async function startServer() {
 
   // Notifications
   app.get('/api/notifications', (req, res) => {
+    
+    if (!requireRbacPermission(req, res, 'notifications.read')) return;
     const actor = getActor(req);
     const filtered = db.notifications.filter(n => {
       // Photo and documentation request notifications are strictly for Humas role only
@@ -2615,12 +2636,20 @@ async function startServer() {
   });
 
   app.patch('/api/notifications/:id/read', (req, res) => {
+    if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
+    
+    const actor = getActor(req);
     const notif = db.notifications.find(n => n.id === req.params.id);
-    if (notif) notif.is_read = true;
+    if (!notif || (!isSuperadminActor(actor) && notif.recipient_user_id !== actor.id && notif.recipient_role !== actor.role && notif.recipient_division !== actor.division)) {
+      return res.status(404).json({ success: false, message: 'Notifikasi tidak ditemukan.' });
+    }
+    notif.is_read = true;
     res.json({ success: true, data: notif });
   });
 
   app.post('/api/notifications/read-all', (req, res) => {
+    
+    if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
     const actor = getActor(req);
     for (const n of db.notifications) {
       if (isSuperadminActor(actor) || n.recipient_role === actor.role || n.recipient_user_id === actor.id) {
@@ -2683,6 +2712,8 @@ async function startServer() {
   });
 
   app.post('/api/reconciliation/link', (req, res) => {
+    
+    if (!requireRbacPermission(req, res, 'reconciliation.link')) return;
     const actor = getActor(req);
     const { assetId, corporateAssetNumber } = req.body;
     const asset = db.assets.find(a => a.id === assetId);
@@ -2706,7 +2737,9 @@ async function startServer() {
   // ==========================================
   app.get('/api/contracts', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.read')) return;
+    const actor = getActor(req);
       res.json({ success: true, data: ContractDomainService.listContracts(actor) });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -2715,7 +2748,9 @@ async function startServer() {
 
   app.get('/api/contracts/:id', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.read')) return;
+    const actor = getActor(req);
       res.json({ success: true, data: ContractDomainService.getContract(actor, req.params.id) });
     } catch (err: any) {
       res.status(404).json({ success: false, message: err.message });
@@ -2727,7 +2762,9 @@ async function startServer() {
   // can never add or spoof a recipient channel/destination.
   app.post('/api/contracts', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.create')) return;
+    const actor = getActor(req);
       const created = ContractDomainService.createContract(req.body, actor);
       await persistDataStore();
       res.status(201).json({ success: true, data: created });
@@ -2738,7 +2775,9 @@ async function startServer() {
 
   app.patch('/api/contracts/:id', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.update')) return;
+    const actor = getActor(req);
       const updated = ContractDomainService.updateContract(req.params.id, req.body, actor);
       await persistDataStore();
       res.json({ success: true, data: updated });
@@ -2904,6 +2943,8 @@ async function startServer() {
   // MEETING ROOMS & RESERVATIONS API
   // ==========================================
   app.get('/api/meeting-rooms', (req, res) => {
+    if (!requireRbacPermission(req, res, 'meeting_rooms.read')) return;
+    
     res.json({ success: true, data: GabahDomainService.getMeetingRooms() });
   });
 
@@ -2918,6 +2959,8 @@ async function startServer() {
   });
 
   app.get('/api/room-reservations', (req, res) => {
+    if (!requireRbacPermission(req, res, 'room_reservations.read')) return;
+    
     const { room_id, date, status, organizer_id } = req.query as any;
     const data = GabahDomainService.getRoomReservations({ room_id, date, status, organizer_id });
     res.json({ success: true, data });
@@ -2925,7 +2968,9 @@ async function startServer() {
 
   app.post('/api/room-reservations', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'room_reservations.create')) return;
+    const actor = getActor(req);
       const created = GabahDomainService.requestRoomReservation(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
@@ -2943,7 +2988,9 @@ async function startServer() {
 
   app.post('/api/room-reservations/:id/approve', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'room_reservations.approve')) return;
+    const actor = getActor(req);
       const approved = GabahDomainService.approveRoomReservation(req.params.id, actor);
       res.json({ success: true, data: approved });
     } catch (err: any) {
@@ -2953,7 +3000,9 @@ async function startServer() {
 
   app.post('/api/room-reservations/:id/reject', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'room_reservations.reject')) return;
+    const actor = getActor(req);
       const rejected = GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
       res.json({ success: true, data: rejected });
     } catch (err: any) {
@@ -2963,7 +3012,9 @@ async function startServer() {
 
   app.post('/api/room-reservations/:id/checkin', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'room_reservations.checkin')) return;
+    const actor = getActor(req);
       const checkedIn = GabahDomainService.checkinRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedIn });
     } catch (err: any) {
@@ -2973,7 +3024,9 @@ async function startServer() {
 
   app.post('/api/room-reservations/:id/checkout', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'room_reservations.checkout')) return;
+    const actor = getActor(req);
       const checkedOut = GabahDomainService.checkoutRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedOut });
     } catch (err: any) {
@@ -2983,7 +3036,9 @@ async function startServer() {
 
   app.post('/api/room-reservations/:id/cancel', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'room_reservations.cancel')) return;
+    const actor = getActor(req);
       const cancelled = GabahDomainService.cancelRoomReservation(req.params.id, actor);
       res.json({ success: true, data: cancelled });
     } catch (err: any) {
@@ -2993,12 +3048,16 @@ async function startServer() {
 
   // Meeting Types CRUD API (Admin GABAH)
   app.get('/api/meeting-types', (req, res) => {
+    if (!requireRbacPermission(req, res, 'meeting_types.read')) return;
+    
     res.json({ success: true, data: GabahDomainService.getMeetingTypes() });
   });
 
   app.post('/api/meeting-types', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
+    const actor = getActor(req);
       const created = GabahDomainService.createMeetingType(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
@@ -3008,7 +3067,9 @@ async function startServer() {
 
   app.patch('/api/meeting-types/:id', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
+    const actor = getActor(req);
       const updated = GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
@@ -3018,7 +3079,9 @@ async function startServer() {
 
   app.delete('/api/meeting-types/:id', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
+    const actor = getActor(req);
       const result = GabahDomainService.deleteMeetingType(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
@@ -3028,12 +3091,16 @@ async function startServer() {
 
   // Meeting Facilities CRUD API (Admin GABAH, GA, IT)
   app.get('/api/meeting-facilities', (req, res) => {
+    if (!requireRbacPermission(req, res, 'meeting_facilities.read')) return;
+    
     res.json({ success: true, data: GabahDomainService.getMeetingFacilities() });
   });
 
   app.post('/api/meeting-facilities', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
+    const actor = getActor(req);
       const created = GabahDomainService.createMeetingFacility(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
@@ -3043,7 +3110,9 @@ async function startServer() {
 
   app.patch('/api/meeting-facilities/:id', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
+    const actor = getActor(req);
       const updated = GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
@@ -3053,7 +3122,9 @@ async function startServer() {
 
   app.delete('/api/meeting-facilities/:id', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
+    const actor = getActor(req);
       const result = GabahDomainService.deleteMeetingFacility(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
