@@ -525,11 +525,13 @@ export const db = {
   // Satu lokasi dapat memuat banyak unit; unit tidak terkunci ke satu lokasi.
   // Tidak ada mapping permanen level→lokasi (contoh kondisi organisasi, bukan aturan sistem).
   officeLocations: [
-    { id: 'OFF-KP', name: 'Kantor Pusat', is_active: true },
+    // Lokasi kantor aktif saat ini. IDs dipertahankan agar relasi user historis aman.
+    { id: 'OFF-KP', name: 'HO', is_active: true },
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
-    { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
-    { id: 'OFF-PANGSUB', name: 'Kantor Pangsub', is_active: true },
-    { id: 'OFF-RPC', name: 'RPC/Supply Chain', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
+    { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
+    // Lokasi lama dinonaktifkan, bukan dihapus, untuk menjaga histori.
+    { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: false },
   ] as OrgOfficeLocation[],
 
   // T2B-2: Master Lokasi Fisik Aset (terpisah dari lokasi kantor user &
