@@ -160,7 +160,7 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
  */
 export function resolveTaxonomyByHumanName(
   nameOrCode?: string,
-  requestedDivision?: 'IT' | 'GA' | 'SC' | 'PIBC',
+  requestedDivision?: string,
   catalog: AssetTaxonomyItem[] = CANONICAL_TAXONOMY,
 ): AssetTaxonomyItem {
   // T2B-3: `catalog` = master kategori yang sedang berlaku (`db.categories`,
