@@ -37,15 +37,15 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
     'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
   ],
   Humas: [
-    'dashboard', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
+    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
   ],
+  // Legacy labels retained for account compatibility only. These are
+  // locations, not application roles or asset-owner domains.
   'Supply Chain': [
-    'dashboard', 'my_assets', 'assets', 'maintenance', 'loans',
-    'tickets', 'contracts', 'vendors', 'knowledge', 'reports',
+    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
   ],
   PIBC: [
-    'dashboard', 'my_assets', 'assets', 'maintenance', 'loans',
-    'tickets', 'contracts', 'vendors', 'knowledge', 'reports',
+    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
   ],
   Karyawan: [
     'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
