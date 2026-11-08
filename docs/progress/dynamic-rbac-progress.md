@@ -649,3 +649,8 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Root cause: in `backfillDynamicRbacUserRoles()` the SQL aliases `gabah_roles` as `assigned_role`, but `is_primary` belongs to `gabah_user_roles` alias `ur`. The query incorrectly used `assigned_role.is_primary = TRUE`.
 - Fixed to `ur.is_primary = TRUE`. Migration 030 was present and adds `is_primary` to `gabah_user_roles`; the defect was a wrong table alias, not migration ordering.
 - Added a source regression assertion for the correct alias. Re-run the complete PostgreSQL CI suite; this is the first live database-backed verification and must pass before declaring PG readiness.
+
+
+### CI verifier follow-up — 2026-11-08
+- The first rerun after the SQL alias correction failed before PostgreSQL integration because `scripts/dynamic-rbac-foundation-verify.mjs` still asserted the old alias `assigned_role.is_primary` in the reconciliation query.
+- Updated the assertion to `ur.is_primary`. This is a stale verifier expectation, not a new runtime defect. The next run must pass the 111 Dynamic RBAC checks before the PostgreSQL integration step can execute.
