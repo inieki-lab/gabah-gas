@@ -35,7 +35,7 @@ services:
       - "80:3000"
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${PGUSER:-gabah_user}:${PGPASSWORD:?PGPASSWORD wajib diisi di .env sebelum menjalankan docker compose}@database:5432/${PGDATABASE:-gabah_db}
+      # Use discrete PG* fields; avoids URL-escaping bugs when strong passwords contain reserved characters.
       PGHOST: database
       PGPORT: 5432
       PGDATABASE: ${PGDATABASE:-gabah_db}
