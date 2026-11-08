@@ -70,6 +70,13 @@ BACKUP_FILE="/var/backups/gabah/gabah-$(date +%F-%H%M%S).sql"
 docker compose exec -T database sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "$BACKUP_FILE"
 test -s "$BACKUP_FILE"
 sha256sum "$BACKUP_FILE"
+
+# Contract documents live in the dedicated uploads_data volume mounted at /app/uploads.
+# Coordinate a short write pause so the DB dump and file archive represent the same point in time.
+UPLOAD_BACKUP_FILE="/var/backups/gabah/gabah-uploads-$(date +%F-%H%M%S).tar.gz"
+docker compose exec -T app tar -czf - -C /app/uploads . > "$UPLOAD_BACKUP_FILE"
+test -s "$UPLOAD_BACKUP_FILE"
+sha256sum "$UPLOAD_BACKUP_FILE"
 ```
 
 Catat nama file, ukuran, checksum, waktu, dan commit aplikasi. Untuk instalasi baru tanpa data, dokumentasikan bahwa backup belum diperlukan. Backup belum dianggap teruji restore sampai pernah dipulihkan pada database uji terpisah.
@@ -125,6 +132,9 @@ Restore dapat menimpa data saat ini. Lakukan hanya setelah incident lead menyetu
 
 ```sh
 docker compose exec -T database sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" "$POSTGRES_DB"' < /var/backups/gabah/BACKUP_FILE.sql
+
+# Restore contract files from the matching uploads archive after verifying the archive.
+docker compose exec -T app tar -xzf - -C /app/uploads < /var/backups/gabah/UPLOADS_BACKUP_FILE.tar.gz
 ```
 
 Uji restore terlebih dahulu pada database terpisah. Jangan menjalankan restore ke database produksi hanya untuk mencoba.
