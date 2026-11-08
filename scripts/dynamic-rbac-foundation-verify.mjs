@@ -23,6 +23,7 @@ const primaryRoleMigration = fs.readFileSync('server/migrations/030_rbac_primary
 const employeeCapabilityMigration = fs.readFileSync('server/migrations/031_employee_primary_role_with_job_capabilities.sql', 'utf8');
 const branchLocationMigration = fs.readFileSync('server/migrations/026_map_branch_accounts_to_employee_location.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
+const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
 const domainServices = fs.readFileSync('server/services.ts', 'utf8');
@@ -35,7 +36,7 @@ const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const checks = [
-  ['custom role creation accepts selected permissions atomically and validates the permission catalogue', /requestedKeys = req\.body\?\.permission_keys/.test(server) && /withRbacTransaction\(async client =>/.test(server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"))) && /INSERT INTO gabah_role_permissions/.test(server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"))))],
+  ['custom role creation accepts selected permissions atomically and validates the permission catalogue', createRoleRoute.includes('req.body?.permission_keys') && createRoleRoute.includes('withRbacTransaction') && createRoleRoute.includes('INSERT INTO gabah_role_permissions')],
   ['Superadmin create-role form displays grouped permission checkboxes and refuses empty catalogue/selection', /Pilih Permission/.test(frontend) && /rbacNewPermissionKeys\.includes/.test(frontend) && /Buat Role \+ Simpan Hak Akses/.test(frontend) && /Katalog permission kosong/.test(frontend) && /Pilih minimal satu permission/.test(frontend)],
 
   ['roles table is additive/idempotent', /CREATE TABLE IF NOT EXISTS gabah_roles/i.test(migration)],
