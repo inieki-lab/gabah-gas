@@ -1,3 +1,16 @@
+## [2026-11-08] — Dashboard attention record-level scope
+
+### Perbaikan keamanan
+- `GET /api/dashboard/attention` kini memfilter kartu tiket berdasarkan reporter/assignee atau owner scope modul Tickets; kartu pinjaman berdasarkan borrower atau owner scope Loans; kartu aset berdasarkan resolver aset server-side.
+- Super Admin dan Auditor tetap mendapat read scope global. Record hilang dan link type tak dikenal fail-closed.
+- Ditambahkan regression test dan langkah CI `test:dashboard-attention-scope`.
+- Perubahan diajukan melalui PR #19; status CI untuk branch follow-up masih menunggu pemicu workflow.
+
+### Status
+- Ini menutup satu temuan scope yang teridentifikasi, bukan menyatakan seluruh endpoint sudah diaudit atau GABAH siap produksi.
+
+---
+
 ## [2026-11-08] — Contract file storage, role administration, and production container hardening
 
 ### Perubahan
