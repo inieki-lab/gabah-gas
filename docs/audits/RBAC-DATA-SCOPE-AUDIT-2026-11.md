@@ -164,3 +164,23 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 - Model role multi-assignment perlu UAT: Karyawan + role fungsi tambahan, jabatan (Direksi/Kadiv/Kadep/Kasi/Staf), unit organisasi, dan lokasi kerja harus tetap terpisah.
 - Workflow permintaan dokumentasi Humas yang terhubung agenda/reservasi masih berupa keputusan PRD; antrean Humas, PIC, status, assignment, dan audit trail belum selesai dibangun.
 - Semua kombinasi role/permission/scope harus diuji melalui akun nyata di UI dan API. CI hijau saja tidak cukup untuk menyatakan GABAH siap produksi.
+
+
+## Temuan lanjutan — dashboard attention scope (8 November 2026)
+
+### P1 — Kebocoran detail lintas scope pada attention center
+
+- Endpoint `GET /api/dashboard/attention` sebelumnya mengirim seluruh hasil `GabahDomainService.getAttentionCenter()` kepada setiap user yang memiliki `dashboard.read`.
+- Query sumber membentuk kartu SLA tiket, pinjaman menunggu persetujuan/jatuh tempo, dan aset dengan garansi mendekati akhir tanpa menerapkan scope record pengguna.
+- Risiko: pengguna dapat membaca judul/deskripsi tiket, nama peminjam, tujuan pinjaman, nomor aset, dan detail operasional di luar scope modulnya meskipun daftar utama sudah dibatasi.
+
+### Perbaikan yang diajukan pada PR follow-up #19
+
+- Tiket: reporter, assigned agent, atau owner scope eksplisit modul `tickets`.
+- Pinjaman: borrower sendiri atau owner scope eksplisit modul `loans`.
+- Aset: hanya ID yang lolos resolver server `getScopedAssets()`.
+- Super Admin dan Auditor mempertahankan akses baca global sesuai mandat.
+- Record yang hilang dan tipe tautan yang tidak dikenal ditolak secara default.
+- Regression test khusus ditambahkan ke CI.
+
+Status: implementasi berada di PR #19 dan belum dianggap selesai sampai verifikasi CI serta review. Temuan ini tidak mengubah status keseluruhan PR #18 yang tetap NO-GO sampai UAT dan release gates lain terpenuhi.
