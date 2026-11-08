@@ -26,7 +26,10 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
   if (isAuditorActor(actor)) return false;
-  if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+  const isReporter = ticket.reporter_id === actor.id
+    || (Boolean(ticket.reporter_name)
+      && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+  if (isReporter || ticket.assigned_agent_id === actor.id) return true;
   if (isPostgresPersistenceActive()) {
     // PostgreSQL RBAC is owner-code agnostic: custom operational functions
     // (e.g. RPC/SC) need the same explicit Tickets scope as IT/GA.
