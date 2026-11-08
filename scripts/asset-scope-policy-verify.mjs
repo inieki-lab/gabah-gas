@@ -8,8 +8,14 @@ const migration = read('server/migrations/021_dynamic_rbac_ga_it_workstation_rea
 const branchMigration = read('server/migrations/026_map_branch_accounts_to_employee_location.sql');
 const server = read('server.ts');
 const hardeningSource = read('server/runtime-hardening.ts');
+const persistence = read('server/persistence.ts');
+const contracts = read('server/contracts.ts');
 
 const checks = [
+  ['Owner domains are synchronized from the configurable division master before PostgreSQL FK-backed data', /for \(const division of db\.divisions \|\| \[\]\)/.test(persistence) && /INSERT INTO divisions \(code,name,is_active\)/.test(persistence)],
+  ['Asset categories and new assets require owner codes from the configured master', /db\.divisions \|\| \[\]\)\.some\(d => String\(d\.code\)/.test(server) && /const configuredOwner = \(db\.divisions \|\| \[\]\)\.some/.test(services)],
+  ['Contract visibility and edits follow any explicit owner scope, not IT/GA whitelist', /if \(!owner\) return false;/.test(contracts) && !/owner !== 'IT' && owner !== 'GA'/.test(contracts) && /hasRbacScope\(String\(user\.id\), 'division', owner, 'contracts'\)/.test(contracts)],
+
   ['Dynamic asset visibility is owner-code agnostic and scope-driven', /const owner = String\(asset\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\);\s*if \(!owner\) return false;/.test(services) && /case 'division':[\s\S]*textEquals\(asset\.owner_division, scope\.value\)/.test(services) && /assetMatchesAssetScope\(asset, scope, user\)/.test(services)],
   ['GA and additional capabilities retain explicitly scoped owner domains', /const dynamicAssets = filterAssetsByDynamicScopes\(db\.assets, user\)/.test(services) && /\.\.\.dynamicAssets, \.\.\.readOnlyItWorkstations/.test(services)],
   ['GA IT read scope memerlukan permission khusus', /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)],
