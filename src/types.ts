@@ -272,6 +272,8 @@ export interface UserProfile {
   // credentials are never sent to or stored by the frontend.
   phone?: string;
   is_active?: boolean;
+  /** Permission efektif dari RBAC backend; undefined pada mode file-store legacy. */
+  permission_keys?: string[];
   /** Telegram chat id untuk pengiriman reminder (admin-managed via PATCH /api/users/:id). */
   telegram_chat_id?: string;
 }
