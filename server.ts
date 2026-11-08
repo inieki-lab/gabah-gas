@@ -3090,11 +3090,20 @@ async function startServer() {
     const { room_id, date, status, organizer_id } = req.query as any;
     let data = GabahDomainService.getRoomReservations({ room_id, date, status, organizer_id });
 
-    // Agenda details are private by default. GA operates room logistics but
-    // receives only operational fields; IT sees only IT-facility requests;
-    // Humas receives the full detail only for documentation work items.
+    // Agenda details are private by default. Operational queues are granted
+    // by explicit capabilities, never by the employee's primary role label.
     if (!isSuperadminActor(actor) && actor.role !== 'Auditor') {
-      if (actor.role === 'GA') {
+      const canOperateRooms = isPostgresPersistenceActive()
+        ? hasRbacPermission(String(actor.id), 'room_reservations.approve')
+          || hasRbacPermission(String(actor.id), 'room_reservations.reject')
+        : actor.role === 'GA';
+      const canReadITFacilityQueue = isPostgresPersistenceActive()
+        ? hasRbacPermission(String(actor.id), 'room_reservations.it_facilities.read')
+        : actor.role === 'IT';
+      const canReadDocumentationQueue = isPostgresPersistenceActive()
+        ? hasRbacPermission(String(actor.id), 'room_reservations.documentation.read')
+        : hasApplicationRole(actor, 'humas');
+      if (canOperateRooms) {
         data = data.map(item => item.organizer_id === actor.id ? item : ({
           ...item,
           title: 'Reservasi ruang rapat',
@@ -3108,7 +3117,7 @@ async function startServer() {
           rejection_reason: undefined,
           interruption_reason: undefined,
         }));
-      } else if (actor.role === 'IT') {
+      } else if (canReadITFacilityQueue) {
         const itFacilityNames = new Set(db.meetingFacilities
           .filter(facility => facility.category === 'IT')
           .map(facility => facility.name));
@@ -3127,7 +3136,7 @@ async function startServer() {
             rejection_reason: undefined,
             interruption_reason: undefined,
           }));
-      } else if (hasApplicationRole(actor, 'humas')) {
+      } else if (canReadDocumentationQueue) {
         data = data.filter(item => Boolean(item.documentation_requested));
       } else {
         data = data.filter(item => item.organizer_id === actor.id);
