@@ -600,7 +600,6 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
   await pool.query(
     "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
     "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
-    "AND assigned_role.role_key IN ('superadmin','it','ga','sekretaris_direksi','humas','supply_chain','pibc','karyawan','auditor') " +
     "AND assigned_role.is_primary = TRUE " +
     "AND assigned_role.role_key IS DISTINCT FROM CASE u.role " +
     "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
