@@ -8,7 +8,7 @@ import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
+import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -2207,8 +2207,19 @@ async function startServer() {
     // with every explicit dynamic role scope. Do not re-filter by legacy
     // primary-role labels here: that would hide scoped assets from employees
     // who hold additional operational roles.
+    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+    const isEmployeeBaseline = employeeBaselineRoles.includes(actor.role);
     const scopedAssets = GabahDomainService.getScopedAssets(actor);
-    const visibleAssetIds = new Set(scopedAssets.map(asset => asset.id));
+    // Employee baseline may see unassigned loanable assets in the asset catalogue
+    // to request a loan, but that catalogue visibility must not expose their
+    // movement history. Keep personally assigned assets and independently
+    // granted dynamic owner/unit/location scopes only.
+    const movementAssets = isEmployeeBaseline
+      ? scopedAssets.filter(asset =>
+          asset.assigned_to?.id === actor.id || assetVisibleUnderDynamicScopes(actor, asset)
+        )
+      : scopedAssets;
+    const visibleAssetIds = new Set(movementAssets.map(asset => asset.id));
     const { assetId } = req.query;
     if (assetId) {
       if (!visibleAssetIds.has(String(assetId)) && !isSuperadminActor(actor) && !isAuditorActor(actor)) {
