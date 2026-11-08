@@ -768,6 +768,38 @@ class GabahApiClient {
     });
   }
 
+  async uploadContractDocument(id: string, file: File): Promise<{ document_id: string; file_name: string; file_size: number; file_mime: string }> {
+    const form = new FormData();
+    form.append('file', file);
+    const token = this.getToken();
+    const res = await fetch(`/api/contracts/${id}/documents/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) {
+      const error: any = new Error(json.message || `Upload dokumen gagal: ${res.statusText}`);
+      error.status = res.status;
+      throw error;
+    }
+    return json.data;
+  }
+
+  async downloadContractDocument(id: string, documentId: string): Promise<Blob> {
+    const token = this.getToken();
+    const res = await fetch(`/api/contracts/${id}/documents/${documentId}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      const error: any = new Error(json.message || `Download dokumen gagal: ${res.statusText}`);
+      error.status = res.status;
+      throw error;
+    }
+    return res.blob();
+  }
+
   async addContractMilestone(id: string, milestone: { type: string; title: string; due_date: string; amount?: number; notes?: string }): Promise<Contract> {
     return this.request<Contract>(`/api/contracts/${id}/milestones`, {
       method: 'POST',
