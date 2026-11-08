@@ -1113,3 +1113,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - CI run #443 (run `42487486675`) passed on documentation head `6f3e2b2a772d632d6f17ea82d1f5cb90859ac746`, confirming the migration 033 correction and office regression checks at that point.
 - Subsequent ticket custom-owner-scope fix and regression check were added in commits `0b0db0a66d7a3e1ca2d049ce77740b0717818548` and `e02a522f5efaec49dea5466e0edc0c5aac29f30a`. CI #446 is running on the newest head; pending result.
 - Additional audit finding (not yet changed): vendor visibility/write ownership is still inferred from vendor `category` using an IT-vs-GA fallback. This cannot represent configurable owner domains such as RPC/SC safely. Requires a separate schema/API/UI design; do not infer vendor owner from employee location or category text.
+
+
+### Latest CI and additional UI/domain audit — 2026-11-08
+- CI #446 (`42487582277`) passed with the dynamic ticket-owner authorization fix; CI #447 (`42487587798`) and #448 (`42487694450`) also passed on subsequent documentation heads.
+- Vendor audit confirms a broader issue than backend category mapping: `VendorsView.tsx` enables management only for hardcoded role labels Admin GABAH/IT/GA, while `/api/vendors` infers owner from category IT/License vs everything else GA. Vendor category and responsible owner are distinct concepts; future RPC/SC vendors cannot be represented safely yet.
+- Room reservation list still applies legacy role branches for GA, IT, Humas, and self-only users. These rules include privacy redaction and must be translated carefully into effective capabilities/scopes without exposing agenda descriptions, attendee lists, or documentation notes.
