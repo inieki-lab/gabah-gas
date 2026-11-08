@@ -571,3 +571,21 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Audit found `/api/vendors` still derives vendor ownership from `category`: `IT`/`License` => IT, every other category => GA. This hardcodes an IT-vs-GA dichotomy and would mis-scope vendors belonging to RPC/SC or future owner domains.
 - Do not patch by simply treating category text as owner. Vendor category/type and responsible owner domain are separate business attributes. Inspect current vendor data, frontend form/types, persistence, and any external contract linkage; design an explicit `owner_division` field and migration/backfill only when historical mapping is verified. Ambiguous existing vendor records must be reviewed, not auto-assigned to GA.
 - Room reservation visibility still has legacy role/function branches (GA/IT/Humas) for privacy/operations. Audit those against effective permission/scope without weakening the privacy redaction rules.
+
+
+### Additional audit — vendor and room reservation domains (2026-11-08)
+
+#### CI results
+- CI #446 (`42487582277`) passed on the ticket authorization source change and test.
+- CI #447 (`42487587798`) and #448 (`42487694450`) passed on later documentation heads. Newest run #449 is currently in progress; check before reporting latest branch green.
+
+#### Vendor directory: not yet aligned with flexible owner model
+- Frontend `src/components/views/VendorsView.tsx` uses `['Admin GABAH','IT','GA'].includes(currentUser.role)` for management UI.
+- Backend `GET/POST/PATCH /api/vendors` infers owner domain from category: IT/License => IT; all other categories => GA. This is not safe for operational vendors belonging to RPC/SC or future owner domains.
+- `ServerVendor` / frontend `Vendor` currently have category but no explicit owner domain. Vendor category (e.g. IT service, license reseller, maintenance, supplier) must not double as owner.
+- Next implementation should add explicit owner-domain master reference to vendor data, allow Super Admin to set it, authorize list/create/update by `vendors.*` permission + `vendors` owner scope, and update frontend visibility from effective permissions. Review ambiguous legacy records; do not default every non-IT vendor to GA.
+
+#### Room reservations: privacy-sensitive legacy rules remain
+- `/api/room-reservations` list currently has role-specific branches for GA operations (redacted agenda), IT facility requests (filtered/redacted), Humas documentation requests, and personal reservations for other users.
+- Preserve privacy redaction and operational intent while replacing role-label assumptions with effective capabilities/scopes. Do not expose meeting titles/descriptions, attendee lists, phone numbers, documentation notes, or rejection/interruption reasons to users lacking the corresponding permission/work item assignment.
+- Approval/override priority for Sekretaris Direksi and GA is a business workflow, not a blanket role grant; retain explicit priority/override constraints.
