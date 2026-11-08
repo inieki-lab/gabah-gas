@@ -356,7 +356,12 @@ async function startServer() {
 
   // Auth / Users
   app.get('/api/users', (req, res) => {
-    if (!requireRbacPermission(req, res, 'users.read')) return;
+    const actor = getActor(req);
+    if (isPostgresPersistenceActive()) {
+      if (!requireRbacPermission(req, res, 'users.read')) return;
+    } else if (!isSuperadminActor(actor) && !['IT', 'GA'].includes(actor.role)) {
+      return res.status(403).json({ success: false, message: 'Akses direktori pegawai hanya untuk Super Admin, IT, dan GA.' });
+    }
     res.json({ success: true, data: db.users.map(u => sanitizeUser(u)) });
   });
 
