@@ -851,8 +851,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       capacity: newLocationData.capacity.trim() || 'Fasilitas Operasional'
     };
     try {
-      await gabahApi.createLocation(newLoc).catch(() => {});
-    } catch {}
+      await gabahApi.createLocation({ name: newLoc.name, address: newLoc.address, capacity: newLoc.capacity });
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menyimpan lokasi fasilitas ke server.', 'warning');
+      return;
+    }
     const updated = [...locations, newLoc];
     setLocations(updated);
     localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
@@ -868,8 +871,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       return;
     }
     try {
-      await gabahApi.updateLocation(editLocationData.id, editLocationData).catch(() => {});
-    } catch {}
+      await gabahApi.updateLocation(editLocationData.id, editLocationData);
+    } catch (err: any) {
+      showToast(err.message || 'Gagal memperbarui lokasi fasilitas di server.', 'warning');
+      return;
+    }
     const updated = locations.map(l => l.id === editLocationData.id ? { ...l, ...editLocationData } : l);
     setLocations(updated);
     localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
@@ -880,8 +886,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   const handleDeleteLocation = async (id: string, name: string) => {
     try {
-      await gabahApi.deleteLocation(id).catch(() => {});
-    } catch {}
+      await gabahApi.deleteLocation(id);
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menghapus lokasi fasilitas dari server.', 'warning');
+      return;
+    }
     const updated = locations.filter(l => l.id !== id);
     setLocations(updated);
     localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
@@ -991,8 +1000,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       depts: newDivisionData.initialDept.trim() ? [newDivisionData.initialDept.trim()] : ['Operasional & Administrasi']
     };
     try {
-      await gabahApi.createDivision(newDiv).catch(() => {});
-    } catch {}
+      await gabahApi.createDivision(newDiv);
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menyimpan divisi ke server.', 'warning');
+      return;
+    }
     const updated = [...divisions, newDiv];
     setDivisions(updated);
     localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
@@ -1012,8 +1024,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       return;
     }
     try {
-      await gabahApi.deleteDivision(code).catch(() => {});
-    } catch {}
+      await gabahApi.deleteDivision(code);
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menghapus divisi dari server.', 'warning');
+      return;
+    }
     const updated = divisions.filter(d => d.code !== code);
     setDivisions(updated);
     localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
@@ -1155,8 +1170,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     e.preventDefault();
     if (!divisionToEdit) return;
     try {
-      await gabahApi.updateDivision(divisionToEdit.code, divisionToEdit).catch(() => {});
-    } catch {}
+      await gabahApi.updateDivision(divisionToEdit.code, divisionToEdit);
+    } catch (err: any) {
+      showToast(err.message || 'Gagal memperbarui divisi di server.', 'warning');
+      return;
+    }
     const updated = divisions.map(d => d.code === divisionToEdit.code ? divisionToEdit : d);
     setDivisions(updated);
     localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
