@@ -138,6 +138,9 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 6. **Vendor:** read/create/update mengikuti permission dan owner scope IT/GA, bukan nama lokasi/cabang. Super Admin/Auditor sesuai mandat dapat membaca lintas domain.
 7. **Navigasi:** permission assets.catalog.read dipisah dari assets.read untuk Aset Saya; menu inventaris penuh tidak muncul hanya karena pegawai memiliki akses personal. Super Admin capability mengirim wildcard menu permission agar semua menu administrasi tampil.
 8. **Data seed:** relasi maintenance IT/GA yang sebelumnya menunjuk ID aset yang tidak ada sudah disejajarkan dengan asset ID kanonikal. Jadwal timbang legacy tetap tidak terhubung ke aset aktif dan tidak dibuka untuk pengguna non-Super Admin.
+9. **Scope per modul:** migration 029 menambahkan kolom module pada role scopes. IT/GA seed scopes dipisah untuk assets, loans, tickets, vendors, dan contracts. Role manager kini mengatur scope per modul; scope satu modul tidak otomatis berlaku pada modul lain.
+10. **Role primer/tambahan:** migration 030 menandai satu role primer per user. Pembuatan/perubahan user dan bulk import menyinkronkan role primer, sementara role tambahan tetap dipertahankan. Backfill startup hanya mengganti role primer yang usang, bukan menghapus role tambahan.
+11. **Frontend dashboard:** dashboard dan workspace memakai koleksi API yang sudah di-scope backend. Filter role-name lama yang dapat menyembunyikan data role tambahan telah dilepas; helper lama juga tidak lagi memberikan scope aset/pinjaman/maintenance berdasarkan label Supply Chain/PIBC.
 
 ### Batasan yang masih harus dituntaskan
 
