@@ -40,4 +40,19 @@ assert.ok(isNavTabAllowedForRole('Humas', 'tickets'));
 assert.ok(isNavTabAllowedForRole('Auditor', 'reports'));
 assert.equal(isNavTabAllowedForRole(undefined, 'dashboard'), false);
 
+// PostgreSQL mode must derive navigation from effective permission keys,
+// not from a fixed role name or branch/location label.
+assert.ok(isNavTabAllowedForRole('Supply Chain', 'dashboard', ['dashboard.read']));
+assert.ok(isNavTabAllowedForRole('Supply Chain', 'my_assets', ['assets.read']));
+assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets', ['assets.read']), false);
+assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance', ['dashboard.read', 'assets.read']), false);
+assert.ok(isNavTabAllowedForRole('IT', 'assets', ['assets.update']));
+assert.ok(isNavTabAllowedForRole('GA', 'assets', ['assets.update']));
+assert.equal(isNavTabAllowedForRole('GA', 'licenses', ['dashboard.read', 'assets.update']), false);
+assert.ok(isNavTabAllowedForRole('Auditor', 'assets', ['assets.audit.read']));
+assert.ok(isNavTabAllowedForRole('Humas', 'meeting_rooms', ['room_reservations.read']));
+assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'reports', ['reports.read']));
+assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
+
+
 console.log('Role navigation policy: PASS (9 roles, explicit allow/deny checks)');
