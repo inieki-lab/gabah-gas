@@ -37,6 +37,7 @@ const checks = [
   ['Knowledge vote and view actions require their read/action permissions', /app\.post\('\/api\/knowledge\/:id\/vote', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'knowledge\.vote'\)\) return;/i.test(server) && /app\.post\('\/api\/knowledge\/:id\/view', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'knowledge\.read'\)\) return;/i.test(server)],
   ['Ticket list and status access follow reporter, assignee, and IT/GA scope', /hasRbacScope\(String\(actor\.id\), 'division', 'IT', 'tickets'\)/.test(server) && /hasRbacScope\(String\(actor\.id\), 'division', 'GA', 'tickets'\)/.test(server) && /ticket\.assigned_agent_id === actor\.id/.test(hardeningSource)],
   ['Dashboard ticket counts use the same IT/GA and personal ticket scope', /canReadITTickets[\s\S]*canReadGATickets[\s\S]*ticket\.reporter_id === actor\.id/.test(server)],
+  ['User-targeted notifications cannot be read or marked by same-role colleagues', /recipient_user_id \? notification\.recipient_user_id === actor\.id[\s\S]*recipient_role \? notification\.recipient_role === actor\.role/.test(server) && /recipient_user_id \? n\.recipient_user_id === actor\.id[\s\S]*recipient_role \? n\.recipient_role === actor\.role/.test(hardeningSource)],
 ];
 
 let failed = 0;
