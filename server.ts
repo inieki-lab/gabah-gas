@@ -3279,7 +3279,25 @@ async function startServer() {
             interruption_reason: undefined,
           }));
       } else if (canReadDocumentationQueue) {
-        data = data.filter(item => Boolean(item.documentation_requested));
+        // Humas needs the schedule and documentation brief, not the meeting's
+        // private attendee/contact/consumption or internal operational details.
+        data = data.filter(item => Boolean(item.documentation_requested))
+          .map(item => item.organizer_id === actor.id ? item : ({
+            ...item,
+            title: 'Kegiatan membutuhkan dokumentasi',
+            description: undefined,
+            attendees_list: undefined,
+            organizer_phone: '',
+            facilities_requested: [],
+            consumption_requested: false,
+            consumption_type: undefined,
+            consumption_pax: undefined,
+            consumption_serving_time: undefined,
+            consumption_notes: undefined,
+            notes: undefined,
+            rejection_reason: undefined,
+            interruption_reason: undefined,
+          }));
       } else {
         data = data.filter(item => item.organizer_id === actor.id);
       }
