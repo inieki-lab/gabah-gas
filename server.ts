@@ -1556,6 +1556,9 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Kode divisi dan nama divisi wajib diisi.' });
       }
       const normCode = code.trim().toUpperCase();
+      if (!/^[A-Z0-9_-]{2,20}$/.test(normCode)) {
+        return res.status(400).json({ success: false, message: 'Kode owner harus 2–20 karakter dan hanya boleh berisi huruf, angka, tanda hubung, atau garis bawah.' });
+      }
       if (!db.divisions) db.divisions = [];
       if (db.divisions.some(d => d.code.toUpperCase() === normCode)) {
         return res.status(400).json({ success: false, message: `Divisi dengan kode "${normCode}" sudah ada.` });
@@ -1607,11 +1610,15 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menghapus divisi.' });
       }
       const code = req.params.code.trim().toUpperCase();
-      const assetsCount = db.assets.filter(a => a.owner_division === code).length;
-      if (assetsCount > 0) {
+      const assetsCount = db.assets.filter(a => String(a.owner_division).toUpperCase() === code).length;
+      const categoriesCount = (db.categories || []).filter(c => String(c.owner_division).toUpperCase() === code).length;
+      const usersCount = db.users.filter(u => String(u.division || '').toUpperCase() === code).length;
+      const unitsCount = (db.orgUnits || []).filter(u => String(u.division_code || '').toUpperCase() === code).length;
+      const references = assetsCount + categoriesCount + usersCount + unitsCount;
+      if (references > 0) {
         return res.status(400).json({
           success: false,
-          message: `Tidak dapat menghapus divisi "${code}" karena masih memiliki ${assetsCount} aset terdaftar.`
+          message: `Tidak dapat menghapus owner "${code}". Masih direferensikan oleh aset (${assetsCount}), kategori (${categoriesCount}), pegawai (${usersCount}), atau unit organisasi (${unitsCount}).`
         });
       }
 
