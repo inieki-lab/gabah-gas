@@ -67,10 +67,15 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const isAuditor = currentUser?.role === 'Auditor';
   // Self-service roles see their own submissions; operating divisions see the
   // tickets already authorized for their division by GabahService.
-  const isSelfTicketsOnly = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
-
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const baseTickets = safeTickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
+  // In Dynamic RBAC mode the API has already scoped this list. A Karyawan
+  // baseline may also hold an explicitly assigned operational queue role.
+  const hasScopedQueueTickets = Array.isArray(currentUser?.permission_keys) && baseTickets.some(t =>
+    t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
+  );
+  const isSelfTicketsOnly = !hasScopedQueueTickets
+    && ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
   const defaultCategories = isSelfTicketsOnly
