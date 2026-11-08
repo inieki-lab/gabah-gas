@@ -617,6 +617,8 @@ async function startServer() {
           existing.department = department;
           if (jobLevelCode) existing.job_level_code = jobLevelCode;
           if (unitId) existing.unit_id = unitId;
+          else if (requestedRole === 'Supply Chain' && existing.unit_id === 'UNIT-SC') existing.unit_id = null;
+          else if (requestedRole === 'PIBC' && existing.unit_id === 'UNIT-PIBC') existing.unit_id = null;
           if (officeLocationId) existing.office_location_id = officeLocationId;
           if (phone) existing.phone = phone;
           importedUsers.push(existing);
