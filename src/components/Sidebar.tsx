@@ -38,6 +38,7 @@ interface SidebarProps {
   onTabChange: (tab: NavTab) => void;
   userRole?: UserRole;
   currentUserRole?: UserRole;
+  currentUserPermissions?: string[];
   pendingLoansCount?: number;
   openTicketsCount?: number;
   pendingReservationsCount?: number;
@@ -66,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
   userRole,
   currentUserRole,
+  currentUserPermissions,
   pendingLoansCount = 0,
   openTicketsCount = 0,
   pendingReservationsCount = 0,
@@ -75,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(activeRole) : false;
+  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
   const isSuperAdmin = activeRole === 'Admin GABAH';
@@ -205,7 +207,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const visibleSections = sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => activeRole ? isNavTabAllowedForRole(activeRole, item.id) : false),
+      items: section.items.filter(item => activeRole ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions) : false),
     }))
     .filter(section => section.items.length > 0);
 
