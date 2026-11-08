@@ -184,3 +184,18 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 - Regression test khusus ditambahkan ke CI.
 
 Status: implementasi berada di PR #19 dan belum dianggap selesai sampai verifikasi CI serta review. Temuan ini tidak mengubah status keseluruhan PR #18 yang tetap NO-GO sampai UAT dan release gates lain terpenuhi.
+
+
+## 5. Temuan lanjutan — resolver aset ganda pada direct-ID middleware (8 November 2026)
+
+### Temuan
+Middleware `server/runtime-hardening.ts` sebelumnya memiliki implementasi `canSeeAsset()` tersendiri. Implementasi tersebut tidak identik dengan `GabahDomainService.getScopedAssets()`: role GA dan IT dapat menerima scope owner tambahan melalui role tambahan di katalog, tetapi direct-ID guard masih menerapkan cabang role primer GA/IT dan menolak sebagian akses tersebut. Akibatnya, aset dapat tampil pada katalog namun gagal dibuka melalui detail/direct URL/API. Ini melanggar acceptance criterion bahwa list dan direct-ID harus memakai keputusan scope yang sama.
+
+### Perbaikan
+- Middleware direct-ID sekarang memanggil `GabahDomainService.getScopedAssets(actor)` sebagai resolver kanonis.
+- Menghapus resolver visibility GA/IT/custom-role kedua dari middleware.
+- Regression contract diperbarui agar mengunci penggunaan resolver kanonis.
+- Permission mutasi tetap diperiksa terpisah oleh route/domain service; visibilitas tidak otomatis memberi hak update/assign/move.
+
+### Status verifikasi
+Perubahan sudah diajukan pada branch `ai/codex/unify-asset-scope-guard`. CI belum dijalankan pada exact head; jangan menganggap pemeriksaan lulus sebelum workflow CI selesai.
