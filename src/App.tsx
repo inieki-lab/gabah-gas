@@ -1104,7 +1104,7 @@ export default function App() {
       />
 
       <AdministrationModal
-        isOpen={isAdministrationModalOpen && currentUser?.role === 'Admin GABAH'}
+        isOpen={isAdministrationModalOpen && Boolean(currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH')}
         onClose={() => setIsAdministrationModalOpen(false)}
         users={allUsers}
         auditLogs={auditLogs}
