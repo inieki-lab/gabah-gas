@@ -13,7 +13,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, getEffectivePermissionKeys } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -75,6 +75,16 @@ async function startServer() {
     const verified = (req as any).user || actorFor(req);
     if (verified) return verified;
     throw new Error('Pengguna tidak terautentikasi.');
+  };
+
+  // Effective permissions are returned only to the authenticated principal.
+  // This drives the UI menu; backend route guards remain authoritative.
+  const serializeAuthenticatedUser = (user: ServerUser): any => {
+    const safe = sanitizeUser(user) as any;
+    if (isPostgresPersistenceActive()) {
+      safe.permission_keys = getEffectivePermissionKeys(String(user.id));
+    }
+    return safe;
   };
 
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
@@ -976,7 +986,7 @@ async function startServer() {
       res.json({
         success: true,
         data: {
-          user: sanitizeUser(user),
+          user: serializeAuthenticatedUser(user),
           token: session.token,
           expires_at: session.expires_at,
         },
@@ -1055,7 +1065,7 @@ async function startServer() {
   app.get('/api/auth/me', (req, res) => {
     try {
       const actor = getActor(req);
-      res.json({ success: true, data: sanitizeUser(actor) });
+      res.json({ success: true, data: serializeAuthenticatedUser(actor) });
     } catch {
       res.status(401).json({ success: false, message: 'Sesi pengguna tidak valid.' });
     }
@@ -1141,7 +1151,7 @@ async function startServer() {
       res.json({
         success: true,
         data: {
-          user: sanitizeUser(targetUser),
+          user: serializeAuthenticatedUser(targetUser),
           token: session.token,
           expires_at: session.expires_at,
         },
