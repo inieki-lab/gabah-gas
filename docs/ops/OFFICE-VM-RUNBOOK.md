@@ -3,7 +3,9 @@
 **Target:** Ubuntu Server VM kantor.  
 **Repository:** inieki-lab/gabah-gas.  
 **Application path:** /opt/gabah-gas.  
-**Database:** PostgreSQL 17 via Docker Compose.
+**Runtime:** Node.js 22 Alpine multi-stage Docker image (build-time npm ci from lockfile).  
+**Database:** PostgreSQL 17 via Docker Compose.  
+**Persistent files:** Docker named volume uploads_data mounted at /app/uploads.
 
 > **Release gate:** Jangan deploy PR draft atau branch kerja. PR #18 masih dalam stabilisasi. Deployment hanya dilakukan setelah PR di-merge ke main, CI pada commit main lulus, UAT disetujui, dan backup/rollback siap.
 
@@ -88,7 +90,7 @@ cd /opt/gabah-gas
 ./deploy.sh
 ```
 
-Script deploy melakukan preflight, validasi Compose, recreate service app tanpa mematikan database/volume, lalu menunggu endpoint health. Script tidak memasang Docker otomatis dan tidak menjalankan docker compose down.
+Script deploy melakukan preflight, validasi Compose, membangun image production dari Dockerfile/lockfile, lalu mengganti service app saja tanpa menghentikan database atau menghapus volume. Image runtime memakai Node 22, user non-root, dependency production, dan artefak build; npm install/build tidak berjalan saat container start. Dokumen kontrak disimpan di volume uploads_data. Script tidak memasang Docker otomatis dan tidak menjalankan docker compose down.
 
 Verifikasi:
 
