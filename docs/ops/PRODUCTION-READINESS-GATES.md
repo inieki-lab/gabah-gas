@@ -49,7 +49,7 @@ This checklist is the release control record. A green build is necessary but is 
 - [ ] Future locations and owner domains can be added from master data without code changes.
 - [ ] GA's broad owner scope (all except IT) remains an administrator-configurable policy, not an automatic grant.
 - [ ] GA's IT Laptop/PC visibility is read-only and controlled by assets.read.it_workstations.
-- [ ] Auditor read-only behavior is tested through direct API calls.
+- [x] Auditor read-only behavior is tested through direct API calls, including Auditor as an additional role (PostgreSQL CI #544: write 403, authorized audit read 200).
 
 ## G3 — Workflow and role-based UAT
 
@@ -81,8 +81,8 @@ Run docs/testing/UAT.md in a browser against PostgreSQL using disposable test da
 | Gate | Commit SHA | Result | Evidence / run URL | Reviewer | Date |
 |---|---|---|---|---|---|
 | G0 | — | NOT VERIFIED | — | — | — |
-| G1 | — | IN PROGRESS | PostgreSQL 17 CI integration | — | 8 Nov 2026 |
-| G2 | — | IN PROGRESS | Dynamic RBAC + org model CI | — | 8 Nov 2026 |
+| G1 | 398ba8fa61ddef9f5cf63dc22ff330cd7d1a0f33 | PARTIAL PASS | CI #544: PostgreSQL 17 fresh DB, 35 migrations, CR-04/05 57/57, restart persistence; legacy snapshot upgrade and backup/restore not run | — | 8 Nov 2026 |
+| G2 | 398ba8fa61ddef9f5cf63dc22ff330cd7d1a0f33 | PARTIAL PASS | CI #544: Dynamic RBAC 63/63, asset scope 37/37, Auditor additional-role denial/read test; live HR mapping and full endpoint review remain | — | 8 Nov 2026 |
 | G3 | — | NOT VERIFIED | Manual browser UAT required | Business owners | — |
 | G4 | — | NOT STARTED | Staging and production controls | Infrastructure owner | — |
 
