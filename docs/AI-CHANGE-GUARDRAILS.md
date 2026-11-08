@@ -50,3 +50,12 @@ A change is not complete merely because code was committed or a screenshot looks
 ## Anti-slop review
 
 Before shipping UI/copy/code changes, review the relevant Anti Slop principles: purposeful composition, product-specific language, functional controls, accessible states, responsive layout, no fabricated content, and a concise PASS/FAIL delivery report backed by concrete evidence. Do not apply visual rules mechanically when they conflict with GABAH's real operational needs.
+
+
+## Branch ownership and AI collaboration
+
+- Use `fix/role-based-navigation` as the single integration branch while PR #18 is open.
+- Name other agent branches `ai/<agent-name>/<work-item>`; examples: `ai/codex/ticket-scope-audit`, `ai/gemini/room-reservation-uat`.
+- Branch from the integration branch while PR #18 is open; branch from `main` after it merges.
+- Each AI agent works only on its own branch and submits a PR to the integration branch. Never work in parallel on the same branch.
+- Do not delete a branch until its unique commits are reviewed, preserved, and its PR is closed/merged. A closed PR does not itself delete its branch.
