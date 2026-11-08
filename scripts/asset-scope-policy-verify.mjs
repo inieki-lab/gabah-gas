@@ -14,6 +14,9 @@ const contracts = read('server/contracts.ts');
 const vendorUi = read('src/components/views/VendorsView.tsx');
 const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
+const clientService = read('src/services/gabahService.ts');
+const assetUi = read('src/components/views/AssetsView.tsx');
+const ticketUi = read('src/components/views/TicketsView.tsx');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC[/]SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
@@ -56,6 +59,9 @@ const checks = [
   ['Tidak ada lagi scope aset berdasarkan lokasi SC/PIBC di resolver utama', !/user\.role === 'Supply Chain'[\s\S]{0,500}owner_division === 'SC'|user\.role === 'PIBC'[\s\S]{0,500}owner_division === 'PIBC'/.test(services)],
   ['Direct asset guard reuses the canonical getScopedAssets resolver', /function canSeeAsset\(actor: ServerUser, assetId: string\): boolean \{[\s\S]*GabahDomainService\.getScopedAssets\(actor\)\.some\(asset => asset\.id === assetId\)/.test(hardening)],
   ['Direct asset guard has no separate legacy GA/IT/custom-role visibility policy', !/function isItWorkstation/.test(hardening) && !/assetVisibleUnderDynamicScopes/.test(hardening) && !/hasRbacPermission/.test(hardening)],
+  ['Dynamic RBAC client asset/loan/ticket actions use effective permission keys instead of branch-role labels', /Array\.isArray\(user\.permission_keys\)[\s\S]*assets\.update/.test(clientService) && /loans\.approve/.test(clientService) && /tickets\.update/.test(clientService) && !/user\.role === 'Supply Chain'[\s\S]*owner_division === 'SC'|user\.role === 'PIBC'[\s\S]*owner_division === 'PIBC'/.test(clientService)],
+  ['Dynamic RBAC ticket UI trusts the API-scoped queue and does not relabel scoped employee queues as self-only', /Array\.isArray\(user\.permission_keys\)\) return true/.test(clientService) && /hasScopedQueueTickets/.test(ticketUi)],
+  ['Asset create/import UI gates actions by explicit effective permissions', /permission_keys\.includes\('assets\.create'\)/.test(assetUi) && /permission_keys\.includes\('assets\.bulk_import'\)/.test(assetUi)],
   ['GA read permission didaftarkan khusus untuk role GA', /'assets\.read\.it_workstations'[\s\S]*?WHERE r\.role_key = 'ga'/.test(migration)],
   ['Permission khusus tidak memberi permission mutasi', !/assets\.(create|update|delete|assign|move|lifecycle)/.test(migration)],
   ['RBAC policy mengevaluasi permission efektif per user', /export function hasRbacPermission/.test(policy)],
