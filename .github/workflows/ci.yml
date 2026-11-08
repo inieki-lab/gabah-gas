@@ -94,6 +94,9 @@ jobs:
       - name: Meeting room reservation regression
         run: npm run test:meeting-room
 
+      - name: Contract renewal linkage integrity
+        run: npm run test:contract-renewal-integrity
+
       - name: Organization model regression
         run: npm run test:org-model
 
