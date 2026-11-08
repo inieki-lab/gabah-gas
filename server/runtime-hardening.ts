@@ -53,12 +53,16 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   if (isSuperadmin(actor)) return true;
   if (actor.role === 'Auditor') return false;
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+  if (isPostgresPersistenceActive()) {
+    // PostgreSQL RBAC is owner-code agnostic: custom operational functions
+    // (e.g. RPC/SC) need the same explicit Tickets scope as IT/GA.
+    const owner = String(ticket.category || '').trim();
+    return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'tickets');
+  }
+  // File-store compatibility only. Production PostgreSQL never grants ticket
+  // authority from a legacy role label alone.
   if (actor.role === 'IT') return ticket.category === 'IT';
   if (actor.role === 'GA') return ticket.category === 'GA';
-  if (isPostgresPersistenceActive()) {
-    if (ticket.category === 'IT' && hasRbacScope(String(actor.id), 'division', 'IT', 'tickets')) return true;
-    if (ticket.category === 'GA' && hasRbacScope(String(actor.id), 'division', 'GA', 'tickets')) return true;
-  }
   return false;
 }
 
