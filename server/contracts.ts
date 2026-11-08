@@ -144,8 +144,8 @@ export const ContractDomainService = {
     }
     const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
     const pic = db.users.find(u => u.id === payload.pic_user_id) || actor;
-    const ownerScopeAllowed = isSuperadminActor(actor)
-      || (['IT', 'GA'].includes(ownerDivision) && (isPostgresPersistenceActive()
+    const ownerScopeAllowed = ['IT', 'GA'].includes(ownerDivision)
+      && (isSuperadminActor(actor) || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
         : actor.role === ownerDivision));
     if (!ownerScopeAllowed) {
