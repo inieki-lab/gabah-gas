@@ -61,7 +61,7 @@ const checks = [
   ['asset assign endpoint enforces assets.assign', /requireRbacPermission\(req, res, 'assets\.assign'\)/.test(server)],
   ['asset move endpoint enforces assets.move', /requireRbacPermission\(req, res, 'assets\.move'\)/.test(server)],
   ['asset lifecycle endpoint enforces assets.lifecycle', /requireRbacPermission\(req, res, 'assets\.lifecycle'\)/.test(server)],
-  ['bulk import update path preserves division authority like PATCH', /hanya dapat diperbarui oleh personel IT atau Admin GABAH/.test(server) && /hanya dapat diperbarui oleh personel GA atau Admin GABAH/.test(server) && /owner legacy SC\/PIBC/.test(server)],
+  ['bulk import update path preserves explicit owner authority like PATCH', /canMutateAssetOwner\(actor, existing\.owner_division, 'assets\.update'\)/.test(server) && /actor\.role === 'Auditor'/.test(server)],
   ['movements endpoint enforces movements.read in PostgreSQL mode', /app\.get\('\/api\/movements', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'movements\.read'\)\) return;/i.test(server)],
   ['movements read permission seed is idempotent and covers the canonical legacy roles', /INSERT INTO gabah_role_permissions/i.test(movementsReadPermissionSeed) && /'movements\.read'/i.test(movementsReadPermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(movementsReadPermissionSeed) && /'superadmin'[\s\S]*'humas'/i.test(movementsReadPermissionSeed)],
   ['custom roles resolve asset visibility from dynamic scopes instead of the all-seeing fallback', /const dynamicAssets = filterAssetsByDynamicScopes\(db\.assets, user\);/i.test(domainServices) && /visibleIds = new Set\(\[\.\.\.personalAssets, \.\.\.dynamicAssets\]/i.test(domainServices)],
