@@ -143,6 +143,13 @@ export const SYSTEM_ROLES: { value: UserRole; label: string; desc: string }[] = 
   { value: 'Auditor', label: 'Auditor (Satuan Pengawas Internal)', desc: 'Audit Trail & Rekonsiliasi PSAK 16 Read-Only' },
 ];
 
+// Primary employee profiles only. Function capabilities (Humas/Sekretariat)
+// and branch work locations are assigned independently in the Role dialog
+// and Office Location master; they are not primary employee roles.
+export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES.filter(role =>
+  !['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(role.value)
+);
+
 // T2B-3 — MASTER KATEGORI & ASET TETAP
 // Domain `main_type` kini diseragamkan dengan kode kanonikal di
 // server/taxonomy.ts (TNH/BGN/MSN/KDR/INV-F/INV-P/IT-H/IT-S/LNY) — satu
@@ -1305,6 +1312,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         role: newUserData.role,
         division: newUserData.division,
         department: newUserData.department,
+        office_location_id: newUserData.office_location_id || null,
+        job_level_code: newUserData.job_level_code || undefined,
+        unit_id: newUserData.unit_id || null,
         phone: newUserData.phone || ''
       });
 
@@ -1975,20 +1985,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Peran Akses (Role)</label>
+                      <label className="block text-slate-600 mb-1 font-medium">Role Primer</label>
                       <select
                         value={newUserData.role}
                         onChange={e => {
                           const r = e.target.value as UserRole;
-                          const found = SYSTEM_ROLES.find(x => x.value === r);
+                          const found = PRIMARY_PROFILE_ROLES.find(x => x.value === r);
                           setNewUserData({ ...newUserData, role: r, role_label: found?.label || r });
                         }}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
-                        {SYSTEM_ROLES.map(r => (
+                        {PRIMARY_PROFILE_ROLES.map(r => (
                           <option key={r.value} value={r.value}>{r.label}</option>
                         ))}
                       </select>
+                      <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
@@ -2013,6 +2024,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       />
                     </div>
                     <div>
+                      <label className="block text-slate-600 mb-1 font-medium">Lokasi Kerja / Kantor</label>
+                      <select
+                        value={newUserData.office_location_id || ''}
+                        onChange={e => setNewUserData({ ...newUserData, office_location_id: e.target.value || null })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                      >
+                        <option value="">— Pilih lokasi kerja —</option>
+                        {officeLocations.filter(location => location.is_active).map(location => (
+                          <option key={location.id} value={location.id}>{location.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-slate-600 mb-1 font-medium">Nomor Telepon / WhatsApp</label>
                       <input
                         type="text"
@@ -2024,6 +2048,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
                       Sandi awal dibuat otomatis oleh server (CSPRNG) dan dikirim out-of-band oleh Administrator — tidak ditampilkan di UI.
+                    </div>
+                    <div className="sm:col-span-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-500">
+                      Role primer tidak otomatis mengikuti jabatan atau lokasi kerja. Setelah akun dibuat, Super Admin dapat menetapkan role tambahan melalui tombol Role pada daftar pengguna.
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
