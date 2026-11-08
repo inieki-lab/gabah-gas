@@ -1036,3 +1036,16 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Documentation head at this handoff: 016c1a7be8740c4b5ff0273be00b2b6d629e0fc7.
 - CI #383 / run 42479231928 completed SUCCESS on that head. This run includes the latest source changes and documentation: typecheck, all RBAC/asset-scope/navigation/dashboard checks, production build, 37 P0 HTTP assertions, and maintenance authorization assertions passed.
 - PR #18 remains Draft/Open and intentionally unmerged pending the remaining vendor/report/reconciliation/admin authorization audit and end-to-end per-user UAT.
+
+
+## [2026-11-08] — Configurable owner exclusions in Dynamic RBAC
+
+### Added
+- Added the `division_except` scope type so Super Admin can configure policies such as "all asset owners except IT" without enumerating every current/future owner domain.
+- Added role-editor option **Semua owner kecuali** and backend validation for the new scope.
+- Added migration 032 to extend the PostgreSQL scope constraint safely.
+- Asset read, asset mutation, and module owner-scope checks now honor exclusions. An explicit grant for a specific owner can override a broad exclusion; unit/location matches cannot bypass an owner exclusion.
+- Existing role permissions/scopes are not silently changed. Super Admin must explicitly configure the desired policy per role and module.
+
+### Verification
+- Regression checks added for owner exclusions. CI must pass on the latest PR head before this change is considered verified.
