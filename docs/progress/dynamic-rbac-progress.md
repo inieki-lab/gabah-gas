@@ -664,3 +664,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
   - PR #15 `fix/rbac-sidebar-fail-closed`: PR #18 sidebar already defaults to no navigation when role identity is missing and uses permission-aware tab visibility.
 - Closed PR branches are not deleted; history remains preserved. This session's available GitHub actions can close PRs but do not expose branch deletion. They are not to be used for new work.
 - PR #11 deployment hardening, PR #12 finalization checklist, PR #17 user/role assignment audit, and PR #3 legacy ticket gate remain open for careful consolidation. No parallel work branch should be created.
+
+
+### Ticket permission audit — Auditor read-only correction (2026-11-08)
+- Review of PR #3 against the current branch found that `tickets.read` was already seeded to Auditor by migration 023, but migration 024 also included Auditor in the broad `tickets.create` grant set. The API had a separate Auditor denial, but the effective permission was still wrong and could cause a UI create action to appear.
+- Added migration `036_dynamic_rbac_auditor_ticket_create_deny.sql` to remove only the `tickets.create` grant for role key `auditor`. `tickets.read` is retained. No data or ticket rows are changed.
+- Added regression assertion for Auditor read-only ticket behavior. Do not merge old PR #3 migrations 017/018: their version numbers conflict with existing movement/knowledge migrations in the consolidated branch, and the current branch already has the endpoint gates and canonical permission catalogue.
