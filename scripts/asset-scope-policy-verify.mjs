@@ -26,6 +26,9 @@ const checks = [
   ['Movement history is restricted to the same visible asset scope', /visibleAssetIds[\s\S]*db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(server)],
   ['Maintenance schedules follow visible asset scope and exclude branch-wide fallback', /visibleAssetIds[\s\S]*db\.maintenances\.filter\(item => visibleAssetIds\.has\(item\.asset_id\)\)/.test(server)],
   ['Unknown roles fail closed for asset list and direct asset access', /Unknown or unconfigured roles must fail closed[\s\S]*return \[\];/.test(services) && /return assetVisibleUnderDynamicScopes\(actor, asset\);/.test(hardeningSource)],
+  ['Loan approval/rejection/handover/return use permission and IT/GA owner scope only', /static canOperateLoan\([\s\S]*owner !== 'IT' && owner !== 'GA'[\s\S]*hasRbacPermission[\s\S]*hasRbacScope/.test(services)],
+  ['Legacy SC/PIBC loans remain Super Admin review-only', /Legacy loans attached to those owner values remain Super Admin review-only/.test(services)],
+  ['Employee movement history excludes unassigned loanable-pool inventory', /employeeBaseline[\s\S]*asset\.assigned_to\?\.id === actor\.id[\s\S]*db\.movements\.filter/.test(server)],
 ];
 
 let failed = 0;
