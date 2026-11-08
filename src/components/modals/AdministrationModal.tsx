@@ -335,13 +335,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     const fetchMasterData = async () => {
       try {
         const [liveCats, liveLocs, liveDivs, liveJobLevels, liveOrgUnits, liveOffices, liveAssetLocs] = await Promise.all([
-          gabahApi.getCategories().catch(() => []),
-          gabahApi.getLocations().catch(() => []),
-          gabahApi.getDivisions().catch(() => []),
-          gabahApi.getJobLevels().catch(() => []),
-          gabahApi.getOrgUnits().catch(() => []),
-          gabahApi.getOfficeLocations().catch(() => []),
-          gabahApi.getAssetLocations().catch(() => []),
+          gabahApi.getCategories(),
+          gabahApi.getLocations(),
+          gabahApi.getDivisions(),
+          gabahApi.getJobLevels(),
+          gabahApi.getOrgUnits(),
+          gabahApi.getOfficeLocations(),
+          gabahApi.getAssetLocations(),
         ]);
         if (Array.isArray(liveCats) && liveCats.length > 0) {
           const mapped = liveCats.map((c: any) => ({
@@ -371,7 +371,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         if (Array.isArray(liveOffices) && liveOffices.length > 0) setOfficeLocations(liveOffices);
         if (Array.isArray(liveAssetLocs)) setAssetLocations(liveAssetLocs);
       } catch (e) {
-        console.warn('Notice loading master data:', e);
+        console.error('Failed loading administration master data:', e);
+        showToast('Gagal memuat master data dari server. Data referensi belum diperbarui; periksa koneksi lalu buka ulang Administrasi.', 'warning');
       }
     };
     if (isOpen) {
