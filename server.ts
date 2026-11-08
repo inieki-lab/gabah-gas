@@ -2447,27 +2447,10 @@ async function startServer() {
       return res.status(400).json({ success: false, message: 'Aset yang dipilih tidak ditemukan.' });
     }
 
-    // Enforce Division Authority atas aset rujukan. Rule legacy sembilan role
-    // tetap utuh; Dynamic RBAC Stage 13F menambahkan authority dinamis dari
-    // scope 'all'/'division' (semantik identik dengan write authority aset
-    // Stage 13E) — deny-by-default tanpa scope yang mencakup. Jadwal mewarisi
-    // divisi aset; permission maintenance tidak pernah memberi hak tulis aset.
-    if (!isSuperadminActor(actor)) {
-      const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
-      const hasDynamicDivisionAuthority = (division: string): boolean =>
-        dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
-      if (asset.owner_division === 'IT' && actor.role !== 'IT' && !hasDynamicDivisionAuthority('IT')) {
-        return res.status(403).json({ success: false, message: 'Jadwal servis aset IT hanya dapat dibuat oleh Divisi IT.' });
-      }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
-        return res.status(403).json({ success: false, message: 'Jadwal servis aset GA hanya dapat dibuat oleh Divisi GA.' });
-      }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain' && !hasDynamicDivisionAuthority('SC')) {
-        return res.status(403).json({ success: false, message: 'Jadwal servis aset Supply Chain hanya dapat dibuat oleh Divisi Supply Chain.' });
-      }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC' && !hasDynamicDivisionAuthority('PIBC')) {
-        return res.status(403).json({ success: false, message: 'Jadwal servis aset PIBC hanya dapat dibuat oleh Divisi PIBC.' });
-      }
+    // Maintenance authority inherits the asset's owner domain and requires
+    // the operation permission plus an explicit matching owner scope.
+    if (!canMutateAssetOwner(actor, asset.owner_division, 'maintenances.create')) {
+      return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.create dan scope owner "${asset.owner_division}" wajib dimiliki.` });
     }
 
     const count = db.maintenances.length + 1;
@@ -2511,24 +2494,10 @@ async function startServer() {
     const schedule = db.maintenances.find(m => m.id === req.params.id);
     if (!schedule) return res.status(404).json({ success: false, message: 'Jadwal servis tidak ditemukan' });
 
-    // Authority divisi atas jadwal: rule legacy utuh + union authority dinamis
-    // (Stage 13E semantics; jadwal mewarisi divisi asetnya).
-    if (!isSuperadminActor(actor)) {
-      const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
-      const hasDynamicDivisionAuthority = (division: string): boolean =>
-        dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
-      if (schedule.owner_division === 'IT' && actor.role !== 'IT' && !hasDynamicDivisionAuthority('IT')) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang mengubah jadwal ini.' });
-      }
-      if (schedule.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi GA atau Admin GABAH yang berwenang mengubah jadwal ini.' });
-      }
-      if ((schedule.owner_division === 'SC' || schedule.owner_division === 'Supply Chain') && actor.role !== 'Supply Chain' && !hasDynamicDivisionAuthority('SC')) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi Supply Chain atau Admin GABAH yang berwenang mengubah jadwal ini.' });
-      }
-      if (schedule.owner_division === 'PIBC' && actor.role !== 'PIBC' && !hasDynamicDivisionAuthority('PIBC')) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Divisi PIBC atau Admin GABAH yang berwenang mengubah jadwal ini.' });
-      }
+    // Schedule authorization inherits the asset owner and is checked
+    // through the same dynamic owner policy as asset/loan operations.
+    if (!canMutateAssetOwner(actor, schedule.owner_division, 'maintenances.update')) {
+      return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.update dan scope owner "${schedule.owner_division}" wajib dimiliki.` });
     }
 
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
