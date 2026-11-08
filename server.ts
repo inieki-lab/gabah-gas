@@ -2862,6 +2862,7 @@ async function startServer() {
         : actor.role === owner;
     const visibleItems = filterDashboardAttentionItems(items, {
       actorId: String(actor.id),
+      actorName: String(actor.name || ''),
       isGlobalReader,
       visibleAssetIds: new Set(visibleAssets.map(asset => asset.id)),
       loans: db.loans,
