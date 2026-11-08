@@ -38,7 +38,7 @@ const checks = [
   ['Ticket list and status access follow reporter, assignee, and IT/GA scope', /hasRbacScope\(String\(actor\.id\), 'division', 'IT', 'tickets'\)/.test(server) && /hasRbacScope\(String\(actor\.id\), 'division', 'GA', 'tickets'\)/.test(server) && /ticket\.assigned_agent_id === actor\.id/.test(hardeningSource)],
   ['Dashboard ticket counts use the same IT/GA and personal ticket scope', /canReadITTickets[\s\S]*canReadGATickets[\s\S]*ticket\.reporter_id === actor\.id/.test(server)],
   ['Loan list and dashboard counts follow borrower and IT/GA owner scope', /canReadITLoans[\s\S]*canReadGALoans[\s\S]*loan\.borrower_id === actor\.id/.test(server) && /loans\.approve[\s\S]*hasRbacScope/.test(services)],
-  ['User-targeted notifications cannot be read or marked by same-role colleagues', /recipient_user_id \? notification\.recipient_user_id === actor\.id[\s\S]*recipient_role \? notification\.recipient_role === actor\.role/.test(server) && /recipient_user_id \? n\.recipient_user_id === actor\.id[\s\S]*recipient_role \? n\.recipient_role === actor\.role/.test(hardeningSource)],
+  ['User-targeted notifications cannot be read or marked by same-role colleagues', /recipient_user_id \? notification\.recipient_user_id === actor\.id[\s\S]*recipient_role \? notification\.recipient_role === actor\.role/.test(server) && /recipient_user_id \? n\.recipient_user_id === actor\.id[\s\S]*recipient_role \? n\.recipient_role === actor\.role/.test(server)],
 ];
 
 let failed = 0;
