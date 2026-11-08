@@ -27,6 +27,9 @@ const checks = [
   ['Maintenance schedules follow visible asset scope and exclude branch-wide fallback', /visibleAssetIds[\s\S]*db\.maintenances\.filter\(item => visibleAssetIds\.has\(item\.asset_id\)\)/.test(server)],
   ['Unknown roles fail closed for asset list and direct asset access', /Unknown or unconfigured roles must fail closed[\s\S]*return \[\];/.test(services) && /return assetVisibleUnderDynamicScopes\(actor, asset\);/.test(hardeningSource)],
   ['Loan approval/rejection/handover/return use permission and IT/GA owner scope only', /static canOperateLoan\([\s\S]*owner !== 'IT' && owner !== 'GA'[\s\S]*hasRbacPermission[\s\S]*hasRbacScope/.test(services)],
+  ['Full asset catalogue menu requires its own explicit permission', /assets\.catalog\.read/.test(read('src/navigation/roleNavigation.ts')) && /assets\.catalog\.read/.test(read('server/migrations/027_dynamic_rbac_asset_catalog_read.sql'))],
+  ['New assets cannot be created with legacy SC/PIBC owner values', /resolvedOwnerDivision !== 'IT' && resolvedOwnerDivision !== 'GA'/.test(services)],
+  ['Legacy SC/PIBC asset records are Super Admin-only for mutation', /owner !== 'IT' && owner !== 'GA'/.test(services) && /owner legacy SC\/PIBC/.test(server)],
   ['Legacy SC/PIBC loans remain Super Admin review-only', /SC\/PIBC are locations[\s\S]*Super Admin review-only/.test(services)],
   ['Employee movement history excludes unassigned loanable-pool inventory', /employeeBaseline[\s\S]*asset\.assigned_to\?\.id === actor\.id[\s\S]*db\.movements\.filter/.test(server)],
 ];
