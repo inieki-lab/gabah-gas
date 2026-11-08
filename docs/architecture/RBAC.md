@@ -71,35 +71,20 @@ Matriks di atas adalah baseline kebijakan. Permission dan scope aktual harus dib
 
 ---
 
-## 3. Titik Penegakan RBAC di Kode Sumber (Enforcement Points — Perlu Verifikasi Perubahan)
+## 3. Titik Penegakan RBAC di Kode Sumber
 
-### 3.1 Penegakan Backend (Server-Side Enforcement)
-1. **Middleware Keamanan (`server/runtime-hardening.ts`)**:
-   - Baris 108-118: Menolak seluruh HTTP non-GET dari peran `Auditor` dengan status HTTP `403 Forbidden`.
-   - Baris 120-125: Membatasi akses `/api/audit-logs` dan `/api/reconciliation` hanya untuk `Admin GABAH` dan `Auditor`.
-   - Baris 127-130: Membatasi akses rincian aset `/api/assets/:id` berdasarkan lingkup divisi (`canSeeAsset`).
-   - Baris 132-135: Membatasi wewenang update status tiket `/api/tickets/:id/status` berdasarkan kategori divisi (`canManageTicket`).
-2. **Domain Service Logic (`server/services.ts`)**:
-   - Baris 61-85: `getScopedAssets()` membatasi pengembalian daftar aset berdasarkan peran pengguna.
-   - Baris 127-144: `createAsset()` memvalidasi bahwa hanya divisi terkait yang dapat mendaftarkan aset kategorinya, dan menolak staf biasa / auditor.
-   - Baris 228-243: `assignAsset()` membatasi penugasan aset agar tidak disalahgunakan oleh divisi lain (misal GA menugaskan aset IT ditolak).
-   - Baris 313-317: `moveAsset()` menolak mutasi lokasi barang IT jika dilakukan oleh GA.
-   - Baris 348-350: `mutateLifecycle()` menolak mutasi lifecycle barang IT jika dilakukan oleh GA.
-   - Baris 368-370: `approve_disposal` dikunci mutlak hanya untuk `Admin GABAH`.
-   - Baris 470-480: `approveLoan()` memastikan hanya divisi pemilik aset yang berwenang menyetujui peminjaman unit miliknya.
-   - Baris 945-976: `requestRoomReservation()` otomatis menyetujui (`isAutoApproved = true`) permohonan dari `Sekretaris Direksi`.
-   - Baris 1071-1073: `approveRoomReservation()` membatasi persetujuan reservasi ruang rapat hanya untuk `Admin GABAH` dan `GA`.
+Sumber implementasi yang harus ditinjau bersama sebelum perubahan RBAC:
 
-### 3.2 Penegakan Antarmuka (UI Role Guards)
-1. **Navigasi Sidebar (`src/components/Sidebar.tsx`)**:
-   - Baris 94-224: Menyaring menu navigasi tab berdasarkan daftar `item.roles.includes(activeRole)`.
-   - Baris 283-319: Tombol **Administration Control Panel** hanya dirender jika `activeRole === 'Admin GABAH'`.
-2. **Modal Administrasi (`src/components/modals/AdministrationModal.tsx`)**:
-   - Terkunci untuk pengguna non-admin melalui pengecekan `currentUser.role === 'Admin GABAH'`.
-3. **Formulir Peminjaman & Tiket**:
-   - Formulir memilih aset pinjaman hanya menampilkan aset berkategori `is_loanable: true` yang tersedia.
+- `server.ts`: route API, middleware autentikasi, `requireRbacPermission`, administrasi role, permission, scope, dan assignment user.
+- `server/rbac-policy.ts`: policy loader, kombinasi role, permission, scope, serta default-deny.
+- `server/services.ts`: domain authorization untuk aset, peminjaman, tiket, maintenance, reservasi, dan domain terkait.
+- `server/runtime-hardening.ts`: pengamanan runtime dan pembatasan akses record.
+- `server/persistence.ts`: migrasi, bootstrap role, sinkronisasi profil primer, dan persistensi PostgreSQL.
+- `src/navigation/roleNavigation.ts`, `src/components/Sidebar.tsx`, dan `src/App.tsx`: navigasi/route frontend. Kode frontend bukan otoritas keamanan.
+- `src/components/modals/AdministrationModal.tsx` dan `src/services/gabahApi.ts`: UI dan API client administrasi Dynamic RBAC.
+- `server/migrations/*.sql`: katalog permission, grant role, scope, dan koreksi historis.
 
----
+Setiap perubahan harus memeriksa route, domain service, policy, persistence/migration, API client, UI, dan test yang terdampak. Jangan mengandalkan nomor baris dokumentasi karena kode terus berubah.
 
 ## 4. Akun Kanonikal (Kredensial Tidak Dipublikasikan)
 
@@ -117,8 +102,8 @@ Matriks di atas adalah baseline kebijakan. Permission dan scope aktual harus dib
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / General Affairs & Sarpras |
 | **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Sekretariat Direksi |
 | **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Humas & Protokoler |
-| **Supply Chain** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | SC / Logistik Pergudangan Beras |
-| **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | PIBC / Pengawas Pasar Induk |
+| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
+| **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Komersial / Staf Komersial |
 | **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Audit / Auditor Internal (SPI) |
 
@@ -171,19 +156,18 @@ Matriks di atas adalah baseline kebijakan. Permission dan scope aktual harus dib
   `PUT /api/admin/rbac/users/:id/roles` (set penuh `role_ids`, atomik,
   role-nonaktif/tak-dikenal ditolak, Superadmin aktif terakhir terlindungi,
   audit `RBAC_USER_ROLES_UPDATED`, policy cache di-refresh setelah tersimpan).
-  Catatan kompatibilitas: `users.role` legacy tetap otoritatif untuk business
-  logic — assignment legacy yang dihapus akan dipulihkan oleh backfill
-  persist berikutnya sesuai `users.role`; assignment ke role custom tidak
-  pernah disentuh backfill.- Scope per role (`gabah_role_division_scopes`) tersimpan dan dikelola via API
-  administrasi. Sejak Stage 11, scope dinamis dipakai enforcement untuk
-  visibilitas aset role dinamis (non-legacy) saat PostgreSQL aktif: `all` (semua
-  aset), `own` (aset yang ditugaskan), `division` (`owner_division`), `unit`
-  (`managing_unit_id` atau nama unit), dan `location`
-  (`asset_location_id`/nama/teks lokasi). Failure mode: role dinamis tanpa scope
-  atau tanpa assignment tidak melihat aset apa pun (deny-by-default), menggantikan
-  fallback all-seeing lama. Perilaku sembilan role legacy tetap diatur rule
-  `getScopedAssets()` yang berjalan di atasnya — tidak ada perubahan visibilitas
-  bagi mereka.
+  Compatibility bridge: `users.role` identifies the primary profile role.
+  The recurring persistence reconciliation may repair that primary assignment,
+  but it must preserve explicitly assigned additional roles. The full assignment
+  set is managed transactionally through the Super Admin API/UI and is audited.
+- Scope per role (`gabah_role_division_scopes`) is module-scoped and enforced
+  when PostgreSQL is active. Supported asset scope types include `all`,
+  `own`, `division`, `division_except`, `unit`, and `location`.
+  A `division_except` scope can express a broad owner grant with an explicit
+  exclusion (for example, all owner domains except IT); an explicit owner grant
+  is handled according to the policy resolver. Role without assignment/scope
+  fails closed. File-store development fallback is compatibility-only and is
+  not evidence of production PostgreSQL authorization.
 - Role Karyawan, Auditor, Humas, dan Sekretaris Direksi sengaja tidak menerima
   grant tulis di migration `016`, mengikuti guard legacy yang menolak mereka.
 
