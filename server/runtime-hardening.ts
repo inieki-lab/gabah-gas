@@ -46,11 +46,9 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
   if (actor.role === 'Auditor') return false;
-  if (actor.role === 'Karyawan') return ticket.reporter_id === actor.id;
+  if (['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role)) return ticket.reporter_id === actor.id;
   if (actor.role === 'IT') return ticket.category === 'IT'; // software/license tickets are IT
   if (actor.role === 'GA') return ticket.category === 'GA';
-  if (actor.role === 'Supply Chain') return ticket.category === 'SC';
-  if (actor.role === 'PIBC') return (ticket.category as string) === 'PIBC';
   return false;
 }
 
@@ -61,8 +59,8 @@ function scopedAttention(actor: ServerUser, items: any[]) {
     if (item.link_type === 'loan') {
       const loan = db.loans.find(l => l.id === item.link_id);
       if (!loan) return false;
-      if (actor.role === 'Karyawan') return loan.borrower_id === actor.id;
-      return loan.owner_division === actor.division;
+      if (actor.role === 'IT' || actor.role === 'GA') return loan.owner_division === actor.role;
+      return loan.borrower_id === actor.id;
     }
     if (item.link_type === 'ticket') return canManageTicket(actor, item.link_id);
     return false;
