@@ -2,8 +2,8 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
-import { isSuperadminActor, isAuditorActor, hasRbacPermission, hasRbacScope } from './rbac-policy';
-import { assetVisibleUnderDynamicScopes } from './services';
+import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
+import { GabahDomainService } from './services';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
 const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || isAuditorActor(actor);
@@ -14,37 +14,11 @@ export function actorFor(req: Request): ServerUser | null {
   return result.user;
 }
 
-function isItWorkstation(asset: any): boolean {
-  // Canonical taxonomy: HLT = Laptop/Notebook; HPC = PC/Desktop.
-  return ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
-}
-
 function canSeeAsset(actor: ServerUser, assetId: string): boolean {
-  const asset = db.assets.find(a => a.id === assetId);
-  if (!asset) return false;
-  if (isGlobalObserver(actor)) return true;
-
-  // Employee and branch baseline: personal assignments + shared loanable pool.
-  // Supply Chain and PIBC are not asset ownership roles or location-based scopes.
-  if (['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role)) {
-    if (asset.assigned_to?.id === actor.id) return true;
-    const owner = String(asset.owner_division || '').trim().toUpperCase();
-    if (asset.is_loanable && (owner === 'IT' || owner === 'GA')) return true;
-    // An employee may receive additional job-function roles. Honor their
-    // explicit dynamic scope for active IT/GA owner domains only.
-    return isPostgresPersistenceActive() && assetVisibleUnderDynamicScopes(actor, asset);
-  }
-
-  if (actor.role === 'IT') return String(asset.owner_division || '').toUpperCase() === 'IT';
-  if (actor.role === 'GA') {
-    if (String(asset.owner_division || '').toUpperCase() === 'GA') return true;
-    return hasRbacPermission(String(actor.id), 'assets.read.it_workstations')
-      && String(asset.owner_division || '').toUpperCase() === 'IT'
-      && isItWorkstation(asset);
-  }
-
-  // Custom roles use the same dynamic scope resolver as the asset list endpoint.
-  return assetVisibleUnderDynamicScopes(actor, asset);
+  // The asset catalogue is the canonical read-scope resolver. Reusing it here
+  // keeps list, direct-ID routes, and linked attention cards consistent for
+  // primary roles plus any explicitly assigned additional role scopes.
+  return GabahDomainService.getScopedAssets(actor).some(asset => asset.id === assetId);
 }
 
 function canManageTicket(actor: ServerUser, ticketId: string): boolean {
