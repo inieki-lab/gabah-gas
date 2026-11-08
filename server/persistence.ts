@@ -737,20 +737,31 @@ export function persistDataStore(): Promise<void> {
   // Always persist immediately to local storage file
   saveStateToFile(payload);
 
-  // If PostgreSQL is available, sync to database asynchronously
-  if (isPostgresAvailable) {
-    persistQueue = persistQueue.then(async () => {
-      if (!isPostgresAvailable) return;
-      try {
-        await persistPostgresState();
-      } catch (error: any) {
-        isPostgresAvailable = false;
-        console.warn('[GABAH Persistence] PostgreSQL disconnected during persist. Reverted to file store:', error.message || error);
-      }
-    });
-  }
+  // PostgreSQL is authoritative whenever it is active. Do not swallow a
+  // failed database write: callers must not return a success response when
+  // the authoritative store did not persist the change.
+  if (!isPostgresAvailable) return persistQueue;
 
-  return persistQueue;
+  const write = persistQueue.then(async () => {
+    if (!isPostgresAvailable) {
+      throw new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.');
+    }
+    try {
+      await persistPostgresState();
+    } catch (error: any) {
+      // In development, preserve the historical file-store fallback, but
+      // reject THIS write so the API caller can report the persistence failure.
+      // Production remains PostgreSQL-only and never silently degrades.
+      if (process.env.NODE_ENV !== 'production') isPostgresAvailable = false;
+      console.warn('[GABAH Persistence] PostgreSQL write failed:', error.message || error);
+      throw new Error('Gagal menyimpan perubahan ke PostgreSQL: ' + (error.message || String(error)));
+    }
+  });
+
+  // Keep the queue usable for subsequent writes while returning the original
+  // rejection to the caller that initiated this write.
+  persistQueue = write.catch(() => undefined);
+  return write;
 }
 
 export function getDbPool(): Pool {
