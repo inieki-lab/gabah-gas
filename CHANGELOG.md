@@ -1,3 +1,12 @@
+## [2026-11-08] — Align dashboard loan attention with explicit owner scope
+
+- The defense-in-depth Dashboard Attention middleware now preserves the borrower's own loan cards and honors explicit PostgreSQL `loans` division scope for owner-division cards.
+- Legacy IT/GA role-label fallback is limited to file-store compatibility.
+- Added `test:dashboard-attention-middleware` and a CI step to prevent scope drift.
+- CI for this follow-up branch has not run yet.
+
+---
+
 ## [2026-11-08] — Validate contract renewal decisions and replacement links
 
 - Renewal outcomes are validated at runtime; TypeScript types alone are not trusted for HTTP input.
