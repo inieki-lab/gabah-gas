@@ -1294,18 +1294,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Menu administrasi diberi keterangan sumber data agar Super Admin tahu mana
+  // yang tersimpan di database dan mana yang masih lokal pada browser.
   const adminMenuCards = [
-    { id: 'users' as AdminSection, label: 'User Management', description: 'Kelola pengguna, peranan, divisi, dan sandi sementara', icon: Users, badge: `${userList.length} User` },
-    { id: 'roles' as AdminSection, label: 'Role & Permission', description: 'Matriks otorisasi per modul & pembatasan scope divisi', icon: LockKeyhole, badge: `${DEFAULT_PERMISSIONS.length} Roles` },
-    { id: 'organization' as AdminSection, label: 'Organization', description: 'Divisi operasional Food Station & struktur departemen', icon: Building2, badge: `${divisions.length} Divisi` },
-    { id: 'org_masters' as AdminSection, label: 'Jabatan, Unit & Lokasi', description: 'Master terpisah: Jabatan/Level, Unit, dan Kantor/Lokasi penempatan', icon: Network, badge: `${jobLevels.length} Jabatan` },
-    { id: 'master_data' as AdminSection, label: 'Master Data', description: 'Kategori aset, master lokasi gedung PIBC, dan SLA Helpdesk', icon: Database, badge: `${categories.length} Kategori` },
-    { id: 'numbering' as AdminSection, label: 'Asset Numbering', description: 'Format {DIV}-{CODE}-{YEAR}-{SEQ} & simulator sequence', icon: Hash, badge: 'Auto Sync' },
-    { id: 'notifications' as AdminSection, label: 'Notification Center', description: 'Konfigurasi rule pengingat masa garansi, overdue loan, & SLA', icon: Bell, badge: 'Aktif' },
-    { id: 'audit_log' as AdminSection, label: 'Audit Log', description: 'Rekam jejak aktivitas sistem, perubahan data, dan IP address', icon: ScrollText, badge: `${auditLogs.length} Log` },
-    { id: 'settings' as AdminSection, label: 'System Settings', description: 'Parameter BUMD, standar PSAK 16, dan kebijakan retensi', icon: Settings2, badge: 'Terkonfigurasi' },
-    { id: 'data_admin' as AdminSection, label: 'Data Administration', description: 'Export data lengkap, snapshot, dan audit rekonsiliasi SAP', icon: FileSpreadsheet, badge: 'PSAK Ready' },
-    { id: 'health' as AdminSection, label: 'System Health', description: 'Status live API, koneksi database, dan memori container', icon: HeartPulse, badge: 'Healthy' },
+    { id: 'users' as AdminSection, label: 'Pengguna', description: 'Akun pegawai, status aktif, unit/lokasi kerja, dan assignment role.', dataSource: 'Database', icon: Users, badge: `${userList.length} pengguna` },
+    { id: 'roles' as AdminSection, label: 'Role & Hak Akses', description: 'Paket permission dan batas data (scope) yang boleh diakses tiap role.', dataSource: 'Database RBAC', icon: LockKeyhole, badge: `${rbacRoles.length} role` },
+    { id: 'organization' as AdminSection, label: 'Owner Domain', description: 'Daftar fungsi pemilik aset dan struktur divisi/departemen terkait.', dataSource: 'Perlu konsolidasi dengan master unit', icon: Building2, badge: `${divisions.length} divisi` },
+    { id: 'org_masters' as AdminSection, label: 'Struktur Pegawai', description: 'Master jabatan/level, unit organisasi, dan lokasi kantor pegawai.', dataSource: 'Database master', icon: Network, badge: `${jobLevels.length} jabatan` },
+    { id: 'master_data' as AdminSection, label: 'Referensi Aset & Layanan', description: 'Kategori aset, lokasi fasilitas, dan parameter layanan yang dipakai form operasional.', dataSource: 'Campuran: database dan lokal', icon: Database, badge: `${categories.length} kategori` },
+    { id: 'numbering' as AdminSection, label: 'Penomoran Aset', description: 'Format nomor aset dan pemantauan sequence nomor yang diterbitkan server.', dataSource: 'Format masih lokal; sequence dari API', icon: Hash, badge: liveSequences === null ? 'Sequence belum tersedia' : `${liveSequences.length} sequence` },
+    { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'Konfigurasi masih lokal', icon: Bell, badge: 'Perlu sentralisasi' },
+    { id: 'audit_log' as AdminSection, label: 'Riwayat Aktivitas', description: 'Catatan perubahan dan aktivitas yang direkam sistem.', dataSource: 'Database / API', icon: ScrollText, badge: `${auditLogs.length} catatan` },
+    { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Identitas perusahaan, parameter PSAK, SLA, dan retensi data.', dataSource: 'Konfigurasi masih lokal', icon: Settings2, badge: 'Perlu sentralisasi' },
+    { id: 'data_admin' as AdminSection, label: 'Ekspor & Rekonsiliasi', description: 'Fungsi ekspor dan pemeriksaan konsistensi data; bukan pengganti backup terjadwal.', dataSource: 'Operasi administratif', icon: FileSpreadsheet, badge: 'Alat data' },
+    { id: 'health' as AdminSection, label: 'Kesehatan Sistem', description: 'Pemeriksaan langsung API dan informasi runtime yang benar-benar tersedia.', dataSource: 'Live check', icon: HeartPulse, badge: healthStatus.status },
   ];
 
   // Handle User Add
@@ -1750,15 +1752,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               {/* Status Banner */}
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 flex items-center justify-between flex-wrap gap-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-extrabold text-emerald-900">Sistem Berjalan Normal & Terproteksi</h4>
+                    <h4 className="text-sm font-extrabold text-slate-900">Ringkasan Status Administrasi</h4>
                     <p className="text-xs text-emerald-700">
-                      GABAH Enterprise Engine tersinkronisasi dengan tata kelola PSAK 16 dan otorisasi multi-role BUMD.
+                      Status layanan belum dianggap sehat sebelum pemeriksaan langsung. Periksa API di sini; status database, backup, dan rekonsiliasi harus diverifikasi terpisah.
                     </p>
                   </div>
                 </div>
@@ -1766,7 +1768,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <button
                     onClick={pingHealthCheck}
                     disabled={healthStatus.isChecking}
-                    className="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 text-emerald-800 text-xs font-bold hover:bg-emerald-100 flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 flex items-center gap-1.5 transition-colors"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${healthStatus.isChecking ? 'animate-spin' : ''}`} />
                     <span>Ping API ({healthStatus.latency !== null ? `${healthStatus.latency} ms` : '…'})</span>
