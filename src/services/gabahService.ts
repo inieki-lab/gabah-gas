@@ -607,32 +607,39 @@ export class GabahService {
   // RBAC Permission helpers
   static canEditAsset(user?: UserProfile, asset?: Asset | null): boolean {
     if (!user || !asset) return false;
+    // PostgreSQL/Dynamic RBAC: the API has already applied the object's owner
+    // scope. The client checks the effective permission only; it must not
+    // reconstruct ownership authority from a legacy branch-role label.
+    if (Array.isArray(user.permission_keys)) {
+      return user.permission_keys.includes('assets.update');
+    }
+    // File-store compatibility only. This fallback is not an authorization
+    // boundary; production authorization is enforced by the API.
     if (user.role === 'Admin GABAH') return true;
     if (user.role === 'IT' && asset.owner_division === 'IT') return true;
     if (user.role === 'GA' && asset.owner_division === 'GA') return true;
-    if (user.role === 'Supply Chain' && asset.owner_division === 'SC') return true;
-    if (user.role === 'PIBC' && asset.owner_division === 'PIBC') return true;
     return false;
   }
 
   static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
     if (!user) return false;
+    if (Array.isArray(user.permission_keys)) {
+      return user.permission_keys.includes('loans.approve');
+    }
     if (user.role === 'Admin GABAH') return true;
     if (!loan) return false;
-    
-    // Strict Authority: IT approves IT assets (laptop/hardware), GA approves GA assets (kendaraan/operasional),
-    // Supply Chain approves SC assets, PIBC approves PIBC assets
     const ownerDiv = loan.owner_division || (loan.category_type === 'IT' ? 'IT' : 'GA');
     if (user.role === 'IT' && ownerDiv === 'IT') return true;
     if (user.role === 'GA' && ownerDiv === 'GA') return true;
-    if (user.role === 'Supply Chain' && ownerDiv === 'SC') return true;
-    if (user.role === 'PIBC' && ownerDiv === 'PIBC') return true;
     return false;
   }
 
   static canManageTickets(user?: UserProfile): boolean {
     if (!user) return false;
-    return ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(user.role);
+    if (Array.isArray(user.permission_keys)) {
+      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+    }
+    return ['Admin GABAH', 'IT', 'GA'].includes(user.role);
   }
 
   /**
@@ -643,6 +650,12 @@ export class GabahService {
   static isTicketVisibleToUser(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
 
+    // In Dynamic RBAC mode the API returns only records in the actor's effective
+    // tickets scope. Do not apply a second, legacy role-label filter in React.
+    if (Array.isArray(user.permission_keys)) return true;
+
+    // File-store compatibility below is intentionally limited to canonical
+    // legacy roles; production authorization is always enforced server-side.
     // 1. IT and Super Admin (Admin GABAH) can see all tickets
     if (user.role === 'Admin GABAH' || user.role === 'IT') {
       return true;
@@ -679,10 +692,11 @@ export class GabahService {
 
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
+    if (Array.isArray(user.permission_keys)) {
+      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+    }
     if (user.role === 'Admin GABAH' || user.role === 'IT') return true;
     if (user.role === 'GA' && ticket.category === 'GA') return true;
-    if (user.role === 'Supply Chain' && ticket.category === 'SC') return true;
-    if (user.role === 'PIBC' && (ticket.category as any) === 'PIBC') return true;
     return false;
   }
 
