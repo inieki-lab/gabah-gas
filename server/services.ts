@@ -48,6 +48,8 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
         const value = scope.value == null ? '' : String(scope.value).trim().toUpperCase();
         if (value) result.divisions.add(value);
       } else if (scope.type === 'division_except') {
+        // An exclusion scope means broad owner coverage with a deny-list.
+        result.all = true;
         const value = scope.value == null ? '' : String(scope.value).trim().toUpperCase();
         if (value) result.excludedDivisions.add(value);
       }
