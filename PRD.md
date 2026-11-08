@@ -108,6 +108,16 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 - **Tidak ada migrasi massal owner aset SC/PIBC berdasarkan lokasi.** Nilai owner legacy harus ditinjau per aset dan dipetakan ke pengelola yang benar. Sampai review selesai, aset yang belum jelas kepemilikannya tidak boleh otomatis dipindahkan ke GA atau IT.
 - Penambahan cabang atau lokasi baru tidak boleh memerlukan penambahan role aplikasi baru. Super Admin cukup mengelola master organisasi, penempatan pegawai, role, permission, dan scope.
 
+### 2.3 Role Primer, Role Tambahan, dan Scope per Modul
+
+- Setiap pegawai memiliki satu role primer yang selaras dengan role aplikasi dasarnya (misalnya Karyawan, IT, GA, Humas, Sekretaris Direksi, Auditor). Role primer tersimpan selaras dengan profil pengguna.
+- Super Admin dapat menetapkan role tambahan kepada pegawai untuk fungsi/jabatan tertentu. Role tambahan menambah permission dan scope tanpa mengganti identitas pegawai, jabatan, unit, atau lokasi kerja.
+- Penggantian role primer tidak boleh menghapus role tambahan yang masih sah; role primer lama harus dilepas agar permission lama tidak tertinggal.
+- Permission dan scope adalah dua hal berbeda. Permission menjawab tindakan apa yang boleh dilakukan; scope menjawab data mana yang boleh dijangkau.
+- Scope wajib memiliki modul (misalnya assets, loans, tickets, vendors, contracts). Scope modul assets tidak otomatis memberi akses ke loans/tickets/contracts, dan sebaliknya.
+- Scope '*' (semua modul) dan scope all harus ditetapkan secara eksplisit oleh Super Admin. Resolver backend tetap membatasi owner legacy SC/PIBC agar tidak ikut terbuka ke role operasional biasa.
+- Navigasi frontend menggunakan permission efektif. Seluruh endpoint, detail-by-ID, dashboard, pencarian, export, dan aksi mutasi tetap memeriksa permission serta scope di backend.
+- Data hasil API yang sudah di-scope backend tidak boleh difilter ulang memakai satu nama role legacy di frontend karena pegawai dapat memiliki role tambahan.
 ---
 
 ## 3. Fitur Utama Sistem (Core Capabilities)
