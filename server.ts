@@ -1799,7 +1799,7 @@ async function startServer() {
       const allowUpdate = req.body?.allow_update === true;
 
       const VALID_CONDITIONS = ['new', 'good', 'fair', 'poor', 'broken'];
-      const VALID_DIVISIONS = ['IT', 'GA', 'SC', 'PIBC'];
+      const VALID_DIVISIONS = ['IT', 'GA'];
       // CR-06: allowlist identik dengan PATCH /api/assets/:id
       const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
 
@@ -1862,6 +1862,10 @@ async function startServer() {
           // Dynamic RBAC Stage 13E: rule legacy tetap utuh ditambah authority
           // dinamis dari scope 'all'/'division'; deny-by-default tanpa scope.
           if (!isSuperadminActor(actor)) {
+            if (!['IT', 'GA'].includes(String(existing.owner_division || '').toUpperCase())) {
+              errors.push(`Baris ${rowNo}: ${existing.asset_number} memiliki owner legacy SC/PIBC dan hanya dapat ditinjau oleh Super Admin sampai klasifikasi owner per aset selesai.`);
+              continue;
+            }
             const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
             const hasDynamicDivisionAuthority = (division: string): boolean =>
               dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
@@ -1871,14 +1875,6 @@ async function startServer() {
             }
             if (existing.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
               errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi GA dan hanya dapat diperbarui oleh personel GA atau Admin GABAH.`);
-              continue;
-            }
-            if (existing.owner_division === 'SC' && actor.role !== 'Supply Chain' && !hasDynamicDivisionAuthority('SC')) {
-              errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi Supply Chain dan hanya dapat diperbarui oleh personel Supply Chain atau Admin GABAH.`);
-              continue;
-            }
-            if (existing.owner_division === 'PIBC' && actor.role !== 'PIBC' && !hasDynamicDivisionAuthority('PIBC')) {
-              errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi PIBC dan hanya dapat diperbarui oleh personel PIBC atau Admin GABAH.`);
               continue;
             }
           }
@@ -1982,6 +1978,9 @@ async function startServer() {
     // semantik baca Stage 11). Deny-by-default: scope yang tidak mencakup aset
     // ini tidak pernah menambah kewenangan.
     if (!isSuperadminActor(actor)) {
+      if (!['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())) {
+        return res.status(403).json({ success: false, message: 'Aset dengan owner legacy SC/PIBC hanya dapat ditinjau dan dikelola Super Admin sampai klasifikasi owner per aset selesai.' });
+      }
       const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
       const hasDynamicDivisionAuthority = (division: string): boolean =>
         dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
@@ -1990,12 +1989,6 @@ async function startServer() {
       }
       if (asset.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Aset GA hanya dapat diubah oleh personel GA atau Admin GABAH.' });
-      }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain' && !hasDynamicDivisionAuthority('SC')) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Aset Supply Chain hanya dapat diubah oleh personel Supply Chain atau Admin GABAH.' });
-      }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC' && !hasDynamicDivisionAuthority('PIBC')) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Aset PIBC hanya dapat diubah oleh personel PIBC atau Admin GABAH.' });
       }
     }
 
