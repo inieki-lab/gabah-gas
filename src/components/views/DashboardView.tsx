@@ -58,7 +58,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
     GA: 'Pantau fasilitas kantor, kendaraan dinas, ruang rapat, peminjaman, dan layanan umum.',
     'Sekretaris Direksi': 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan fasilitas kegiatan Direksi.',
-    Humas: 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat dari seluruh unit kerja.',
+    Humas: 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat sesuai penugasan.',
+    'Supply Chain': 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
+    PIBC: 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
     Karyawan: 'Akses layanan mandiri untuk aset yang ditugaskan, peminjaman, tiket bantuan, dan reservasi ruang.',
     Auditor: 'Pemantauan read-only atas aset, peminjaman, tiket, laporan, dan jejak audit.',
   };
