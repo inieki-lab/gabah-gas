@@ -4,6 +4,20 @@ Tanggal audit: 8 November 2026
 Branch: `fix/role-based-navigation`  
 Status: temuan awal terverifikasi dari source code; belum merupakan pernyataan bahwa seluruh endpoint telah diaudit.
 
+> **Pembaruan status 8 November 2026:** Bagian 2 di bawah adalah snapshot temuan awal, bukan seluruhnya kondisi kode terkini. Perbaikan lanjutan pada branch stabilisasi sudah mengubah beberapa poin. Gunakan pembaruan ini sebagai status terkini; temuan historis dipertahankan untuk jejak audit.
+
+### Koreksi status implementasi pada branch stabilisasi
+
+- `getScopedAssets()` dan resolver detail aset telah diselaraskan pada kebijakan owner domain dinamis: IT mengelola owner IT lintas lokasi; GA mengelola owner GA; akses baca tambahan GA ke Laptop/PC owner IT memerlukan `assets.read.it_workstations` dan tidak memberi hak mutasi.
+- Owner domain aset tidak lagi dimaksudkan sebagai enum tetap IT/GA/SC/PIBC. Scope owner dinamis mendukung domain operasional tambahan serta pengecualian seperti `division_except`.
+- Lokasi kerja pegawai, unit organisasi, owner aset, lokasi fisik, dan custodian diperlakukan sebagai dimensi terpisah. Supply Chain dan PIBC adalah unit/lokasi, bukan role aplikasi permanen.
+- Migration `026_map_branch_accounts_to_employee_location.sql` saat ini sengaja tidak melakukan perubahan data. Draft migrasi lama yang mengubah role/assignment berdasarkan label cabang tidak boleh dijalankan ulang atau dianggap sebagai pemetaan produksi yang disetujui.
+- Humas dan Sekretaris Direksi mengikuti baseline Karyawan dengan capability fungsi tambahan yang eksplisit; bukan alasan untuk menggabungkan lokasi kerja dengan role.
+- Auditor read-only kini ditentukan dari role efektif yang terpasang, termasuk ketika Auditor menjadi role tambahan. Enforcement berada di middleware dan domain/API, bukan hanya UI.
+- CI PostgreSQL 17 fresh database dan persistence integration telah lulus pada head sebelumnya. CI head terbaru tetap harus diperiksa; ini belum menggantikan UAT browser, pengujian upgrade dari snapshot legacy, atau rehearsal backup/restore.
+- **Belum selesai:** audit menyeluruh seluruh endpoint, rekonsiliasi data historis per user/aset, UAT tiap persona, deployment staging, backup/restore, dan persetujuan pemilik proses.
+
+
 ## 1. Keputusan bisnis yang menjadi acuan
 
 GABAH adalah aplikasi internal perusahaan untuk HO dan seluruh cabang/lokasi operasional. Lokasi Supply Chain dan PIBC bukan role aplikasi dan bukan otomatis pemilik aset.
