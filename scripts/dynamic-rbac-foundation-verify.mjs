@@ -37,6 +37,7 @@ const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const checks = [
   ['custom role creation accepts selected permissions atomically and validates the permission catalogue', createRoleRoute.includes('req.body?.permission_keys') && createRoleRoute.includes('withRbacTransaction') && createRoleRoute.includes('INSERT INTO gabah_role_permissions')],
+  ['custom roles cannot receive protected system authentication, audit, or superadmin permissions', createRoleRoute.includes('system.authentication') && createRoleRoute.includes('system.audit') && createRoleRoute.includes('system.super_admin') && server.includes("permission_key NOT IN ('system.authentication', 'system.audit', 'system.super_admin')")],
   ['Superadmin create-role form displays grouped permission checkboxes and refuses empty catalogue/selection', /Pilih Permission/.test(frontend) && /rbacNewPermissionKeys\.includes/.test(frontend) && /Buat Role \+ Simpan Hak Akses/.test(frontend) && /Katalog permission kosong/.test(frontend) && /Pilih minimal satu permission/.test(frontend)],
 
   ['roles table is additive/idempotent', /CREATE TABLE IF NOT EXISTS gabah_roles/i.test(migration)],
