@@ -2635,6 +2635,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <h3 className="font-black text-slate-900">Penetapan Role Pegawai</h3>
                       <p className="text-xs text-slate-500 mt-1">{roleAssignmentTarget.name} · {roleAssignmentTarget.email}</p>
                       <p className="text-[11px] text-slate-500 mt-2">Role utama mengikuti profil pegawai. Pilih role tambahan hanya jika pegawai memang memiliki tanggung jawab lintas fungsi.</p>
+                      <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mt-2">Penting: jika Auditor dipilih sebagai role tambahan, akun menjadi read-only untuk seluruh operasi tulis, meskipun role lain memiliki hak mutasi.</p>
                     </div>
                     <div className="p-4 overflow-y-auto space-y-2">
                       {assignmentsLoading ? (
