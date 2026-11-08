@@ -429,3 +429,32 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - **Peringatan:** jika versi lama migration 026 sudah pernah diterapkan di suatu database, mengubah file tidak membatalkan perubahan historis. Jangan mencoba memulihkan role secara tebakan. Cocokkan backup, audit trail, HR master, dan penugasan aktual sebelum membuat recovery plan.
 - CI run 42477031571 pada head tersebut masih berjalan saat catatan dibuat. Belum ada klaim PASS.
 - PR #18 tetap Draft/Open; belum merge. Tahap berikutnya: verifikasi hasil CI, lalu audit model owner dan semua jalur aset/loan/ticket berdasarkan permission + module scope + owner scope.
+
+---
+
+## Addendum — Owner domain fleksibel & scope lintas modul (2026-11-08)
+
+### Keputusan bisnis
+- GA hanya menangani aset yang memang menjadi tanggung jawab GA dan sesuai kapasitas personel. GA tidak otomatis menjadi pengelola semua aset non-IT.
+- Master Divisi yang dikelola Super Admin dipakai sebagai vocabulary owner domain yang dapat berkembang. Owner awal: IT, GA, SC, PIBC, Umum, Audit; owner baru dapat ditambahkan sebelum kategori/aset menggunakannya.
+- Lokasi fisik, lokasi kerja pegawai, unit pengelola, owner domain, dan custodian/PIC adalah dimensi terpisah. Contoh uji: mesin produksi beras di Subang memiliki owner RPC/SC dan lokasi Subang; akses harus berasal dari permission + scope owner RPC/SC, bukan karena lokasi gudang.
+
+### Perubahan kode
+- server/services.ts: assetVisibleUnderDynamicScopes, filter aset, dan canMutateAssetOwner tidak lagi membatasi owner aktif ke IT/GA. Setiap owner non-kosong hanya dapat diakses/dimutasi melalui scope owner eksplisit; mutation juga wajib permission per operasi. File-store fallback tetap konservatif IT/GA.
+- server/db.ts dan server/taxonomy.ts: owner code tidak lagi enum empat nilai; owner divisi adalah string kode master yang extensible.
+- server/persistence.ts: sync db.divisions ke PostgreSQL sebelum users/category/assets agar owner baru tersedia untuk FK. server.ts: kategori dan aset baru harus merujuk owner yang ada di master; kode owner dibatasi 2–20 karakter. Master owner tidak dapat dihapus saat masih direferensikan aset/kategori/pegawai/unit.
+- server.ts: PATCH aset dan bulk import UPDATE memakai helper mutation yang sama; Karyawan tidak diblokir berdasarkan jabatan jika ia memiliki permission + scope tambahan. Auditor tetap read-only.
+- server.ts: daftar pinjaman, tiket, dashboard ticket/loan, dan operasi maintenance memakai scope owner per modul, bukan whitelist IT/GA. server/contracts.ts: contract owner visibility/create/edit juga mengikuti owner scope dinamis.
+- server/migrations/006_org_model_masters.sql: menambahkan seed Umum dan Audit sebelum org_units agar FK master unit valid pada instalasi baru.
+- Migration 026 tetap non-destruktif/no-op; lihat addendum proteksi migration sebelumnya untuk risiko database yang mungkin pernah menjalankan versi lama.
+
+### Verifikasi
+- Head branch: 8fdd15db91335f2c937e98294272770b75dd1ebc.
+- CI #382 / run 42478977996: SUCCESS. Typecheck, seluruh contract/regression checks, production build, 37 P0 HTTP security assertions, dan maintenance authorization assertions lulus.
+- PR #18 tetap Draft/Open, belum merge. Tidak ada migration production yang dijalankan.
+
+### Pekerjaan berikutnya
+1. Audit endpoint vendor, laporan, rekonsiliasi, dan administrasi untuk shortcut role/owner yang tersisa.
+2. Rapikan menu, landing page, dan tindakan tiap halaman berdasarkan effective permissions + scope; role label saja tidak boleh menjadi sumber kebenaran.
+3. UAT lintas role untuk mesin produksi RPC/SC di Subang, aset GA, aset IT, dan pengecualian baca-only GA atas laptop/desktop IT.
+4. Rekonsiliasi data historis hanya berdasarkan backup, audit trail, dan data HR terverifikasi. Jangan lakukan mass remapping.
