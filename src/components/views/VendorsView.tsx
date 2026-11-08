@@ -50,7 +50,7 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
     });
     return () => { active = false; };
   }, []);
-  const canManage = currentUser.role === 'Admin GABAH' || currentUser.permission_keys?.includes('vendors.create') || currentUser.permission_keys?.includes('vendors.update');
+  const canManage = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH' || currentUser.permission_keys?.includes('vendors.create') || currentUser.permission_keys?.includes('vendors.update');
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
