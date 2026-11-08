@@ -42,3 +42,24 @@ Aplikasi tidak dinyatakan production-ready sebelum:
 4. Tidak ada bug keamanan kritis terbuka.
 5. Pemilik proses menyetujui hasil UAT.
 
+
+## Sesi preview kantor — smoke test terarah
+
+**Tujuan:** memeriksa alur utama dan konsistensi role/scope sebelum UAT penuh. Jalankan pada preview/staging dengan database uji, bukan database produksi. Semua hasil awal tetap `NOT RUN` sampai benar-benar diuji.
+
+| ID | Akun / skenario | Langkah | Hasil yang diharapkan | Status |
+|---|---|---|---|---|
+| PREV-001 | Superadmin | Login, buka Administrasi, buat role uji, atur permission, assign ke akun uji | Role dan assignment tersimpan; perubahan permission langsung tercermin setelah refresh/sesi diperbarui | NOT RUN |
+| PREV-002 | Karyawan HO | Buka dashboard, aset, peminjaman, tiket, Knowledge Base | Hanya menu dan data yang diizinkan; tidak mendapat hak kelola hanya karena lokasi HO | NOT RUN |
+| PREV-003 | Karyawan PIBC | Ulangi skenario Karyawan dari lokasi PIBC | Lokasi kerja PIBC tidak otomatis memberi role/owner aset PIBC atau akses kelola lintas domain | NOT RUN |
+| PREV-004 | GA | Buka aset GA di HO dan lokasi cabang; coba aset IT | GA dapat mengelola sesuai permission + owner scope; aset IT tidak bisa diubah tanpa otorisasi | NOT RUN |
+| PREV-005 | IT | Buka aset IT di semua lokasi; coba aset GA | IT tetap mengelola domain aset IT lintas lokasi; tidak otomatis mengelola aset GA | NOT RUN |
+| PREV-006 | Supply Chain / RPC-SC | Buka data sesuai scope; coba akses kelola aset IT/GA | Nama unit/lokasi tidak otomatis menjadi role aplikasi atau owner domain | NOT RUN |
+| PREV-007 | Auditor | Buka dashboard, aset, kontrak, tiket, audit log; coba aksi tulis | Data hanya sesuai scope Auditor; semua aksi tulis ditolak | NOT RUN |
+| PREV-008 | Role custom create-only Knowledge | Buka Knowledge Base dan coba buat/edit artikel | Tombol buat tampil; tombol edit tidak tampil; API tetap menolak update tanpa permission | NOT RUN |
+| PREV-009 | Role custom update-only Knowledge | Buka artikel yang dapat diakses | Tombol edit tampil; tombol buat tidak tampil; API tetap menolak create tanpa permission | NOT RUN |
+| PREV-010 | Perpindahan aset | Pindahkan aset uji dari lokasi yang dinonaktifkan ke RPC/SC | Riwayat perpindahan tercatat; owner/pengelola aset tidak berubah hanya karena lokasi berubah | NOT RUN |
+| PREV-011 | Helpdesk | Buat tiket sebagai Karyawan; proses sebagai petugas yang diberi permission | Pelapor melihat tiketnya; petugas melihat antrean sesuai scope; status dan audit trail konsisten | NOT RUN |
+| PREV-012 | Sesi & refresh | Cabut permission/role dari akun uji, logout-login kembali, ulangi akses UI dan API | Akses lama tidak bertahan; menu, tombol, dan API mengikuti assignment terbaru | NOT RUN |
+
+**Catatan penguji:** catat akun/role uji (tanpa kata sandi), waktu, URL preview, commit yang diuji, hasil aktual, screenshot, dan ID data uji. Jangan memasukkan data pegawai/aset produksi ke preview.
