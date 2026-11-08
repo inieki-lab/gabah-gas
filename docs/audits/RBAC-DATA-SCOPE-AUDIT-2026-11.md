@@ -214,3 +214,18 @@ Endpoint `GET /api/room-reservations` sudah membatasi Humas ke reservasi dengan 
 
 ### Status verifikasi
 Perubahan diajukan pada branch `ai/codex/room-documentation-privacy`; CI exact head belum berjalan. Tidak ada perubahan data atau migrasi produksi.
+
+## 7. Temuan — integritas keputusan renewal kontrak (8 November 2026)
+
+### Temuan
+Endpoint keputusan renewal menerima nilai `outcome` dari request dan menyimpan `replacement_contract_id` tanpa validasi relasi yang memadai. TypeScript type tidak melindungi request HTTP saat runtime. ID pengganti yang tidak ada, menunjuk kontrak itu sendiri, atau menunjuk kontrak owner division lain dapat tersimpan sebagai relasi yang tidak valid dan berpotensi melintasi batas data antar-divisi.
+
+### Perbaikan
+- Validasi runtime terhadap seluruh nilai `RenewalOutcome` yang didukung.
+- Keputusan `replaced_by_new_contract` wajib menunjuk kontrak pengganti yang benar-benar ada.
+- Kontrak pengganti harus dapat dilihat oleh aktor, bukan kontrak yang sama, dan memiliki owner division ternormalisasi yang sama.
+- ID pengganti ditolak untuk outcome lain.
+- Regression contract ditambahkan ke CI.
+
+### Status verifikasi
+Perubahan diajukan pada branch `ai/codex/contract-renewal-integrity`; CI exact head belum berjalan. Tidak ada migrasi atau perubahan data produksi.
