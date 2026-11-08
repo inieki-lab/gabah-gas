@@ -3,8 +3,8 @@
 **Dokumen:** `docs/testing/UAT.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Authoritative Test Plan & Acceptance Criteria (100% Sesuai Source Code Aktual)  
-**Terakhir Diperbarui:** 1 Oktober 2026
+**Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus.  
+**Terakhir Diperbarui:** 8 November 2026
 
 ---
 
@@ -18,7 +18,7 @@
 
 ---
 
-## 2. Matriks Persona Pengujian (9 Peran Kanonikal)
+## 2. Matriks Persona Pengujian (Role Aplikasi + Unit + Lokasi)
 
 > **SECURITY (CR-02):** Password tidak ditulis di dokumen ini. Gunakan kredensial
 > yang diterbitkan melalui proses provisioning resmi
@@ -31,16 +31,18 @@
 | **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | Super Administrator (Full Control) |
 | **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT Support & Aset Komputasi |
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | General Affairs & Sarana Prasarana |
-| **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `<INITIAL_USER_PASSWORD>`| Protokoler Direksi & VIP Booking |
-| **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Liputan Dokumentasi & Publikasi |
-| **Supply Chain** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Logistik & Gudang Beras |
-| **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pengawas Pasar Induk Cipinang |
+| **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `<INITIAL_USER_PASSWORD>`| Pegawai; fungsi sekretariat Direksi dan VIP Booking melalui role tambahan |
+| **Karyawan + capability Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai; fungsi dokumentasi dan publikasi melalui role tambahan |
+| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
+| **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai Biasa / Pemohon Layanan |
 | **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Satuan Pengawas Internal (Read-Only) |
 
 ---
 
 ## 3. Skenario Pengujian UAT
+
+> **Prinsip model organisasi:** Supply Chain dan PIBC adalah unit/lokasi, bukan role aplikasi permanen. Lokasi kantor aktif saat ini: HO, PIBC, RPC/SC, Pangsub, dan Kantor Perawatan. Subang tidak aktif. Owner aset berbeda dari lokasi fisik dan lokasi kerja pegawai. Pengujian akses dilakukan terhadap permission dan scope efektif di PostgreSQL.
 
 ### Skenario 1: Autentikasi, Token Sesi & Logout
 - **Tujuan**: Memastikan sesi diterbitkan dengan aman dan dibersihkan saat logout.
@@ -53,17 +55,54 @@
 
 ---
 
-### Skenario 2: Matriks Lingkup Akses Aset (RBAC Scoping)
-- **Tujuan**: Memastikan data aset terfilter secara ketat sesuai kewenangan divisi.
+### Skenario 2: Matriks Permission dan Scope Aset
+- **Tujuan**: Memastikan owner, lokasi, dan akses tidak tercampur.
 - **Langkah Pengujian**:
-  1. Login sebagai `IT` $\to$ Buka menu *Katalog Aset* $\to$ Hanya aset divisi IT yang tampil.
-  2. Login sebagai `GA` $\to$ Aset GA dan aset IT tampil (aset IT bersifat *read-only*).
-  3. Login sebagai `Supply Chain` $\to$ Hanya truk beras dan mesin pabrik yang tampil.
-  4. Login sebagai `PIBC` $\to$ Hanya jembatan timbang dan fasilitas PIBC yang tampil.
-  5. Login sebagai `Humas` $\to$ Menu katalog aset disembunyikan dari sidebar.
-  6. Login sebagai `Karyawan` $\to$ Hanya melihat aset miliknya di *Aset Saya* atau aset pool pinjaman.
-  7. Login sebagai `Auditor` $\to$ Melihat seluruh aset semua divisi secara menyeluruh (*read-only*).
-- **Kriteria Lulus**: Filter `GabahDomainService.getScopedAssets()` berjalan 100% konsisten.
+  1. Login sebagai IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC/SC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
+  2. Login sebagai GA. Pastikan aset owner GA terlihat lintas lokasi. Jika permission assets.read.it_workstations aktif, hanya Laptop/PC owner IT yang dapat dibaca; mutasi langsung via API harus ditolak.
+  3. Login sebagai Karyawan di unit Supply Chain dan PIBC. Pastikan fungsi dasar karyawan tersedia; lokasi kerja tidak otomatis membuka katalog aset unit/lokasi.
+  4. Uji aset operasional owner RPC/SC yang ditempatkan di lokasi fisik berbeda. User dengan permission + scope RPC/SC yang disahkan dapat mengelolanya; GA tidak otomatis mendapat akses karena aset berada di gudang.
+  5. Login sebagai Humas dan Sekretaris Direksi. Pastikan fungsi dasar karyawan tersedia serta kapabilitas tambahan muncul hanya bila role tambahan/permission diberikan.
+  6. Login sebagai Auditor. Pastikan data yang diberi scope audit dapat dibaca dan seluruh operasi mutasi ditolak.
+  7. Uji user tanpa role, role nonaktif, dan role tanpa scope: akses harus gagal tertutup.
+- **Kriteria Lulus**: API list dan detail-by-ID mengembalikan record sesuai permission + scope; endpoint mutasi menolak akses di luar scope. Verifikasi dilakukan langsung ke API, bukan hanya menu.
+
+---
+
+### Skenario 2A: Assignment Multi-Role dan Persistensi
+- **Tujuan**: Memastikan role primer dan role tambahan berjalan bersama dan tidak hilang setelah persistensi/restart.
+- **Langkah Pengujian**:
+  1. Sebagai Super Admin, buka Administrasi → Pengguna → pilih satu akun uji.
+  2. Catat role primer, lalu tambahkan satu role fungsi yang telah disetujui dan memiliki permission/scope terbatas.
+  3. Simpan; verifikasi assignment melalui UI dan endpoint administrasi yang dilindungi Super Admin.
+  4. Jalankan operasi bisnis normal yang memicu persistensi, lalu restart aplikasi.
+  5. Muat ulang assignment dan uji menu, API read, dan API write sesuai permission/scope kedua role.
+  6. Ubah role primer melalui alur resmi; pastikan role tambahan yang masih sah tetap ada.
+- **Kriteria Lulus**: Role tambahan tetap tersimpan setelah persistensi dan restart; tidak ada assignment yang dipulihkan/dihapus tanpa tindakan administrator; perubahan tercatat pada audit log.
+
+### Skenario 2B: Auditor sebagai Role Tambahan
+
+- **Tujuan**: Memastikan Auditor tetap read-only walaupun diberikan sebagai role tambahan kepada pegawai yang sudah memiliki role lain.
+- **Langkah Pengujian**:
+  1. Buat akun uji Karyawan dengan satu role tambahan yang memiliki hak tulis terbatas.
+  2. Sebagai Super Admin, tambahkan role Auditor tanpa menghapus role primer maupun role tambahan yang sudah ada.
+  3. Coba akses endpoint GET yang memang diberi kewenangan audit.
+  4. Coba POST/PATCH/DELETE langsung ke API modul yang sebelumnya dapat ditulis oleh role lain.
+  5. Periksa audit log dan assignment role setelah restart aplikasi.
+- **Kriteria Lulus**: Akses baca sesuai grant audit tetap berfungsi; semua operasi mutasi ditolak HTTP 403. Role Auditor tidak boleh kehilangan sifat read-only karena dikombinasikan dengan role lain.
+
+---
+
+### Skenario 2C: Pembuatan Pegawai dan Lokasi Kerja
+
+- **Tujuan**: Memastikan akun baru dibuat dengan role primer pegawai dan lokasi kerja yang independen.
+- **Langkah Pengujian**:
+  1. Sebagai Super Admin, buat akun baru dengan role primer Karyawan.
+  2. Pilih lokasi kantor dari master aktif (misalnya PIBC atau RPC/SC); jangan memilih Supply Chain/PIBC sebagai role aplikasi.
+  3. Simpan akun dan pastikan lokasi kerja tersimpan pada atribut office location.
+  4. Jika pegawai memiliki tugas khusus, tetapkan role tambahan melalui tombol Role; jangan mengubah role primer hanya karena unit/lokasi.
+  5. Periksa daftar pengguna: role primer dan role tambahan harus terlihat terpisah.
+- **Kriteria Lulus**: Akun tetap Karyawan dengan lokasi kerja yang dipilih; penambahan role fungsi tidak mengubah lokasi atau role primer.
 
 ---
 
@@ -113,7 +152,7 @@
 ### Skenario 7: Preventive Maintenance & Uji Tera
 - **Tujuan**: Memvalidasi pencatatan pemeliharaan berkala dan tera resmi PIBC.
 - **Langkah Pengujian**:
-  1. Login sebagai `PIBC` $\to$ buka tab *Servis & Maintenance*.
+  1. Login sebagai pegawai Karyawan unit/lokasi PIBC dengan permission dan scope maintenance yang disahkan $\to$ buka tab *Servis & Maintenance*.
   2. Daftarkan jadwal kalibrasi tera untuk "Jembatan Timbang Truk 60 Ton".
   3. Masukkan nama vendor/balai metrologi, estimasi biaya, dan frekuensi tahunan.
   4. Selesaikan jadwal servis dengan mengisi biaya riil dan checklist teknis.
@@ -124,7 +163,7 @@
 ### Skenario 8: Reservasi Ruang Rapat VIP & Notifikasi Multi-Divisi
 - **Tujuan**: Memverifikasi alur VIP auto-approval dan notifikasi otomatis lintas divisi.
 - **Langkah Pengujian**:
-  1. Login sebagai `Sekretaris Direksi`. Buka modul *Ruang Rapat* $\to$ buat reservasi di "Ruang Rapat VIP Direksi".
+  1. Login sebagai Karyawan dengan capability tambahan Sekretaris Direksi yang telah disahkan. Buka modul *Ruang Rapat* $\to$ buat reservasi di "Ruang Rapat VIP Direksi".
   2. Centang:
      - Fasilitas IT: *Polycom Studio Video Conference* & *Smart TV 85" 4K*
      - Fasilitas GA: *Sound System & Wireless Mic*
@@ -143,6 +182,7 @@
 ### Skenario 10: Contract Management (Domain Tersendiri) & Kategori Tiket
 1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware → `IT`; fasilitas → `GA`; SC → `SC`; PIBC → `PIBC`. Tidak ada opsi License/General/Contract di form.
 2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
+3. **Dokumen kontrak**: unggah PDF/DOC/JPG yang sah, unduh kembali sebagai PIC/owner yang berwenang, dan pastikan user di luar scope menerima 404. Restart aplikasi; file harus tetap dapat diunduh. Backup database dan volume uploads harus diuji bersama.
 3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
 4. **Email & Telegram**: log pengiriman muncul di `GET /api/contracts/:id/notification-logs` dengan status JUJUR per channel: `sent` (terkirim nyata), `skipped` (provider belum dikonfigurasi — memerlukan `GABAH_SMTP_HOST`+`GABAH_SMTP_FROM` untuk email, `TELEGRAM_BOT_TOKEN` untuk Telegram; recipient divisi tanpa email/chat id juga `skipped`), atau `failed` (provider dikonfigurasi tapi gagal — host tak terjangkau, token invalid). **Tidak pernah ada status sukses palsu.** Scheduler otomatis berjalan tiap `GABAH_REMINDER_INTERVAL_MS` (default 1 jam, leader-lock `pg_try_advisory_lock(842201)` untuk multi-instance); status via `GET /api/contracts/reminders/scheduler-status` (Admin-only).
 5. **Linked Ticket**: dari kartu kontrak, buat tiket terkait → tiket tersimpan dengan `contract_id` dan audit log tercatat.

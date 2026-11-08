@@ -1,10 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
-import { isSuperadminActor } from './rbac-policy';
+import { isPostgresPersistenceActive } from './persistence';
+import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
+import { GabahDomainService } from './services';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
-const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || actor.role === 'Auditor';
+const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || isAuditorActor(actor);
 
 export function actorFor(req: Request): ServerUser | null {
   if ((req as any).user) return (req as any).user as ServerUser;
@@ -12,49 +14,29 @@ export function actorFor(req: Request): ServerUser | null {
   return result.user;
 }
 
-function isItWorkstation(asset: any): boolean {
-  const code = String(asset.category_code || asset.asset_code || '').toUpperCase();
-  const name = String(asset.name || '').toLowerCase();
-  return ['HLT', 'HPC'].includes(code)
-    || code.includes('LAP')
-    || code.includes('PC')
-    || /\blaptop\b|\bnotebook\b|\bpc\b|\bdesktop\b/.test(name);
-}
-
 function canSeeAsset(actor: ServerUser, assetId: string): boolean {
-  const asset = db.assets.find(a => a.id === assetId);
-  if (!asset) return false;
-  if (isGlobalObserver(actor)) return true;
-  if (actor.role === 'Karyawan') return asset.assigned_to?.id === actor.id || asset.is_loanable;
-  if (actor.role === 'IT') return asset.owner_division === 'IT' || asset.owner_division === 'GA';
-  if (actor.role === 'GA') return asset.owner_division === 'GA' || (asset.owner_division === 'IT' && isItWorkstation(asset));
-  if (actor.role === 'Sekretaris Direksi' || actor.role === 'Humas') {
-    // Sekretaris Direksi dan Humas hanya bisa lihat aset assigned/loanable (read-only)
-    return asset.assigned_to?.id === actor.id || asset.is_loanable;
-  }
-  if (actor.role === 'Supply Chain') {
-    const loc = String(asset.location || '').toLowerCase();
-    const dept = String(actor.department || '').toLowerCase();
-    return asset.owner_division === 'SC' || loc.includes('supply chain') || loc.includes('rpc') || (dept.length >= 3 && loc.includes(dept));
-  }
-  if (actor.role === 'PIBC') {
-    const loc = String(asset.location || '').toLowerCase();
-    const dept = String(actor.department || '').toLowerCase();
-    return asset.owner_division === 'PIBC' || loc.includes('pibc') || (dept.length >= 3 && loc.includes(dept));
-  }
-  return false;
+  // The asset catalogue is the canonical read-scope resolver. Reusing it here
+  // keeps list, direct-ID routes, and linked attention cards consistent for
+  // primary roles plus any explicitly assigned additional role scopes.
+  return GabahDomainService.getScopedAssets(actor).some(asset => asset.id === assetId);
 }
 
 function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   const ticket = db.tickets.find(t => t.id === ticketId);
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
-  if (actor.role === 'Auditor') return false;
-  if (actor.role === 'Karyawan') return ticket.reporter_id === actor.id;
-  if (actor.role === 'IT') return ticket.category === 'IT'; // software/license tickets are IT
+  if (isAuditorActor(actor)) return false;
+  if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+  if (isPostgresPersistenceActive()) {
+    // PostgreSQL RBAC is owner-code agnostic: custom operational functions
+    // (e.g. RPC/SC) need the same explicit Tickets scope as IT/GA.
+    const owner = String(ticket.category || '').trim();
+    return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'tickets');
+  }
+  // File-store compatibility only. Production PostgreSQL never grants ticket
+  // authority from a legacy role label alone.
+  if (actor.role === 'IT') return ticket.category === 'IT';
   if (actor.role === 'GA') return ticket.category === 'GA';
-  if (actor.role === 'Supply Chain') return ticket.category === 'SC';
-  if (actor.role === 'PIBC') return (ticket.category as string) === 'PIBC';
   return false;
 }
 
@@ -65,8 +47,14 @@ function scopedAttention(actor: ServerUser, items: any[]) {
     if (item.link_type === 'loan') {
       const loan = db.loans.find(l => l.id === item.link_id);
       if (!loan) return false;
-      if (actor.role === 'Karyawan') return loan.borrower_id === actor.id;
-      return loan.owner_division === actor.division;
+      if (loan.borrower_id === actor.id) return true;
+      if (isPostgresPersistenceActive()) {
+        const owner = String(loan.owner_division || '').trim();
+        return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'loans');
+      }
+      // File-store compatibility only. Production PostgreSQL uses explicit
+      // module scope, never a primary-role label, for owner-division visibility.
+      return (actor.role === 'IT' || actor.role === 'GA') && loan.owner_division === actor.role;
     }
     if (item.link_type === 'ticket') return canManageTicket(actor, item.link_id);
     return false;
@@ -132,7 +120,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   // Auditor is strictly READ-ONLY across the entire system.
   // SECURITY (CR-01): switch-role is no longer an auditor exemption —
   // identity switching must never be usable to escape the read-only gate.
-  if (actor.role === 'Auditor' && req.method !== 'GET') {
+  if (isAuditorActor(actor) && req.method !== 'GET') {
     const allowedAuditorActions = ['/api/auth/logout', '/api/notifications/read-all'];
     const isNotificationRead = req.path.match(/^\/api\/notifications\/[^/]+\/read$/);
     if (!allowedAuditorActions.includes(req.path) && !isNotificationRead) {
@@ -160,12 +148,6 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   const ticketMatch = req.path.match(/^\/api\/tickets\/([^/]+)\/status$/);
   if (ticketMatch && !canManageTicket(actor, ticketMatch[1])) {
     return res.status(403).json({ success: false, message: 'Pengguna tidak berwenang mengubah tiket ini.' });
-  }
-
-  if (req.method === 'POST' && req.path === '/api/notifications/read-all') {
-    for (const n of db.notifications) {
-      if (isGlobalObserver(actor) || n.recipient_role === actor.role || n.recipient_user_id === actor.id || n.recipient_division === actor.division) n.is_read = true;
-    }
   }
 
   if (req.path === '/api/dashboard/attention') {

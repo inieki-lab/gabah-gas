@@ -1,3 +1,5 @@
+import { isExactIdentityNameMatch } from '../utils/identityMatching';
+
 import { Asset, AssetStatus, AssetCondition, Loan, Ticket, UserProfile, UserRole, RoomReservation, MeetingFacilityItem } from '../types';
 
 /**
@@ -652,11 +654,9 @@ export class GabahService {
     }
 
     const currentUserId = user.id || '';
-    const currentUserName = (user.name || '').trim().toLowerCase();
-    const reporterName = (ticket.reporter_name || '').trim().toLowerCase();
     const isReporter = Boolean(
       (ticket.reporter_id && ticket.reporter_id === currentUserId) ||
-      (reporterName && currentUserName && (reporterName === currentUserName || reporterName.includes(currentUserName) || currentUserName.includes(reporterName)))
+      isExactIdentityNameMatch(ticket.reporter_name, user.name)
     );
 
     // 2. GA: can see tickets directed to GA (category 'GA'), or tickets reported by GA user themselves

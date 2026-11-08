@@ -1,0 +1,13 @@
+# Never send secrets, runtime state, uploads or local dependencies into the image.
+.git
+.github
+node_modules
+dist
+coverage
+uploads
+server/data
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

@@ -2,6 +2,8 @@ import { db, ServerUser, ServerContract, ServerContractDocument, ServerContractM
 import { AssetNumberingEngine } from './numbering';
 import { queueNotification, summarize, SCHEDULER_ACTOR } from './notifications/notificationService';
 import { persistDataStore } from './persistence';
+import { isPostgresPersistenceActive } from './persistence';
+import { hasRbacPermission, hasRbacScope, isSuperadminActor, isAuditorActor } from './rbac-policy';
 
 /**
  * CONTRACT MANAGEMENT — separate business domain.
@@ -62,28 +64,43 @@ export function getReminderLevel(contract: ServerContract): { level: 'normal' | 
 }
 
 export function canSeeContract(user: ServerUser, contract: ServerContract): boolean {
-  if (user.role === 'Admin GABAH') return true;
-  // Auditor: full read authority over governance records
-  if (user.role === 'Auditor') return true;
+  if (isSuperadminActor(user) || isAuditorActor(user)) return true;
   if (contract.pic_user_id === user.id) return true;
-  if (contract.owner_division === user.division) return true;
-  // Non-restricted contracts are visible org-wide read-only for transparency
-  return !contract.restricted;
+  const owner = String(contract.owner_division || '').trim().toUpperCase();
+  if (!owner) return false;
+
+  if (isPostgresPersistenceActive()) {
+    return hasRbacPermission(String(user.id), 'contracts.read')
+      && hasRbacScope(String(user.id), 'division', owner, 'contracts');
+  }
+
+  return user.role === owner;
 }
 
 export function canManageContracts(user: ServerUser): boolean {
-  // Contract management is limited to the operational owner roles.
-  return ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(user.role);
+  if (isSuperadminActor(user)) return true;
+  if (isPostgresPersistenceActive()) {
+    return hasRbacPermission(String(user.id), 'contracts.create')
+      || hasRbacPermission(String(user.id), 'contracts.update');
+  }
+  return user.role === 'IT' || user.role === 'GA';
 }
 
 // SEC-08: Expose canEditContract for server.ts file upload validation
 export function canEditContract(user: ServerUser, contract: ServerContract): boolean {
-  // RBAC: management kontrak hanya untuk peran operasional pemilik
-  // (Admin GABAH, IT, GA, Supply Chain, PIBC). Peran request/read-only
-  // (Sekretaris Direksi, Humas, Karyawan, Auditor) tidak boleh edit.
-  if (!canManageContracts(user)) return false;
-  if (user.role === 'Admin GABAH') return true;
-  return contract.pic_user_id === user.id || contract.owner_division === user.division;
+  if (isSuperadminActor(user)) return true;
+  const owner = String(contract.owner_division || '').trim().toUpperCase();
+  if (!owner) return false;
+  if (contract.pic_user_id === user.id) {
+    return isPostgresPersistenceActive()
+      ? hasRbacPermission(String(user.id), 'contracts.update')
+      : user.role === owner;
+  }
+  if (isPostgresPersistenceActive()) {
+    return hasRbacPermission(String(user.id), 'contracts.update')
+      && hasRbacScope(String(user.id), 'division', owner, 'contracts');
+  }
+  return user.role === owner;
 }
 
 function recordContractAudit(action: string, details: string, actor: ServerUser, contractId: string) {
@@ -123,13 +140,17 @@ export const ContractDomainService = {
 
   createContract(payload: Partial<ServerContract> & { end_date: string; start_date: string; title: string; vendor_name: string; owner_division: string; pic_user_id: string }, actor: ServerUser): ServerContract {
     if (!canManageContracts(actor)) {
-      throw new Error('Akses ditolak: Auditor bersifat read-only.');
+      throw new Error('Akses ditolak: permission contracts.create tidak diberikan.');
     }
     const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
     const pic = db.users.find(u => u.id === payload.pic_user_id) || actor;
-    // Division ownership authorization: creators may only register contracts for their own division unless Admin
-    if (actor.role !== 'Admin GABAH' && ownerDivision !== actor.division) {
-      throw new Error(`Akses ditolak: hanya Admin GABAH yang dapat mendaftarkan kontrak untuk divisi lain (${ownerDivision}).`);
+    const ownerExists = (db.divisions || []).some(d => String(d.code).trim().toUpperCase() === ownerDivision);
+    const ownerScopeAllowed = ownerExists
+      && (isSuperadminActor(actor) || (isPostgresPersistenceActive()
+        ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
+        : actor.role === ownerDivision));
+    if (!ownerScopeAllowed) {
+      throw new Error(`Akses ditolak: scope pengguna tidak mencakup owner kontrak ${ownerDivision}.`);
     }
 
     const reminderConfig: ContractReminderConfig = {
@@ -257,6 +278,34 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
+    const allowedOutcomes: RenewalOutcome[] = [
+      'pending_decision',
+      'renewed',
+      'not_renewed',
+      'terminated',
+      'replaced_by_new_contract',
+    ];
+    if (!allowedOutcomes.includes(outcome)) {
+      throw new Error('Keputusan renewal tidak valid.');
+    }
+
+    if (outcome === 'replaced_by_new_contract') {
+      if (!replacementContractId) {
+        throw new Error('Kontrak pengganti wajib dipilih untuk keputusan replaced_by_new_contract.');
+      }
+      const replacement = db.contracts.find(item => item.id === replacementContractId);
+      if (!replacement) throw new Error('Kontrak pengganti tidak ditemukan.');
+      if (!canSeeContract(actor, replacement)) throw new Error('Akses ditolak: kontrak pengganti berada di luar scope pengguna.');
+      if (replacement.id === contract.id) throw new Error('Kontrak tidak dapat menggantikan dirinya sendiri.');
+      const sourceOwner = String(contract.owner_division || '').trim().toUpperCase();
+      const replacementOwner = String(replacement.owner_division || '').trim().toUpperCase();
+      if (!sourceOwner || replacementOwner !== sourceOwner) {
+        throw new Error('Kontrak pengganti harus berasal dari divisi pemilik yang sama.');
+      }
+    } else if (replacementContractId) {
+      throw new Error('ID kontrak pengganti hanya boleh diisi untuk keputusan replaced_by_new_contract.');
+    }
+
     contract.renewal_outcome = outcome;
     contract.renewal_notes = notes || null;
     contract.replaced_by_contract_id = replacementContractId;
@@ -344,7 +393,7 @@ export const ContractDomainService = {
 
   getNotificationLogs(user: ServerUser, contractId?: string): ServerContractNotificationLog[] {
     const logs = contractId ? db.contractNotificationLogs.filter(l => l.contract_id === contractId) : db.contractNotificationLogs;
-    if (user.role === 'Admin GABAH' || user.role === 'Auditor') return logs;
+    if (user.role === 'Admin GABAH' || isAuditorActor(user)) return logs;
     const visibleContracts = new Set(this.listContracts(user).map(c => c.id));
     return logs.filter(l => visibleContracts.has(l.contract_id));
   },

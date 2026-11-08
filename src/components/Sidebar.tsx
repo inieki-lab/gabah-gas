@@ -29,26 +29,17 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { AdministrationModal } from './modals/AdministrationModal';
+import { AppNavTab, isNavTabAllowedForRole } from '../navigation/roleNavigation';
 
-export type NavTab = 
-  | 'dashboard'
-  | 'my_assets'
-  | 'meeting_rooms'
-  | 'assets'
-  | 'maintenance'
-  | 'loans'
-  | 'tickets'
-  | 'licenses'
-  | 'contracts'
-  | 'vendors'
-  | 'knowledge'
-  | 'reports';
+export type NavTab = AppNavTab;
 
 interface SidebarProps {
   currentTab: NavTab;
   onTabChange: (tab: NavTab) => void;
   userRole?: UserRole;
   currentUserRole?: UserRole;
+  currentUserPermissions?: string[];
+  currentUserIsSuperAdmin?: boolean;
   pendingLoansCount?: number;
   openTicketsCount?: number;
   pendingReservationsCount?: number;
@@ -65,7 +56,6 @@ interface NavItemConfig {
   icon: React.ComponentType<{ className?: string }>;
   badge?: React.ReactNode;
   badgeColor?: string;
-  roles: UserRole[];
 }
 
 interface NavSectionConfig {
@@ -78,6 +68,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
   userRole,
   currentUserRole,
+  currentUserPermissions,
+  currentUserIsSuperAdmin = false,
   pendingLoansCount = 0,
   openTicketsCount = 0,
   pendingReservationsCount = 0,
@@ -86,11 +78,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   gaRequestsCount = 0,
   onOpenAdministration,
 }) => {
-  const activeRole = currentUserRole || userRole || 'Admin GABAH';
-  const isStaff = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(activeRole);
+  const activeRole = currentUserRole || userRole;
+  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
-  const isSuperAdmin = activeRole === 'Admin GABAH';
+  const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
@@ -103,7 +95,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: isHumas ? 'Ringkasan & Request Foto' : isStaff ? 'Ringkasan & Status' : 'Overview SLA & Aset',
           icon: LayoutDashboard,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'my_assets',
@@ -111,7 +102,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: isStaff ? 'Perangkat Kerja Anda' : 'Aset Ditugaskan',
           icon: Laptop,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'meeting_rooms',
@@ -130,7 +120,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             : activeRole === 'IT'
             ? 'bg-sky-600 text-white'
             : 'bg-emerald-600 text-white',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'loans',
@@ -139,7 +128,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: CalendarClock,
           badge: pendingLoansCount > 0 && !isStaff ? pendingLoansCount : null,
           badgeColor: 'bg-[#F7B733] text-slate-900',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'tickets',
@@ -148,7 +136,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: LifeBuoy,
           badge: openTicketsCount > 0 && !isStaff ? openTicketsCount : null,
           badgeColor: 'bg-[#FC4A1A] text-white',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
       ],
     },
@@ -161,7 +148,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Katalog & pengelolaan aset sesuai scope',
           icon: Package,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Auditor'],
         },
         {
           id: 'maintenance',
@@ -170,7 +156,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: Wrench,
           badge: 'Rutin',
           badgeColor: 'bg-amber-100 text-amber-800 border border-amber-300',
-          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
         {
           id: 'licenses',
@@ -178,7 +163,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Seat & Expiry',
           icon: KeyRound,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'Auditor'],
         },
       ],
     },
@@ -191,7 +175,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Kontrak Servis & Mitra',
           icon: Briefcase,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
         },
         {
           id: 'contracts',
@@ -199,7 +182,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Register & Reminder Kontrak',
           icon: FileText,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Auditor'],
         },
         {
           id: 'knowledge',
@@ -207,7 +189,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Panduan & SOP',
           icon: BookOpen,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'],
         },
       ],
     },
@@ -220,7 +201,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           description: 'Depresiasi & SLA',
           icon: BarChart3,
           badge: null,
-          roles: ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Auditor'],
         },
       ],
     },
@@ -229,7 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const visibleSections = sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => item.roles.includes(activeRole)),
+      items: section.items.filter(item => activeRole ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions) : false),
     }))
     .filter(section => section.items.length > 0);
 

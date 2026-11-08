@@ -16,7 +16,16 @@
     "test:t2b2": "node scripts/t2b2-asset-location-verify.mjs",
     "test:t2b3": "node scripts/t2b3-category-master-verify.mjs",
     "test:dynamic-rbac-foundation": "node scripts/dynamic-rbac-foundation-verify.mjs",
-    "test:maintenance-authz": "node scripts/maintenance-authz-verify.mjs"
+    "test:maintenance-authz": "node scripts/maintenance-authz-verify.mjs",
+    "test:maintenance-dynamic-scope": "node scripts/maintenance-dynamic-scope-verify.mjs",
+    "test:navigation-policy": "tsx scripts/navigation-policy-verify.ts",
+    "test:dashboard-scope": "tsx scripts/dashboard-scope-verify.ts",
+    "test:dashboard-attention-scope": "tsx scripts/dashboard-attention-scope-verify.ts",
+    "test:asset-scope-policy": "node scripts/asset-scope-policy-verify.mjs",
+    "test:branch-migration-safety": "node scripts/branch-migration-safety-verify.mjs",
+    "test:contract-renewal-integrity": "node scripts/contract-renewal-integrity-verify.mjs",
+    "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
+    "test:movement-scope": "node scripts/movement-scope-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

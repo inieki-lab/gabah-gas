@@ -1,0 +1,24 @@
+-- Stage 19 (REVISED): DO NOT infer employee roles or ownership from branch names.
+--
+-- Business rule (2026-11-08):
+--   * Current active sites: HO, PIBC, RPC/SC and Pangsub. New sites are configurable; closed sites are deactivated, not deleted.
+--     work/physical locations. Location is not an application role.
+--   * RPC/SC may also be an operational asset-owning function. Ownership and
+--     physical location are independent dimensions.
+--   * Employees at any site retain their actual job level, unit, primary role,
+--     additional capabilities, permissions and history until an authorized
+--     administrator maps them using verified HR/organizational data.
+--   * A location alone never grants asset, ticket, vendor or other data scope.
+--
+-- Earlier draft of this migration rewrote users.role, deleted legacy role
+-- assignments, and deactivated org_units based only on role labels. That is
+-- unsafe: it can erase real operational responsibilities and is NOT run here.
+--
+-- Intentionally no data-changing SQL. This migration remains as a numbered
+-- compatibility marker so fresh installations do not apply the unsafe draft.
+--
+-- IMPORTANT for databases where the earlier version of migration 026 was
+-- already applied: editing this file does not reverse that historical change.
+-- Do not attempt an automatic rollback. Reconcile affected users and role
+-- assignments from HR/backup/audit evidence in a separately reviewed,
+-- environment-specific recovery plan. Preserve all existing asset ownership.

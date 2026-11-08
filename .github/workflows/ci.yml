@@ -9,13 +9,36 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Validate Docker Compose configuration
+        env:
+          PGPASSWORD: ci-validation-only-not-a-secret
+        run: docker compose config --quiet
+
+      - name: Validate deployment shell script
+        run: bash -n deploy.sh
+
+
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -27,11 +50,76 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: Branch migration non-destructive safety check
+        run: npm run test:branch-migration-safety
+
+      - name: Asset scope policy regression checks
+        run: npm run test:asset-scope-policy
+
+      - name: Asset movement history scope consistency
+        run: npm run test:movement-scope
+
+      - name: Role navigation policy checks
+        run: npm run test:navigation-policy
+
+      - name: Role dashboard scope checks
+        run: npm run test:dashboard-scope
+
+      - name: Dashboard attention data-scope checks
+        run: npm run test:dashboard-attention-scope
+
+      - name: Dashboard attention middleware scope consistency
+        run: npm run test:dashboard-attention-middleware
+
       - name: Production build (frontend + server bundle)
         run: npm run build
 
-      - name: P0 security verification (37 live HTTP assertions)
+      - name: Build production Docker image
+        run: docker build --tag gabah-gas:ci .
+
+      - name: Validate Docker runtime smoke script
+        run: bash -n scripts/docker-runtime-smoke.sh
+
+      - name: Production image runtime smoke (Node 22 + PostgreSQL 17 + uploads volume)
+        run: bash scripts/docker-runtime-smoke.sh
+
+      - name: PostgreSQL 17 fresh-database and persistence integration (CR-04/CR-05)
+        env:
+          GABAH_TEST_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: node scripts/cr04-cr05-verify.mjs
+
+      - name: P0 security verification (live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
 
+      - name: User directory read scope verification
+        run: node scripts/rbac-scoping-verify.mjs
+
+      - name: Loan authorization and state transitions
+        run: npm run test:loan-authz
+
+      - name: Meeting room reservation regression
+        run: npm run test:meeting-room
+
+      - name: Contract renewal linkage integrity
+        run: npm run test:contract-renewal-integrity
+
+      - name: Organization model regression
+        run: npm run test:org-model
+
+      - name: Asset managing-unit regression
+        run: npm run test:t2b1
+
+      - name: Asset location master regression
+        run: npm run test:t2b2
+
+      - name: Asset category master regression
+        run: npm run test:t2b3
+
+      - name: Sidebar menu API connectivity
+        run: node scripts/menu-connectivity-verify.mjs
+
       - name: Maintenance authorization verification (live HTTP assertions)
-        run: node scripts/maintenance-authz-verify.mjs
+        run: npm run test:maintenance-authz
+
+      - name: Maintenance dynamic-scope consistency
+        run: npm run test:maintenance-dynamic-scope

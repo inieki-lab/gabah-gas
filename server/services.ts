@@ -6,7 +6,7 @@ import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-loc
 import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
-import { isSuperadminActor, getUserRbacPolicies } from './rbac-policy';
+import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
 
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
@@ -18,6 +18,12 @@ export function isLegacyScopedRole(role: string): boolean {
 }
 
 interface AssetScopeSpec { type: string; value: string | null }
+
+function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
+  if (isSuperadminActor(actor)) return true;
+  if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
+  return Boolean(legacyRole && actor.role === legacyRole);
+}
 
 /**
  * Dynamic RBAC Stage 13E: resolve the dynamic asset write authority of a user
@@ -32,8 +38,8 @@ interface AssetScopeSpec { type: string; value: string | null }
  * mutability. Tanpa policy dinamis yang memberi authority → set kosong
  * (deny-by-default; pemanggil tetap memeriksa permission operasi & rule legacy).
  */
-export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean; divisions: Set<string> } {
-  const result = { all: false, divisions: new Set<string>() };
+export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean; divisions: Set<string>; excludedDivisions: Set<string> } {
+  const result = { all: false, divisions: new Set<string>(), excludedDivisions: new Set<string>() };
   const policies = getUserRbacPolicies(String(user.id));
   for (const policy of policies) {
     if (policy.isSuperadmin) {
@@ -42,15 +48,46 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
       return result;
     }
     for (const scope of policy.scopes) {
+      if (scope.module != null && scope.module !== '*' && scope.module !== 'assets') continue;
       if (scope.type === 'all') result.all = true;
       else if (scope.type === 'division') {
         const value = scope.value == null ? '' : String(scope.value).trim().toUpperCase();
         if (value) result.divisions.add(value);
+      } else if (scope.type === 'division_except') {
+        // An exclusion scope means broad owner coverage with a deny-list.
+        result.all = true;
+        const value = scope.value == null ? '' : String(scope.value).trim().toUpperCase();
+        if (value) result.excludedDivisions.add(value);
       }
     }
   }
-  if (result.all) result.divisions.clear();
   return result;
+}
+
+/**
+ * One domain-level mutation decision for assets. In PostgreSQL mode the
+ * effective permission and explicit owner-division scope are both required.
+ * JSON/file-store mode retains the narrow legacy owner mapping for compatibility.
+ */
+export function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
+  if (isSuperadminActor(actor)) return true;
+  const owner = String(ownerDivision || '').trim().toUpperCase();
+  // Owner codes are configurable business domains (IT, GA, RPC/SC, PIBC,
+  // and future operational owners). A non-empty owner is never sufficient:
+  // PostgreSQL mode still requires operation permission + matching owner scope.
+  // File-store fallback remains IT/GA-only.
+
+  if (isPostgresPersistenceActive()) {
+    const authority = getDynamicAssetWriteAuthority(actor);
+    return hasRbacPermission(String(actor.id), permissionKey)
+      && (authority.divisions.has(owner) || (authority.all && !authority.excludedDivisions.has(owner)));
+  }
+
+  const legacyOwnerByRole: Record<string, string> = {
+    IT: 'IT',
+    GA: 'GA',
+  };
+  return legacyOwnerByRole[actor.role] === owner;
 }
 
 function textEquals(left: unknown, right: unknown): boolean {
@@ -71,12 +108,13 @@ function textEquals(left: unknown, right: unknown): boolean {
  * Role dinamis tanpa scope sama sekali tidak melihat aset apa pun
  * (secure fallback yang sempit, menggantikan fallback all-seeing lama).
  */
-function dynamicScopesForUser(user: ServerUser): AssetScopeSpec[] | null {
+function dynamicScopesForUser(user: ServerUser, module = 'assets'): AssetScopeSpec[] | null {
   const policies = getUserRbacPolicies(String(user.id));
   if (policies.length === 0) return null;
   if (policies.some(policy => policy.isSuperadmin)) return null; // handled by caller
   const scopes = policies
     .flatMap(policy => policy.scopes)
+    .filter(scope => scope.module == null || scope.module === '*' || scope.module === module)
     .map(scope => ({ type: String(scope.type), value: scope.value == null ? null : String(scope.value) } as AssetScopeSpec));
   return scopes.length === 0 ? null : scopes;
 }
@@ -89,6 +127,8 @@ function assetMatchesAssetScope(asset: ServerAsset, scope: AssetScopeSpec, user:
       return asset.assigned_to?.id === String(user.id);
     case 'division':
       return textEquals(asset.owner_division, scope.value);
+    case 'division_except':
+      return !textEquals(asset.owner_division, scope.value);
     case 'unit':
       return textEquals(asset.managing_unit_id, scope.value)
         || (asset.managing_unit_id != null && textEquals(managingUnitNameById.get(String(asset.managing_unit_id)), scope.value));
@@ -107,18 +147,39 @@ function assetMatchesAssetScope(asset: ServerAsset, scope: AssetScopeSpec, user:
  * dipakai ulang oleh modul lain (mis. Maintenance) tanpa mengubah perilaku.
  */
 export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAsset): boolean {
+  const owner = String(asset.owner_division || '').trim().toUpperCase();
+  if (!owner) return false;
   const scopes = dynamicScopesForUser(user);
   if (scopes == null) return false; // tanpa policy/scope: deny-by-default
-  if (scopes.some(scope => scope.type === 'all')) return true;
-  return scopes.some(scope => assetMatchesAssetScope(asset, scope, user));
+  const excluded = scopes.some(scope => scope.type === 'division_except' && textEquals(asset.owner_division, scope.value));
+  const explicitOwnerGrant = scopes.some(scope => scope.type === 'division' && assetMatchesAssetScope(asset, scope, user));
+  const otherScopedGrant = !excluded && scopes.some(scope =>
+    !['all', 'division', 'division_except'].includes(scope.type) && assetMatchesAssetScope(asset, scope, user)
+  );
+  return explicitOwnerGrant || (!excluded && (
+    scopes.some(scope => scope.type === 'all') ||
+    otherScopedGrant ||
+    scopes.some(scope => scope.type === 'division_except' && assetMatchesAssetScope(asset, scope, user))
+  ));
 }
 
 function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): ServerAsset[] {
   if (getUserRbacPolicies(String(user.id)).some(policy => policy.isSuperadmin)) return assets;
   const scopes = dynamicScopesForUser(user);
   if (scopes == null) return [];
-  if (scopes.some(scope => scope.type === 'all')) return assets;
-  return assets.filter(asset => scopes.some(scope => assetMatchesAssetScope(asset, scope, user)));
+  const classifiedOwnerAssets = assets.filter(asset => String(asset.owner_division || '').trim().length > 0);
+  return classifiedOwnerAssets.filter(asset => {
+    const excluded = scopes.some(scope => scope.type === 'division_except' && textEquals(asset.owner_division, scope.value));
+    const explicitOwnerGrant = scopes.some(scope => scope.type === 'division' && assetMatchesAssetScope(asset, scope, user));
+    const otherScopedGrant = !excluded && scopes.some(scope =>
+      !['all', 'division', 'division_except'].includes(scope.type) && assetMatchesAssetScope(asset, scope, user)
+    );
+    return explicitOwnerGrant || (!excluded && (
+      scopes.some(scope => scope.type === 'all') ||
+      otherScopedGrant ||
+      scopes.some(scope => scope.type === 'division_except' && assetMatchesAssetScope(asset, scope, user))
+    ));
+  });
 }
 
 /**
@@ -195,57 +256,59 @@ export class GabahDomainService {
    * Filter assets based on user's role and division scope
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
-    // Superusers / Global Observers
-    if (user.role === 'Admin GABAH' || user.role === 'Auditor') {
-      return db.assets;
-    }
+    if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
 
-    // Humas: "untuk tim humas ga perlu bisa lihat aset"
-    if (user.role === 'Humas') {
+    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+    const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
+
+    if (!isPostgresPersistenceActive()) {
+      if (isEmployeeBaseline) {
+        return db.assets.filter(asset => asset.assigned_to?.id === user.id || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())));
+      }
+      if (user.role === 'IT') {
+        return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
+      }
+      if (user.role === 'GA') {
+        // File-store compatibility mirrors the conservative legacy default:
+        // GA owns GA assets and may read IT laptops/desktops only. PostgreSQL
+        // deployments use the explicit assets.read.it_workstations capability.
+        return db.assets.filter(asset =>
+          String(asset.owner_division || '').toUpperCase() === 'GA'
+          || (String(asset.owner_division || '').toUpperCase() === 'IT'
+            && ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase()))
+        );
+      }
       return [];
     }
 
-    // Karyawan & Sekretaris Direksi can only view assigned assets or loanable pool assets
-    if (user.role === 'Karyawan' || user.role === 'Sekretaris Direksi') {
-      return db.assets.filter(a => a.assigned_to?.id === user.id || a.is_loanable);
+    // PostgreSQL: combine employee personal baseline with every explicitly
+    // assigned dynamic role scope. A Karyawan can receive extra job-function
+    // roles without changing employee identity or office location.
+    const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
+    if (user.role === 'GA') {
+      const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
+      const isItWorkstation = (asset: ServerAsset) =>
+        ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+      // GA's writable inventory follows its explicit dynamic owner scope.
+      // The optional IT workstation exception is strictly read-only and limited
+      // to laptop/desktop categories, independent of the GA owner scope.
+      // Keep every explicitly scoped owner domain, including additional
+      // operational capabilities assigned to a GA employee. The IT workstation
+      // exception remains a separate read-only addition.
+      const readOnlyItWorkstations = canReadItWorkstations
+        ? db.assets.filter(asset =>
+          String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
+        )
+        : [];
+      const visibleIds = new Set([...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
+      return db.assets.filter(asset => visibleIds.has(asset.id));
     }
 
-    // Operational scopes: owner and physical location are independent.
-    const isItWorkstation = (asset: ServerAsset) => {
-      const code = String(asset.category_code || '').toUpperCase();
-      const name = String(asset.name || '').toLowerCase();
-      return ['HLT', 'HPC'].includes(code)
-        || code.includes('LAP')
-        || code.includes('PC')
-        || /\blaptop\b|\bnotebook\b|\bpc\b|\bdesktop\b/.test(name);
-    };
-    if (user.role === 'IT') return db.assets.filter(a => a.owner_division === 'IT' || a.owner_division === 'GA');
-    // GA manages GA assets; IT workstation assets are visible read-only to GA.
-    if (user.role === 'GA') return db.assets.filter(a => a.owner_division === 'GA' || (a.owner_division === 'IT' && isItWorkstation(a)));
-    if (user.role === 'Supply Chain') {
-      const dept = String(user.department || '').toLowerCase();
-      return db.assets.filter(a => {
-        const loc = String(a.location || '').toLowerCase();
-        return a.owner_division === 'SC' || loc.includes('supply chain') || loc.includes('rpc') || (dept.length >= 3 && loc.includes(dept));
-      });
-    }
-    if (user.role === 'PIBC') {
-      const dept = String(user.department || '').toLowerCase();
-      return db.assets.filter(a => {
-        const loc = String(a.location || '').toLowerCase();
-        return a.owner_division === 'PIBC' || loc.includes('pibc') || (dept.length >= 3 && loc.includes(dept));
-      });
-    }
-
-    // Dynamic RBAC Stage 11: bila PostgreSQL persistensi aktif, role yang bukan
-    // salah satu dari sembilan role legacy TIDAK pernah jatuh ke fallback
-    // legacy yang "melihat semua". Visibilitasnya diambil dari
-    // gabah_role_division_scopes via policy dinamis (deny-by-default).
-    if (isPostgresPersistenceActive() && !isLegacyScopedRole(user.role)) {
-      return filterAssetsByDynamicScopes(db.assets, user);
-    }
-
-    return db.assets;
+    const personalAssets = isEmployeeBaseline
+      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
+      : [];
+    const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
+    return db.assets.filter(asset => visibleIds.has(asset.id));
   }
 
   /**
@@ -255,7 +318,7 @@ export class GabahDomainService {
     category_name_or_code?: string;
     category_code?: string;
     category_name?: string;
-    owner_division?: 'IT' | 'GA' | 'SC' | 'PIBC';
+    owner_division?: string;
     /** T2B-1: unit operasional pengelola aset (relasi org_units.id).
      *  Tidak memengaruhi owner_division, RBAC, maupun asset numbering. */
     managing_unit_id?: string | null;
@@ -303,7 +366,7 @@ export class GabahDomainService {
 
     // Enforce Corporate Rules:
     // a) All IT items (IT-H & IT-S) belong to IT. GA only has read-only access.
-    let resolvedOwnerDivision: 'IT' | 'GA' | 'SC' | 'PIBC' = taxonomy.owner_division;
+    let resolvedOwnerDivision: string = taxonomy.owner_division;
     if (taxonomy.main_type === 'IT-H' || taxonomy.main_type === 'IT-S' || taxonomy.category_type === 'IT' || taxonomy.category_type === 'License') {
       resolvedOwnerDivision = 'IT';
     } else if (taxonomy.code === 'INV-F') {
@@ -313,23 +376,17 @@ export class GabahDomainService {
       resolvedOwnerDivision = payload.owner_division;
     }
 
-    // 2. Authorization check: Division Authority
-    if (actor.role === 'Karyawan' || actor.role === 'Auditor' || actor.role === 'Humas' || actor.role === 'Sekretaris Direksi') {
-      throw new Error('Peran Anda tidak berwenang mendaftarkan aset baru.');
+    const configuredOwner = (db.divisions || []).some(division =>
+      division.is_active !== false &&
+      String(division.code || '').trim().toUpperCase() === String(resolvedOwnerDivision || '').trim().toUpperCase()
+    );
+    if (!configuredOwner) {
+      throw new Error(`Owner aset "${resolvedOwnerDivision}" belum terdaftar pada master divisi/owner. Tambahkan melalui Administrasi Master Divisi terlebih dahulu.`);
     }
-    if (!isSuperadminActor(actor)) {
-      if (resolvedOwnerDivision === 'IT' && actor.role !== 'IT') {
-        throw new Error(`Semua barang IT adalah milik Divisi IT. Divisi ${actor.role} hanya memiliki izin lihat (read-only).`);
-      }
-      if (resolvedOwnerDivision === 'GA' && actor.role !== 'GA' && taxonomy.code !== 'INV-F') {
-        throw new Error(`Hanya Divisi GA yang berwenang mendaftarkan aset kategori ${taxonomy.name}.`);
-      }
-      if (resolvedOwnerDivision === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error(`Hanya Divisi Supply Chain yang berwenang mendaftarkan aset kategori ${taxonomy.name}.`);
-      }
-      if (resolvedOwnerDivision === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error(`Hanya Divisi PIBC yang berwenang mendaftarkan aset kategori ${taxonomy.name}.`);
-      }
+
+    // Authorization is based on the effective create permission AND explicit owner scope.
+    if (!canMutateAssetOwner(actor, resolvedOwnerDivision, 'assets.create')) {
+      throw new Error(`Akses ditolak: Anda tidak memiliki kewenangan membuat aset dengan owner ${resolvedOwnerDivision}.`);
     }
 
     // Check for duplicate serial number
@@ -441,21 +498,8 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
-    // Corporate Division Authority
-    if (!isSuperadminActor(actor)) {
-      const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
-      if (isITAsset && actor.role !== 'IT') {
-        throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang menugaskan aset ini.');
-      }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Aset General Affair (GA) hanya dapat ditugaskan oleh personel GA atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Aset Supply Chain hanya dapat ditugaskan oleh personel Supply Chain atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error('Aset PIBC hanya dapat ditugaskan oleh personel PIBC atau Admin GABAH.');
-      }
+    if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.assign')) {
+      throw new Error('Akses ditolak: Anda tidak memiliki permission assign pada domain pemilik aset ini.');
     }
 
     const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
@@ -526,22 +570,8 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
-    // Corporate Division Authority (RBAC matrix — Mutasi Lokasi): setiap divisi
-    // hanya boleh merelokasi aset miliknya sendiri; Admin GABAH bebas. View
-    // scope lintas divisi (mis. IT melihat aset GA) tidak memperluas hak mutasi.
-    if (!isSuperadminActor(actor)) {
-      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
-        throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang merelokasi aset IT.');
-      }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Aset General Affair (GA) hanya dapat direlokasi oleh personel GA atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Aset Supply Chain hanya dapat direlokasi oleh personel Supply Chain atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error('Aset PIBC hanya dapat direlokasi oleh personel PIBC atau Admin GABAH.');
-      }
+    if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.move')) {
+      throw new Error('Akses ditolak: Anda tidak memiliki permission move pada domain pemilik aset ini.');
     }
 
     const oldLocation = asset.location;
@@ -576,22 +606,8 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
-    // Corporate Division Authority (RBAC matrix — Mutasi Siklus Hidup): setiap
-    // divisi hanya boleh memutasi lifecycle aset miliknya sendiri; Admin GABAH
-    // bebas. View scope lintas divisi tidak memperluas hak mutasi.
-    if (!isSuperadminActor(actor)) {
-      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
-        throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang mengubah lifecycle aset IT.');
-      }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Aset General Affair (GA) hanya dapat dimutasi lifecycle-nya oleh personel GA atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Aset Supply Chain hanya dapat dimutasi lifecycle-nya oleh personel Supply Chain atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error('Aset PIBC hanya dapat dimutasi lifecycle-nya oleh personel PIBC atau Admin GABAH.');
-      }
+    if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.lifecycle')) {
+      throw new Error('Akses ditolak: Anda tidak memiliki permission lifecycle pada domain pemilik aset ini.');
     }
 
     switch (action) {
@@ -636,6 +652,12 @@ export class GabahDomainService {
     start_date: string;
     due_date: string;
   }, actor: ServerUser): ServerLoan {
+    // Self-service requests may only be created for the authenticated borrower.
+    // Creating on behalf of another employee is a separate delegated capability;
+    // until that capability exists, only Super Admin may set another borrower.
+    if (payload.borrower_id && payload.borrower_id !== actor.id && !isSuperadminActor(actor)) {
+      throw Object.assign(new Error('Pengajuan pinjaman hanya dapat dibuat untuk akun sendiri.'), { statusCode: 403 });
+    }
     const asset = db.assets.find(a => a.id === payload.asset_id);
     if (!asset) throw new Error('Aset tidak ditemukan');
     if (!asset.is_loanable) throw new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).');
@@ -711,17 +733,8 @@ export class GabahDomainService {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
-    // Authority verification: IT for IT assets, GA for GA assets, Admin GABAH everywhere
-    if (!isSuperadminActor(actor)) {
-      if (loan.owner_division === 'IT' && actor.role !== 'IT') {
-        throw new Error('Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang menyetujui peminjaman aset IT (laptop/proyektor).');
-      }
-      if (loan.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Akses ditolak: Hanya Divisi GA atau Admin GABAH yang berwenang menyetujui peminjaman aset GA (kendaraan operasional).');
-      }
-      if (loan.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Akses ditolak: Hanya Divisi Supply Chain atau Admin GABAH yang berwenang menyetujui peminjaman aset SC.');
-      }
+    if (!this.canOperateLoan(loan, actor, 'loans.approve')) {
+      throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission approve dan scope owner aset yang sesuai atau Super Admin yang dapat menyetujui pinjaman.'), { statusCode: 403 });
     }
 
     // Re-verify no collision with other ALREADY APPROVED / BORROWED loans for THIS specific asset
@@ -780,24 +793,8 @@ export class GabahDomainService {
       throw new Error('Hanya pinjaman berstatus menunggu persetujuan yang dapat ditolak.');
     }
 
-    // Authority verification: same matrix as approveLoan
-    if (!isSuperadminActor(actor)) {
-      if (loan.owner_division === 'IT' && actor.role !== 'IT') {
-        throw new Error('Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang menolak peminjaman aset IT.');
-      }
-      if (loan.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Akses ditolak: Hanya Divisi GA atau Admin GABAH yang berwenang menolak peminjaman aset GA.');
-      }
-      if (loan.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Akses ditolak: Hanya Divisi Supply Chain atau Admin GABAH yang berwenang menolak peminjaman aset SC.');
-      }
-      if (loan.owner_division === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error('Akses ditolak: Hanya Divisi PIBC atau Admin GABAH yang berwenang menolak peminjaman aset PIBC.');
-      }
-    }
-
-    if (actor.role === 'Auditor') {
-      throw new Error('Akses ditolak: Auditor bersifat read-only.');
+    if (!this.canOperateLoan(loan, actor, 'loans.reject')) {
+      throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission reject dan scope owner aset yang sesuai atau Super Admin yang dapat menolak pinjaman.'), { statusCode: 403 });
     }
 
     loan.status = 'rejected';
@@ -820,19 +817,23 @@ export class GabahDomainService {
   }
 
   /**
-   * Loan custody authority — the existing application authorization model
-   * (docs/architecture/RBAC.md §2 "Serah Terima / Pengembalian" rows and the
-   * client helper GabahService.canApproveLoan): Admin GABAH acts on all loans;
-   * division custodians (IT, GA, Supply Chain, PIBC) act only on loans for
-   * assets owned by their own division. No new roles, no dynamic RBAC changes.
+   * Loan custody authority follows dynamic RBAC: Super Admin is global; every
+   * other actor needs the operation permission and an explicit matching owner
+   * scope for the Loans module. Physical site and employee office do not grant access.
    */
-  static canOperateLoan(loan: ServerLoan, actor: ServerUser): boolean {
+  static canOperateLoan(loan: ServerLoan, actor: ServerUser, permissionKey: 'loans.approve' | 'loans.reject' | 'loans.handover' | 'loans.return' = 'loans.handover'): boolean {
     if (isSuperadminActor(actor)) return true;
-    if (actor.role === 'IT' && loan.owner_division === 'IT') return true;
-    if (actor.role === 'GA' && loan.owner_division === 'GA') return true;
-    if (actor.role === 'Supply Chain' && loan.owner_division === 'SC') return true;
-    if (actor.role === 'PIBC' && loan.owner_division === 'PIBC') return true;
-    return false;
+
+    // Loan authority follows the asset's actual owner domain, not its
+    // physical site or the employee's work location.
+    const owner = String(loan.owner_division || '').trim().toUpperCase();
+    if (!owner) return false;
+
+    if (isPostgresPersistenceActive()) {
+      return hasRbacPermission(String(actor.id), permissionKey)
+        && hasRbacScope(String(actor.id), 'division', owner, 'loans');
+    }
+    return actor.role === owner;
   }
 
   /**
@@ -846,8 +847,8 @@ export class GabahDomainService {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
-    // Authorization: only the owner-division custodian (IT/GA/SC/PIBC) or Admin GABAH.
-    if (!this.canOperateLoan(loan, actor)) {
+    // Authorization is enforced by the operation permission and matching owner scope.
+    if (!this.canOperateLoan(loan, actor, 'loans.handover')) {
       this.recordAudit('LOAN_HANDOVER_DENIED', 'Loans', `Ditolak: ${actor.name} (${actor.role}) bukan penanggung jawab divisi ${loan.owner_division} untuk pinjaman ${loan.loan_number}`, actor, loan.id);
       throw Object.assign(new Error('Akses ditolak: Hanya penanggung jawab divisi pemilik aset atau Admin GABAH yang berwenang melakukan serah terima.'), { statusCode: 403 });
     }
@@ -890,7 +891,7 @@ export class GabahDomainService {
     // Authorization: owner-division custodian, Admin GABAH, or the borrower
     // returning their own loan (user A can never touch user B's loan).
     const isBorrower = loan.borrower_id === actor.id;
-    if (!isBorrower && !this.canOperateLoan(loan, actor)) {
+    if (!isBorrower && !this.canOperateLoan(loan, actor, 'loans.return')) {
       this.recordAudit('LOAN_RETURN_DENIED', 'Loans', `Ditolak: ${actor.name} (${actor.role}) bukan peminjam maupun penanggung jawab divisi ${loan.owner_division} untuk pinjaman ${loan.loan_number}`, actor, loan.id);
       throw Object.assign(new Error('Akses ditolak: Hanya peminjam, penanggung jawab divisi pemilik aset, atau Admin GABAH yang berwenang mengembalikan pinjaman ini.'), { statusCode: 403 });
     }
@@ -917,7 +918,8 @@ export class GabahDomainService {
     if (asset) {
       asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
       asset.condition = condition;
-      asset.location = 'Head Office - Gudang Pool';
+      // Preserve the recorded physical location. Returning a loan changes custody/status,
+      // not the asset's site; a real relocation must use the asset-mutation workflow.
     }
 
     this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id);
@@ -1123,10 +1125,10 @@ export class GabahDomainService {
   /**
    * Accurate ERP Reconciliation Query
    */
-  static getReconciliationData() {
-    const totalAssets = db.assets.length;
-    const matched = db.assets.filter(a => a.corporate_asset_number && a.corporate_asset_number.trim().length > 0);
-    const unmatched = db.assets.filter(a => !a.corporate_asset_number || a.corporate_asset_number.trim().length === 0);
+  static getReconciliationData(assets: ServerAsset[] = db.assets) {
+    const totalAssets = assets.length;
+    const matched = assets.filter(a => a.corporate_asset_number && a.corporate_asset_number.trim().length > 0);
+    const unmatched = assets.filter(a => !a.corporate_asset_number || a.corporate_asset_number.trim().length === 0);
 
     return {
       stats: {
@@ -1135,7 +1137,7 @@ export class GabahDomainService {
         unmatched_count: unmatched.length,
         reconciliation_percentage: totalAssets > 0 ? Math.round((matched.length / totalAssets) * 100) : 100,
       },
-      items: db.assets.map(a => ({
+      items: assets.map(a => ({
         id: a.id,
         asset_number: a.asset_number,
         corporate_asset_number: a.corporate_asset_number || null,
@@ -1189,8 +1191,11 @@ export class GabahDomainService {
     interruption_reason?: string;
     notes?: string;
   }, actor: ServerUser): ServerRoomReservation {
-    if (actor.role === 'Auditor') {
-      throw new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).');
+    const canCreateReservation = isPostgresPersistenceActive()
+      ? hasRoomPermission(actor, 'room_reservations.create')
+      : !isAuditorActor(actor);
+    if (!canCreateReservation) {
+      throw Object.assign(new Error('Akses ditolak: Anda tidak memiliki izin membuat reservasi.'), { statusCode: 403 });
     }
 
     const room = (db.rooms || []).find(r => r.id === payload.room_id);
@@ -1227,12 +1232,13 @@ export class GabahDomainService {
       return payload.start_time < r.end_time && payload.end_time > r.start_time;
     });
 
-    // Interruption is restricted to Admin GABAH or Sekretaris Direksi with HIGH priority.
+    // Priority override is a separate capability. The Sekretariat Direksi
+    // template receives it by migration; Super Admin can grant it to another
+    // approved function without changing the employee's primary role.
+    const canSetDirectorPriority = hasRoomPermission(actor, 'room_reservations.override_priority', 'Sekretaris Direksi');
     const meetingType = (db.meetingTypes || []).find(t => t.code === payload.meeting_type);
-    const requestedPriority = payload.priority || meetingType?.priority_level || (actor.role === 'Sekretaris Direksi' ? 'high' : 'medium');
-    const canInterrupt =
-      isSuperadminActor(actor) ||
-      (actor.role === 'Sekretaris Direksi' && requestedPriority === 'high');
+    const requestedPriority = payload.priority || meetingType?.priority_level || (canSetDirectorPriority ? 'high' : 'medium');
+    const canInterrupt = canSetDirectorPriority && requestedPriority === 'high';
 
     if (conflicting) {
       if (conflicting.status === 'in_use') {
@@ -1463,8 +1469,8 @@ export class GabahDomainService {
   }
 
   static approveRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA') {
-      throw Object.assign(new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menyetujui reservasi ruang rapat.'), { statusCode: 403 });
+    if (!hasRoomPermission(actor, 'room_reservations.approve', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.approve.'), { statusCode: 403 });
     }
 
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
@@ -1545,8 +1551,8 @@ export class GabahDomainService {
   }
 
   static rejectRoomReservation(reservationId: string, reason: string, actor: ServerUser): ServerRoomReservation {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA') {
-      throw new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menolak reservasi ruang rapat.');
+    if (!hasRoomPermission(actor, 'room_reservations.reject', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.reject.'), { statusCode: 403 });
     }
 
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
@@ -1578,8 +1584,8 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
-      throw Object.assign(new Error('Akses ditolak: check-in hanya dapat dilakukan oleh pemohon, GA, atau Admin GABAH.'), { statusCode: 403 });
+    if (reservation.organizer_id !== actor.id && !hasRoomPermission(actor, 'room_reservations.checkin', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission check-in untuk reservasi ini.'), { statusCode: 403 });
     }
     if (reservation.status !== 'approved') {
       throw Object.assign(new Error(`Check-in hanya dapat dilakukan pada status "approved" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
@@ -1603,8 +1609,8 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
-      throw Object.assign(new Error('Akses ditolak: check-out hanya dapat dilakukan oleh pemohon, GA, atau Admin GABAH.'), { statusCode: 403 });
+    if (reservation.organizer_id !== actor.id && !hasRoomPermission(actor, 'room_reservations.checkout', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission check-out untuk reservasi ini.'), { statusCode: 403 });
     }
     if (reservation.status !== 'in_use') {
       throw Object.assign(new Error(`Check-out hanya dapat dilakukan pada status "in_use" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
@@ -1628,8 +1634,8 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
-      throw Object.assign(new Error('Akses ditolak: Anda hanya dapat membatalkan reservasi yang Anda buat sendiri.'), { statusCode: 403 });
+    if (reservation.organizer_id !== actor.id && !hasRoomPermission(actor, 'room_reservations.cancel', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission membatalkan reservasi ini.'), { statusCode: 403 });
     }
     if (!['pending_approval', 'approved'].includes(reservation.status)) {
       throw Object.assign(new Error(`Reservasi tidak dapat dibatalkan dari status "${reservation.status}".`), { statusCode: 409 });
@@ -1648,8 +1654,8 @@ export class GabahDomainService {
   }
 
   static updateMeetingRoom(roomId: string, updates: Partial<ServerMeetingRoom>, actor: ServerUser): ServerMeetingRoom {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA') {
-      throw new Error('Akses ditolak: Hanya GA dan Admin GABAH yang berwenang mengubah status ruangan.');
+    if (!hasRoomPermission(actor, 'meeting_rooms.update', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission meeting_rooms.update.'), { statusCode: 403 });
     }
 
     const room = (db.rooms || []).find(r => r.id === roomId);

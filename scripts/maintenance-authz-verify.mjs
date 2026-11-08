@@ -3,9 +3,10 @@
  *
  * Self-terminating: boots the compiled server bundle on a random port with the
  * development file store, logs in with provisioned canonical credentials, and
- * asserts the legacy maintenance authorization matrix is invariant:
- *   - read filter chain (IT/GA/SC filtered; Auditor full; legacy fall-through)
- *   - write allowlist (Admin GABAH / IT / GA) + division authority
+ * asserts maintenance access follows asset owner scope:
+ *   - Super Admin/Auditor read all; IT sees IT-owned schedules; GA sees GA-owned schedules
+ *   - employee/branch-location accounts do not see branch-wide schedules
+ *   - writes remain restricted to Super Admin / IT / GA and matching owner scope
  * PostgreSQL-mode enforcement is verified statically by
  * dynamic-rbac-foundation-verify.mjs; CI has no PostgreSQL instance, so no
  * runtime-PG claim is made here.
@@ -144,20 +145,20 @@ async function main() {
       itList.status === 200 && codes(itList.json?.data).has('MNT-2026-002') && !codes(itList.json?.data).has('MNT-2026-001'));
 
     const gaList = await req(base, 'GET', '/api/maintenances', { token: tokens.ga });
-    record('GET GA filtered to GA/General scope', 'MNT-001+003 (General)', `HTTP ${gaList.status} (${[...codes(gaList.json?.data)].join(',')})`,
-      gaList.status === 200 && codes(gaList.json?.data).has('MNT-2026-001') && codes(gaList.json?.data).has('MNT-2026-003') && !codes(gaList.json?.data).has('MNT-2026-002'));
+    record('GET GA filtered to GA owner scope only', 'MNT-001 only', `HTTP ${gaList.status} (${[...codes(gaList.json?.data)].join(',')})`,
+      gaList.status === 200 && codes(gaList.json?.data).has('MNT-2026-001') && !codes(gaList.json?.data).has('MNT-2026-002') && !codes(gaList.json?.data).has('MNT-2026-003'));
 
     const scList = await req(base, 'GET', '/api/maintenances', { token: tokens.sc });
-    record('GET Supply Chain sees only SC schedules', 'MNT-003 only', `HTTP ${scList.status} (${[...codes(scList.json?.data)].join(',')})`,
-      scList.status === 200 && codes(scList.json?.data).has('MNT-2026-003') && !codes(scList.json?.data).has('MNT-2026-001') && !codes(scList.json?.data).has('MNT-2026-002'));
+    record('GET Supply Chain location sees no branch-wide maintenance schedules', 'empty list', `HTTP ${scList.status} (${[...codes(scList.json?.data)].join(',')})`,
+      scList.status === 200 && codes(scList.json?.data).size === 0);
 
     const karList = await req(base, 'GET', '/api/maintenances', { token: tokens.karyawan });
-    record('GET Karyawan legacy fall-through (full list) invariant', 'full list', `HTTP ${karList.status} (${codes(karList.json?.data).size} sched)`,
-      karList.status === 200 && codes(karList.json?.data).has('MNT-2026-001') && codes(karList.json?.data).has('MNT-2026-002'));
+    record('GET Karyawan sees no unassigned asset maintenance schedules', 'empty list', `HTTP ${karList.status} (${codes(karList.json?.data).size} sched)`,
+      karList.status === 200 && codes(karList.json?.data).size === 0);
 
     const pibcList = await req(base, 'GET', '/api/maintenances', { token: tokens.pibc });
-    record('GET PIBC legacy fall-through (full list) invariant', 'full list', `HTTP ${pibcList.status} (${codes(pibcList.json?.data).size} sched)`,
-      pibcList.status === 200 && codes(pibcList.json?.data).has('MNT-2026-001') && codes(pibcList.json?.data).has('MNT-2026-002'));
+    record('GET PIBC location sees no branch-wide maintenance schedules', 'empty list', `HTTP ${pibcList.status} (${codes(pibcList.json?.data).size} sched)`,
+      pibcList.status === 200 && codes(pibcList.json?.data).size === 0);
 
     // ---------- CREATE (allowlist + division authority) ----------
     const anonPost = await req(base, 'POST', '/api/maintenances', { body: { asset_id: 'AST-HSV-001' } });

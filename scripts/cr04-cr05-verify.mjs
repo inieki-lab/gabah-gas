@@ -69,6 +69,27 @@ async function req(base, method, urlPath, { body, token, headers } = {}) {
   return { status: res.status, json };
 }
 
+async function uploadContractDocument(base, contractId, token, content) {
+  const form = new FormData();
+  form.append('file', new Blob([Buffer.from(content)], { type: 'application/pdf' }), 'verify-contract.pdf');
+  const res = await fetch(`${base}/api/contracts/${contractId}/documents/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+    signal: AbortSignal.timeout(15000),
+  });
+  let json = {};
+  try { json = await res.json(); } catch { /* empty body */ }
+  return { status: res.status, json };
+}
+
+async function downloadContractDocument(base, contractId, documentId, token) {
+  return fetch(`${base}/api/contracts/${contractId}/documents/${documentId}/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15000),
+  });
+}
+
 async function waitForServer(base, tries = 80) {
   for (let i = 0; i < tries; i++) {
     try {
@@ -107,6 +128,7 @@ function spawnServer({ port, databaseUrl, nodeEnv }) {
       GABAH_REMINDER_RUN_ON_BOOT: 'false',
       GABAH_INITIAL_ADMIN_PASSWORD: ADMIN_PASS,
       GABAH_INITIAL_USER_PASSWORD: USER_PASS,
+      GABAH_UPLOAD_DIR: path.resolve(process.cwd(), 'server/data/cr-verify-uploads'),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -121,6 +143,7 @@ const ADMIN_PASS = `Vfy-Adm-${crypto.randomBytes(9).toString('base64url')}`;
 const USER_PASS = `Vfy-Usr-${crypto.randomBytes(9).toString('base64url')}`;
 const ADMIN_EMAIL = 'admin@foodstation.co.id';
 const IT_EMAIL = 'it.support@foodstation.co.id';
+const GA_EMAIL = 'ga@foodstation.co.id';
 const KARYAWAN_EMAIL = 'hendra.w@foodstation.co.id';
 const AUDITOR_EMAIL = 'auditor@foodstation.co.id';
 
@@ -162,9 +185,11 @@ async function main() {
   let exited = null;
   child.on('exit', (code, signal) => { exited = { code, signal }; });
 
+  const uploadDir = path.resolve(process.cwd(), 'server/data/cr-verify-uploads');
   const cleanup = () => {
     try { child.kill('SIGKILL'); } catch { /* already dead */ }
     if (backupState !== null) fs.writeFileSync(stateFile, backupState);
+    try { fs.rmSync(uploadDir, { recursive: true, force: true }); } catch { /* best effort */ }
   };
   process.on('exit', cleanup);
   process.on('SIGINT', () => { cleanup(); process.exit(130); });
@@ -215,6 +240,10 @@ async function main() {
     const itToken = itLogin.json?.data?.token || '';
     record('login IT user', '200 + token', `HTTP ${itLogin.status}`, itLogin.status === 200 && Boolean(itToken));
 
+    const gaLogin = await req(base, 'POST', '/api/auth/login', { body: { email: GA_EMAIL, password: USER_PASS } });
+    const gaToken = gaLogin.json?.data?.token || '';
+    record('login GA user', '200 + token', `HTTP ${gaLogin.status}`, gaLogin.status === 200 && Boolean(gaToken));
+
     const karyawanLogin = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
     const karyawanToken = karyawanLogin.json?.data?.token || '';
     record('login Karyawan', '200 + token', `HTTP ${karyawanLogin.status}`, karyawanLogin.status === 200 && Boolean(karyawanToken));
@@ -249,6 +278,22 @@ async function main() {
     const contractId = created.json?.data?.id || '';
     record('CR-04 contract create (201)', '201 + id', `HTTP ${created.status} id=${contractId ? 'ok' : 'missing'}`, created.status === 201 && Boolean(contractId));
 
+    const invalidContractUpload = await uploadContractDocument(base, contractId, adminToken, 'NOT-A-PDF-FILE');
+    record('CR-04 contract upload rejects content with a mismatched PDF signature', '400',
+      `HTTP ${invalidContractUpload.status}`, invalidContractUpload.status === 400);
+    const contractFileContent = '%PDF-1.4\\nGABAH-CONTRACT-DOCUMENT-PERSISTENCE-VERIFY';
+    const uploadedDocument = await uploadContractDocument(base, contractId, adminToken, contractFileContent);
+    const documentId = uploadedDocument.json?.data?.document_id || '';
+    record('CR-04 contract upload writes document bytes to persistent storage', '200 + document id',
+      `HTTP ${uploadedDocument.status} id=${documentId ? 'ok' : 'missing'}`,
+      uploadedDocument.status === 200 && Boolean(documentId));
+
+    const initialDownload = documentId ? await downloadContractDocument(base, contractId, documentId, adminToken) : null;
+    const initialDownloadBody = initialDownload ? await initialDownload.text() : '';
+    record('CR-04 authorized contract document download returns original bytes', '200 + exact content',
+      `HTTP ${initialDownload?.status ?? 'skipped'} content=${initialDownloadBody}`,
+      initialDownload?.status === 200 && initialDownloadBody === contractFileContent);
+
     const readBack = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken });
     record('CR-04 contract read-back', '200 + contract_number', `HTTP ${readBack.status} num=${readBack.json?.data?.contract_number || '-'}`, readBack.status === 200 && Boolean(readBack.json?.data?.contract_number));
 
@@ -258,8 +303,24 @@ async function main() {
     });
     record('CR-04 contract update (PATCH notes)', '200 + notes applied', `HTTP ${patched.status} notes=${patched.json?.data?.notes || '-'}`, patched.status === 200 && patched.json?.data?.notes === 'updated notes by verify');
 
+    // Assign a second, explicitly scoped role to Karyawan. GA has contracts.read
+    // with GA-only contract scope; this should not expose the IT-owned test contract.
+    const roleCatalog = await req(base, 'GET', '/api/admin/rbac/roles', { token: adminToken });
+    const gaRole = (roleCatalog.json?.data || []).find(role => role.role_key === 'ga' && role.is_active);
+    const karyawanUser = (usersRes.json?.data || []).find(user => user.email === KARYAWAN_EMAIL);
+    const assignment = await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
+      token: adminToken,
+      body: { role_ids: gaRole ? [Number(gaRole.id)] : [] },
+    });
+    record('Dynamic role assignment adds GA capability without replacing Karyawan primary role', '200 + GA role', `HTTP ${assignment.status}`, assignment.status === 200 && assignment.json?.data?.role_ids?.includes(Number(gaRole?.id)));
+
     const karyawanView = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
-    record('RBAC restricted contract hidden from other division (Karyawan)', '404', `HTTP ${karyawanView.status}`, karyawanView.status === 404);
+    record('RBAC Karyawan with GA role cannot read IT-owned contract outside GA scope', '404', `HTTP ${karyawanView.status}`, karyawanView.status === 404);
+    const karyawanDocumentDownload = documentId
+      ? await downloadContractDocument(base, contractId, documentId, karyawanToken)
+      : null;
+    record('RBAC Karyawan cannot download an out-of-scope contract document', '404',
+      `HTTP ${karyawanDocumentDownload?.status ?? 'skipped'}`, karyawanDocumentDownload?.status === 404);
 
     const auditorCreate = await req(base, 'POST', '/api/contracts', {
       token: auditorToken,
@@ -276,6 +337,133 @@ async function main() {
     });
     record('RBAC ticket linkage probe of restricted contract rejected', '201 without contract_id', `HTTP ${probeTicket.status} contract_id=${probeTicket.json?.data?.contract_id ?? 'unset'}`,
       probeTicket.status === 201 && !probeTicket.json?.data?.contract_id);
+
+    const assignmentInventory = await req(base, 'GET', '/api/admin/rbac/user-assignments', { token: adminToken });
+    const persistedAssignment = (assignmentInventory.json?.data || []).find(item => String(item.user_id) === String(karyawanUser?.id));
+    record('Additional role survives ordinary PostgreSQL persistence after ticket creation', 'GA additional + Karyawan primary',
+      `roles=${(persistedAssignment?.role_ids || []).join(',')} primary=${persistedAssignment?.primary_role_id ?? 'none'}`,
+      assignment.status === 200 && (persistedAssignment?.role_ids || []).includes(Number(gaRole?.id))
+        && Number(persistedAssignment?.primary_role_id) === Number(assignment.json?.data?.primary_role_id));
+
+    // Vendor ownership is independent from category and employee work location.
+    const itVendor = await req(base, 'POST', '/api/vendors', {
+      token: itToken,
+      body: { name: 'VERIFY Vendor IT', category: 'Maintenance', owner_division: 'IT', rating: 4.2 },
+    });
+    const itVendorId = itVendor.json?.data?.id || '';
+    record('IT can create IT-owned vendor independent of service category', '201 + owner IT', `HTTP ${itVendor.status} owner=${itVendor.json?.data?.owner_division || '-'}`,
+      itVendor.status === 201 && itVendor.json?.data?.owner_division === 'IT');
+
+    const gaVendor = await req(base, 'POST', '/api/vendors', {
+      token: gaToken,
+      body: { name: 'VERIFY Vendor GA', category: 'IT Hardware', owner_division: 'GA', rating: 4.5 },
+    });
+    record('GA can create GA-owned vendor even when category text says IT Hardware', '201 + owner GA', `HTTP ${gaVendor.status} owner=${gaVendor.json?.data?.owner_division || '-'}`,
+      gaVendor.status === 201 && gaVendor.json?.data?.owner_division === 'GA');
+
+    const gaCrossOwner = await req(base, 'POST', '/api/vendors', {
+      token: gaToken,
+      body: { name: 'VERIFY Forbidden GA to IT', category: 'Maintenance', owner_division: 'IT' },
+    });
+    record('GA cannot create IT-owned vendor outside GA owner scope', '403', `HTTP ${gaCrossOwner.status}`, gaCrossOwner.status === 403);
+
+    const itVendorList = await req(base, 'GET', '/api/vendors', { token: itToken });
+    const gaVendorList = await req(base, 'GET', '/api/vendors', { token: gaToken });
+    record('IT vendor directory is restricted to IT owner domain', 'IT only',
+      (itVendorList.json?.data || []).map(v => v.owner_division).join(','),
+      itVendorList.status === 200 && (itVendorList.json?.data || []).length === 1 && itVendorList.json.data[0].owner_division === 'IT');
+    record('GA vendor directory is restricted to GA owner domain', 'GA only',
+      (gaVendorList.json?.data || []).map(v => v.owner_division).join(','),
+      gaVendorList.status === 200 && (gaVendorList.json?.data || []).length === 1 && gaVendorList.json.data[0].owner_division === 'GA');
+
+    const itCrossOwnerUpdate = await req(base, 'PATCH', `/api/vendors/${itVendorId}`, {
+      token: itToken,
+      body: { owner_division: 'GA' },
+    });
+    record('IT cannot reclassify an IT vendor into GA owner without destination scope', '403', `HTTP ${itCrossOwnerUpdate.status}`, itCrossOwnerUpdate.status === 403);
+
+    const auditorVendorDenied = await req(base, 'POST', '/api/vendors', {
+      token: auditorToken,
+      body: { name: 'VERIFY Forbidden Karyawan', category: 'General', owner_division: 'GA' },
+    });
+    record('Auditor without vendors.create cannot create vendor', '403', `HTTP ${auditorVendorDenied.status}`, auditorVendorDenied.status === 403);
+
+    const newOwner = await req(base, 'POST', '/api/master/divisions', {
+      token: adminToken,
+      body: { code: 'RPCSC', name: 'RPC/SC Operations', leader: 'Kepala Operasional RPC/SC', depts: ['Gudang', 'Produksi'] },
+    });
+    record('Super Admin can add future owner domain without code change', '201', `HTTP ${newOwner.status}`, newOwner.status === 201);
+
+    const vendorRole = await req(base, 'POST', '/api/admin/rbac/roles', {
+      token: adminToken,
+      body: { role_key: 'vendor_rpcsc_test', name: 'Vendor RPC/SC Test', description: 'CI-only custom owner role' },
+    });
+    const vendorRoleId = Number(vendorRole.json?.data?.id || 0);
+    record('Super Admin can create custom owner-scoped role', '201 + role id', `HTTP ${vendorRole.status}`, vendorRole.status === 201 && vendorRoleId > 0);
+
+    const vendorRolePermissions = await req(base, 'PUT', `/api/admin/rbac/roles/${vendorRoleId}/permissions`, {
+      token: adminToken,
+      body: { permission_keys: ['vendors.read', 'vendors.create', 'vendors.update'] },
+    });
+    record('Custom role can receive explicit vendor permissions', '200', `HTTP ${vendorRolePermissions.status}`, vendorRolePermissions.status === 200);
+
+    const vendorRoleScopes = await req(base, 'PUT', `/api/admin/rbac/roles/${vendorRoleId}/scopes`, {
+      token: adminToken,
+      body: { scopes: [{ module: 'vendors', type: 'division', value: 'RPCSC' }] },
+    });
+    record('Custom role can receive future owner domain scope', '200', `HTTP ${vendorRoleScopes.status}`, vendorRoleScopes.status === 200);
+
+    const assignVendorRole = await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
+      token: adminToken,
+      body: { role_ids: [Number(gaRole?.id), vendorRoleId] },
+    });
+    record('Karyawan can receive a separate vendor owner capability without changing primary role', '200', `HTTP ${assignVendorRole.status}`, assignVendorRole.status === 200);
+
+    const rpcscVendor = await req(base, 'POST', '/api/vendors', {
+      token: karyawanToken,
+      body: { name: 'VERIFY Vendor RPCSC', category: 'IT Hardware', owner_division: 'RPCSC', rating: 4.1 },
+    });
+    const rpcscVendorId = rpcscVendor.json?.data?.id || '';
+    record('Custom RPC/SC owner can manage vendor; category does not determine owner', '201 + owner RPCSC',
+      `HTTP ${rpcscVendor.status} owner=${rpcscVendor.json?.data?.owner_division || '-'}`,
+      rpcscVendor.status === 201 && rpcscVendor.json?.data?.owner_division === 'RPCSC');
+
+    const karyawanVendors = await req(base, 'GET', '/api/vendors', { token: karyawanToken });
+    record('Combined GA + custom RPCSC roles see only their combined owner scopes', 'GA and RPCSC; no IT',
+      (karyawanVendors.json?.data || []).map(v => v.owner_division).join(','),
+      karyawanVendors.status === 200 && (karyawanVendors.json?.data || []).length >= 2
+        && (karyawanVendors.json.data || []).some(v => v.owner_division === 'RPCSC')
+        && (karyawanVendors.json.data || []).some(v => v.owner_division === 'GA')
+        && !(karyawanVendors.json.data || []).some(v => v.owner_division === 'IT'));
+
+    // Auditor is a deny-write capability even when assigned as an additional role.
+    // Preserve the employee primary role and all other approved capabilities.
+    const auditorRole = (roleCatalog.json?.data || []).find(role => role.role_key === 'auditor' && role.is_active);
+    const addAuditorRole = await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
+      token: adminToken,
+      body: { role_ids: [Number(gaRole?.id), vendorRoleId, Number(auditorRole?.id)] },
+    });
+    record('Auditor additional role can be assigned without replacing Karyawan primary', '200 + auditor capability',
+      `HTTP ${addAuditorRole.status}`, addAuditorRole.status === 200 && addAuditorRole.json?.data?.role_ids?.includes(Number(auditorRole?.id)));
+    const additionalAuditorWrite = await req(base, 'POST', '/api/tickets', {
+      token: karyawanToken,
+      body: { title: 'VERIFY Auditor additional role write denial', description: 'must be denied', category: 'IT', priority: 'low' },
+    });
+    record('Auditor additional role enforces global read-only on API writes', '403',
+      `HTTP ${additionalAuditorWrite.status}`, additionalAuditorWrite.status === 403);
+    const additionalAuditorRead = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
+    record('Auditor additional role receives authorized audit read access', '200',
+      `HTTP ${additionalAuditorRead.status}`, additionalAuditorRead.status === 200);
+    const auditorDocumentDownload = documentId
+      ? await downloadContractDocument(base, contractId, documentId, karyawanToken)
+      : null;
+    const auditorDocumentBody = auditorDocumentDownload ? await auditorDocumentDownload.text() : '';
+    record('Auditor additional role can download authorized audit document', '200 + exact content',
+      `HTTP ${auditorDocumentDownload?.status ?? 'skipped'}`,
+      auditorDocumentDownload?.status === 200 && auditorDocumentBody === contractFileContent);
+
+    const deleteReferencedOwner = await req(base, 'DELETE', '/api/master/divisions/RPCSC', { token: adminToken });
+    record('Owner domain referenced by vendor cannot be deleted', '400', `HTTP ${deleteReferencedOwner.status}`, deleteReferencedOwner.status === 400);
 
     const linkedTicket = await req(base, 'POST', '/api/tickets', {
       token: adminToken,
@@ -336,6 +524,13 @@ async function main() {
     const afterRestart = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken2 });
     record('CR-04 contract persists across restart (PostgreSQL authoritative)', '200 + updated notes', `HTTP ${afterRestart.status} notes=${afterRestart.json?.data?.notes || '-'}`,
       afterRestart.status === 200 && afterRestart.json?.data?.notes === 'updated notes by verify' && afterRestart.json?.data?.contract_number === readBack.json?.data?.contract_number);
+    const documentAfterRestart = documentId
+      ? await downloadContractDocument(base, contractId, documentId, adminToken2)
+      : null;
+    const documentBodyAfterRestart = documentAfterRestart ? await documentAfterRestart.text() : '';
+    record('CR-04 contract document bytes persist across app restart', '200 + exact content',
+      `HTTP ${documentAfterRestart?.status ?? 'skipped'}`,
+      documentAfterRestart?.status === 200 && documentBodyAfterRestart === contractFileContent);
 
     const ticketsAfter = await req(base, 'GET', '/api/tickets', { token: adminToken2 });
     const persistedLink = (ticketsAfter.json?.data || []).some(t => t.id === linkedTicketId && t.contract_id === contractId);

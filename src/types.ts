@@ -221,7 +221,8 @@ export interface MaintenanceSchedule {
 export interface Vendor {
   id: string;
   name: string;
-  category: AssetCategoryType; // Vendor service domain (License = asset domain, NOT a ticket category)
+  category: AssetCategoryType; // Vendor service category; separate from owner domain.
+  owner_division?: string | null;
   pic_name: string;
   pic_phone: string;
   pic_email: string;
@@ -272,6 +273,10 @@ export interface UserProfile {
   // credentials are never sent to or stored by the frontend.
   phone?: string;
   is_active?: boolean;
+  /** Permission efektif dari RBAC backend; undefined pada mode file-store legacy. */
+  permission_keys?: string[];
+  is_superadmin?: boolean;
+  role_keys?: string[];
   /** Telegram chat id untuk pengiriman reminder (admin-managed via PATCH /api/users/:id). */
   telegram_chat_id?: string;
 }

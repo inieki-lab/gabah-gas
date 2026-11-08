@@ -186,7 +186,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
           </button>
 
           <button
-            onClick={() => exportAssetsToCsv(assets)}
+            onClick={() => exportAssetsToCsv(filteredAssets)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
             title="Download CSV Master Aset untuk Excel"
           >
@@ -462,7 +462,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                     {/* Actions */}
                     <td className="px-4 py-3.5 align-top text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
-                        {onEditAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                        {onEditAsset && GabahService.canEditAsset(currentUser, asset) && (
                           <button
                             onClick={() => onEditAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"

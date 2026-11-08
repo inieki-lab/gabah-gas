@@ -1,3 +1,19 @@
+# Status terkini — Stabilisasi GABAH (2026-11-08)
+
+> Catatan ini mengungguli snapshot historis Stage 13F di bawah. Bagian lama dipertahankan untuk jejak audit, bukan sebagai gambaran implementasi hari ini.
+
+- Branch integrasi aktif: fix/role-based-navigation (PR #18, masih draft/open). Jangan deploy atau merge sebelum release gates terpenuhi.
+- PostgreSQL 17 fresh database dan persistence integration: CR-04/CR-05 63/63 PASS; migration ledger 35 entries; restart persistence PASS; production fail-fast saat PostgreSQL mati PASS.
+- Dynamic RBAC foundation 63/63, asset-scope policy 37/37, P0 security 37/37, maintenance authorization 33/33; role assignment, owner scope, user directory, org model, loan, room, dashboard, dan menu checks PASS.
+- Auditor read-only mengikuti role efektif termasuk role tambahan: Karyawan + GA + Auditor; assignment 200, API write 403, audit read 200.
+- Form pegawai baru memisahkan primary role dari lokasi kerja. Humas/Sekretariat Direksi menjadi role tambahan; Supply Chain/PIBC adalah unit/lokasi, bukan primary role aplikasi.
+- Contract documents: upload benar-benar menyimpan bytes, MIME/signature diperiksa, path terisolasi per kontrak, download melalui permission + visibility guard, dan dokumen tetap tersedia setelah restart. Unauthorized contract download 404.
+- Docker production image: Node 22.23.4 multi-stage, npm ci dari lockfile, runtime non-root, migrations disertakan. Runtime smoke terhadap PostgreSQL 17 dan uploads volume PASS.
+- Compose memakai PostgreSQL volume + uploads_data volume. deploy.sh membangun image, menunggu PostgreSQL healthy, lalu mengganti app container saja.
+- AI coding agent wajib membaca AGENTS.md, .agents/skills/gabah-maintainer/SKILL.md, dan docs/AI-CHANGE-GUARDRAILS.md. Branch AI lain: ai/<agent>/<work-item>, PR ke branch integrasi.
+- Belum production-ready: browser UAT dengan pengguna, upgrade rehearsal dari snapshot legacy, backup/restore rehearsal untuk DB + uploads_data, staging deployment, TLS/reverse proxy, monitoring, dan sign-off bisnis masih terbuka.
+
+
 ## Status final — Stage 13F merged (2026-10-21)
 
 - PR #9 **MERGED**; main commit `921d3bb5bcdc32874a556260865e047a0af10868`.
@@ -304,3 +320,390 @@ Memberi Superadmin kemampuan menetapkan/mengubah assignment role (termasuk role 
 
 ### Konfirmasi
 Tahap 13A **tidak mengubah** file `server.ts`, `server/services.ts`, `server/runtime-hardening.ts`, `server/rbac-policy.ts`, migration, CI, maupun konfigurasi. Seluruh perubahan commit ini hanya `CHANGELOG.md` dan `docs/*` (setelah diff review).
+
+
+---
+
+## Addendum — Handoff & koreksi keputusan bisnis (2026-11-08)
+
+> **Bagian ini lebih baru dan mengesampingkan catatan lama yang bertentangan di atas.** AI/pengembang berikutnya wajib membaca bagian ini sebelum mengubah RBAC, migrasi organisasi, atau data aset.
+
+### Status branch dan perubahan terakhir yang terverifikasi
+
+- Repository: `inieki-lab/gabah-gas`
+- Branch kerja: `fix/role-based-navigation`
+- PR: [#18](https://github.com/inieki-lab/gabah-gas/pull/18) — masih **Draft / Open**, belum merge.
+- HEAD saat catatan ini dibuat: `656dc36d952af918415b9c4eea385ca988b566ad`.
+- CI terakhir yang diperiksa: [run 42475092479](https://github.com/inieki-lab/gabah-gas/actions/runs/42475092479) — **success**. Ini hanya membuktikan job CI yang tersedia lulus, bukan UAT seluruh role atau kesiapan produksi.
+- Commit terbaru yang relevan:
+  - `61c1bc1` — GA inventory mengikuti explicit dynamic asset scope; akses baca IT workstation dipisahkan.
+  - `3014c90` — POST asset tidak lagi menolak berdasarkan label role Auditor/Karyawan; otorisasi tetap harus diputuskan oleh permission dan domain service.
+  - `656dc36` — verifikasi source asset scope diperbarui.
+- Perubahan GA: GA mengelola aset owner GA; IT laptop/desktop dapat terlihat oleh GA hanya jika permission `assets.read.it_workstations` diberikan. Kategori yang dibaca dibatasi kode `HLT` dan `HPC`; akses ini read-only.
+
+### Koreksi penting atas catatan migrasi sebelumnya
+
+Catatan tahap 13/8 November sebelumnya menyebut migration `026_map_branch_accounts_to_employee_location.sql` memetakan seluruh akun Supply Chain/PIBC ke role Karyawan. **Jangan menganggap pendekatan itu sebagai keputusan bisnis final.**
+
+Keputusan user yang paling baru dan menjadi acuan:
+- Supply Chain dan PIBC adalah **lokasi kerja/cabang**, bukan role aplikasi dan bukan otomatis unit pemilik aset.
+- Di setiap lokasi terdapat jabatan/fungsi seperti Kadiv, Kadep, Kasi, dan Staf.
+- Jangan mengubah seluruh pegawai SC/PIBC menjadi Karyawan hanya karena lokasi kerjanya.
+- Role aplikasi ditentukan oleh fungsi pekerjaan dan permission yang disetujui; jabatan, unit organisasi, lokasi kerja, role aplikasi, dan scope data adalah atribut terpisah.
+- Sebelum migration 026 dijalankan di database mana pun, audit ulang isi SQL dan data target. Buat pemetaan aman berdasarkan fungsi/jabatan dan pertahankan role tambahan. Jangan menghapus/mengganti akun, histori, atau role lama secara massal. Bila mapping tidak dapat dibuktikan, tandai untuk review Super Admin.
+- Migration 026 dan 027 belum boleh dianggap sudah diterapkan di produksi. Backup, dry-run, row-count, dan persetujuan tetap wajib.
+
+### Model organisasi dan otorisasi yang wajib dipertahankan
+
+Pisahkan dimensi berikut; jangan gabungkan menjadi satu kolom/label:
+1. Perusahaan.
+2. Lokasi kantor/kerja (HO, Supply Chain, PIBC, dan lokasi lain).
+3. Unit organisasi/fungsi.
+4. Jabatan/level (Direksi, Kadiv, Kadep, Kasi, Staf).
+5. Role aplikasi (template kapabilitas).
+6. Permission tindakan.
+7. Data scope per modul.
+8. Owner division aset (IT atau GA untuk klasifikasi yang sudah terbukti).
+9. Lokasi fisik aset.
+10. Pegawai/PIC/custodian aset.
+
+Matriks kepemilikan aset yang disetujui:
+- Super Admin: akses global sesuai permission.
+- IT: kelola aset owner IT di seluruh lokasi.
+- GA: kelola aset owner GA di seluruh lokasi.
+- GA dapat diberi permission baca IT Laptop/PC saja; tidak boleh melakukan mutasi atas aset tersebut. Super Admin dapat mengaktifkan/nonaktifkan akses baca tersebut melalui permission/menu.
+- Lokasi SC/PIBC tidak memberikan hak kelola aset.
+- Aset owner SC/PIBC historis tidak boleh otomatis dialihkan ke IT/GA. Review per aset dengan bukti; data ambigu tetap dibatasi untuk review Super Admin.
+- Auditor read-only.
+- Humas dan Sekretaris Direksi tetap pegawai dengan fungsi dasar personal sesuai permission, ditambah kapabilitas pekerjaan yang eksplisit; bukan asset owner.
+
+### Pekerjaan lanjutan — urutan wajib
+
+1. **Audit migration dan model organisasi:** periksa migration 026, migration 006/master org, migration 030/031, seed, data existing, dan UI Administration. Pastikan SC/PIBC tidak diperlakukan sebagai role/owner dan mapping pegawai tidak massal ke Karyawan.
+2. **Backend authorization:** audit seluruh list dan direct-ID endpoint. Backend wajib menegakkan permission + scope; filter frontend hanya UX. Fokus users/master data, assets, loans, tickets, maintenance, rooms, vendors, contracts, licenses, reports, search, exports, dashboard aggregates, notifications, audit, dan BAST.
+3. **Asset mutation:** pastikan assign/move/lifecycle/edit/delete/bulk import hanya dapat dilakukan oleh Super Admin atau pemilik fungsi IT/GA dengan permission + scope yang benar. GA read-only IT workstation tidak boleh lolos mutasi. SC/PIBC location tidak boleh menjadi grant.
+4. **Loan/ticket/maintenance/reservation:** hilangkan keputusan akses berdasarkan label lokasi/role lama jika bertentangan dengan permission dan scope; pertahankan aturan bisnis khusus yang telah dikonfirmasi (mis. prioritas Sekretaris Direksi) sebagai capability/workflow eksplisit.
+5. **Dynamic navigation:** menu, halaman, tombol, dan landing/workspace harus mengikuti permission efektif dan scope. Pegawai, termasuk Humas/Sekdir, perlu fungsi personal yang sesuai seperti My Assets, permintaan pinjaman, tiket, dan reservasi ruang bila permission diberikan.
+6. **Administration UI:** role template, permission, user-role assignment, scope per modul, jabatan, unit, dan lokasi harus jelas serta dapat dikelola Super Admin tanpa daftar role statis yang bertentangan dengan backend.
+7. **Regression test & UAT:** tes kombinasi role/permission/scope untuk list, detail ID, create/update/delete, dashboard, export, dan navigasi. CI hijau bukan pengganti UAT dengan akun representatif.
+8. **Workflow Humas:** baru dikerjakan setelah fondasi RBAC stabil. Permintaan dokumentasi harus menjadi work item yang terkait agenda/reservasi, punya PIC, assignment ke satu/beberapa Humas, accept/reject dengan alasan, status/progress, notifikasi, dan audit trail — bukan notifikasi lepas.
+9. Jangan migrasi backend ke Rust sekarang. Stabilkan dan rapikan sistem yang ada lebih dahulu.
+
+### Instruksi kerja untuk AI/agent berikutnya
+
+- Mulai dengan membaca `PROJECT-RULES.md`, `docs/audits/RBAC-DATA-SCOPE-AUDIT-2026-11.md`, dokumen ini (bagian addendum terbaru), migration terkait, lalu source code aktual pada branch terbaru.
+- Jangan percaya catatan lama bila bertentangan dengan keputusan user terbaru atau implementasi aktual. Tandai konflik dokumentasi dan selesaikan dengan bukti.
+- Jangan mengubah database produksi atau menjalankan migration destruktif tanpa backup, dry-run, laporan dampak, dan persetujuan eksplisit.
+- Jangan membuat perubahan besar sekaligus. Kerjakan satu domain, tulis test yang menguji perilaku, jalankan CI, lalu lanjut.
+- Jangan mengklaim selesai hanya karena TypeScript/build/CI lulus. Laporkan cakupan yang benar-benar diuji dan yang belum.
+- Setiap sesi wajib memperbarui `docs/progress/dynamic-rbac-progress.md` dan `CHANGELOG.md` bila ada perubahan aplikasi. Catat tanggal, branch/HEAD, file/commit, tes/hasil, keputusan baru, risiko, dan next action.
+- Jangan merge PR #18 sampai model organisasi, seluruh backend scope kritis, navigasi, CI, dan UAT role utama telah diverifikasi. User memang mengizinkan merge jika sudah benar; izin tersebut bukan instruksi untuk merge sebelum acceptance criteria terpenuhi.
+
+### Penjelasan singkat mengapa pekerjaan ini sulit bagi agent coding
+
+GABAH bukan satu bug terisolasi. Aturan akses tersebar di middleware, route Express, domain service, resolver RBAC, migration SQL, seed, frontend navigation, dashboard, dan modal Administration. Ada beberapa generasi model role (legacy role, dynamic role, primary/additional role, jabatan, unit, lokasi) yang hidup bersamaan dan beberapa dokumen masih saling bertentangan. Agent yang hanya membaca satu file, mengandalkan skill umum, atau mengerjakan prompt per fitur akan mudah memperbaiki tampilan tetapi melewatkan jalur API lain atau malah memperkuat aturan lama yang salah. Solusinya adalah audit lintas lapisan, satu keputusan bisnis yang otoritatif, tes matriks permission/scope, dan log handoff yang selalu diperbarui.
+
+
+### Addendum keputusan bisnis terbaru — lokasi dinamis dan aset operasional (2026-11-08)
+
+Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlalu sederhana bahwa seluruh owner aset hanya IT atau GA**.
+
+#### Lokasi kerja / site
+- Lokasi bersifat master data yang dapat bertambah dan berubah; jangan hardcode daftar lokasi ke role atau permission.
+- Lokasi yang saat ini diketahui: **HO, PIBC, RPC/SC, dan Pangsub**. Pangsub belum memiliki lokasi operasional di luar Jakarta saat ini; lokasi/site baru seperti Subang harus dapat ditambahkan ketika dibutuhkan.
+- Nama lokasi, singkatan, dan struktur geografis harus menjadi data master terpisah dari role aplikasi dan owner aset.
+- Jangan menganggap daftar di atas sebagai daftar lokasi final/permanen. Sistem harus mendukung penambahan site, gudang, kantor, pasar, dan fasilitas operasional baru tanpa membuat role baru.
+
+#### Kepemilikan aset harus mendukung unit operasional
+- Owner aset tidak boleh dipaksa hanya menjadi IT atau GA.
+- Aset dapat dimiliki/dikelola fungsi operasional. Contoh yang diberikan user: **mesin produksi beras di gudang Subang merupakan aset RPC/SC, bukan GA**, karena merupakan peralatan operasional gudang.
+- Karena itu, pisahkan sekurangnya: owner organisasi/fungsi (mis. IT, GA, RPC/SC), lokasi fisik/site (mis. Subang), kategori aset, unit pengguna, custodian/PIC, serta permission dan data scope pengguna.
+- Lokasi Subang tidak otomatis menjadikan aset milik GA, RPC/SC, atau unit tertentu. Owner ditentukan dari kepemilikan/fungsi bisnis dan bukti pencatatan aset; lokasi hanya menyatakan tempat aset berada.
+- Pegawai yang bekerja di suatu lokasi tidak otomatis mendapat akses ke seluruh aset di lokasi itu. Akses ditentukan oleh role/permission dan scope organisasi/site yang diberikan.
+- IT dan GA tetap memiliki cakupan lintas lokasi sesuai mandat masing-masing. Unit operasional seperti RPC/SC dapat memiliki scope aset operasional sendiri. Super Admin mengelola template role, permission, owner classification, dan scope tersebut.
+- Jangan memindahkan owner aset historis secara massal. Data owner yang belum jelas harus masuk antrean verifikasi.
+
+#### Implikasi desain dan pekerjaan berikutnya
+1. Evaluasi ulang schema `owner_division` dan scope RBAC. Jangan membatasi enum/katalog owner hanya ke IT/GA bila kebutuhan bisnis mencakup RPC/SC dan fungsi operasional lain. Pilih master owner/fungsi yang dapat diperluas, bukan hardcoded role.
+2. Scope harus dapat dikombinasikan per modul, owner/fungsi, lokasi/site, unit organisasi, kategori, dan relasi PIC sesuai kebutuhan; hindari satu scope global yang tanpa sengaja membuka modul lain.
+3. Role adalah kumpulan permission; scope menentukan data yang dapat diakses. Lokasi, owner aset, dan role tidak boleh disimpulkan satu sama lain.
+4. UI Super Admin harus dapat menambah lokasi/site dan owner/fungsi serta mengatur assignment scope tanpa perubahan kode setiap kali ada gudang atau cabang baru.
+5. Buat matriks akses untuk owner IT, GA, RPC/SC, dan owner operasional lain yang kelak ditambahkan. Contoh mesin produksi Subang wajib menjadi test case: user RPC/SC dengan permission dan scope yang tepat dapat mengelola; GA tidak otomatis dapat mengelola hanya karena aset berada di gudang.
+6. Sebelum mengubah migration atau data existing, inventarisasi nilai owner saat ini, lokasi, kategori, dan pemilik proses. Jangan menjalankan perubahan produksi tanpa backup, dry-run, laporan dampak, dan persetujuan.
+
+**Prinsip ringkas:** lokasi menjawab *aset berada di mana*; owner menjawab *fungsi/unit mana yang bertanggung jawab atas aset*; role dan permission menjawab *siapa boleh melakukan apa*; data scope menjawab *data mana yang boleh dijangkau*. Keempatnya independen dan harus fleksibel.
+
+
+---
+
+## Addendum — Proteksi migration role cabang (2026-11-08)
+
+- User menegaskan bahwa GA saat ini hanya menangani aset yang memang menjadi tanggung jawab GA dan sesuai kapasitas personel; tidak boleh diasumsikan sebagai pengelola semua aset non-IT. Model owner harus dapat berkembang untuk RPC/SC dan fungsi operasional lain.
+- Audit menemukan draft lama `server/migrations/026_map_branch_accounts_to_employee_location.sql` melakukan perubahan destruktif: mengubah seluruh `users.role` Supply Chain/PIBC menjadi Karyawan, menghapus role assignment supply_chain/pibc, dan menonaktifkan `UNIT-SC`/`UNIT-PIBC` berdasarkan label role. Ini tidak aman karena lokasi tidak membuktikan jabatan/fungsi pegawai.
+- Pada commit `e058e4743340395099966259b95ea721fb4503ea`, migration 026 diubah menjadi no-op compatibility marker. Tidak ada perubahan role/user/unit yang dilakukan otomatis.
+- Ditambahkan `scripts/branch-migration-safety-verify.mjs`, npm script `test:branch-migration-safety`, dan CI step pada commit `c6c3b5946de8a72d5a13fcaf02cf7c202018c2b3`.
+- **Peringatan:** jika versi lama migration 026 sudah pernah diterapkan di suatu database, mengubah file tidak membatalkan perubahan historis. Jangan mencoba memulihkan role secara tebakan. Cocokkan backup, audit trail, HR master, dan penugasan aktual sebelum membuat recovery plan.
+- CI run 42477031571 pada head tersebut masih berjalan saat catatan dibuat. Belum ada klaim PASS.
+- PR #18 tetap Draft/Open; belum merge. Tahap berikutnya: verifikasi hasil CI, lalu audit model owner dan semua jalur aset/loan/ticket berdasarkan permission + module scope + owner scope.
+
+---
+
+## Addendum — Owner domain fleksibel & scope lintas modul (2026-11-08)
+
+### Keputusan bisnis
+- GA hanya menangani aset yang memang menjadi tanggung jawab GA dan sesuai kapasitas personel. GA tidak otomatis menjadi pengelola semua aset non-IT.
+- Master Divisi yang dikelola Super Admin dipakai sebagai vocabulary owner domain yang dapat berkembang. Owner awal: IT, GA, SC, PIBC, Umum, Audit; owner baru dapat ditambahkan sebelum kategori/aset menggunakannya.
+- Lokasi fisik, lokasi kerja pegawai, unit pengelola, owner domain, dan custodian/PIC adalah dimensi terpisah. Contoh uji: mesin produksi beras di Subang memiliki owner RPC/SC dan lokasi Subang; akses harus berasal dari permission + scope owner RPC/SC, bukan karena lokasi gudang.
+
+### Perubahan kode
+- server/services.ts: assetVisibleUnderDynamicScopes, filter aset, dan canMutateAssetOwner tidak lagi membatasi owner aktif ke IT/GA. Setiap owner non-kosong hanya dapat diakses/dimutasi melalui scope owner eksplisit; mutation juga wajib permission per operasi. File-store fallback tetap konservatif IT/GA.
+- server/db.ts dan server/taxonomy.ts: owner code tidak lagi enum empat nilai; owner divisi adalah string kode master yang extensible.
+- server/persistence.ts: sync db.divisions ke PostgreSQL sebelum users/category/assets agar owner baru tersedia untuk FK. server.ts: kategori dan aset baru harus merujuk owner yang ada di master; kode owner dibatasi 2–20 karakter. Master owner tidak dapat dihapus saat masih direferensikan aset/kategori/pegawai/unit.
+- server.ts: PATCH aset dan bulk import UPDATE memakai helper mutation yang sama; Karyawan tidak diblokir berdasarkan jabatan jika ia memiliki permission + scope tambahan. Auditor tetap read-only.
+- server.ts: daftar pinjaman, tiket, dashboard ticket/loan, dan operasi maintenance memakai scope owner per modul, bukan whitelist IT/GA. server/contracts.ts: contract owner visibility/create/edit juga mengikuti owner scope dinamis.
+- server/migrations/006_org_model_masters.sql: menambahkan seed Umum dan Audit sebelum org_units agar FK master unit valid pada instalasi baru.
+- Migration 026 tetap non-destruktif/no-op; lihat addendum proteksi migration sebelumnya untuk risiko database yang mungkin pernah menjalankan versi lama.
+
+### Verifikasi
+- Head branch: 8fdd15db91335f2c937e98294272770b75dd1ebc.
+- CI #382 / run 42478977996: SUCCESS. Typecheck, seluruh contract/regression checks, production build, 37 P0 HTTP security assertions, dan maintenance authorization assertions lulus.
+- PR #18 tetap Draft/Open, belum merge. Tidak ada migration production yang dijalankan.
+
+### Pekerjaan berikutnya
+1. Audit endpoint vendor, laporan, rekonsiliasi, dan administrasi untuk shortcut role/owner yang tersisa.
+2. Rapikan menu, landing page, dan tindakan tiap halaman berdasarkan effective permissions + scope; role label saja tidak boleh menjadi sumber kebenaran.
+3. UAT lintas role untuk mesin produksi RPC/SC di Subang, aset GA, aset IT, dan pengecualian baca-only GA atas laptop/desktop IT.
+4. Rekonsiliasi data historis hanya berdasarkan backup, audit trail, dan data HR terverifikasi. Jangan lakukan mass remapping.
+
+
+### Final handoff status (2026-11-08)
+- Documentation head at this handoff: 016c1a7be8740c4b5ff0273be00b2b6d629e0fc7.
+- CI #383 / run 42479231928 completed SUCCESS on that head. This run includes the latest source changes and documentation: typecheck, all RBAC/asset-scope/navigation/dashboard checks, production build, 37 P0 HTTP assertions, and maintenance authorization assertions passed.
+- PR #18 remains Draft/Open and intentionally unmerged pending the remaining vendor/report/reconciliation/admin authorization audit and end-to-end per-user UAT.
+
+
+### 2026-11-08 — Flexible owner exclusion policy
+- User decision: asset ownership and authority must remain configurable. GA may in future be assigned broad responsibility for all non-IT asset owners; other teams may receive read-only or business-specific permissions. This is a policy option, not an automatic change to current GA grants.
+- Implemented the generic `division_except` data-scope type. Super Admin can combine module permission + `all` + `division_except:IT` to express "all owners except IT", or use explicit owner scopes for narrower cases.
+- Explicit division grants can override a broad exclusion for a selected owner. Unit/location scopes cannot bypass an owner exclusion. Location still does not imply ownership or authorization.
+- The new scope is supported by the role editor, RBAC API validation, backend asset visibility/mutation checks, generic module owner-scope checks, and PostgreSQL migration 032.
+- Existing policies are preserved; no automatic permission expansion to GA or other teams is applied. Super Admin remains the authority to activate the new rule.
+- Verification pending on the newest CI head. No production migration has been run.
+
+
+### Follow-up verification — owner exclusions and owner-master safety
+- CI run #402 completed SUCCESS on head `b437abf78abdcf2c607f65943f2ba95a4c3b4b3f`.
+- Passed: TypeScript lint; Dynamic RBAC foundation contracts; branch migration safety; asset scope policy checks (including owner exclusions and inactive owner master); navigation/dashboard checks; production build; 37 P0 HTTP security assertions; 33 maintenance authorization assertions.
+- Owner-master sync now preserves inactive status, and new asset creation rejects inactive owner domains. Existing assets/history remain untouched.
+- This is code/CI verification only. Migration 032 has not been run against production PostgreSQL; production backup, dry-run, impact review, and approval are still required.
+
+
+### 2026-11-08 — Reconciliation follows asset authorization
+- `GET /api/reconciliation` now scopes totals and result rows to assets visible to the current actor. Super Admin and Auditor retain global read-only visibility.
+- `POST /api/reconciliation/link` now requires the reconciliation-link permission and the shared asset-update permission with matching owner scope.
+- Regression checks added to `test:asset-scope-policy`.
+- CI run #409 completed SUCCESS on head `c5d71a0e7e20f6c1dfbe146af2a8d8fa1d4b0a3f`. Production migration 032 remains unapplied pending backup/dry-run/impact review/approval.
+
+
+### 2026-11-08 — Koreksi lokasi kantor aktif
+- Lokasi aktif saat ini ditetapkan hanya: HO, PIBC, RPC/SC, Pangsub.
+- Subang sudah tutup dan bukan lokasi aktif/seed. Tidak ada pemindahan user atau aset historis terkait lokasi lama.
+- ID lokasi lama dipertahankan. Kantor Perawatan dinonaktifkan, bukan dihapus.
+- Super Admin tetap dapat menambah lokasi baru melalui master data; tidak ada daftar lokasi permanen di kode kebijakan akses.
+- Seed `server/db.ts`, fallback `server/persistence.ts`, migration 033, dan regression test diselaraskan. Migration produksi belum dijalankan.
+
+
+### Correction — Kantor Perawatan remains active (2026-11-08)
+- User clarified that Kantor Perawatan is still operational. This supersedes the immediately preceding assumption that it should be inactive.
+- Current active office locations: HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang remains closed/not an active office location.
+- Corrected seed (`server/db.ts`), persistence fallback, migration 033, and regression assertions. No user or asset references are reassigned or deleted.
+- Validation status: CI for the correction is pending; do not claim pass until the run completes.
+
+
+### Handoff update — 2026-11-08 (office migration + loan custody audit)
+
+**Branch:** `fix/role-based-navigation`  
+**PR:** #18 (Draft/Open, not merged)  
+**Latest code commit at this update:** `00e628e601ed3cf06554ce29161d6a99fa162050`
+
+#### New user-confirmed office rule
+- Kantor Perawatan is still operational. The five active office locations are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is closed and is not an active office location.
+- The previous migration 033 incorrectly deactivated OFF-PERAWATAN. Fixed it to set `name='Kantor Perawatan', is_active=TRUE`; no IDs, user references, or asset references are deleted/reassigned.
+- Seed and persistence fallback already contain all five active locations. Super Admin-managed master data remains extensible.
+
+#### CI correction
+- CI run 42486650240 failed during `npm run lint` because TypeScript parses the `.mjs` regression script and the RPC/SC regex literal was malformed. This is a test-source syntax error, not evidence of an application build/runtime defect.
+- Corrected RPC/SC matching to use a slash-safe regex and strengthened migration 033 assertion to require the explicit active update. Added regression coverage for loan-return location preservation.
+- Latest CI on commit `00e628e601ed3cf06554ce29161d6a99fa162050` must be checked; do not claim green until a new run completes.
+
+#### Loan custody audit finding and fix
+- `GabahDomainService.canOperateLoan` already uses the loan operation permission plus explicit matching owner scope in PostgreSQL, so owner domains are not limited to IT/GA for this path.
+- Updated stale IT/GA-only error messages and old hardcoded-role comments.
+- Found a business-data defect: `returnLoan()` silently set every returned asset's physical location to `Head Office - Gudang Pool`. Removed that assignment. A return changes custody/status/condition only; physical relocation must be a separate authorized asset-move workflow.
+- Added regression assertion that loan return cannot reset physical location.
+
+#### Next actions
+1. Check CI on latest head and fix any remaining test failures.
+2. Continue endpoint-by-endpoint authorization audit, prioritizing loan list/detail/BAST, tickets, room reservations, reports, vendors, licenses, exports, dashboard aggregates, and Administration masters.
+3. Reconcile stale `scripts/org-model-verify.mjs` assumptions about role/location names and add an API-level check for all five active office locations.
+4. Keep PR #18 Draft/Open until backend scope audit and representative role UAT are complete. No production migrations without backup, dry-run, impact report, and explicit approval.
+
+
+### Follow-up — loan request identity and HTTP authorization status (2026-11-08)
+- `GabahDomainService.requestLoan()` now prevents ordinary users from setting another employee as borrower via crafted `borrower_id`. Self-service requests must be for the authenticated actor; delegated/on-behalf requests require a future explicit capability/workflow. Super Admin retains administrative exception.
+- `/api/loans` create/approve/reject routes now propagate domain `statusCode`, so a domain-level 403 is not misreported as 400.
+- Added source regression checks for borrower impersonation protection and approve/reject status propagation.
+- These are source-level regression checks; CI must pass on the newest branch head before claiming verified. No production data changed.
+
+
+### Office master verification refinement — 2026-11-08
+- Clarified the live baseline: five confirmed active office locations (HO, PIBC, RPC/SC, Pangsub, Kantor Perawatan). Future sites remain allowed; therefore API verification checks that these five exist and are active rather than forbidding all future additions.
+- Migration 033 now retires a legacy `org_office_locations` row named Subang by setting `is_active=FALSE` if such a row exists. It does not delete the row and does not touch the separate `asset_locations` table or asset history.
+- Updated `scripts/org-model-verify.mjs` to stop treating the nine legacy role labels as the target organization model; they are retained only for account/history compatibility. Updated its HO location lookup and added the five-active-office/Subang-closed API assertion.
+- Added regression coverage to ensure migration 033 keeps Kantor Perawatan active, retires Subang only in the office master, and preserves historical rows.
+
+
+### CI review — migration 033 SQL/test correction (2026-11-08)
+- Run #438 failed only the new office migration source assertion: the test expected `LOWER(BTRIM(name))` before `is_active = FALSE`, while SQL correctly expresses `SET is_active = FALSE WHERE LOWER(BTRIM(name)) = 'subang'`. Test order was corrected.
+- Manual review also caught a trailing comma in the first `UPDATE org_office_locations ... SET name = CASE` statement after removing the prior deactivation expression. Removed the comma; statement is now `END WHERE ...`.
+- Run #439 was queued on the documentation head at the time of writing. Verify its result and logs before claiming CI green.
+
+
+### Ticket status authorization audit — 2026-11-08
+- Found an inconsistency between ticket list scope and ticket status mutation: list visibility accepted arbitrary owner codes through dynamic scope, but `runtime-hardening.ts::canManageTicket()` only recognized IT/GA scopes in PostgreSQL. This blocked operational functions such as RPC/SC despite explicit permission + owner scope.
+- Fixed PostgreSQL guard to check the ticket's category/owner code generically with `hasRbacScope(actor, 'division', owner, 'tickets')`; legacy IT/GA role-label checks now apply only in file-store compatibility mode. Reporter/assignee self-access remains; Auditor stays read-only.
+- Added regression assertion. CI status for the newest head is pending; do not claim this ticket change verified until CI completes.
+
+
+### Verification checkpoint and next audit finding — 2026-11-08
+
+#### Verified CI
+- CI #441 / run `42487422969` passed on source head `9f3faf86f7f23f40ea8db167a9554f0abf8ef48e`.
+- Verified in that run: TypeScript lint; Dynamic RBAC foundation checks; branch-migration safety; asset-scope policy 46/46; navigation/dashboard policy checks; production build; P0 HTTP security 37/37; maintenance authorization 33/33.
+- CI #443 / run `42487486675` passed on documentation head `6f3e2b2a772d632d6f17ea82d1f5cb90859ac746`, including migration 033 office tests and the updated office baseline.
+- Ticket dynamic-owner scope fix was then added and source regression added. CI #446 on the latest head is pending at this update; verify before reporting green.
+
+#### Next domain: Vendor ownership
+- Audit found `/api/vendors` still derives vendor ownership from `category`: `IT`/`License` => IT, every other category => GA. This hardcodes an IT-vs-GA dichotomy and would mis-scope vendors belonging to RPC/SC or future owner domains.
+- Do not patch by simply treating category text as owner. Vendor category/type and responsible owner domain are separate business attributes. Inspect current vendor data, frontend form/types, persistence, and any external contract linkage; design an explicit `owner_division` field and migration/backfill only when historical mapping is verified. Ambiguous existing vendor records must be reviewed, not auto-assigned to GA.
+- Room reservation visibility still has legacy role/function branches (GA/IT/Humas) for privacy/operations. Audit those against effective permission/scope without weakening the privacy redaction rules.
+
+
+### Additional audit — vendor and room reservation domains (2026-11-08)
+
+#### CI results
+- CI #446 (`42487582277`) passed on the ticket authorization source change and test.
+- CI #447 (`42487587798`) and #448 (`42487694450`) passed on later documentation heads. Newest run #449 is currently in progress; check before reporting latest branch green.
+
+#### Vendor directory: not yet aligned with flexible owner model
+- Frontend `src/components/views/VendorsView.tsx` uses `['Admin GABAH','IT','GA'].includes(currentUser.role)` for management UI.
+- Backend `GET/POST/PATCH /api/vendors` infers owner domain from category: IT/License => IT; all other categories => GA. This is not safe for operational vendors belonging to RPC/SC or future owner domains.
+- `ServerVendor` / frontend `Vendor` currently have category but no explicit owner domain. Vendor category (e.g. IT service, license reseller, maintenance, supplier) must not double as owner.
+- Next implementation should add explicit owner-domain master reference to vendor data, allow Super Admin to set it, authorize list/create/update by `vendors.*` permission + `vendors` owner scope, and update frontend visibility from effective permissions. Review ambiguous legacy records; do not default every non-IT vendor to GA.
+
+#### Room reservations: privacy-sensitive legacy rules remain
+- `/api/room-reservations` list currently has role-specific branches for GA operations (redacted agenda), IT facility requests (filtered/redacted), Humas documentation requests, and personal reservations for other users.
+- Preserve privacy redaction and operational intent while replacing role-label assumptions with effective capabilities/scopes. Do not expose meeting titles/descriptions, attendee lists, phone numbers, documentation notes, or rejection/interruption reasons to users lacking the corresponding permission/work item assignment.
+- Approval/override priority for Sekretaris Direksi and GA is a business workflow, not a blanket role grant; retain explicit priority/override constraints.
+
+
+### Latest handoff status — 2026-11-08
+- Latest verified source CI: #449 / `42487698982` SUCCESS on head `2dd9d2a9b79a07d7dcfd96291108b5cbfd46e14f`, including ticket custom-owner scope guard + regression check.
+- Documentation updates after that source head triggered CI #450 and #451; at this update #450 is in progress and #451 is queued. No source changes were made after the verified ticket source commit; latest doc CI remains pending.
+- PR #18 remains Draft/Open, not merged. No production migration has been run.
+- Continue with vendor explicit owner-domain model, then room reservation capability/scope conversion and remaining report/export/admin endpoints. Preserve privacy and do not mass-map ambiguous legacy records.
+
+
+### Vendor owner-domain remediation — 2026-11-08
+
+**Defect fixed in branch source (CI pending):** vendor ownership was inferred from category (`IT`/`License` -> IT, every other category -> GA), and UI management was hardcoded to Admin GABAH/IT/GA. This prevented arbitrary operational owner domains and conflated vendor service category with accountability.
+
+**Changes:**
+- Added `owner_division?: string | null` to `ServerVendor` and frontend `Vendor` type.
+- Vendor list now filters by explicit `owner_division` through `hasRbacScope(actor, 'division', owner, 'vendors')` in PostgreSQL. File-store compatibility checks the same explicit owner code against the legacy actor role.
+- New vendor creation requires an active owner code present in the configurable owner/division master, plus `vendors.create` and matching scope in PostgreSQL.
+- Update requires authority over both current and requested owner. `owner_division` was added to the server-side update allowlist so changes persist.
+- Legacy vendor records with null/empty owner are deliberately not auto-mapped from category. They remain visible to Super Admin/Auditor only; Super Admin can classify them from verified business information. No database migration/backfill is needed for the JSON-backed vendor collection; the new field is additive.
+- Vendor UI loads owner choices from `/api/master/divisions` and uses `permission_keys` / `is_superadmin`, not a static role-name list.
+
+**Regression checks added:** explicit owner field, no category-to-owner inference, scope enforcement on list/create/update, owner field persistence, and permission-driven UI. Check CI result on latest head before claiming pass.
+
+**Important domain caveat:** current master `divisions` contains legacy SC/PIBC entries alongside IT/GA and other functions. This UI only presents configured master entries; it does not infer owner from employee location. Super Admin must select the actual responsible owner for each vendor.
+
+
+### Room reservation RBAC remediation — 2026-11-08
+
+**Defect:** reservation list filtering and domain mutations relied on role labels GA, IT, Humas, and Sekretaris Direksi even though route permissions were already dynamic. This caused inconsistent access: permission grants alone could not enable the corresponding workflow, and custom roles could not participate.
+
+**Implementation:**
+- Reservation list operational queues now use effective capabilities:
+  - `room_reservations.approve` or `room_reservations.reject`: GA-style operational queue, with agenda/private fields redacted.
+  - `room_reservations.it_facilities.read`: IT-facility requests only, with private agenda fields redacted.
+  - `room_reservations.documentation.read`: documentation-request queue only.
+  - Other users: own reservations only. Super Admin/Auditor global read remains unchanged.
+- Added migration `034_dynamic_rbac_room_reservation_capabilities.sql`: grants IT facility queue read to canonical IT role, documentation queue read to Humas, and `room_reservations.override_priority` to Sekretariat Direksi. Custom roles can receive these permissions through RBAC administration.
+- Domain service guards for approve/reject/check-in/check-out/cancel and room status update now consult effective permission in PostgreSQL; legacy file-store fallback remains limited to GA. Reservation create checks `room_reservations.create` in PostgreSQL; Auditor remains blocked in file-store.
+- Director-priority interruption now requires the separate `room_reservations.override_priority` permission and HIGH priority. It is no longer inferred from the primary role label.
+- Privacy redaction fields are unchanged; this change only changes how the operational queue capability is granted.
+
+**Validation:** added source regression checks for queue permissions, privacy redaction, domain operation checks, and migration grants. Run CI on latest head before claiming verified. PostgreSQL runtime migration and live API integration still need to be exercised before production.
+
+
+### Fresh PostgreSQL migration and production gate — 2026-11-08
+
+**Two blocking migration defects found and corrected:**
+1. `004_contract_management.sql` previously assumed `contracts.owner_division_id` always existed. The fresh schema from migration 001 already has `owner_division`, so this reference can fail. The migration now checks `information_schema.columns` before using the legacy ID. Unknown/null legacy owners become `UNASSIGNED` (not GA) and remain global-admin review only; no contract ownership is silently inferred.
+2. `015_room_reservations.sql` referenced `rooms(id)` even though room master data is still held in the application datastore and no PostgreSQL `rooms` table exists. Removed the invalid FK while retaining the room ID as an application-level reference. Anti-collision range/index/trigger remain.
+
+**CI was upgraded:** GitHub Actions now provisions PostgreSQL 17 and runs `scripts/cr04-cr05-verify.mjs` with a throwaway database before the other live HTTP/regression tests. Additional gates include loan authz, room reservations, org model, T2B1/T2B2/T2B3 master data, sidebar menu connectivity, P0 security, and maintenance authorization. Existing lint/build, dynamic RBAC, branch migration safety, asset-scope, navigation and dashboard tests remain.
+
+**Status:** changes and regression guards are committed to `fix/role-based-navigation`; wait for the new PostgreSQL-backed CI run. A green static-only run is not production readiness. No production DB has been touched.
+
+
+### PostgreSQL CI failure — primary-role reconciliation SQL alias (2026-11-08)
+- Run #471 / `42489245450` exercised PostgreSQL 17 on a fresh isolated database and failed during startup after migrations. Error: `column assigned_role.is_primary does not exist`.
+- Root cause: in `backfillDynamicRbacUserRoles()` the SQL aliases `gabah_roles` as `assigned_role`, but `is_primary` belongs to `gabah_user_roles` alias `ur`. The query incorrectly used `assigned_role.is_primary = TRUE`.
+- Fixed to `ur.is_primary = TRUE`. Migration 030 was present and adds `is_primary` to `gabah_user_roles`; the defect was a wrong table alias, not migration ordering.
+- Added a source regression assertion for the correct alias. Re-run the complete PostgreSQL CI suite; this is the first live database-backed verification and must pass before declaring PG readiness.
+
+
+### CI verifier follow-up — 2026-11-08
+- The first rerun after the SQL alias correction failed before PostgreSQL integration because `scripts/dynamic-rbac-foundation-verify.mjs` still asserted the old alias `assigned_role.is_primary` in the reconciliation query.
+- Updated the assertion to `ur.is_primary`. This is a stale verifier expectation, not a new runtime defect. The next run must pass the 111 Dynamic RBAC checks before the PostgreSQL integration step can execute.
+
+
+### Branch consolidation checkpoint — 2026-11-08
+- Canonical working branch remains `fix/role-based-navigation`; PR #18 remains the single integration branch for RBAC/org-model/vendor/room/migration remediation.
+- Closed superseded PRs:
+  - PR #13 `ci/expand-regression-gates`: expanded CI now included in PR #18 with PostgreSQL service and additional regression suites.
+  - PR #14 `fix/contract-migration-fresh-db`: migration 004 compatibility fix and migration 015 room FK fix copied into PR #18; unknown contract owner is `UNASSIGNED`, not silently GA.
+  - PR #15 `fix/rbac-sidebar-fail-closed`: PR #18 sidebar already defaults to no navigation when role identity is missing and uses permission-aware tab visibility.
+- Closed PR branches are not deleted; history remains preserved. This session's available GitHub actions can close PRs but do not expose branch deletion. They are not to be used for new work.
+- PR #11 deployment hardening, PR #12 finalization checklist, PR #17 user/role assignment audit, and PR #3 legacy ticket gate remain open for careful consolidation. No parallel work branch should be created.
+
+
+### Ticket permission audit — Auditor read-only correction (2026-11-08)
+- Review of PR #3 against the current branch found that `tickets.read` was already seeded to Auditor by migration 023, but migration 024 also included Auditor in the broad `tickets.create` grant set. The API had a separate Auditor denial, but the effective permission was still wrong and could cause a UI create action to appear.
+- Added migration `036_dynamic_rbac_auditor_ticket_create_deny.sql` to remove only the `tickets.create` grant for role key `auditor`. `tickets.read` is retained. No data or ticket rows are changed.
+- Added regression assertion for Auditor read-only ticket behavior. Do not merge old PR #3 migrations 017/018: their version numbers conflict with existing movement/knowledge migrations in the consolidated branch, and the current branch already has the endpoint gates and canonical permission catalogue.
+
+
+### Vendor domain and owner-scope remediation — 2026-11-08
+
+**Defect review:** Vendor category (e.g. IT Hardware, License, Maintenance) is descriptive service classification and must not be treated as owner. Owner domain is selected from the dynamic master. The current server implementation already had the basic owner field/scope guard, but validation and UI action gating needed tightening; no category-based ownership backfill is permitted.
+
+**Changes:**
+- API create/update normalizes owner codes case-insensitively against active owner master; rejects missing/inactive owner, empty/oversized name/category, and invalid rating. Update checks both existing and destination owner scope.
+- Vendor list returns only the caller's owner scopes (Super Admin/Auditor global read per policy). Vendor creation/update require the corresponding vendors permission in PostgreSQL plus owner scope.
+- Vendor UI separates create from update permissions, displays owner domain, and removes hardcoded 99% SLA compliance text that had no source data.
+- Owner master delete now refuses when vendor/contract/maintenance/loan references remain, in addition to assets/categories/users/org units.
+- Added PostgreSQL integration scenarios: IT and GA create vendors only in their owner domains; categories can differ from owner; Karyawan without vendor permission is denied; custom RPCSC owner + custom role + module scope can create/read a vendor; owner master cannot be deleted while referenced.
+
+**Validation:** source regression checks added. PostgreSQL runtime coverage is part of the latest CI head; wait for that exact run before reporting vendor tests as passed.
+
+
+### Deployment/runbook hardening — 2026-11-08
+
+- The previous deploy.sh auto-installed Docker from get.docker.com, shut down the existing Compose project with --remove-orphans, and printed success without verifying health. Replaced with fail-fast preflight, .env/PGPASSWORD validation, Compose config check, app-only recreation, health polling, and failure diagnostics. It no longer stops the DB first or claims success without health.
+- PostgreSQL host port now binds only to loopback. Compose now passes GABAH_INITIAL_ADMIN_PASSWORD and GABAH_INITIAL_USER_PASSWORD into the application container (previously documented in runbook but not passed by Compose).
+- CI checks Compose configuration and shell syntax. VM runbook now requires clean main, fast-forward-only update, database backup, health verification, and explicit rollback/restore safeguards. Production deploy remains NO-GO pending merge, UAT, restore rehearsal, TLS, and sign-off.

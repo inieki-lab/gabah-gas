@@ -3,7 +3,7 @@
 **Dokumen:** `docs/product/REQUIREMENTS.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Authoritative Requirement Specification (Tervalidasi dengan Source Code Aktual)  
+**Status:** Baseline requirement; implementation and role-based UAT are being reconciled. Do not interpret this document as proof that every requirement is already implemented.  
 
 ---
 
@@ -17,17 +17,14 @@
 - **FR-01.5**: Sistem harus menerapkan rate limiting login (maksimal 5 kali percobaan gagal sebelum lockout 5 menit pada lingkungan produksi) dan API rate limiting (maksimal 200 req/menit per client IP).
 
 ### FR-02: Katalog Aset & Klasifikasi Akuntansi PSAK 16
-- **FR-02.1**: Sistem harus mencatat aset dengan atribut identitas: nomor aset kanonikal, nomor ERP Accurate (`corporate_asset_number`), nama aset, kode kategori, tipe taksonomi (`IT`, `General`, `License`), divisi pemilik (`IT`, `GA`, `SC`, `PIBC`), merek, model, nomor seri, spesifikasi teknis, tanggal pembelian, harga perolehan, masa garansi, status, kondisi, lokasi fisik, status loanable, dan catatan.
-- **FR-02.2**: Sistem harus membatasi akses melihat katalog aset berdasarkan peran pengguna (`GabahDomainService.getScopedAssets()`):
-  - `Admin GABAH` & `Auditor`: Seluruh aset semua divisi.
-  - `IT`: Aset milik Divisi IT.
-  - `GA`: Aset milik Divisi GA dan aset IT (khusus aset IT bersifat *read-only*).
-  - `Supply Chain`: Aset milik Divisi SC (mesin pabrik, truk beras).
-  - `PIBC`: Aset milik Divisi PIBC atau berlokasi di kawasan PIBC.
-  - `Karyawan` & `Sekretaris Direksi`: Hanya aset yang ditugaskan kepada dirinya atau aset dalam pool peminjaman (`is_loanable`).
-  - `Humas`: Akses menu aset disembunyikan / dikosongkan sesuai tugas fungsional.
+- **FR-02.1**: Sistem harus mencatat aset dengan atribut identitas: nomor aset kanonikal, nomor ERP Accurate (`corporate_asset_number`), nama aset, kategori, tipe taksonomi, owner domain dari master dinamis, unit pengelola, lokasi fisik dari master lokasi aset, custodian/PIC, merek, model, nomor seri, spesifikasi teknis, tanggal pembelian, harga perolehan, masa garansi, status, kondisi, status loanable, dan catatan. Owner domain tidak boleh dibatasi enum IT/GA/SC/PIBC atau disimpulkan dari lokasi kantor, lokasi fisik, unit, kategori, maupun pegawai pemegang aset.
+- **FR-02.2**: Sistem membatasi akses katalog aset berdasarkan permission efektif dan data scope per modul, bukan label role atau lokasi kerja semata. Super Admin memiliki akses global; IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. GA hanya dapat memperoleh akses baca tambahan ke Laptop/PC owner IT melalui permission khusus `assets.read.it_workstations`. Owner operasional lain dapat ditambahkan melalui master dan diberi scope eksplisit. Karyawan melihat aset pribadi/pool sesuai permission; Auditor hanya membaca data yang secara eksplisit diotorisasi. Backend wajib menerapkan scope untuk list dan detail-by-ID.
 - **FR-02.3**: Sistem harus mendukung filter cepat berdasarkan kategori dan counter badge dinamis.
 - **FR-02.4**: Sistem harus mendukung pembuatan dan pencetakan label QR Code aset standar inventaris BUMD serta pemindaian QR menggunakan kamera web.
+- **FR-02.5**: Master lokasi kantor mendukung lokasi aktif HO, PIBC, RPC/SC, Pangsub, dan Kantor Perawatan; lokasi masa depan dapat ditambahkan tanpa perubahan kode. Lokasi yang tutup dinonaktifkan, bukan dihapus. Subang tidak aktif.
+- **FR-02.6**: Lokasi kerja pegawai, lokasi fisik aset, unit organisasi, owner domain, dan custodian adalah dimensi terpisah. Perpindahan lokasi fisik tidak mengubah owner atau kewenangan.
+- **FR-02.7**: Super Admin dapat mengatur scope owner dinamis, termasuk pola pengecualian seperti semua owner kecuali IT. Kebijakan luas tidak boleh diaktifkan otomatis tanpa persetujuan bisnis.
+- **FR-02.8**: Data historis dengan owner ambigu tidak boleh dimigrasikan massal berdasarkan lokasi atau kategori. Sistem harus menyediakan proses review dan audit untuk klasifikasi ulang.
 
 ### FR-03: Mesin Penomoran Kanonikal & Integritas Duplikasi
 - **FR-03.1**: Sistem harus meng-generate nomor aset otomatis dengan format `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` (Contoh: `IT-HLT-2026-0001`).
@@ -77,12 +74,22 @@
   - Notifikasi ke Humas & Protokoler jika terdapat permintaan dokumentasi foto/video.
 - **FR-09.5**: Sistem menyediakan fungsi Check-In, Check-Out, dan pembatalan reservasi.
 
+### FR-12: Direktori Vendor dan Owner Domain
+- **FR-12.1**: Vendor memiliki kategori layanan dan owner domain yang terpisah. Kategori seperti IT Hardware, License, Maintenance, dan General tidak boleh otomatis menentukan owner.
+- **FR-12.2**: Owner vendor harus direferensikan ke master owner domain dinamis yang dikelola Super Admin. Owner baru dapat ditambahkan tanpa perubahan kode.
+- **FR-12.3**: List, detail, create, dan update vendor wajib memeriksa permission modul vendors serta scope owner pada backend. Update owner memerlukan kewenangan pada owner asal dan owner tujuan.
+- **FR-12.4**: Vendor legacy tanpa owner tidak boleh terlihat sebagai milik GA/IT secara default. Hanya Super Admin yang boleh mengklasifikasikan record tanpa owner.
+- **FR-12.5**: Owner domain tidak boleh dihapus selama masih direferensikan vendor, kontrak, aset, maintenance, peminjaman, kategori, pegawai, atau unit organisasi.
+- **FR-12.6**: UI hanya menampilkan tombol tambah/ubah sesuai permission efektif yang relevan; metrik SLA/kontrak harus berasal dari data aktual, bukan nilai tetap.
+
 ### FR-11: Contract Management (Domain Tersendiri)
 - Register kontrak sebagai **domain bisnis tersendiri** — Contract bukan kategori Helpdesk; tiket dapat ditautkan (`contract_id`) untuk tindak lanjut pekerjaan.
 - Atribut: contract number (`CTR-YYYY-NNNN`), tipe, judul, vendor/counterparty, divisi pemilik (bebas per departemen), PIC, start/end date, notice period + notice date (dihitung otomatis), nilai, auto-renewal, status, dokumen (append-only: original/amendment/renewal/supporting), notes, metadata.
 - Reminder kedaluwarsa configurable (default 60/35/7 hari) ke PIC + divisi pemilik (+ eskalasi pada 35/7 hari), dikirim via in-app, email, dan Telegram — setiap pengiriman tercatat pada `contract_notification_logs` (status SENT/FAILED/SKIPPED + alasan; penerima di-resolve server-side; idempoten per kontrak/tipe/kanal/penerima/hari; scheduler internal otomatis dengan leader-lock). Status SENT hanya bila pengiriman eksternal benar-benar berhasil — tidak ada sukses palsu.
 - Renewal outcome: pending/renewed/not_renewed/terminated/replaced_by_new_contract + notes; kontrak lama tidak dihapus (rantai `parent_contract_id`).
-- Access control: Admin semua; PIC & divisi pemilik; Auditor otoritas audit (read); kontrak `restricted` hanya PIC/divisi/Admin.
+- Access control: Super Admin global; PIC dan owner domain sesuai permission + scope; Auditor hanya baca sesuai grant audit; kontrak `restricted` tetap dibatasi PIC/owner/Super Admin.
+- Dokumen kontrak harus benar-benar disimpan sebagai byte file pada persistent volume terpisah dari database, dengan metadata dan file reference yang konsisten. Upload dibatasi ke PDF/JPG/PNG/DOC/DOCX maksimal 10 MB, MIME dan signature diverifikasi, nama/path file dibuat server-side, dan file tidak boleh diekspos sebagai static public directory.
+- Download dokumen harus melalui API terautentikasi dengan `contracts.read` dan pemeriksaan visibility contract per record; path file harus terisolasi per contract agar metadata tidak dapat menunjuk file milik contract lain. File dan database wajib dicadangkan serta dipulihkan bersama.
 
 ### FR-10: Attention Center & Audit Logging
 - **FR-10.1**: Dashboard harus menampilkan ringkasan Attention Center dinamis yang disaring berdasarkan peran (tiket SLA yang mendekati batas waktu, permohonan pinjaman pending, aset dalam masa garansi kritis).
@@ -108,4 +115,7 @@
    - Akses navigasi cepat dengan Omnibox keyboard shortcut `Ctrl+K` / `Cmd+K`.
    - Palet warna korporat yang konsisten dan kontras sesuai standar BUMD DKI Jakarta.
 5. **NFR-05: Kesiapan Operasional Kontainer (Containerization)**
-   - Siap dijalankan menggunakan Docker Compose dengan image standar `node:20-alpine` dan `postgres:17-alpine`.
+   - Siap dijalankan menggunakan Docker Compose dengan multi-stage image Node.js 22 Alpine dan PostgreSQL 17 Alpine. Build menggunakan `npm ci` dari lockfile; runtime hanya memasang dependency produksi, berjalan sebagai user non-root, dan tidak meng-install/build dependency setiap container start.
+   - Source code dan node_modules tidak di-bind-mount ke container produksi. Image release diberi tag commit yang tercatat.
+   - Healthcheck aplikasi memverifikasi API dan PostgreSQL. Deployment mengganti app container tanpa menghapus database atau named volume.
+   - Dokumen kontrak disimpan pada named volume `uploads_data`; backup/restore harus mencakup database PostgreSQL dan volume file.

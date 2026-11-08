@@ -1,3 +1,123 @@
+## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
+
+- PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
+- Employee baseline visibility remains limited to maintenance records for assets assigned to that employee.
+- GA's optional read-only IT workstation inventory exception does not grant IT maintenance-record visibility; explicit dynamic asset scopes remain independently evaluated.
+- File-store legacy behavior is preserved.
+- Added a focused regression contract and CI step. CI has not yet run on this branch.
+
+---
+
+## [2026-11-09] — Align asset movement history with dynamic asset scope
+
+- The movement-history endpoint now uses the canonical `getScopedAssets()` result without a second filter based on legacy primary-role labels.
+- Employees with explicit additional asset scopes can see movement history for assets in those scopes; personal asset visibility remains governed by the canonical resolver.
+- Added `test:movement-scope` and a CI step to prevent a duplicate legacy filter from returning.
+- CI for this follow-up branch has not run yet.
+
+---
+
+## [2026-11-08] — Align dashboard loan attention with explicit owner scope
+
+- The defense-in-depth Dashboard Attention middleware now preserves the borrower's own loan cards and honors explicit PostgreSQL `loans` division scope for owner-division cards.
+- Legacy IT/GA role-label fallback is limited to file-store compatibility.
+- Added `test:dashboard-attention-middleware` and a CI step to prevent scope drift.
+- CI for this follow-up branch has not run yet.
+
+---
+
+## [2026-11-08] — Validate contract renewal decisions and replacement links
+
+- Renewal outcomes are validated at runtime; TypeScript types alone are not trusted for HTTP input.
+- `replaced_by_new_contract` requires an existing, visible replacement contract in the same normalized owner division and rejects self-reference.
+- Replacement IDs are rejected for all other outcomes.
+- Added `test:contract-renewal-integrity` and a CI step.
+- CI for this follow-up branch has not run yet.
+
+---
+
+## [2026-11-08] — Minimize reservation data in Humas documentation queue
+
+- Humas documentation queue remains limited to reservations requesting documentation.
+- For reservations owned by other users, API responses retain schedule and documentation brief but redact attendee list, organizer contact, requested facilities, consumption details, and internal/rejection/interruption notes.
+- The organizer's own reservation remains fully visible.
+- Added API regression assertions to the meeting-room Stage 3 verification script.
+- CI for this follow-up branch has not run yet.
+
+---
+
+## [2026-11-08] — Unify asset visibility for list and direct-ID access
+
+### Perbaikan keamanan dan konsistensi
+- Direct-ID middleware tidak lagi memakai resolver aset kedua yang bercabang berdasarkan role primer GA/IT.
+- List, detail, direct URL, dan linked attention asset checks kini menggunakan `GabahDomainService.getScopedAssets(actor)` yang sama, termasuk scope dari role tambahan.
+- Permission mutasi tetap menjadi pemeriksaan terpisah; akses baca tidak memberikan hak mengubah aset.
+- Regression contract diperbarui untuk mencegah resolver scope ganda muncul kembali.
+- Perubahan diajukan pada branch `ai/codex/unify-asset-scope-guard`; CI exact head masih menunggu.
+
+---
+
+## [2026-11-08] — Dashboard attention record-level scope
+
+### Perbaikan keamanan
+- `GET /api/dashboard/attention` kini memfilter kartu tiket berdasarkan reporter/assignee atau owner scope modul Tickets; kartu pinjaman berdasarkan borrower atau owner scope Loans; kartu aset berdasarkan resolver aset server-side.
+- Super Admin dan Auditor tetap mendapat read scope global. Record hilang dan link type tak dikenal fail-closed.
+- Ditambahkan regression test dan langkah CI `test:dashboard-attention-scope`.
+- Perubahan diajukan melalui PR #19; status CI untuk branch follow-up masih menunggu pemicu workflow.
+
+### Status
+- Ini menutup satu temuan scope yang teridentifikasi, bukan menyatakan seluruh endpoint sudah diaudit atau GABAH siap produksi.
+
+---
+
+## [2026-11-08] — Contract file storage, role administration, and production container hardening
+
+### Perubahan
+- Auditor read-only ditentukan dari role efektif, termasuk role tambahan. PostgreSQL integration membuktikan Karyawan + GA + Auditor: assignment 200, API write 403, audit read 200.
+- Form tambah pegawai menggunakan primary profile role; Humas/Sekretariat Direksi ditetapkan sebagai role tambahan, Supply Chain/PIBC dicatat sebagai unit/lokasi kerja. Lokasi kantor dapat dipilih terpisah dan role tambahan ditampilkan di direktori pengguna.
+- Dokumen kontrak sekarang benar-benar ditulis ke storage persisten; upload divalidasi berdasarkan ekstensi, MIME, dan signature; file path dibuat server-side dan diisolasi per kontrak. Download memeriksa permission serta visibility contract dan tidak diekspos sebagai static public file.
+- ContractsView menyediakan upload dan download dokumen dengan token autentikasi dan capability efektif.
+- Docker production memakai multi-stage Node 22 Alpine image, npm ci dari lockfile, production dependencies, non-root runtime, migration SQL yang disertakan, dan tidak bind-mount source atau install dependency saat startup.
+- Docker Compose memisahkan PostgreSQL data volume dan uploads_data; healthcheck app memeriksa API. deploy.sh membangun image, memastikan PostgreSQL healthy, lalu mengganti app saja tanpa down atau menghapus volume.
+- CI menambahkan production image runtime smoke terhadap PostgreSQL 17, Node 22, dan permission tulis pada uploads volume.
+- Runbook backup/restore sekarang mencakup PostgreSQL dan uploads_data secara berpasangan.
+
+### Verifikasi
+- CI #587: production image berhasil boot pada **Node 22.23.4**, terhubung ke PostgreSQL 17, health API menunjukkan persistence PostgreSQL, dan uploads volume dapat ditulis.
+- CI #588: PostgreSQL CR-04/CR-05 **63/63 PASS**; invalid PDF signature ditolak 400; upload 200; unauthorized contract download 404; Auditor additional-role download 200; byte dokumen tetap tersedia setelah restart.
+- CI #589: Dynamic RBAC foundation **63/63**, asset scope **37/37**, P0 security **37/37**, maintenance authorization **33/33**, contract UI/storage, owner-path isolation, Docker image, dan deployment guard assertions PASS.
+- CI #554/#555: employee primary-role/location UI and static checks PASS; CI #557 role badge and Auditor precedence checks PASS.
+- Semua hasil di atas adalah CI, bukan pengganti browser UAT atau staging/production rehearsal.
+
+### Release status
+**NO-GO.** PR #18 tetap draft/open. Belum ada browser UAT oleh pemilik proses, upgrade rehearsal dari snapshot legacy, backup/restore rehearsal untuk database + uploads_data, staging deployment, TLS/reverse proxy, monitoring, atau business sign-off. Jangan deploy branch kerja.
+
+---
+
+## [2026-11-08] — Auditor multi-role enforcement, documentation alignment, and PostgreSQL verification
+
+### Perubahan
+- Auditor read-only kini dihitung dari role efektif yang ditetapkan ke user, termasuk role tambahan. Middleware menolak seluruh operasi tulis API untuk user dengan capability Auditor; aturan juga dipakai pada asset scope, contract visibility/logs, reconciliation, dan room reservations.
+- Menambahkan regression integration test PostgreSQL: Karyawan diberi role GA + custom vendor + Auditor; assignment tetap mempertahankan primary Karyawan, API write ditolak HTTP 403, dan audit read yang diizinkan tetap HTTP 200.
+- Menyelaraskan PRD, requirement, RBAC spec, audit data-scope, UAT, dan skill/guardrails AI dengan keputusan owner domain fleksibel, lima lokasi aktif, role tambahan, serta pemisahan lokasi kerja/lokasi aset/owner.
+- Menambahkan AGENTS.md dan skill .agents/skills/gabah-maintainer/SKILL.md sebagai instruksi wajib untuk AI coding agent. Agent lain memakai branch ai/<agent>/<work-item> dan PR ke branch integrasi.
+- Menegaskan release status tetap NO-GO sampai UAT browser, upgrade snapshot legacy, backup/restore, staging deployment, dan persetujuan bisnis selesai.
+
+### Verifikasi terukur
+- CI run #544 pada code SHA 398ba8fa61ddef9f5cf63dc22ff330cd7d1a0f33: SUCCESS.
+- PostgreSQL 17 fresh DB: migration ledger 35 migration entries; CR-04/CR-05 integration 57/57 PASS; restart persistence dan production fail-fast checks PASS.
+- Tambahan role Auditor: assignment 200, API write 403, authorized audit read 200.
+- Regression suites pada run #544: Dynamic RBAC foundation 63/63, asset scope policy 37/37, P0 security 37/37, maintenance authorization 33/33, serta org/navigation/dashboard/loan/room checks PASS.
+- CI run #545 pada dokumentasi/RBAC head 408d922968be84980026f7a346f7e3992c6346f4: SUCCESS. Perubahan UAT dan audit documentation setelahnya memiliki run CI tersendiri yang masih berjalan saat catatan ini dibuat.
+
+### Batas yang belum ditutup
+- Belum ada UAT manual browser dengan persona pengguna sebenarnya.
+- Belum ada rehearsal migrasi upgrade dari snapshot database produksi/legacy.
+- Belum ada backup/restore rehearsal, staging deployment, TLS/monitoring verification, atau sign-off pemilik proses.
+- Jangan deploy branch draft; deployment produksi hanya dari commit/tag yang telah di-review dan di-merge.
+
+---
+
 ## [2026-10-21] — Finalisasi Stage 13F: Maintenance Authorization merged
 
 ### Hasil akhir terverifikasi
@@ -982,3 +1102,207 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Validasi file yang ketat mencegah upload file berbahaya
 
 ## [2026-10-14] — Perbaikan Menu RBAC Sidebar
+
+## [2026-11-08] — Prevent destructive branch-role migration
+
+### Fixed
+- Replaced the unsafe body of `server/migrations/026_map_branch_accounts_to_employee_location.sql` with an intentional no-op compatibility marker. The previous draft rewrote Supply Chain/PIBC users to Karyawan, deleted their branch-role assignments, and deactivated `UNIT-SC`/`UNIT-PIBC` based only on the legacy role label.
+- The revised migration preserves employee role, primary/additional role assignments, job level, organizational unit, and history. It explicitly states that location alone grants no data scope and that RPC/SC can be an operational asset owner independently of the physical site.
+- Added `scripts/branch-migration-safety-verify.mjs` and `npm run test:branch-migration-safety`; wired the check into `.github/workflows/ci.yml`.
+
+### Important migration caveat
+- Editing migration 026 prevents the unsafe draft from running on databases that have not applied it yet. It does **not** reverse changes in databases where the old version was already applied. Such environments require a separately reviewed recovery plan based on backups/audit evidence; no automatic role restoration is attempted.
+
+### Verification
+- CI run triggered for commit `c6c3b5946de8a72d5a13fcaf02cf7c202018c2b3` (run 42477031571) was still in progress when recorded. Do not report this change as CI-passing until the run completes.
+
+## [2026-11-08] — Extensible asset-owner scopes across modules
+
+### Business model implemented
+- Owner domain is now an extensible code backed by the existing Super Admin-managed Master Divisi (db.divisions / PostgreSQL divisions), not a hardcoded IT/GA-only allowlist. Initial owner domains remain IT, GA, SC, PIBC, Umum, Audit; Super Admin can add future owner codes before assigning category/asset ownership.
+- Physical site, employee office location, managing unit, asset owner domain, and custodian remain independent. Location never grants owner scope.
+- New asset creation and category owner assignment require the owner code to exist in the configured division/owner master. Division code is validated to 2–20 uppercase alphanumeric / underscore / hyphen characters. Referenced owner master records cannot be deleted while referenced by assets, categories, employees, or org units.
+- PostgreSQL persistence now synchronizes configurable division/owner master rows before users, categories, and assets so new owner codes satisfy foreign keys.
+
+### Authorization changes
+- Asset read visibility, create, update, assign, move, and lifecycle authorization now accepts any non-empty configured owner code when the user has the exact module permission and explicit owner scope. File-store fallback remains conservative and IT/GA-only.
+- Asset PATCH and bulk-import UPDATE use the same shared canMutateAssetOwner policy. A Karyawan can perform an operation only when an additional role/capability explicitly grants its permission and matching owner scope; Auditor remains read-only.
+- Loan visibility/operations, ticket visibility/dashboard counts, maintenance create/update, and contract visibility/create/edit now use module-specific owner scopes rather than IT/GA-only branches. Personal borrower/reporter/assignee access remains intact.
+- GA's optional IT workstation visibility remains a separate read-only permission limited to HLT/HPC; it does not grant IT asset mutation rights.
+
+### Migration correction
+- Migration 026 remains a no-op compatibility marker to avoid role/unit rewrites inferred from branch labels.
+- Fixed fresh-install ordering in migration 006: seed Umum and Audit into divisions before creating org units that reference them. This is additive/idempotent. It does not retroactively execute on databases where migration 006 is already recorded.
+
+### Files changed
+- server/services.ts, server/server.ts, server/contracts.ts, server/db.ts, server/taxonomy.ts, server/persistence.ts
+- server/migrations/006_org_model_masters.sql, server/migrations/026_map_branch_accounts_to_employee_location.sql
+- scripts/asset-scope-policy-verify.mjs, scripts/dynamic-rbac-foundation-verify.mjs, scripts/branch-migration-safety-verify.mjs
+- CHANGELOG.md, progress log, package.json, .github/workflows/ci.yml
+
+### Verification
+- Latest verified branch head: 8fdd15db91335f2c937e98294272770b75dd1ebc.
+- CI run #382 (42478977996) completed SUCCESS: typecheck, dynamic RBAC contracts, migration safety, asset-scope regression, role navigation, dashboard scope, production build, 37 P0 HTTP security assertions, and maintenance authorization assertions all passed.
+- PR #18 remains Draft/Open and is not merged. Do not deploy or run production migrations without backup, dry-run, impact report, and explicit approval.
+
+### Remaining work
+- Continue auditing vendor/report/reconciliation/admin endpoints for remaining owner/role shortcuts.
+- Replace stale role-name navigation assumptions with the effective-permission model end-to-end and verify menu/page actions per user.
+- Reconcile historical owner codes and any previously applied migration 026 effects only from verified backup/audit/HR evidence. No mass owner or employee remapping.
+- Complete cross-role UAT for RPC/SC production machinery at Subang (owner RPC/SC, location Subang), GA-owned assets, IT-owned assets, and GA's read-only HLT/HPC exception.
+
+
+### Final handoff status (2026-11-08)
+- Documentation head at this handoff: 016c1a7be8740c4b5ff0273be00b2b6d629e0fc7.
+- CI #383 / run 42479231928 completed SUCCESS on that head. This run includes the latest source changes and documentation: typecheck, all RBAC/asset-scope/navigation/dashboard checks, production build, 37 P0 HTTP assertions, and maintenance authorization assertions passed.
+- PR #18 remains Draft/Open and intentionally unmerged pending the remaining vendor/report/reconciliation/admin authorization audit and end-to-end per-user UAT.
+
+
+## [2026-11-08] — Configurable owner exclusions in Dynamic RBAC
+
+### Added
+- Added the `division_except` scope type so Super Admin can configure policies such as "all asset owners except IT" without enumerating every current/future owner domain.
+- Added role-editor option **Semua owner kecuali** and backend validation for the new scope.
+- Added migration 032 to extend the PostgreSQL scope constraint safely.
+- Asset read, asset mutation, and module owner-scope checks now honor exclusions. An explicit grant for a specific owner can override a broad exclusion; unit/location matches cannot bypass an owner exclusion.
+- Existing role permissions/scopes are not silently changed. Super Admin must explicitly configure the desired policy per role and module.
+
+### Verification
+- Regression checks added for owner exclusions. CI must pass on the latest PR head before this change is considered verified.
+
+
+### Follow-up hardening
+- Owner-master synchronization now preserves `is_active=false`; persistence no longer silently reactivates disabled owner domains.
+- New asset creation rejects an inactive owner master. Existing asset/history records are not rewritten.
+- Owner exclusion comparisons are case-insensitive and normalized consistently.
+- CI run #402 passed on source head `b437abf78abdcf2c607f65943f2ba95a4c3b4b3f`: TypeScript lint, RBAC contract checks, migration safety, asset-scope policy checks, navigation/dashboard checks, production build, 37 P0 HTTP security assertions, and 33 maintenance authorization assertions.
+
+
+### Reconciliation scope hardening
+- Reconciliation GET now calculates statistics and rows only from the caller's visible asset set (Super Admin/Auditor retain global read access).
+- ERP number linking now requires both `reconciliation.link` and the shared `assets.update` permission + matching owner scope; client-side permission alone cannot mutate another owner's asset.
+- CI run #409 passed on head `c5d71a0e7e20f6c1dfbe146af2a8d8fa1d4b0a3f`.
+
+
+### Office location master correction — 2026-11-08
+- Current active office locations are exactly HO, PIBC, RPC/SC, and Pangsub.
+- The retired Kantor Perawatan office is inactive, not deleted. Existing location IDs are preserved so user references and history remain intact.
+- Future locations remain configurable by Super Admin; Subang is not seeded or treated as an active site.
+- Added migration 033 and regression assertions. Migration has not been applied to production.
+
+
+### Corrected office master — 2026-11-08
+- User correction: **Kantor Perawatan is still active**. The five active office locations are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is closed and is not seeded as an active office location.
+- Corrected `server/db.ts`, persistence fallback, migration 033, and asset-scope regression assertions. No users or assets are reassigned.
+
+
+### Follow-up correction — active offices and loan-return location (2026-11-08)
+- Corrected migration 033: Kantor Perawatan is explicitly set to `is_active = TRUE`; removed the earlier deactivation branch. The migration preserves its existing ID and does not delete or reassign any user/asset references.
+- Corrected the office regression test to assert that migration 033 keeps Kantor Perawatan active and preserves office history.
+- Audited loan custody transitions and removed the hardcoded location reset to `Head Office - Gudang Pool` during loan return. Returning an item changes custody/status/condition; it must not silently relocate the physical asset. A real move must use the asset-mutation workflow and its audit trail.
+- Updated loan authorization error text and comments to describe permission + Loans owner scope, not an IT/GA-only whitelist.
+- CI run 42486650240 failed at TypeScript parsing of the newly added office regression regex (not application logic). Corrected the regex in the subsequent commit; latest CI result must be checked before claiming pass.
+
+
+### Loan request authorization hardening — 2026-11-08
+- `requestLoan()` now rejects attempts by ordinary users to create a loan request with another employee's `borrower_id`. Delegated requests are not implemented as a capability yet; only Super Admin may set a different borrower until that workflow is explicitly designed.
+- `/api/loans`, approve, and reject routes now preserve domain `statusCode` values (including 403) rather than flattening authorization failures into HTTP 400.
+- Added regression assertions for borrower identity, authorization status propagation, and physical-location preservation on return.
+
+
+### Office master regression coverage — 2026-11-08
+- Migration 033 now safely deactivates an existing `org_office_locations` row whose name is Subang, if present, without deleting it. This does not touch `asset_locations`, so physical asset-location history is preserved.
+- Kantor Perawatan remains explicitly active. The five currently confirmed active offices are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan; future office sites may still be added through Super Admin master data.
+- Updated `scripts/org-model-verify.mjs`: the nine legacy role labels are documented as compatibility data, the old Kantor Pusat label was replaced by HO, and the live API check requires the five confirmed offices while allowing future locations.
+
+
+### Migration 033 validation fix — 2026-11-08
+- CI run #438 failed one source assertion because the regression regex expected the Subang `WHERE` clause before its `SET` clause. Updated the assertion to match actual SQL order.
+- During the same review, found and removed a trailing comma left after editing the `UPDATE ... SET name = CASE` statement. Migration 033 now has valid `SET ... END WHERE ...` syntax.
+- New CI run #439 is the first run expected to validate the corrected migration and test together; status must be checked before marking this migration verified.
+
+
+### Ticket authorization follow-up — 2026-11-08
+- `canManageTicket()` in `server/runtime-hardening.ts` previously allowed dynamic PostgreSQL scopes only for IT and GA ticket categories. Custom operational owner categories such as RPC/SC were blocked even when their users had explicit `tickets.update` permission and matching owner scope.
+- PostgreSQL mode now evaluates the ticket's owner/category code generically through `hasRbacScope(user, 'division', owner, 'tickets')`. IT/GA role-label fallback remains only for file-store compatibility. Reporter/assignee self-access and Auditor read-only behavior remain intact.
+- Added regression coverage for custom owner-code ticket status authorization.
+
+
+### Verification and remaining authorization audit — 2026-11-08
+- CI run #441 (run `42487422969`) passed on source head `9f3faf86f7f23f40ea8db167a9554f0abf8ef48e`: 46/46 asset-scope checks, production build, 37/37 P0 HTTP security assertions, and 33/33 maintenance authorization assertions; the workflow also completed lint and Dynamic RBAC contract checks successfully.
+- CI run #443 (run `42487486675`) passed on documentation head `6f3e2b2a772d632d6f17ea82d1f5cb90859ac746`, confirming the migration 033 correction and office regression checks at that point.
+- Subsequent ticket custom-owner-scope fix and regression check were added in commits `0b0db0a66d7a3e1ca2d049ce77740b0717818548` and `e02a522f5efaec49dea5466e0edc0c5aac29f30a`. CI #446 is running on the newest head; pending result.
+- Additional audit finding (not yet changed): vendor visibility/write ownership is still inferred from vendor `category` using an IT-vs-GA fallback. This cannot represent configurable owner domains such as RPC/SC safely. Requires a separate schema/API/UI design; do not infer vendor owner from employee location or category text.
+
+
+### Latest CI and additional UI/domain audit — 2026-11-08
+- CI #446 (`42487582277`) passed with the dynamic ticket-owner authorization fix; CI #447 (`42487587798`) and #448 (`42487694450`) also passed on subsequent documentation heads.
+- Vendor audit confirms a broader issue than backend category mapping: `VendorsView.tsx` enables management only for hardcoded role labels Admin GABAH/IT/GA, while `/api/vendors` infers owner from category IT/License vs everything else GA. Vendor category and responsible owner are distinct concepts; future RPC/SC vendors cannot be represented safely yet.
+- Room reservation list still applies legacy role branches for GA, IT, Humas, and self-only users. These rules include privacy redaction and must be translated carefully into effective capabilities/scopes without exposing agenda descriptions, attendee lists, or documentation notes.
+
+
+### CI status correction — 2026-11-08
+- CI #449 (`42487698982`) completed SUCCESS on head `2dd9d2a9b79a07d7dcfd96291108b5cbfd46e14f`; this includes the ticket dynamic-owner-scope change and its regression check.
+- CI #450/#451 were triggered by the latest documentation-only commits and were still running/queued at this update. PR #18 remains Draft/Open and unmerged.
+
+
+### Vendor owner-domain correction — 2026-11-08
+- Added an explicit optional `owner_division` field to vendor records and the frontend model. Vendor service category is now independent from the responsible owner domain.
+- `/api/vendors` list, create, and update authorization now use the explicit owner code and module `vendors` scope. The previous `IT`/`License` => IT, everything else => GA inference has been removed.
+- New vendor records require a valid active owner code from the configurable division master. Update checks authority over both the existing and requested owner and persists `owner_division` through the explicit update allowlist.
+- Legacy vendor rows without owner classification remain visible to Super Admin/Auditor only and cannot be edited by scoped users until Super Admin classifies them. No automatic owner backfill is performed.
+- `VendorsView` now loads owner choices from the master division API and uses effective permission keys / Super Admin capability rather than the fixed Admin/IT/GA role allowlist.
+- Added regression checks for owner/category separation, dynamic scope, unclassified legacy handling, and UI permission behavior. Latest CI run must be checked before marking this change verified.
+
+
+### Room reservation authorization correction — 2026-11-08
+- Replaced room-reservation operational queue visibility based on GA/IT/Humas role labels with explicit capabilities: `room_reservations.approve` / `reject` for the redacted GA operations queue, `room_reservations.it_facilities.read` for the redacted IT-facility queue, and `room_reservations.documentation.read` for the Humas documentation queue. Personal reservations remain visible to their organizer; Super Admin/Auditor read access remains as before.
+- Added migration 034 with additive grants: IT facility queue to `it`, documentation queue to `humas`, and `room_reservations.override_priority` to `sekretaris_direksi`. Super Admin can grant these permissions to custom roles.
+- Room approve/reject/check-in/check-out/cancel and room update domain guards now use effective permissions with narrow file-store compatibility fallback. Priority interruption is controlled by `room_reservations.override_priority` plus HIGH priority, not a hardcoded Sekretaris Direksi role-name comparison.
+- Preserved redaction of agenda, description, attendee list, phone, consumption notes, documentation notes, and rejection/interruption reasons for operational queues.
+- Added regression assertions for queue capabilities, privacy redaction, operation permission checks, and migration grants. CI pending on latest head.
+
+
+### PostgreSQL migration hardening and live CI — 2026-11-08
+- Replaced migration 004's unconditional reference to `contracts.owner_division_id` with an information_schema-guarded compatibility backfill for both fresh and legacy schemas. Unknown/unmapped legacy contract owners are set to `UNASSIGNED`, not silently assigned to GA; Super Admin must review and classify them.
+- Corrected migration 015: `rooms` is still an application datastore collection, not a PostgreSQL table. Removed the invalid foreign key `room_id REFERENCES rooms(id)` so fresh PostgreSQL startup is not blocked by a nonexistent table.
+- Expanded CI to provision PostgreSQL 17 and run `scripts/cr04-cr05-verify.mjs` against an isolated fresh database, then run loan, room, org model, asset master, menu connectivity, security, and maintenance regressions in addition to lint/build and RBAC scope checks.
+- Added static regression guards against reintroducing the unsafe contract owner default or invalid room foreign key. Live PostgreSQL result is pending; do not claim database integration passes until CI completes.
+
+
+### PostgreSQL fresh-boot blocker found by live CI — 2026-11-08
+- First PostgreSQL 17 CI run failed on a real fresh database: `backfillDynamicRbacUserRoles()` queried `assigned_role.is_primary`, but `assigned_role` aliases `gabah_roles`; the column belongs to `gabah_user_roles` alias `ur`.
+- Corrected the SQL predicate to `ur.is_primary = TRUE`. This is the actual root cause of the fresh PostgreSQL boot failure after migrations; not a missing migration 030.
+- Added a regression assertion that the primary marker is read from the assignment table and that migration 030 creates it. Re-run the PostgreSQL-backed workflow; do not mark PostgreSQL integration green until the new run passes.
+
+
+### Follow-up CI assertion alignment — 2026-11-08
+- After correcting the primary-role SQL to `ur.is_primary`, the next CI attempt stopped earlier in the static Dynamic RBAC verifier: one assertion still expected the old incorrect `assigned_role.is_primary` alias. Updated that assertion to expect `ur.is_primary`.
+- This was a stale test expectation; the live PostgreSQL step had not yet been reached in that run. Re-run CI on the new head to verify both the source checks and actual PostgreSQL startup.
+
+
+### Branch/PR consolidation — 2026-11-08
+- Closed PR #13 (expanded regression CI), PR #14 (fresh PostgreSQL contract migration fix), and PR #15 (sidebar fail-closed) as superseded. Their relevant work is now carried by PR #18: expanded CI workflow, corrected migrations 004/015, and dynamic permission-based fail-closed sidebar navigation.
+- Their remote branches are no longer active work paths. No branches or commits were force-deleted; Git history is preserved. Continue development only on `fix/role-based-navigation` until it is merged to `main`.
+- PR #11 deployment hardening, PR #12 finalization checklist, PR #17 user/role assignment audit, and PR #3 legacy ticket gate remain open pending review/consolidation; do not start parallel implementation branches.
+
+
+### Auditor ticket read-only correction — 2026-11-08
+- Found migration 024 granted `tickets.create` to Auditor along with employee roles, contradicting Auditor's read-only mandate. Route-level Auditor denial existed, but the effective permission could still expose a create action in the UI.
+- Added migration 036 to remove only the Auditor `tickets.create` role grant. `tickets.read` remains granted; no tickets or user records are modified.
+- Added a regression check ensuring Auditor retains read permission and is denied create permission. PR #3's older ticket seed approach is superseded by the current consolidated permission catalog/seeds and this correction.
+
+
+### Vendor owner-domain hardening — 2026-11-08
+- Vendor category and owner domain are treated as independent attributes. Create/update now resolve owner codes against the active owner master (case-insensitive) and validate category/name/rating input; the category text no longer implies IT or GA ownership.
+- Backend vendor list/create/update enforce the effective vendors permission and owner scope. Owner changes require authority for both the existing and destination owner. Legacy vendors without an owner remain Super Admin-only for classification.
+- Vendor UI now renders Add and Edit controls separately based on vendors.create/vendors.update, displays the owner domain, and removes the fabricated static SLA Compliance 99% metric.
+- Owner master deletion now checks vendor, contract, maintenance, and loan references in addition to asset/category/user/org-unit references.
+- PostgreSQL integration coverage added for IT/GA owner isolation, cross-owner write denial, Karyawan denial without permission, creating a future owner domain, creating a custom role with vendors permissions + RPCSC scope, and category/owner independence.
+
+
+### Production deployment safety — 2026-11-08
+- Reworked deploy.sh: no automatic Docker installation, no docker compose down/--remove-orphans, preflight requires .env and non-empty PGPASSWORD, validates Compose, recreates only the app service, and waits for /api/health before returning success. Failure prints container/log diagnostics and exits non-zero.
+- Docker PostgreSQL port now binds to 127.0.0.1 only, not all VM interfaces. Initial admin/user provisioning secrets are passed from .env to the app container.
+- CI now validates docker compose config and bash -n deploy.sh.
+- Replaced OFFICE-VM-RUNBOOK's destructive reset --hard/clean instructions with a release-gated update, PostgreSQL backup, health verification, rollback and restore procedure. It explicitly marks current release NO-GO.

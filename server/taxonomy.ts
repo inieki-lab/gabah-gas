@@ -24,7 +24,7 @@ export interface AssetTaxonomyItem {
   code: string;
   name: string;
   main_type: 'TNH' | 'BGN' | 'MSN' | 'KDR' | 'INV-F' | 'INV-P' | 'IT-H' | 'IT-S' | 'LNY';
-  owner_division: 'IT' | 'GA' | 'SC' | 'PIBC';
+  owner_division: string;
   category_type: 'IT' | 'General' | 'License';
   description: string;
   is_loanable_by_default: boolean;
@@ -47,14 +47,15 @@ export const FIXED_ASSET_MAIN_TYPES = [
 ] as const;
 export type FixedAssetMainType = (typeof FIXED_ASSET_MAIN_TYPES)[number];
 
+// Initial owner-domain seeds only; the owner vocabulary is intentionally extensible.
 export const ASSET_OWNER_DIVISIONS = ['IT', 'GA', 'SC', 'PIBC'] as const;
 export const ASSET_CATEGORY_TYPES = ['IT', 'General', 'License'] as const;
 
 export function isFixedAssetMainType(v: unknown): v is FixedAssetMainType {
   return typeof v === 'string' && (FIXED_ASSET_MAIN_TYPES as readonly string[]).includes(v);
 }
-export function isOwnerDivision(v: unknown): v is AssetTaxonomyItem['owner_division'] {
-  return typeof v === 'string' && (ASSET_OWNER_DIVISIONS as readonly string[]).includes(v);
+export function isOwnerDivision(v: unknown): v is string {
+  return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= 20;
 }
 export function isGabahCategoryType(v: unknown): v is AssetTaxonomyItem['category_type'] {
   return typeof v === 'string' && (ASSET_CATEGORY_TYPES as readonly string[]).includes(v);
@@ -160,7 +161,7 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
  */
 export function resolveTaxonomyByHumanName(
   nameOrCode?: string,
-  requestedDivision?: 'IT' | 'GA' | 'SC' | 'PIBC',
+  requestedDivision?: string,
   catalog: AssetTaxonomyItem[] = CANONICAL_TAXONOMY,
 ): AssetTaxonomyItem {
   // T2B-3: `catalog` = master kategori yang sedang berlaku (`db.categories`,

@@ -2,7 +2,7 @@ import { queryRbac, isPostgresPersistenceActive } from './persistence';
 
 export interface RbacScope {
   module: string | null;
-  type: 'all' | 'own' | 'division' | 'unit' | 'location';
+  type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location';
   value: string | null;
 }
 
@@ -34,7 +34,7 @@ export async function refreshRbacPolicy(): Promise<void> {
     'WHERE r.is_active = TRUE ORDER BY ur.user_id, r.role_key, rp.permission_key',
   );
   const scopes = await queryRbac<any>(
-    'SELECT s.role_id, r.role_key, s.scope_type, s.scope_value ' +
+    'SELECT s.role_id, r.role_key, s.module, s.scope_type, s.scope_value ' +
     'FROM gabah_role_division_scopes s JOIN gabah_roles r ON r.id = s.role_id ' +
     'WHERE r.is_active = TRUE ORDER BY s.role_id, s.scope_type, s.scope_value',
   );
@@ -43,7 +43,7 @@ export async function refreshRbacPolicy(): Promise<void> {
     const key = String(scope.role_key);
     const list = roleScopes.get(key) || [];
     list.push({
-      module: null,
+      module: scope.module == null ? null : String(scope.module),
       type: scope.scope_type,
       value: scope.scope_value == null ? null : String(scope.scope_value),
     });
@@ -80,6 +80,12 @@ export function isSuperadminActor(actor: { id: string; role?: string }): boolean
   return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : actor.role === 'Admin GABAH';
 }
 
+/** Auditor is a deny-write capability: assigning it as an additional role must not bypass read-only enforcement. */
+export function isAuditorActor(actor: { id: string; role?: string }): boolean {
+  if (isPostgresPersistenceActive()) return getEffectiveRoleKeys(actor.id).includes('auditor');
+  return actor.role === 'Auditor';
+}
+
 export function countRbacSuperadmins(activeUserIds?: string[]): number {
   const active = activeUserIds ? new Set(activeUserIds.map(String)) : null;
   let count = 0;
@@ -93,6 +99,20 @@ export function countRbacSuperadmins(activeUserIds?: string[]): number {
 export function hasRbacPermission(userId: string, permissionKey: string): boolean {
   return isRbacSuperadmin(userId)
     || (policiesByUser.get(String(userId)) || []).some(policy => policy.permissions.has(permissionKey));
+}
+
+export function getEffectiveRoleKeys(userId: string): string[] {
+  if (isRbacSuperadmin(userId)) return ['superadmin'];
+  return [...new Set((policiesByUser.get(String(userId)) || []).map(policy => policy.roleKey))];
+}
+
+export function getEffectivePermissionKeys(userId: string): string[] {
+  if (isRbacSuperadmin(userId)) return ['*'];
+  const keys = new Set<string>();
+  for (const policy of policiesByUser.get(String(userId)) || []) {
+    for (const key of policy.permissions) keys.add(key);
+  }
+  return [...keys].sort();
 }
 
 export function getUserRbacPolicies(userId: string): UserRbacPolicy[] {
@@ -111,13 +131,27 @@ export function hasRbacScope(
 ): boolean {
   if (isRbacSuperadmin(userId)) return true;
   const policies = policiesByUser.get(String(userId)) || [];
+  const moduleMatches = (scope: RbacScope) =>
+    scope.module == null || scope.module === '*' || module == null || scope.module === module;
+
+  // Owner-domain scopes support broad grants with explicit exclusions:
+  // "all except IT" must not be mistaken for unrestricted "all".
+  if (type === 'division') {
+    const owner = value == null ? '' : String(value).trim().toUpperCase();
+    const relevant = policies.flatMap(policy => policy.scopes.filter(moduleMatches));
+    if (relevant.some(scope => scope.type === 'division' && String(scope.value || '').trim().toUpperCase() === owner)) return true;
+    const excluded = relevant.some(scope => scope.type === 'division_except' && String(scope.value || '').trim().toUpperCase() === owner);
+    if (excluded) return false;
+    return relevant.some(scope => scope.type === 'all'
+      || (scope.type === 'division_except' && String(scope.value || '').trim().toUpperCase() !== owner));
+  }
+
   for (const policy of policies) {
     for (const scope of policy.scopes) {
-      const moduleMatches = scope.module == null || module == null || scope.module === module;
       const scopeMatches = scope.type === 'all'
         || (scope.type === 'own' && type === 'own')
         || (scope.type === type && scope.value === (value == null ? null : String(value)));
-      if (moduleMatches && scopeMatches) return true;
+      if (moduleMatches(scope) && scopeMatches) return true;
     }
   }
   return false;

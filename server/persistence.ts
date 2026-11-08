@@ -264,11 +264,11 @@ function hydrateDbFromState(state: any): void {
   }).concat(stateOrgUnits.filter((u: any) => u && !DEFAULT_ORG_UNITS.some(d => d.id === u.id)) as any[]);
 
   const DEFAULT_OFFICE_LOCATIONS = [
-    { id: 'OFF-KP', name: 'Kantor Pusat', is_active: true },
+    { id: 'OFF-KP', name: 'HO', is_active: true },
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
+    { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
     { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
-    { id: 'OFF-PANGSUB', name: 'Kantor Pangsub', is_active: true },
-    { id: 'OFF-RPC', name: 'RPC/Supply Chain', is_active: true },
   ];
   const stateOfficeLocations = Array.isArray(state.officeLocations) ? state.officeLocations : [];
   db.officeLocations = DEFAULT_OFFICE_LOCATIONS.map(def => {
@@ -435,6 +435,17 @@ async function backfillNormalizedTables(): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // Division codes are the extensible owner-domain master used by assets,
+    // categories, loans, and module data scopes. Sync them before any FK-backed
+    // user/category/asset rows so a newly configured owner works in PostgreSQL.
+    for (const division of db.divisions || []) {
+      if (!division?.code || !division?.name) continue;
+      await client.query(
+        `INSERT INTO divisions (code,name,is_active) VALUES ($1,$2,$3)
+         ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,is_active=EXCLUDED.is_active`,
+        [String(division.code).trim(), String(division.name).trim(), division.is_active !== false],
+      );
+    }
     for (const u of db.users) {
       await client.query(
         `INSERT INTO users (id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,updated_at)
@@ -595,29 +606,35 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
     [userIds],
   );
 
-  // Reconcile only the nine legacy role assignments. Custom dynamic roles are
-  // deliberately untouched by this compatibility bridge.
+  // Reconcile only the primary role mirror from users.role. Additional dynamic
+  // role assignments are preserved and remain additive.
   await pool.query(
     "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
     "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
-    "AND assigned_role.role_key IN ('superadmin','it','ga','sekretaris_direksi','humas','supply_chain','pibc','karyawan','auditor') " +
+    "AND ur.is_primary = TRUE " +
     "AND assigned_role.role_key IS DISTINCT FROM CASE u.role " +
     "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
     "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
-    "WHEN 'Supply Chain' THEN 'supply_chain' WHEN 'PIBC' THEN 'pibc' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE NULL END",
+    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
+    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END",
+    [userIds],
+  );
+  // The users.role field is the primary application role; additional roles
+  // remain assigned but are never marked primary by this compatibility bridge.
+  await pool.query(
+    'UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = ANY($1::text[])',
     [userIds],
   );
   await pool.query(
-    "INSERT INTO gabah_user_roles (user_id, role_id) " +
-    "SELECT u.id::text, r.id FROM users u " +
-    "JOIN gabah_roles r ON r.role_key = CASE u.role " +
+    "INSERT INTO gabah_user_roles (user_id, role_id, is_primary) " +
+    "SELECT u.id::text, r.id, TRUE FROM users u " +
+    "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
     "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
     "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
-    "WHEN 'Supply Chain' THEN 'supply_chain' WHEN 'PIBC' THEN 'pibc' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE NULL END " +
+    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
+    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END OR r.name = u.role) " +
     "WHERE u.id::text = ANY($1::text[]) " +
-    "ON CONFLICT (user_id, role_id) DO NOTHING",
+    "ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE",
     [userIds],
   );
 }

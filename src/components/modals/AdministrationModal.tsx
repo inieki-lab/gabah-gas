@@ -143,6 +143,13 @@ export const SYSTEM_ROLES: { value: UserRole; label: string; desc: string }[] = 
   { value: 'Auditor', label: 'Auditor (Satuan Pengawas Internal)', desc: 'Audit Trail & Rekonsiliasi PSAK 16 Read-Only' },
 ];
 
+// Primary employee profiles only. Function capabilities (Humas/Sekretariat)
+// and branch work locations are assigned independently in the Role dialog
+// and Office Location master; they are not primary employee roles.
+export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES.filter(role =>
+  !['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(role.value)
+);
+
 // T2B-3 — MASTER KATEGORI & ASET TETAP
 // Domain `main_type` kini diseragamkan dengan kode kanonikal di
 // server/taxonomy.ts (TNH/BGN/MSN/KDR/INV-F/INV-P/IT-H/IT-S/LNY) — satu
@@ -290,8 +297,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     email: '',
     role: 'Karyawan',
     role_label: 'Pegawai Operasional',
-    division: 'SC',
-    department: 'Pergudangan & Distribusi'
+    division: '' as OwnerDivision,
+    department: 'Operasional',
+    office_location_id: null,
+    job_level_code: '',
+    unit_id: null
   });
 
   useEffect(() => {
@@ -469,7 +479,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [rbacNewName, setRbacNewName] = useState('');
   const [rbacNewDescription, setRbacNewDescription] = useState('');
   const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
-  const [rbacScopes, setRbacScopes] = useState<Array<{ type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null }>>([]);
+  const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null }>>([]);
+  const [rbacScopeModule, setRbacScopeModule] = useState('assets');
   const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'unit' | 'location'>('division');
   const [rbacScopeValue, setRbacScopeValue] = useState('');
 
@@ -586,12 +597,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   const handleAddRbacScope = () => {
     const value = rbacScopeValue.trim();
-    if (['division', 'unit', 'location'].includes(rbacScopeType) && !value) {
-      showToast('Isi nilai divisi, unit, atau lokasi untuk scope ini.', 'warning');
+    if (['division', 'division_except', 'unit', 'location'].includes(rbacScopeType) && !value) {
+      showToast('Isi nilai owner/divisi, unit, atau lokasi untuk scope ini.', 'warning');
       return;
     }
-    const scope = { type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
-    if (!rbacScopes.some(item => item.type === scope.type && (item.value || null) === (scope.value || null))) {
+    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
+    if (!rbacScopes.some(item => (item.module || '*') === scope.module && item.type === scope.type && (item.value || null) === (scope.value || null))) {
       setRbacScopes(current => [...current, scope]);
     }
     setRbacScopeValue('');
@@ -626,6 +637,69 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       setRbacSaving(false);
     }
   };
+
+  // Dynamic per-user role assignment. The profile role remains the primary role;
+  // additional capabilities are assigned independently and persisted in PostgreSQL.
+  const [userAssignments, setUserAssignments] = useState<Record<string, number[]>>({});
+  const [primaryRoleIds, setPrimaryRoleIds] = useState<Record<string, number>>({});
+  const [roleAssignmentTarget, setRoleAssignmentTarget] = useState<UserProfile | null>(null);
+  const [roleAssignmentDraft, setRoleAssignmentDraft] = useState<number[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [assignmentsSaving, setAssignmentsSaving] = useState(false);
+
+  const refreshUserAssignments = async () => {
+    setAssignmentsLoading(true);
+    try {
+      const assignments = await gabahApi.getRbacUserAssignments();
+      const next: Record<string, number[]> = {};
+      const primary: Record<string, number> = {};
+      for (const item of Array.isArray(assignments) ? assignments : []) {
+        const userId = String(item.user_id);
+        next[userId] = Array.isArray(item.role_ids) ? item.role_ids.map(Number) : [];
+        if (item.primary_role_id != null) primary[userId] = Number(item.primary_role_id);
+      }
+      setUserAssignments(next);
+      setPrimaryRoleIds(primary);
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal memuat assignment role pegawai.', 'warning');
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  };
+
+  const openRoleAssignment = (user: UserProfile) => {
+    setRoleAssignmentTarget(user);
+    setRoleAssignmentDraft([...(userAssignments[String(user.id)] || [])]);
+  };
+
+  const toggleRoleAssignment = (roleId: number, checked: boolean) => {
+    if (roleAssignmentTarget && primaryRoleIds[String(roleAssignmentTarget.id)] === roleId) return;
+    setRoleAssignmentDraft(current => checked
+      ? [...new Set([...current, roleId])]
+      : current.filter(id => id !== roleId));
+  };
+
+  const saveRoleAssignment = async () => {
+    if (!roleAssignmentTarget) return;
+    setAssignmentsSaving(true);
+    try {
+      await gabahApi.setRbacUserRoles(String(roleAssignmentTarget.id), roleAssignmentDraft);
+      await refreshUserAssignments();
+      setRoleAssignmentTarget(null);
+      showToast('Assignment role pegawai berhasil disimpan.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal menyimpan assignment role pegawai.', 'warning');
+    } finally {
+      setAssignmentsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'users' && isCurrentUserAdmin) {
+      void refreshRbac();
+      void refreshUserAssignments();
+    }
+  }, [activeSection, isCurrentUserAdmin]);
 
   // Organization State
   // ORG-MODEL: master Jabatan/Level, Unit, dan Kantor/Lokasi (terpisah).
@@ -1241,6 +1315,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         role: newUserData.role,
         division: newUserData.division,
         department: newUserData.department,
+        office_location_id: newUserData.office_location_id || null,
+        job_level_code: newUserData.job_level_code || undefined,
+        unit_id: newUserData.unit_id || null,
         phone: newUserData.phone || ''
       });
 
@@ -1253,8 +1330,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         email: '',
         role: 'Karyawan',
         role_label: 'Pegawai Operasional',
-        division: 'SC',
-        department: 'Pergudangan & Distribusi'
+        division: '' as OwnerDivision,
+        department: 'Operasional',
+        office_location_id: null,
+        job_level_code: '',
+        unit_id: null
       });
       if (onRefreshData) await onRefreshData();
     } catch (err: any) {
@@ -1911,28 +1991,30 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Peran Akses (Role)</label>
+                      <label className="block text-slate-600 mb-1 font-medium">Role Primer</label>
                       <select
                         value={newUserData.role}
                         onChange={e => {
                           const r = e.target.value as UserRole;
-                          const found = SYSTEM_ROLES.find(x => x.value === r);
+                          const found = PRIMARY_PROFILE_ROLES.find(x => x.value === r);
                           setNewUserData({ ...newUserData, role: r, role_label: found?.label || r });
                         }}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
-                        {SYSTEM_ROLES.map(r => (
+                        {PRIMARY_PROFILE_ROLES.map(r => (
                           <option key={r.value} value={r.value}>{r.label}</option>
                         ))}
                       </select>
+                      <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
                       <select
-                        value={newUserData.division}
+                        value={newUserData.division || ''}
                         onChange={e => setNewUserData({ ...newUserData, division: e.target.value as OwnerDivision })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
+                        <option value="">— Pilih divisi —</option>
                         {divisions.map(d => (
                           <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                         ))}
@@ -1949,6 +2031,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       />
                     </div>
                     <div>
+                      <label className="block text-slate-600 mb-1 font-medium">Lokasi Kerja / Kantor</label>
+                      <select
+                        value={newUserData.office_location_id || ''}
+                        onChange={e => setNewUserData({ ...newUserData, office_location_id: e.target.value || null })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                      >
+                        <option value="">— Pilih lokasi kerja —</option>
+                        {officeLocations.filter(location => location.is_active).map(location => (
+                          <option key={location.id} value={location.id}>{location.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-slate-600 mb-1 font-medium">Nomor Telepon / WhatsApp</label>
                       <input
                         type="text"
@@ -1960,6 +2055,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
                       Sandi awal dibuat otomatis oleh server (CSPRNG) dan dikirim out-of-band oleh Administrator — tidak ditampilkan di UI.
+                    </div>
+                    <div className="sm:col-span-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-500">
+                      Role primer tidak otomatis mengikuti jabatan atau lokasi kerja. Setelah akun dibuat, Super Admin dapat menetapkan role tambahan melalui tombol Role pada daftar pengguna.
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
@@ -2024,7 +2122,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex flex-col items-center justify-center gap-1">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
                                 user.role === 'Admin GABAH'
                                   ? 'bg-purple-50 text-purple-700 border-purple-200'
@@ -2046,6 +2144,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               }`}>
                                 {user.role}
                               </span>
+                              {(userAssignments[String(user.id)] || [])
+                                .filter(roleId => roleId !== primaryRoleIds[String(user.id)])
+                                .map(roleId => {
+                                  const assignedRole = rbacRoles.find((role: any) => Number(role.id) === Number(roleId));
+                                  return assignedRole ? (
+                                    <span key={roleId} className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-[9px] font-semibold">
+                                      + {assignedRole.name}
+                                    </span>
+                                  ) : null;
+                                })}
                               {user.is_active === false && (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-rose-50 text-rose-700 border-rose-200" title="Akun dinonaktifkan — tidak dapat login">
                                   Nonaktif
@@ -2072,6 +2180,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   >
                                     <Pencil className="w-3 h-3 text-emerald-600" />
                                     <span>Edit</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title={`Atur role tambahan untuk ${user.name}`}
+                                    onClick={() => openRoleAssignment(user)}
+                                    disabled={assignmentsLoading}
+                                    className="px-2.5 py-1 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-[11px] font-bold whitespace-nowrap transition-colors disabled:opacity-50"
+                                  >
+                                    Role
                                   </button>
                                   <button
                                     type="button"
@@ -2510,6 +2627,56 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {roleAssignmentTarget && (
+                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-xl max-h-[85vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col">
+                    <div className="p-5 border-b border-slate-100">
+                      <h3 className="font-black text-slate-900">Penetapan Role Pegawai</h3>
+                      <p className="text-xs text-slate-500 mt-1">{roleAssignmentTarget.name} · {roleAssignmentTarget.email}</p>
+                      <p className="text-[11px] text-slate-500 mt-2">Role utama mengikuti profil pegawai. Pilih role tambahan hanya jika pegawai memang memiliki tanggung jawab lintas fungsi.</p>
+                      <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mt-2">Penting: jika Auditor dipilih sebagai role tambahan, akun menjadi read-only untuk seluruh operasi tulis, meskipun role lain memiliki hak mutasi.</p>
+                    </div>
+                    <div className="p-4 overflow-y-auto space-y-2">
+                      {assignmentsLoading ? (
+                        <p className="text-sm text-slate-500 text-center py-6">Memuat assignment role...</p>
+                      ) : rbacRoles.filter((role: any) => role.is_active).map((role: any) => {
+                        const roleId = Number(role.id);
+                        const isPrimary = primaryRoleIds[String(roleAssignmentTarget.id)] === roleId;
+                        const checked = roleAssignmentDraft.includes(roleId);
+                        return (
+                          <label key={roleId} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={assignmentsSaving || isPrimary}
+                              onChange={e => toggleRoleAssignment(roleId, e.target.checked)}
+                              className="mt-0.5"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-bold text-slate-800">{role.name}</span>
+                                {isPrimary && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">Role utama</span>}
+                                {role.is_superadmin && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">Superadmin</span>}
+                              </span>
+                              <span className="block text-[11px] text-slate-500">{role.description || role.role_key}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                      {!assignmentsLoading && rbacRoles.filter((role: any) => role.is_active).length === 0 && (
+                        <p className="text-sm text-slate-500 text-center py-6">Belum ada role aktif. Muat ulang konfigurasi RBAC.</p>
+                      )}
+                    </div>
+                    <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
+                      <button type="button" onClick={() => setRoleAssignmentTarget(null)} disabled={assignmentsSaving} className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">Batal</button>
+                      <button type="button" onClick={() => void saveRoleAssignment()} disabled={assignmentsSaving || assignmentsLoading || !primaryRoleIds[String(roleAssignmentTarget.id)]} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
+                        {assignmentsSaving ? 'Menyimpan...' : 'Simpan Role'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2666,22 +2833,29 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <p className="text-xs text-slate-500">Scope Superadmin dilindungi dan tidak dapat dibatasi melalui konfigurasi role.</p>
                             ) : (
                               <>
-                                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr_auto] gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.5fr_auto] gap-2">
+                                  <select value={rbacScopeModule} onChange={e => setRbacScopeModule(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                                    <option value="*">Semua modul</option>
+                                    {Array.from(new Set(rbacPermissions.map((permission: any) => permission.module).filter(Boolean))).sort().map((module: string) => (
+                                      <option key={module} value={module}>{module}</option>
+                                    ))}
+                                  </select>
                                   <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as any)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
-                                    <option value="division">Divisi</option>
+                                    <option value="division">Owner / divisi tertentu</option>
+                                    <option value="division_except">Semua owner kecuali</option>
                                     <option value="unit">Unit</option>
                                     <option value="location">Lokasi</option>
                                     <option value="own">Data sendiri</option>
                                     <option value="all">Semua data</option>
                                   </select>
-                                  <input value={rbacScopeValue} onChange={e => setRbacScopeValue(e.target.value)} disabled={['all', 'own'].includes(rbacScopeType)} placeholder="Kode divisi / unit / lokasi" className="px-3 py-2 rounded-xl border border-slate-200 text-xs disabled:bg-slate-50" />
+                                  <input value={rbacScopeValue} onChange={e => setRbacScopeValue(e.target.value)} disabled={['all', 'own'].includes(rbacScopeType)} placeholder={rbacScopeType === 'division_except' ? 'Kode owner yang dikecualikan' : 'Kode owner / unit / lokasi'} className="px-3 py-2 rounded-xl border border-slate-200 text-xs disabled:bg-slate-50" />
                                   <button type="button" onClick={handleAddRbacScope} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold hover:bg-slate-50">Tambah Scope</button>
                                 </div>
                                 {rbacScopes.length === 0 ? <p className="text-xs text-slate-400">Belum ada scope yang dikonfigurasi.</p> : (
                                   <div className="flex flex-wrap gap-2">
                                     {rbacScopes.map((scope, index) => (
-                                      <span key={scope.type + ':' + (scope.value || '') + ':' + index} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-100 text-xs text-slate-700">
-                                        {scope.type}{scope.value ? ': ' + scope.value : ''}
+                                      <span key={(scope.module || '*') + ':' + scope.type + ':' + (scope.value || '') + ':' + index} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-100 text-xs text-slate-700">
+                                        {(scope.module || '*') + ' / ' + scope.type}{scope.value ? ': ' + scope.value : ''}
                                         <button type="button" onClick={() => setRbacScopes(current => current.filter((_, i) => i !== index))} className="text-rose-600 font-bold" aria-label="Hapus scope">×</button>
                                       </span>
                                     ))}

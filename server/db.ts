@@ -97,7 +97,7 @@ export interface ServerAsset {
   name: string;
   category_code: string;
   category_type: 'IT' | 'General' | 'License';
-  owner_division: 'IT' | 'GA' | 'SC' | 'PIBC';
+  owner_division: string;
   /** T2B-1: unit operasional yang mengelola lifecycle aset (relasi ke org_units.id).
    *  owner_division (legacy/canonical ownership domain + numbering + RBAC) tetap
    *  berdiri sendiri; keduanya independen dari location & custodian/PIC.
@@ -163,7 +163,7 @@ export interface ServerLoan {
   asset_id: string;
   asset_name: string;
   asset_number: string;
-  owner_division: 'IT' | 'GA' | 'SC' | 'PIBC';
+  owner_division: string;
   borrower_id: string;
   borrower_name: string;
   borrower_department: string;
@@ -325,6 +325,7 @@ export interface ServerVendor {
   id: string;
   name: string;
   category: string;
+  owner_division?: string | null;
   pic_name: string;
   pic_phone: string;
   pic_email: string;
@@ -525,11 +526,12 @@ export const db = {
   // Satu lokasi dapat memuat banyak unit; unit tidak terkunci ke satu lokasi.
   // Tidak ada mapping permanen level→lokasi (contoh kondisi organisasi, bukan aturan sistem).
   officeLocations: [
-    { id: 'OFF-KP', name: 'Kantor Pusat', is_active: true },
+    // Lokasi kantor aktif saat ini. IDs dipertahankan agar relasi user historis aman.
+    { id: 'OFF-KP', name: 'HO', is_active: true },
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
+    { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
     { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
-    { id: 'OFF-PANGSUB', name: 'Kantor Pangsub', is_active: true },
-    { id: 'OFF-RPC', name: 'RPC/Supply Chain', is_active: true },
   ] as OrgOfficeLocation[],
 
   // T2B-2: Master Lokasi Fisik Aset (terpisah dari lokasi kantor user &
@@ -632,10 +634,12 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     id: 'USR-SC',
     name: 'Agus Pratama',
     email: 'sc.warehouse@foodstation.co.id',
-    role: 'Supply Chain',
-    role_label: 'Staf Logistik & Pergudangan Beras',
+    role: 'Karyawan',
+    role_label: 'Karyawan — Lokasi Supply Chain',
     division: 'SC',
     department: 'Pergudangan Beras Induk & Distribusi',
+    job_level_code: 'STAF',
+    office_location_id: 'OFF-RPC',
     phone: '081288776655',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
     is_active: true,
@@ -644,10 +648,12 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     id: 'USR-PIBC',
     name: 'Bambang Hermawan',
     email: 'pibc.admin@foodstation.co.id',
-    role: 'PIBC',
-    role_label: 'Pengawas Operasional Pasar Induk',
+    role: 'Karyawan',
+    role_label: 'Karyawan — Lokasi PIBC',
     division: 'PIBC',
     department: 'Pengelolaan Kios & Los Pasar Induk',
+    job_level_code: 'STAF',
+    office_location_id: 'OFF-PIBC',
     phone: '081211223344',
     avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
     is_active: true,
@@ -1372,10 +1378,10 @@ export function seedInitialData() {
     {
       id: 'mnt-001',
       schedule_code: 'MNT-2026-001',
-      title: 'Servis Berkala & Ganti Oli Toyota Avanza Veloz (B 1290 PQU)',
-      asset_id: 'asset-007',
-      asset_name: 'Toyota Avanza 1.5 Veloz MT 2023',
-      asset_number: 'GA-VOP-2026-0001',
+      title: 'Servis Berkala & Ganti Oli Toyota Avanza 1.5 G MT Operasional',
+      asset_id: 'AST-KDR-001',
+      asset_name: 'Toyota Avanza 1.5 G MT Operasional',
+      asset_number: 'GA-KDR-2026-0001',
       category_type: 'GA',
       owner_division: 'GA',
       scheduled_date: '2026-09-20',
@@ -1393,8 +1399,8 @@ export function seedInitialData() {
       id: 'mnt-002',
       schedule_code: 'MNT-2026-002',
       title: 'Cuci & Overhaul AC Presisi Ruang Server Data Center Lt. 2',
-      asset_id: 'asset-005',
-      asset_name: 'Dell PowerEdge R750 Enterprise Rack Server',
+      asset_id: 'AST-HSV-001',
+      asset_name: 'Dell PowerEdge R750 Enterprise Server',
       asset_number: 'IT-HSV-2026-0001',
       category_type: 'IT',
       owner_division: 'IT',
@@ -1414,7 +1420,7 @@ export function seedInitialData() {
       schedule_code: 'MNT-2026-003',
       title: 'Kalibrasi Berkala Timbangan Truk Beras 60 Ton Gudang Cipinang',
       asset_id: 'asset-010',
-      asset_name: 'Jembatan Timbang Truk Tronton Avery Weigh-Tronix 60 Ton',
+      asset_name: 'Toyota 8FBN25 Electric Forklift 2.5 Ton',
       asset_number: 'SC-WGH-2026-0001',
       category_type: 'General',
       owner_division: 'SC',
