@@ -469,7 +469,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [rbacNewName, setRbacNewName] = useState('');
   const [rbacNewDescription, setRbacNewDescription] = useState('');
   const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
-  const [rbacScopes, setRbacScopes] = useState<Array<{ type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null }>>([]);
+  const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null }>>([]);
+  const [rbacScopeModule, setRbacScopeModule] = useState('assets');
   const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'unit' | 'location'>('division');
   const [rbacScopeValue, setRbacScopeValue] = useState('');
 
@@ -590,8 +591,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Isi nilai divisi, unit, atau lokasi untuk scope ini.', 'warning');
       return;
     }
-    const scope = { type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
-    if (!rbacScopes.some(item => item.type === scope.type && (item.value || null) === (scope.value || null))) {
+    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
+    if (!rbacScopes.some(item => (item.module || '*') === scope.module && item.type === scope.type && (item.value || null) === (scope.value || null))) {
       setRbacScopes(current => [...current, scope]);
     }
     setRbacScopeValue('');
@@ -2666,9 +2667,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <p className="text-xs text-slate-500">Scope Superadmin dilindungi dan tidak dapat dibatasi melalui konfigurasi role.</p>
                             ) : (
                               <>
-                                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr_auto] gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.5fr_auto] gap-2">
+                                  <select value={rbacScopeModule} onChange={e => setRbacScopeModule(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                                    <option value="*">Semua modul</option>
+                                    {Array.from(new Set(rbacPermissions.map((permission: any) => permission.module).filter(Boolean))).sort().map((module: string) => (
+                                      <option key={module} value={module}>{module}</option>
+                                    ))}
+                                  </select>
                                   <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as any)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
-                                    <option value="division">Divisi</option>
+                                    <option value="division">Divisi / owner</option>
                                     <option value="unit">Unit</option>
                                     <option value="location">Lokasi</option>
                                     <option value="own">Data sendiri</option>
@@ -2680,8 +2687,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                 {rbacScopes.length === 0 ? <p className="text-xs text-slate-400">Belum ada scope yang dikonfigurasi.</p> : (
                                   <div className="flex flex-wrap gap-2">
                                     {rbacScopes.map((scope, index) => (
-                                      <span key={scope.type + ':' + (scope.value || '') + ':' + index} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-100 text-xs text-slate-700">
-                                        {scope.type}{scope.value ? ': ' + scope.value : ''}
+                                      <span key={(scope.module || '*') + ':' + scope.type + ':' + (scope.value || '') + ':' + index} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-100 text-xs text-slate-700">
+                                        {(scope.module || '*') + ' / ' + scope.type}{scope.value ? ': ' + scope.value : ''}
                                         <button type="button" onClick={() => setRbacScopes(current => current.filter((_, i) => i !== index))} className="text-rose-600 font-bold" aria-label="Hapus scope">×</button>
                                       </span>
                                     ))}
