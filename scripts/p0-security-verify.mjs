@@ -16,6 +16,7 @@ process.env.PORT = process.env.PORT || '0';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import net from 'node:net';
 import { spawn } from 'node:child_process';
 
 const results = [];
@@ -69,6 +70,23 @@ async function waitForServer(base, tries = 60) {
   return false;
 }
 
+async function getAvailablePort() {
+  // Ask the OS for an unused ephemeral port instead of guessing inside a
+  // fixed range that can collide with CI services or other test processes.
+  const probe = net.createServer();
+  await new Promise((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', resolve);
+  });
+  const address = probe.address();
+  if (!address || typeof address === 'string') {
+    await new Promise(resolve => probe.close(resolve));
+    throw new Error('Unable to allocate an isolated verification port');
+  }
+  await new Promise((resolve, reject) => probe.close(err => err ? reject(err) : resolve()));
+  return address.port;
+}
+
 async function main() {
   const serverPath = path.resolve(process.cwd(), 'dist/server.cjs');
   if (!fs.existsSync(serverPath)) {
@@ -85,7 +103,7 @@ async function main() {
     fs.rmSync(stateFile);
   }
 
-  const PORT = 39000 + Math.floor(Math.random() * 2000);
+  const PORT = await getAvailablePort();
   const base = `http://127.0.0.1:${PORT}`;
   const child = spawn(process.execPath, [serverPath], {
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'development' },
