@@ -337,11 +337,11 @@ async function main() {
     });
     record('IT cannot reclassify an IT vendor into GA owner without destination scope', '403', `HTTP ${itCrossOwnerUpdate.status}`, itCrossOwnerUpdate.status === 403);
 
-    const karyawanVendorDenied = await req(base, 'POST', '/api/vendors', {
-      token: karyawanToken,
+    const auditorVendorDenied = await req(base, 'POST', '/api/vendors', {
+      token: auditorToken,
       body: { name: 'VERIFY Forbidden Karyawan', category: 'General', owner_division: 'GA' },
     });
-    record('Karyawan without vendors.create cannot create vendor', '403', `HTTP ${karyawanVendorDenied.status}`, karyawanVendorDenied.status === 403);
+    record('Auditor without vendors.create cannot create vendor', '403', `HTTP ${auditorVendorDenied.status}`, auditorVendorDenied.status === 403);
 
     const newOwner = await req(base, 'POST', '/api/master/divisions', {
       token: adminToken,
@@ -384,10 +384,12 @@ async function main() {
       rpcscVendor.status === 201 && rpcscVendor.json?.data?.owner_division === 'RPCSC');
 
     const karyawanVendors = await req(base, 'GET', '/api/vendors', { token: karyawanToken });
-    record('Custom role vendor list is limited to RPCSC owner scope', 'only RPCSC',
+    record('Combined GA + custom RPCSC roles see only their combined owner scopes', 'GA and RPCSC; no IT',
       (karyawanVendors.json?.data || []).map(v => v.owner_division).join(','),
-      karyawanVendors.status === 200 && (karyawanVendors.json?.data || []).length === 1
-        && karyawanVendors.json.data[0].owner_division === 'RPCSC');
+      karyawanVendors.status === 200 && (karyawanVendors.json?.data || []).length >= 2
+        && (karyawanVendors.json.data || []).some(v => v.owner_division === 'RPCSC')
+        && (karyawanVendors.json.data || []).some(v => v.owner_division === 'GA')
+        && !(karyawanVendors.json.data || []).some(v => v.owner_division === 'IT'));
 
     const deleteReferencedOwner = await req(base, 'DELETE', '/api/master/divisions/RPCSC', { token: adminToken });
     record('Owner domain referenced by vendor cannot be deleted', '400', `HTTP ${deleteReferencedOwner.status}`, deleteReferencedOwner.status === 400);
