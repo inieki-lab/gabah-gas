@@ -386,3 +386,33 @@ Matriks kepemilikan aset yang disetujui:
 ### Penjelasan singkat mengapa pekerjaan ini sulit bagi agent coding
 
 GABAH bukan satu bug terisolasi. Aturan akses tersebar di middleware, route Express, domain service, resolver RBAC, migration SQL, seed, frontend navigation, dashboard, dan modal Administration. Ada beberapa generasi model role (legacy role, dynamic role, primary/additional role, jabatan, unit, lokasi) yang hidup bersamaan dan beberapa dokumen masih saling bertentangan. Agent yang hanya membaca satu file, mengandalkan skill umum, atau mengerjakan prompt per fitur akan mudah memperbaiki tampilan tetapi melewatkan jalur API lain atau malah memperkuat aturan lama yang salah. Solusinya adalah audit lintas lapisan, satu keputusan bisnis yang otoritatif, tes matriks permission/scope, dan log handoff yang selalu diperbarui.
+
+
+### Addendum keputusan bisnis terbaru — lokasi dinamis dan aset operasional (2026-11-08)
+
+Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlalu sederhana bahwa seluruh owner aset hanya IT atau GA**.
+
+#### Lokasi kerja / site
+- Lokasi bersifat master data yang dapat bertambah dan berubah; jangan hardcode daftar lokasi ke role atau permission.
+- Lokasi yang saat ini diketahui: **HO, PIBC, RPC/SC, dan Pangsub**. Pangsub belum memiliki lokasi operasional di luar Jakarta saat ini; lokasi/site baru seperti Subang harus dapat ditambahkan ketika dibutuhkan.
+- Nama lokasi, singkatan, dan struktur geografis harus menjadi data master terpisah dari role aplikasi dan owner aset.
+- Jangan menganggap daftar di atas sebagai daftar lokasi final/permanen. Sistem harus mendukung penambahan site, gudang, kantor, pasar, dan fasilitas operasional baru tanpa membuat role baru.
+
+#### Kepemilikan aset harus mendukung unit operasional
+- Owner aset tidak boleh dipaksa hanya menjadi IT atau GA.
+- Aset dapat dimiliki/dikelola fungsi operasional. Contoh yang diberikan user: **mesin produksi beras di gudang Subang merupakan aset RPC/SC, bukan GA**, karena merupakan peralatan operasional gudang.
+- Karena itu, pisahkan sekurangnya: owner organisasi/fungsi (mis. IT, GA, RPC/SC), lokasi fisik/site (mis. Subang), kategori aset, unit pengguna, custodian/PIC, serta permission dan data scope pengguna.
+- Lokasi Subang tidak otomatis menjadikan aset milik GA, RPC/SC, atau unit tertentu. Owner ditentukan dari kepemilikan/fungsi bisnis dan bukti pencatatan aset; lokasi hanya menyatakan tempat aset berada.
+- Pegawai yang bekerja di suatu lokasi tidak otomatis mendapat akses ke seluruh aset di lokasi itu. Akses ditentukan oleh role/permission dan scope organisasi/site yang diberikan.
+- IT dan GA tetap memiliki cakupan lintas lokasi sesuai mandat masing-masing. Unit operasional seperti RPC/SC dapat memiliki scope aset operasional sendiri. Super Admin mengelola template role, permission, owner classification, dan scope tersebut.
+- Jangan memindahkan owner aset historis secara massal. Data owner yang belum jelas harus masuk antrean verifikasi.
+
+#### Implikasi desain dan pekerjaan berikutnya
+1. Evaluasi ulang schema `owner_division` dan scope RBAC. Jangan membatasi enum/katalog owner hanya ke IT/GA bila kebutuhan bisnis mencakup RPC/SC dan fungsi operasional lain. Pilih master owner/fungsi yang dapat diperluas, bukan hardcoded role.
+2. Scope harus dapat dikombinasikan per modul, owner/fungsi, lokasi/site, unit organisasi, kategori, dan relasi PIC sesuai kebutuhan; hindari satu scope global yang tanpa sengaja membuka modul lain.
+3. Role adalah kumpulan permission; scope menentukan data yang dapat diakses. Lokasi, owner aset, dan role tidak boleh disimpulkan satu sama lain.
+4. UI Super Admin harus dapat menambah lokasi/site dan owner/fungsi serta mengatur assignment scope tanpa perubahan kode setiap kali ada gudang atau cabang baru.
+5. Buat matriks akses untuk owner IT, GA, RPC/SC, dan owner operasional lain yang kelak ditambahkan. Contoh mesin produksi Subang wajib menjadi test case: user RPC/SC dengan permission dan scope yang tepat dapat mengelola; GA tidak otomatis dapat mengelola hanya karena aset berada di gudang.
+6. Sebelum mengubah migration atau data existing, inventarisasi nilai owner saat ini, lokasi, kategori, dan pemilik proses. Jangan menjalankan perubahan produksi tanpa backup, dry-run, laporan dampak, dan persetujuan.
+
+**Prinsip ringkas:** lokasi menjawab *aset berada di mana*; owner menjawab *fungsi/unit mana yang bertanggung jawab atas aset*; role dan permission menjawab *siapa boleh melakukan apa*; data scope menjawab *data mana yang boleh dijangkau*. Keempatnya independen dan harus fleksibel.
