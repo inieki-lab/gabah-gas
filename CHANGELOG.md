@@ -1106,3 +1106,10 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - `canManageTicket()` in `server/runtime-hardening.ts` previously allowed dynamic PostgreSQL scopes only for IT and GA ticket categories. Custom operational owner categories such as RPC/SC were blocked even when their users had explicit `tickets.update` permission and matching owner scope.
 - PostgreSQL mode now evaluates the ticket's owner/category code generically through `hasRbacScope(user, 'division', owner, 'tickets')`. IT/GA role-label fallback remains only for file-store compatibility. Reporter/assignee self-access and Auditor read-only behavior remain intact.
 - Added regression coverage for custom owner-code ticket status authorization.
+
+
+### Verification and remaining authorization audit — 2026-11-08
+- CI run #441 (run `42487422969`) passed on source head `9f3faf86f7f23f40ea8db167a9554f0abf8ef48e`: 46/46 asset-scope checks, production build, 37/37 P0 HTTP security assertions, and 33/33 maintenance authorization assertions; the workflow also completed lint and Dynamic RBAC contract checks successfully.
+- CI run #443 (run `42487486675`) passed on documentation head `6f3e2b2a772d632d6f17ea82d1f5cb90859ac746`, confirming the migration 033 correction and office regression checks at that point.
+- Subsequent ticket custom-owner-scope fix and regression check were added in commits `0b0db0a66d7a3e1ca2d049ce77740b0717818548` and `e02a522f5efaec49dea5466e0edc0c5aac29f30a`. CI #446 is running on the newest head; pending result.
+- Additional audit finding (not yet changed): vendor visibility/write ownership is still inferred from vendor `category` using an IT-vs-GA fallback. This cannot represent configurable owner domains such as RPC/SC safely. Requires a separate schema/API/UI design; do not infer vendor owner from employee location or category text.
