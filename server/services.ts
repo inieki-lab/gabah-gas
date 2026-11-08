@@ -59,7 +59,7 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
  * effective permission and explicit owner-division scope are both required.
  * JSON/file-store mode retains the narrow legacy owner mapping for compatibility.
  */
-function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
+export function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
   if (isSuperadminActor(actor)) return true;
   const owner = String(ownerDivision || '').trim().toUpperCase();
   // Owner codes are configurable business domains (IT, GA, RPC/SC, PIBC,
