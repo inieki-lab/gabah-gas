@@ -4,6 +4,8 @@ import { filterDashboardAttentionItems } from '../server/dashboard-attention-sco
 const items = [
   { id: 'ticket-own', link_type: 'ticket', link_id: 't-own' },
   { id: 'ticket-assigned', link_type: 'ticket', link_id: 't-assigned' },
+  { id: 'ticket-own-legacy', link_type: 'ticket', link_id: 't-own-legacy' },
+  { id: 'ticket-similar-name', link_type: 'ticket', link_id: 't-similar-name' },
   { id: 'ticket-owner-scope', link_type: 'ticket', link_id: 't-it' },
   { id: 'ticket-other', link_type: 'ticket', link_id: 't-ga' },
   { id: 'loan-own', link_type: 'loan', link_id: 'l-own' },
@@ -17,6 +19,7 @@ const items = [
 
 const scope = {
   actorId: 'user-1',
+  actorName: 'Alice Example',
   isGlobalReader: false,
   visibleAssetIds: new Set(['a-visible']),
   loans: [
@@ -26,6 +29,8 @@ const scope = {
   ],
   tickets: [
     { id: 't-own', reporter_id: 'user-1', category: 'GA' },
+    { id: 't-own-legacy', reporter_name: ' alice example ', category: 'GA' },
+    { id: 't-similar-name', reporter_name: 'Alice Example Putri', category: 'GA' },
     { id: 't-assigned', reporter_id: 'user-2', assigned_agent_id: 'user-1', category: 'GA' },
     { id: 't-it', reporter_id: 'user-2', category: 'IT' },
     { id: 't-ga', reporter_id: 'user-2', category: 'GA' },
@@ -35,7 +40,7 @@ const scope = {
 
 assert.deepEqual(
   filterDashboardAttentionItems(items, scope).map(item => item.id),
-  ['ticket-own', 'ticket-assigned', 'ticket-owner-scope', 'loan-own', 'loan-owner-scope', 'asset-visible'],
+  ['ticket-own', 'ticket-assigned', 'ticket-own-legacy', 'ticket-owner-scope', 'loan-own', 'loan-owner-scope', 'asset-visible'],
   'non-global users see only personal, assigned, module-owner-scoped, and visible-asset attention cards',
 );
 assert.equal(filterDashboardAttentionItems(items, { ...scope, isGlobalReader: true }).length, items.length,
