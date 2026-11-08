@@ -247,10 +247,28 @@ async function startServer() {
       if (name.length < 2 || name.length > 120 || !/^[a-z][a-z0-9_]{1,79}$/.test(roleKey) || roleKey === 'superadmin') {
         return res.status(400).json({ success: false, message: 'Nama role harus 2–120 karakter dan kunci internal harus valid. Kunci superadmin dicadangkan.' });
       }
-      const result = await queryRbac<any>('INSERT INTO gabah_roles (role_key, name, description, is_superadmin, is_active) VALUES ($1, $2, $3, FALSE, TRUE) RETURNING id, role_key, name, description, is_superadmin, is_active, created_at, updated_at', [roleKey, name, description]);
+      const requestedKeys = req.body?.permission_keys === undefined ? [] : req.body.permission_keys;
+      if (!Array.isArray(requestedKeys) || requestedKeys.some((key: unknown) => typeof key !== 'string')) {
+        return res.status(400).json({ success: false, message: 'Daftar permission role tidak valid.' });
+      }
+      const permissionKeys = [...new Set(requestedKeys as string[])];
+      const result = await withRbacTransaction(async client => {
+        if (permissionKeys.length > 0) {
+          const valid = await client.query('SELECT permission_key FROM gabah_permissions WHERE is_active = TRUE AND permission_key = ANY($1::varchar[])', [permissionKeys]);
+          if (valid.rowCount !== permissionKeys.length) throw new Error('RBAC_PERMISSION_INVALID');
+        }
+        const inserted = await client.query(
+          'INSERT INTO gabah_roles (role_key, name, description, is_superadmin, is_active) VALUES ($1, $2, $3, FALSE, TRUE) RETURNING id, role_key, name, description, is_superadmin, is_active, created_at, updated_at',
+          [roleKey, name, description],
+        );
+        for (const permissionKey of permissionKeys) {
+          await client.query('INSERT INTO gabah_role_permissions (role_id, permission_key) VALUES ($1, $2)', [inserted.rows[0].id, permissionKey]);
+        }
+        return inserted.rows[0];
+      });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_ROLE_CREATED', 'Administration', 'Superadmin membuat role "' + name + '" (' + roleKey + ').', actor);
-      return res.status(201).json({ success: true, data: { ...result.rows[0], permissions: [], scopes: [], assigned_user_count: 0 } });
+      GabahDomainService.recordAudit('RBAC_ROLE_CREATED', 'Administration', 'Superadmin membuat role "' + name + '" (' + roleKey + ') dengan ' + permissionKeys.length + ' permission.', actor);
+      return res.status(201).json({ success: true, data: { ...result, permissions: permissionKeys, scopes: [], assigned_user_count: 0 } });
     } catch (error: any) { return rbacFailure(res, error); }
   });
 
