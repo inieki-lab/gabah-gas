@@ -2,6 +2,7 @@ import 'dotenv/config';
 import crypto from 'node:crypto';
 import express from 'express';
 import multer from 'multer';
+import fs from 'node:fs/promises';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
@@ -2946,15 +2947,20 @@ async function startServer() {
     }
   });
 
-  // SEC-08: Real file upload endpoint for contract documents
-  // Uses multer for multipart/form-data handling with file validation
+  // SEC-08: Contract documents are stored as durable files, not metadata-only placeholders.
+  // The configured upload directory must be backed by persistent storage in production.
+  const uploadRoot = () => path.resolve(process.env.GABAH_UPLOAD_DIR || path.join(process.cwd(), 'uploads'));
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB max
-    },
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const allowedMimes = [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ];
       const allowedExts = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
       const ext = path.extname(file.originalname).toLowerCase();
       if (!allowedMimes.includes(file.mimetype) && !allowedExts.includes(ext)) {
@@ -2965,18 +2971,18 @@ async function startServer() {
   });
 
   app.post('/api/contracts/:id/documents/upload', upload.single('file'), async (req, res) => {
+    let savedFilePath: string | null = null;
+    let savedContract: any = null;
+    let savedDocumentId: string | null = null;
     try {
-      
-    if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
-    const actor = getActor(req);
+      if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
+      const actor = getActor(req);
       const contractId = req.params.id;
-      
-      // SEC-08: Validate we have a file
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'Tidak ada file yang diunggah.' });
       }
-      
-      const file = (req as any).file as { originalname: string; filename: string; size: number; mimetype: string; buffer: Buffer };
+
+      const file = req.file;
       const contract = db.contracts.find(c => c.id === contractId);
       if (!contract) {
         return res.status(404).json({ success: false, message: 'Kontrak tidak ditemukan.' });
@@ -2984,46 +2990,88 @@ async function startServer() {
       if (!canEditContract(actor, contract)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: bukan PIC/divisi pemilik kontrak.' });
       }
-      
-      // Sanitize filename
-      const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+      const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 180) || 'document';
       const fileExt = path.extname(safeFilename).toLowerCase();
       const fileKind = file.mimetype.startsWith('image/') ? 'supporting_document' : 'original_contract';
-      
-      // SEC-08: In production, save to actual storage (local disk or S3)
-      // For now, we store metadata in DB and keep file in memory
-      // Production implementation should save to persistent storage
-      const fileRef = process.env.NODE_ENV === 'production'
-        ? `/uploads/contracts/${contractId}/${Date.now()}_${safeFilename}`
-        : `memory://${file.filename}`;
-      
-      // Add document to contract
+      const documentId = 'CDoc-' + crypto.randomUUID();
+      const storedFilename = crypto.randomUUID() + fileExt;
+      const relativeFileRef = path.join('contracts', contractId, storedFilename);
+      const absoluteFilePath = path.resolve(uploadRoot(), relativeFileRef);
+
+      await fs.mkdir(path.dirname(absoluteFilePath), { recursive: true, mode: 0o700 });
+      await fs.writeFile(absoluteFilePath, file.buffer, { flag: 'wx', mode: 0o600 });
+      savedFilePath = absoluteFilePath;
+      savedContract = contract;
+      savedDocumentId = documentId;
+
       contract.documents.push({
-        id: `CDoc-${Date.now()}`,
+        id: documentId,
         kind: fileKind,
         file_name: safeFilename,
-        file_ref: fileRef,
+        file_ref: relativeFileRef,
         file_size: file.size,
         file_mime: file.mimetype,
         uploaded_by: actor.id,
         uploaded_by_name: actor.name,
         uploaded_at: new Date().toISOString(),
       });
-      
       contract.updated_at = new Date().toISOString();
       await persistDataStore();
-      
-      res.json({
+
+      return res.json({
         success: true,
-        message: 'Dokumen berhasil diunggah.',
+        message: 'Dokumen berhasil diunggah dan disimpan.',
         data: {
+          document_id: documentId,
           file_name: safeFilename,
           file_size: file.size,
           file_mime: file.mimetype,
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      if (savedContract && savedDocumentId) {
+        savedContract.documents = savedContract.documents.filter((document: any) => document.id !== savedDocumentId);
+      }
+      if (savedFilePath) {
+        await fs.rm(savedFilePath, { force: true }).catch(() => undefined);
+      }
+      return res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
+  // Documents are never exposed as a public static directory. Every download
+  // re-checks the caller's contract permission and record-level visibility.
+  app.get('/api/contracts/:id/documents/:documentId/download', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'contracts.read')) return;
+    const actor = getActor(req);
+    const contract = db.contracts.find(item => item.id === req.params.id);
+    if (!contract || !canSeeContract(actor, contract)) {
+      return res.status(404).json({ success: false, message: 'Dokumen tidak ditemukan.' });
+    }
+    const document = (contract.documents || []).find(item => item.id === req.params.documentId);
+    if (!document || !document.file_ref || document.file_ref.startsWith('memory://')) {
+      return res.status(404).json({ success: false, message: 'Berkas dokumen tidak tersedia.' });
+    }
+
+    const root = uploadRoot();
+    const absoluteFilePath = path.resolve(root, document.file_ref);
+    if (!absoluteFilePath.startsWith(root + path.sep)) {
+      return res.status(404).json({ success: false, message: 'Dokumen tidak ditemukan.' });
+    }
+
+    try {
+      const stat = await fs.stat(absoluteFilePath);
+      if (!stat.isFile()) return res.status(404).json({ success: false, message: 'Berkas dokumen tidak tersedia.' });
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Type', document.file_mime || 'application/octet-stream');
+      return res.download(absoluteFilePath, document.file_name, error => {
+        if (error && !res.headersSent) {
+          res.status(404).json({ success: false, message: 'Berkas dokumen tidak tersedia.' });
+        }
+      });
+    } catch {
+      return res.status(404).json({ success: false, message: 'Berkas dokumen tidak tersedia.' });
     }
   });
 
