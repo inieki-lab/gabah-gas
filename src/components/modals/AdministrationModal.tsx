@@ -628,6 +628,69 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
+  // Dynamic per-user role assignment. The profile role remains the primary role;
+  // additional capabilities are assigned independently and persisted in PostgreSQL.
+  const [userAssignments, setUserAssignments] = useState<Record<string, number[]>>({});
+  const [primaryRoleIds, setPrimaryRoleIds] = useState<Record<string, number>>({});
+  const [roleAssignmentTarget, setRoleAssignmentTarget] = useState<UserProfile | null>(null);
+  const [roleAssignmentDraft, setRoleAssignmentDraft] = useState<number[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [assignmentsSaving, setAssignmentsSaving] = useState(false);
+
+  const refreshUserAssignments = async () => {
+    setAssignmentsLoading(true);
+    try {
+      const assignments = await gabahApi.getRbacUserAssignments();
+      const next: Record<string, number[]> = {};
+      const primary: Record<string, number> = {};
+      for (const item of Array.isArray(assignments) ? assignments : []) {
+        const userId = String(item.user_id);
+        next[userId] = Array.isArray(item.role_ids) ? item.role_ids.map(Number) : [];
+        if (item.primary_role_id != null) primary[userId] = Number(item.primary_role_id);
+      }
+      setUserAssignments(next);
+      setPrimaryRoleIds(primary);
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal memuat assignment role pegawai.', 'warning');
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  };
+
+  const openRoleAssignment = (user: UserProfile) => {
+    setRoleAssignmentTarget(user);
+    setRoleAssignmentDraft([...(userAssignments[String(user.id)] || [])]);
+  };
+
+  const toggleRoleAssignment = (roleId: number, checked: boolean) => {
+    if (roleAssignmentTarget && primaryRoleIds[String(roleAssignmentTarget.id)] === roleId) return;
+    setRoleAssignmentDraft(current => checked
+      ? [...new Set([...current, roleId])]
+      : current.filter(id => id !== roleId));
+  };
+
+  const saveRoleAssignment = async () => {
+    if (!roleAssignmentTarget) return;
+    setAssignmentsSaving(true);
+    try {
+      await gabahApi.setRbacUserRoles(String(roleAssignmentTarget.id), roleAssignmentDraft);
+      await refreshUserAssignments();
+      setRoleAssignmentTarget(null);
+      showToast('Assignment role pegawai berhasil disimpan.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal menyimpan assignment role pegawai.', 'warning');
+    } finally {
+      setAssignmentsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'users' && isCurrentUserAdmin) {
+      void refreshRbac();
+      void refreshUserAssignments();
+    }
+  }, [activeSection, isCurrentUserAdmin]);
+
   // Organization State
   // ORG-MODEL: master Jabatan/Level, Unit, dan Kantor/Lokasi (terpisah).
   const [jobLevels, setJobLevels] = useState<OrgJobLevel[]>([]);
