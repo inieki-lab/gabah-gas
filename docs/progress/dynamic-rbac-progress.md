@@ -487,3 +487,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - `POST /api/reconciliation/link` now requires the reconciliation-link permission and the shared asset-update permission with matching owner scope.
 - Regression checks added to `test:asset-scope-policy`.
 - CI run #409 completed SUCCESS on head `c5d71a0e7e20f6c1dfbe146af2a8d8fa1d4b0a3f`. Production migration 032 remains unapplied pending backup/dry-run/impact review/approval.
+
+
+### 2026-11-08 — Koreksi lokasi kantor aktif
+- Lokasi aktif saat ini ditetapkan hanya: HO, PIBC, RPC/SC, Pangsub.
+- Subang sudah tutup dan bukan lokasi aktif/seed. Tidak ada pemindahan user atau aset historis terkait lokasi lama.
+- ID lokasi lama dipertahankan. Kantor Perawatan dinonaktifkan, bukan dihapus.
+- Super Admin tetap dapat menambah lokasi baru melalui master data; tidak ada daftar lokasi permanen di kode kebijakan akses.
+- Seed `server/db.ts`, fallback `server/persistence.ts`, migration 033, dan regression test diselaraskan. Migration produksi belum dijalankan.
