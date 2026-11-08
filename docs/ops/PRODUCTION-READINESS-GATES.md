@@ -24,6 +24,7 @@ This checklist is the release control record. A green build is necessary but is 
 - [ ] npm run build succeeds.
 - [ ] All verification scripts listed in package.json run and pass.
 - [ ] Docker Compose validation passes with a dummy CI-only password.
+- [ ] Node 22 multi-stage production image builds from package-lock and starts without bind-mounting source or installing dependencies at runtime.
 - [ ] No dead menu actions, placeholder routes, or hidden runtime exceptions remain.
 
 ## G1 — Database and persistence
@@ -72,6 +73,7 @@ Run docs/testing/UAT.md in a browser against PostgreSQL using disposable test da
 
 - [ ] Approved candidate commit is merged to main; branch is not deployed directly.
 - [ ] Production .env is created from .env.example with unique strong secrets and file permissions restricted.
+- [ ] Production image tag is pinned/recorded for release and rollback; no floating source bind mount is used.
 - [ ] PostgreSQL volume, backup schedule, restore procedure, firewall, DNS, TLS/reverse proxy, and monitoring are reviewed.
 - [ ] Fresh-install and upgrade migrations are rehearsed on staging.
 - [ ] Deploy, health check, smoke test, rollback, and data recovery are rehearsed.
