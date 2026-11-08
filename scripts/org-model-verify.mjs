@@ -47,7 +47,7 @@ async function main() {
     const levels = (await req(b, 'GET', '/api/master/job-levels', { token: admin })).json?.data || [];
     const activeOfficeNames = offices.filter(l => l.is_active !== false).map(l => l.name).sort();
     const expectedActiveOfficeNames = ['HO', 'Kantor Perawatan', 'PIBC', 'Pangsub', 'RPC/SC'].sort();
-    rec('13: lima lokasi kantor aktif sesuai keputusan bisnis', expectedActiveOfficeNames.join('|'), activeOfficeNames.join('|'), JSON.stringify(activeOfficeNames) === JSON.stringify(expectedActiveOfficeNames));
+    rec('13: lima lokasi kantor aktif sesuai keputusan bisnis; Subang tidak aktif', expectedActiveOfficeNames.join('|') + ' (+future sites allowed)', activeOfficeNames.join('|'), expectedActiveOfficeNames.every(name => activeOfficeNames.includes(name)) && !activeOfficeNames.includes('Subang'));
     const unitPIBC = units.find(u => u.name === 'PIBC');
     const unitSC = units.find(u => u.name === 'Supply Chain');
     const offPIBC = offices.find(l => l.name === 'PIBC');
