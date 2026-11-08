@@ -1,3 +1,27 @@
+## [2026-11-08] — Contract file storage, role administration, and production container hardening
+
+### Perubahan
+- Auditor read-only ditentukan dari role efektif, termasuk role tambahan. PostgreSQL integration membuktikan Karyawan + GA + Auditor: assignment 200, API write 403, audit read 200.
+- Form tambah pegawai menggunakan primary profile role; Humas/Sekretariat Direksi ditetapkan sebagai role tambahan, Supply Chain/PIBC dicatat sebagai unit/lokasi kerja. Lokasi kantor dapat dipilih terpisah dan role tambahan ditampilkan di direktori pengguna.
+- Dokumen kontrak sekarang benar-benar ditulis ke storage persisten; upload divalidasi berdasarkan ekstensi, MIME, dan signature; file path dibuat server-side dan diisolasi per kontrak. Download memeriksa permission serta visibility contract dan tidak diekspos sebagai static public file.
+- ContractsView menyediakan upload dan download dokumen dengan token autentikasi dan capability efektif.
+- Docker production memakai multi-stage Node 22 Alpine image, npm ci dari lockfile, production dependencies, non-root runtime, migration SQL yang disertakan, dan tidak bind-mount source atau install dependency saat startup.
+- Docker Compose memisahkan PostgreSQL data volume dan uploads_data; healthcheck app memeriksa API. deploy.sh membangun image, memastikan PostgreSQL healthy, lalu mengganti app saja tanpa down atau menghapus volume.
+- CI menambahkan production image runtime smoke terhadap PostgreSQL 17, Node 22, dan permission tulis pada uploads volume.
+- Runbook backup/restore sekarang mencakup PostgreSQL dan uploads_data secara berpasangan.
+
+### Verifikasi
+- CI #587: production image berhasil boot pada **Node 22.23.4**, terhubung ke PostgreSQL 17, health API menunjukkan persistence PostgreSQL, dan uploads volume dapat ditulis.
+- CI #588: PostgreSQL CR-04/CR-05 **63/63 PASS**; invalid PDF signature ditolak 400; upload 200; unauthorized contract download 404; Auditor additional-role download 200; byte dokumen tetap tersedia setelah restart.
+- CI #589: Dynamic RBAC foundation **63/63**, asset scope **37/37**, P0 security **37/37**, maintenance authorization **33/33**, contract UI/storage, owner-path isolation, Docker image, dan deployment guard assertions PASS.
+- CI #554/#555: employee primary-role/location UI and static checks PASS; CI #557 role badge and Auditor precedence checks PASS.
+- Semua hasil di atas adalah CI, bukan pengganti browser UAT atau staging/production rehearsal.
+
+### Release status
+**NO-GO.** PR #18 tetap draft/open. Belum ada browser UAT oleh pemilik proses, upgrade rehearsal dari snapshot legacy, backup/restore rehearsal untuk database + uploads_data, staging deployment, TLS/reverse proxy, monitoring, atau business sign-off. Jangan deploy branch kerja.
+
+---
+
 ## [2026-11-08] — Auditor multi-role enforcement, documentation alignment, and PostgreSQL verification
 
 ### Perubahan
