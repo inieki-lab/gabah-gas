@@ -464,3 +464,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Documentation head at this handoff: 016c1a7be8740c4b5ff0273be00b2b6d629e0fc7.
 - CI #383 / run 42479231928 completed SUCCESS on that head. This run includes the latest source changes and documentation: typecheck, all RBAC/asset-scope/navigation/dashboard checks, production build, 37 P0 HTTP assertions, and maintenance authorization assertions passed.
 - PR #18 remains Draft/Open and intentionally unmerged pending the remaining vendor/report/reconciliation/admin authorization audit and end-to-end per-user UAT.
+
+
+### 2026-11-08 — Flexible owner exclusion policy
+- User decision: asset ownership and authority must remain configurable. GA may in future be assigned broad responsibility for all non-IT asset owners; other teams may receive read-only or business-specific permissions. This is a policy option, not an automatic change to current GA grants.
+- Implemented the generic `division_except` data-scope type. Super Admin can combine module permission + `all` + `division_except:IT` to express "all owners except IT", or use explicit owner scopes for narrower cases.
+- Explicit division grants can override a broad exclusion for a selected owner. Unit/location scopes cannot bypass an owner exclusion. Location still does not imply ownership or authorization.
+- The new scope is supported by the role editor, RBAC API validation, backend asset visibility/mutation checks, generic module owner-scope checks, and PostgreSQL migration 032.
+- Existing policies are preserved; no automatic permission expansion to GA or other teams is applied. Super Admin remains the authority to activate the new rule.
+- Verification pending on the newest CI head. No production migration has been run.
