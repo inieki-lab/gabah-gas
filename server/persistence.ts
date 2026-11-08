@@ -595,8 +595,8 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
     [userIds],
   );
 
-  // Reconcile only the nine legacy role assignments. Custom dynamic roles are
-  // deliberately untouched by this compatibility bridge.
+  // Reconcile only the primary role mirror from users.role. Additional dynamic
+  // role assignments are preserved and remain additive.
   await pool.query(
     "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
     "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
