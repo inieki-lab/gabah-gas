@@ -22,9 +22,23 @@ awk -F= '$1 == "PGPASSWORD" && length($2) > 0 { found=1 } END { exit(found ? 0 :
 docker compose config --quiet || fail "Konfigurasi Docker Compose tidak valid."
 
 printf '%s\n' "Preflight PASS. Membangun image aplikasi dari Dockerfile yang memakai lockfile."
-# Build is performed before replacing the running app. PostgreSQL and named
-# volumes are not stopped, removed, or recreated by this deployment step.
+# Build before touching the running application.
 docker compose build app
+
+# Ensure PostgreSQL is running without recreating an existing healthy container.
+docker compose up -d database
+DB_CONTAINER="$(docker compose ps -q database)"
+[[ -n "$DB_CONTAINER" ]] || fail "Container PostgreSQL tidak ditemukan setelah start."
+DB_HEALTH=""
+for ((attempt=1; attempt<=30; attempt++)); do
+  DB_HEALTH="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$DB_CONTAINER" 2>/dev/null || true)"
+  [[ "$DB_HEALTH" == "healthy" ]] && break
+  printf 'Menunggu PostgreSQL sehat (%s/30): %s\n' "$attempt" "${DB_HEALTH:-unknown}"
+  sleep 2
+done
+[[ "$DB_HEALTH" == "healthy" ]] || fail "PostgreSQL belum healthy; aplikasi tidak akan diganti."
+
+# Replace only the app container. Database and both named volumes remain intact.
 docker compose up -d --no-deps --force-recreate app
 
 printf 'Menunggu health check: %s\n' "$APP_URL"
