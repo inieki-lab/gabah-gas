@@ -72,8 +72,6 @@ function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | u
   const legacyOwnerByRole: Record<string, string> = {
     IT: 'IT',
     GA: 'GA',
-    'Supply Chain': 'SC',
-    PIBC: 'PIBC',
   };
   return legacyOwnerByRole[actor.role] === owner;
 }
