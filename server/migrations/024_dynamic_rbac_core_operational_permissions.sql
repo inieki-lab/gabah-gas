@@ -18,6 +18,7 @@ JOIN (VALUES
   ('tickets.create'),
   ('notifications.read'),
   ('notifications.read_all'),
+  ('room_reservations.cancel'),
   ('meeting_types.read'),
   ('meeting_facilities.read')
 ) AS p(permission_key) ON TRUE
@@ -50,6 +51,20 @@ WHERE r.role_key IN ('superadmin', 'it', 'ga')
   AND r.is_active = TRUE
 ON CONFLICT (role_id, permission_key) DO NOTHING;
 
+-- Contract attachments and lifecycle actions follow the same owner-domain
+-- permission grants as create/update.
+INSERT INTO gabah_role_permissions (role_id, permission_key)
+SELECT r.id, p.permission_key
+FROM gabah_roles r
+JOIN (VALUES
+  ('contracts.documents.upload'),
+  ('contracts.milestones.manage'),
+  ('contracts.renewal.decide')
+) AS p(permission_key) ON TRUE
+WHERE r.role_key IN ('superadmin', 'it', 'ga')
+  AND r.is_active = TRUE
+ON CONFLICT (role_id, permission_key) DO NOTHING;
+
 -- Meeting-room workflow: all employees can request/read; GA and Super Admin
 -- operate approvals and room lifecycle. Domain service still checks organizer,
 -- priority, current state, and the requested action.
@@ -74,7 +89,7 @@ JOIN (VALUES
   ('room_reservations.reject'),
   ('room_reservations.checkin'),
   ('room_reservations.checkout'),
-  ('room_reservations.cancel'),
+  ('meeting_rooms.update'),
   ('meeting_types.manage'),
   ('meeting_facilities.manage')
 ) AS p(permission_key) ON TRUE
