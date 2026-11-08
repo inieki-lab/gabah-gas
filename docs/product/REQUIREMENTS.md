@@ -74,12 +74,20 @@
   - Notifikasi ke Humas & Protokoler jika terdapat permintaan dokumentasi foto/video.
 - **FR-09.5**: Sistem menyediakan fungsi Check-In, Check-Out, dan pembatalan reservasi.
 
+### FR-12: Direktori Vendor dan Owner Domain
+- **FR-12.1**: Vendor memiliki kategori layanan dan owner domain yang terpisah. Kategori seperti IT Hardware, License, Maintenance, dan General tidak boleh otomatis menentukan owner.
+- **FR-12.2**: Owner vendor harus direferensikan ke master owner domain dinamis yang dikelola Super Admin. Owner baru dapat ditambahkan tanpa perubahan kode.
+- **FR-12.3**: List, detail, create, dan update vendor wajib memeriksa permission modul vendors serta scope owner pada backend. Update owner memerlukan kewenangan pada owner asal dan owner tujuan.
+- **FR-12.4**: Vendor legacy tanpa owner tidak boleh terlihat sebagai milik GA/IT secara default. Hanya Super Admin yang boleh mengklasifikasikan record tanpa owner.
+- **FR-12.5**: Owner domain tidak boleh dihapus selama masih direferensikan vendor, kontrak, aset, maintenance, peminjaman, kategori, pegawai, atau unit organisasi.
+- **FR-12.6**: UI hanya menampilkan tombol tambah/ubah sesuai permission efektif yang relevan; metrik SLA/kontrak harus berasal dari data aktual, bukan nilai tetap.
+
 ### FR-11: Contract Management (Domain Tersendiri)
 - Register kontrak sebagai **domain bisnis tersendiri** — Contract bukan kategori Helpdesk; tiket dapat ditautkan (`contract_id`) untuk tindak lanjut pekerjaan.
 - Atribut: contract number (`CTR-YYYY-NNNN`), tipe, judul, vendor/counterparty, divisi pemilik (bebas per departemen), PIC, start/end date, notice period + notice date (dihitung otomatis), nilai, auto-renewal, status, dokumen (append-only: original/amendment/renewal/supporting), notes, metadata.
 - Reminder kedaluwarsa configurable (default 60/35/7 hari) ke PIC + divisi pemilik (+ eskalasi pada 35/7 hari), dikirim via in-app, email, dan Telegram — setiap pengiriman tercatat pada `contract_notification_logs` (status SENT/FAILED/SKIPPED + alasan; penerima di-resolve server-side; idempoten per kontrak/tipe/kanal/penerima/hari; scheduler internal otomatis dengan leader-lock). Status SENT hanya bila pengiriman eksternal benar-benar berhasil — tidak ada sukses palsu.
 - Renewal outcome: pending/renewed/not_renewed/terminated/replaced_by_new_contract + notes; kontrak lama tidak dihapus (rantai `parent_contract_id`).
-- Access control: Admin semua; PIC & divisi pemilik; Auditor otoritas audit (read); kontrak `restricted` hanya PIC/divisi/Admin.
+- Access control: Super Admin global; PIC dan owner domain sesuai permission + scope; Auditor hanya baca sesuai grant audit; kontrak `restricted` tetap dibatasi PIC/owner/Super Admin.
 
 ### FR-10: Attention Center & Audit Logging
 - **FR-10.1**: Dashboard harus menampilkan ringkasan Attention Center dinamis yang disaring berdasarkan peran (tiket SLA yang mendekati batas waktu, permohonan pinjaman pending, aset dalam masa garansi kritis).
