@@ -24,7 +24,7 @@ docker compose config --quiet || fail "Konfigurasi Docker Compose tidak valid."
 printf '%s\n' "Preflight PASS. Menjalankan stack tanpa menghentikan volume/database lebih dulu."
 # Do not run docker compose down, --remove-orphans, or down -v here.
 # up -d updates/recreates only services managed by this Compose project.
-docker compose up -d
+docker compose up -d --force-recreate app
 
 printf 'Menunggu health check: %s\n' "$APP_URL"
 for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
