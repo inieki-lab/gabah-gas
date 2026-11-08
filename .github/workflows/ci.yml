@@ -62,6 +62,9 @@ jobs:
       - name: Role dashboard scope checks
         run: npm run test:dashboard-scope
 
+      - name: Dashboard attention data-scope checks
+        run: npm run test:dashboard-attention-scope
+
       - name: Production build (frontend + server bundle)
         run: npm run build
 
