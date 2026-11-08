@@ -435,6 +435,17 @@ async function backfillNormalizedTables(): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // Division codes are the extensible owner-domain master used by assets,
+    // categories, loans, and module data scopes. Sync them before any FK-backed
+    // user/category/asset rows so a newly configured owner works in PostgreSQL.
+    for (const division of db.divisions || []) {
+      if (!division?.code || !division?.name) continue;
+      await client.query(
+        `INSERT INTO divisions (code,name,is_active) VALUES ($1,$2,TRUE)
+         ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,is_active=TRUE`,
+        [String(division.code).trim().toUpperCase(), String(division.name).trim()],
+      );
+    }
     for (const u of db.users) {
       await client.query(
         `INSERT INTO users (id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,updated_at)
