@@ -1049,3 +1049,10 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 
 ### Verification
 - Regression checks added for owner exclusions. CI must pass on the latest PR head before this change is considered verified.
+
+
+### Follow-up hardening
+- Owner-master synchronization now preserves `is_active=false`; persistence no longer silently reactivates disabled owner domains.
+- New asset creation rejects an inactive owner master. Existing asset/history records are not rewritten.
+- Owner exclusion comparisons are case-insensitive and normalized consistently.
+- CI run #402 passed on source head `b437abf78abdcf2c607f65943f2ba95a4c3b4b3f`: TypeScript lint, RBAC contract checks, migration safety, asset-scope policy checks, navigation/dashboard checks, production build, 37 P0 HTTP security assertions, and 33 maintenance authorization assertions.
