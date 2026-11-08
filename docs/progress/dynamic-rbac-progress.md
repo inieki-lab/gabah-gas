@@ -642,3 +642,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 **CI was upgraded:** GitHub Actions now provisions PostgreSQL 17 and runs `scripts/cr04-cr05-verify.mjs` with a throwaway database before the other live HTTP/regression tests. Additional gates include loan authz, room reservations, org model, T2B1/T2B2/T2B3 master data, sidebar menu connectivity, P0 security, and maintenance authorization. Existing lint/build, dynamic RBAC, branch migration safety, asset-scope, navigation and dashboard tests remain.
 
 **Status:** changes and regression guards are committed to `fix/role-based-navigation`; wait for the new PostgreSQL-backed CI run. A green static-only run is not production readiness. No production DB has been touched.
+
+
+### PostgreSQL CI failure — primary-role reconciliation SQL alias (2026-11-08)
+- Run #471 / `42489245450` exercised PostgreSQL 17 on a fresh isolated database and failed during startup after migrations. Error: `column assigned_role.is_primary does not exist`.
+- Root cause: in `backfillDynamicRbacUserRoles()` the SQL aliases `gabah_roles` as `assigned_role`, but `is_primary` belongs to `gabah_user_roles` alias `ur`. The query incorrectly used `assigned_role.is_primary = TRUE`.
+- Fixed to `ur.is_primary = TRUE`. Migration 030 was present and adds `is_primary` to `gabah_user_roles`; the defect was a wrong table alias, not migration ordering.
+- Added a source regression assertion for the correct alias. Re-run the complete PostgreSQL CI suite; this is the first live database-backed verification and must pass before declaring PG readiness.
