@@ -34,7 +34,9 @@ This checklist is the release control record. A green build is necessary but is 
 - [ ] Create, update, read-back, restart, and re-read workflows pass.
 - [ ] Dynamic user-role assignments survive ordinary writes and restart.
 - [ ] Migration path from a representative legacy snapshot is tested separately from fresh install.
-- [ ] Backup and restore are demonstrated on an isolated test environment.
+- [ ] PostgreSQL backup and restore are demonstrated on an isolated test environment.
+- [ ] Contract document uploads are stored in the persistent uploads_data volume; unauthorized downloads fail closed.
+- [ ] The uploads_data volume is backed up/restored together with PostgreSQL so contract metadata never outlives its file bytes.
 - [ ] No production user/asset/owner/location mapping is inferred from a sample seed.
 
 ## G2 — Identity, organization, and Dynamic RBAC
