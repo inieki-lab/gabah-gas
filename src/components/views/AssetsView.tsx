@@ -149,7 +149,12 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
     });
   }, [safeAssets, selectedDivision, selectedCategory, selectedStatus, searchQuery]);
 
-  const canCreateAsset = currentUser.role === 'Admin GABAH' || currentUser.role === 'IT' || currentUser.role === 'GA' || currentUser.role === 'Supply Chain' || currentUser.role === 'PIBC';
+  const canCreateAsset = Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('assets.create')
+    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const canImportAssets = Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('assets.bulk_import')
+    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
 
   return (
     <div className="space-y-6">
@@ -194,7 +199,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {canCreateAsset && onOpenImportModal && (
+          {canImportAssets && onOpenImportModal && (
             <button
               onClick={onOpenImportModal}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
