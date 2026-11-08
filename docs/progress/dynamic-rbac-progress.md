@@ -631,3 +631,14 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Privacy redaction fields are unchanged; this change only changes how the operational queue capability is granted.
 
 **Validation:** added source regression checks for queue permissions, privacy redaction, domain operation checks, and migration grants. Run CI on latest head before claiming verified. PostgreSQL runtime migration and live API integration still need to be exercised before production.
+
+
+### Fresh PostgreSQL migration and production gate — 2026-11-08
+
+**Two blocking migration defects found and corrected:**
+1. `004_contract_management.sql` previously assumed `contracts.owner_division_id` always existed. The fresh schema from migration 001 already has `owner_division`, so this reference can fail. The migration now checks `information_schema.columns` before using the legacy ID. Unknown/null legacy owners become `UNASSIGNED` (not GA) and remain global-admin review only; no contract ownership is silently inferred.
+2. `015_room_reservations.sql` referenced `rooms(id)` even though room master data is still held in the application datastore and no PostgreSQL `rooms` table exists. Removed the invalid FK while retaining the room ID as an application-level reference. Anti-collision range/index/trigger remain.
+
+**CI was upgraded:** GitHub Actions now provisions PostgreSQL 17 and runs `scripts/cr04-cr05-verify.mjs` with a throwaway database before the other live HTTP/regression tests. Additional gates include loan authz, room reservations, org model, T2B1/T2B2/T2B3 master data, sidebar menu connectivity, P0 security, and maintenance authorization. Existing lint/build, dynamic RBAC, branch migration safety, asset-scope, navigation and dashboard tests remain.
+
+**Status:** changes and regression guards are committed to `fix/role-based-navigation`; wait for the new PostgreSQL-backed CI run. A green static-only run is not production readiness. No production DB has been touched.
