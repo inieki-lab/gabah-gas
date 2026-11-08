@@ -15,6 +15,7 @@ SELECT r.id, p.permission_key
 FROM gabah_roles r
 JOIN (VALUES
   ('loans.create'),
+  ('loans.return'),
   ('tickets.create'),
   ('notifications.read'),
   ('notifications.read_all'),
