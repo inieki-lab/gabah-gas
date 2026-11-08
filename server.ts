@@ -578,10 +578,12 @@ async function startServer() {
         if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di dalam berkas (${email}).`); continue; }
         seenEmails.add(email);
 
-        const role = roleRaw && validRoles.includes(roleRaw) ? roleRaw : 'Karyawan';
+        const requestedRole = roleRaw && validRoles.includes(roleRaw) ? roleRaw : 'Karyawan';
+        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
         if (roleRaw && !validRoles.includes(roleRaw)) {
-          // Soft warning: baris TETAP diimpor dengan peran default Karyawan.
           warnings.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenali (memakai Karyawan).`);
+        } else if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
+          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai lokasi kerja, bukan role; role aplikasi menjadi Karyawan.`);
         }
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
@@ -590,6 +592,8 @@ async function startServer() {
           existing.name = name;
           existing.role = role as ServerUser['role'];
           (existing as any).role_label = roleLabels[role] || role;
+          if (requestedRole === 'Supply Chain' && !existing.office_location_id) existing.office_location_id = 'OFF-RPC';
+          if (requestedRole === 'PIBC' && !existing.office_location_id) existing.office_location_id = 'OFF-PIBC';
           existing.division = division as ServerUser['division'];
           existing.department = department;
           if (phone) existing.phone = phone;
@@ -614,6 +618,7 @@ async function startServer() {
             role_label: roleLabels[role] || 'Pegawai Operasional',
             division: division as ServerUser['division'],
             department,
+            office_location_id: requestedRole === 'Supply Chain' ? 'OFF-RPC' : requestedRole === 'PIBC' ? 'OFF-PIBC' : undefined,
             phone,
             avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
             is_active: true,
@@ -636,7 +641,8 @@ async function startServer() {
 
       if (created > 0 || updated > 0) {
         await persistDataStore();
-      await refreshRbacPolicy();
+        await syncPrimaryRbacRoles(importedUsers.map(user => ({ id: user.id, role: user.role })));
+        await refreshRbacPolicy();
       }
 
       res.json({
