@@ -60,7 +60,7 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   dashboard: ['dashboard.read'],
   my_assets: ['assets.read'],
   meeting_rooms: ['meeting_rooms.read', 'room_reservations.read', 'room_reservations.create'],
-  assets: ['assets.audit.read', 'assets.create', 'assets.update', 'assets.delete', 'assets.assign', 'assets.move', 'assets.lifecycle'],
+  assets: ['assets.catalog.read', 'assets.audit.read', 'assets.create', 'assets.update', 'assets.delete', 'assets.assign', 'assets.move', 'assets.lifecycle'],
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
   tickets: ['tickets.read'],
