@@ -2095,12 +2095,20 @@ async function startServer() {
   // Movements
   app.get('/api/movements', (req, res) => {
     if (!requireRbacPermission(req, res, 'movements.read')) return;
+    const actor = getActor(req);
+    const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor).map(asset => asset.id));
     const { assetId } = req.query;
     if (assetId) {
+      if (!visibleAssetIds.has(String(assetId)) && !isSuperadminActor(actor) && actor.role !== 'Auditor') {
+        return res.status(404).json({ success: false, message: 'Aset tidak ditemukan.' });
+      }
       const filtered = db.movements.filter(m => m.asset_id === assetId);
       return res.json({ success: true, data: filtered });
     }
-    res.json({ success: true, data: db.movements });
+    const filtered = isSuperadminActor(actor) || actor.role === 'Auditor'
+      ? db.movements
+      : db.movements.filter(m => visibleAssetIds.has(m.asset_id));
+    res.json({ success: true, data: filtered });
   });
 
   // Loans
@@ -2312,29 +2320,23 @@ async function startServer() {
   // Maintenance & Calibration Schedules
   app.get('/api/maintenances', (req, res) => {
     const actor = getActor(req);
-    // Dynamic RBAC Stage 13F: pada mode PostgreSQL, baca jadwal memerlukan
-    // permission `maintenances.read` (seed 020 memberinya ke sembilan canonical
-    // role agar perilaku legacy invarian); file-store tetap memakai rule legacy.
-    if (isPostgresPersistenceActive() && !requireRbacPermission(req, res, 'maintenances.read')) return;
+    if (!requireRbacPermission(req, res, 'maintenances.read')) return;
     if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.maintenances });
     }
-    if (actor.role === 'IT') {
-      return res.json({ success: true, data: db.maintenances.filter(m => m.owner_division === 'IT' || m.category_type === 'IT') });
-    }
-    if (actor.role === 'GA') {
-      return res.json({ success: true, data: db.maintenances.filter(m => m.owner_division === 'GA' || m.category_type === 'GA' || m.category_type === 'General') });
-    }
-    if (actor.role === 'Supply Chain') {
-      return res.json({ success: true, data: db.maintenances.filter(m => m.owner_division === 'SC' || m.owner_division === 'Supply Chain') });
-    }
-    // Dynamic RBAC Stage 13F: actor non-legacy tidak mewarisi fallback
-    // "lihat semua" — visibilitas jadwalnya mengikuti scope dinamis atas aset
-    // yang dirujuk (Stage 11 semantics), tanpa kebocoran lintas divisi.
-    if (isPostgresPersistenceActive() && !isLegacyScopedRole(actor.role)) {
-      return res.json({ success: true, data: filterMaintenanceSchedulesByDynamicScopes(db.maintenances, actor) });
-    }
-    res.json({ success: true, data: db.maintenances });
+
+    // Maintenance visibility follows the same asset scope as inventory.
+    // Branch names are not owner domains; GA's optional IT workstation
+    // read-only permission does not grant access to IT maintenance records.
+    const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor)
+      .filter(asset => {
+        if (actor.role === 'IT') return String(asset.owner_division).toUpperCase() === 'IT';
+        if (actor.role === 'GA') return String(asset.owner_division).toUpperCase() === 'GA';
+        return asset.assigned_to?.id === actor.id;
+      })
+      .map(asset => asset.id));
+    const filtered = db.maintenances.filter(item => visibleAssetIds.has(item.asset_id));
+    return res.json({ success: true, data: filtered });
   });
 
   app.post('/api/maintenances', (req, res) => {
