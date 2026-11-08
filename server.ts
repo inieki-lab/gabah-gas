@@ -2122,14 +2122,18 @@ async function startServer() {
     if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.loans });
     }
-    // Asset custodians see loans for their own asset domain only.
-    if (actor.role === 'IT' || actor.role === 'GA') {
-      const owner = actor.role;
-      return res.json({ success: true, data: db.loans.filter(l => l.owner_division === owner) });
-    }
-    // Other employees (including Supply Chain/PIBC locations, Humas and Sekdir)
-    // see only requests they submitted. Location does not grant loan visibility.
-    return res.json({ success: true, data: db.loans.filter(l => l.borrower_id === actor.id) });
+    // Loan data follows borrower ownership plus explicitly granted IT/GA
+    // owner scopes. Branch/location labels never grant owner-domain visibility.
+    const canReadITLoans = actor.role === 'IT' || (isPostgresPersistenceActive()
+      && hasRbacScope(String(actor.id), 'division', 'IT', 'loans'));
+    const canReadGALoans = actor.role === 'GA' || (isPostgresPersistenceActive()
+      && hasRbacScope(String(actor.id), 'division', 'GA', 'loans'));
+    const data = db.loans.filter(loan =>
+      loan.borrower_id === actor.id
+      || (canReadITLoans && loan.owner_division === 'IT')
+      || (canReadGALoans && loan.owner_division === 'GA')
+    );
+    return res.json({ success: true, data });
   });
 
   app.post('/api/loans', async (req, res) => {
@@ -2701,11 +2705,17 @@ async function startServer() {
     const loanableAssets = assets.filter(a => a.is_loanable && a.status === 'available').length;
     const inRepairAssets = assets.filter(a => a.status === 'in_repair').length;
 
+    const canReadITLoans = actor.role === 'IT' || (isPostgresPersistenceActive()
+      && hasRbacScope(String(actor.id), 'division', 'IT', 'loans'));
+    const canReadGALoans = actor.role === 'GA' || (isPostgresPersistenceActive()
+      && hasRbacScope(String(actor.id), 'division', 'GA', 'loans'));
     const visibleLoans = isSuperadminActor(actor) || actor.role === 'Auditor'
       ? db.loans
-      : actor.role === 'IT' || actor.role === 'GA'
-        ? db.loans.filter(l => l.owner_division === actor.role)
-        : db.loans.filter(l => l.borrower_id === actor.id);
+      : db.loans.filter(loan =>
+        loan.borrower_id === actor.id
+        || (canReadITLoans && loan.owner_division === 'IT')
+        || (canReadGALoans && loan.owner_division === 'GA')
+      );
     const canReadITTickets = actor.role === 'IT' || (isPostgresPersistenceActive()
       && hasRbacScope(String(actor.id), 'division', 'IT', 'tickets'));
     const canReadGATickets = actor.role === 'GA' || (isPostgresPersistenceActive()
