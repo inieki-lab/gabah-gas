@@ -283,12 +283,12 @@ export default function App() {
 
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
-  const activeTab: NavTab = currentUser && isNavTabAllowedForRole(currentUser.role, currentTab)
+  const activeTab: NavTab = currentUser && isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)
     ? currentTab
     : 'dashboard';
 
   const navigateToTab = (tab: NavTab) => {
-    if (!currentUser || !isNavTabAllowedForRole(currentUser.role, tab)) {
+    if (!currentUser || !isNavTabAllowedForRole(currentUser.role, tab, currentUser.permission_keys)) {
       showToast('Menu tersebut tidak tersedia untuk peran Anda.', 'warning');
       return;
     }
@@ -779,6 +779,7 @@ export default function App() {
             r.status === 'pending_approval'
           )).length}
           currentUserRole={currentUser.role}
+          currentUserPermissions={currentUser.permission_keys}
           onOpenAdministration={() => {
             if (currentUser.role === 'Admin GABAH') {
               setIsAdministrationModalOpen(true);
