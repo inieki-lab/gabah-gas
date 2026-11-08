@@ -10,8 +10,11 @@ const server = read('server.ts');
 const hardeningSource = read('server/runtime-hardening.ts');
 const persistence = read('server/persistence.ts');
 const contracts = read('server/contracts.ts');
+const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 
 const checks = [
+  ['Fresh schema seeds Umum and Audit divisions before their org-unit foreign keys', /INSERT INTO divisions \(code, name\)[\s\S]*'Umum'[\s\S]*'Audit'[\s\S]*CREATE TABLE IF NOT EXISTS org_units/.test(orgMasterMigration)],
+
   ['Owner domains are synchronized from the configurable division master before PostgreSQL FK-backed data', /for \(const division of db\.divisions \|\| \[\]\)/.test(persistence) && /INSERT INTO divisions \(code,name,is_active\)/.test(persistence)],
   ['Asset categories and new assets require owner codes from the configured master', /db\.divisions \|\| \[\]\)\.some\(d => String\(d\.code\)/.test(server) && /const configuredOwner = \(db\.divisions \|\| \[\]\)\.some/.test(services)],
   ['Contract visibility and edits follow any explicit owner scope, not IT/GA whitelist', /if \(!owner\) return false;/.test(contracts) && !/owner !== 'IT' && owner !== 'GA'/.test(contracts) && /hasRbacScope\(String\(user\.id\), 'division', owner, 'contracts'\)/.test(contracts)],
