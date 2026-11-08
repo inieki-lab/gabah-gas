@@ -29,8 +29,6 @@ services:
     container_name: gabah_app
     restart: unless-stopped
     working_dir: /app
-    volumes:
-      - ./:/app
     ports:
       - "80:3000"
     environment:
@@ -43,6 +41,10 @@ services:
       PGPASSWORD: ${PGPASSWORD:?PGPASSWORD wajib diisi di .env sebelum menjalankan docker compose}
       GABAH_INITIAL_ADMIN_PASSWORD: ${GABAH_INITIAL_ADMIN_PASSWORD:-}
       GABAH_INITIAL_USER_PASSWORD: ${GABAH_INITIAL_USER_PASSWORD:-}
+      GABAH_UPLOAD_DIR: /app/uploads
+    volumes:
+      - ./:/app
+      - uploads_data:/app/uploads
     # --include=dev: vite/esbuild/tailwind ada di devDependencies; dengan
     # NODE_ENV=production, `npm install` biasa melewatinya sehingga
     # `npm run build` gagal dengan "vite: not found" dan app tidak pernah start.
@@ -57,6 +59,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  uploads_data:
     driver: local
 
 networks:
