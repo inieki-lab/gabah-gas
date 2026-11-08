@@ -197,7 +197,7 @@ Kategori tiket helpdesk bersifat divisial dan **terbatas**: `IT`, `GA`, `SC`, `P
 - Pencatatan teknisi, vendor rekanan, estimasi biaya, realisasi biaya, dan checklist pekerjaan teknis.
 - Pengawasan kalibrasi tera berkala jembatan timbang 60 ton PIBC.
 
-### 3.6 Reservasi Ruang Rapat VIP & Integrasi Lintas Divisi
+### 3.7 Reservasi Ruang Rapat VIP & Integrasi Lintas Divisi
 - Manajemen ruang rapat representatif (Ruang Rapat VIP Direksi, Ruang Rapat Cipinang Utama, Ruang Rapat Distribusi SPHP, Ruang Rapat IT Center).
 - Alur reservasi:
   - Reservasi oleh Sekretaris Direksi: Otomatis disetujui (*auto-approved*) dengan prioritas High.
@@ -209,7 +209,7 @@ Kategori tiket helpdesk bersifat divisial dan **terbatas**: `IT`, `GA`, `SC`, `P
   - Notifikasi ke Humas untuk permintaan peliputan media dan dokumentasi foto/video.
 - Fitur Check-In dan Check-Out ruangan secara real-time.
 
-### 3.9 Direktori Vendor dan Owner Domain
+### 3.8 Direktori Vendor dan Owner Domain
 
 - Vendor memiliki kategori layanan (contoh: IT Hardware, License, Maintenance, General) dan owner domain yang terpisah.
 - Kategori vendor tidak boleh otomatis menentukan owner. Vendor kategori IT Hardware dapat dimiliki fungsi lain jika kebijakan bisnis menyatakannya.
@@ -219,7 +219,7 @@ Kategori tiket helpdesk bersifat divisial dan **terbatas**: `IT`, `GA`, `SC`, `P
 - Owner domain tidak boleh dihapus selama masih direferensikan vendor, kontrak, aset, maintenance, peminjaman, kategori, pegawai, atau unit organisasi.
 - Tidak boleh menampilkan metrik SLA atau kontrak yang tidak berasal dari data aktual.
 
-### 3.8 Administration Control Panel (Khusus Super Admin)
+### 3.9 Administration Control Panel (Khusus Super Admin)
 - Disediakan secara eksklusif untuk peran `Admin GABAH`:
   1. Manajemen Pengguna (Tambah, Edit, Nonaktifkan Akun, Reset Password).
   2. Matriks Peran & Izin Akses (RBAC Viewer).
@@ -234,7 +234,7 @@ Kategori tiket helpdesk bersifat divisial dan **terbatas**: `IT`, `GA`, `SC`, `P
 
 ## 4. Kriteria Keberhasilan & Batasan Teknis
 
-1. **Keandalan Data (Persistence)**: Seluruh data operasional tersimpan secara relasional pada PostgreSQL 17 dengan fail-safe backup file store lokal (`server/data/gabah_state.json`).
-2. **Kepatuhan RBAC**: Tidak ada akses ilegal lintas divisi. Penugasan, mutasi, dan approval aset IT hanya dapat dilakukan oleh IT; kendaraan dan furniture hanya oleh GA. Auditor terkunci read-only.
+1. **Keandalan Data (Persistence)**: PostgreSQL 17 adalah sumber data produksi yang otoritatif. Data inti menggunakan tabel relasional; sebagian domain yang belum dinormalisasi masih tersimpan pada state payload PostgreSQL dan harus tetap diuji melalui CRUD serta restart. File-store lokal hanya mode pengembangan, bukan backup atau fallback produksi.
+2. **Kepatuhan RBAC**: Tidak ada akses di luar permission dan scope owner yang disahkan. Owner aset/vendor tidak ditentukan oleh lokasi. IT dan GA mengelola domain masing-masing; owner operasional lain dapat ditambahkan melalui master. GA hanya membaca Laptop/PC owner IT bila permission khusus aktif. Auditor read-only.
 3. **Kinerja UI**: Render antarmuka responsif tanpa lag, Tailwind CSS v4, dynamic counter badges, dan navigasi instan via Quick Search Omnibox (`Ctrl+K`).
 4. **Verifikasi Teknis**: 0 lint error (`tsc --noEmit`), build produksi sukses (`vite build && node scripts/build-server.cjs`), dan berjalan stabil pada Docker container.
