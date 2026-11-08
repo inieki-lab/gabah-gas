@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
-import { isSuperadminActor, hasRbacPermission } from './rbac-policy';
+import { isSuperadminActor, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { assetVisibleUnderDynamicScopes } from './services';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
@@ -52,9 +52,13 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
   if (actor.role === 'Auditor') return false;
-  if (['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role)) return ticket.reporter_id === actor.id;
-  if (actor.role === 'IT') return ticket.category === 'IT'; // software/license tickets are IT
+  if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+  if (actor.role === 'IT') return ticket.category === 'IT';
   if (actor.role === 'GA') return ticket.category === 'GA';
+  if (isPostgresPersistenceActive()) {
+    if (ticket.category === 'IT' && hasRbacScope(String(actor.id), 'division', 'IT', 'tickets')) return true;
+    if (ticket.category === 'GA' && hasRbacScope(String(actor.id), 'division', 'GA', 'tickets')) return true;
+  }
   return false;
 }
 
