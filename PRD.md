@@ -60,11 +60,14 @@ Sistem GABAH mengimplementasikan **9 peran pengguna aktif** dengan kredensial ka
 - Lokasi fisik aset, lokasi kerja pengguna, unit pemilik/pengelola aset (owner_division), custodian/PIC, dan role/permission pengguna harus menjadi dimensi data yang terpisah.
 - Jika suatu aset di lokasi cabang dimiliki/dikelola IT, maka IT tetap berwenang mengelola lifecycle dan datanya. Jika aset tersebut milik GA, GA yang mengelolanya. Jangan mengalihkan kewenangan hanya karena aset berada di lokasi cabang.
 
-### B. Hak lintas unit: lihat tidak sama dengan mengelola
-- GA boleh melihat data inventaris aset IT di seluruh lokasi, termasuk PC, laptop, dan perangkat IT lain, untuk kebutuhan koordinasi fasilitas, inventarisasi lokasi, dan pemantauan. Hak ini **read-only**.
-- GA tidak boleh membuat, mengubah, menghapus, memindahkan kepemilikan, atau mengubah status/lifecycle aset IT. Seluruh tindakan pengelolaan aset IT tetap menjadi kewenangan IT.
-- Prinsip yang sama berlaku untuk akses lintas unit lainnya: berikan hak baca sesuai kebutuhan pekerjaan tanpa otomatis memberikan hak create, update, delete, approve, atau admin.
-- Hak baca aset tidak otomatis membuka data sensitif atau domain operasional lain, seperti kredensial, konfigurasi keamanan, detail lisensi tertentu, atau administrasi infrastruktur.
+### B. Matriks kewenangan aset IT, GA, dan Super Admin (keputusan eksplisit)
+- **Admin GABAH / Super Admin** memiliki akses global: dapat melihat dan mengelola seluruh aset dari semua owner_division dan seluruh lokasi, termasuk create, update, delete, assign, mutasi lokasi, lifecycle, serta pengaturan administrasi sesuai kebijakan sistem. Tidak dibatasi oleh cakupan divisi atau lokasi.
+- **IT** melihat dan mengelola seluruh aset dengan owner_division IT di semua lokasi. IT tidak otomatis memperoleh kewenangan mengelola aset milik GA.
+- **GA** melihat dan mengelola seluruh aset dengan owner_division GA di semua lokasi.
+- **GA terhadap aset IT dibatasi hanya pada kategori perangkat Laptop dan PC/Desktop** (termasuk notebook/komputer desktop yang diklasifikasikan secara benar). Akses ini hanya **read-only**. GA tidak boleh membuat, mengubah, menghapus, assign, memindahkan lokasi, mengubah owner, atau mengubah status/lifecycle aset IT tersebut.
+- **Cakupan tampilan baca GA atas Laptop dan PC milik IT harus dapat dikonfigurasi** melalui permission/menu-view atau kebijakan akses yang dikelola Super Admin. Jika dinonaktifkan, GA tidak melihat aset IT tersebut. Jika diaktifkan, GA hanya melihat Laptop dan PC; bukan server, jaringan, printer, lisensi, perangkat keamanan, konfigurasi, atau seluruh inventaris IT.
+- Hak baca terbatas GA tidak membuka data sensitif seperti kredensial, konfigurasi keamanan, detail lisensi tertentu, maupun administrasi infrastruktur.
+- Akses baca tidak pernah otomatis memberikan hak create, update, delete, approve, assign, atau admin. Backend wajib menegakkan aturan yang sama; menyembunyikan menu di frontend saja tidak cukup.
 
 ### C. Sekretaris Direksi dan Humas tetap pengguna/karyawan dengan kewenangan tambahan
 - Pengguna dengan role **Sekretaris Direksi** dan **Humas** tetap merupakan karyawan/staf perusahaan. Keduanya tetap membutuhkan fungsi dasar karyawan, seperti melihat aset yang ditugaskan kepada dirinya, mengajukan peminjaman, membuat tiket bantuan, dan menggunakan fasilitas/reservasi sesuai kebijakan.
