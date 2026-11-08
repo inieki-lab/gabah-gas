@@ -2,7 +2,7 @@ import { queryRbac, isPostgresPersistenceActive } from './persistence';
 
 export interface RbacScope {
   module: string | null;
-  type: 'all' | 'own' | 'division' | 'unit' | 'location';
+  type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location';
   value: string | null;
 }
 
