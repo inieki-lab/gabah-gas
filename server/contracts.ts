@@ -67,7 +67,7 @@ export function canSeeContract(user: ServerUser, contract: ServerContract): bool
   if (isSuperadminActor(user) || user.role === 'Auditor') return true;
   if (contract.pic_user_id === user.id) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
-  if (owner !== 'IT' && owner !== 'GA') return false;
+  if (!owner) return false;
 
   if (isPostgresPersistenceActive()) {
     return hasRbacPermission(String(user.id), 'contracts.read')
@@ -90,7 +90,7 @@ export function canManageContracts(user: ServerUser): boolean {
 export function canEditContract(user: ServerUser, contract: ServerContract): boolean {
   if (isSuperadminActor(user)) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
-  if (owner !== 'IT' && owner !== 'GA') return false;
+  if (!owner) return false;
   if (contract.pic_user_id === user.id) {
     return isPostgresPersistenceActive()
       ? hasRbacPermission(String(user.id), 'contracts.update')
@@ -144,7 +144,8 @@ export const ContractDomainService = {
     }
     const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
     const pic = db.users.find(u => u.id === payload.pic_user_id) || actor;
-    const ownerScopeAllowed = ['IT', 'GA'].includes(ownerDivision)
+    const ownerExists = (db.divisions || []).some(d => String(d.code).trim().toUpperCase() === ownerDivision);
+    const ownerScopeAllowed = ownerExists
       && (isSuperadminActor(actor) || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
         : actor.role === ownerDivision));
