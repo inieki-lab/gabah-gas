@@ -13,7 +13,7 @@ for (const role of expectedRoles) {
 
 const mustNotSee: Record<string, string[]> = {
   'Sekretaris Direksi': ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
-  Humas: ['my_assets', 'assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
+  Humas: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Karyawan: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Auditor: ['my_assets', 'meeting_rooms'],
 };
@@ -30,8 +30,10 @@ for (const [role, tabs] of Object.entries(mustNotSee)) {
 
 assert.ok(isNavTabAllowedForRole('IT', 'licenses'));
 assert.ok(isNavTabAllowedForRole('GA', 'meeting_rooms'));
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'assets'));
-assert.ok(isNavTabAllowedForRole('PIBC', 'maintenance'));
+assert.ok(isNavTabAllowedForRole('Supply Chain', 'my_assets'));
+assert.ok(isNavTabAllowedForRole('PIBC', 'my_assets'));
+assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets'), false);
+assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance'), false);
 assert.ok(isNavTabAllowedForRole('Karyawan', 'tickets'));
 assert.ok(isNavTabAllowedForRole('Sekretaris Direksi', 'my_assets'));
 assert.ok(isNavTabAllowedForRole('Sekretaris Direksi', 'tickets'));
