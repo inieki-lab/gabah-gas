@@ -469,7 +469,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [rbacNewName, setRbacNewName] = useState('');
   const [rbacNewDescription, setRbacNewDescription] = useState('');
   const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
-  const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null }>>([]);
+  const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null }>>([]);
   const [rbacScopeModule, setRbacScopeModule] = useState('assets');
   const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'unit' | 'location'>('division');
   const [rbacScopeValue, setRbacScopeValue] = useState('');
@@ -587,8 +587,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   const handleAddRbacScope = () => {
     const value = rbacScopeValue.trim();
-    if (['division', 'unit', 'location'].includes(rbacScopeType) && !value) {
-      showToast('Isi nilai divisi, unit, atau lokasi untuk scope ini.', 'warning');
+    if (['division', 'division_except', 'unit', 'location'].includes(rbacScopeType) && !value) {
+      showToast('Isi nilai owner/divisi, unit, atau lokasi untuk scope ini.', 'warning');
       return;
     }
     const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
@@ -2675,13 +2675,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                     ))}
                                   </select>
                                   <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as any)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
-                                    <option value="division">Divisi / owner</option>
+                                    <option value="division">Owner / divisi tertentu</option>
+                                    <option value="division_except">Semua owner kecuali</option>
                                     <option value="unit">Unit</option>
                                     <option value="location">Lokasi</option>
                                     <option value="own">Data sendiri</option>
                                     <option value="all">Semua data</option>
                                   </select>
-                                  <input value={rbacScopeValue} onChange={e => setRbacScopeValue(e.target.value)} disabled={['all', 'own'].includes(rbacScopeType)} placeholder="Kode divisi / unit / lokasi" className="px-3 py-2 rounded-xl border border-slate-200 text-xs disabled:bg-slate-50" />
+                                  <input value={rbacScopeValue} onChange={e => setRbacScopeValue(e.target.value)} disabled={['all', 'own'].includes(rbacScopeType)} placeholder={rbacScopeType === 'division_except' ? 'Kode owner yang dikecualikan' : 'Kode owner / unit / lokasi'} className="px-3 py-2 rounded-xl border border-slate-200 text-xs disabled:bg-slate-50" />
                                   <button type="button" onClick={handleAddRbacScope} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold hover:bg-slate-50">Tambah Scope</button>
                                 </div>
                                 {rbacScopes.length === 0 ? <p className="text-xs text-slate-400">Belum ada scope yang dikonfigurasi.</p> : (
