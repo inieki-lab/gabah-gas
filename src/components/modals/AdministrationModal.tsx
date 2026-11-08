@@ -2122,7 +2122,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex flex-col items-center justify-center gap-1">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
                                 user.role === 'Admin GABAH'
                                   ? 'bg-purple-50 text-purple-700 border-purple-200'
@@ -2144,6 +2144,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               }`}>
                                 {user.role}
                               </span>
+                              {(userAssignments[String(user.id)] || [])
+                                .filter(roleId => roleId !== primaryRoleIds[String(user.id)])
+                                .map(roleId => {
+                                  const assignedRole = rbacRoles.find((role: any) => Number(role.id) === Number(roleId));
+                                  return assignedRole ? (
+                                    <span key={roleId} className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-[9px] font-semibold">
+                                      + {assignedRole.name}
+                                    </span>
+                                  ) : null;
+                                })}
                               {user.is_active === false && (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold border bg-rose-50 text-rose-700 border-rose-200" title="Akun dinonaktifkan — tidak dapat login">
                                   Nonaktif
