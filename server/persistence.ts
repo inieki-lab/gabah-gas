@@ -268,7 +268,7 @@ function hydrateDbFromState(state: any): void {
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
     { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
     { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
-    { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: false },
+    { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
   ];
   const stateOfficeLocations = Array.isArray(state.officeLocations) ? state.officeLocations : [];
   db.officeLocations = DEFAULT_OFFICE_LOCATIONS.map(def => {
