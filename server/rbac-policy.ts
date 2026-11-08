@@ -34,7 +34,7 @@ export async function refreshRbacPolicy(): Promise<void> {
     'WHERE r.is_active = TRUE ORDER BY ur.user_id, r.role_key, rp.permission_key',
   );
   const scopes = await queryRbac<any>(
-    'SELECT s.role_id, r.role_key, s.scope_type, s.scope_value ' +
+    'SELECT s.role_id, r.role_key, s.module, s.scope_type, s.scope_value ' +
     'FROM gabah_role_division_scopes s JOIN gabah_roles r ON r.id = s.role_id ' +
     'WHERE r.is_active = TRUE ORDER BY s.role_id, s.scope_type, s.scope_value',
   );
@@ -43,7 +43,7 @@ export async function refreshRbacPolicy(): Promise<void> {
     const key = String(scope.role_key);
     const list = roleScopes.get(key) || [];
     list.push({
-      module: null,
+      module: scope.module == null ? null : String(scope.module),
       type: scope.scope_type,
       value: scope.scope_value == null ? null : String(scope.scope_value),
     });
@@ -122,7 +122,7 @@ export function hasRbacScope(
   const policies = policiesByUser.get(String(userId)) || [];
   for (const policy of policies) {
     for (const scope of policy.scopes) {
-      const moduleMatches = scope.module == null || module == null || scope.module === module;
+      const moduleMatches = scope.module == null || scope.module === '*' || module == null || scope.module === module;
       const scopeMatches = scope.type === 'all'
         || (scope.type === 'own' && type === 'own')
         || (scope.type === type && scope.value === (value == null ? null : String(value)));
