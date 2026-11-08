@@ -2530,18 +2530,13 @@ async function startServer() {
     if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.vendors });
     }
-    const canReadIT = isPostgresPersistenceActive()
-      ? hasRbacScope(String(actor.id), 'division', 'IT', 'vendors')
-      : actor.role === 'IT';
-    const canReadGA = isPostgresPersistenceActive()
-      ? hasRbacScope(String(actor.id), 'division', 'GA', 'vendors')
-      : actor.role === 'GA';
-    if (!canReadIT && !canReadGA) {
-      return res.status(403).json({ success: false, message: 'Akses vendor tidak tersedia untuk scope pengguna ini.' });
-    }
     const data = db.vendors.filter(v => {
-      const owner = ['IT', 'License'].includes(String(v.category)) ? 'IT' : 'GA';
-      return owner === 'IT' ? canReadIT : canReadGA;
+      const owner = String(v.owner_division || '').trim();
+      // Legacy records without an explicit owner are visible only to global readers
+      // until Super Admin classifies them. Category is never used as ownership.
+      return Boolean(owner) && isPostgresPersistenceActive()
+        ? hasRbacScope(String(actor.id), 'division', owner, 'vendors')
+        : false;
     });
     return res.json({ success: true, data });
   });
@@ -2552,8 +2547,11 @@ async function startServer() {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
     }
     const requestedCategory = String(req.body?.category || '').trim();
-    if (!requestedCategory) return res.status(400).json({ success: false, message: 'Kategori domain vendor wajib dipilih.' });
-    const requestedOwner = ['IT', 'License'].includes(requestedCategory) ? 'IT' : 'GA';
+    if (!requestedCategory) return res.status(400).json({ success: false, message: 'Kategori vendor wajib dipilih.' });
+    const requestedOwner = String(req.body?.owner_division || '').trim();
+    if (!requestedOwner || !(db.divisions || []).some(d => d.code === requestedOwner)) {
+      return res.status(400).json({ success: false, message: 'Owner vendor wajib dipilih dari master fungsi pemilik yang aktif.' });
+    }
     const canManageRequestedOwner = isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors')
       : actor.role === requestedOwner);
@@ -2569,6 +2567,7 @@ async function startServer() {
       id: `VND-${String(count).padStart(2, '0')}-${Date.now().toString(36)}`,
       name,
       category: req.body.category || 'General',
+      owner_division: requestedOwner,
       pic_name: req.body.pic_name || '',
       pic_phone: req.body.pic_phone || '',
       pic_email: req.body.pic_email || '',
@@ -2590,11 +2589,19 @@ async function startServer() {
     }
     const existingVendor = db.vendors.find(v => v.id === req.params.id);
     if (!existingVendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan.' });
-    const existingOwner = ['IT', 'License'].includes(String(existingVendor.category)) ? 'IT' : 'GA';
+    const existingOwner = String(existingVendor.owner_division || '').trim();
     const requestedCategory = req.body?.category === undefined
       ? String(existingVendor.category)
       : String(req.body.category);
-    const requestedOwner = ['IT', 'License'].includes(requestedCategory) ? 'IT' : 'GA';
+    const requestedOwner = req.body?.owner_division === undefined
+      ? existingOwner
+      : String(req.body.owner_division || '').trim();
+    if (!existingOwner && !isSuperadminActor(actor)) {
+      return res.status(403).json({ success: false, message: 'Vendor lama belum memiliki owner; klasifikasi hanya dapat dilakukan Super Admin.' });
+    }
+    if (!requestedOwner || !(db.divisions || []).some(d => d.code === requestedOwner)) {
+      return res.status(400).json({ success: false, message: 'Owner vendor wajib dipilih dari master fungsi pemilik yang aktif.' });
+    }
     const canManageExisting = isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacScope(String(actor.id), 'division', existingOwner, 'vendors')
       : actor.role === existingOwner);
