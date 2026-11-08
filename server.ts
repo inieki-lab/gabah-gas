@@ -1913,7 +1913,7 @@ async function startServer() {
       const allowUpdate = req.body?.allow_update === true;
 
       const VALID_CONDITIONS = ['new', 'good', 'fair', 'poor', 'broken'];
-      const VALID_DIVISIONS = ['IT', 'GA'];
+      const VALID_DIVISIONS = (db.divisions || []).map(d => String(d.code).trim().toUpperCase());
       // CR-06: allowlist identik dengan PATCH /api/assets/:id
       const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
 
@@ -1970,27 +1970,11 @@ async function startServer() {
             errors.push(`Baris ${rowNo}: ${serial ? `Serial "${serial}"` : `Nomor Accurate "${corp}"`} sudah terdaftar pada aset ${existing.asset_number} (${existing.name}). Aktifkan opsi perbarui bila ingin memperbarui.`);
             continue;
           }
-          // Otorisasi jalur UPDATE — authority divisi identik dengan PATCH
-          // /api/assets/:id (SEC-10): impor massal tidak boleh melewati
-          // pembatasan intradivisional saat mengubah baris aset yang sudah ada.
-          // Dynamic RBAC Stage 13E: rule legacy tetap utuh ditambah authority
-          // dinamis dari scope 'all'/'division'; deny-by-default tanpa scope.
-          if (!isSuperadminActor(actor)) {
-            if (!['IT', 'GA'].includes(String(existing.owner_division || '').toUpperCase())) {
-              errors.push(`Baris ${rowNo}: ${existing.asset_number} memiliki owner legacy SC/PIBC dan hanya dapat ditinjau oleh Super Admin sampai klasifikasi owner per aset selesai.`);
-              continue;
-            }
-            const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
-            const hasDynamicDivisionAuthority = (division: string): boolean =>
-              dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
-            if (existing.owner_division === 'IT' && actor.role !== 'IT' && !hasDynamicDivisionAuthority('IT')) {
-              errors.push(`Baris ${rowNo}: ${existing.asset_number} adalah barang IT dan hanya dapat diperbarui oleh personel IT atau Admin GABAH.`);
-              continue;
-            }
-            if (existing.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
-              errors.push(`Baris ${rowNo}: ${existing.asset_number} milik Divisi GA dan hanya dapat diperbarui oleh personel GA atau Admin GABAH.`);
-              continue;
-            }
+          // Bulk UPDATE uses the same owner-domain authorization as PATCH.
+          // No role-name or physical-location shortcut grants mutation rights.
+          if (actor.role === 'Auditor' || !canMutateAssetOwner(actor, existing.owner_division, 'assets.update')) {
+            errors.push(`Baris ${rowNo}: ${existing.asset_number} ditolak. Permission assets.update dan scope owner "${existing.owner_division}" wajib dimiliki.`);
+            continue;
           }
           // UPDATE path — allowlist eksplisit, asset_number & owner_division server-owned
           for (const key of UPDATE_FIELDS) {
