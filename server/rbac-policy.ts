@@ -125,13 +125,27 @@ export function hasRbacScope(
 ): boolean {
   if (isRbacSuperadmin(userId)) return true;
   const policies = policiesByUser.get(String(userId)) || [];
+  const moduleMatches = (scope: RbacScope) =>
+    scope.module == null || scope.module === '*' || module == null || scope.module === module;
+
+  // Owner-domain scopes support broad grants with explicit exclusions:
+  // "all except IT" must not be mistaken for unrestricted "all".
+  if (type === 'division') {
+    const owner = value == null ? '' : String(value);
+    const relevant = policies.flatMap(policy => policy.scopes.filter(moduleMatches));
+    if (relevant.some(scope => scope.type === 'division' && scope.value === owner)) return true;
+    const excluded = relevant.some(scope => scope.type === 'division_except' && scope.value === owner);
+    if (excluded) return false;
+    return relevant.some(scope => scope.type === 'all'
+      || (scope.type === 'division_except' && scope.value !== owner));
+  }
+
   for (const policy of policies) {
     for (const scope of policy.scopes) {
-      const moduleMatches = scope.module == null || scope.module === '*' || module == null || scope.module === module;
       const scopeMatches = scope.type === 'all'
         || (scope.type === 'own' && type === 'own')
         || (scope.type === type && scope.value === (value == null ? null : String(value)));
-      if (moduleMatches && scopeMatches) return true;
+      if (moduleMatches(scope) && scopeMatches) return true;
     }
   }
   return false;
