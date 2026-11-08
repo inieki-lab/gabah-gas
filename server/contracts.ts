@@ -278,6 +278,33 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
+    const allowedOutcomes: RenewalOutcome[] = [
+      'pending_decision',
+      'renewed',
+      'not_renewed',
+      'terminated',
+      'replaced_by_new_contract',
+    ];
+    if (!allowedOutcomes.includes(outcome)) {
+      throw new Error('Keputusan renewal tidak valid.');
+    }
+
+    if (outcome === 'replaced_by_new_contract') {
+      if (!replacementContractId) {
+        throw new Error('Kontrak pengganti wajib dipilih untuk keputusan replaced_by_new_contract.');
+      }
+      const replacement = db.contracts.find(item => item.id === replacementContractId);
+      if (!replacement) throw new Error('Kontrak pengganti tidak ditemukan.');
+      if (replacement.id === contract.id) throw new Error('Kontrak tidak dapat menggantikan dirinya sendiri.');
+      const sourceOwner = String(contract.owner_division || '').trim().toUpperCase();
+      const replacementOwner = String(replacement.owner_division || '').trim().toUpperCase();
+      if (!sourceOwner || replacementOwner !== sourceOwner) {
+        throw new Error('Kontrak pengganti harus berasal dari divisi pemilik yang sama.');
+      }
+    } else if (replacementContractId) {
+      throw new Error('ID kontrak pengganti hanya boleh diisi untuk keputusan replaced_by_new_contract.');
+    }
+
     contract.renewal_outcome = outcome;
     contract.renewal_notes = notes || null;
     contract.replaced_by_contract_id = replacementContractId;
