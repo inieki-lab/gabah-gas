@@ -2,17 +2,18 @@
 
 > Bagian ini adalah status operasional terbaru. Catatan Stage lama di bawah dipertahankan sebagai histori, bukan status branch/PR saat ini.
 
-- **Branch utama:** `main`; integrasi aktif dilakukan langsung melalui PR ke `main`, bukan branch integrasi lama.
-- **Main terakhir terverifikasi:** `d7ab9c4877e6134471aa6d796ee6108794122451` (PR #27 — frontend Dynamic RBAC alignment).
-- **CI main #605:** SUCCESS pada commit tersebut, 33/33 langkah selesai termasuk typecheck, seluruh regression checks, production build, Docker image runtime smoke, PostgreSQL 17 integration, dan P0 security HTTP assertions.
-- **PR #18–#26:** pekerjaan Dynamic RBAC backend/scope dan protokol UAT telah dikonsolidasikan melalui PR #26; PR #27 menyelaraskan permission guard frontend untuk aset, peminjaman, dan helpdesk.
-- **PR #28:** OPEN, branch `ai/gpt6/knowledge-base-permission-alignment`; memisahkan tombol Knowledge Base berdasarkan `knowledge.create` dan `knowledge.update`. CI #606 masih queued saat catatan ini diperbarui. Jangan merge sebelum CI lulus dan diff ditinjau.
+- **Branch utama:** `main`; perubahan masuk melalui PR terverifikasi langsung ke `main`.
+- **Main terakhir:** `7abcfa54ec75037337fb44af8675208848a226c9` (PR #28 — custom role permission selection + Knowledge Base permission split).
+- **PR #26:** konsolidasi Dynamic RBAC backend/scope dan protokol UAT; merged.
+- **PR #27:** frontend permission guards untuk aset, peminjaman, dan helpdesk; merged. CI #605 SUCCESS (33/33).
+- **PR #28:** custom role form kini menampilkan permission checkbox per modul sebelum dibuat; role dan permission disimpan atomik; tampilan mempertahankan checkbox terpilih setelah simpan; API menolak role tanpa permission dan menolak permission sistem inti. Knowledge Base memisahkan `knowledge.create` dan `knowledge.update`. PR merged.
+- **CI PR #28:** #616 SUCCESS pada perubahan final PR (typecheck, regression checks, production build, Docker runtime smoke, PostgreSQL 17 integration, P0 security, directory, loan, meeting, contract, organization, asset, sidebar, maintenance).
+- **CI main #618:** berjalan pada merge commit `7abcfa5`; periksa hasil akhir sebelum menyatakan main pasca-merge lulus.
 - **Model organisasi:** role dasar pegawai adalah Karyawan; unit dan lokasi kerja merupakan atribut terpisah. Supply Chain/PIBC tidak otomatis menjadi role atau owner aset. Owner/pengelola aset terpisah dari lokasi fisik.
 - **Lokasi aktif yang disepakati:** HO, PIBC, RPC/SC, Pangsub, Kantor Perawatan. Subang nonaktif untuk transaksi baru; riwayat lama tidak dihapus.
 - **Preview/UAT:** checklist lengkap berada di `docs/testing/gabah-uat-checklist.md`, termasuk 12 smoke test sesi preview kantor. Seluruh kasus preview tetap NOT RUN sampai diuji langsung.
-- **Belum boleh disebut production-ready:** browser UAT tiap jenis akun, rehearsal upgrade dari snapshot database legacy, backup/restore DB + uploads, staging deployment, TLS/reverse proxy, monitoring, dan sign-off pemilik proses belum dibuktikan.
+- **Belum production-ready:** browser UAT tiap jenis akun, rehearsal upgrade dari snapshot database legacy, backup/restore DB + uploads, staging deployment, TLS/reverse proxy, monitoring, dan sign-off pemilik proses belum dibuktikan.
 - **Larangan operasional:** belum ada migrasi akun/data produksi atau deployment produksi. Gunakan database uji untuk preview; jangan menganggap CI sebagai pengganti UAT.
-
 
 
 ## Status final — Stage 13F merged (2026-10-21)
