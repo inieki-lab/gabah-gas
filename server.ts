@@ -131,7 +131,7 @@ async function startServer() {
       'PIBC': 'karyawan',
     };
     return canonical[normalized] || normalized.toLowerCase().normalize('NFKD')
-      .replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   };
 
   // Keep users.role and the primary dynamic RBAC assignment synchronized,
