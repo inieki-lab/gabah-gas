@@ -596,3 +596,20 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Documentation updates after that source head triggered CI #450 and #451; at this update #450 is in progress and #451 is queued. No source changes were made after the verified ticket source commit; latest doc CI remains pending.
 - PR #18 remains Draft/Open, not merged. No production migration has been run.
 - Continue with vendor explicit owner-domain model, then room reservation capability/scope conversion and remaining report/export/admin endpoints. Preserve privacy and do not mass-map ambiguous legacy records.
+
+
+### Vendor owner-domain remediation — 2026-11-08
+
+**Defect fixed in branch source (CI pending):** vendor ownership was inferred from category (`IT`/`License` -> IT, every other category -> GA), and UI management was hardcoded to Admin GABAH/IT/GA. This prevented arbitrary operational owner domains and conflated vendor service category with accountability.
+
+**Changes:**
+- Added `owner_division?: string | null` to `ServerVendor` and frontend `Vendor` type.
+- Vendor list now filters by explicit `owner_division` through `hasRbacScope(actor, 'division', owner, 'vendors')` in PostgreSQL. File-store compatibility checks the same explicit owner code against the legacy actor role.
+- New vendor creation requires an active owner code present in the configurable owner/division master, plus `vendors.create` and matching scope in PostgreSQL.
+- Update requires authority over both current and requested owner. `owner_division` was added to the server-side update allowlist so changes persist.
+- Legacy vendor records with null/empty owner are deliberately not auto-mapped from category. They remain visible to Super Admin/Auditor only; Super Admin can classify them from verified business information. No database migration/backfill is needed for the JSON-backed vendor collection; the new field is additive.
+- Vendor UI loads owner choices from `/api/master/divisions` and uses `permission_keys` / `is_superadmin`, not a static role-name list.
+
+**Regression checks added:** explicit owner field, no category-to-owner inference, scope enforcement on list/create/update, owner field persistence, and permission-driven UI. Check CI result on latest head before claiming pass.
+
+**Important domain caveat:** current master `divisions` contains legacy SC/PIBC entries alongside IT/GA and other functions. This UI only presents configured master entries; it does not infer owner from employee location. Super Admin must select the actual responsible owner for each vendor.
