@@ -1184,7 +1184,10 @@ export class GabahDomainService {
     interruption_reason?: string;
     notes?: string;
   }, actor: ServerUser): ServerRoomReservation {
-    if (!hasRoomPermission(actor, 'room_reservations.create') && actor.role === 'Auditor') {
+    const canCreateReservation = isPostgresPersistenceActive()
+      ? hasRoomPermission(actor, 'room_reservations.create')
+      : actor.role !== 'Auditor';
+    if (!canCreateReservation) {
       throw Object.assign(new Error('Akses ditolak: Anda tidak memiliki izin membuat reservasi.'), { statusCode: 403 });
     }
 
