@@ -2203,11 +2203,12 @@ async function startServer() {
   app.get('/api/movements', (req, res) => {
     if (!requireRbacPermission(req, res, 'movements.read')) return;
     const actor = getActor(req);
+    // getScopedAssets() already combines the employee's personal baseline
+    // with every explicit dynamic role scope. Do not re-filter by legacy
+    // primary-role labels here: that would hide scoped assets from employees
+    // who hold additional operational roles.
     const scopedAssets = GabahDomainService.getScopedAssets(actor);
-    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
-    const visibleAssetIds = new Set(scopedAssets
-      .filter(asset => !employeeBaseline || asset.assigned_to?.id === actor.id)
-      .map(asset => asset.id));
+    const visibleAssetIds = new Set(scopedAssets.map(asset => asset.id));
     const { assetId } = req.query;
     if (assetId) {
       if (!visibleAssetIds.has(String(assetId)) && !isSuperadminActor(actor) && !isAuditorActor(actor)) {
