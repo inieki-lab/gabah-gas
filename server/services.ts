@@ -255,15 +255,15 @@ export class GabahDomainService {
       // GA's writable inventory follows its explicit dynamic owner scope.
       // The optional IT workstation exception is strictly read-only and limited
       // to laptop/desktop categories, independent of the GA owner scope.
-      const gaOwnedAssets = dynamicAssets.filter(asset =>
-        String(asset.owner_division || '').toUpperCase() === 'GA'
-      );
+      // Keep every explicitly scoped owner domain, including additional
+      // operational capabilities assigned to a GA employee. The IT workstation
+      // exception remains a separate read-only addition.
       const readOnlyItWorkstations = canReadItWorkstations
         ? db.assets.filter(asset =>
           String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
         )
         : [];
-      const visibleIds = new Set([...gaOwnedAssets, ...readOnlyItWorkstations].map(asset => asset.id));
+      const visibleIds = new Set([...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
       return db.assets.filter(asset => visibleIds.has(asset.id));
     }
 
