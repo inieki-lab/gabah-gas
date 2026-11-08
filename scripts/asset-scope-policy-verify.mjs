@@ -11,9 +11,10 @@ const hardeningSource = read('server/runtime-hardening.ts');
 
 const checks = [
   ['IT list scope hanya owner IT', /if \(user\.role === 'IT'\) \{\s*return dynamicAssets\.filter\(asset => String\(asset\.owner_division \|\| ''\)\.toUpperCase\(\) === 'IT'\);/.test(services)],
-  ['GA list scope mengelola owner GA', /if \(user\.role === 'GA'\) \{\s*const canReadItWorkstations = hasRbacPermission/.test(services)],
+  ['GA writable inventory follows explicit dynamic owner scope', /const gaOwnedAssets = dynamicAssets\.filter\(asset =>[\s\S]*?=== 'GA'/.test(services)],
   ['GA IT read scope memerlukan permission khusus', /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)],
-  ['GA IT read scope dibatasi taxonomy HLT dan HPC', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(services)],
+  ['GA IT read scope dibatasi taxonomy HLT dan HPC', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(services) && /readOnlyItWorkstations/.test(services)],
+  ['Asset creation authorization is not hardcoded to job-title labels', /Effective permission and explicit IT\/GA owner scope are enforced by/.test(server) && !/if \(actor\.role === 'Karyawan'\)[\s\S]{0,180}wewenang mendaftarkan aset baru/.test(server)],
   ['Tidak ada lagi scope aset berdasarkan lokasi SC/PIBC di resolver utama', !/user\.role === 'Supply Chain'[\s\S]{0,500}owner_division === 'SC'|user\.role === 'PIBC'[\s\S]{0,500}owner_division === 'PIBC'/.test(services)],
   ['Direct asset guard memakai permission GA yang sama', /hasRbacPermission\(String\(actor\.id\), 'assets\.read\.it_workstations'\)/.test(hardening)],
   ['Direct asset guard menggunakan dynamic scope untuk custom role', /assetVisibleUnderDynamicScopes\(actor, asset\)/.test(hardening)],
