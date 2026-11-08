@@ -545,3 +545,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Migration 033 now retires a legacy `org_office_locations` row named Subang by setting `is_active=FALSE` if such a row exists. It does not delete the row and does not touch the separate `asset_locations` table or asset history.
 - Updated `scripts/org-model-verify.mjs` to stop treating the nine legacy role labels as the target organization model; they are retained only for account/history compatibility. Updated its HO location lookup and added the five-active-office/Subang-closed API assertion.
 - Added regression coverage to ensure migration 033 keeps Kantor Perawatan active, retires Subang only in the office master, and preserves historical rows.
+
+
+### CI review — migration 033 SQL/test correction (2026-11-08)
+- Run #438 failed only the new office migration source assertion: the test expected `LOWER(BTRIM(name))` before `is_active = FALSE`, while SQL correctly expresses `SET is_active = FALSE WHERE LOWER(BTRIM(name)) = 'subang'`. Test order was corrected.
+- Manual review also caught a trailing comma in the first `UPDATE org_office_locations ... SET name = CASE` statement after removing the prior deactivation expression. Removed the comma; statement is now `END WHERE ...`.
+- Run #439 was queued on the documentation head at the time of writing. Verify its result and logs before claiming CI green.
