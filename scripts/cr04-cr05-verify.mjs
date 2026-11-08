@@ -258,8 +258,19 @@ async function main() {
     });
     record('CR-04 contract update (PATCH notes)', '200 + notes applied', `HTTP ${patched.status} notes=${patched.json?.data?.notes || '-'}`, patched.status === 200 && patched.json?.data?.notes === 'updated notes by verify');
 
+    // Assign a second, explicitly scoped role to Karyawan. GA has contracts.read
+    // with GA-only contract scope; this should not expose the IT-owned test contract.
+    const roleCatalog = await req(base, 'GET', '/api/admin/rbac/roles', { token: adminToken });
+    const gaRole = (roleCatalog.json?.data || []).find(role => role.role_key === 'ga' && role.is_active);
+    const karyawanUser = (usersRes.json?.data || []).find(user => user.email === KARYAWAN_EMAIL);
+    const assignment = await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
+      token: adminToken,
+      body: { role_ids: gaRole ? [Number(gaRole.id)] : [] },
+    });
+    record('Dynamic role assignment adds GA capability without replacing Karyawan primary role', '200 + GA role', `HTTP ${assignment.status}`, assignment.status === 200 && assignment.json?.data?.role_ids?.includes(Number(gaRole?.id)));
+
     const karyawanView = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
-    record('RBAC Karyawan without contracts.read is denied before contract lookup', '403', `HTTP ${karyawanView.status}`, karyawanView.status === 403);
+    record('RBAC Karyawan with GA role cannot read IT-owned contract outside GA scope', '404', `HTTP ${karyawanView.status}`, karyawanView.status === 404);
 
     const auditorCreate = await req(base, 'POST', '/api/contracts', {
       token: auditorToken,
@@ -276,6 +287,13 @@ async function main() {
     });
     record('RBAC ticket linkage probe of restricted contract rejected', '201 without contract_id', `HTTP ${probeTicket.status} contract_id=${probeTicket.json?.data?.contract_id ?? 'unset'}`,
       probeTicket.status === 201 && !probeTicket.json?.data?.contract_id);
+
+    const assignmentInventory = await req(base, 'GET', '/api/admin/rbac/user-assignments', { token: adminToken });
+    const persistedAssignment = (assignmentInventory.json?.data || []).find(item => String(item.user_id) === String(karyawanUser?.id));
+    record('Additional role survives ordinary PostgreSQL persistence after ticket creation', 'GA additional + Karyawan primary',
+      `roles=${(persistedAssignment?.role_ids || []).join(',')} primary=${persistedAssignment?.primary_role_id ?? 'none'}`,
+      assignment.status === 200 && (persistedAssignment?.role_ids || []).includes(Number(gaRole?.id))
+        && Number(persistedAssignment?.primary_role_id) === Number(assignment.json?.data?.primary_role_id));
 
     const linkedTicket = await req(base, 'POST', '/api/tickets', {
       token: adminToken,
