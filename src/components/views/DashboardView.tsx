@@ -80,6 +80,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
   const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
+  const roleDescription = currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
+    ? roleDescriptions.Humas
+    : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
+      ? roleDescriptions['Sekretaris Direksi']
+      : roleDescriptions[currentUser.role];
   const expiringLicenses = dashboardAssets.filter(asset => {
     const expiry = asset.license_detail?.expiration_date;
     if (!expiry) return false;
@@ -157,7 +162,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Selamat Datang, {currentUser.name}
             </h1>
             <p className="text-sm text-slate-600 mt-1 max-w-2xl font-normal">
-              {roleDescriptions[currentUser.role]}
+              {roleDescription}
             </p>
           </div>
 
