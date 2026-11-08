@@ -21,10 +21,11 @@ awk -F= '$1 == "PGPASSWORD" && length($2) > 0 { found=1 } END { exit(found ? 0 :
   || fail "PGPASSWORD kosong/tidak ditemukan pada .env."
 docker compose config --quiet || fail "Konfigurasi Docker Compose tidak valid."
 
-printf '%s\n' "Preflight PASS. Menjalankan stack tanpa menghentikan volume/database lebih dulu."
-# Do not run docker compose down, --remove-orphans, or down -v here.
-# up -d updates/recreates only services managed by this Compose project.
-docker compose up -d --force-recreate app
+printf '%s\n' "Preflight PASS. Membangun image aplikasi dari Dockerfile yang memakai lockfile."
+# Build is performed before replacing the running app. PostgreSQL and named
+# volumes are not stopped, removed, or recreated by this deployment step.
+docker compose build app
+docker compose up -d --no-deps --force-recreate app
 
 printf 'Menunggu health check: %s\n' "$APP_URL"
 for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
