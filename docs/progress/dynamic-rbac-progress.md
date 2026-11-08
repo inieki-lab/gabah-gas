@@ -531,3 +531,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 2. Continue endpoint-by-endpoint authorization audit, prioritizing loan list/detail/BAST, tickets, room reservations, reports, vendors, licenses, exports, dashboard aggregates, and Administration masters.
 3. Reconcile stale `scripts/org-model-verify.mjs` assumptions about role/location names and add an API-level check for all five active office locations.
 4. Keep PR #18 Draft/Open until backend scope audit and representative role UAT are complete. No production migrations without backup, dry-run, impact report, and explicit approval.
+
+
+### Follow-up — loan request identity and HTTP authorization status (2026-11-08)
+- `GabahDomainService.requestLoan()` now prevents ordinary users from setting another employee as borrower via crafted `borrower_id`. Self-service requests must be for the authenticated actor; delegated/on-behalf requests require a future explicit capability/workflow. Super Admin retains administrative exception.
+- `/api/loans` create/approve/reject routes now propagate domain `statusCode`, so a domain-level 403 is not misreported as 400.
+- Added source regression checks for borrower impersonation protection and approve/reject status propagation.
+- These are source-level regression checks; CI must pass on the newest branch head before claiming verified. No production data changed.
