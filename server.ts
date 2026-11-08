@@ -82,8 +82,8 @@ async function startServer() {
   const serializeAuthenticatedUser = (user: ServerUser): any => {
     const safe = sanitizeUser(user) as any;
     if (isPostgresPersistenceActive()) {
-      safe.permission_keys = getEffectivePermissionKeys(String(user.id));
       safe.is_superadmin = isRbacSuperadmin(String(user.id));
+      safe.permission_keys = safe.is_superadmin ? ['*'] : getEffectivePermissionKeys(String(user.id));
     } else {
       safe.is_superadmin = user.role === 'Admin GABAH';
     }
