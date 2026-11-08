@@ -322,6 +322,21 @@ async function main() {
     });
     record('GA cannot create IT-owned vendor outside GA owner scope', '403', `HTTP ${gaCrossOwner.status}`, gaCrossOwner.status === 403);
 
+    const itVendorList = await req(base, 'GET', '/api/vendors', { token: itToken });
+    const gaVendorList = await req(base, 'GET', '/api/vendors', { token: gaToken });
+    record('IT vendor directory is restricted to IT owner domain', 'IT only',
+      (itVendorList.json?.data || []).map(v => v.owner_division).join(','),
+      itVendorList.status === 200 && (itVendorList.json?.data || []).length === 1 && itVendorList.json.data[0].owner_division === 'IT');
+    record('GA vendor directory is restricted to GA owner domain', 'GA only',
+      (gaVendorList.json?.data || []).map(v => v.owner_division).join(','),
+      gaVendorList.status === 200 && (gaVendorList.json?.data || []).length === 1 && gaVendorList.json.data[0].owner_division === 'GA');
+
+    const itCrossOwnerUpdate = await req(base, 'PATCH', `/api/vendors/${itVendorId}`, {
+      token: itToken,
+      body: { owner_division: 'GA' },
+    });
+    record('IT cannot reclassify an IT vendor into GA owner without destination scope', '403', `HTTP ${itCrossOwnerUpdate.status}`, itCrossOwnerUpdate.status === 403);
+
     const karyawanVendorDenied = await req(base, 'POST', '/api/vendors', {
       token: karyawanToken,
       body: { name: 'VERIFY Forbidden Karyawan', category: 'General', owner_division: 'GA' },
