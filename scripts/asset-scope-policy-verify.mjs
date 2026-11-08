@@ -25,7 +25,7 @@ const checks = [
   ['Branch role migration does not rewrite historical asset ownership', !/UPDATE assets|UPDATE gabah_assets|owner_division\s*=/.test(branchMigration)],
   ['Movement history is restricted to the same visible asset scope', /visibleAssetIds[\s\S]*db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(server)],
   ['Maintenance schedules follow visible asset scope and exclude branch-wide fallback', /visibleAssetIds[\s\S]*db\.maintenances\.filter\(item => visibleAssetIds\.has\(item\.asset_id\)\)/.test(server)],
-  ['Unknown roles fail closed for asset list and direct asset access', /Unknown or unconfigured roles must fail closed[\s\S]*return \[\];/.test(services) && /return assetVisibleUnderDynamicScopes\(actor, asset\);/.test(hardeningSource)],
+  ['Unknown roles fail closed for asset list and direct asset access', /if \(scopes == null\) return \[\];/.test(services) && /return isPostgresPersistenceActive\(\) && assetVisibleUnderDynamicScopes\(actor, asset\);/.test(hardeningSource)],
   ['Loan approval/rejection/handover/return use permission and IT/GA owner scope only', /static canOperateLoan\([\s\S]*owner !== 'IT' && owner !== 'GA'[\s\S]*hasRbacPermission[\s\S]*hasRbacScope/.test(services)],
   ['Full asset catalogue menu requires its own explicit permission', /assets\.catalog\.read/.test(read('src/navigation/roleNavigation.ts')) && /assets\.catalog\.read/.test(read('server/migrations/027_dynamic_rbac_asset_catalog_read.sql'))],
   ['New assets cannot be created with legacy SC/PIBC owner values', /resolvedOwnerDivision !== 'IT' && resolvedOwnerDivision !== 'GA'/.test(services)],
