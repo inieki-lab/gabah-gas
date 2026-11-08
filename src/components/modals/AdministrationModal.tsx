@@ -2583,6 +2583,55 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {roleAssignmentTarget && (
+                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="w-full max-w-xl max-h-[85vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col">
+                    <div className="p-5 border-b border-slate-100">
+                      <h3 className="font-black text-slate-900">Penetapan Role Pegawai</h3>
+                      <p className="text-xs text-slate-500 mt-1">{roleAssignmentTarget.name} · {roleAssignmentTarget.email}</p>
+                      <p className="text-[11px] text-slate-500 mt-2">Role utama mengikuti profil pegawai. Pilih role tambahan hanya jika pegawai memang memiliki tanggung jawab lintas fungsi.</p>
+                    </div>
+                    <div className="p-4 overflow-y-auto space-y-2">
+                      {assignmentsLoading ? (
+                        <p className="text-sm text-slate-500 text-center py-6">Memuat assignment role...</p>
+                      ) : rbacRoles.filter((role: any) => role.is_active).map((role: any) => {
+                        const roleId = Number(role.id);
+                        const isPrimary = primaryRoleIds[String(roleAssignmentTarget.id)] === roleId;
+                        const checked = roleAssignmentDraft.includes(roleId);
+                        return (
+                          <label key={roleId} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={assignmentsSaving || isPrimary}
+                              onChange={e => toggleRoleAssignment(roleId, e.target.checked)}
+                              className="mt-0.5"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-bold text-slate-800">{role.name}</span>
+                                {isPrimary && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">Role utama</span>}
+                                {role.is_superadmin && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">Superadmin</span>}
+                              </span>
+                              <span className="block text-[11px] text-slate-500">{role.description || role.role_key}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                      {!assignmentsLoading && rbacRoles.filter((role: any) => role.is_active).length === 0 && (
+                        <p className="text-sm text-slate-500 text-center py-6">Belum ada role aktif. Muat ulang konfigurasi RBAC.</p>
+                      )}
+                    </div>
+                    <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
+                      <button type="button" onClick={() => setRoleAssignmentTarget(null)} disabled={assignmentsSaving} className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">Batal</button>
+                      <button type="button" onClick={() => void saveRoleAssignment()} disabled={assignmentsSaving || assignmentsLoading || !primaryRoleIds[String(roleAssignmentTarget.id)]} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
+                        {assignmentsSaving ? 'Menyimpan...' : 'Simpan Role'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
