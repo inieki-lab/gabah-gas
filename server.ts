@@ -13,7 +13,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, getEffectivePermissionKeys } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -2466,28 +2466,35 @@ async function startServer() {
     if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.vendors });
     }
-    if (actor.role === 'IT') {
-      return res.json({ success: true, data: db.vendors.filter(v => ['IT', 'License'].includes(String(v.category))) });
+    const canReadIT = isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', 'IT', 'vendors')
+      : actor.role === 'IT';
+    const canReadGA = isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', 'GA', 'vendors')
+      : actor.role === 'GA';
+    if (!canReadIT && !canReadGA) {
+      return res.status(403).json({ success: false, message: 'Akses vendor tidak tersedia untuk scope pengguna ini.' });
     }
-    if (actor.role === 'GA') {
-      return res.json({ success: true, data: db.vendors.filter(v => !['IT', 'License'].includes(String(v.category))) });
-    }
-    // Branch/location labels do not grant global vendor visibility.
-    return res.status(403).json({ success: false, message: 'Akses vendor tidak tersedia untuk peran ini.' });
+    const data = db.vendors.filter(v => {
+      const owner = ['IT', 'License'].includes(String(v.category)) ? 'IT' : 'GA';
+      return owner === 'IT' ? canReadIT : canReadGA;
+    });
+    return res.json({ success: true, data });
   });
 
   app.post('/api/vendors', (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, GA, Supply Chain, atau PIBC yang dapat mengelola vendor.' });
     }
-    if (actor.role === 'IT' && req.body?.category && !['IT', 'License'].includes(String(req.body.category))) {
-      return res.status(403).json({ success: false, message: 'Divisi IT hanya dapat mengelola vendor domain IT/License.' });
-    }
-    if (actor.role === 'GA' && req.body?.category && ['IT', 'License'].includes(String(req.body.category))) {
-      return res.status(403).json({ success: false, message: 'Divisi GA tidak dapat mengelola vendor domain IT/License.' });
+    const requestedCategory = String(req.body?.category || '').trim();
+    if (!requestedCategory) return res.status(400).json({ success: false, message: 'Kategori domain vendor wajib dipilih.' });
+    const requestedOwner = ['IT', 'License'].includes(requestedCategory) ? 'IT' : 'GA';
+    const canManageRequestedOwner = isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors')
+      : actor.role === requestedOwner);
+    if (!canManageRequestedOwner) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor yang dipilih.' });
     }
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
     if (!name) {
@@ -2516,16 +2523,22 @@ async function startServer() {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.update')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(actor.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, GA, Supply Chain, atau PIBC yang dapat mengelola vendor.' });
     }
     const existingVendor = db.vendors.find(v => v.id === req.params.id);
     if (!existingVendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan.' });
-    if (actor.role === 'IT' && !['IT', 'License'].includes(String(existingVendor.category))) {
-      return res.status(403).json({ success: false, message: 'Divisi IT hanya dapat mengelola vendor domain IT/License.' });
-    }
-    if (actor.role === 'GA' && ['IT', 'License'].includes(String(existingVendor.category))) {
-      return res.status(403).json({ success: false, message: 'Divisi GA tidak dapat mengelola vendor domain IT/License.' });
+    const existingOwner = ['IT', 'License'].includes(String(existingVendor.category)) ? 'IT' : 'GA';
+    const requestedCategory = req.body?.category === undefined
+      ? String(existingVendor.category)
+      : String(req.body.category);
+    const requestedOwner = ['IT', 'License'].includes(requestedCategory) ? 'IT' : 'GA';
+    const canManageExisting = isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', existingOwner, 'vendors')
+      : actor.role === existingOwner);
+    const canManageRequested = isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors')
+      : actor.role === requestedOwner);
+    if (!canManageExisting || !canManageRequested) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor ini.' });
     }
     const vendor = existingVendor;
     // SECURITY (CR-06): explicit allowlist — id is server-owned.
