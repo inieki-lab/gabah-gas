@@ -80,6 +80,12 @@ export function isSuperadminActor(actor: { id: string; role?: string }): boolean
   return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : actor.role === 'Admin GABAH';
 }
 
+/** Auditor is a deny-write capability: assigning it as an additional role must not bypass read-only enforcement. */
+export function isAuditorActor(actor: { id: string; role?: string }): boolean {
+  if (isPostgresPersistenceActive()) return getEffectiveRoleKeys(actor.id).includes('auditor');
+  return actor.role === 'Auditor';
+}
+
 export function countRbacSuperadmins(activeUserIds?: string[]): number {
   const active = activeUserIds ? new Set(activeUserIds.map(String)) : null;
   let count = 0;
