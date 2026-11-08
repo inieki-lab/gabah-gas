@@ -589,3 +589,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - `/api/room-reservations` list currently has role-specific branches for GA operations (redacted agenda), IT facility requests (filtered/redacted), Humas documentation requests, and personal reservations for other users.
 - Preserve privacy redaction and operational intent while replacing role-label assumptions with effective capabilities/scopes. Do not expose meeting titles/descriptions, attendee lists, phone numbers, documentation notes, or rejection/interruption reasons to users lacking the corresponding permission/work item assignment.
 - Approval/override priority for Sekretaris Direksi and GA is a business workflow, not a blanket role grant; retain explicit priority/override constraints.
+
+
+### Latest handoff status — 2026-11-08
+- Latest verified source CI: #449 / `42487698982` SUCCESS on head `2dd9d2a9b79a07d7dcfd96291108b5cbfd46e14f`, including ticket custom-owner scope guard + regression check.
+- Documentation updates after that source head triggered CI #450 and #451; at this update #450 is in progress and #451 is queued. No source changes were made after the verified ticket source commit; latest doc CI remains pending.
+- PR #18 remains Draft/Open, not merged. No production migration has been run.
+- Continue with vendor explicit owner-domain model, then room reservation capability/scope conversion and remaining report/export/admin endpoints. Preserve privacy and do not mass-map ambiguous legacy records.
