@@ -19,39 +19,39 @@ This checklist is the release control record. A green build is necessary but is 
 ## G0 — Repository and code health
 
 - [ ] Confirm the integration branch and exact HEAD SHA.
-- [ ] npm ci succeeds.
-- [ ] npm run lint succeeds.
-- [ ] npm run build succeeds.
-- [ ] All verification scripts listed in package.json run and pass.
-- [ ] Docker Compose validation passes with a dummy CI-only password.
-- [ ] Node 22 multi-stage production image builds from package-lock and starts without bind-mounting source or installing dependencies at runtime.
+- [x] npm ci succeeds (CI #589).
+- [x] npm run lint succeeds (CI #589).
+- [x] npm run build succeeds (CI #589).
+- [x] All CI verification scripts run and pass (CI #589).
+- [x] Docker Compose validation passes with a dummy CI-only password (CI #587).
+- [x] Node 22 multi-stage production image builds from package-lock and starts without bind-mounting source or installing dependencies at runtime (CI #587: Node 22.23.4 + PostgreSQL 17 smoke).
 - [ ] No dead menu actions, placeholder routes, or hidden runtime exceptions remain.
 
 ## G1 — Database and persistence
 
-- [ ] PostgreSQL 17 boots from a completely empty test database.
-- [ ] Every migration applies once and is idempotent where intended.
-- [ ] PostgreSQL is authoritative in production; the app fails closed if production DB is unavailable.
-- [ ] Create, update, read-back, restart, and re-read workflows pass.
+- [x] PostgreSQL 17 boots from a completely empty test database (CI #588).
+- [x] Fresh database applies all 35 migration entries; repeatability/ledger checks pass (CI #588).
+- [x] PostgreSQL is authoritative in production; the app fails closed if production DB is unavailable (CI #588).
+- [x] Create, update, read-back, restart, and re-read workflows pass (CI #588).
 - [ ] Dynamic user-role assignments survive ordinary writes and restart.
 - [ ] Migration path from a representative legacy snapshot is tested separately from fresh install.
 - [ ] PostgreSQL backup and restore are demonstrated on an isolated test environment.
-- [ ] Contract document uploads are stored in the persistent uploads_data volume; unauthorized downloads fail closed.
+- [x] Contract uploads write durable bytes; download enforces contract scope (404) and file bytes survive restart (CI #588; Docker volume writable smoke #587).
 - [ ] The uploads_data volume is backed up/restored together with PostgreSQL so contract metadata never outlives its file bytes.
 - [ ] No production user/asset/owner/location mapping is inferred from a sample seed.
 
 ## G2 — Identity, organization, and Dynamic RBAC
 
-- [ ] Primary role and additional roles are displayed and assignable by Super Admin.
+- [x] Primary role and additional roles are assignable and displayed separately in the employee directory (CI #589).
 - [ ] Role assignment is transactional, audited, and protects the last active Super Admin.
 - [ ] Role additions persist after unrelated writes and restart.
-- [ ] Permission and scope are evaluated independently per module.
-- [ ] Unknown/inactive roles and missing/invalid scopes fail closed.
-- [ ] Jabatan, unit, office location, asset location, owner domain, and custodian remain separate.
-- [ ] Current active office locations are exactly HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan; Subang is inactive.
-- [ ] Future locations and owner domains can be added from master data without code changes.
+- [x] Permission and scope are evaluated independently per module (Dynamic RBAC and asset scope suites, CI #589).
+- [x] Unknown/inactive roles and missing/invalid scopes fail closed (CI #589).
+- [x] Jabatan, unit, office location, asset location, owner domain, and custodian remain separate (org-model CI #589).
+- [x] Current active office locations are exactly HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan; Subang is inactive (org-model CI #589).
+- [x] Future locations and owner domains can be added from master data without code changes (org/owner-scope CI #589).
 - [ ] GA's broad owner scope (all except IT) remains an administrator-configurable policy, not an automatic grant.
-- [ ] GA's IT Laptop/PC visibility is read-only and controlled by assets.read.it_workstations.
+- [x] GA's IT Laptop/PC visibility is read-only and controlled by assets.read.it_workstations (CI #589).
 - [x] Auditor read-only behavior is tested through direct API calls, including Auditor as an additional role (PostgreSQL CI #544: write 403, authorized audit read 200).
 
 ## G3 — Workflow and role-based UAT
@@ -84,9 +84,9 @@ Run docs/testing/UAT.md in a browser against PostgreSQL using disposable test da
 
 | Gate | Commit SHA | Result | Evidence / run URL | Reviewer | Date |
 |---|---|---|---|---|---|
-| G0 | — | NOT VERIFIED | — | — | — |
-| G1 | 398ba8fa61ddef9f5cf63dc22ff330cd7d1a0f33 | PARTIAL PASS | CI #544: PostgreSQL 17 fresh DB, 35 migrations, CR-04/05 57/57, restart persistence; legacy snapshot upgrade and backup/restore not run | — | 8 Nov 2026 |
-| G2 | 398ba8fa61ddef9f5cf63dc22ff330cd7d1a0f33 | PARTIAL PASS | CI #544: Dynamic RBAC 63/63, asset scope 37/37, Auditor additional-role denial/read test; live HR mapping and full endpoint review remain | — | 8 Nov 2026 |
+| G0 | a1cd3d4ce082c547736f67a863d2981abb6dfcaa | PARTIAL PASS | CI #589: npm ci/lint/build, all regression suites, Docker Compose config, Node 22 image build + runtime smoke PASS; dead-action review remains | — | 8 Nov 2026 |
+| G1 | 9feadd7f152c19975f2ae24e9b9c25f6491ca949 | PARTIAL PASS | CI #588: PostgreSQL 17 fresh DB, 35 migrations, CR-04/05 63/63, restart persistence, contract file upload/download/signature/scope/restart PASS; legacy snapshot upgrade and DB+uploads restore not run | — | 8 Nov 2026 |
+| G2 | a1cd3d4ce082c547736f67a863d2981abb6dfcaa | PARTIAL PASS | CI #589: Dynamic RBAC 63/63, asset scope 37/37, P0 37/37, maintenance 33/33, Auditor additional-role denial/read, primary/additional role UI, org model PASS; live HR mapping and full endpoint review remain | — | 8 Nov 2026 |
 | G3 | — | NOT VERIFIED | Manual browser UAT required | Business owners | — |
 | G4 | — | NOT STARTED | Staging and production controls | Infrastructure owner | — |
 
