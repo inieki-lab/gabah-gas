@@ -1100,3 +1100,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - CI run #438 failed one source assertion because the regression regex expected the Subang `WHERE` clause before its `SET` clause. Updated the assertion to match actual SQL order.
 - During the same review, found and removed a trailing comma left after editing the `UPDATE ... SET name = CASE` statement. Migration 033 now has valid `SET ... END WHERE ...` syntax.
 - New CI run #439 is the first run expected to validate the corrected migration and test together; status must be checked before marking this migration verified.
+
+
+### Ticket authorization follow-up — 2026-11-08
+- `canManageTicket()` in `server/runtime-hardening.ts` previously allowed dynamic PostgreSQL scopes only for IT and GA ticket categories. Custom operational owner categories such as RPC/SC were blocked even when their users had explicit `tickets.update` permission and matching owner scope.
+- PostgreSQL mode now evaluates the ticket's owner/category code generically through `hasRbacScope(user, 'division', owner, 'tickets')`. IT/GA role-label fallback remains only for file-store compatibility. Reporter/assignee self-access and Auditor read-only behavior remain intact.
+- Added regression coverage for custom owner-code ticket status authorization.
