@@ -834,6 +834,8 @@ async function startServer() {
   // P2#10: live numbering sequence snapshot for the admin Asset Numbering panel
   // (replaces the hardcoded sample counters previously shown in the UI).
   app.get('/api/numbering/sequences', (req, res) => {
+    if (!requireRbacPermission(req, res, 'numbering.read')) return;
+    
     res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
   });
 
@@ -843,7 +845,9 @@ async function startServer() {
   // no provider secrets are exposed (only configured true/false).
   app.get('/api/contracts/reminders/overview', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.read')) return;
+    const actor = getActor(req);
       if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat melihat overview reminder.' });
       }
@@ -2707,6 +2711,8 @@ async function startServer() {
 
   // Accurate ERP Reconciliation
   app.get('/api/reconciliation', (req, res) => {
+    if (!requireRbacPermission(req, res, 'reconciliation.read')) return;
+    
     const reconData = GabahDomainService.getReconciliationData();
     res.json({ success: true, data: reconData });
   });
@@ -2729,6 +2735,8 @@ async function startServer() {
 
   // Audit Logs
   app.get('/api/audit-logs', (req, res) => {
+    if (!requireRbacPermission(req, res, 'audit.read')) return;
+    
     res.json({ success: true, data: db.auditLogs });
   });
 
@@ -2806,7 +2814,9 @@ async function startServer() {
 
   app.post('/api/contracts/:id/documents/upload', upload.single('file'), async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
+    const actor = getActor(req);
       const contractId = req.params.id;
       
       // SEC-08: Validate we have a file
@@ -2868,7 +2878,9 @@ async function startServer() {
   // Legacy endpoint (kept for backward compatibility, but only stores metadata)
   app.post('/api/contracts/:id/documents', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
+    const actor = getActor(req);
       const updated = ContractDomainService.addDocument(req.params.id, req.body, actor);
       await persistDataStore();
       res.json({ success: true, data: updated });
@@ -2879,7 +2891,9 @@ async function startServer() {
 
   app.post('/api/contracts/:id/milestones', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.milestones.manage')) return;
+    const actor = getActor(req);
       const updated = ContractDomainService.addMilestone(req.params.id, req.body, actor);
       await persistDataStore();
       res.json({ success: true, data: updated });
@@ -2890,7 +2904,9 @@ async function startServer() {
 
   app.post('/api/contracts/:id/renewal-decision', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.renewal.decide')) return;
+    const actor = getActor(req);
       const { outcome, notes, replacement_contract_id } = req.body;
       const updated = ContractDomainService.decideRenewal(req.params.id, outcome, notes, replacement_contract_id || null, actor);
       await persistDataStore();
@@ -2906,7 +2922,9 @@ async function startServer() {
   // real reminder date.
   app.post('/api/contracts/reminders/run', async (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.reminders.manage')) return;
+    const actor = getActor(req);
       if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat menjalankan reminder sweep manual.' });
       }
@@ -2920,7 +2938,9 @@ async function startServer() {
   // CR-05 STEP 4: scheduler observability (admin only — no secret values exposed).
   app.get('/api/contracts/reminders/scheduler-status', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.reminders.manage')) return;
+    const actor = getActor(req);
       if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat melihat status scheduler.' });
       }
@@ -2932,7 +2952,9 @@ async function startServer() {
 
   app.get('/api/contracts/:id/notification-logs', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'contracts.read')) return;
+    const actor = getActor(req);
       res.json({ success: true, data: ContractDomainService.getNotificationLogs(actor, req.params.id) });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -2950,7 +2972,9 @@ async function startServer() {
 
   app.patch('/api/meeting-rooms/:id', (req, res) => {
     try {
-      const actor = getActor(req);
+      
+    if (!requireRbacPermission(req, res, 'meeting_rooms.update')) return;
+    const actor = getActor(req);
       const updated = GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
