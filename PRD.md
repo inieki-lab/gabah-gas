@@ -49,36 +49,47 @@ Sistem GABAH mengimplementasikan **9 peran pengguna aktif** dengan kredensial ka
 
 ---
 
-## 2.1 Klarifikasi Struktur Organisasi, Lokasi, dan Kewenangan Role (Keputusan Bisnis)
+## 2.1 Klarifikasi Struktur Organisasi, Lokasi, Kepemilikan Aset, dan Kewenangan Role (Keputusan Bisnis)
 
-> Bagian ini menjadi acuan utama apabila ada uraian persona atau implementasi lama yang menafsirkan Supply Chain/PIBC sebagai pemilik kewenangan aset berdasarkan nama role.
+> Bagian ini menjadi acuan utama untuk desain data, menu, dashboard, RBAC, dan alur kerja. Nama role, nama kantor/lokasi, unit pemilik aset, serta lokasi fisik tidak boleh dipertukarkan maknanya.
 
-### A. Role bukan otomatis pemilik aset atau lokasi
-- **Supply Chain** dan **PIBC** pada konteks organisasi ini adalah nama kantor/unit lokasi operasional (kantor cabang/lokasi kerja), bukan bukti bahwa seluruh aset yang berada di lokasi tersebut dimiliki atau dikelola oleh role tersebut.
-- Lokasi fisik aset harus dicatat sebagai atribut tersendiri (`location`/lokasi aset), terpisah dari `owner_division` (unit pemilik/pengelola aset) dan dari identitas role pengguna.
-- Aset milik GA yang ditempatkan di kantor/lokasi Supply Chain atau PIBC tetap merupakan aset GA. GA tetap menjadi pengelola dan pemegang kewenangan perubahan data/lifecycle aset tersebut, meskipun lokasinya berada di cabang.
-- Penentuan kewenangan harus berdasarkan unit pemilik aset dan penugasan tanggung jawab yang sah, bukan semata-mata lokasi fisik atau nama role pengguna.
+### A. Kepemilikan dan pengelolaan aset ditentukan oleh unit pemilik, bukan lokasi
+- **IT mengelola seluruh aset TI perusahaan di semua lokasi**, termasuk PC, laptop, printer/perangkat periferal, server, perangkat jaringan, perangkat rapat/AV yang menjadi domain IT, software, dan lisensi. Aset TI tetap berada dalam tanggung jawab IT meskipun ditempatkan atau digunakan di Kantor Pusat, kantor Supply Chain, PIBC, gudang, depo, atau lokasi operasional lainnya.
+- **GA mengelola seluruh aset umum/sarana-prasarana yang menjadi domain GA di semua lokasi**, termasuk furniture, perlengkapan kantor, fasilitas gedung, kendaraan atau aset umum lain sesuai klasifikasi dan penetapan pemiliknya. Aset GA tetap menjadi tanggung jawab GA meskipun berada di kantor Supply Chain, PIBC, gudang, depo, atau lokasi lain.
+- **Supply Chain dan PIBC dalam konteks pembahasan ini adalah nama kantor/unit lokasi operasional**, bukan otomatis unit pemilik atau pengelola semua aset yang berada di sana. Penempatan aset di lokasi tersebut tidak mengubah kepemilikan/pengelola aset.
+- Lokasi fisik aset, lokasi kerja pengguna, unit pemilik/pengelola aset (owner_division), custodian/PIC, dan role/permission pengguna harus menjadi dimensi data yang terpisah.
+- Jika suatu aset di lokasi cabang dimiliki/dikelola IT, maka IT tetap berwenang mengelola lifecycle dan datanya. Jika aset tersebut milik GA, GA yang mengelolanya. Jangan mengalihkan kewenangan hanya karena aset berada di lokasi cabang.
 
-### B. Kewenangan GA terhadap aset IT
-- GA dapat melihat data aset IT, khususnya laptop dan PC, untuk kebutuhan inventarisasi/pemantauan lintas unit.
-- Akses GA terhadap aset IT bersifat **read-only**: melihat daftar dan detail aset serta informasi penempatan/lokasi yang diizinkan.
-- GA tidak boleh membuat, mengubah, menghapus, memindahkan kepemilikan, atau mengubah lifecycle/status aset IT. Seluruh perubahan dan pengelolaan aset IT tetap menjadi kewenangan IT.
-- Hak baca ini tidak otomatis memberikan akses GA ke seluruh domain/operasi IT seperti konfigurasi teknis, kredensial, lisensi, atau administrasi infrastruktur.
+### B. Hak lintas unit: lihat tidak sama dengan mengelola
+- GA boleh melihat data inventaris aset IT di seluruh lokasi, termasuk PC, laptop, dan perangkat IT lain, untuk kebutuhan koordinasi fasilitas, inventarisasi lokasi, dan pemantauan. Hak ini **read-only**.
+- GA tidak boleh membuat, mengubah, menghapus, memindahkan kepemilikan, atau mengubah status/lifecycle aset IT. Seluruh tindakan pengelolaan aset IT tetap menjadi kewenangan IT.
+- Prinsip yang sama berlaku untuk akses lintas unit lainnya: berikan hak baca sesuai kebutuhan pekerjaan tanpa otomatis memberikan hak create, update, delete, approve, atau admin.
+- Hak baca aset tidak otomatis membuka data sensitif atau domain operasional lain, seperti kredensial, konfigurasi keamanan, detail lisensi tertentu, atau administrasi infrastruktur.
 
-### C. Sekretaris Direksi dan Humas adalah pengguna/karyawan, bukan kelas pegawai terpisah
-- Pengguna dengan role **Sekretaris Direksi** dan **Humas** tetap merupakan karyawan/staf perusahaan. Keduanya menggunakan kebutuhan dasar karyawan seperti melihat aset yang ditugaskan kepada dirinya, mengajukan peminjaman, membuat tiket bantuan, dan menggunakan fasilitas/reservasi sesuai kebijakan.
-- Perbedaan dari role Karyawan terletak pada **kewenangan tambahan dan alur kerja tertentu**, bukan pada status kepegawaian atau hak untuk memperoleh aplikasi yang sepenuhnya berbeda.
-- Sekretaris Direksi dapat memiliki kewenangan khusus untuk mengajukan reservasi/agenda Direksi dan prioritas atau auto-approval sesuai kebijakan perusahaan yang berlaku. Kewenangan khusus ini tidak menghapus fungsi dasar sebagai karyawan.
-- Humas dapat menerima/menangani permintaan peliputan dan dokumentasi serta mengakses informasi yang diperlukan untuk tugas tersebut. Kewenangan ini tidak menjadikan Humas pemilik aset GA/IT dan tidak otomatis menghilangkan fungsi dasar sebagai karyawan.
+### C. Sekretaris Direksi dan Humas tetap pengguna/karyawan dengan kewenangan tambahan
+- Pengguna dengan role **Sekretaris Direksi** dan **Humas** tetap merupakan karyawan/staf perusahaan. Keduanya tetap membutuhkan fungsi dasar karyawan, seperti melihat aset yang ditugaskan kepada dirinya, mengajukan peminjaman, membuat tiket bantuan, dan menggunakan fasilitas/reservasi sesuai kebijakan.
+- Perbedaan role terletak pada **kewenangan tambahan dan alur kerja khusus**, bukan status kepegawaian atau pemisahan total dari pengalaman dasar karyawan.
+- Sekretaris Direksi dapat memiliki kewenangan khusus untuk mengelola kebutuhan agenda Direksi, termasuk reservasi/agenda prioritas sesuai kebijakan. Sekretaris Direksi juga dapat membuat permintaan dukungan Humas (misalnya foto atau dokumentasi rapat Direksi) yang terkait dengan agenda/rapat tertentu.
+- Humas memiliki fungsi dasar karyawan sekaligus kewenangan operasional untuk menerima, melihat, mengonfirmasi, dan menangani permintaan peliputan/dokumentasi yang menjadi tugasnya. Humas bukan pemilik aset IT atau GA hanya karena menerima permintaan dukungan.
 
-### D. Prinsip desain menu dan akses
-- Menu dan halaman harus dibentuk dari kombinasi **fungsi pekerjaan + permission + cakupan data**, bukan hanya nama role.
-- Pengalaman dasar karyawan dapat digunakan bersama (misalnya Aset Saya, Pengajuan/Peminjaman, Tiket Bantuan, dan Reservasi); role Sekretaris Direksi dan Humas memperoleh menu/aksi tambahan yang relevan dengan kewenangannya.
-- Pengelolaan aset GA mengikuti `owner_division = GA` dan dapat mencakup aset GA di seluruh lokasi, termasuk kantor/cabang Supply Chain dan PIBC.
-- Akses lintas unit harus dibedakan secara eksplisit antara `read`, `create`, `update`, `approve`, dan `admin`. Hak `read` tidak boleh dianggap memberi hak mutasi atau persetujuan.
-- Lokasi kerja pengguna, lokasi fisik aset, unit pemilik aset, dan role/permission adalah dimensi berbeda. Jangan menyatukannya ke satu field atau menyimpulkan satu sama lain.
-- Setiap perubahan implementasi RBAC, filter data, dashboard, menu, dan endpoint API wajib mengikuti prinsip di atas. Filter frontend hanya untuk pengalaman pengguna; otorisasi final tetap wajib ditegakkan di backend.
+### D. Alur permintaan dokumentasi dari Sekretaris Direksi kepada Humas
+- Form agenda/permintaan rapat Direksi harus menyediakan kebutuhan dokumentasi sebagai pilihan yang jelas, misalnya foto, video, dokumentasi kegiatan, atau kebutuhan publikasi; permintaan juga dapat dibuat/ditindaklanjuti dari agenda yang sudah tersimpan.
+- Saat permintaan dokumentasi dikirim, sistem membuat item pekerjaan/permintaan Humas yang tertaut ke agenda atau reservasi terkait. Data minimum mencakup pemohon, agenda/acara, tanggal dan waktu, lokasi, jenis dokumentasi, brief/catatan, serta status permintaan.
+- Notifikasi dikirim kepada tim Humas yang relevan. Sistem harus mendukung penentuan penerima berupa **satu staf Humas atau beberapa staf Humas**, bukan mengasumsikan hanya ada satu akun Humas.
+- Penerima yang berwenang dapat mengonfirmasi/menolak dengan alasan, mengambil atau menerima penugasan, dan memperbarui progres. Permintaan harus memiliki PIC/assignee yang jelas agar tidak terjadi pekerjaan ganda atau permintaan tanpa penanggung jawab.
+- Pemohon (Sekretaris Direksi) dapat melihat status dan PIC permintaan. Tim Humas dapat melihat antrean permintaan yang menjadi cakupan tugasnya. Pengguna lain tidak otomatis dapat melihat detail agenda atau dokumentasi yang bukan kewenangannya.
+- Status minimum yang perlu dipertimbangkan: submitted, notified, accepted, assigned, in_progress, completed, cancelled, dan rejected. Status final dan transisi harus ditetapkan dalam desain workflow sebelum implementasi.
+- Notifikasi harus tercatat dan status pengiriman tidak boleh mengklaim berhasil apabila pengiriman gagal. Perubahan status dan penugasan harus masuk audit trail.
+- Permintaan dokumentasi tidak boleh hanya berupa notifikasi lepas. Harus ada halaman/antrean kerja Humas, detail permintaan, aksi yang berfungsi, status, PIC, dan riwayat yang dapat ditelusuri.
 
+### E. Prinsip desain menu dan akses
+- Menu dan halaman dibentuk dari kombinasi **fungsi pekerjaan + permission + cakupan data**, bukan hanya nama role.
+- Pengalaman dasar karyawan digunakan bersama (misalnya Aset Saya, Pengajuan/Peminjaman, Tiket Bantuan, dan Reservasi). Sekretaris Direksi dan Humas memperoleh menu/aksi tambahan yang relevan dengan kewenangannya.
+- Menu pengelolaan aset IT menampilkan aset IT lintas lokasi dan hanya dapat dimutasi oleh petugas berwenang IT. GA memperoleh tampilan baca aset IT sesuai kebutuhan.
+- Menu pengelolaan aset GA menampilkan aset GA lintas lokasi dan dikelola oleh GA.
+- Nama kantor/lokasi Supply Chain dan PIBC tidak boleh dipakai sebagai filter kepemilikan aset secara otomatis. Filter lokasi boleh digunakan untuk menemukan aset berdasarkan tempat fisiknya, tanpa mengubah hak kelola.
+- Akses harus dibedakan secara eksplisit antara read, create, update, delete, approve, assign, dan admin. Hak read tidak boleh dianggap memberi hak mutasi atau persetujuan.
+- Setiap perubahan RBAC, filter data, dashboard, menu, dan endpoint API wajib mengikuti prinsip di atas. Filter frontend hanya untuk pengalaman pengguna; otorisasi final tetap wajib ditegakkan di backend.
 ---
 
 ## 3. Fitur Utama Sistem (Core Capabilities)
