@@ -28,6 +28,7 @@ const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
 const domainServices = fs.readFileSync('server/services.ts', 'utf8');
 const runtimeHardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
 const frontend = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
+const contractsView = fs.readFileSync('src/components/views/ContractsView.tsx', 'utf8');
 const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const checks = [
   ['roles table is additive/idempotent', /CREATE TABLE IF NOT EXISTS gabah_roles/i.test(migration)],
@@ -147,7 +148,7 @@ const checks = [
   ['authenticated API exposes effective permission keys for menu rendering', /getEffectivePermissionKeys/.test(server) && /permission_keys = safe\.is_superadmin \? \['\*'\] : getEffectivePermissionKeys/.test(server) && /is_superadmin = isRbacSuperadmin/.test(server) && /export function getEffectivePermissionKeys/.test(policy)],
   ['new employee form keeps branch/function roles out of primary profile and assigns office location independently', /export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES\.filter/.test(frontend) && /Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'/.test(frontend) && /office_location_id: newUserData\.office_location_id \|\| null/.test(frontend) && /officeLocations\.filter\(location => location\.is_active\)/.test(frontend)],
   ['employee directory displays assigned additional roles and explains Auditor read-only precedence', /userAssignments\[String\(user\.id\)\][\s\S]*assignedRole\.name/.test(frontend) && /Auditor dipilih sebagai role tambahan[\s\S]*read-only/.test(frontend)],
-  ['contract UI exposes authenticated document upload/download and uses effective permission/role guards', /uploadContractDocument\(contract\.id, file\)/.test(frontend) && /downloadContractDocument\(contract\.id, document\.id\)/.test(frontend) && /contracts\.documents\.upload/.test(frontend) && /currentUser\.role_keys\.includes\('auditor'\)/.test(frontend) && /async uploadContractDocument/.test(apiClient) && /async downloadContractDocument/.test(apiClient)],
+  ['contract UI exposes authenticated document upload/download and uses effective permission/role guards', /uploadContractDocument\(contract\.id, file\)/.test(contractsView) && /downloadContractDocument\(contract\.id, document\.id\)/.test(contractsView) && /contracts\.documents\.upload/.test(contractsView) && /currentUser\.role_keys\.includes\('auditor'\)/.test(contractsView) && /async uploadContractDocument/.test(apiClient) && /async downloadContractDocument/.test(apiClient)],
 
 ];
 
