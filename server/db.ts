@@ -163,7 +163,7 @@ export interface ServerLoan {
   asset_id: string;
   asset_name: string;
   asset_number: string;
-  owner_division: 'IT' | 'GA' | 'SC' | 'PIBC';
+  owner_division: string;
   borrower_id: string;
   borrower_name: string;
   borrower_department: string;
