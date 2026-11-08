@@ -8,13 +8,9 @@ SET name = CASE id
   WHEN 'OFF-RPC' THEN 'RPC/SC'
   ELSE name
 END,
-is_active = CASE
-  WHEN id = 'OFF-PERAWATAN' THEN FALSE
-  ELSE is_active
-END
-WHERE id IN ('OFF-KP', 'OFF-RPC', 'OFF-PERAWATAN');
+WHERE id IN ('OFF-KP', 'OFF-RPC');
 
--- Canonical labels for the four currently active sites. Existing IDs are kept.
+-- Canonical labels for the five currently active offices. Existing IDs are kept.
 UPDATE org_office_locations
 SET name = 'PIBC', is_active = TRUE
 WHERE id = 'OFF-PIBC';
@@ -22,3 +18,8 @@ WHERE id = 'OFF-PIBC';
 UPDATE org_office_locations
 SET name = 'Pangsub', is_active = TRUE
 WHERE id = 'OFF-PANGSUB';
+
+-- Kantor Perawatan is operational and must remain active.
+UPDATE org_office_locations
+SET name = 'Kantor Perawatan', is_active = TRUE
+WHERE id = 'OFF-PERAWATAN';
