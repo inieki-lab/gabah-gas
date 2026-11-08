@@ -2342,15 +2342,14 @@ async function startServer() {
     if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.tickets });
     }
-    const canReadIT = actor.role === 'IT' || (isPostgresPersistenceActive()
-      && hasRbacScope(String(actor.id), 'division', 'IT', 'tickets'));
-    const canReadGA = actor.role === 'GA' || (isPostgresPersistenceActive()
-      && hasRbacScope(String(actor.id), 'division', 'GA', 'tickets'));
+    const canReadTicketOwner = (owner: string) =>
+      isPostgresPersistenceActive()
+        ? hasRbacScope(String(actor.id), 'division', owner, 'tickets')
+        : actor.role === owner;
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
       || ticket.assigned_agent_id === actor.id
-      || (canReadIT && ticket.category === 'IT')
-      || (canReadGA && ticket.category === 'GA')
+      || canReadTicketOwner(ticket.category)
     );
     return res.json({ success: true, data });
   });
