@@ -3,8 +3,8 @@
 **Nama Produk:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi Pemilik:** PT Food Station Tjipinang Jaya (Perseroda) — BUMD Pangan DKI Jakarta  
 **Versi Sistem:** 2026.1.0-enterprise  
-**Status Dokumen:** Authoritative Source of Truth (Tersinkronisasi Penuh dengan Source Code Aktual)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status Dokumen:** Baseline kebutuhan bisnis; sinkronisasi implementasi dan UAT masih berjalan (bukan klaim seluruh fitur sudah selesai).  
+**Terakhir Diperbarui:** 8 November 2026  
 
 ---
 
@@ -107,6 +107,34 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 - Supply Chain dan PIBC bukan role aplikasi permanen. Akun yang sekarang memakai label tersebut dipertahankan sebagai data transisi, lalu dipetakan ke jabatan/unit/lokasi dan role aplikasi yang tepat oleh Super Admin.
 - **Tidak ada migrasi massal owner aset SC/PIBC berdasarkan lokasi.** Nilai owner legacy harus ditinjau per aset dan dipetakan ke pengelola yang benar. Sampai review selesai, aset yang belum jelas kepemilikannya tidak boleh otomatis dipindahkan ke GA atau IT.
 - Penambahan cabang atau lokasi baru tidak boleh memerlukan penambahan role aplikasi baru. Super Admin cukup mengelola master organisasi, penempatan pegawai, role, permission, dan scope.
+
+### 2.3A Master Lokasi Aktif dan Owner Domain Fleksibel (Keputusan 8 November 2026)
+
+**Master lokasi kantor aktif saat ini (lima lokasi):**
+1. HO (OFF-KP)
+2. PIBC (OFF-PIBC)
+3. RPC/SC (OFF-RPC)
+4. Pangsub (OFF-PANGSUB)
+5. Kantor Perawatan (OFF-PERAWATAN)
+
+Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifkan dan dipertahankan untuk referensi historis; jangan diaktifkan kembali sebagai lokasi operasional. Lokasi baru di masa depan ditambahkan melalui master oleh Super Admin tanpa perubahan kode. Menutup lokasi berarti menonaktifkan, bukan menghapus atau mengubah histori user/aset.
+
+**Owner domain aset adalah master fungsi/pemilik yang fleksibel**, bukan daftar enum tetap dan bukan nama lokasi. Contoh nilai saat ini dapat mencakup IT, GA, RPC/SC dan domain operasional lain yang disahkan. Kategori aset, lokasi fisik, lokasi kerja pegawai, unit organisasi, serta custodian tidak boleh otomatis menentukan owner tanpa aturan bisnis yang eksplisit.
+
+- IT tetap mengelola aset owner IT di seluruh lokasi.
+- GA tetap mengelola aset owner GA di seluruh lokasi.
+- Super Admin dapat mengonfigurasi kebijakan GA yang lebih luas, termasuk pola "semua owner kecuali IT". Kebijakan tersebut adalah opsi konfigurasi, bukan grant otomatis yang boleh diaktifkan tanpa persetujuan bisnis.
+- GA hanya memperoleh akses baca tambahan ke Laptop dan PC/Desktop milik IT jika permission khusus assets.read.it_workstations aktif. Akses tersebut tidak memberikan kemampuan mutasi.
+- Fungsi operasional seperti RPC/SC dapat menjadi owner aset terpisah dari lokasi kantor RPC/SC. Contoh: mesin produksi/gudang yang berada di lokasi Subang (contoh historis) tetap dapat dimiliki fungsi RPC/SC; lokasi tidak memindahkan owner.
+- Data owner historis yang ambigu harus masuk daftar review Super Admin. Tidak boleh ada mass reassignment owner berdasarkan nama cabang, lokasi, atau kategori semata.
+
+### 2.3B Kontrak Data dan Otorisasi Target
+
+- users.role dipertahankan sebagai profil/role primer selama transisi; gabah_user_roles menyimpan role primer dan role tambahan yang aktif. Role tambahan tidak boleh hilang akibat siklus persistensi normal.
+- Permission efektif berasal dari gabungan role dinamis yang ditetapkan secara eksplisit; scope diperiksa per modul dan objek. Tidak ada grant hanya karena jabatan atau lokasi kerja.
+- Master office location, organizational unit, job level, asset location, owner domain, dan custodian adalah entitas berbeda.
+- Semua endpoint list, detail-by-ID, create, update, delete, approve/reject, export, pencarian, dan agregasi harus menerapkan permission serta scope di backend. Menu frontend hanya cerminan hak efektif.
+- Migrasi skema/seed boleh berjalan otomatis pada database baru; migrasi data produksi harus didahului backup, dry-run, laporan dampak, rencana rollback, dan persetujuan eksplisit.
 
 ### 2.3 Role Primer, Role Tambahan, dan Scope per Modul
 
