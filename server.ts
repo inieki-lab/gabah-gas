@@ -1324,7 +1324,7 @@ async function startServer() {
         });
       }
       if (!isOwnerDivision(owner_division)) {
-        return res.status(400).json({ success: false, message: `Divisi pemilik "${owner_division}" tidak dikenal. Nilai yang diizinkan: IT, GA, SC, PIBC.` });
+        return res.status(400).json({ success: false, message: `Kode owner "${owner_division}" wajib diisi dan maksimal 50 karakter.` });
       }
       const normalizedCategoryType = category_type || (owner_division === 'IT' ? 'IT' : 'General');
       if (!isGabahCategoryType(normalizedCategoryType)) {
