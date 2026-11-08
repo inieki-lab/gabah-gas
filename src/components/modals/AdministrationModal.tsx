@@ -2139,6 +2139,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   </button>
                                   <button
                                     type="button"
+                                    title={`Atur role tambahan untuk ${user.name}`}
+                                    onClick={() => openRoleAssignment(user)}
+                                    disabled={assignmentsLoading}
+                                    className="px-2.5 py-1 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-[11px] font-bold whitespace-nowrap transition-colors disabled:opacity-50"
+                                  >
+                                    Role
+                                  </button>
+                                  <button
+                                    type="button"
                                     title={`Terbitkan sandi sementara untuk ${user.name}`}
                                     onClick={() => { setPasswordResetTarget(user); setTempIssuedPassword(null); }}
                                     className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer"
