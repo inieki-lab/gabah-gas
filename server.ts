@@ -2257,7 +2257,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: approved });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2270,7 +2270,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: rejected });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
