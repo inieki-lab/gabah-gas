@@ -100,8 +100,8 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 | **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | IT / Super Administrator |
 | **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT / IT Technical Support |
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / General Affairs & Sarpras |
-| **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Sekretariat Direksi |
-| **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Humas & Protokoler |
+| **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Sekretariat Direksi |
+| **Karyawan + capability Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Humas & Protokoler |
 | **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
 | **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Komersial / Staf Komersial |
@@ -120,22 +120,23 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 
 | Permission | Endpoint | Migration grant | Status |
 |:---|:---|:---|:---|
-| `dashboard.read` | `GET /api/dashboard/stats` + `/api/dashboard/attention` | `013` (9 role legacy) | aktif |
-| `assets.read` | `GET /api/assets` + `GET /api/assets/:id` | `014` (9 role legacy) | aktif |
+| `dashboard.read` | `GET /api/dashboard/stats` + `/api/dashboard/attention` | `013` (legacy compatibility seed; review before production mapping) | aktif di PostgreSQL |
+| `assets.read` | `GET /api/assets` + `GET /api/assets/:id` | `014` (legacy compatibility seed; review before production mapping) | aktif di PostgreSQL |
 | `assets.create` | `POST /api/assets` | `016` (superadmin/it/ga/supply_chain/pibc) | aktif |
 | `assets.update` | `PATCH /api/assets/:id` | `016` | aktif |
 | `assets.bulk_import` | `POST /api/assets/bulk-import` | `016` | aktif |
 | `assets.assign` | `POST /api/assets/:id/assign` | `016` | aktif |
 | `assets.move` | `POST /api/assets/:id/move` | `016` | aktif |
 | `assets.lifecycle` | `POST /api/assets/:id/lifecycle` | `016` | aktif |
-| `movements.read` | `GET /api/movements` | `017` (9 role legacy) | aktif |
+| `movements.read` | `GET /api/movements` | `017` (legacy compatibility seed; review before production mapping) | aktif di PostgreSQL |
 
 ### 5.2 Lapisan di atas permission (tetap berlaku, tidak digantikan)
 
-1. **Authority divisi di domain service** (`server/services.ts`): `createAsset`,
-   `assignAsset`, `moveAsset`, `mutateLifecycle` menolak mutasi aset
-   lintas-divisi (IT/GA/SC/PIBC) untuk siapa pun selain pemilik divisi atau
-   Superadmin; `approve_disposal` tetap eksklusif Superadmin.
+1. **Owner-domain authority di domain service** (`server/services.ts`):
+   `createAsset`, `assignAsset`, `moveAsset`, dan `mutateLifecycle` memakai
+   permission serta scope owner dinamis (termasuk pengecualian owner). Owner
+   tidak dibatasi enum IT/GA/SC/PIBC; scope eksplisit menentukan kewenangan.
+   `approve_disposal` tetap memerlukan kapabilitas Super Admin yang sesuai.
 2. **Jalur UPDATE bulk-import** kini meniru authority divisi `PATCH /api/assets/:id`
    (perbaikan SEC-10) — impor massal tidak lagi melewati pembatasan
    intradivisional saat memperbarui aset yang sudah ada.
@@ -145,8 +146,10 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
    `owner_division` dan `asset_number` tetap server-owned.
 5. **Validasi master** managing unit (`org_units`) dan lokasi fisik asset
    (`asset_locations`) pada PATCH tetap berjalan.
-6. **Blokir read-only legacy** (Auditor via middleware, Karyawan/Humas/
-   Sekretaris Direksi di handler) tetap berlaku sebelum permission gate.
+6. **Read-only Auditor** ditentukan dari role efektif yang terpasang pada user,
+   termasuk role tambahan, dan ditegakkan middleware sebelum handler API.
+   Role Auditor mengalahkan grant tulis dari role lain; Super Admin tetap
+   merupakan kapabilitas administrasi terpisah.
 
 ### 5.3 Role kustom & scope
 
