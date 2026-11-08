@@ -1094,3 +1094,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Migration 033 now safely deactivates an existing `org_office_locations` row whose name is Subang, if present, without deleting it. This does not touch `asset_locations`, so physical asset-location history is preserved.
 - Kantor Perawatan remains explicitly active. The five currently confirmed active offices are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan; future office sites may still be added through Super Admin master data.
 - Updated `scripts/org-model-verify.mjs`: the nine legacy role labels are documented as compatibility data, the old Kantor Pusat label was replaced by HO, and the live API check requires the five confirmed offices while allowing future locations.
+
+
+### Migration 033 validation fix — 2026-11-08
+- CI run #438 failed one source assertion because the regression regex expected the Subang `WHERE` clause before its `SET` clause. Updated the assertion to match actual SQL order.
+- During the same review, found and removed a trailing comma left after editing the `UPDATE ... SET name = CASE` statement. Migration 033 now has valid `SET ... END WHERE ...` syntax.
+- New CI run #439 is the first run expected to validate the corrected migration and test together; status must be checked before marking this migration verified.
