@@ -1056,3 +1056,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - New asset creation rejects an inactive owner master. Existing asset/history records are not rewritten.
 - Owner exclusion comparisons are case-insensitive and normalized consistently.
 - CI run #402 passed on source head `b437abf78abdcf2c607f65943f2ba95a4c3b4b3f`: TypeScript lint, RBAC contract checks, migration safety, asset-scope policy checks, navigation/dashboard checks, production build, 37 P0 HTTP security assertions, and 33 maintenance authorization assertions.
+
+
+### Reconciliation scope hardening
+- Reconciliation GET now calculates statistics and rows only from the caller's visible asset set (Super Admin/Auditor retain global read access).
+- ERP number linking now requires both `reconciliation.link` and the shared `assets.update` permission + matching owner scope; client-side permission alone cannot mutate another owner's asset.
+- CI run #409 passed on head `c5d71a0e7e20f6c1dfbe146af2a8d8fa1d4b0a3f`.
