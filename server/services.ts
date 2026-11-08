@@ -6,7 +6,7 @@ import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-loc
 import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
-import { isSuperadminActor, getUserRbacPolicies } from './rbac-policy';
+import { isSuperadminActor, getUserRbacPolicies, hasRbacPermission } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
 
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
@@ -195,46 +195,33 @@ export class GabahDomainService {
    * Filter assets based on user's role and division scope
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
-    // Superusers / Global Observers
-    if (user.role === 'Admin GABAH' || user.role === 'Auditor') {
+    // Global visibility: Super Admin is capability-based; Auditor remains global read-only.
+    if (isSuperadminActor(user) || user.role === 'Auditor') {
       return db.assets;
     }
 
-    // Humas: "untuk tim humas ga perlu bisa lihat aset"
-    if (user.role === 'Humas') {
-      return [];
-    }
-
-    // Karyawan & Sekretaris Direksi can only view assigned assets or loanable pool assets
-    if (user.role === 'Karyawan' || user.role === 'Sekretaris Direksi') {
+    // Employee baseline: personal assignments plus the shared loanable pool.
+    // Branch/location roles are not asset-owner roles and receive no branch-wide
+    // inventory visibility merely because of their office location.
+    if (['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(user.role)) {
       return db.assets.filter(a => a.assigned_to?.id === user.id || a.is_loanable);
     }
 
-    // Operational scopes: owner and physical location are independent.
-    const isItWorkstation = (asset: ServerAsset) => {
-      const code = String(asset.category_code || '').toUpperCase();
-      const name = String(asset.name || '').toLowerCase();
-      return ['HLT', 'HPC'].includes(code)
-        || code.includes('LAP')
-        || code.includes('PC')
-        || /\blaptop\b|\bnotebook\b|\bpc\b|\bdesktop\b/.test(name);
-    };
-    if (user.role === 'IT') return db.assets.filter(a => a.owner_division === 'IT' || a.owner_division === 'GA');
-    // GA manages GA assets; IT workstation assets are visible read-only to GA.
-    if (user.role === 'GA') return db.assets.filter(a => a.owner_division === 'GA' || (a.owner_division === 'IT' && isItWorkstation(a)));
-    if (user.role === 'Supply Chain') {
-      const dept = String(user.department || '').toLowerCase();
-      return db.assets.filter(a => {
-        const loc = String(a.location || '').toLowerCase();
-        return a.owner_division === 'SC' || loc.includes('supply chain') || loc.includes('rpc') || (dept.length >= 3 && loc.includes(dept));
-      });
+    // IT workstation visibility for GA is a separate read-only permission.
+    // Use canonical taxonomy codes only: HLT = Laptop/Notebook; HPC = PC/Desktop.
+    const isItWorkstation = (asset: ServerAsset) =>
+      ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+
+    // Ownership is independent of physical location.
+    if (user.role === 'IT') {
+      return db.assets.filter(a => String(a.owner_division || '').toUpperCase() === 'IT');
     }
-    if (user.role === 'PIBC') {
-      const dept = String(user.department || '').toLowerCase();
-      return db.assets.filter(a => {
-        const loc = String(a.location || '').toLowerCase();
-        return a.owner_division === 'PIBC' || loc.includes('pibc') || (dept.length >= 3 && loc.includes(dept));
-      });
+    if (user.role === 'GA') {
+      const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
+      return db.assets.filter(a =>
+        String(a.owner_division || '').toUpperCase() === 'GA'
+        || (canReadItWorkstations && String(a.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(a))
+      );
     }
 
     // Dynamic RBAC Stage 11: bila PostgreSQL persistensi aktif, role yang bukan
