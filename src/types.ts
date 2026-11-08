@@ -275,6 +275,7 @@ export interface UserProfile {
   /** Permission efektif dari RBAC backend; undefined pada mode file-store legacy. */
   permission_keys?: string[];
   is_superadmin?: boolean;
+  role_keys?: string[];
   /** Telegram chat id untuk pengiriman reminder (admin-managed via PATCH /api/users/:id). */
   telegram_chat_id?: string;
 }
