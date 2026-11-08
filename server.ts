@@ -348,12 +348,17 @@ async function startServer() {
     }
     try {
       const result = await withRbacTransaction(async client => {
-        const target = await client.query('SELECT id, name, email FROM users WHERE id = $1', [userId]);
+        const target = await client.query('SELECT id, name, email, role FROM users WHERE id = $1', [userId]);
         const user = target.rows[0];
         if (!user) throw new Error('RBAC_USER_NOT_FOUND');
         const uniqueIds = [...new Set((roleIds as number[]).map(Number))];
-        const valid = await client.query('SELECT id, name, is_superadmin FROM gabah_roles WHERE is_active = TRUE AND id = ANY($1::bigint[])', [uniqueIds]);
-        if (valid.rowCount !== uniqueIds.length) throw new Error('RBAC_ROLE_INVALID');
+        const primaryKey = primaryRoleKey(String(user.role || 'Karyawan'));
+        const primaryResult = await client.query('SELECT id FROM gabah_roles WHERE is_active = TRUE AND (role_key = $1 OR name = $2) ORDER BY CASE WHEN role_key = $1 THEN 0 ELSE 1 END LIMIT 1', [primaryKey, String(user.role || 'Karyawan')]);
+        const primaryRoleId = Number(primaryResult.rows[0]?.id);
+        if (!Number.isSafeInteger(primaryRoleId) || primaryRoleId < 1) throw new Error('RBAC_PRIMARY_ROLE_NOT_FOUND');
+        const assignmentIds = [...new Set([...uniqueIds, primaryRoleId])];
+        const valid = await client.query('SELECT id, name, role_key, is_superadmin FROM gabah_roles WHERE is_active = TRUE AND id = ANY($1::bigint[])', [assignmentIds]);
+        if (valid.rowCount !== assignmentIds.length) throw new Error('RBAC_ROLE_INVALID');
         // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
         // target must keep a superadmin-capable role if it is the only holder.
         const current = await client.query('SELECT ur.role_id FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE ur.user_id = $1 AND r.is_superadmin = TRUE', [userId]);
@@ -367,18 +372,19 @@ async function startServer() {
         // Replace whole assignment set in one transaction: partial writes roll
         // back together, so a user is never left with half of a new set.
         await client.query('DELETE FROM gabah_user_roles WHERE user_id = $1', [userId]);
-        for (const roleId of uniqueIds) {
+        for (const roleId of assignmentIds) {
           await client.query(
-            'INSERT INTO gabah_user_roles (user_id, role_id, assigned_by_user_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, role_id) DO NOTHING',
-            [userId, roleId, actor.id],
+            'INSERT INTO gabah_user_roles (user_id, role_id, is_primary, assigned_by_user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = EXCLUDED.is_primary',
+            [userId, roleId, roleId === primaryRoleId, actor.id],
           );
         }
         return {
           user_id: userId,
           user_name: String(user.name),
           user_email: String(user.email),
-          role_ids: uniqueIds,
+          role_ids: assignmentIds,
           role_names: valid.rows.map(row => String(row.name)),
+          primary_role_id: primaryRoleId,
         };
       });
       await refreshRbacPolicy();
