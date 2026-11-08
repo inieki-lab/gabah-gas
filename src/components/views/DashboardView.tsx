@@ -128,7 +128,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
   const myOpenTickets = myTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
 
-  const myAssignedAssets = safeAssets.filter(a => {
+  const myAssignedAssets = dashboardAssets.filter(a => {
     if (!a.assigned_to) return false;
     const assignedId = a.assigned_to.id;
     const assignedEmail = a.assigned_to.email?.toLowerCase();
