@@ -995,3 +995,38 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 
 ### Verification
 - CI run triggered for commit `c6c3b5946de8a72d5a13fcaf02cf7c202018c2b3` (run 42477031571) was still in progress when recorded. Do not report this change as CI-passing until the run completes.
+
+## [2026-11-08] — Extensible asset-owner scopes across modules
+
+### Business model implemented
+- Owner domain is now an extensible code backed by the existing Super Admin-managed Master Divisi (db.divisions / PostgreSQL divisions), not a hardcoded IT/GA-only allowlist. Initial owner domains remain IT, GA, SC, PIBC, Umum, Audit; Super Admin can add future owner codes before assigning category/asset ownership.
+- Physical site, employee office location, managing unit, asset owner domain, and custodian remain independent. Location never grants owner scope.
+- New asset creation and category owner assignment require the owner code to exist in the configured division/owner master. Division code is validated to 2–20 uppercase alphanumeric / underscore / hyphen characters. Referenced owner master records cannot be deleted while referenced by assets, categories, employees, or org units.
+- PostgreSQL persistence now synchronizes configurable division/owner master rows before users, categories, and assets so new owner codes satisfy foreign keys.
+
+### Authorization changes
+- Asset read visibility, create, update, assign, move, and lifecycle authorization now accepts any non-empty configured owner code when the user has the exact module permission and explicit owner scope. File-store fallback remains conservative and IT/GA-only.
+- Asset PATCH and bulk-import UPDATE use the same shared canMutateAssetOwner policy. A Karyawan can perform an operation only when an additional role/capability explicitly grants its permission and matching owner scope; Auditor remains read-only.
+- Loan visibility/operations, ticket visibility/dashboard counts, maintenance create/update, and contract visibility/create/edit now use module-specific owner scopes rather than IT/GA-only branches. Personal borrower/reporter/assignee access remains intact.
+- GA's optional IT workstation visibility remains a separate read-only permission limited to HLT/HPC; it does not grant IT asset mutation rights.
+
+### Migration correction
+- Migration 026 remains a no-op compatibility marker to avoid role/unit rewrites inferred from branch labels.
+- Fixed fresh-install ordering in migration 006: seed Umum and Audit into divisions before creating org units that reference them. This is additive/idempotent. It does not retroactively execute on databases where migration 006 is already recorded.
+
+### Files changed
+- server/services.ts, server/server.ts, server/contracts.ts, server/db.ts, server/taxonomy.ts, server/persistence.ts
+- server/migrations/006_org_model_masters.sql, server/migrations/026_map_branch_accounts_to_employee_location.sql
+- scripts/asset-scope-policy-verify.mjs, scripts/dynamic-rbac-foundation-verify.mjs, scripts/branch-migration-safety-verify.mjs
+- CHANGELOG.md, progress log, package.json, .github/workflows/ci.yml
+
+### Verification
+- Latest verified branch head: 8fdd15db91335f2c937e98294272770b75dd1ebc.
+- CI run #382 (42478977996) completed SUCCESS: typecheck, dynamic RBAC contracts, migration safety, asset-scope regression, role navigation, dashboard scope, production build, 37 P0 HTTP security assertions, and maintenance authorization assertions all passed.
+- PR #18 remains Draft/Open and is not merged. Do not deploy or run production migrations without backup, dry-run, impact report, and explicit approval.
+
+### Remaining work
+- Continue auditing vendor/report/reconciliation/admin endpoints for remaining owner/role shortcuts.
+- Replace stale role-name navigation assumptions with the effective-permission model end-to-end and verify menu/page actions per user.
+- Reconcile historical owner codes and any previously applied migration 026 effects only from verified backup/audit/HR evidence. No mass owner or employee remapping.
+- Complete cross-role UAT for RPC/SC production machinery at Subang (owner RPC/SC, location Subang), GA-owned assets, IT-owned assets, and GA's read-only HLT/HPC exception.
