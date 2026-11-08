@@ -6,7 +6,7 @@ import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-loc
 import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
-import { isSuperadminActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
+import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
 
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
@@ -256,7 +256,7 @@ export class GabahDomainService {
    * Filter assets based on user's role and division scope
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
-    if (isSuperadminActor(user) || user.role === 'Auditor') return db.assets;
+    if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
 
     const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
     const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
