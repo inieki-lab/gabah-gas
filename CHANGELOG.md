@@ -1,3 +1,13 @@
+## [2026-11-08] — Validate contract renewal decisions and replacement links
+
+- Renewal outcomes are validated at runtime; TypeScript types alone are not trusted for HTTP input.
+- `replaced_by_new_contract` requires an existing, visible replacement contract in the same normalized owner division and rejects self-reference.
+- Replacement IDs are rejected for all other outcomes.
+- Added `test:contract-renewal-integrity` and a CI step.
+- CI for this follow-up branch has not run yet.
+
+---
+
 ## [2026-11-08] — Minimize reservation data in Humas documentation queue
 
 - Humas documentation queue remains limited to reservations requesting documentation.
