@@ -1628,15 +1628,19 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menghapus divisi.' });
       }
       const code = req.params.code.trim().toUpperCase();
-      const assetsCount = db.assets.filter(a => String(a.owner_division).toUpperCase() === code).length;
-      const categoriesCount = (db.categories || []).filter(c => String(c.owner_division).toUpperCase() === code).length;
+      const assetsCount = db.assets.filter(a => String(a.owner_division || '').toUpperCase() === code).length;
+      const categoriesCount = (db.categories || []).filter(c => String(c.owner_division || '').toUpperCase() === code).length;
       const usersCount = db.users.filter(u => String(u.division || '').toUpperCase() === code).length;
       const unitsCount = (db.orgUnits || []).filter(u => String(u.division_code || '').toUpperCase() === code).length;
-      const references = assetsCount + categoriesCount + usersCount + unitsCount;
+      const vendorsCount = (db.vendors || []).filter(v => String(v.owner_division || '').toUpperCase() === code).length;
+      const contractsCount = (db.contracts || []).filter(item => String(item.owner_division || '').toUpperCase() === code).length;
+      const maintenanceCount = (db.maintenances || []).filter(item => String(item.owner_division || '').toUpperCase() === code).length;
+      const loanCount = (db.loans || []).filter(item => String(item.owner_division || '').toUpperCase() === code).length;
+      const references = assetsCount + categoriesCount + usersCount + unitsCount + vendorsCount + contractsCount + maintenanceCount + loanCount;
       if (references > 0) {
         return res.status(400).json({
           success: false,
-          message: `Tidak dapat menghapus owner "${code}". Masih direferensikan oleh aset (${assetsCount}), kategori (${categoriesCount}), pegawai (${usersCount}), atau unit organisasi (${unitsCount}).`
+          message: `Tidak dapat menghapus owner "${code}". Referensi: aset (${assetsCount}), kategori (${categoriesCount}), pegawai (${usersCount}), unit (${unitsCount}), vendor (${vendorsCount}), kontrak (${contractsCount}), maintenance (${maintenanceCount}), peminjaman (${loanCount}).`
         });
       }
 
