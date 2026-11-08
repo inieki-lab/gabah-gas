@@ -22,6 +22,12 @@ async function main(){
   rec('room fixtures','ROOM-01 + alt',`${room?.id}+${alt?.id}`,Boolean(room&&alt));
   const make=(token,title,x={})=>req(b,'POST','/api/room-reservations',{token,body:{room_id:room.id,title,attendees_count:5,meeting_type:'internal',date:day(),start_time:'10:00',end_time:'11:00',facilities_requested:[],consumption_requested:false,documentation_requested:false,...x}});
   const base=await make(karyawan,'Stage3 existing');rec('ordinary booking','201 pending',`${base.status} ${base.json?.data?.status}`,base.status===201&&base.json?.data?.status==='pending_approval');
+  const docBooking=await make(karyawan,'Stage3 documentation brief',{start_time:'15:00',end_time:'16:00',documentation_requested:true,documentation_type:'foto',documentation_notes:'Public documentation brief',attendees_list:'PRIVATE attendee list',consumption_requested:true,consumption_type:'lunch_box',consumption_pax:10,consumption_notes:'PRIVATE consumption note',notes:'PRIVATE internal note'});
+  const humasQueue=(await req(b,'GET','/api/room-reservations',{token:humas})).json?.data||[];
+  const humasItem=humasQueue.find(x=>x.id===docBooking.json?.data?.id);
+  rec('Humas documentation queue','requested item visible',humasItem?'visible':'missing',Boolean(docBooking.status===201&&humasItem));
+  rec('Humas queue redacts attendee/contact/consumption/internal notes','private fields absent',JSON.stringify({phone:humasItem?.organizer_phone,attendees:humasItem?.attendees_list,consumption:humasItem?.consumption_notes,notes:humasItem?.notes,facilities:humasItem?.facilities_requested}),Boolean(humasItem&&humasItem.organizer_phone===''&&humasItem.attendees_list===undefined&&humasItem.consumption_notes===undefined&&humasItem.notes===undefined&&(humasItem.facilities_requested||[]).length===0));
+  rec('Humas queue retains documentation brief','foto + brief',`${humasItem?.documentation_type} ${humasItem?.documentation_notes}`,Boolean(humasItem?.documentation_type==='foto'&&humasItem?.documentation_notes==='Public documentation brief'));
   const col=await make(humas,'Stage3 collision');rec('collision','400',col.status,col.status===400);
   const gaO=await make(ga,'Stage3 GA override',{meeting_type:high.code,priority:'high',override_conflict:true});rec('GA no interrupt','403',gaO.status,gaO.status===403);
   const low=await make(sek,'Stage3 Sekdir low',{priority:'low',override_conflict:true});rec('Sekdir LOW no interrupt','403',low.status,low.status===403);
