@@ -88,6 +88,8 @@
 - Reminder kedaluwarsa configurable (default 60/35/7 hari) ke PIC + divisi pemilik (+ eskalasi pada 35/7 hari), dikirim via in-app, email, dan Telegram — setiap pengiriman tercatat pada `contract_notification_logs` (status SENT/FAILED/SKIPPED + alasan; penerima di-resolve server-side; idempoten per kontrak/tipe/kanal/penerima/hari; scheduler internal otomatis dengan leader-lock). Status SENT hanya bila pengiriman eksternal benar-benar berhasil — tidak ada sukses palsu.
 - Renewal outcome: pending/renewed/not_renewed/terminated/replaced_by_new_contract + notes; kontrak lama tidak dihapus (rantai `parent_contract_id`).
 - Access control: Super Admin global; PIC dan owner domain sesuai permission + scope; Auditor hanya baca sesuai grant audit; kontrak `restricted` tetap dibatasi PIC/owner/Super Admin.
+- Dokumen kontrak harus benar-benar disimpan sebagai byte file pada persistent volume terpisah dari database, dengan metadata dan file reference yang konsisten. Upload dibatasi ke PDF/JPG/PNG/DOC/DOCX maksimal 10 MB, MIME dan signature diverifikasi, nama/path file dibuat server-side, dan file tidak boleh diekspos sebagai static public directory.
+- Download dokumen harus melalui API terautentikasi dengan `contracts.read` dan pemeriksaan visibility contract per record; path file harus terisolasi per contract agar metadata tidak dapat menunjuk file milik contract lain. File dan database wajib dicadangkan serta dipulihkan bersama.
 
 ### FR-10: Attention Center & Audit Logging
 - **FR-10.1**: Dashboard harus menampilkan ringkasan Attention Center dinamis yang disaring berdasarkan peran (tiket SLA yang mendekati batas waktu, permohonan pinjaman pending, aset dalam masa garansi kritis).
@@ -113,4 +115,7 @@
    - Akses navigasi cepat dengan Omnibox keyboard shortcut `Ctrl+K` / `Cmd+K`.
    - Palet warna korporat yang konsisten dan kontras sesuai standar BUMD DKI Jakarta.
 5. **NFR-05: Kesiapan Operasional Kontainer (Containerization)**
-   - Siap dijalankan menggunakan Docker Compose dengan image standar `node:20-alpine` dan `postgres:17-alpine`.
+   - Siap dijalankan menggunakan Docker Compose dengan multi-stage image Node.js 22 Alpine dan PostgreSQL 17 Alpine. Build menggunakan `npm ci` dari lockfile; runtime hanya memasang dependency produksi, berjalan sebagai user non-root, dan tidak meng-install/build dependency setiap container start.
+   - Source code dan node_modules tidak di-bind-mount ke container produksi. Image release diberi tag commit yang tercatat.
+   - Healthcheck aplikasi memverifikasi API dan PostgreSQL. Deployment mengganti app container tanpa menghapus database atau named volume.
+   - Dokumen kontrak disimpan pada named volume `uploads_data`; backup/restore harus mencakup database PostgreSQL dan volume file.
