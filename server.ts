@@ -663,8 +663,9 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
+      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
-      const wouldDemoteSuperadmin = role !== undefined && role !== 'Admin GABAH';
+      const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
       const wouldDeactivateSuperadmin = is_active === false;
       if (targetIsSuperadmin && (wouldDemoteSuperadmin || wouldDeactivateSuperadmin)
         && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
@@ -707,22 +708,24 @@ async function startServer() {
         }
         targetUser.email = trimmedEmail;
       }
-      const privilegeChanged = role !== undefined && role !== targetUser.role;
+      const privilegeChanged = role !== undefined && primaryRole !== targetUser.role;
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
 
       if (role !== undefined) {
-        targetUser.role = role;
+        targetUser.role = primaryRole;
         const roleLabels: Record<string, string> = {
           'Admin GABAH': 'Admin GABAH (Super Admin)',
           'IT': 'Staff Divisi IT',
           'GA': 'Staff Divisi General Affairs',
-          'Supply Chain': 'Staff Divisi Supply Chain',
-          'PIBC': 'Staff Divisi Pasar Induk Cipinang',
+          'Supply Chain': 'Karyawan — Lokasi Supply Chain',
+          'PIBC': 'Karyawan — Lokasi PIBC',
+          'Sekretaris Direksi': 'Sekretariat Direksi',
+          'Humas': 'Humas & Protokoler',
           'Management': 'Direksi / Management',
           'Auditor': 'Satuan Pengawas Internal (SPI)',
           'Karyawan': 'Karyawan / Pemohon',
         };
-        (targetUser as any).role_label = roleLabels[role] || role;
+        (targetUser as any).role_label = roleLabels[role] || roleLabels[primaryRole] || primaryRole;
       }
       if (division !== undefined) targetUser.division = division;
       if (department !== undefined) targetUser.department = department.trim();
@@ -732,6 +735,8 @@ async function startServer() {
       if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
       if (orgUnit !== undefined) targetUser.unit_id = orgUnit;
       if (orgOffice !== undefined) targetUser.office_location_id = orgOffice;
+      if (role === 'Supply Chain' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-RPC';
+      if (role === 'PIBC' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-PIBC';
 
       if (password) {
         const plain = String(password).trim();
@@ -758,6 +763,7 @@ async function startServer() {
       );
 
       await persistDataStore();
+      if (role !== undefined) await syncPrimaryRbacRole(targetUser.id, targetUser.role);
       await refreshRbacPolicy();
 
       res.json({ success: true, data: sanitizeUser(targetUser) });
