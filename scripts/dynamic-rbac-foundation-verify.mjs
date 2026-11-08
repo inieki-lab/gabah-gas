@@ -16,6 +16,8 @@ const knowledgePermissionSeed = fs.readFileSync('server/migrations/018_dynamic_r
 const vendorPermissionSeed = fs.readFileSync('server/migrations/019_dynamic_rbac_vendor_write_permissions_seed.sql', 'utf8');
 const maintenancePermissionSeed = fs.readFileSync('server/migrations/020_dynamic_rbac_maintenance_permissions_seed.sql', 'utf8');
 const gaItWorkstationPermissionSeed = fs.readFileSync('server/migrations/021_dynamic_rbac_ga_it_workstation_read.sql', 'utf8');
+const itGaOwnerScopeSeed = fs.readFileSync('server/migrations/022_dynamic_rbac_it_ga_asset_owner_scopes.sql', 'utf8');
+const employeeNavigationPermissionSeed = fs.readFileSync('server/migrations/023_dynamic_rbac_employee_and_navigation_permissions.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -123,6 +125,11 @@ const checks = [
   ['dynamic read scopes are reusable via one Stage 11 asset matcher', domainServices.includes('export function assetVisibleUnderDynamicScopes') && domainServices.includes('export function filterMaintenanceSchedulesByDynamicScopes')],
   ['GA IT workstation read permission is explicit, configurable, additive, and seeded only to GA', gaItWorkstationPermissionSeed.includes("'assets.read.it_workstations'") && gaItWorkstationPermissionSeed.includes("WHERE r.role_key = 'ga'") && gaItWorkstationPermissionSeed.includes('ON CONFLICT (role_id, permission_key) DO NOTHING') && !/assets\\.(create|update|delete|assign|move|lifecycle)/.test(gaItWorkstationPermissionSeed)],
   ['GA IT workstation read is limited to canonical HLT/HPC taxonomy codes', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(domainServices) && /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(runtimeHardening)],
+  ['IT and GA have explicit owner-division write scopes; branch roles do not', itGaOwnerScopeSeed.includes("'division', 'IT'") && itGaOwnerScopeSeed.includes("'division', 'GA'") && !/supply_chain|pibc/i.test(itGaOwnerScopeSeed)],
+  ['employee baseline navigation permissions are seeded idempotently', employeeNavigationPermissionSeed.includes("'loans.read'") && employeeNavigationPermissionSeed.includes("'tickets.read'") && employeeNavigationPermissionSeed.includes("'room_reservations.read'") && employeeNavigationPermissionSeed.includes('ON CONFLICT (role_id, permission_key) DO NOTHING')],
+  ['legacy Supply Chain/PIBC roles lose asset mutation grants without rewriting asset records', /DELETE FROM gabah_role_permissions/.test(employeeNavigationPermissionSeed) && /r\.role_key IN \('supply_chain', 'pibc'\)/.test(employeeNavigationPermissionSeed) && /Historical owner_division values are not migrated/.test(employeeNavigationPermissionSeed)],
+  ['authenticated API exposes effective permission keys for menu rendering', /getEffectivePermissionKeys/.test(server) && /permission_keys = getEffectivePermissionKeys/.test(server) && /export function getEffectivePermissionKeys/.test(policy)],
+
 ];
 
 let failed = 0;
