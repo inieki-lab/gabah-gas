@@ -3,68 +3,75 @@
 **Dokumen:** `docs/architecture/RBAC.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Authoritative RBAC Specification (Tersinkronisasi Penuh dengan Source Code Aktual)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Spesifikasi target Dynamic RBAC; implementasi masih dalam audit dan UAT. Matriks role lama di bawah bukan sumber otorisasi aktif.  
+**Terakhir Diperbarui:** 8 November 2026  
 
 ---
 
-## 1. Definisi 9 Peran Pengguna Kanonikal
+## 1. Model Otorisasi Target (Dynamic RBAC)
 
-Sistem GABAH mendefinisikan **9 peran pengguna resmi** pada `src/types.ts` dan `server/db.ts`:
+GABAH tidak menggunakan sembilan label role lama sebagai daftar role permanen. Role aplikasi adalah paket permission dan scope yang dapat dikelola Super Admin. Posisi/jabatan, unit organisasi, lokasi kerja, owner aset, lokasi fisik aset, dan custodian merupakan dimensi terpisah.
 
-1. **Admin GABAH (Super Admin)**: Memiliki hak akses penuh (*unrestricted*) ke seluruh modul sistem, master data, konfigurasi organisasi, manajemen pengguna, approval peminjaman darurat, dan eksekusi penghapusan aset final (*disposal*).
-2. **IT (IT Support & MIS)**: Penanggung jawab penuh atas aset hardware komputasi (`IT-H`), server data center, perangkat jaringan, serta lisensi software/SaaS (`IT-S`). Memiliki wewenang approval pinjaman aset IT, penyelesaian tiket IT, dan penyiapan fasilitas IT ruang rapat.
-3. **GA (General Affairs & Sarpras)**: Penanggung jawab fasilitas gedung, kantor pusat, furniture kantor (`INV-F`), peralatan umum (`INV-P`), dan armada kendaraan dinas kantor (`KDR`). Memiliki wewenang approval pinjaman mobil kantor, approval reservasi ruang rapat umum, dan koordinasi konsumsi pantry.
-4. **Sekretaris Direksi**: Peran protokoler eksekutif sekretariat Direksi & Dewan Komisaris. Memiliki fasilitas **reservasi ruang rapat otomatis disetujui (VIP auto-approval)**, peminjaman barang rapat dinas, dan pelaporan kendala ruang pimpinan.
-5. **Humas (Humas & Protokoler)**: Peran fungsional komunikasi korporat dan protokoler. Menerima notifikasi otomatis untuk permintaan dokumentasi media (foto, video, liputan). Akses katalog aset disembunyikan agar fokus pada tugas protokoler.
-6. **Supply Chain (SC)**: Penanggung jawab aset pabrik penggilingan beras (*rice milling plant*), mesin conveyor kemasan, armada truk logistik beras (`KDR-SC`), dan tiket operasional pergudangan pangan.
-7. **PIBC (Pasar Induk Beras Cipinang)**: Penanggung jawab pengawasan aset fisik kawasan Pasar Induk Beras Cipinang, mesin jembatan timbang truk 60 ton (`MSN-PIBC`), serta kalibrasi tera berkala.
-8. **Karyawan (Staf Umum)**: Karyawan operasional dari seluruh divisi BUMD. Berwenang melihat aset yang ditugaskan kepadanya (*Aset Saya*), mengajukan permohonan pinjaman dari pool aset, membuat tiket kendala bantuan kerja, dan mengajukan reservasi ruang rapat.
-9. **Auditor (Satuan Pengawas Internal / SPI)**: Pengawas tata kelola dan kepatuhan BUMD. Memiliki hak akses **Read-Only menyeluruh** ke seluruh katalog aset, riwayat pergerakan, log peminjaman, tiket, laporan rekonsiliasi Accurate, dan riwayat audit trail. **Terkunci dari operasi mutasi data (HTTP 403)**.
+### 1.1 Entitas otorisasi
 
-> **Contract Management (domain tersendiri):** Contract bukan kategori Helpdesk dan tidak memerlukan peran baru. Akses mengikuti divisi pemilik/PIC; Auditor membaca sesuai kewenangan audit; Admin GABAH mengelola sesuai kebijakan. Kontrak tertentu dapat diberi flag `restricted` untuk pembatasan lebih ketat di masa depan. Software License/SaaS merupakan domain IT — seluruh Helpdesk Ticket terkait software/license menggunakan kategori IT.
+| Entitas | Fungsi | Tidak boleh disamakan dengan |
+|---|---|---|
+| User / employee | Identitas akun dan status aktif | Role, jabatan, lokasi |
+| Primary application role | Fungsi utama pengguna | Jabatan atau unit |
+| Additional application roles | Kapabilitas tambahan lintas fungsi | Pengganti identitas pegawai |
+| Permission | Aksi pada modul (read/create/update/delete/approve/assign/administer) | Scope data |
+| Data scope | Record yang dapat dijangkau per modul | Permission |
+| Job level | Direksi/Kadiv/Kadep/Kasi/Staf dan level lain | Grant permission otomatis |
+| Organizational unit | Fungsi/unit organisasi | Lokasi kantor |
+| Office location | Penempatan kerja pegawai | Owner aset |
+| Owner domain | Fungsi yang bertanggung jawab atas aset/vendor/kontrak sesuai modul | Lokasi fisik |
+| Asset location | Tempat fisik aset | Owner atau lokasi kerja pegawai |
+| Custodian/PIC | Pengguna yang memegang/bertanggung jawab atas record | Owner domain |
 
-> **Catatan Peran Legacy / Non-Login:**
-> 1. Role `Management` **bukan** akun login terpisah; fungsi pengawasan eksekutif diakomodasi oleh akun `Auditor` (read-only) atau `Admin GABAH`.
-> 2. Role `Vendor` **bukan** akun login pengguna sistem; vendor dikelola murni sebagai entitas data master rekanan servis/kontrak pada tabel `contracts` dan modul Master Data.
+### 1.2 Prinsip enforcement
 
----
+1. PostgreSQL Dynamic RBAC menjadi sumber permission dan scope ketika persistence PostgreSQL aktif.
+2. Permission dan scope harus diperiksa pada backend untuk list, detail-by-ID, create, update, delete, approval, export, pencarian, dashboard, dan agregasi.
+3. Frontend hanya menyajikan menu dan aksi sesuai permission efektif; menyembunyikan menu bukan kontrol keamanan.
+4. Beberapa role dinamis dapat diberikan ke satu user. Role tambahan bersifat additive sesuai permission/scope yang ditetapkan, dan tidak boleh hilang akibat siklus persistensi normal.
+5. Satu primary role tetap selaras dengan profil user selama masa transisi. Backfill kompatibilitas tidak boleh menghapus role tambahan yang sah.
+6. Role tidak aktif, user nonaktif, scope tidak dikenal, dan role dinamis tanpa scope harus gagal tertutup (deny-by-default).
+7. Jabatan dan lokasi kerja tidak memberikan permission secara implisit.
+8. Auditor hanya memiliki akses baca yang diberikan secara eksplisit; operasi mutasi harus ditolak di backend.
+9. Super Admin mengelola role template, permission, scope, master owner domain, master lokasi, dan assignment user. Assignment harus transaksional, tervalidasi, diaudit, dan melindungi Super Admin aktif terakhir.
 
-## 2. Matriks Izin Akses Menyeluruh (RBAC Permissions Matrix)
+### 1.3 Model lokasi dan owner
 
-| Modul & Tindakan | Admin GABAH | IT | GA | Sekdir | Humas | Supply Chain | PIBC | Karyawan | Auditor |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Katalog Aset (View All)** |  Full | IT Only | GA + Read IT | Assigned/Loanable |  None | SC Only | PIBC Only | Assigned/Loanable |  Read All |
-| **Pendaftaran Aset (Create)** |  Semua | IT Only | GA Only (Non-IT) |  |  | SC Only | PIBC Only |  |  |
-| **Penugasan Aset (Assign)** |  Semua | IT Only | GA Only (Non-IT) |  |  | SC Only | PIBC Only |  |  |
-| **Mutasi Lokasi (Move)** |  Semua | IT Only | GA Only (Non-IT) |  |  | SC Only | PIBC Only |  |  |
-| **Mutasi Siklus Hidup** |  Semua | IT Only | GA Only (Non-IT) |  |  | SC Only | PIBC Only |  |  |
-| **Setujui Penghapusan (Disposal)**|  Eksklusif |  |  |  |  |  |  |  |  |
-| **Ajukan Pinjaman (Loan Req)** |  |  |  |  |  |  |  |  |  |
-| **Approval Pinjaman** |  Semua | IT Aset | GA Aset |  |  | SC Aset | PIBC Aset |  |  |
-| **Serah Terima (Handover)** |  Semua | IT Aset | GA Aset |  |  | SC Aset | PIBC Aset |  |  |
-| **Pengembalian (Return)** |  Semua | IT Aset | GA Aset |  |  | SC Aset | PIBC Aset |  |  |
-| **Cetak BAST Digital** |  |  |  |  |  |  |  |  |  |
-| **Buat Tiket Helpdesk** |  |  |  |  |  |  |  |  |  |
-| **Kelola/Selesaikan Tiket** |  Semua | IT/License | GA Tiket |  |  | SC Tiket | PIBC Tiket | Own Only |  Read Only |
-| **Preventive Maintenance** |  CRUD | IT Aset | GA Aset |  |  | SC Aset | PIBC Aset |  |  Read Only |
-| **Reservasi Ruang Rapat** |  |  |  |  VIP Auto |  |  |  |  Pending GA |  Read Only |
-| **Approval Ruang Rapat** |  |  |  GA Auth |  |  |  |  |  |  |
-| **Notifikasi Fasilitas IT** |  |  Terima |  |  |  |  |  |  |  |
-| **Notifikasi Pantry Konsumsi** |  |  |  Terima |  |  |  |  |  |  |
-| **Notifikasi Liputan Humas** |  |  |  |  |  Terima |  |  |  |  |
-| **Contract Register (View)** |  Semua | Own Div | Own Div |  |  | Own Div | Own Div |  |  Audit Read |
-| **Contract Create/Edit** |  Semua | Own Div | Own Div |  |  | Own Div | Own Div |  |  |
-| **Contract Reminder & Log** |  Kelola | PIC/Div | PIC/Div |  |  | PIC/Div | PIC/Div |  |  Read |
-| **Administration Control Panel**|  Eksklusif |  |  |  |  |  |  |  |  |
-| **Kelola Pengguna (Users)** |  CRUD |  |  |  |  |  |  |  |  |
-| **Kelola Master Lokasi/Divisi** |  CRUD |  |  |  |  |  |  |  |  |
-| **Lihat Audit Trail** |  Full |  |  |  |  |  |  |  |  Full |
-| **Rekonsiliasi Accurate** |  Full |  |  |  |  |  |  |  |  Full |
+Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC/SC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
+
+Owner domain adalah master fleksibel (misalnya IT, GA, RPC/SC, dan domain lain yang disahkan), bukan enum tetap. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
+
+### 1.4 Legacy role labels
+
+Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. Supply Chain dan PIBC adalah lokasi/unit/fungsi operasional, bukan role aplikasi permanen. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
+
+Contract Management tetap domain tersendiri; scope kontrak menggunakan owner domain dan PIC. Vendor category tidak boleh dipakai sebagai pengganti owner domain.
 
 ---
 
-## 3. Titik Penegakan RBAC di Kode Sumber (Enforcement Points)
+## 2. Matriks Kebijakan Awal (Bukan Allowlist Role Permanen)
+
+| Fungsi | Kebijakan dasar | Catatan enforcement |
+|---|---|---|
+| Super Admin | Global administration sesuai permission | Satu-satunya role dengan hak administrasi global; lindungi Super Admin aktif terakhir |
+| IT | Owner IT lintas lokasi | Aksi per modul tetap memerlukan permission dan scope |
+| GA | Owner GA lintas lokasi | IT workstation hanya read-only melalui permission khusus |
+| Karyawan | Fungsi dasar pribadi: aset ditugaskan, permintaan pinjaman, tiket sendiri, reservasi | Role tambahan dapat memberi kapabilitas kerja yang disahkan |
+| Sekretaris Direksi | Fungsi dasar karyawan + agenda/permintaan dukungan Direksi | Prioritas/override harus permission khusus dan audit |
+| Humas | Fungsi dasar karyawan + antrean pekerjaan dokumentasi yang ditugaskan | Detail agenda disamarkan untuk pihak tanpa kewenangan |
+| Auditor | Read-only sesuai grant audit | Tidak boleh create/update/delete/approve |
+| RPC/SC dan owner operasional lain | Kapabilitas sesuai owner domain dan scope yang diberikan | Nama unit/lokasi tidak otomatis menjadi role atau scope |
+
+Matriks di atas adalah baseline kebijakan. Permission dan scope aktual harus dibaca dari database RBAC, bukan dari nama role atau tabel statis di frontend.
+
+---
+
+## 3. Titik Penegakan RBAC di Kode Sumber (Enforcement Points — Perlu Verifikasi Perubahan)
 
 ### 3.1 Penegakan Backend (Server-Side Enforcement)
 1. **Middleware Keamanan (`server/runtime-hardening.ts`)**:
