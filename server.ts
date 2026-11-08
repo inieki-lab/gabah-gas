@@ -3001,16 +3001,43 @@ async function startServer() {
     const { room_id, date, status, organizer_id } = req.query as any;
     let data = GabahDomainService.getRoomReservations({ room_id, date, status, organizer_id });
 
-    // Agenda details are private by default. GA operates room approvals;
-    // IT sees only reservations requiring IT facilities; Humas sees only
-    // documentation requests; ordinary employees see their own reservations.
-    if (!isSuperadminActor(actor) && actor.role !== 'Auditor' && actor.role !== 'GA') {
-      if (actor.role === 'IT') {
+    // Agenda details are private by default. GA operates room logistics but
+    // receives only operational fields; IT sees only IT-facility requests;
+    // Humas receives the full detail only for documentation work items.
+    if (!isSuperadminActor(actor) && actor.role !== 'Auditor') {
+      if (actor.role === 'GA') {
+        data = data.map(item => ({
+          ...item,
+          title: 'Reservasi ruang rapat',
+          description: undefined,
+          attendees_list: undefined,
+          organizer_phone: '',
+          consumption_notes: undefined,
+          documentation_type: undefined,
+          documentation_notes: undefined,
+          notes: undefined,
+          rejection_reason: undefined,
+          interruption_reason: undefined,
+        }));
+      } else if (actor.role === 'IT') {
         const itFacilityNames = new Set(db.meetingFacilities
           .filter(facility => facility.category === 'IT')
           .map(facility => facility.name));
         data = data.filter(item => item.organizer_id === actor.id
-          || (item.facilities_requested || []).some(name => itFacilityNames.has(name)));
+          || (item.facilities_requested || []).some(name => itFacilityNames.has(name)))
+          .map(item => ({
+            ...item,
+            title: 'Reservasi dengan kebutuhan fasilitas IT',
+            description: undefined,
+            attendees_list: undefined,
+            organizer_phone: '',
+            consumption_notes: undefined,
+            documentation_type: undefined,
+            documentation_notes: undefined,
+            notes: undefined,
+            rejection_reason: undefined,
+            interruption_reason: undefined,
+          }));
       } else if (actor.role === 'Humas') {
         data = data.filter(item => Boolean(item.documentation_requested));
       } else {
