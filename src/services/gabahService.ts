@@ -677,15 +677,11 @@ export class GabahService {
       return ticket.category === 'GA' || isReporter;
     }
 
-    // 2b. Operational divisions: see tickets directed to their division plus their own tickets
-    if (user.role === 'Supply Chain') {
-      return (ticket.category as string) === 'SC' || isReporter;
-    }
-    if (user.role === 'PIBC') {
-      return (ticket.category as string) === 'PIBC' || isReporter;
-    }
+    // 2b. Employee baseline and other non-operational profiles see only
+    // their own submissions in file-store compatibility mode. Supply Chain
+    // and PIBC are organizational units/locations, never implicit queue roles.
 
-    // 3. All other users (Karyawan, Humas, Sekretaris Direksi, Supply Chain, PIBC, Auditor, etc.):
+    // 3. All other users (Karyawan, Humas, Sekretaris Direksi, Auditor, etc.):
     // ONLY see tickets where they are the reporter
     return isReporter;
   }
