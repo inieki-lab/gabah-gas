@@ -56,6 +56,35 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
   ],
 };
 
-export function isNavTabAllowedForRole(role: UserRole | null | undefined, tab: AppNavTab): boolean {
-  return Boolean(role && ROLE_NAVIGATION[role]?.includes(tab));
+const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
+  dashboard: ['dashboard.read'],
+  my_assets: ['assets.read'],
+  meeting_rooms: ['meeting_rooms.read', 'room_reservations.read', 'room_reservations.create'],
+  assets: ['assets.audit.read', 'assets.create', 'assets.update', 'assets.delete', 'assets.assign', 'assets.move', 'assets.lifecycle'],
+  maintenance: ['maintenances.read'],
+  loans: ['loans.read'],
+  tickets: ['tickets.read'],
+  licenses: ['licenses.read'],
+  contracts: ['contracts.read'],
+  vendors: ['vendors.read'],
+  knowledge: ['knowledge.read'],
+  reports: ['reports.read'],
+};
+
+/**
+ * PostgreSQL RBAC permissions are authoritative for the visible menu.
+ * The role map is retained only for the file-store compatibility mode where
+ * effective permission keys are intentionally not emitted by the API.
+ */
+export function isNavTabAllowedForRole(
+  role: UserRole | null | undefined,
+  tab: AppNavTab,
+  permissionKeys?: readonly string[],
+): boolean {
+  if (!role) return false;
+  if (permissionKeys !== undefined) {
+    if (permissionKeys.includes('*')) return true;
+    return NAV_TAB_PERMISSIONS[tab].some(key => permissionKeys.includes(key));
+  }
+  return ROLE_NAVIGATION[role]?.includes(tab) ?? false;
 }
