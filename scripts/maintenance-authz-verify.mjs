@@ -145,8 +145,8 @@ async function main() {
       itList.status === 200 && codes(itList.json?.data).has('MNT-2026-002') && !codes(itList.json?.data).has('MNT-2026-001'));
 
     const gaList = await req(base, 'GET', '/api/maintenances', { token: tokens.ga });
-    record('GET GA filtered to GA/General scope', 'MNT-001+003 (General)', `HTTP ${gaList.status} (${[...codes(gaList.json?.data)].join(',')})`,
-      gaList.status === 200 && codes(gaList.json?.data).has('MNT-2026-001') && codes(gaList.json?.data).has('MNT-2026-003') && !codes(gaList.json?.data).has('MNT-2026-002'));
+    record('GET GA filtered to GA owner scope only', 'MNT-001 only', `HTTP ${gaList.status} (${[...codes(gaList.json?.data)].join(',')})`,
+      gaList.status === 200 && codes(gaList.json?.data).has('MNT-2026-001') && !codes(gaList.json?.data).has('MNT-2026-002') && !codes(gaList.json?.data).has('MNT-2026-003'));
 
     const scList = await req(base, 'GET', '/api/maintenances', { token: tokens.sc });
     record('GET Supply Chain location sees no branch-wide maintenance schedules', 'empty list', `HTTP ${scList.status} (${[...codes(scList.json?.data)].join(',')})`,
