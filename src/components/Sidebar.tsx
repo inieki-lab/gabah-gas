@@ -39,6 +39,7 @@ interface SidebarProps {
   userRole?: UserRole;
   currentUserRole?: UserRole;
   currentUserPermissions?: string[];
+  currentUserIsSuperAdmin?: boolean;
   pendingLoansCount?: number;
   openTicketsCount?: number;
   pendingReservationsCount?: number;
@@ -68,6 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   userRole,
   currentUserRole,
   currentUserPermissions,
+  currentUserIsSuperAdmin = false,
   pendingLoansCount = 0,
   openTicketsCount = 0,
   pendingReservationsCount = 0,
@@ -80,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
-  const isSuperAdmin = activeRole === 'Admin GABAH';
+  const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
