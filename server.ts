@@ -13,7 +13,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -84,10 +84,27 @@ async function startServer() {
     if (isPostgresPersistenceActive()) {
       safe.is_superadmin = isRbacSuperadmin(String(user.id));
       safe.permission_keys = safe.is_superadmin ? ['*'] : getEffectivePermissionKeys(String(user.id));
+      safe.role_keys = getEffectiveRoleKeys(String(user.id));
     } else {
       safe.is_superadmin = user.role === 'Admin GABAH';
     }
     return safe;
+  };
+
+  const hasApplicationRole = (actor: ServerUser, roleKey: string): boolean => {
+    const legacyLabels: Record<string, string> = {
+      superadmin: 'Admin GABAH',
+      it: 'IT',
+      ga: 'GA',
+      karyawan: 'Karyawan',
+      auditor: 'Auditor',
+      humas: 'Humas',
+      sekretaris_direksi: 'Sekretaris Direksi',
+      supply_chain: 'Supply Chain',
+      pibc: 'PIBC',
+    };
+    if (actor.role === legacyLabels[roleKey]) return true;
+    return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
   };
 
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
@@ -3167,7 +3184,7 @@ async function startServer() {
             rejection_reason: undefined,
             interruption_reason: undefined,
           }));
-      } else if (actor.role === 'Humas') {
+      } else if (hasApplicationRole(actor, 'humas')) {
         data = data.filter(item => Boolean(item.documentation_requested));
       } else {
         data = data.filter(item => item.organizer_id === actor.id);
