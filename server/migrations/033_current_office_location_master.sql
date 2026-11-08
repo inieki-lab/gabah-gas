@@ -7,7 +7,7 @@ SET name = CASE id
   WHEN 'OFF-KP' THEN 'HO'
   WHEN 'OFF-RPC' THEN 'RPC/SC'
   ELSE name
-END,
+END
 WHERE id IN ('OFF-KP', 'OFF-RPC');
 
 -- Canonical labels for the five currently active offices. Existing IDs are kept.
