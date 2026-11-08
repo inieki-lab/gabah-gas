@@ -1,3 +1,16 @@
+# Status terkini — Stabilisasi GABAH (2026-11-08)
+
+> Catatan ini mengungguli snapshot historis Stage 13F di bawah. Bagian lama dipertahankan untuk jejak audit, bukan sebagai gambaran implementasi hari ini.
+
+- Branch integrasi aktif: fix/role-based-navigation (PR #18, masih draft/open). Jangan deploy atau merge sebelum release gates terpenuhi.
+- PostgreSQL 17 fresh database dan persistence integration sudah diuji CI #544 pada code SHA 398ba8fa61ddef9f5cf63dc22ff330cd7d1a0f33: CR-04/CR-05 57/57 PASS, 35 migration entries, restart persistence PASS, production fail-fast saat PostgreSQL mati PASS.
+- Dynamic RBAC foundation 63/63, asset-scope policy 37/37, P0 security 37/37, maintenance authorization 33/33 pada CI #544. CI #545 pada dokumentasi/RBAC code head berikutnya juga SUCCESS.
+- Auditor read-only sekarang mengikuti role efektif termasuk role tambahan: pengujian PostgreSQL memberi Karyawan role tambahan Auditor; assignment tetap tersimpan, API write ditolak 403, dan audit read yang sah berhasil 200.
+- Owner domain aset fleksibel; lokasi kantor aktif HO, PIBC, RPC/SC, Pangsub, Kantor Perawatan. Subang nonaktif. Lokasi kerja, unit, owner, lokasi fisik aset, dan custodian terpisah.
+- Supply Chain dan PIBC bukan role aplikasi permanen. Humas/Sekretaris Direksi menggunakan baseline Karyawan ditambah capability fungsi sesuai assignment. Jangan migrasikan data produksi hanya dari nama role/lokasi.
+- AI coding agent wajib membaca AGENTS.md, .agents/skills/gabah-maintainer/SKILL.md, dan docs/AI-CHANGE-GUARDRAILS.md. Branch AI lain: ai/<agent>/<work-item>, PR ke branch integrasi.
+- Belum production-ready: manual browser UAT dengan pengguna, upgrade rehearsal dari snapshot legacy, review menyeluruh endpoint, backup/restore rehearsal, staging deploy, TLS/monitoring, dan sign-off bisnis masih terbuka.
+
 ## Status final — Stage 13F merged (2026-10-21)
 
 - PR #9 **MERGED**; main commit `921d3bb5bcdc32874a556260865e047a0af10868`.
