@@ -1074,3 +1074,11 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 ### Corrected office master — 2026-11-08
 - User correction: **Kantor Perawatan is still active**. The five active office locations are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is closed and is not seeded as an active office location.
 - Corrected `server/db.ts`, persistence fallback, migration 033, and asset-scope regression assertions. No users or assets are reassigned.
+
+
+### Follow-up correction — active offices and loan-return location (2026-11-08)
+- Corrected migration 033: Kantor Perawatan is explicitly set to `is_active = TRUE`; removed the earlier deactivation branch. The migration preserves its existing ID and does not delete or reassign any user/asset references.
+- Corrected the office regression test to assert that migration 033 keeps Kantor Perawatan active and preserves office history.
+- Audited loan custody transitions and removed the hardcoded location reset to `Head Office - Gudang Pool` during loan return. Returning an item changes custody/status/condition; it must not silently relocate the physical asset. A real move must use the asset-mutation workflow and its audit trail.
+- Updated loan authorization error text and comments to describe permission + Loans owner scope, not an IT/GA-only whitelist.
+- CI run 42486650240 failed at TypeScript parsing of the newly added office regression regex (not application logic). Corrected the regex in the subsequent commit; latest CI result must be checked before claiming pass.
