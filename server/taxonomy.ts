@@ -55,7 +55,7 @@ export function isFixedAssetMainType(v: unknown): v is FixedAssetMainType {
   return typeof v === 'string' && (FIXED_ASSET_MAIN_TYPES as readonly string[]).includes(v);
 }
 export function isOwnerDivision(v: unknown): v is string {
-  return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= 50;
+  return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= 20;
 }
 export function isGabahCategoryType(v: unknown): v is AssetTaxonomyItem['category_type'] {
   return typeof v === 'string' && (ASSET_CATEGORY_TYPES as readonly string[]).includes(v);
