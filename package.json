@@ -18,7 +18,8 @@
     "test:dynamic-rbac-foundation": "node scripts/dynamic-rbac-foundation-verify.mjs",
     "test:maintenance-authz": "node scripts/maintenance-authz-verify.mjs",
     "test:navigation-policy": "tsx scripts/navigation-policy-verify.ts",
-    "test:dashboard-scope": "tsx scripts/dashboard-scope-verify.ts"
+    "test:dashboard-scope": "tsx scripts/dashboard-scope-verify.ts",
+    "test:asset-scope-policy": "node scripts/asset-scope-policy-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
