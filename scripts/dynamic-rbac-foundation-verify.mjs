@@ -15,6 +15,7 @@ const movementsReadPermissionSeed = fs.readFileSync('server/migrations/017_dynam
 const knowledgePermissionSeed = fs.readFileSync('server/migrations/018_dynamic_rbac_knowledge_permissions_seed.sql', 'utf8');
 const vendorPermissionSeed = fs.readFileSync('server/migrations/019_dynamic_rbac_vendor_write_permissions_seed.sql', 'utf8');
 const maintenancePermissionSeed = fs.readFileSync('server/migrations/020_dynamic_rbac_maintenance_permissions_seed.sql', 'utf8');
+const gaItWorkstationPermissionSeed = fs.readFileSync('server/migrations/021_dynamic_rbac_ga_it_workstation_read.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -61,7 +62,7 @@ const checks = [
   ['dynamic scope resolution fails closed for unscoped dynamic roles', /policies\.length === 0\) return null;/i.test(domainServices) && /return scopes\.length === 0 \? null : scopes;/i.test(domainServices) && /if \(scopes == null\) return \[\];/i.test(domainServices) && /if \(scopes == null\) return false;/i.test(domainServices)],
   ['dynamic scope resolution honors a superadmin dynamic policy', /some\(policy => policy\.isSuperadmin\)\) return assets;/i.test(domainServices)],
   ['dynamic scope matching covers own, division, unit, and location scope types', ['case \'own\'','case \'division\'','case \'unit\'','case \'location\''].every(needle => domainServices.includes(needle))],
-  ['legacy nine-role scoping is preserved before the dynamic fallback', /if \(user\.role === 'Admin GABAH' \|\| user\.role === 'Auditor'\)/i.test(domainServices) && /return filterAssetsByDynamicScopes\(db\.assets, user\);\s*\}\s*\n\s*return db\.assets;/.test(domainServices)],
+  ['asset scope uses Superadmin capability, employee baseline, IT owner scope, GA owner scope, and dynamic custom-role fallback', /if \(isSuperadminActor\(user\) \|\| user\.role === 'Auditor'\)/i.test(domainServices) && /\['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'\]/.test(domainServices) && /user\.role === 'IT'[\s\S]{0,180}owner_division \|\| ''\)\.toUpperCase\(\) === 'IT'/.test(domainServices) && /user\.role === 'GA'[\s\S]{0,180}assets\.read\.it_workstations/.test(domainServices) && /return filterAssetsByDynamicScopes\(db\.assets, user\);/.test(domainServices)],
   ['asset write permission seed is additive and idempotent', /INSERT INTO gabah_role_permissions/i.test(assetWritePermissionSeed) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/i.test(assetWritePermissionSeed)],
   ['asset write grants cover the six catalogue keys without duplicate permissions', ['assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign', 'assets.move', 'assets.lifecycle'].every(key => assetWritePermissionSeed.includes("'" + key + "'"))],
   ['asset write grants cover exactly the division authority roles', /role_key IN \('superadmin',\s*'it',\s*'ga',\s*'supply_chain',\s*'pibc'\)/i.test(assetWritePermissionSeed)],
@@ -120,6 +121,8 @@ const checks = [
   ['maintenance create/update gates dynamic permission while preserving file-store allowlist', (() => { const createRoute = server.slice(server.indexOf("app.post('/api/maintenances'"), server.indexOf("app.patch('/api/maintenances/:id'")); const patchRoute = server.slice(server.indexOf("app.patch('/api/maintenances/:id'"), server.indexOf("app.get('/api/vendors'")); return createRoute.includes("requireRbacPermission(req, res, 'maintenances.create')") && createRoute.includes("!['Admin GABAH', 'IT', 'GA'].includes(actor.role)") && patchRoute.includes("requireRbacPermission(req, res, 'maintenances.update')") && patchRoute.includes("!['Admin GABAH', 'IT', 'GA'].includes(actor.role)"); })()],
   ['maintenance division authority mirrors asset write authority via all/division scopes', server.includes("hasDynamicDivisionAuthority") && server.split('hasDynamicDivisionAuthority').length >= 7],
   ['dynamic read scopes are reusable via one Stage 11 asset matcher', domainServices.includes('export function assetVisibleUnderDynamicScopes') && domainServices.includes('export function filterMaintenanceSchedulesByDynamicScopes')],
+  ['GA IT workstation read permission is explicit, configurable, additive, and seeded only to GA', gaItWorkstationPermissionSeed.includes("'assets.read.it_workstations'") && gaItWorkstationPermissionSeed.includes("WHERE r.role_key = 'ga'") && gaItWorkstationPermissionSeed.includes('ON CONFLICT (role_id, permission_key) DO NOTHING') && !/assets\\.(create|update|delete|assign|move|lifecycle)/.test(gaItWorkstationPermissionSeed)],
+  ['GA IT workstation read is limited to canonical HLT/HPC taxonomy codes', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(domainServices) && /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(runtimeHardening)],
 ];
 
 let failed = 0;
