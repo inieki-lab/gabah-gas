@@ -1171,3 +1171,11 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Found migration 024 granted `tickets.create` to Auditor along with employee roles, contradicting Auditor's read-only mandate. Route-level Auditor denial existed, but the effective permission could still expose a create action in the UI.
 - Added migration 036 to remove only the Auditor `tickets.create` role grant. `tickets.read` remains granted; no tickets or user records are modified.
 - Added a regression check ensuring Auditor retains read permission and is denied create permission. PR #3's older ticket seed approach is superseded by the current consolidated permission catalog/seeds and this correction.
+
+
+### Vendor owner-domain hardening — 2026-11-08
+- Vendor category and owner domain are treated as independent attributes. Create/update now resolve owner codes against the active owner master (case-insensitive) and validate category/name/rating input; the category text no longer implies IT or GA ownership.
+- Backend vendor list/create/update enforce the effective vendors permission and owner scope. Owner changes require authority for both the existing and destination owner. Legacy vendors without an owner remain Super Admin-only for classification.
+- Vendor UI now renders Add and Edit controls separately based on vendors.create/vendors.update, displays the owner domain, and removes the fabricated static SLA Compliance 99% metric.
+- Owner master deletion now checks vendor, contract, maintenance, and loan references in addition to asset/category/user/org-unit references.
+- PostgreSQL integration coverage added for IT/GA owner isolation, cross-owner write denial, Karyawan denial without permission, creating a future owner domain, creating a custom role with vendors permissions + RPCSC scope, and category/owner independence.
