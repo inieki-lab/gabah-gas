@@ -121,6 +121,7 @@ const ADMIN_PASS = `Vfy-Adm-${crypto.randomBytes(9).toString('base64url')}`;
 const USER_PASS = `Vfy-Usr-${crypto.randomBytes(9).toString('base64url')}`;
 const ADMIN_EMAIL = 'admin@foodstation.co.id';
 const IT_EMAIL = 'it.support@foodstation.co.id';
+const GA_EMAIL = 'ga@foodstation.co.id';
 const KARYAWAN_EMAIL = 'hendra.w@foodstation.co.id';
 const AUDITOR_EMAIL = 'auditor@foodstation.co.id';
 
@@ -215,6 +216,10 @@ async function main() {
     const itToken = itLogin.json?.data?.token || '';
     record('login IT user', '200 + token', `HTTP ${itLogin.status}`, itLogin.status === 200 && Boolean(itToken));
 
+    const gaLogin = await req(base, 'POST', '/api/auth/login', { body: { email: GA_EMAIL, password: USER_PASS } });
+    const gaToken = gaLogin.json?.data?.token || '';
+    record('login GA user', '200 + token', `HTTP ${gaLogin.status}`, gaLogin.status === 200 && Boolean(gaToken));
+
     const karyawanLogin = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
     const karyawanToken = karyawanLogin.json?.data?.token || '';
     record('login Karyawan', '200 + token', `HTTP ${karyawanLogin.status}`, karyawanLogin.status === 200 && Boolean(karyawanToken));
@@ -305,19 +310,14 @@ async function main() {
       itVendor.status === 201 && itVendor.json?.data?.owner_division === 'IT');
 
     const gaVendor = await req(base, 'POST', '/api/vendors', {
-      token: await (async () => {
-        const login = await req(base, 'POST', '/api/auth/login', { body: { email: GA_EMAIL, password: USER_PASS } });
-        return login.json?.data?.token || '';
-      })(),
+      token: gaToken,
       body: { name: 'VERIFY Vendor GA', category: 'IT Hardware', owner_division: 'GA', rating: 4.5 },
     });
     record('GA can create GA-owned vendor even when category text says IT Hardware', '201 + owner GA', `HTTP ${gaVendor.status} owner=${gaVendor.json?.data?.owner_division || '-'}`,
       gaVendor.status === 201 && gaVendor.json?.data?.owner_division === 'GA');
 
-    const gaLoginForVendor = await req(base, 'POST', '/api/auth/login', { body: { email: GA_EMAIL, password: USER_PASS } });
-    const gaTokenForVendor = gaLoginForVendor.json?.data?.token || '';
     const gaCrossOwner = await req(base, 'POST', '/api/vendors', {
-      token: gaTokenForVendor,
+      token: gaToken,
       body: { name: 'VERIFY Forbidden GA to IT', category: 'Maintenance', owner_division: 'IT' },
     });
     record('GA cannot create IT-owned vendor outside GA owner scope', '403', `HTTP ${gaCrossOwner.status}`, gaCrossOwner.status === 403);
