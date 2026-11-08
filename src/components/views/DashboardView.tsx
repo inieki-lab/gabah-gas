@@ -104,7 +104,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
-  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending_approval');
+  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending');
   const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
 
   const openTickets = dashboardTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
