@@ -1124,3 +1124,12 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 ### CI status correction — 2026-11-08
 - CI #449 (`42487698982`) completed SUCCESS on head `2dd9d2a9b79a07d7dcfd96291108b5cbfd46e14f`; this includes the ticket dynamic-owner-scope change and its regression check.
 - CI #450/#451 were triggered by the latest documentation-only commits and were still running/queued at this update. PR #18 remains Draft/Open and unmerged.
+
+
+### Vendor owner-domain correction — 2026-11-08
+- Added an explicit optional `owner_division` field to vendor records and the frontend model. Vendor service category is now independent from the responsible owner domain.
+- `/api/vendors` list, create, and update authorization now use the explicit owner code and module `vendors` scope. The previous `IT`/`License` => IT, everything else => GA inference has been removed.
+- New vendor records require a valid active owner code from the configurable division master. Update checks authority over both the existing and requested owner and persists `owner_division` through the explicit update allowlist.
+- Legacy vendor rows without owner classification remain visible to Super Admin/Auditor only and cannot be edited by scoped users until Super Admin classifies them. No automatic owner backfill is performed.
+- `VendorsView` now loads owner choices from the master division API and uses effective permission keys / Super Admin capability rather than the fixed Admin/IT/GA role allowlist.
+- Added regression checks for owner/category separation, dynamic scope, unclassified legacy handling, and UI permission behavior. Latest CI run must be checked before marking this change verified.
