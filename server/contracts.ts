@@ -66,16 +66,15 @@ export function getReminderLevel(contract: ServerContract): { level: 'normal' | 
 export function canSeeContract(user: ServerUser, contract: ServerContract): boolean {
   if (isSuperadminActor(user) || user.role === 'Auditor') return true;
   if (contract.pic_user_id === user.id) return true;
+  const owner = String(contract.owner_division || '').trim().toUpperCase();
+  if (owner !== 'IT' && owner !== 'GA') return false;
 
   if (isPostgresPersistenceActive()) {
     return hasRbacPermission(String(user.id), 'contracts.read')
-      && hasRbacScope(String(user.id), 'division', contract.owner_division, 'contracts');
+      && hasRbacScope(String(user.id), 'division', owner, 'contracts');
   }
 
-  // File-store compatibility: only IT/GA owner domains; branch labels do not
-  // grant cross-organization contract visibility.
-  return (user.role === 'IT' || user.role === 'GA')
-    && String(contract.owner_division).toUpperCase() === user.role;
+  return user.role === owner;
 }
 
 export function canManageContracts(user: ServerUser): boolean {
@@ -90,17 +89,18 @@ export function canManageContracts(user: ServerUser): boolean {
 // SEC-08: Expose canEditContract for server.ts file upload validation
 export function canEditContract(user: ServerUser, contract: ServerContract): boolean {
   if (isSuperadminActor(user)) return true;
+  const owner = String(contract.owner_division || '').trim().toUpperCase();
+  if (owner !== 'IT' && owner !== 'GA') return false;
   if (contract.pic_user_id === user.id) {
     return isPostgresPersistenceActive()
       ? hasRbacPermission(String(user.id), 'contracts.update')
-      : user.role === 'IT' || user.role === 'GA';
+      : user.role === owner;
   }
   if (isPostgresPersistenceActive()) {
     return hasRbacPermission(String(user.id), 'contracts.update')
-      && hasRbacScope(String(user.id), 'division', contract.owner_division, 'contracts');
+      && hasRbacScope(String(user.id), 'division', owner, 'contracts');
   }
-  return (user.role === 'IT' || user.role === 'GA')
-    && String(contract.owner_division).toUpperCase() === user.role;
+  return user.role === owner;
 }
 
 function recordContractAudit(action: string, details: string, actor: ServerUser, contractId: string) {
@@ -145,9 +145,9 @@ export const ContractDomainService = {
     const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
     const pic = db.users.find(u => u.id === payload.pic_user_id) || actor;
     const ownerScopeAllowed = isSuperadminActor(actor)
-      || (isPostgresPersistenceActive()
+      || (['IT', 'GA'].includes(ownerDivision) && (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
-        : (actor.role === 'IT' || actor.role === 'GA') && ownerDivision === actor.role);
+        : actor.role === ownerDivision));
     if (!ownerScopeAllowed) {
       throw new Error(`Akses ditolak: scope pengguna tidak mencakup owner kontrak ${ownerDivision}.`);
     }
