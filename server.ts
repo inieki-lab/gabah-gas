@@ -2534,9 +2534,10 @@ async function startServer() {
       const owner = String(v.owner_division || '').trim();
       // Legacy records without an explicit owner are visible only to global readers
       // until Super Admin classifies them. Category is never used as ownership.
-      return Boolean(owner) && isPostgresPersistenceActive()
+      if (!owner) return false;
+      return isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, 'vendors')
-        : false;
+        : actor.role === owner;
     });
     return res.json({ success: true, data });
   });
@@ -2549,7 +2550,7 @@ async function startServer() {
     const requestedCategory = String(req.body?.category || '').trim();
     if (!requestedCategory) return res.status(400).json({ success: false, message: 'Kategori vendor wajib dipilih.' });
     const requestedOwner = String(req.body?.owner_division || '').trim();
-    if (!requestedOwner || !(db.divisions || []).some(d => d.code === requestedOwner)) {
+    if (!requestedOwner || !(db.divisions || []).some(d => d.code === requestedOwner && d.is_active !== false)) {
       return res.status(400).json({ success: false, message: 'Owner vendor wajib dipilih dari master fungsi pemilik yang aktif.' });
     }
     const canManageRequestedOwner = isSuperadminActor(actor) || (isPostgresPersistenceActive()
@@ -2599,7 +2600,7 @@ async function startServer() {
     if (!existingOwner && !isSuperadminActor(actor)) {
       return res.status(403).json({ success: false, message: 'Vendor lama belum memiliki owner; klasifikasi hanya dapat dilakukan Super Admin.' });
     }
-    if (!requestedOwner || !(db.divisions || []).some(d => d.code === requestedOwner)) {
+    if (!requestedOwner || !(db.divisions || []).some(d => d.code === requestedOwner && d.is_active !== false)) {
       return res.status(400).json({ success: false, message: 'Owner vendor wajib dipilih dari master fungsi pemilik yang aktif.' });
     }
     const canManageExisting = isSuperadminActor(actor) || (isPostgresPersistenceActive()
@@ -2613,7 +2614,7 @@ async function startServer() {
     }
     const vendor = existingVendor;
     // SECURITY (CR-06): explicit allowlist — id is server-owned.
-    const allowedVendorFields = ['name', 'category', 'pic_name', 'pic_phone', 'pic_email', 'address', 'active_contracts_count', 'rating', 'notes'];
+    const allowedVendorFields = ['name', 'category', 'owner_division', 'pic_name', 'pic_phone', 'pic_email', 'address', 'active_contracts_count', 'rating', 'notes'];
     for (const key of allowedVendorFields) {
       if (req.body[key] !== undefined) (vendor as any)[key] = req.body[key];
     }
