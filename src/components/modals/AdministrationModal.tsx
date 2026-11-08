@@ -530,7 +530,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     if (rbacNewPermissionKeys.length === 0) return showToast('Pilih minimal satu permission untuk role baru.', 'warning');
     setRbacSaving(true);
     try {
-      const created = await gabahApi.createRbacRole({ name: rbacNewName.trim(), description: rbacNewDescription.trim(), permission_keys: rbacNewPermissionKeys });
+      const selectedPermissionKeys = [...rbacNewPermissionKeys];
+      const created = await gabahApi.createRbacRole({ name: rbacNewName.trim(), description: rbacNewDescription.trim(), permission_keys: selectedPermissionKeys });
       setRbacNewName('');
       setRbacNewDescription('');
       setRbacNewPermissionKeys([]);
@@ -538,7 +539,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       setRbacSelectedRoleId(created.id);
       setRbacName(created.name);
       setRbacDescription(created.description || '');
-      setRbacSelectedPermissionKeys([]);
+      setRbacSelectedPermissionKeys(Array.isArray(created.permissions) ? created.permissions : selectedPermissionKeys);
       setRbacScopes([]);
       showToast('Role baru berhasil dibuat beserta ' + rbacNewPermissionKeys.length + ' permission. Atur scope data sebelum ditetapkan ke pegawai.', 'success');
     } catch (error: any) {

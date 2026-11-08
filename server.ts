@@ -253,6 +253,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Daftar permission role tidak valid.' });
       }
       const permissionKeys = [...new Set(requestedKeys as string[])];
+      if (permissionKeys.length === 0) return res.status(400).json({ success: false, message: 'Role baru wajib memiliki minimal satu permission aktif.' });
       if (permissionKeys.some(key => ['system.authentication', 'system.audit', 'system.super_admin'].includes(key))) throw new Error('RBAC_PERMISSION_PROTECTED');
       const result = await withRbacTransaction(async client => {
         if (permissionKeys.length > 0) {
