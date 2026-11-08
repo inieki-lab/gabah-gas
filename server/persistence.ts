@@ -443,7 +443,7 @@ async function backfillNormalizedTables(): Promise<void> {
       await client.query(
         `INSERT INTO divisions (code,name,is_active) VALUES ($1,$2,TRUE)
          ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,is_active=TRUE`,
-        [String(division.code).trim().toUpperCase(), String(division.name).trim()],
+        [String(division.code).trim(), String(division.name).trim()],
       );
     }
     for (const u of db.users) {
