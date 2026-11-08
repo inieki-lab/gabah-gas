@@ -147,6 +147,7 @@ const checks = [
   ['authenticated API exposes effective permission keys for menu rendering', /getEffectivePermissionKeys/.test(server) && /permission_keys = safe\.is_superadmin \? \['\*'\] : getEffectivePermissionKeys/.test(server) && /is_superadmin = isRbacSuperadmin/.test(server) && /export function getEffectivePermissionKeys/.test(policy)],
   ['new employee form keeps branch/function roles out of primary profile and assigns office location independently', /export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES\.filter/.test(frontend) && /Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'/.test(frontend) && /office_location_id: newUserData\.office_location_id \|\| null/.test(frontend) && /officeLocations\.filter\(location => location\.is_active\)/.test(frontend)],
   ['employee directory displays assigned additional roles and explains Auditor read-only precedence', /userAssignments\[String\(user\.id\)\][\s\S]*assignedRole\.name/.test(frontend) && /Auditor dipilih sebagai role tambahan[\s\S]*read-only/.test(frontend)],
+  ['contract UI exposes authenticated document upload/download and uses effective permission/role guards', /uploadContractDocument\(contract\.id, file\)/.test(frontend) && /downloadContractDocument\(contract\.id, document\.id\)/.test(frontend) && /contracts\.documents\.upload/.test(frontend) && /currentUser\.role_keys\.includes\('auditor'\)/.test(frontend) && /async uploadContractDocument/.test(apiClient) && /async downloadContractDocument/.test(apiClient)],
 
 ];
 
