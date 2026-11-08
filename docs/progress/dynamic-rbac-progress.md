@@ -480,3 +480,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Passed: TypeScript lint; Dynamic RBAC foundation contracts; branch migration safety; asset scope policy checks (including owner exclusions and inactive owner master); navigation/dashboard checks; production build; 37 P0 HTTP security assertions; 33 maintenance authorization assertions.
 - Owner-master sync now preserves inactive status, and new asset creation rejects inactive owner domains. Existing assets/history remain untouched.
 - This is code/CI verification only. Migration 032 has not been run against production PostgreSQL; production backup, dry-run, impact review, and approval are still required.
+
+
+### 2026-11-08 — Reconciliation follows asset authorization
+- `GET /api/reconciliation` now scopes totals and result rows to assets visible to the current actor. Super Admin and Auditor retain global read-only visibility.
+- `POST /api/reconciliation/link` now requires the reconciliation-link permission and the shared asset-update permission with matching owner scope.
+- Regression checks added to `test:asset-scope-policy`.
+- CI run #409 completed SUCCESS on head `c5d71a0e7e20f6c1dfbe146af2a8d8fa1d4b0a3f`. Production migration 032 remains unapplied pending backup/dry-run/impact review/approval.
