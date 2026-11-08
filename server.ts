@@ -1396,8 +1396,8 @@ async function startServer() {
           message: `Jenis utama aset "${main_type}" tidak dikenal. Nilai yang diizinkan: ${FIXED_ASSET_MAIN_TYPES.join(', ')}.`
         });
       }
-      if (owner_division !== undefined && !isOwnerDivision(owner_division)) {
-        return res.status(400).json({ success: false, message: `Divisi pemilik "${owner_division}" tidak dikenal. Nilai yang diizinkan: IT, GA, SC, PIBC.` });
+      if (owner_division !== undefined && (!isOwnerDivision(owner_division) || !(db.divisions || []).some(d => String(d.code).toUpperCase() === String(owner_division).trim().toUpperCase()))) {
+        return res.status(400).json({ success: false, message: `Owner "${owner_division}" harus terdaftar pada Master Divisi/Owner.` });
       }
       if (category_type !== undefined && !isGabahCategoryType(category_type)) {
         return res.status(400).json({ success: false, message: `Tipe taksonomi "${category_type}" tidak dikenal. Nilai yang diizinkan: IT, General, License.` });
