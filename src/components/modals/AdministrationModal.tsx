@@ -297,8 +297,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     email: '',
     role: 'Karyawan',
     role_label: 'Pegawai Operasional',
-    division: 'SC',
-    department: 'Pergudangan & Distribusi',
+    division: '' as OwnerDivision,
+    department: 'Operasional',
     office_location_id: null,
     job_level_code: '',
     unit_id: null
@@ -1330,8 +1330,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         email: '',
         role: 'Karyawan',
         role_label: 'Pegawai Operasional',
-        division: 'SC',
-        department: 'Pergudangan & Distribusi',
+        division: '' as OwnerDivision,
+        department: 'Operasional',
         office_location_id: null,
         job_level_code: '',
         unit_id: null
@@ -2010,10 +2010,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
                       <select
-                        value={newUserData.division}
+                        value={newUserData.division || ''}
                         onChange={e => setNewUserData({ ...newUserData, division: e.target.value as OwnerDivision })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
+                        <option value="">— Pilih divisi —</option>
                         {divisions.map(d => (
                           <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                         ))}
