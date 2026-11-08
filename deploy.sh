@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_URL="\${GABAH_HEALTH_URL:-http://127.0.0.1/api/health}"
-MAX_ATTEMPTS="\${GABAH_HEALTH_ATTEMPTS:-30}"
-WAIT_SECONDS="\${GABAH_HEALTH_WAIT_SECONDS:-5}"
+APP_URL="${GABAH_HEALTH_URL:-http://127.0.0.1/api/health}"
+MAX_ATTEMPTS="${GABAH_HEALTH_ATTEMPTS:-30}"
+WAIT_SECONDS="${GABAH_HEALTH_WAIT_SECONDS:-5}"
 
 fail() {
   printf 'ERROR: %s\n' "$*" >&2
