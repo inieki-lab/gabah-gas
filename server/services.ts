@@ -255,7 +255,9 @@ export class GabahDomainService {
       return filterAssetsByDynamicScopes(db.assets, user);
     }
 
-    return db.assets;
+    // Unknown or unconfigured roles must fail closed in both PostgreSQL
+    // and file-store modes. Never fall back to global inventory visibility.
+    return [];
   }
 
   /**
