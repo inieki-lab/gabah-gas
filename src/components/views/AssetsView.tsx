@@ -186,7 +186,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
           </button>
 
           <button
-            onClick={() => exportAssetsToCsv(assets)}
+            onClick={() => exportAssetsToCsv(filteredAssets)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
             title="Download CSV Master Aset untuk Excel"
           >
