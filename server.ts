@@ -7,7 +7,7 @@ import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, getDynamicAssetWriteAuthority, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
+import { GabahDomainService, canMutateAssetOwner, getDynamicAssetWriteAuthority, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -2078,32 +2078,17 @@ async function startServer() {
     const asset = db.assets.find(a => a.id === req.params.id);
     if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
 
-    // Auditor is strictly read-only
+    // Auditor remains strictly read-only. Every other user, including a
+    // Karyawan with an explicitly assigned additional capability, is judged
+    // by the same permission + owner-scope policy used by domain mutations.
     if (actor.role === 'Auditor') {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
     }
-    // Karyawan cannot mutate assets
-    if (actor.role === 'Karyawan') {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Karyawan tidak memiliki wewenang mengubah aset.' });
-    }
-    // Enforce Division Authority (SEC-10). Legacy rule (kompatibilitas sembilan
-    // role legacy via users.role) TETAP UTUH, dan Dynamic RBAC Stage 13E
-    // menambahkan authority dinamis dari scope 'all'/'division' (cerminkan
-    // semantik baca Stage 11). Deny-by-default: scope yang tidak mencakup aset
-    // ini tidak pernah menambah kewenangan.
-    if (!isSuperadminActor(actor)) {
-      if (!['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())) {
-        return res.status(403).json({ success: false, message: 'Aset dengan owner legacy SC/PIBC hanya dapat ditinjau dan dikelola Super Admin sampai klasifikasi owner per aset selesai.' });
-      }
-      const dynamicWriteAuthority = isPostgresPersistenceActive() ? getDynamicAssetWriteAuthority(actor) : null;
-      const hasDynamicDivisionAuthority = (division: string): boolean =>
-        dynamicWriteAuthority != null && (dynamicWriteAuthority.all || dynamicWriteAuthority.divisions.has(String(division).toUpperCase()));
-      if (asset.owner_division === 'IT' && actor.role !== 'IT' && !hasDynamicDivisionAuthority('IT')) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Aset IT hanya dapat diubah oleh personel IT atau Admin GABAH.' });
-      }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA' && !hasDynamicDivisionAuthority('GA')) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Aset GA hanya dapat diubah oleh personel GA atau Admin GABAH.' });
-      }
+    if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.update')) {
+      return res.status(403).json({
+        success: false,
+        message: `Akses ditolak: permission assets.update dan scope owner "${asset.owner_division}" wajib dimiliki.`,
+      });
     }
 
     // Check duplicate serial number
