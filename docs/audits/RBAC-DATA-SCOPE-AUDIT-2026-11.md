@@ -124,3 +124,26 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 - Jangan menganggap seluruh aset owner SC/PIBC otomatis milik GA atau IT. Klasifikasi per aset harus direview.
 - Jangan mengaktifkan akses baca lintas divisi melalui frontend saja.
 - PR #18 tetap draft sampai tahap backend, UI, migrasi, CI, dan UAT lulus.
+
+
+## 6. Progress implementation — 8 November 2026
+
+### Perubahan yang sudah masuk branch (belum dianggap production/UAT selesai)
+
+1. **Supply Chain/PIBC sebagai lokasi kerja:** migration 026 memetakan akun legacy dengan role Supply Chain/PIBC menjadi Karyawan, mengisi office_location_id (Supply Chain → OFF-RPC, PIBC → OFF-PIBC bila belum terisi), membersihkan unit legacy UNIT-SC/UNIT-PIBC dari penempatan aktif, dan menonaktifkan role/unit legacy tanpa menghapus record historis. Seed akun dev juga memakai Karyawan + office_location_id. Nilai division lama dipertahankan untuk kompatibilitas notifikasi, bukan untuk otorisasi aset.
+2. **Aset:** Super Admin tetap global; IT hanya owner IT; GA owner GA dan opsional read-only Laptop/PC IT via permission assets.read.it_workstations. Aset owner SC/PIBC historis tidak dimigrasikan; mutasi hanya Super Admin sampai review per aset. Pembuatan aset baru dibatasi ke owner IT/GA.
+3. **Pegawai dan role tambahan:** resolver aset PostgreSQL menggabungkan baseline personal pegawai dengan dynamic role scopes yang ditetapkan eksplisit. Dynamic scope non-Super Admin dibatasi ke owner IT/GA; aset legacy owner SC/PIBC tidak masuk inventaris dinamis. Karyawan dapat memperoleh role fungsi tambahan tanpa mengganti atribut lokasi/jabatan.
+4. **Data turunan aset:** riwayat mutasi dan jadwal maintenance mengikuti asset scope. Pegawai biasa hanya melihat maintenance/movement aset yang ditugaskan kepadanya; IT/GA mengikuti owner masing-masing; Auditor/Super Admin dapat membaca lintas scope.
+5. **Peminjaman:** approve/reject/handover/return oleh pengelola dibatasi owner IT/GA dengan permission dan scope; peminjam tetap dapat mengembalikan pinjaman miliknya sendiri. Pinjaman owner legacy SC/PIBC menjadi Super Admin review-only.
+6. **Vendor:** read/create/update mengikuti permission dan owner scope IT/GA, bukan nama lokasi/cabang. Super Admin/Auditor sesuai mandat dapat membaca lintas domain.
+7. **Navigasi:** permission assets.catalog.read dipisah dari assets.read untuk Aset Saya; menu inventaris penuh tidak muncul hanya karena pegawai memiliki akses personal. Super Admin capability mengirim wildcard menu permission agar semua menu administrasi tampil.
+8. **Data seed:** relasi maintenance IT/GA yang sebelumnya menunjuk ID aset yang tidak ada sudah disejajarkan dengan asset ID kanonikal. Jadwal timbang legacy tetap tidak terhubung ke aset aktif dan tidak dibuka untuk pengguna non-Super Admin.
+
+### Batasan yang masih harus dituntaskan
+
+- Migration 026 dan 027 **belum dijalankan pada database produksi**. Perlu backup, dry-run, pemeriksaan jumlah akun yang akan berubah, verifikasi office_location_id, lalu persetujuan sebelum eksekusi.
+- Owner SC/PIBC pada aset/kontrak/pinjaman historis tidak diubah. Super Admin perlu review satu per satu dan menetapkan owner IT atau GA berdasarkan bukti kepemilikan/pengelolaan.
+- Endpoint lain masih harus diaudit secara sistematis: users/master data, taxonomy, dashboard aggregates, search, export, license, contract document/milestone/renewal, room actions, notification delivery, audit/reconciliation, dan semua direct-ID paths.
+- Model role multi-assignment perlu UAT: Karyawan + role fungsi tambahan, jabatan (Direksi/Kadiv/Kadep/Kasi/Staf), unit organisasi, dan lokasi kerja harus tetap terpisah.
+- Workflow permintaan dokumentasi Humas yang terhubung agenda/reservasi masih berupa keputusan PRD; antrean Humas, PIC, status, assignment, dan audit trail belum selesai dibangun.
+- Semua kombinasi role/permission/scope harus diuji melalui akun nyata di UI dan API. CI hijau saja tidak cukup untuk menyatakan GABAH siap produksi.
