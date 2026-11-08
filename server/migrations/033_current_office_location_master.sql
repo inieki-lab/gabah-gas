@@ -1,7 +1,7 @@
--- Stage 33: align current office locations with the approved operating footprint.
--- Preserve IDs and historical user references. Do not delete closed locations.
--- This only deactivates the retired Perawatan office; no assets or user history
--- are reassigned. Future locations are added through Super Admin master data.
+-- Stage 33: align office labels while preserving the approved active locations.
+-- Preserve IDs and historical user references. Do not delete office locations.
+-- Kantor Perawatan remains active; no assets or user history are reassigned.
+-- Future locations are added through Super Admin master data.
 UPDATE org_office_locations
 SET name = CASE id
   WHEN 'OFF-KP' THEN 'HO'
