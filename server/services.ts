@@ -639,6 +639,12 @@ export class GabahDomainService {
     start_date: string;
     due_date: string;
   }, actor: ServerUser): ServerLoan {
+    // Self-service requests may only be created for the authenticated borrower.
+    // Creating on behalf of another employee is a separate delegated capability;
+    // until that capability exists, only Super Admin may set another borrower.
+    if (payload.borrower_id && payload.borrower_id !== actor.id && !isSuperadminActor(actor)) {
+      throw Object.assign(new Error('Pengajuan pinjaman hanya dapat dibuat untuk akun sendiri.'), { statusCode: 403 });
+    }
     const asset = db.assets.find(a => a.id === payload.asset_id);
     if (!asset) throw new Error('Aset tidak ditemukan');
     if (!asset.is_loanable) throw new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).');
