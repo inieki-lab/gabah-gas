@@ -1,3 +1,13 @@
+## [2026-11-08] — Minimize reservation data in Humas documentation queue
+
+- Humas documentation queue remains limited to reservations requesting documentation.
+- For reservations owned by other users, API responses retain schedule and documentation brief but redact attendee list, organizer contact, requested facilities, consumption details, and internal/rejection/interruption notes.
+- The organizer's own reservation remains fully visible.
+- Added API regression assertions to the meeting-room Stage 3 verification script.
+- CI for this follow-up branch has not run yet.
+
+---
+
 ## [2026-11-08] — Unify asset visibility for list and direct-ID access
 
 ### Perbaikan keamanan dan konsistensi
