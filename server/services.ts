@@ -42,6 +42,7 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
       return result;
     }
     for (const scope of policy.scopes) {
+      if (scope.module != null && scope.module !== '*' && scope.module !== 'assets') continue;
       if (scope.type === 'all') result.all = true;
       else if (scope.type === 'division') {
         const value = scope.value == null ? '' : String(scope.value).trim().toUpperCase();
