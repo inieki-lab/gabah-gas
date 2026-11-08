@@ -136,24 +136,29 @@ async function startServer() {
 
   // Keep users.role and the primary dynamic RBAC assignment synchronized,
   // while preserving any additional job-function roles assigned by Super Admin.
-  const syncPrimaryRbacRole = async (userId: string, roleLabel: string): Promise<void> => {
-    if (!isPostgresPersistenceActive()) return;
-    const roleKey = primaryRoleKey(roleLabel);
-    const result = await queryRbac<any>(
-      'SELECT id FROM gabah_roles WHERE is_active = TRUE AND (role_key = $1 OR name = $2) ORDER BY CASE WHEN role_key = $1 THEN 0 ELSE 1 END LIMIT 1',
-      [roleKey, roleLabel]
-    );
-    const roleId = Number(result.rows[0]?.id);
-    if (!Number.isSafeInteger(roleId) || roleId < 1) {
-      throw new Error('Role aplikasi "' + roleLabel + '" belum tersedia/aktif di master RBAC.');
-    }
+  const syncPrimaryRbacRoles = async (users: Array<{ id: string; role: string }>): Promise<void> => {
+    if (!isPostgresPersistenceActive() || users.length === 0) return;
     await withRbacTransaction(async client => {
-      await client.query('UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = $1 AND is_primary = TRUE', [userId]);
-      await client.query(
-        'INSERT INTO gabah_user_roles (user_id, role_id, is_primary) VALUES ($1, $2, TRUE) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE',
-        [userId, roleId]
-      );
+      for (const user of users) {
+        const roleKey = primaryRoleKey(user.role);
+        const result = await client.query(
+          'SELECT id FROM gabah_roles WHERE is_active = TRUE AND (role_key = $1 OR name = $2) ORDER BY CASE WHEN role_key = $1 THEN 0 ELSE 1 END LIMIT 1',
+          [roleKey, user.role]
+        );
+        const roleId = Number(result.rows[0]?.id);
+        if (!Number.isSafeInteger(roleId) || roleId < 1) {
+          throw new Error('Role aplikasi "' + user.role + '" belum tersedia/aktif di master RBAC.');
+        }
+        await client.query('UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = $1 AND is_primary = TRUE', [user.id]);
+        await client.query(
+          'INSERT INTO gabah_user_roles (user_id, role_id, is_primary) VALUES ($1, $2, TRUE) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE',
+          [user.id, roleId]
+        );
+      }
     });
+  };
+  const syncPrimaryRbacRole = async (userId: string, roleLabel: string): Promise<void> => {
+    await syncPrimaryRbacRoles([{ id: userId, role: roleLabel }]);
   };
 
   const rbacFailure = (res: express.Response, error: any) => {
