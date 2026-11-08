@@ -93,6 +93,19 @@
 
 ---
 
+### Skenario 2C: Pembuatan Pegawai dan Lokasi Kerja
+
+- **Tujuan**: Memastikan akun baru dibuat dengan role primer pegawai dan lokasi kerja yang independen.
+- **Langkah Pengujian**:
+  1. Sebagai Super Admin, buat akun baru dengan role primer Karyawan.
+  2. Pilih lokasi kantor dari master aktif (misalnya PIBC atau RPC/SC); jangan memilih Supply Chain/PIBC sebagai role aplikasi.
+  3. Simpan akun dan pastikan lokasi kerja tersimpan pada atribut office location.
+  4. Jika pegawai memiliki tugas khusus, tetapkan role tambahan melalui tombol Role; jangan mengubah role primer hanya karena unit/lokasi.
+  5. Periksa daftar pengguna: role primer dan role tambahan harus terlihat terpisah.
+- **Kriteria Lulus**: Akun tetap Karyawan dengan lokasi kerja yang dipilih; penambahan role fungsi tidak mengubah lokasi atau role primer.
+
+---
+
 ### Skenario 3: Pendaftaran Aset & Validasi Duplikasi
 - **Tujuan**: Memverifikasi nomor kanonikal dihasilkan secara atomik dan nomor duplikat ditolak.
 - **Langkah Pengujian**:
