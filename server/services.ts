@@ -220,46 +220,48 @@ export class GabahDomainService {
    * Filter assets based on user's role and division scope
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
-    // Global visibility: Super Admin is capability-based; Auditor remains global read-only.
-    if (isSuperadminActor(user) || user.role === 'Auditor') {
-      return db.assets;
+    if (isSuperadminActor(user) || user.role === 'Auditor') return db.assets;
+
+    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+    const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
+
+    if (!isPostgresPersistenceActive()) {
+      if (isEmployeeBaseline) {
+        return db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable);
+      }
+      if (user.role === 'IT') {
+        return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
+      }
+      if (user.role === 'GA') {
+        return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'GA');
+      }
+      return [];
     }
 
-    // Employee baseline: personal assignments plus the shared loanable pool.
-    // Branch/location roles are not asset-owner roles and receive no branch-wide
-    // inventory visibility merely because of their office location.
-    if (['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(user.role)) {
-      return db.assets.filter(a => a.assigned_to?.id === user.id || a.is_loanable);
-    }
-
-    // IT workstation visibility for GA is a separate read-only permission.
-    // Use canonical taxonomy codes only: HLT = Laptop/Notebook; HPC = PC/Desktop.
-    const isItWorkstation = (asset: ServerAsset) =>
-      ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
-
-    // Ownership is independent of physical location.
+    // PostgreSQL: combine employee personal baseline with every explicitly
+    // assigned dynamic role scope. A Karyawan can receive extra job-function
+    // roles without changing employee identity or office location.
+    const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
     if (user.role === 'IT') {
-      return db.assets.filter(a => String(a.owner_division || '').toUpperCase() === 'IT');
+      return dynamicAssets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
     }
     if (user.role === 'GA') {
       const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
-      return db.assets.filter(a =>
-        String(a.owner_division || '').toUpperCase() === 'GA'
-        || (canReadItWorkstations && String(a.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(a))
+      const isItWorkstation = (asset: ServerAsset) =>
+        ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+      return db.assets.filter(asset =>
+        String(asset.owner_division || '').toUpperCase() === 'GA'
+        || (canReadItWorkstations
+          && String(asset.owner_division || '').toUpperCase() === 'IT'
+          && isItWorkstation(asset))
       );
     }
 
-    // Dynamic RBAC Stage 11: bila PostgreSQL persistensi aktif, role yang bukan
-    // salah satu dari sembilan role legacy TIDAK pernah jatuh ke fallback
-    // legacy yang "melihat semua". Visibilitasnya diambil dari
-    // gabah_role_division_scopes via policy dinamis (deny-by-default).
-    if (isPostgresPersistenceActive() && !isLegacyScopedRole(user.role)) {
-      return filterAssetsByDynamicScopes(db.assets, user);
-    }
-
-    // Unknown or unconfigured roles must fail closed in both PostgreSQL
-    // and file-store modes. Never fall back to global inventory visibility.
-    return [];
+    const personalAssets = isEmployeeBaseline
+      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
+      : [];
+    const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
+    return db.assets.filter(asset => visibleIds.has(asset.id));
   }
 
   /**
