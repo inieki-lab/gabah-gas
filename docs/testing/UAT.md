@@ -31,8 +31,8 @@
 | **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | Super Administrator (Full Control) |
 | **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT Support & Aset Komputasi |
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | General Affairs & Sarana Prasarana |
-| **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `<INITIAL_USER_PASSWORD>`| Protokoler Direksi & VIP Booking |
-| **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Liputan Dokumentasi & Publikasi |
+| **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `<INITIAL_USER_PASSWORD>`| Pegawai; fungsi sekretariat Direksi dan VIP Booking melalui role tambahan |
+| **Karyawan + capability Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai; fungsi dokumentasi dan publikasi melalui role tambahan |
 | **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
 | **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai Biasa / Pemohon Layanan |
@@ -79,6 +79,19 @@
   5. Muat ulang assignment dan uji menu, API read, dan API write sesuai permission/scope kedua role.
   6. Ubah role primer melalui alur resmi; pastikan role tambahan yang masih sah tetap ada.
 - **Kriteria Lulus**: Role tambahan tetap tersimpan setelah persistensi dan restart; tidak ada assignment yang dipulihkan/dihapus tanpa tindakan administrator; perubahan tercatat pada audit log.
+
+### Skenario 2B: Auditor sebagai Role Tambahan
+
+- **Tujuan**: Memastikan Auditor tetap read-only walaupun diberikan sebagai role tambahan kepada pegawai yang sudah memiliki role lain.
+- **Langkah Pengujian**:
+  1. Buat akun uji Karyawan dengan satu role tambahan yang memiliki hak tulis terbatas.
+  2. Sebagai Super Admin, tambahkan role Auditor tanpa menghapus role primer maupun role tambahan yang sudah ada.
+  3. Coba akses endpoint GET yang memang diberi kewenangan audit.
+  4. Coba POST/PATCH/DELETE langsung ke API modul yang sebelumnya dapat ditulis oleh role lain.
+  5. Periksa audit log dan assignment role setelah restart aplikasi.
+- **Kriteria Lulus**: Akses baca sesuai grant audit tetap berfungsi; semua operasi mutasi ditolak HTTP 403. Role Auditor tidak boleh kehilangan sifat read-only karena dikombinasikan dengan role lain.
+
+---
 
 ### Skenario 3: Pendaftaran Aset & Validasi Duplikasi
 - **Tujuan**: Memverifikasi nomor kanonikal dihasilkan secara atomik dan nomor duplikat ditolak.
