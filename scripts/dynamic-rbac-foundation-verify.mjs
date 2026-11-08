@@ -30,6 +30,10 @@ const runtimeHardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
 const frontend = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
 const contractsView = fs.readFileSync('src/components/views/ContractsView.tsx', 'utf8');
 const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
+const dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
+const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
+const deployScript = fs.readFileSync('deploy.sh', 'utf8');
+const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const checks = [
   ['roles table is additive/idempotent', /CREATE TABLE IF NOT EXISTS gabah_roles/i.test(migration)],
   ['permission catalogue exists', /CREATE TABLE IF NOT EXISTS gabah_permissions/i.test(migration)],
@@ -149,6 +153,14 @@ const checks = [
   ['new employee form keeps branch/function roles out of primary profile and assigns office location independently', /export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES\.filter/.test(frontend) && /Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'/.test(frontend) && /office_location_id: newUserData\.office_location_id \|\| null/.test(frontend) && /officeLocations\.filter\(location => location\.is_active\)/.test(frontend)],
   ['employee directory displays assigned additional roles and explains Auditor read-only precedence', /userAssignments\[String\(user\.id\)\][\s\S]*assignedRole\.name/.test(frontend) && /Auditor dipilih sebagai role tambahan[\s\S]*read-only/.test(frontend)],
   ['contract UI exposes authenticated document upload/download and uses effective permission/role guards', /uploadContractDocument\(contract\.id, file\)/.test(contractsView) && /downloadContractDocument\(contract\.id, document\.id\)/.test(contractsView) && /contracts\.documents\.upload/.test(contractsView) && /currentUser\.role_keys\.includes\('auditor'\)/.test(contractsView) && /async uploadContractDocument/.test(apiClient) && /async downloadContractDocument/.test(apiClient)],
+  ['contract upload checks permission and owner scope before buffering file', server.indexOf('const authorizeContractDocumentUpload') < server.indexOf("app.post('/api/contracts/:id/documents/upload', authorizeContractDocumentUpload, upload.single('file')") && /requireRbacPermission\(req, res, 'contracts\.documents\.upload'\)/.test(server)],
+  ['contract document upload validates MIME and file signatures before storage', /mimeByExtension/.test(server) && /hasValidContractDocumentSignature/.test(server) && /file\.buffer/.test(server)],
+  ['contract document downloads enforce contract-specific storage path and visibility', /contractStorageKey = crypto\.createHash\('sha256'\)/.test(server) && /absoluteFilePath\.startsWith\(contractRoot\)/.test(server) && /canSeeContract\(actor, contract\)/.test(server)],
+  ['contract file volume is persistent and separate from PostgreSQL data volume', /uploads_data/.test(dockerCompose) && /uploads_data:\/app\/uploads/.test(dockerCompose)],
+  ['production image uses Node 22, lockfile installs, non-root runtime, and copied migrations', /FROM node:22-alpine AS build/.test(dockerfile) && /npm ci --omit=dev/.test(dockerfile) && /USER node/.test(dockerfile) && /server\/migrations/.test(dockerfile)],
+  ['deployment waits for PostgreSQL health and replaces only the app container', /docker compose up -d database/.test(deployScript) && /DB_HEALTH.*healthy/.test(deployScript) && /--no-deps --force-recreate app/.test(deployScript)],
+  ['production Docker runtime smoke checks PostgreSQL and writable uploads', /gabah-gas:ci/.test(dockerSmoke) && /persistence.*postgresql/.test(dockerSmoke) && /touch \/app\/uploads/.test(dockerSmoke)],
+
 
 ];
 
