@@ -10,7 +10,7 @@ const server = read('server.ts');
 const hardeningSource = read('server/runtime-hardening.ts');
 
 const checks = [
-  ['IT list scope hanya owner IT', /if \(user\.role === 'IT'\) \{\s*return db\.assets\.filter\(a => String\(a\.owner_division \|\| ''\)\.toUpperCase\(\) === 'IT'\);/.test(services)],
+  ['IT list scope hanya owner IT', /if \(user\.role === 'IT'\) \{\s*return dynamicAssets\.filter\(asset => String\(asset\.owner_division \|\| ''\)\.toUpperCase\(\) === 'IT'\);/.test(services)],
   ['GA list scope mengelola owner GA', /if \(user\.role === 'GA'\) \{\s*const canReadItWorkstations = hasRbacPermission/.test(services)],
   ['GA IT read scope memerlukan permission khusus', /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)],
   ['GA IT read scope dibatasi taxonomy HLT dan HPC', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(services)],
@@ -25,7 +25,7 @@ const checks = [
   ['Branch role migration does not rewrite historical asset ownership', !/UPDATE assets|UPDATE gabah_assets|owner_division\s*=/.test(branchMigration)],
   ['Movement history is restricted to the same visible asset scope', /visibleAssetIds[\s\S]*db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(server)],
   ['Maintenance schedules follow visible asset scope and exclude branch-wide fallback', /visibleAssetIds[\s\S]*db\.maintenances\.filter\(item => visibleAssetIds\.has\(item\.asset_id\)\)/.test(server)],
-  ['Unknown roles fail closed for asset list and direct asset access', /if \(scopes == null\) return \[\];/.test(services) && /return isPostgresPersistenceActive\(\) && assetVisibleUnderDynamicScopes\(actor, asset\);/.test(hardeningSource)],
+  ['Unknown roles fail closed for asset list and direct asset access', /if \(owner !== 'IT' && owner !== 'GA'\) return false;/.test(services) && /if \(scopes == null\) return false;/.test(services) && /assetVisibleUnderDynamicScopes\(actor, asset\)/.test(hardeningSource)],
   ['Loan approval/rejection/handover/return use permission and IT/GA owner scope only', /static canOperateLoan\([\s\S]*owner !== 'IT' && owner !== 'GA'[\s\S]*hasRbacPermission[\s\S]*hasRbacScope/.test(services)],
   ['Full asset catalogue menu requires its own explicit permission', /assets\.catalog\.read/.test(read('src/navigation/roleNavigation.ts')) && /assets\.catalog\.read/.test(read('server/migrations/027_dynamic_rbac_asset_catalog_read.sql'))],
   ['New assets cannot be created with legacy SC/PIBC owner values', /resolvedOwnerDivision !== 'IT' && resolvedOwnerDivision !== 'GA'/.test(services)],
