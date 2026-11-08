@@ -120,3 +120,6 @@ jobs:
 
       - name: Maintenance authorization verification (live HTTP assertions)
         run: npm run test:maintenance-authz
+
+      - name: Maintenance dynamic-scope consistency
+        run: npm run test:maintenance-dynamic-scope
