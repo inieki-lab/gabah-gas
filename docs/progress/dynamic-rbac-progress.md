@@ -684,3 +684,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added PostgreSQL integration scenarios: IT and GA create vendors only in their owner domains; categories can differ from owner; Karyawan without vendor permission is denied; custom RPCSC owner + custom role + module scope can create/read a vendor; owner master cannot be deleted while referenced.
 
 **Validation:** source regression checks added. PostgreSQL runtime coverage is part of the latest CI head; wait for that exact run before reporting vendor tests as passed.
+
+
+### Deployment/runbook hardening — 2026-11-08
+
+- The previous deploy.sh auto-installed Docker from get.docker.com, shut down the existing Compose project with --remove-orphans, and printed success without verifying health. Replaced with fail-fast preflight, .env/PGPASSWORD validation, Compose config check, app-only recreation, health polling, and failure diagnostics. It no longer stops the DB first or claims success without health.
+- PostgreSQL host port now binds only to loopback. Compose now passes GABAH_INITIAL_ADMIN_PASSWORD and GABAH_INITIAL_USER_PASSWORD into the application container (previously documented in runbook but not passed by Compose).
+- CI checks Compose configuration and shell syntax. VM runbook now requires clean main, fast-forward-only update, database backup, health verification, and explicit rollback/restore safeguards. Production deploy remains NO-GO pending merge, UAT, restore rehearsal, TLS, and sign-off.
