@@ -982,3 +982,16 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Validasi file yang ketat mencegah upload file berbahaya
 
 ## [2026-10-14] — Perbaikan Menu RBAC Sidebar
+
+## [2026-11-08] — Prevent destructive branch-role migration
+
+### Fixed
+- Replaced the unsafe body of `server/migrations/026_map_branch_accounts_to_employee_location.sql` with an intentional no-op compatibility marker. The previous draft rewrote Supply Chain/PIBC users to Karyawan, deleted their branch-role assignments, and deactivated `UNIT-SC`/`UNIT-PIBC` based only on the legacy role label.
+- The revised migration preserves employee role, primary/additional role assignments, job level, organizational unit, and history. It explicitly states that location alone grants no data scope and that RPC/SC can be an operational asset owner independently of the physical site.
+- Added `scripts/branch-migration-safety-verify.mjs` and `npm run test:branch-migration-safety`; wired the check into `.github/workflows/ci.yml`.
+
+### Important migration caveat
+- Editing migration 026 prevents the unsafe draft from running on databases that have not applied it yet. It does **not** reverse changes in databases where the old version was already applied. Such environments require a separately reviewed recovery plan based on backups/audit evidence; no automatic role restoration is attempted.
+
+### Verification
+- CI run triggered for commit `c6c3b5946de8a72d5a13fcaf02cf7c202018c2b3` (run 42477031571) was still in progress when recorded. Do not report this change as CI-passing until the run completes.
