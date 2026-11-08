@@ -278,7 +278,10 @@ async function main() {
     const contractId = created.json?.data?.id || '';
     record('CR-04 contract create (201)', '201 + id', `HTTP ${created.status} id=${contractId ? 'ok' : 'missing'}`, created.status === 201 && Boolean(contractId));
 
-    const contractFileContent = 'GABAH-CONTRACT-DOCUMENT-PERSISTENCE-VERIFY';
+    const invalidContractUpload = await uploadContractDocument(base, contractId, adminToken, 'NOT-A-PDF-FILE');
+    record('CR-04 contract upload rejects content with a mismatched PDF signature', '400',
+      `HTTP ${invalidContractUpload.status}`, invalidContractUpload.status === 400);
+    const contractFileContent = '%PDF-1.4\\nGABAH-CONTRACT-DOCUMENT-PERSISTENCE-VERIFY';
     const uploadedDocument = await uploadContractDocument(base, contractId, adminToken, contractFileContent);
     const documentId = uploadedDocument.json?.data?.document_id || '';
     record('CR-04 contract upload writes document bytes to persistent storage', '200 + document id',
