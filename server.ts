@@ -2611,6 +2611,7 @@ async function startServer() {
   });
 
   app.post('/api/knowledge/:id/vote', (req, res) => {
+    if (!requireRbacPermission(req, res, 'knowledge.vote')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.helpful_votes += 1;
@@ -2619,6 +2620,7 @@ async function startServer() {
   });
 
   app.post('/api/knowledge/:id/view', (req, res) => {
+    if (!requireRbacPermission(req, res, 'knowledge.read')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.view_count += 1;
