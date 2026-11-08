@@ -486,7 +486,7 @@ async function startServer() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         role: primaryRole,
-        role_label: roleLabels[role] || (role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan — Lokasi ' + role : roleLabels[primaryRole]) || 'Pegawai Operasional',
+        role_label: (role === 'Supply Chain' || role === 'PIBC') ? 'Karyawan — Lokasi ' + role : (roleLabels[role] || roleLabels[primaryRole] || 'Pegawai Operasional'),
         division: division || 'Umum',
         department: department || 'Operasional',
         job_level_code: newJobLevel,
