@@ -259,7 +259,7 @@ async function main() {
     record('CR-04 contract update (PATCH notes)', '200 + notes applied', `HTTP ${patched.status} notes=${patched.json?.data?.notes || '-'}`, patched.status === 200 && patched.json?.data?.notes === 'updated notes by verify');
 
     const karyawanView = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
-    record('RBAC restricted contract hidden from other division (Karyawan)', '404', `HTTP ${karyawanView.status}`, karyawanView.status === 404);
+    record('RBAC Karyawan without contracts.read is denied before contract lookup', '403', `HTTP ${karyawanView.status}`, karyawanView.status === 403);
 
     const auditorCreate = await req(base, 'POST', '/api/contracts', {
       token: auditorToken,
