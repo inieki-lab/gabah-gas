@@ -2800,8 +2800,11 @@ async function startServer() {
   // Accurate ERP Reconciliation
   app.get('/api/reconciliation', (req, res) => {
     if (!requireRbacPermission(req, res, 'reconciliation.read')) return;
-    
-    const reconData = GabahDomainService.getReconciliationData();
+    const actor = getActor(req);
+    const visibleAssets = isSuperadminActor(actor) || actor.role === 'Auditor'
+      ? db.assets
+      : GabahDomainService.getScopedAssets(actor);
+    const reconData = GabahDomainService.getReconciliationData(visibleAssets);
     res.json({ success: true, data: reconData });
   });
 
@@ -2812,6 +2815,9 @@ async function startServer() {
     const { assetId, corporateAssetNumber } = req.body;
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
+    if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.update')) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Anda tidak memiliki permission dan owner scope untuk mengubah data aset ini.' });
+    }
 
     asset.corporate_asset_number = corporateAssetNumber ? corporateAssetNumber.trim() : null;
     asset.updated_at = new Date().toISOString();
