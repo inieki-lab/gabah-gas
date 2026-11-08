@@ -6,7 +6,7 @@ import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-loc
 import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
-import { isSuperadminActor, getUserRbacPolicies, hasRbacPermission } from './rbac-policy';
+import { isSuperadminActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
 
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
@@ -668,17 +668,8 @@ export class GabahDomainService {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
-    // Authority verification: IT for IT assets, GA for GA assets, Admin GABAH everywhere
-    if (!isSuperadminActor(actor)) {
-      if (loan.owner_division === 'IT' && actor.role !== 'IT') {
-        throw new Error('Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang menyetujui peminjaman aset IT (laptop/proyektor).');
-      }
-      if (loan.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Akses ditolak: Hanya Divisi GA atau Admin GABAH yang berwenang menyetujui peminjaman aset GA (kendaraan operasional).');
-      }
-      if (loan.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Akses ditolak: Hanya Divisi Supply Chain atau Admin GABAH yang berwenang menyetujui peminjaman aset SC.');
-      }
+    if (!this.canOperateLoan(loan, actor, 'loans.approve')) {
+      throw Object.assign(new Error('Akses ditolak: hanya pengelola owner IT/GA yang memiliki permission approve atau Super Admin yang dapat menyetujui pinjaman.'), { statusCode: 403 });
     }
 
     // Re-verify no collision with other ALREADY APPROVED / BORROWED loans for THIS specific asset
@@ -737,24 +728,8 @@ export class GabahDomainService {
       throw new Error('Hanya pinjaman berstatus menunggu persetujuan yang dapat ditolak.');
     }
 
-    // Authority verification: same matrix as approveLoan
-    if (!isSuperadminActor(actor)) {
-      if (loan.owner_division === 'IT' && actor.role !== 'IT') {
-        throw new Error('Akses ditolak: Hanya Divisi IT atau Admin GABAH yang berwenang menolak peminjaman aset IT.');
-      }
-      if (loan.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Akses ditolak: Hanya Divisi GA atau Admin GABAH yang berwenang menolak peminjaman aset GA.');
-      }
-      if (loan.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Akses ditolak: Hanya Divisi Supply Chain atau Admin GABAH yang berwenang menolak peminjaman aset SC.');
-      }
-      if (loan.owner_division === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error('Akses ditolak: Hanya Divisi PIBC atau Admin GABAH yang berwenang menolak peminjaman aset PIBC.');
-      }
-    }
-
-    if (actor.role === 'Auditor') {
-      throw new Error('Akses ditolak: Auditor bersifat read-only.');
+    if (!this.canOperateLoan(loan, actor, 'loans.reject')) {
+      throw Object.assign(new Error('Akses ditolak: hanya pengelola owner IT/GA yang memiliki permission reject atau Super Admin yang dapat menolak pinjaman.'), { statusCode: 403 });
     }
 
     loan.status = 'rejected';
@@ -783,13 +758,20 @@ export class GabahDomainService {
    * division custodians (IT, GA, Supply Chain, PIBC) act only on loans for
    * assets owned by their own division. No new roles, no dynamic RBAC changes.
    */
-  static canOperateLoan(loan: ServerLoan, actor: ServerUser): boolean {
+  static canOperateLoan(loan: ServerLoan, actor: ServerUser, permissionKey: 'loans.approve' | 'loans.reject' | 'loans.handover' | 'loans.return' = 'loans.handover'): boolean {
     if (isSuperadminActor(actor)) return true;
-    if (actor.role === 'IT' && loan.owner_division === 'IT') return true;
-    if (actor.role === 'GA' && loan.owner_division === 'GA') return true;
-    if (actor.role === 'Supply Chain' && loan.owner_division === 'SC') return true;
-    if (actor.role === 'PIBC' && loan.owner_division === 'PIBC') return true;
-    return false;
+
+    // SC/PIBC are locations, not asset-owner domains. Legacy loans attached
+    // to those owner values remain Super Admin review-only until each asset
+    // is individually classified; no branch account may operate them.
+    const owner = String(loan.owner_division || '').trim().toUpperCase();
+    if (owner !== 'IT' && owner !== 'GA') return false;
+
+    if (isPostgresPersistenceActive()) {
+      return hasRbacPermission(String(actor.id), permissionKey)
+        && hasRbacScope(String(actor.id), 'division', owner, 'loans');
+    }
+    return actor.role === owner;
   }
 
   /**
@@ -804,7 +786,7 @@ export class GabahDomainService {
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
     // Authorization: only the owner-division custodian (IT/GA/SC/PIBC) or Admin GABAH.
-    if (!this.canOperateLoan(loan, actor)) {
+    if (!this.canOperateLoan(loan, actor, 'loans.handover')) {
       this.recordAudit('LOAN_HANDOVER_DENIED', 'Loans', `Ditolak: ${actor.name} (${actor.role}) bukan penanggung jawab divisi ${loan.owner_division} untuk pinjaman ${loan.loan_number}`, actor, loan.id);
       throw Object.assign(new Error('Akses ditolak: Hanya penanggung jawab divisi pemilik aset atau Admin GABAH yang berwenang melakukan serah terima.'), { statusCode: 403 });
     }
@@ -847,7 +829,7 @@ export class GabahDomainService {
     // Authorization: owner-division custodian, Admin GABAH, or the borrower
     // returning their own loan (user A can never touch user B's loan).
     const isBorrower = loan.borrower_id === actor.id;
-    if (!isBorrower && !this.canOperateLoan(loan, actor)) {
+    if (!isBorrower && !this.canOperateLoan(loan, actor, 'loans.return')) {
       this.recordAudit('LOAN_RETURN_DENIED', 'Loans', `Ditolak: ${actor.name} (${actor.role}) bukan peminjam maupun penanggung jawab divisi ${loan.owner_division} untuk pinjaman ${loan.loan_number}`, actor, loan.id);
       throw Object.assign(new Error('Akses ditolak: Hanya peminjam, penanggung jawab divisi pemilik aset, atau Admin GABAH yang berwenang mengembalikan pinjaman ini.'), { statusCode: 403 });
     }
