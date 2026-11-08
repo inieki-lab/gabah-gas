@@ -27,6 +27,9 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: Asset scope policy regression checks
+        run: npm run test:asset-scope-policy
+
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
 
