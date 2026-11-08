@@ -1119,3 +1119,8 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - CI #446 (`42487582277`) passed with the dynamic ticket-owner authorization fix; CI #447 (`42487587798`) and #448 (`42487694450`) also passed on subsequent documentation heads.
 - Vendor audit confirms a broader issue than backend category mapping: `VendorsView.tsx` enables management only for hardcoded role labels Admin GABAH/IT/GA, while `/api/vendors` infers owner from category IT/License vs everything else GA. Vendor category and responsible owner are distinct concepts; future RPC/SC vendors cannot be represented safely yet.
 - Room reservation list still applies legacy role branches for GA, IT, Humas, and self-only users. These rules include privacy redaction and must be translated carefully into effective capabilities/scopes without exposing agenda descriptions, attendee lists, or documentation notes.
+
+
+### CI status correction — 2026-11-08
+- CI #449 (`42487698982`) completed SUCCESS on head `2dd9d2a9b79a07d7dcfd96291108b5cbfd46e14f`; this includes the ticket dynamic-owner-scope change and its regression check.
+- CI #450/#451 were triggered by the latest documentation-only commits and were still running/queued at this update. PR #18 remains Draft/Open and unmerged.
