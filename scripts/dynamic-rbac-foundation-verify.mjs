@@ -146,6 +146,7 @@ const checks = [
   ['legacy Supply Chain/PIBC roles lose asset mutation grants without rewriting asset records', /DELETE FROM gabah_role_permissions/.test(employeeNavigationPermissionSeed) && /r\.role_key IN \('supply_chain', 'pibc'\)/.test(employeeNavigationPermissionSeed) && /Historical owner_division values are not migrated/.test(employeeNavigationPermissionSeed)],
   ['authenticated API exposes effective permission keys for menu rendering', /getEffectivePermissionKeys/.test(server) && /permission_keys = safe\.is_superadmin \? \['\*'\] : getEffectivePermissionKeys/.test(server) && /is_superadmin = isRbacSuperadmin/.test(server) && /export function getEffectivePermissionKeys/.test(policy)],
   ['new employee form keeps branch/function roles out of primary profile and assigns office location independently', /export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES\.filter/.test(frontend) && /Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'/.test(frontend) && /office_location_id: newUserData\.office_location_id \|\| null/.test(frontend) && /officeLocations\.filter\(location => location\.is_active\)/.test(frontend)],
+  ['employee directory displays assigned additional roles and explains Auditor read-only precedence', /userAssignments\[String\(user\.id\)\][\s\S]*assignedRole\.name/.test(frontend) && /Auditor dipilih sebagai role tambahan[\s\S]*read-only/.test(frontend)],
 
 ];
 
