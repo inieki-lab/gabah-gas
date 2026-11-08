@@ -1,12 +1,3 @@
-## [2026-11-08] — Align legacy ticket reporter authorization
-
-- Ticket status middleware now recognizes the same exact normalized legacy reporter-name fallback as the ticket list and dashboard attention filter when `reporter_id` is absent.
-- Similar/partial names remain rejected; reporter ID and assigned-agent checks remain authoritative when present.
-- Added a regression contract for direct-ID ticket authorization.
-- CI for the follow-up branch has not run yet.
-
----
-
 ## [2026-11-08] — Unify asset visibility for list and direct-ID access
 
 ### Perbaikan keamanan dan konsistensi
