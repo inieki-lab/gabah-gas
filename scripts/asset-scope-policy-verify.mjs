@@ -10,7 +10,7 @@ const server = read('server.ts');
 const hardeningSource = read('server/runtime-hardening.ts');
 
 const checks = [
-  ['Dynamic asset visibility is owner-code agnostic and scope-driven', /const owner = String\(asset\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\);\s*if \(!owner\) return false;/.test(services) && /scope\.type === 'division'/.test(services) && /assetMatchesAssetScope\(asset, scope, user\)/.test(services)],
+  ['Dynamic asset visibility is owner-code agnostic and scope-driven', /const owner = String\(asset\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\);\s*if \(!owner\) return false;/.test(services) && /case 'division':[\s\S]*textEquals\(asset\.owner_division, scope\.value\)/.test(services) && /assetMatchesAssetScope\(asset, scope, user\)/.test(services)],
   ['GA and additional capabilities retain explicitly scoped owner domains', /const dynamicAssets = filterAssetsByDynamicScopes\(db\.assets, user\)/.test(services) && /\.\.\.dynamicAssets, \.\.\.readOnlyItWorkstations/.test(services)],
   ['GA IT read scope memerlukan permission khusus', /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)],
   ['GA IT read scope dibatasi taxonomy HLT dan HPC', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(services) && /readOnlyItWorkstations/.test(services)],
