@@ -1088,3 +1088,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - `requestLoan()` now rejects attempts by ordinary users to create a loan request with another employee's `borrower_id`. Delegated requests are not implemented as a capability yet; only Super Admin may set a different borrower until that workflow is explicitly designed.
 - `/api/loans`, approve, and reject routes now preserve domain `statusCode` values (including 403) rather than flattening authorization failures into HTTP 400.
 - Added regression assertions for borrower identity, authorization status propagation, and physical-location preservation on return.
+
+
+### Office master regression coverage — 2026-11-08
+- Migration 033 now safely deactivates an existing `org_office_locations` row whose name is Subang, if present, without deleting it. This does not touch `asset_locations`, so physical asset-location history is preserved.
+- Kantor Perawatan remains explicitly active. The five currently confirmed active offices are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan; future office sites may still be added through Super Admin master data.
+- Updated `scripts/org-model-verify.mjs`: the nine legacy role labels are documented as compatibility data, the old Kantor Pusat label was replaced by HO, and the live API check requires the five confirmed offices while allowing future locations.
