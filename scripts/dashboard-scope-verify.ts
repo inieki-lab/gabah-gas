@@ -32,23 +32,23 @@ const tickets = [
 
 assert.deepEqual(filterDashboardAssets(assets, 'IT').map(x => x.id), ['it-device', 'it-license']);
 assert.deepEqual(filterDashboardAssets(assets, 'GA').map(x => x.id), ['ga-device']);
-assert.deepEqual(filterDashboardAssets(assets, 'Supply Chain').map(x => x.id), ['sc-device']);
-assert.deepEqual(filterDashboardAssets(assets, 'PIBC').map(x => x.id), ['pibc-device']);
+assert.deepEqual(filterDashboardAssets(assets, 'Supply Chain').map(x => x.id), []);
+assert.deepEqual(filterDashboardAssets(assets, 'PIBC').map(x => x.id), []);
 assert.equal(filterDashboardAssets(assets, 'Admin GABAH').length, assets.length);
 assert.equal(filterDashboardAssets(assets, 'Auditor').length, assets.length);
 
 assert.deepEqual(filterDashboardLoans(loans, 'IT').map(x => x.id), ['it-loan']);
 assert.deepEqual(filterDashboardLoans(loans, 'GA').map(x => x.id), ['ga-loan']);
-assert.deepEqual(filterDashboardLoans(loans, 'Supply Chain').map(x => x.id), ['sc-loan']);
-assert.deepEqual(filterDashboardLoans(loans, 'PIBC').map(x => x.id), ['pibc-loan']);
+assert.deepEqual(filterDashboardLoans(loans, 'Supply Chain').map(x => x.id), []);
+assert.deepEqual(filterDashboardLoans(loans, 'PIBC').map(x => x.id), []);
 assert.equal(filterDashboardLoans(loans, 'Auditor').length, loans.length);
 
-assert.equal(filterDashboardTickets(tickets, 'IT').length, tickets.length);
+assert.deepEqual(filterDashboardTickets(tickets, 'IT').map(x => x.id), ['it-ticket']);
 assert.equal(filterDashboardTickets(tickets, 'Admin GABAH').length, tickets.length);
 assert.equal(filterDashboardTickets(tickets, 'Auditor').length, tickets.length);
 assert.equal(filterDashboardTickets([tickets[1]], 'GA').length, 1, 'preserve GA reporter-visible ticket');
-assert.equal(filterDashboardTickets([tickets[2]], 'Supply Chain').length, 1, 'preserve SC reporter-visible ticket');
-assert.equal(filterDashboardTickets([tickets[3]], 'PIBC').length, 1, 'preserve PIBC reporter-visible ticket');
+assert.equal(filterDashboardTickets([tickets[2]], 'Supply Chain').length, 0, 'branch location does not grant category-wide ticket visibility');
+assert.equal(filterDashboardTickets([tickets[3]], 'PIBC').length, 0, 'branch location does not grant category-wide ticket visibility');
 
 assert.equal(isExactIdentityNameMatch('Budi Santoso', 'budi santoso'), true);
 assert.equal(isExactIdentityNameMatch('Budi', 'Budi Santoso'), false);
@@ -81,7 +81,7 @@ const schedules = [
   { id: 'pibc-schedule', owner_division: 'PIBC' },
 ];
 assert.deepEqual(filterMaintenanceForRole(schedules, 'GA').map(x => x.id), ['ga-schedule']);
-assert.deepEqual(filterMaintenanceForRole(schedules, 'Supply Chain').map(x => x.id), ['sc-schedule']);
+assert.deepEqual(filterMaintenanceForRole(schedules, 'Supply Chain').map(x => x.id), []);
 assert.equal(filterMaintenanceForRole(schedules, 'Auditor').length, schedules.length);
 
 const contracts = [
