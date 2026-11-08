@@ -1082,3 +1082,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Audited loan custody transitions and removed the hardcoded location reset to `Head Office - Gudang Pool` during loan return. Returning an item changes custody/status/condition; it must not silently relocate the physical asset. A real move must use the asset-mutation workflow and its audit trail.
 - Updated loan authorization error text and comments to describe permission + Loans owner scope, not an IT/GA-only whitelist.
 - CI run 42486650240 failed at TypeScript parsing of the newly added office regression regex (not application logic). Corrected the regex in the subsequent commit; latest CI result must be checked before claiming pass.
+
+
+### Loan request authorization hardening — 2026-11-08
+- `requestLoan()` now rejects attempts by ordinary users to create a loan request with another employee's `borrower_id`. Delegated requests are not implemented as a capability yet; only Super Admin may set a different borrower until that workflow is explicitly designed.
+- `/api/loans`, approve, and reject routes now preserve domain `statusCode` values (including 403) rather than flattening authorization failures into HTTP 400.
+- Added regression assertions for borrower identity, authorization status propagation, and physical-location preservation on return.
