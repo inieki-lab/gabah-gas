@@ -2954,21 +2954,32 @@ async function startServer() {
     storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-      const allowedMimes = [
-        'application/pdf',
-        'image/jpeg',
-        'image/png',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ];
-      const allowedExts = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+      const mimeByExtension: Record<string, string> = {
+        '.pdf': 'application/pdf',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      };
       const ext = path.extname(file.originalname).toLowerCase();
-      if (!allowedMimes.includes(file.mimetype) && !allowedExts.includes(ext)) {
-        return cb(new Error('Jenis file tidak diizinkan. Hanya PDF, JPG, PNG, DOC, DOCX.'));
+      if (!mimeByExtension[ext] || mimeByExtension[ext] !== file.mimetype) {
+        return cb(new Error('Jenis file tidak diizinkan atau MIME tidak sesuai. Hanya PDF, JPG, PNG, DOC, DOCX.'));
       }
       cb(null, true);
     },
   });
+
+  const hasValidContractDocumentSignature = (file: Express.Multer.File): boolean => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const bytes = file.buffer;
+    if (ext === '.pdf') return bytes.subarray(0, 5).toString() === '%PDF-';
+    if (ext === '.jpg' || ext === '.jpeg') return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    if (ext === '.png') return bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    if (ext === '.doc') return bytes.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
+    if (ext === '.docx') return bytes.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+    return false;
+  };
 
   const authorizeContractDocumentUpload = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
@@ -2994,6 +3005,9 @@ async function startServer() {
       }
 
       const file = req.file;
+      if (!hasValidContractDocumentSignature(file)) {
+        return res.status(400).json({ success: false, message: 'Isi file tidak sesuai dengan tipe dokumen yang diizinkan.' });
+      }
       const contract = db.contracts.find(c => c.id === contractId);
       if (!contract) {
         return res.status(404).json({ success: false, message: 'Kontrak tidak ditemukan.' });
