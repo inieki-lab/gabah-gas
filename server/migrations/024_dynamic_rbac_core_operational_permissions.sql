@@ -17,6 +17,7 @@ JOIN (VALUES
   ('loans.create'),
   ('loans.return'),
   ('tickets.create'),
+  ('knowledge.vote'),
   ('notifications.read'),
   ('notifications.read_all'),
   ('room_reservations.cancel'),
