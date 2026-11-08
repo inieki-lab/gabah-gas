@@ -1165,3 +1165,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Closed PR #13 (expanded regression CI), PR #14 (fresh PostgreSQL contract migration fix), and PR #15 (sidebar fail-closed) as superseded. Their relevant work is now carried by PR #18: expanded CI workflow, corrected migrations 004/015, and dynamic permission-based fail-closed sidebar navigation.
 - Their remote branches are no longer active work paths. No branches or commits were force-deleted; Git history is preserved. Continue development only on `fix/role-based-navigation` until it is merged to `main`.
 - PR #11 deployment hardening, PR #12 finalization checklist, PR #17 user/role assignment audit, and PR #3 legacy ticket gate remain open pending review/consolidation; do not start parallel implementation branches.
+
+
+### Auditor ticket read-only correction — 2026-11-08
+- Found migration 024 granted `tickets.create` to Auditor along with employee roles, contradicting Auditor's read-only mandate. Route-level Auditor denial existed, but the effective permission could still expose a create action in the UI.
+- Added migration 036 to remove only the Auditor `tickets.create` role grant. `tickets.read` remains granted; no tickets or user records are modified.
+- Added a regression check ensuring Auditor retains read permission and is denied create permission. PR #3's older ticket seed approach is superseded by the current consolidated permission catalog/seeds and this correction.
