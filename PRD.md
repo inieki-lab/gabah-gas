@@ -108,7 +108,17 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 - **Tidak ada migrasi massal owner aset SC/PIBC berdasarkan lokasi.** Nilai owner legacy harus ditinjau per aset dan dipetakan ke pengelola yang benar. Sampai review selesai, aset yang belum jelas kepemilikannya tidak boleh otomatis dipindahkan ke GA atau IT.
 - Penambahan cabang atau lokasi baru tidak boleh memerlukan penambahan role aplikasi baru. Super Admin cukup mengelola master organisasi, penempatan pegawai, role, permission, dan scope.
 
-### 2.3A Master Lokasi Aktif dan Owner Domain Fleksibel (Keputusan 8 November 2026)
+### 2.3 Role Primer, Role Tambahan, dan Scope per Modul
+
+- Setiap pegawai memiliki satu role primer yang selaras dengan role aplikasi dasarnya (misalnya Karyawan, IT, GA, Humas, Sekretaris Direksi, Auditor). Role primer tersimpan selaras dengan profil pengguna.
+- Super Admin dapat menetapkan role tambahan kepada pegawai untuk fungsi/jabatan tertentu. Role tambahan menambah permission dan scope tanpa mengganti identitas pegawai, jabatan, unit, atau lokasi kerja.
+- Penggantian role primer tidak boleh menghapus role tambahan yang masih sah; role primer lama harus dilepas agar permission lama tidak tertinggal.
+- Permission dan scope adalah dua hal berbeda. Permission menjawab tindakan apa yang boleh dilakukan; scope menjawab data mana yang boleh dijangkau.
+- Scope wajib memiliki modul (misalnya assets, loans, tickets, vendors, contracts). Scope modul assets tidak otomatis memberi akses ke loans/tickets/contracts, dan sebaliknya.
+- Scope '*' (semua modul) dan scope all harus ditetapkan secara eksplisit oleh Super Admin. Resolver backend tetap membatasi owner legacy SC/PIBC agar tidak ikut terbuka ke role operasional biasa.
+- Navigasi frontend menggunakan permission efektif. Seluruh endpoint, detail-by-ID, dashboard, pencarian, export, dan aksi mutasi tetap memeriksa permission serta scope di backend.
+- Data hasil API yang sudah di-scope backend tidak boleh difilter ulang memakai satu nama role legacy di frontend karena pegawai dapat memiliki role tambahan.
+### 2.4 Master Lokasi Aktif dan Owner Domain Fleksibel (Keputusan 8 November 2026)
 
 **Master lokasi kantor aktif saat ini (lima lokasi):**
 1. HO (OFF-KP)
@@ -128,7 +138,7 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 - Fungsi operasional seperti RPC/SC dapat menjadi owner aset terpisah dari lokasi kantor RPC/SC. Contoh: mesin produksi/gudang yang berada di lokasi Subang (contoh historis) tetap dapat dimiliki fungsi RPC/SC; lokasi tidak memindahkan owner.
 - Data owner historis yang ambigu harus masuk daftar review Super Admin. Tidak boleh ada mass reassignment owner berdasarkan nama cabang, lokasi, atau kategori semata.
 
-### 2.3B Kontrak Data dan Otorisasi Target
+### 2.5 Kontrak Data dan Otorisasi Target
 
 - users.role dipertahankan sebagai profil/role primer selama transisi; gabah_user_roles menyimpan role primer dan role tambahan yang aktif. Role tambahan tidak boleh hilang akibat siklus persistensi normal.
 - Permission efektif berasal dari gabungan role dinamis yang ditetapkan secara eksplisit; scope diperiksa per modul dan objek. Tidak ada grant hanya karena jabatan atau lokasi kerja.
@@ -136,16 +146,6 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 - Semua endpoint list, detail-by-ID, create, update, delete, approve/reject, export, pencarian, dan agregasi harus menerapkan permission serta scope di backend. Menu frontend hanya cerminan hak efektif.
 - Migrasi skema/seed boleh berjalan otomatis pada database baru; migrasi data produksi harus didahului backup, dry-run, laporan dampak, rencana rollback, dan persetujuan eksplisit.
 
-### 2.3 Role Primer, Role Tambahan, dan Scope per Modul
-
-- Setiap pegawai memiliki satu role primer yang selaras dengan role aplikasi dasarnya (misalnya Karyawan, IT, GA, Humas, Sekretaris Direksi, Auditor). Role primer tersimpan selaras dengan profil pengguna.
-- Super Admin dapat menetapkan role tambahan kepada pegawai untuk fungsi/jabatan tertentu. Role tambahan menambah permission dan scope tanpa mengganti identitas pegawai, jabatan, unit, atau lokasi kerja.
-- Penggantian role primer tidak boleh menghapus role tambahan yang masih sah; role primer lama harus dilepas agar permission lama tidak tertinggal.
-- Permission dan scope adalah dua hal berbeda. Permission menjawab tindakan apa yang boleh dilakukan; scope menjawab data mana yang boleh dijangkau.
-- Scope wajib memiliki modul (misalnya assets, loans, tickets, vendors, contracts). Scope modul assets tidak otomatis memberi akses ke loans/tickets/contracts, dan sebaliknya.
-- Scope '*' (semua modul) dan scope all harus ditetapkan secara eksplisit oleh Super Admin. Resolver backend tetap membatasi owner legacy SC/PIBC agar tidak ikut terbuka ke role operasional biasa.
-- Navigasi frontend menggunakan permission efektif. Seluruh endpoint, detail-by-ID, dashboard, pencarian, export, dan aksi mutasi tetap memeriksa permission serta scope di backend.
-- Data hasil API yang sudah di-scope backend tidak boleh difilter ulang memakai satu nama role legacy di frontend karena pegawai dapat memiliki role tambahan.
 ---
 
 ## 3. Fitur Utama Sistem (Core Capabilities)
@@ -209,7 +209,17 @@ Kategori tiket helpdesk bersifat divisial dan **terbatas**: `IT`, `GA`, `SC`, `P
   - Notifikasi ke Humas untuk permintaan peliputan media dan dokumentasi foto/video.
 - Fitur Check-In dan Check-Out ruangan secara real-time.
 
-### 3.7 Administration Control Panel (Khusus Super Admin)
+### 3.9 Direktori Vendor dan Owner Domain
+
+- Vendor memiliki kategori layanan (contoh: IT Hardware, License, Maintenance, General) dan owner domain yang terpisah.
+- Kategori vendor tidak boleh otomatis menentukan owner. Vendor kategori IT Hardware dapat dimiliki fungsi lain jika kebijakan bisnis menyatakannya.
+- Owner vendor harus dipilih dari master owner domain yang aktif. Owner domain dapat ditambah oleh Super Admin tanpa perubahan kode.
+- IT, GA, dan role operasional lain hanya dapat melihat/mengelola vendor sesuai permission modul vendors dan scope owner yang diberikan.
+- Perubahan owner vendor memerlukan kewenangan atas owner asal dan owner tujuan. Vendor lama tanpa owner hanya dapat diklasifikasikan oleh Super Admin.
+- Owner domain tidak boleh dihapus selama masih direferensikan vendor, kontrak, aset, maintenance, peminjaman, kategori, pegawai, atau unit organisasi.
+- Tidak boleh menampilkan metrik SLA atau kontrak yang tidak berasal dari data aktual.
+
+### 3.8 Administration Control Panel (Khusus Super Admin)
 - Disediakan secara eksklusif untuk peran `Admin GABAH`:
   1. Manajemen Pengguna (Tambah, Edit, Nonaktifkan Akun, Reset Password).
   2. Matriks Peran & Izin Akses (RBAC Viewer).
