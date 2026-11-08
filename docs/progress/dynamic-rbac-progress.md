@@ -551,3 +551,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Run #438 failed only the new office migration source assertion: the test expected `LOWER(BTRIM(name))` before `is_active = FALSE`, while SQL correctly expresses `SET is_active = FALSE WHERE LOWER(BTRIM(name)) = 'subang'`. Test order was corrected.
 - Manual review also caught a trailing comma in the first `UPDATE org_office_locations ... SET name = CASE` statement after removing the prior deactivation expression. Removed the comma; statement is now `END WHERE ...`.
 - Run #439 was queued on the documentation head at the time of writing. Verify its result and logs before claiming CI green.
+
+
+### Ticket status authorization audit — 2026-11-08
+- Found an inconsistency between ticket list scope and ticket status mutation: list visibility accepted arbitrary owner codes through dynamic scope, but `runtime-hardening.ts::canManageTicket()` only recognized IT/GA scopes in PostgreSQL. This blocked operational functions such as RPC/SC despite explicit permission + owner scope.
+- Fixed PostgreSQL guard to check the ticket's category/owner code generically with `hasRbacScope(actor, 'division', owner, 'tickets')`; legacy IT/GA role-label checks now apply only in file-store compatibility mode. Reporter/assignee self-access remains; Auditor stays read-only.
+- Added regression assertion. CI status for the newest head is pending; do not claim this ticket change verified until CI completes.
