@@ -53,6 +53,31 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
   return result;
 }
 
+/**
+ * One domain-level mutation decision for assets. In PostgreSQL mode the
+ * effective permission and explicit owner-division scope are both required.
+ * JSON/file-store mode retains the narrow legacy owner mapping for compatibility.
+ */
+function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
+  if (isSuperadminActor(actor)) return true;
+  const owner = String(ownerDivision || '').trim().toUpperCase();
+  if (!owner) return false;
+
+  if (isPostgresPersistenceActive()) {
+    const authority = getDynamicAssetWriteAuthority(actor);
+    return hasRbacPermission(String(actor.id), permissionKey)
+      && (authority.all || authority.divisions.has(owner));
+  }
+
+  const legacyOwnerByRole: Record<string, string> = {
+    IT: 'IT',
+    GA: 'GA',
+    'Supply Chain': 'SC',
+    PIBC: 'PIBC',
+  };
+  return legacyOwnerByRole[actor.role] === owner;
+}
+
 function textEquals(left: unknown, right: unknown): boolean {
   if (left == null || right == null) return false;
   return String(left).trim().toLowerCase() === String(right).trim().toLowerCase();
@@ -300,23 +325,9 @@ export class GabahDomainService {
       resolvedOwnerDivision = payload.owner_division;
     }
 
-    // 2. Authorization check: Division Authority
-    if (actor.role === 'Karyawan' || actor.role === 'Auditor' || actor.role === 'Humas' || actor.role === 'Sekretaris Direksi') {
-      throw new Error('Peran Anda tidak berwenang mendaftarkan aset baru.');
-    }
-    if (!isSuperadminActor(actor)) {
-      if (resolvedOwnerDivision === 'IT' && actor.role !== 'IT') {
-        throw new Error(`Semua barang IT adalah milik Divisi IT. Divisi ${actor.role} hanya memiliki izin lihat (read-only).`);
-      }
-      if (resolvedOwnerDivision === 'GA' && actor.role !== 'GA' && taxonomy.code !== 'INV-F') {
-        throw new Error(`Hanya Divisi GA yang berwenang mendaftarkan aset kategori ${taxonomy.name}.`);
-      }
-      if (resolvedOwnerDivision === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error(`Hanya Divisi Supply Chain yang berwenang mendaftarkan aset kategori ${taxonomy.name}.`);
-      }
-      if (resolvedOwnerDivision === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error(`Hanya Divisi PIBC yang berwenang mendaftarkan aset kategori ${taxonomy.name}.`);
-      }
+    // Authorization is based on the effective create permission AND explicit owner scope.
+    if (!canMutateAssetOwner(actor, resolvedOwnerDivision, 'assets.create')) {
+      throw new Error(`Akses ditolak: Anda tidak memiliki kewenangan membuat aset dengan owner ${resolvedOwnerDivision}.`);
     }
 
     // Check for duplicate serial number
@@ -428,21 +439,8 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
-    // Corporate Division Authority
-    if (!isSuperadminActor(actor)) {
-      const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
-      if (isITAsset && actor.role !== 'IT') {
-        throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang menugaskan aset ini.');
-      }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Aset General Affair (GA) hanya dapat ditugaskan oleh personel GA atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Aset Supply Chain hanya dapat ditugaskan oleh personel Supply Chain atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error('Aset PIBC hanya dapat ditugaskan oleh personel PIBC atau Admin GABAH.');
-      }
+    if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.assign')) {
+      throw new Error('Akses ditolak: Anda tidak memiliki permission assign pada domain pemilik aset ini.');
     }
 
     const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
@@ -513,22 +511,8 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
-    // Corporate Division Authority (RBAC matrix — Mutasi Lokasi): setiap divisi
-    // hanya boleh merelokasi aset miliknya sendiri; Admin GABAH bebas. View
-    // scope lintas divisi (mis. IT melihat aset GA) tidak memperluas hak mutasi.
-    if (!isSuperadminActor(actor)) {
-      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
-        throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang merelokasi aset IT.');
-      }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Aset General Affair (GA) hanya dapat direlokasi oleh personel GA atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Aset Supply Chain hanya dapat direlokasi oleh personel Supply Chain atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error('Aset PIBC hanya dapat direlokasi oleh personel PIBC atau Admin GABAH.');
-      }
+    if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.move')) {
+      throw new Error('Akses ditolak: Anda tidak memiliki permission move pada domain pemilik aset ini.');
     }
 
     const oldLocation = asset.location;
@@ -563,22 +547,8 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
-    // Corporate Division Authority (RBAC matrix — Mutasi Siklus Hidup): setiap
-    // divisi hanya boleh memutasi lifecycle aset miliknya sendiri; Admin GABAH
-    // bebas. View scope lintas divisi tidak memperluas hak mutasi.
-    if (!isSuperadminActor(actor)) {
-      if (asset.owner_division === 'IT' && actor.role !== 'IT') {
-        throw new Error('Semua barang IT adalah milik Divisi IT. Divisi GA hanya memiliki izin lihat (read-only) dan tidak berwenang mengubah lifecycle aset IT.');
-      }
-      if (asset.owner_division === 'GA' && actor.role !== 'GA') {
-        throw new Error('Aset General Affair (GA) hanya dapat dimutasi lifecycle-nya oleh personel GA atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'SC' && actor.role !== 'Supply Chain') {
-        throw new Error('Aset Supply Chain hanya dapat dimutasi lifecycle-nya oleh personel Supply Chain atau Admin GABAH.');
-      }
-      if (asset.owner_division === 'PIBC' && actor.role !== 'PIBC') {
-        throw new Error('Aset PIBC hanya dapat dimutasi lifecycle-nya oleh personel PIBC atau Admin GABAH.');
-      }
+    if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.lifecycle')) {
+      throw new Error('Akses ditolak: Anda tidak memiliki permission lifecycle pada domain pemilik aset ini.');
     }
 
     switch (action) {
