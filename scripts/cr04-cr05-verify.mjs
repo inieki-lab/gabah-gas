@@ -69,6 +69,27 @@ async function req(base, method, urlPath, { body, token, headers } = {}) {
   return { status: res.status, json };
 }
 
+async function uploadContractDocument(base, contractId, token, content) {
+  const form = new FormData();
+  form.append('file', new Blob([Buffer.from(content)], { type: 'application/pdf' }), 'verify-contract.pdf');
+  const res = await fetch(`${base}/api/contracts/${contractId}/documents/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+    signal: AbortSignal.timeout(15000),
+  });
+  let json = {};
+  try { json = await res.json(); } catch { /* empty body */ }
+  return { status: res.status, json };
+}
+
+async function downloadContractDocument(base, contractId, documentId, token) {
+  return fetch(`${base}/api/contracts/${contractId}/documents/${documentId}/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15000),
+  });
+}
+
 async function waitForServer(base, tries = 80) {
   for (let i = 0; i < tries; i++) {
     try {
@@ -107,6 +128,7 @@ function spawnServer({ port, databaseUrl, nodeEnv }) {
       GABAH_REMINDER_RUN_ON_BOOT: 'false',
       GABAH_INITIAL_ADMIN_PASSWORD: ADMIN_PASS,
       GABAH_INITIAL_USER_PASSWORD: USER_PASS,
+      GABAH_UPLOAD_DIR: path.resolve(process.cwd(), 'server/data/cr-verify-uploads'),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -163,9 +185,11 @@ async function main() {
   let exited = null;
   child.on('exit', (code, signal) => { exited = { code, signal }; });
 
+  const uploadDir = path.resolve(process.cwd(), 'server/data/cr-verify-uploads');
   const cleanup = () => {
     try { child.kill('SIGKILL'); } catch { /* already dead */ }
     if (backupState !== null) fs.writeFileSync(stateFile, backupState);
+    try { fs.rmSync(uploadDir, { recursive: true, force: true }); } catch { /* best effort */ }
   };
   process.on('exit', cleanup);
   process.on('SIGINT', () => { cleanup(); process.exit(130); });
@@ -254,6 +278,19 @@ async function main() {
     const contractId = created.json?.data?.id || '';
     record('CR-04 contract create (201)', '201 + id', `HTTP ${created.status} id=${contractId ? 'ok' : 'missing'}`, created.status === 201 && Boolean(contractId));
 
+    const contractFileContent = 'GABAH-CONTRACT-DOCUMENT-PERSISTENCE-VERIFY';
+    const uploadedDocument = await uploadContractDocument(base, contractId, adminToken, contractFileContent);
+    const documentId = uploadedDocument.json?.data?.document_id || '';
+    record('CR-04 contract upload writes document bytes to persistent storage', '200 + document id',
+      `HTTP ${uploadedDocument.status} id=${documentId ? 'ok' : 'missing'}`,
+      uploadedDocument.status === 200 && Boolean(documentId));
+
+    const initialDownload = documentId ? await downloadContractDocument(base, contractId, documentId, adminToken) : null;
+    const initialDownloadBody = initialDownload ? await initialDownload.text() : '';
+    record('CR-04 authorized contract document download returns original bytes', '200 + exact content',
+      `HTTP ${initialDownload?.status ?? 'skipped'} content=${initialDownloadBody}`,
+      initialDownload?.status === 200 && initialDownloadBody === contractFileContent);
+
     const readBack = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken });
     record('CR-04 contract read-back', '200 + contract_number', `HTTP ${readBack.status} num=${readBack.json?.data?.contract_number || '-'}`, readBack.status === 200 && Boolean(readBack.json?.data?.contract_number));
 
@@ -276,6 +313,11 @@ async function main() {
 
     const karyawanView = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
     record('RBAC Karyawan with GA role cannot read IT-owned contract outside GA scope', '404', `HTTP ${karyawanView.status}`, karyawanView.status === 404);
+    const karyawanDocumentDownload = documentId
+      ? await downloadContractDocument(base, contractId, documentId, karyawanToken)
+      : null;
+    record('RBAC Karyawan cannot download an out-of-scope contract document', '404',
+      `HTTP ${karyawanDocumentDownload?.status ?? 'skipped'}`, karyawanDocumentDownload?.status === 404);
 
     const auditorCreate = await req(base, 'POST', '/api/contracts', {
       token: auditorToken,
@@ -409,6 +451,13 @@ async function main() {
     const additionalAuditorRead = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
     record('Auditor additional role receives authorized audit read access', '200',
       `HTTP ${additionalAuditorRead.status}`, additionalAuditorRead.status === 200);
+    const auditorDocumentDownload = documentId
+      ? await downloadContractDocument(base, contractId, documentId, karyawanToken)
+      : null;
+    const auditorDocumentBody = auditorDocumentDownload ? await auditorDocumentDownload.text() : '';
+    record('Auditor additional role can download authorized audit document', '200 + exact content',
+      `HTTP ${auditorDocumentDownload?.status ?? 'skipped'}`,
+      auditorDocumentDownload?.status === 200 && auditorDocumentBody === contractFileContent);
 
     const deleteReferencedOwner = await req(base, 'DELETE', '/api/master/divisions/RPCSC', { token: adminToken });
     record('Owner domain referenced by vendor cannot be deleted', '400', `HTTP ${deleteReferencedOwner.status}`, deleteReferencedOwner.status === 400);
@@ -472,6 +521,13 @@ async function main() {
     const afterRestart = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken2 });
     record('CR-04 contract persists across restart (PostgreSQL authoritative)', '200 + updated notes', `HTTP ${afterRestart.status} notes=${afterRestart.json?.data?.notes || '-'}`,
       afterRestart.status === 200 && afterRestart.json?.data?.notes === 'updated notes by verify' && afterRestart.json?.data?.contract_number === readBack.json?.data?.contract_number);
+    const documentAfterRestart = documentId
+      ? await downloadContractDocument(base, contractId, documentId, adminToken2)
+      : null;
+    const documentBodyAfterRestart = documentAfterRestart ? await documentAfterRestart.text() : '';
+    record('CR-04 contract document bytes persist across app restart', '200 + exact content',
+      `HTTP ${documentAfterRestart?.status ?? 'skipped'}`,
+      documentAfterRestart?.status === 200 && documentBodyAfterRestart === contractFileContent);
 
     const ticketsAfter = await req(base, 'GET', '/api/tickets', { token: adminToken2 });
     const persistedLink = (ticketsAfter.json?.data || []).some(t => t.id === linkedTicketId && t.contract_id === contractId);
