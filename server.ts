@@ -356,6 +356,7 @@ async function startServer() {
 
   // Auth / Users
   app.get('/api/users', (req, res) => {
+    if (!requireRbacPermission(req, res, 'users.read')) return;
     res.json({ success: true, data: db.users.map(u => sanitizeUser(u)) });
   });
 
