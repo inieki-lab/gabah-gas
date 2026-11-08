@@ -502,3 +502,32 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Current active office locations: HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang remains closed/not an active office location.
 - Corrected seed (`server/db.ts`), persistence fallback, migration 033, and regression assertions. No user or asset references are reassigned or deleted.
 - Validation status: CI for the correction is pending; do not claim pass until the run completes.
+
+
+### Handoff update — 2026-11-08 (office migration + loan custody audit)
+
+**Branch:** `fix/role-based-navigation`  
+**PR:** #18 (Draft/Open, not merged)  
+**Latest code commit at this update:** `00e628e601ed3cf06554ce29161d6a99fa162050`
+
+#### New user-confirmed office rule
+- Kantor Perawatan is still operational. The five active office locations are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is closed and is not an active office location.
+- The previous migration 033 incorrectly deactivated OFF-PERAWATAN. Fixed it to set `name='Kantor Perawatan', is_active=TRUE`; no IDs, user references, or asset references are deleted/reassigned.
+- Seed and persistence fallback already contain all five active locations. Super Admin-managed master data remains extensible.
+
+#### CI correction
+- CI run 42486650240 failed during `npm run lint` because TypeScript parses the `.mjs` regression script and the RPC/SC regex literal was malformed. This is a test-source syntax error, not evidence of an application build/runtime defect.
+- Corrected RPC/SC matching to use a slash-safe regex and strengthened migration 033 assertion to require the explicit active update. Added regression coverage for loan-return location preservation.
+- Latest CI on commit `00e628e601ed3cf06554ce29161d6a99fa162050` must be checked; do not claim green until a new run completes.
+
+#### Loan custody audit finding and fix
+- `GabahDomainService.canOperateLoan` already uses the loan operation permission plus explicit matching owner scope in PostgreSQL, so owner domains are not limited to IT/GA for this path.
+- Updated stale IT/GA-only error messages and old hardcoded-role comments.
+- Found a business-data defect: `returnLoan()` silently set every returned asset's physical location to `Head Office - Gudang Pool`. Removed that assignment. A return changes custody/status/condition only; physical relocation must be a separate authorized asset-move workflow.
+- Added regression assertion that loan return cannot reset physical location.
+
+#### Next actions
+1. Check CI on latest head and fix any remaining test failures.
+2. Continue endpoint-by-endpoint authorization audit, prioritizing loan list/detail/BAST, tickets, room reservations, reports, vendors, licenses, exports, dashboard aggregates, and Administration masters.
+3. Reconcile stale `scripts/org-model-verify.mjs` assumptions about role/location names and add an API-level check for all five active office locations.
+4. Keep PR #18 Draft/Open until backend scope audit and representative role UAT are complete. No production migrations without backup, dry-run, impact report, and explicit approval.
