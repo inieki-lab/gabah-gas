@@ -1,0 +1,126 @@
+# Audit RBAC, Struktur Organisasi, dan Data Scope GABAH
+
+Tanggal audit: 8 November 2026  
+Branch: `fix/role-based-navigation`  
+Status: temuan awal terverifikasi dari source code; belum merupakan pernyataan bahwa seluruh endpoint telah diaudit.
+
+## 1. Keputusan bisnis yang menjadi acuan
+
+GABAH adalah aplikasi internal perusahaan untuk HO dan seluruh cabang/lokasi operasional. Lokasi Supply Chain dan PIBC bukan role aplikasi dan bukan otomatis pemilik aset.
+
+Setiap pengguna harus memiliki atribut yang terpisah:
+- identitas akun;
+- role aplikasi (satu atau lebih paket fungsi);
+- permission tindakan: read, create, update, delete, approve, assign, administer;
+- data scope: own, unit, lokasi, domain pemilik aset, atau global;
+- jabatan/level (Direksi, Kadiv, Kadep, Kasi, Staf);
+- unit organisasi/departemen;
+- lokasi kerja/kantor.
+
+Jabatan, unit, dan lokasi tidak boleh otomatis memberikan permission. Super Admin mengelola master, role, permission, assignment, dan scope. Struktur dapat berkembang tanpa menambah role baru hanya karena ada cabang baru.
+
+### Kebijakan aset yang tidak boleh berubah
+
+| Pengguna | Read | Mutasi |
+|---|---|---|
+| Super Admin | Semua aset, semua lokasi | Semua tindakan administratif yang diizinkan |
+| IT | Semua aset owner IT, semua lokasi | Aset owner IT |
+| GA | Semua aset owner GA, semua lokasi | Aset owner GA |
+| GA terhadap aset IT | Hanya Laptop dan PC/Desktop, jika permission baca khusus diaktifkan | Tidak boleh |
+| Pegawai biasa | Aset yang ditugaskan kepadanya; katalog pinjaman hanya sesuai kebijakan | Tidak mendapat hak kelola aset hanya karena jabatan/lokasi |
+| Auditor | Semua data sesuai mandat audit | Read-only |
+
+Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset tidak menentukan owner_division atau siapa yang boleh memutasi aset.
+
+## 2. Temuan source code terverifikasi
+
+### P0 — Otorisasi backend dan kebocoran scope
+
+1. `server/services.ts`, `GabahDomainService.getScopedAssets()`:
+   - IT masih mendapat aset owner IT **dan GA**.
+   - GA melihat aset GA dan sebagian workstation IT, tetapi akses workstation belum dikendalikan oleh permission khusus Super Admin.
+   - Role Supply Chain dan PIBC masih mendapat aset karena `owner_division === SC/PIBC` atau kecocokan teks lokasi/departemen. Ini mencampur lokasi dengan kepemilikan dan scope.
+   - Humas mendapat daftar aset kosong, bertentangan dengan fungsi dasar pegawai untuk melihat aset yang ditugaskan.
+   - Karyawan/Sekretaris Direksi melihat seluruh aset loanable tanpa pembuktian bahwa katalog tersebut memang boleh terlihat untuk semua pengguna.
+2. `server/runtime-hardening.ts` memiliki resolver aset kedua yang tidak konsisten:
+   - IT juga melihat owner GA.
+   - GA melihat workstation IT tanpa permission toggle.
+   - Supply Chain/PIBC memperoleh akses berdasarkan owner SC/PIBC dan teks lokasi.
+   - Guard detail aset ini dapat menghasilkan keputusan berbeda dari `getScopedAssets()`; policy harus dipusatkan agar list dan direct-ID tidak berbeda.
+3. Dashboard/API agregat harus diperiksa agar tidak menghitung raw seluruh pinjaman, tiket, reservasi, dan aset sebelum scope diterapkan.
+4. `GET /api/loans`, tickets, reservations, notifications, reconciliation, audit logs, serta endpoint mutasi perlu audit per endpoint. Filter frontend tidak dianggap sebagai kontrol keamanan.
+
+### P1 — Model role dan navigasi
+
+1. `src/navigation/roleNavigation.ts` memakai daftar menu statis berdasarkan sembilan nama role. Ini membuat role, fungsi, dan menu terikat kaku.
+2. `src/components/modals/AdministrationModal.tsx` masih memiliki `SYSTEM_ROLES`, `DEFAULT_PERMISSIONS`, dan `PERMISSION_TEMPLATE_FIELDS` statis. Matriks tersebut memuat konsep lama seperti Divisi SC/PIBC sebagai pemilik aset.
+3. `server/migrations/010_dynamic_rbac_foundation.sql` sudah membuat tabel role, permission, role-permission, scope, dan user-role. Namun komentar migrasi secara eksplisit menyatakan `users.role` tetap authoritative sampai tahap migrasi berikutnya.
+4. `server/rbac-policy.ts` memuat permission dan scope dari PostgreSQL, tetapi kebijakan legacy masih dipertahankan di banyak tempat. Role custom tanpa policy/scope harus tetap deny-by-default.
+5. `server/migrations/006_org_model_masters.sql` sudah memisahkan jabatan, unit, dan lokasi, tetapi seed `org_units` masih memasukkan Supply Chain dan PIBC sebagai unit dengan `division_code` SC/PIBC. Ini perlu dipetakan ulang sebagai struktur organisasi/lokasi tanpa otomatis menjadi domain kepemilikan aset.
+6. `PRD.md`, `docs/product/REQUIREMENTS.md`, `PROJECT-RULES.md`, komentar source, dan UAT masih mengandung aturan lama yang menyebut SC/PIBC sebagai owner aset. Dokumen ini harus diselaraskan setelah inventaris data dan aturan migrasi dipastikan.
+
+## 3. Prinsip target arsitektur
+
+- Satu policy resolver backend menjadi sumber keputusan akses. Resolver yang sama digunakan oleh list, detail, dashboard, export, pencarian, dan aksi.
+- Permission tindakan dipisahkan dari scope data. Contoh: GA dapat memiliki `assets.read` pada scope GA dan permission baca terbatas IT workstation, tetapi tidak memiliki `assets.update` untuk aset IT.
+- Scope `location` hanya menyaring lokasi fisik/penempatan yang memang menjadi batas kerja; tidak pernah menyimpulkan ownership.
+- Scope `unit` memakai relasi unit organisasi yang valid; nama teks bebas tidak boleh dipakai sebagai otorisasi.
+- Super Admin global ditentukan oleh capability stabil `is_superadmin`, bukan semata-mata nama tampilan role.
+- Role adalah template fungsi yang dapat dikelola. Penambahan cabang/lokasi tidak memerlukan role baru.
+- Frontend menyusun navigasi dari permission efektif pengguna, tetapi setiap endpoint tetap memeriksa permission dan scope di backend.
+- Migrasi data owner SC/PIBC tidak boleh dilakukan massal berdasarkan lokasi. Setiap aset perlu klasifikasi owner yang dapat dipertanggungjawabkan; data ambigu masuk antrean review Super Admin.
+
+## 4. Urutan pengerjaan dan acceptance criteria
+
+### Tahap A — Inventarisasi
+- Petakan semua route API, permission gate, scope resolver, domain mutation, dashboard counter, search, export, dan menu.
+- Identifikasi semua pemeriksaan langsung `actor.role`, `actor.division`, `owner_division`, `location`, dan pencocokan teks.
+- Petakan nilai owner SC/PIBC pada data existing dan klasifikasi aset terkait tanpa mengubah data.
+
+### Tahap B — Backend policy tunggal
+- Super Admin dapat melihat dan mengelola semua aset.
+- IT hanya melihat/mengelola owner IT.
+- GA hanya melihat/mengelola owner GA; akses IT Laptop/PC adalah permission baca terpisah yang dapat diaktifkan/nonaktifkan Super Admin.
+- GA tidak dapat memutasi aset IT meskipun aset terlihat.
+- Lokasi Supply Chain/PIBC tidak memberi hak kelola aset.
+- Pegawai termasuk Sekretaris Direksi dan Humas memiliki akses dasar personal yang sesuai, bukan akses aset global.
+- Auditor tetap read-only.
+- List endpoint dan direct-ID endpoint menghasilkan keputusan yang sama.
+
+### Tahap C — Role dan navigasi berbasis permission
+- Tidak ada role aplikasi yang dibuat hanya karena lokasi/cabang.
+- Role template dapat ditambah/nonaktifkan dan permission/scope dapat diatur Super Admin.
+- Menu dan aksi ditampilkan dari permission efektif; route guard frontend bukan pengganti backend.
+- Pengguna tanpa permission tidak melihat menu, tidak dapat membuka route, dan mendapat 403 dari API.
+
+### Tahap D — Konsistensi semua domain
+- Scope pinjaman, tiket, reservasi, maintenance, kontrak, vendor, knowledge, notifikasi, laporan, pencarian, dashboard, dan export konsisten.
+- Data agregat tidak menghitung data di luar scope.
+- Aksi approve/assign/update/delete memeriksa permission tindakan dan scope objek, bukan hanya nama role.
+
+### Tahap E — Migrasi dan UAT
+- Tidak menghapus role/user lama sebelum pemetaan dan verifikasi.
+- Data owner SC/PIBC yang ambigu ditandai untuk review; tidak diubah hanya berdasarkan lokasi.
+- Uji backend untuk setiap kombinasi role-permission-scope, termasuk akses list dan detail, direct API, mutasi, export, dashboard, dan regresi.
+- PR tidak boleh di-merge sebelum CI dan UAT role kritis lulus.
+
+## 5. Test matrix minimum
+
+1. Super Admin: seluruh owner dan lokasi terlihat; dapat melakukan administrasi aset.
+2. IT: owner IT terlihat di HO, Supply Chain, PIBC, dan lokasi lain; owner GA tidak terlihat/terkelola.
+3. GA: owner GA terlihat lintas lokasi; owner IT selain Laptop/PC tidak terlihat.
+4. GA dengan toggle IT workstation ON: hanya Laptop/PC IT terlihat; semua operasi mutasi atas aset itu ditolak.
+5. GA dengan toggle OFF: tidak ada aset IT yang terlihat.
+6. Pegawai Supply Chain/PIBC: lokasi kerja tersimpan sebagai atribut; lokasi tidak memberi akses owner atau mutasi aset.
+7. Humas/Sekretaris Direksi/Karyawan: aset yang ditugaskan sendiri dan fungsi dasar sesuai permission; tidak mendapat katalog aset global.
+8. Auditor: read lintas data sesuai mandat; seluruh mutasi ditolak.
+9. Custom role: tanpa permission/scope tidak mendapat akses; grant eksplisit berlaku hanya pada modul dan scope yang ditetapkan.
+10. Semua kasus di atas diuji untuk endpoint list, detail ID, dashboard, search, export, dan aksi mutasi.
+
+## 6. Batasan perubahan aman
+
+- Jangan mengubah `owner_division`, nomor aset, nomor ERP, atau histori hanya berdasarkan nama lokasi.
+- Jangan menghapus role Supply Chain/PIBC atau akun existing sebelum mapping user ke jabatan/unit/lokasi dan role aplikasi tervalidasi.
+- Jangan menganggap seluruh aset owner SC/PIBC otomatis milik GA atau IT. Klasifikasi per aset harus direview.
+- Jangan mengaktifkan akses baca lintas divisi melalui frontend saja.
+- PR #18 tetap draft sampai tahap backend, UI, migrasi, CI, dan UAT lulus.
