@@ -618,11 +618,11 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
   await pool.query(
     "INSERT INTO gabah_user_roles (user_id, role_id, is_primary) " +
     "SELECT u.id::text, r.id, TRUE FROM users u " +
-    "JOIN gabah_roles r ON r.role_key = CASE u.role " +
+    "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
     "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
     "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
     "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END " +
+    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END OR r.name = u.role) " +
     "WHERE u.id::text = ANY($1::text[]) " +
     "ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE",
     [userIds],
