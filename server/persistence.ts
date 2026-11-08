@@ -441,9 +441,9 @@ async function backfillNormalizedTables(): Promise<void> {
     for (const division of db.divisions || []) {
       if (!division?.code || !division?.name) continue;
       await client.query(
-        `INSERT INTO divisions (code,name,is_active) VALUES ($1,$2,TRUE)
-         ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,is_active=TRUE`,
-        [String(division.code).trim(), String(division.name).trim()],
+        `INSERT INTO divisions (code,name,is_active) VALUES ($1,$2,$3)
+         ON CONFLICT (code) DO UPDATE SET name=EXCLUDED.name,is_active=EXCLUDED.is_active`,
+        [String(division.code).trim(), String(division.name).trim(), division.is_active !== false],
       );
     }
     for (const u of db.users) {
