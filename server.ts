@@ -421,6 +421,8 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body;
+      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : (role || 'Karyawan');
+      const inferredOfficeLocation = role === 'Supply Chain' ? 'OFF-RPC' : role === 'PIBC' ? 'OFF-PIBC' : undefined;
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
@@ -462,7 +464,9 @@ async function startServer() {
         'Supply Chain': 'Logistik Beras',
         'PIBC': 'Pengawas Pasar PIBC',
         'Auditor': 'Internal Auditor',
-        'Karyawan': 'Pegawai Operasional'
+        'Karyawan': 'Pegawai Operasional',
+        'Sekretaris Direksi': 'Sekretariat Direksi',
+        'Humas': 'Humas & Protokoler'
       };
 
       // SECURITY (CR-02): no client-supplied password and no plaintext echo.
@@ -476,13 +480,13 @@ async function startServer() {
         id: `USR-${Date.now().toString().slice(-6)}`,
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        role: role || 'Karyawan',
-        role_label: roleLabels[role] || 'Pegawai Operasional',
+        role: primaryRole,
+        role_label: roleLabels[role] || (role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan — Lokasi ' + role : roleLabels[primaryRole]) || 'Pegawai Operasional',
         division: division || 'Umum',
         department: department || 'Operasional',
         job_level_code: newJobLevel,
         unit_id: newUnitId || null,
-        office_location_id: newOfficeId || null,
+        office_location_id: newOfficeId || inferredOfficeLocation || null,
         phone: phone || '',
         avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
         is_active: true,
@@ -501,6 +505,7 @@ async function startServer() {
       );
 
       await persistDataStore();
+      await syncPrimaryRbacRole(newUser.id, newUser.role);
       await refreshRbacPolicy();
 
       res.status(201).json({
