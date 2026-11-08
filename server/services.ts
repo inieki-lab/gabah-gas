@@ -254,12 +254,19 @@ export class GabahDomainService {
       const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
       const isItWorkstation = (asset: ServerAsset) =>
         ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
-      return db.assets.filter(asset =>
+      // GA's writable inventory follows its explicit dynamic owner scope.
+      // The optional IT workstation exception is strictly read-only and limited
+      // to laptop/desktop categories, independent of the GA owner scope.
+      const gaOwnedAssets = dynamicAssets.filter(asset =>
         String(asset.owner_division || '').toUpperCase() === 'GA'
-        || (canReadItWorkstations
-          && String(asset.owner_division || '').toUpperCase() === 'IT'
-          && isItWorkstation(asset))
       );
+      const readOnlyItWorkstations = canReadItWorkstations
+        ? db.assets.filter(asset =>
+          String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
+        )
+        : [];
+      const visibleIds = new Set([...gaOwnedAssets, ...readOnlyItWorkstations].map(asset => asset.id));
+      return db.assets.filter(asset => visibleIds.has(asset.id));
     }
 
     const personalAssets = isEmployeeBaseline
