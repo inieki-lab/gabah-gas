@@ -149,7 +149,7 @@ async function startServer() {
         if (!Number.isSafeInteger(roleId) || roleId < 1) {
           throw new Error('Role aplikasi "' + user.role + '" belum tersedia/aktif di master RBAC.');
         }
-        await client.query('UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = $1 AND is_primary = TRUE', [user.id]);
+        await client.query('DELETE FROM gabah_user_roles WHERE user_id = $1 AND is_primary = TRUE AND role_id <> $2', [user.id, roleId]);
         await client.query(
           'INSERT INTO gabah_user_roles (user_id, role_id, is_primary) VALUES ($1, $2, TRUE) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE',
           [user.id, roleId]
