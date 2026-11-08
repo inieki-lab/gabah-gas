@@ -32,6 +32,13 @@ INSERT INTO org_job_levels (code, label, order_num, is_active) VALUES
   ('STAF',    'Staf', 5, TRUE)
 ON CONFLICT (code) DO NOTHING;
 
+-- Division master rows referenced by the unit seed below. Keep these
+-- organizational owner domains explicit and idempotent on fresh databases.
+INSERT INTO divisions (code, name) VALUES
+  ('Umum', 'Sekretariat & Umum'),
+  ('Audit', 'Satuan Pengawas Internal (SPI)')
+ON CONFLICT (code) DO NOTHING;
+
 -- Master Unit/Bagian (terpisah dari jabatan & lokasi)
 CREATE TABLE IF NOT EXISTS org_units (
   id            VARCHAR(64) PRIMARY KEY,
