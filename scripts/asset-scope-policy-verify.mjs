@@ -32,6 +32,9 @@ const checks = [
   ['Legacy SC/PIBC asset records are Super Admin-only for mutation', /owner !== 'IT' && owner !== 'GA'/.test(services) && /owner legacy SC\/PIBC/.test(server)],
   ['Legacy SC/PIBC loans remain Super Admin review-only', /SC\/PIBC are locations[\s\S]*Super Admin review-only/.test(services)],
   ['Employee movement history excludes unassigned loanable-pool inventory', /employeeBaseline[\s\S]*asset\.assigned_to\?\.id === actor\.id[\s\S]*db\.movements\.filter/.test(server)],
+  ['Private agenda fields are redacted from GA/IT operational queues', /title: 'Reservasi ruang rapat'[\s\S]*description: undefined[\s\S]*attendees_list: undefined[\s\S]*documentation_notes: undefined/.test(server)],
+  ['Employee directory is gated by users.read', /app\.get\('\/api\/users', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'users\.read'\)\) return;/i.test(server)],
+  ['Knowledge vote and view actions require their read/action permissions', /app\.post\('\/api\/knowledge\/:id\/vote', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'knowledge\.vote'\)\) return;/i.test(server) && /app\.post\('\/api\/knowledge\/:id\/view', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'knowledge\.read'\)\) return;/i.test(server)],
 ];
 
 let failed = 0;
