@@ -62,9 +62,10 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
 function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
   if (isSuperadminActor(actor)) return true;
   const owner = String(ownerDivision || '').trim().toUpperCase();
-  // Only IT and GA are active asset-owner domains. SC/PIBC values remain
-  // historical records pending per-asset review and are Super Admin-only.
-  if (owner !== 'IT' && owner !== 'GA') return false;
+  // Owner codes are configurable business domains (IT, GA, RPC/SC, PIBC,
+  // and future operational owners). A non-empty owner is never sufficient:
+  // PostgreSQL mode still requires operation permission + matching owner scope.
+  // File-store fallback remains IT/GA-only.
 
   if (isPostgresPersistenceActive()) {
     const authority = getDynamicAssetWriteAuthority(actor);
@@ -135,7 +136,7 @@ function assetMatchesAssetScope(asset: ServerAsset, scope: AssetScopeSpec, user:
  */
 export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAsset): boolean {
   const owner = String(asset.owner_division || '').trim().toUpperCase();
-  if (owner !== 'IT' && owner !== 'GA') return false;
+  if (!owner) return false;
   const scopes = dynamicScopesForUser(user);
   if (scopes == null) return false; // tanpa policy/scope: deny-by-default
   if (scopes.some(scope => scope.type === 'all')) return true;
@@ -146,9 +147,9 @@ function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): S
   if (getUserRbacPolicies(String(user.id)).some(policy => policy.isSuperadmin)) return assets;
   const scopes = dynamicScopesForUser(user);
   if (scopes == null) return [];
-  const activeOwnerAssets = assets.filter(asset => ['IT', 'GA'].includes(String(asset.owner_division || '').trim().toUpperCase()));
-  if (scopes.some(scope => scope.type === 'all')) return activeOwnerAssets;
-  return activeOwnerAssets.filter(asset => scopes.some(scope => assetMatchesAssetScope(asset, scope, user)));
+  const classifiedOwnerAssets = assets.filter(asset => String(asset.owner_division || '').trim().length > 0);
+  if (scopes.some(scope => scope.type === 'all')) return classifiedOwnerAssets;
+  return classifiedOwnerAssets.filter(asset => scopes.some(scope => assetMatchesAssetScope(asset, scope, user)));
 }
 
 /**
@@ -247,9 +248,6 @@ export class GabahDomainService {
     // assigned dynamic role scope. A Karyawan can receive extra job-function
     // roles without changing employee identity or office location.
     const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
-    if (user.role === 'IT') {
-      return dynamicAssets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
-    }
     if (user.role === 'GA') {
       const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
       const isItWorkstation = (asset: ServerAsset) =>
@@ -270,7 +268,7 @@ export class GabahDomainService {
     }
 
     const personalAssets = isEmployeeBaseline
-      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())))
+      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
       : [];
     const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
     return db.assets.filter(asset => visibleIds.has(asset.id));
@@ -283,7 +281,7 @@ export class GabahDomainService {
     category_name_or_code?: string;
     category_code?: string;
     category_name?: string;
-    owner_division?: 'IT' | 'GA' | 'SC' | 'PIBC';
+    owner_division?: string;
     /** T2B-1: unit operasional pengelola aset (relasi org_units.id).
      *  Tidak memengaruhi owner_division, RBAC, maupun asset numbering. */
     managing_unit_id?: string | null;
@@ -331,7 +329,7 @@ export class GabahDomainService {
 
     // Enforce Corporate Rules:
     // a) All IT items (IT-H & IT-S) belong to IT. GA only has read-only access.
-    let resolvedOwnerDivision: 'IT' | 'GA' | 'SC' | 'PIBC' = taxonomy.owner_division;
+    let resolvedOwnerDivision: string = taxonomy.owner_division;
     if (taxonomy.main_type === 'IT-H' || taxonomy.main_type === 'IT-S' || taxonomy.category_type === 'IT' || taxonomy.category_type === 'License') {
       resolvedOwnerDivision = 'IT';
     } else if (taxonomy.code === 'INV-F') {
@@ -341,8 +339,8 @@ export class GabahDomainService {
       resolvedOwnerDivision = payload.owner_division;
     }
 
-    if (resolvedOwnerDivision !== 'IT' && resolvedOwnerDivision !== 'GA') {
-      throw new Error('Owner aset baru hanya boleh IT atau GA. Supply Chain dan PIBC adalah lokasi kerja; data owner lama menunggu review Super Admin.');
+    if (!String(resolvedOwnerDivision || '').trim()) {
+      throw new Error('Owner aset wajib dipilih dari master fungsi/unit pemilik yang aktif.');
     }
 
     // Authorization is based on the effective create permission AND explicit owner scope.
@@ -781,11 +779,10 @@ export class GabahDomainService {
   static canOperateLoan(loan: ServerLoan, actor: ServerUser, permissionKey: 'loans.approve' | 'loans.reject' | 'loans.handover' | 'loans.return' = 'loans.handover'): boolean {
     if (isSuperadminActor(actor)) return true;
 
-    // SC/PIBC are locations, not asset-owner domains. Legacy loans attached
-    // to those owner values remain Super Admin review-only until each asset
-    // is individually classified; no branch account may operate them.
+    // Loan authority follows the asset's actual owner domain, not its
+    // physical site or the employee's work location.
     const owner = String(loan.owner_division || '').trim().toUpperCase();
-    if (owner !== 'IT' && owner !== 'GA') return false;
+    if (!owner) return false;
 
     if (isPostgresPersistenceActive()) {
       return hasRbacPermission(String(actor.id), permissionKey)
