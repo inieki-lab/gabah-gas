@@ -2970,7 +2970,18 @@ async function startServer() {
     },
   });
 
-  app.post('/api/contracts/:id/documents/upload', upload.single('file'), async (req, res) => {
+  const authorizeContractDocumentUpload = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
+    const actor = getActor(req);
+    const contract = db.contracts.find(item => item.id === req.params.id);
+    if (!contract) return res.status(404).json({ success: false, message: 'Kontrak tidak ditemukan.' });
+    if (!canEditContract(actor, contract)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: bukan PIC/divisi pemilik kontrak.' });
+    }
+    return next();
+  };
+
+  app.post('/api/contracts/:id/documents/upload', authorizeContractDocumentUpload, upload.single('file'), async (req, res) => {
     let savedFilePath: string | null = null;
     let savedContract: any = null;
     let savedDocumentId: string | null = null;
