@@ -1879,12 +1879,8 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'assets.create')) return;
     try {
       const actor = getActor(req);
-      if (actor.role === 'Auditor') {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
-      }
-      if (actor.role === 'Karyawan') {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Karyawan tidak memiliki wewenang mendaftarkan aset baru.' });
-      }
+      // Effective permission and explicit IT/GA owner scope are enforced by
+      // createAsset() for every user, regardless of their job title or location.
       const newAsset = GabahDomainService.createAsset(req.body, actor);
       await persistDataStore();
       res.status(201).json({ success: true, data: newAsset });
