@@ -2652,7 +2652,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
     const actor = getActor(req);
     for (const n of db.notifications) {
-      if (isSuperadminActor(actor) || n.recipient_role === actor.role || n.recipient_user_id === actor.id) {
+      if (isSuperadminActor(actor) || n.recipient_role === actor.role || n.recipient_user_id === actor.id || n.recipient_division === actor.division) {
         n.is_read = true;
       }
     }
@@ -2960,9 +2960,26 @@ async function startServer() {
 
   app.get('/api/room-reservations', (req, res) => {
     if (!requireRbacPermission(req, res, 'room_reservations.read')) return;
-    
+    const actor = getActor(req);
     const { room_id, date, status, organizer_id } = req.query as any;
-    const data = GabahDomainService.getRoomReservations({ room_id, date, status, organizer_id });
+    let data = GabahDomainService.getRoomReservations({ room_id, date, status, organizer_id });
+
+    // Agenda details are private by default. GA operates room approvals;
+    // IT sees only reservations requiring IT facilities; Humas sees only
+    // documentation requests; ordinary employees see their own reservations.
+    if (!isSuperadminActor(actor) && actor.role !== 'Auditor' && actor.role !== 'GA') {
+      if (actor.role === 'IT') {
+        const itFacilityNames = new Set(db.meetingFacilities
+          .filter(facility => facility.category === 'IT')
+          .map(facility => facility.name));
+        data = data.filter(item => item.organizer_id === actor.id
+          || (item.facilities_requested || []).some(name => itFacilityNames.has(name)));
+      } else if (actor.role === 'Humas') {
+        data = data.filter(item => Boolean(item.documentation_requested));
+      } else {
+        data = data.filter(item => item.organizer_id === actor.id);
+      }
+    }
     res.json({ success: true, data });
   });
 
