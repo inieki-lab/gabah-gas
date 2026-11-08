@@ -473,11 +473,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [rbacPermissions, setRbacPermissions] = useState<any[]>([]);
   const [rbacLoading, setRbacLoading] = useState(false);
   const [rbacSaving, setRbacSaving] = useState(false);
+  const [rbacLoadError, setRbacLoadError] = useState('');
   const [rbacSelectedRoleId, setRbacSelectedRoleId] = useState<number | null>(null);
   const [rbacName, setRbacName] = useState('');
   const [rbacDescription, setRbacDescription] = useState('');
   const [rbacNewName, setRbacNewName] = useState('');
   const [rbacNewDescription, setRbacNewDescription] = useState('');
+  const [rbacNewPermissionKeys, setRbacNewPermissionKeys] = useState<string[]>([]);
   const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
   const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null }>>([]);
   const [rbacScopeModule, setRbacScopeModule] = useState('assets');
@@ -490,6 +492,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       const [roles, permissionRows] = await Promise.all([gabahApi.getRbacRoles(), gabahApi.getRbacPermissions()]);
       setRbacRoles(Array.isArray(roles) ? roles : []);
       setRbacPermissions(Array.isArray(permissionRows) ? permissionRows : []);
+      setRbacLoadError('');
       const selected = Array.isArray(roles) ? roles.find((role: any) => role.id === rbacSelectedRoleId) : null;
       if (selected) {
         setRbacName(selected.name);
@@ -502,6 +505,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     } catch (error: any) {
       setRbacRoles([]);
       setRbacPermissions([]);
+      setRbacLoadError(error?.message || 'Gagal memuat katalog permission. Periksa koneksi PostgreSQL dan migration Dynamic RBAC.');
       showToast(error?.message || 'Gagal memuat konfigurasi Dynamic RBAC. Pastikan PostgreSQL aktif dan akun memiliki akses Superadmin.', 'warning');
     } finally {
       setRbacLoading(false);
@@ -522,18 +526,22 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const handleCreateRbacRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rbacNewName.trim()) return showToast('Nama role wajib diisi.', 'warning');
+    if (!rbacPermissions.some((permission: any) => permission.is_active)) return showToast('Katalog permission belum tersedia. Role belum bisa dibuat sampai katalog berhasil dimuat.', 'warning');
+    if (rbacNewPermissionKeys.length === 0) return showToast('Pilih minimal satu permission untuk role baru.', 'warning');
     setRbacSaving(true);
     try {
-      const created = await gabahApi.createRbacRole({ name: rbacNewName.trim(), description: rbacNewDescription.trim() });
+      const selectedPermissionKeys = [...rbacNewPermissionKeys];
+      const created = await gabahApi.createRbacRole({ name: rbacNewName.trim(), description: rbacNewDescription.trim(), permission_keys: selectedPermissionKeys });
       setRbacNewName('');
       setRbacNewDescription('');
+      setRbacNewPermissionKeys([]);
       await refreshRbac();
       setRbacSelectedRoleId(created.id);
       setRbacName(created.name);
       setRbacDescription(created.description || '');
-      setRbacSelectedPermissionKeys([]);
+      setRbacSelectedPermissionKeys(Array.isArray(created.permissions) ? created.permissions : selectedPermissionKeys);
       setRbacScopes([]);
-      showToast('Role baru berhasil dibuat. Atur permission dan scope sebelum digunakan.', 'success');
+      showToast('Role baru berhasil dibuat beserta ' + rbacNewPermissionKeys.length + ' permission. Atur scope data sebelum ditetapkan ke pegawai.', 'success');
     } catch (error: any) {
       showToast(error?.message || 'Gagal membuat role.', 'warning');
     } finally {
@@ -2697,8 +2705,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 )}
               </div>
 
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                <strong>Catatan transisi:</strong> konfigurasi role tersimpan di PostgreSQL, tetapi permission baru belum menjadi sumber otorisasi endpoint bisnis sampai migrasi backend selesai. Jangan gunakan role baru untuk operasional sebelum tahap itu tuntas.
+              <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
+                <strong>Panduan:</strong> buat role sekaligus pilih permission. Setelah itu atur Scope Data, lalu tetapkan role ke pegawai. Permission mengatur tindakan; scope membatasi data.
               </div>
 
               {!isCurrentUserAdmin ? (
@@ -2708,18 +2716,61 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
               ) : (
                 <>
-                  <form onSubmit={handleCreateRbacRole} className="bg-white p-4 rounded-2xl border border-slate-200 grid grid-cols-1 md:grid-cols-[1fr_1.5fr_auto] gap-3 items-end">
+                  <form onSubmit={handleCreateRbacRole} className="bg-white p-4 rounded-2xl border border-slate-200 space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Nama role baru</label>
-                      <input value={rbacNewName} onChange={e => setRbacNewName(e.target.value)} required minLength={2} maxLength={120} placeholder="Contoh: Customer Service" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                      <h4 className="font-extrabold text-sm text-slate-900">Buat Role dan Pilih Hak Akses</h4>
+                      <p className="text-xs text-slate-500 mt-1">Pilih permission yang akan dimiliki role ini. Role baru tidak mendapat akses otomatis.</p>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi</label>
-                      <input value={rbacNewDescription} onChange={e => setRbacNewDescription(e.target.value)} maxLength={500} placeholder="Tanggung jawab role" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama role baru</label>
+                        <input value={rbacNewName} onChange={e => setRbacNewName(e.target.value)} required minLength={2} maxLength={120} placeholder="Contoh: Petugas Pengadaan" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi / tanggung jawab</label>
+                        <input value={rbacNewDescription} onChange={e => setRbacNewDescription(e.target.value)} maxLength={500} placeholder="Contoh: Melihat dan mengelola permintaan pengadaan" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                      </div>
                     </div>
-                    <button type="submit" disabled={rbacSaving} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                      <Plus className="w-4 h-4" /> Buat Role
-                    </button>
+                    <div className="rounded-xl border border-slate-200 p-3 space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <h5 className="text-xs font-extrabold text-slate-800">Pilih Permission</h5>
+                          <p className="text-[11px] text-slate-500">Centang tindakan yang boleh dilakukan role ini.</p>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-700">{rbacNewPermissionKeys.length} dipilih</span>
+                      </div>
+                      {rbacLoadError ? (
+                        <p className="text-xs text-rose-700 bg-rose-50 rounded-lg p-3">Katalog permission gagal dimuat: {rbacLoadError} Klik Muat Ulang setelah masalah diperbaiki.</p>
+                      ) : rbacPermissions.filter((permission: any) => permission.is_active).length === 0 ? (
+                        <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">Katalog permission kosong. Daftar akses tidak tersedia; periksa apakah migration katalog Dynamic RBAC (011 dan 012 serta migrasi lanjutan) sudah diterapkan pada database preview.</p>
+                      ) : (
+                        <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
+                          {Object.entries(rbacPermissionGroups).map(([moduleName, items]) => {
+                            const activeItems = items.filter((permission: any) => permission.is_active);
+                            if (activeItems.length === 0) return null;
+                            return (
+                              <div key={moduleName} className="border border-slate-100 rounded-xl p-3">
+                                <h6 className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wide mb-2">{moduleName.replace(/_/g, ' ')}</h6>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                                  {activeItems.map((permission: any) => (
+                                    <label key={permission.permission_key} className="flex items-start gap-2 text-xs text-slate-700 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                                      <input type="checkbox" checked={rbacNewPermissionKeys.includes(permission.permission_key)} onChange={e => setRbacNewPermissionKeys(current => e.target.checked ? [...new Set([...current, permission.permission_key])] : current.filter(key => key !== permission.permission_key))} disabled={rbacSaving} className="mt-0.5" />
+                                      <span><span className="font-bold">{permission.action}</span><span className="block text-[10px] text-slate-500">{permission.description || permission.permission_key} · {permission.permission_key}</span></span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-[11px] text-slate-500">Role dibuat tanpa akses lain di luar permission yang dipilih.</span>
+                      <button type="submit" disabled={rbacSaving || !rbacPermissions.some((permission: any) => permission.is_active) || rbacNewPermissionKeys.length === 0} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                        <Plus className="w-4 h-4" /> {rbacSaving ? 'Menyimpan...' : 'Buat Role + Simpan Hak Akses'}
+                      </button>
+                    </div>
                   </form>
 
                   {rbacLoading && rbacRoles.length === 0 ? (
@@ -2804,7 +2855,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <p className="text-xs text-slate-500">Permission Superadmin dilindungi; hak tertingginya tidak dapat diubah melalui matriks role.</p>
                             ) : (
                               <>
-                                {Object.entries(rbacPermissionGroups).map(([moduleName, items]) => (
+                                {rbacPermissions.filter((permission: any) => permission.is_active).length === 0 ? (
+                                  <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">Tidak ada permission aktif di katalog. Periksa migration katalog pada database preview.</p>
+                                ) : Object.entries(rbacPermissionGroups).map(([moduleName, items]) => (
                                   <div key={moduleName} className="border border-slate-100 rounded-xl p-3">
                                     <h5 className="text-xs font-extrabold text-slate-700 uppercase tracking-wide mb-2">{moduleName.replace(/_/g, ' ')}</h5>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

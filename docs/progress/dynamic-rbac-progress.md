@@ -1,17 +1,18 @@
-# Status terkini — Stabilisasi GABAH (2026-11-08)
+# Status terkini — Stabilisasi GABAH (2026-11-09)
 
-> Catatan ini mengungguli snapshot historis Stage 13F di bawah. Bagian lama dipertahankan untuk jejak audit, bukan sebagai gambaran implementasi hari ini.
+> Bagian ini adalah status operasional terbaru. Catatan Stage lama di bawah dipertahankan sebagai histori, bukan status branch/PR saat ini.
 
-- Branch integrasi aktif: fix/role-based-navigation (PR #18, masih draft/open). Jangan deploy atau merge sebelum release gates terpenuhi.
-- PostgreSQL 17 fresh database dan persistence integration: CR-04/CR-05 63/63 PASS; migration ledger 35 entries; restart persistence PASS; production fail-fast saat PostgreSQL mati PASS.
-- Dynamic RBAC foundation 63/63, asset-scope policy 37/37, P0 security 37/37, maintenance authorization 33/33; role assignment, owner scope, user directory, org model, loan, room, dashboard, dan menu checks PASS.
-- Auditor read-only mengikuti role efektif termasuk role tambahan: Karyawan + GA + Auditor; assignment 200, API write 403, audit read 200.
-- Form pegawai baru memisahkan primary role dari lokasi kerja. Humas/Sekretariat Direksi menjadi role tambahan; Supply Chain/PIBC adalah unit/lokasi, bukan primary role aplikasi.
-- Contract documents: upload benar-benar menyimpan bytes, MIME/signature diperiksa, path terisolasi per kontrak, download melalui permission + visibility guard, dan dokumen tetap tersedia setelah restart. Unauthorized contract download 404.
-- Docker production image: Node 22.23.4 multi-stage, npm ci dari lockfile, runtime non-root, migrations disertakan. Runtime smoke terhadap PostgreSQL 17 dan uploads volume PASS.
-- Compose memakai PostgreSQL volume + uploads_data volume. deploy.sh membangun image, menunggu PostgreSQL healthy, lalu mengganti app container saja.
-- AI coding agent wajib membaca AGENTS.md, .agents/skills/gabah-maintainer/SKILL.md, dan docs/AI-CHANGE-GUARDRAILS.md. Branch AI lain: ai/<agent>/<work-item>, PR ke branch integrasi.
-- Belum production-ready: browser UAT dengan pengguna, upgrade rehearsal dari snapshot legacy, backup/restore rehearsal untuk DB + uploads_data, staging deployment, TLS/reverse proxy, monitoring, dan sign-off bisnis masih terbuka.
+- **Branch utama:** `main`; integrasi aktif dilakukan langsung melalui PR ke `main`, bukan branch integrasi lama.
+- **Main terakhir terverifikasi:** `d7ab9c4877e6134471aa6d796ee6108794122451` (PR #27 — frontend Dynamic RBAC alignment).
+- **CI main #605:** SUCCESS pada commit tersebut, 33/33 langkah selesai termasuk typecheck, seluruh regression checks, production build, Docker image runtime smoke, PostgreSQL 17 integration, dan P0 security HTTP assertions.
+- **PR #18–#26:** pekerjaan Dynamic RBAC backend/scope dan protokol UAT telah dikonsolidasikan melalui PR #26; PR #27 menyelaraskan permission guard frontend untuk aset, peminjaman, dan helpdesk.
+- **PR #28:** OPEN, branch `ai/gpt6/knowledge-base-permission-alignment`; memisahkan tombol Knowledge Base berdasarkan `knowledge.create` dan `knowledge.update`. CI #606 masih queued saat catatan ini diperbarui. Jangan merge sebelum CI lulus dan diff ditinjau.
+- **Model organisasi:** role dasar pegawai adalah Karyawan; unit dan lokasi kerja merupakan atribut terpisah. Supply Chain/PIBC tidak otomatis menjadi role atau owner aset. Owner/pengelola aset terpisah dari lokasi fisik.
+- **Lokasi aktif yang disepakati:** HO, PIBC, RPC/SC, Pangsub, Kantor Perawatan. Subang nonaktif untuk transaksi baru; riwayat lama tidak dihapus.
+- **Preview/UAT:** checklist lengkap berada di `docs/testing/gabah-uat-checklist.md`, termasuk 12 smoke test sesi preview kantor. Seluruh kasus preview tetap NOT RUN sampai diuji langsung.
+- **Belum boleh disebut production-ready:** browser UAT tiap jenis akun, rehearsal upgrade dari snapshot database legacy, backup/restore DB + uploads, staging deployment, TLS/reverse proxy, monitoring, dan sign-off pemilik proses belum dibuktikan.
+- **Larangan operasional:** belum ada migrasi akun/data produksi atau deployment produksi. Gunakan database uji untuk preview; jangan menganggap CI sebagai pengganti UAT.
+
 
 
 ## Status final — Stage 13F merged (2026-10-21)

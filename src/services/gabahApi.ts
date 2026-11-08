@@ -894,7 +894,7 @@ class GabahApiClient {
     return this.request<any[]>('/api/admin/rbac/permissions');
   }
 
-  async createRbacRole(payload: { name: string; description?: string }): Promise<any> {
+  async createRbacRole(payload: { name: string; description?: string; permission_keys?: string[] }): Promise<any> {
     return this.request<any>('/api/admin/rbac/roles', { method: 'POST', body: JSON.stringify(payload) });
   }
 
