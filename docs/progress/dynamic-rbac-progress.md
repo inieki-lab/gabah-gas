@@ -670,3 +670,17 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Review of PR #3 against the current branch found that `tickets.read` was already seeded to Auditor by migration 023, but migration 024 also included Auditor in the broad `tickets.create` grant set. The API had a separate Auditor denial, but the effective permission was still wrong and could cause a UI create action to appear.
 - Added migration `036_dynamic_rbac_auditor_ticket_create_deny.sql` to remove only the `tickets.create` grant for role key `auditor`. `tickets.read` is retained. No data or ticket rows are changed.
 - Added regression assertion for Auditor read-only ticket behavior. Do not merge old PR #3 migrations 017/018: their version numbers conflict with existing movement/knowledge migrations in the consolidated branch, and the current branch already has the endpoint gates and canonical permission catalogue.
+
+
+### Vendor domain and owner-scope remediation — 2026-11-08
+
+**Defect review:** Vendor category (e.g. IT Hardware, License, Maintenance) is descriptive service classification and must not be treated as owner. Owner domain is selected from the dynamic master. The current server implementation already had the basic owner field/scope guard, but validation and UI action gating needed tightening; no category-based ownership backfill is permitted.
+
+**Changes:**
+- API create/update normalizes owner codes case-insensitively against active owner master; rejects missing/inactive owner, empty/oversized name/category, and invalid rating. Update checks both existing and destination owner scope.
+- Vendor list returns only the caller's owner scopes (Super Admin/Auditor global read per policy). Vendor creation/update require the corresponding vendors permission in PostgreSQL plus owner scope.
+- Vendor UI separates create from update permissions, displays owner domain, and removes hardcoded 99% SLA compliance text that had no source data.
+- Owner master delete now refuses when vendor/contract/maintenance/loan references remain, in addition to assets/categories/users/org units.
+- Added PostgreSQL integration scenarios: IT and GA create vendors only in their owner domains; categories can differ from owner; Karyawan without vendor permission is denied; custom RPCSC owner + custom role + module scope can create/read a vendor; owner master cannot be deleted while referenced.
+
+**Validation:** source regression checks added. PostgreSQL runtime coverage is part of the latest CI head; wait for that exact run before reporting vendor tests as passed.
