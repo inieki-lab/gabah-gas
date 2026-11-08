@@ -32,7 +32,7 @@ interface AssetScopeSpec { type: string; value: string | null }
  * mutability. Tanpa policy dinamis yang memberi authority → set kosong
  * (deny-by-default; pemanggil tetap memeriksa permission operasi & rule legacy).
  */
-export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean; divisions: Set<string> } {
+export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean; divisions: Set<string>; excludedDivisions: Set<string> } {
   const result = { all: false, divisions: new Set<string>(), excludedDivisions: new Set<string>() };
   const policies = getUserRbacPolicies(String(user.id));
   for (const policy of policies) {
