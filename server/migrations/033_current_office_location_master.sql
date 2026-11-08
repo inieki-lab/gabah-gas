@@ -23,3 +23,9 @@ WHERE id = 'OFF-PANGSUB';
 UPDATE org_office_locations
 SET name = 'Kantor Perawatan', is_active = TRUE
 WHERE id = 'OFF-PERAWATAN';
+
+-- If a legacy office master row named Subang exists, retire it without deleting
+-- the row or changing asset-location history. Future sites are still addable by Admin.
+UPDATE org_office_locations
+SET is_active = FALSE
+WHERE LOWER(BTRIM(name)) = 'subang';
