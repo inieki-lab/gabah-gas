@@ -95,6 +95,15 @@ export function hasRbacPermission(userId: string, permissionKey: string): boolea
     || (policiesByUser.get(String(userId)) || []).some(policy => policy.permissions.has(permissionKey));
 }
 
+export function getEffectivePermissionKeys(userId: string): string[] {
+  if (isRbacSuperadmin(userId)) return ['*'];
+  const keys = new Set<string>();
+  for (const policy of policiesByUser.get(String(userId)) || []) {
+    for (const key of policy.permissions) keys.add(key);
+  }
+  return [...keys].sort();
+}
+
 export function getUserRbacPolicies(userId: string): UserRbacPolicy[] {
   return (policiesByUser.get(String(userId)) || []).map(policy => ({
     ...policy,
