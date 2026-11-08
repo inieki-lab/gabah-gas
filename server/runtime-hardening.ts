@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
+import { isPostgresPersistenceActive } from './persistence';
 import { isSuperadminActor, hasRbacPermission } from './rbac-policy';
 import { assetVisibleUnderDynamicScopes } from './services';
 
@@ -26,7 +27,12 @@ function canSeeAsset(actor: ServerUser, assetId: string): boolean {
   // Employee and branch baseline: personal assignments + shared loanable pool.
   // Supply Chain and PIBC are not asset ownership roles or location-based scopes.
   if (['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role)) {
-    return asset.assigned_to?.id === actor.id || asset.is_loanable;
+    if (asset.assigned_to?.id === actor.id) return true;
+    const owner = String(asset.owner_division || '').trim().toUpperCase();
+    if (asset.is_loanable && (owner === 'IT' || owner === 'GA')) return true;
+    // An employee may receive additional job-function roles. Honor their
+    // explicit dynamic scope for active IT/GA owner domains only.
+    return isPostgresPersistenceActive() && assetVisibleUnderDynamicScopes(actor, asset);
   }
 
   if (actor.role === 'IT') return String(asset.owner_division || '').toUpperCase() === 'IT';
