@@ -96,12 +96,13 @@ function textEquals(left: unknown, right: unknown): boolean {
  * Role dinamis tanpa scope sama sekali tidak melihat aset apa pun
  * (secure fallback yang sempit, menggantikan fallback all-seeing lama).
  */
-function dynamicScopesForUser(user: ServerUser): AssetScopeSpec[] | null {
+function dynamicScopesForUser(user: ServerUser, module = 'assets'): AssetScopeSpec[] | null {
   const policies = getUserRbacPolicies(String(user.id));
   if (policies.length === 0) return null;
   if (policies.some(policy => policy.isSuperadmin)) return null; // handled by caller
   const scopes = policies
     .flatMap(policy => policy.scopes)
+    .filter(scope => scope.module == null || scope.module === '*' || scope.module === module)
     .map(scope => ({ type: String(scope.type), value: scope.value == null ? null : String(scope.value) } as AssetScopeSpec));
   return scopes.length === 0 ? null : scopes;
 }
