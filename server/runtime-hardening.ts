@@ -168,7 +168,11 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
 
   if (req.method === 'POST' && req.path === '/api/notifications/read-all') {
     for (const n of db.notifications) {
-      if (isGlobalObserver(actor) || n.recipient_role === actor.role || n.recipient_user_id === actor.id || n.recipient_division === actor.division) n.is_read = true;
+      const isRecipient = isGlobalObserver(actor)
+        || (n.recipient_user_id ? n.recipient_user_id === actor.id
+          : n.recipient_role ? n.recipient_role === actor.role
+            : n.recipient_division ? n.recipient_division === actor.division : false);
+      if (isRecipient) n.is_read = true;
     }
   }
 
