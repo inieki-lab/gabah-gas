@@ -7,13 +7,21 @@ services:
     environment:
       POSTGRES_DB: ${PGDATABASE:-gabah_db}
       POSTGRES_USER: ${PGUSER:-gabah_user}
-      POSTGRES_PASSWORD: ${PGPASSWORD}
+      # Fail-fast dengan pesan yang jelas: tanpa ini Postgres 17 menolak
+      # inisialisasi (superuser password kosong) dan container langsung exit.
+      POSTGRES_PASSWORD: ${PGPASSWORD:?PGPASSWORD wajib diisi di .env sebelum menjalankan docker compose}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - gabah_network
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-gabah_user} -d ${PGDATABASE:-gabah_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   # 2. GABAH Enterprise Application (React + Express API)
   app:
@@ -27,15 +35,21 @@ services:
       - "80:3000"
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${PGUSER:-gabah_user}:${PGPASSWORD}@database:5432/${PGDATABASE:-gabah_db}
+      DATABASE_URL: postgresql://${PGUSER:-gabah_user}:${PGPASSWORD:?PGPASSWORD wajib diisi di .env sebelum menjalankan docker compose}@database:5432/${PGDATABASE:-gabah_db}
       PGHOST: database
       PGPORT: 5432
       PGDATABASE: ${PGDATABASE:-gabah_db}
       PGUSER: ${PGUSER:-gabah_user}
-      PGPASSWORD: ${PGPASSWORD}
-    command: sh -c "npm install && npm run build && npm start"
+      PGPASSWORD: ${PGPASSWORD:?PGPASSWORD wajib diisi di .env sebelum menjalankan docker compose}
+    # --include=dev: vite/esbuild/tailwind ada di devDependencies; dengan
+    # NODE_ENV=production, `npm install` biasa melewatinya sehingga
+    # `npm run build` gagal dengan "vite: not found" dan app tidak pernah start.
+    command: sh -c "npm install --include=dev && npm run build && npm start"
     depends_on:
-      - database
+      # service_healthy: tunggu pg_isready, bukan hanya urutan start —
+      # mencegah app mencoba konek saat database masih inisialisasi.
+      database:
+        condition: service_healthy
     networks:
       - gabah_network
 
