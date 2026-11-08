@@ -3,13 +3,16 @@
 > Catatan ini mengungguli snapshot historis Stage 13F di bawah. Bagian lama dipertahankan untuk jejak audit, bukan sebagai gambaran implementasi hari ini.
 
 - Branch integrasi aktif: fix/role-based-navigation (PR #18, masih draft/open). Jangan deploy atau merge sebelum release gates terpenuhi.
-- PostgreSQL 17 fresh database dan persistence integration sudah diuji CI #544 pada code SHA 398ba8fa61ddef9f5cf63dc22ff330cd7d1a0f33: CR-04/CR-05 57/57 PASS, 35 migration entries, restart persistence PASS, production fail-fast saat PostgreSQL mati PASS.
-- Dynamic RBAC foundation 63/63, asset-scope policy 37/37, P0 security 37/37, maintenance authorization 33/33 pada CI #544. CI #545 pada dokumentasi/RBAC code head berikutnya juga SUCCESS.
-- Auditor read-only sekarang mengikuti role efektif termasuk role tambahan: pengujian PostgreSQL memberi Karyawan role tambahan Auditor; assignment tetap tersimpan, API write ditolak 403, dan audit read yang sah berhasil 200.
-- Owner domain aset fleksibel; lokasi kantor aktif HO, PIBC, RPC/SC, Pangsub, Kantor Perawatan. Subang nonaktif. Lokasi kerja, unit, owner, lokasi fisik aset, dan custodian terpisah.
-- Supply Chain dan PIBC bukan role aplikasi permanen. Humas/Sekretaris Direksi menggunakan baseline Karyawan ditambah capability fungsi sesuai assignment. Jangan migrasikan data produksi hanya dari nama role/lokasi.
+- PostgreSQL 17 fresh database dan persistence integration: CR-04/CR-05 63/63 PASS; migration ledger 35 entries; restart persistence PASS; production fail-fast saat PostgreSQL mati PASS.
+- Dynamic RBAC foundation 63/63, asset-scope policy 37/37, P0 security 37/37, maintenance authorization 33/33; role assignment, owner scope, user directory, org model, loan, room, dashboard, dan menu checks PASS.
+- Auditor read-only mengikuti role efektif termasuk role tambahan: Karyawan + GA + Auditor; assignment 200, API write 403, audit read 200.
+- Form pegawai baru memisahkan primary role dari lokasi kerja. Humas/Sekretariat Direksi menjadi role tambahan; Supply Chain/PIBC adalah unit/lokasi, bukan primary role aplikasi.
+- Contract documents: upload benar-benar menyimpan bytes, MIME/signature diperiksa, path terisolasi per kontrak, download melalui permission + visibility guard, dan dokumen tetap tersedia setelah restart. Unauthorized contract download 404.
+- Docker production image: Node 22.23.4 multi-stage, npm ci dari lockfile, runtime non-root, migrations disertakan. Runtime smoke terhadap PostgreSQL 17 dan uploads volume PASS.
+- Compose memakai PostgreSQL volume + uploads_data volume. deploy.sh membangun image, menunggu PostgreSQL healthy, lalu mengganti app container saja.
 - AI coding agent wajib membaca AGENTS.md, .agents/skills/gabah-maintainer/SKILL.md, dan docs/AI-CHANGE-GUARDRAILS.md. Branch AI lain: ai/<agent>/<work-item>, PR ke branch integrasi.
-- Belum production-ready: manual browser UAT dengan pengguna, upgrade rehearsal dari snapshot legacy, review menyeluruh endpoint, backup/restore rehearsal, staging deploy, TLS/monitoring, dan sign-off bisnis masih terbuka.
+- Belum production-ready: browser UAT dengan pengguna, upgrade rehearsal dari snapshot legacy, backup/restore rehearsal untuk DB + uploads_data, staging deployment, TLS/reverse proxy, monitoring, dan sign-off bisnis masih terbuka.
+
 
 ## Status final — Stage 13F merged (2026-10-21)
 
