@@ -200,3 +200,17 @@ Middleware `server/runtime-hardening.ts` sebelumnya memiliki implementasi `canSe
 ### Status verifikasi
 Perubahan sudah diajukan pada branch `ai/codex/unify-asset-scope-guard`. CI belum dijalankan pada exact head; jangan menganggap pemeriksaan lulus sebelum workflow CI selesai.
 
+
+## 6. Temuan — privasi antrean dokumentasi reservasi Humas (8 November 2026)
+
+### Temuan
+Endpoint `GET /api/room-reservations` sudah membatasi Humas ke reservasi dengan `documentation_requested`, tetapi mengembalikan objek reservasi secara utuh. Antrean dokumentasi tidak memerlukan nomor telepon penyelenggara, daftar peserta, kebutuhan/fasilitas IT, rincian konsumsi, catatan internal, alasan penolakan, atau alasan interupsi. Pengiriman seluruh objek merupakan paparan data berlebih (excessive data exposure).
+
+### Perbaikan
+- Humas tetap melihat reservasi yang meminta dokumentasi saja.
+- Respons non-milik Humas mempertahankan jadwal/ruangan dan brief dokumentasi (`documentation_type`, `documentation_notes`), tetapi meredaksi kontak, daftar peserta, fasilitas, konsumsi, dan catatan operasional/internal.
+- Reservasi milik Humas sendiri tetap dapat dilihat penuh.
+- Regression test API ditambahkan ke skenario meeting-room Stage 3.
+
+### Status verifikasi
+Perubahan diajukan pada branch `ai/codex/room-documentation-privacy`; CI exact head belum berjalan. Tidak ada perubahan data atau migrasi produksi.
