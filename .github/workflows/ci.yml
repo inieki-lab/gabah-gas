@@ -27,6 +27,9 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: Branch migration non-destructive safety check
+        run: npm run test:branch-migration-safety
+
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
