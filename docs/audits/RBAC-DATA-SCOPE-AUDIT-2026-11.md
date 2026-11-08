@@ -229,3 +229,17 @@ Endpoint keputusan renewal menerima nilai `outcome` dari request dan menyimpan `
 
 ### Status verifikasi
 Perubahan diajukan pada branch `ai/codex/contract-renewal-integrity`; CI exact head belum berjalan. Tidak ada migrasi atau perubahan data produksi.
+
+## 8. Temuan — filter ganda Dashboard Attention tidak konsisten untuk loan owner scope (8 November 2026)
+
+### Temuan
+Endpoint dashboard sudah memfilter kartu pinjaman dengan borrower sendiri atau scope owner modul `loans`. Namun response middleware `scopedAttention()` menjalankan filter kedua yang hanya mengizinkan owner division berdasarkan label role primer IT/GA atau borrower sendiri. Pengguna dengan custom/additional role dan explicit owner scope yang valid dapat kehilangan kartu yang sebenarnya berhak dilihat. Ini adalah false denial akibat dua policy resolver yang berbeda.
+
+### Perbaikan
+- Borrower tetap dapat melihat kartu pinjamannya sendiri.
+- Pada PostgreSQL, kartu pinjaman milik divisi lain mengikuti `hasRbacScope(user, 'division', owner, 'loans')`.
+- Fallback label IT/GA hanya dipertahankan untuk file-store legacy.
+- Regression check middleware ditambahkan ke CI.
+
+### Status verifikasi
+Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI exact head belum berjalan.
