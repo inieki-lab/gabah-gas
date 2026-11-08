@@ -18,6 +18,14 @@ Status: temuan awal terverifikasi dari source code; belum merupakan pernyataan b
 - **Belum selesai:** audit menyeluruh seluruh endpoint, rekonsiliasi data historis per user/aset, UAT tiap persona, deployment staging, backup/restore, dan persetujuan pemilik proses.
 
 
+### Temuan lanjutan — Riwayat perpindahan aset
+
+- `GET /api/movements` sebelumnya memanggil `getScopedAssets(actor)`, lalu menyaring ulang hasilnya berdasarkan daftar role primer lama (`Karyawan`, `Sekretaris Direksi`, `Humas`, `Supply Chain`, `PIBC`).
+- Filter kedua tersebut menghapus aset yang terlihat melalui scope dinamis ketika pengguna beridentitas pegawai memiliki role tambahan yang sah. Dampaknya, katalog/detail aset dapat menampilkan aset, tetapi riwayat perpindahannya kosong atau tidak lengkap.
+- Perbaikan pada branch `ai/codex/movement-scope-consistency` menghapus filter duplikat. Resolver kanonis tetap bertanggung jawab menggabungkan aset personal dan seluruh scope eksplisit.
+- Regression contract memeriksa bahwa endpoint menggunakan hasil resolver tanpa klasifikasi ulang berdasarkan label role primer.
+- CI exact head belum dijalankan; perubahan belum dinyatakan lulus build atau UAT.
+
 ## 1. Keputusan bisnis yang menjadi acuan
 
 GABAH adalah aplikasi internal perusahaan untuk HO dan seluruh cabang/lokasi operasional. Lokasi Supply Chain dan PIBC bukan role aplikasi dan bukan otomatis pemilik aset.
