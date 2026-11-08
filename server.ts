@@ -2089,23 +2089,17 @@ async function startServer() {
   // Loans
   app.get('/api/loans', (req, res) => {
     const actor = getActor(req);
-    // Scoping loans:
     if (isSuperadminActor(actor) || actor.role === 'Auditor') {
       return res.json({ success: true, data: db.loans });
     }
-    if (actor.role === 'Karyawan') {
-      return res.json({ success: true, data: db.loans.filter(l => l.borrower_id === actor.id) });
+    // Asset custodians see loans for their own asset domain only.
+    if (actor.role === 'IT' || actor.role === 'GA') {
+      const owner = actor.role;
+      return res.json({ success: true, data: db.loans.filter(l => l.owner_division === owner) });
     }
-    if (actor.role === 'IT') {
-      return res.json({ success: true, data: db.loans.filter(l => l.owner_division === 'IT') });
-    }
-    if (actor.role === 'GA') {
-      return res.json({ success: true, data: db.loans.filter(l => l.owner_division === 'GA') });
-    }
-    if (actor.role === 'Supply Chain') {
-      return res.json({ success: true, data: db.loans.filter(l => l.owner_division === 'SC') });
-    }
-    res.json({ success: true, data: db.loans });
+    // Other employees (including Supply Chain/PIBC locations, Humas and Sekdir)
+    // see only requests they submitted. Location does not grant loan visibility.
+    return res.json({ success: true, data: db.loans.filter(l => l.borrower_id === actor.id) });
   });
 
   app.post('/api/loans', async (req, res) => {
@@ -2190,50 +2184,19 @@ async function startServer() {
   // Helpdesk Tickets
   app.get('/api/tickets', (req, res) => {
     const actor = getActor(req);
-    const actorId = actor.id || '';
-    const actorName = (actor.name || '').trim().toLowerCase();
+    const isReporter = (ticket: any) =>
+      ticket.reporter_id === actor.id
+      || (Boolean(ticket.reporter_name) && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
 
-    const isReporter = (t: any) => {
-      const repName = (t.reporter_name || '').trim().toLowerCase();
-      return (
-        t.reporter_id === actorId ||
-        Boolean(repName && actorName && (repName === actorName || repName.includes(actorName) || actorName.includes(repName)))
-      );
-    };
-
-    // 1. IT and Super Admin (Admin GABAH) can see all tickets
-    if (isSuperadminActor(actor) || actor.role === 'IT') {
+    if (isSuperadminActor(actor) || actor.role === 'Auditor' || actor.role === 'IT') {
       return res.json({ success: true, data: db.tickets });
     }
-
-    // 1b. Auditor: read-only visibility over all tickets (enforced by middleware for mutations)
-    if (actor.role === 'Auditor') {
-      return res.json({ success: true, data: db.tickets });
-    }
-
-    // 1c. Operational divisions: scoped to their category (SC → 'SC', PIBC → 'PIBC') plus own tickets
-    if (actor.role === 'Supply Chain' || actor.role === 'PIBC') {
-      const ownCategory = actor.role === 'Supply Chain' ? 'SC' : 'PIBC';
-      return res.json({
-        success: true,
-        data: db.tickets.filter(t => (t.category as string) === ownCategory || isReporter(t)),
-      });
-    }
-
-    // 2. GA: only tickets directed to GA ('GA' category), or tickets reported by the GA user
     if (actor.role === 'GA') {
-      return res.json({
-        success: true,
-        data: db.tickets.filter(t => t.category === 'GA' || isReporter(t)),
-      });
+      return res.json({ success: true, data: db.tickets.filter(t => t.category === 'GA' || isReporter(t)) });
     }
-
-    // 3. All other users (Karyawan, Humas, Sekretaris Direksi, Supply Chain, PIBC, Auditor, etc.):
-    // ONLY see tickets where they are the reporter
-    return res.json({
-      success: true,
-      data: db.tickets.filter(t => isReporter(t)),
-    });
+    // Branch/location and employee identities do not grant access to every
+    // ticket in that location or category. Users see their own reports only.
+    return res.json({ success: true, data: db.tickets.filter(isReporter) });
   });
 
   app.post('/api/tickets', async (req, res) => {
@@ -2664,10 +2627,20 @@ async function startServer() {
     const loanableAssets = assets.filter(a => a.is_loanable && a.status === 'available').length;
     const inRepairAssets = assets.filter(a => a.status === 'in_repair').length;
 
-    const activeLoans = db.loans.filter(l => l.status === 'borrowed').length;
-    const pendingLoans = db.loans.filter(l => l.status === 'pending_approval').length;
+    const visibleLoans = isSuperadminActor(actor) || actor.role === 'Auditor'
+      ? db.loans
+      : actor.role === 'IT' || actor.role === 'GA'
+        ? db.loans.filter(l => l.owner_division === actor.role)
+        : db.loans.filter(l => l.borrower_id === actor.id);
+    const visibleTickets = isSuperadminActor(actor) || actor.role === 'Auditor' || actor.role === 'IT'
+      ? db.tickets
+      : actor.role === 'GA'
+        ? db.tickets.filter(t => t.category === 'GA' || t.reporter_id === actor.id)
+        : db.tickets.filter(t => t.reporter_id === actor.id);
 
-    const openTickets = db.tickets.filter(t => ['open', 'assigned', 'in_progress'].includes(t.status)).length;
+    const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;
+    const pendingLoans = visibleLoans.filter(l => l.status === 'pending_approval').length;
+    const openTickets = visibleTickets.filter(t => ['open', 'assigned', 'in_progress'].includes(t.status)).length;
 
     res.json({
       success: true,
