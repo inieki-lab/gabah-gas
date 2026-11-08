@@ -19,6 +19,7 @@
     "test:maintenance-authz": "node scripts/maintenance-authz-verify.mjs",
     "test:navigation-policy": "tsx scripts/navigation-policy-verify.ts",
     "test:dashboard-scope": "tsx scripts/dashboard-scope-verify.ts",
+    "test:dashboard-attention-scope": "tsx scripts/dashboard-attention-scope-verify.ts",
     "test:asset-scope-policy": "node scripts/asset-scope-policy-verify.mjs",
     "test:branch-migration-safety": "node scripts/branch-migration-safety-verify.mjs"
   },
