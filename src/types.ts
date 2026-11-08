@@ -221,7 +221,8 @@ export interface MaintenanceSchedule {
 export interface Vendor {
   id: string;
   name: string;
-  category: AssetCategoryType; // Vendor service domain (License = asset domain, NOT a ticket category)
+  category: AssetCategoryType; // Vendor service category; separate from owner domain.
+  owner_division?: string | null;
   pic_name: string;
   pic_phone: string;
   pic_email: string;
