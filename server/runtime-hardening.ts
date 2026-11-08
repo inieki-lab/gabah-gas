@@ -2,11 +2,11 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
-import { isSuperadminActor, hasRbacPermission, hasRbacScope } from './rbac-policy';
+import { isSuperadminActor, isAuditorActor, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { assetVisibleUnderDynamicScopes } from './services';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
-const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || actor.role === 'Auditor';
+const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || isAuditorActor(actor);
 
 export function actorFor(req: Request): ServerUser | null {
   if ((req as any).user) return (req as any).user as ServerUser;
@@ -51,7 +51,7 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   const ticket = db.tickets.find(t => t.id === ticketId);
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
-  if (actor.role === 'Auditor') return false;
+  if (isAuditorActor(actor)) return false;
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
   if (isPostgresPersistenceActive()) {
     // PostgreSQL RBAC is owner-code agnostic: custom operational functions
@@ -140,7 +140,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   // Auditor is strictly READ-ONLY across the entire system.
   // SECURITY (CR-01): switch-role is no longer an auditor exemption —
   // identity switching must never be usable to escape the read-only gate.
-  if (actor.role === 'Auditor' && req.method !== 'GET') {
+  if (isAuditorActor(actor) && req.method !== 'GET') {
     const allowedAuditorActions = ['/api/auth/logout', '/api/notifications/read-all'];
     const isNotificationRead = req.path.match(/^\/api\/notifications\/[^/]+\/read$/);
     if (!allowedAuditorActions.includes(req.path) && !isNotificationRead) {
