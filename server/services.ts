@@ -33,7 +33,7 @@ interface AssetScopeSpec { type: string; value: string | null }
  * (deny-by-default; pemanggil tetap memeriksa permission operasi & rule legacy).
  */
 export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean; divisions: Set<string> } {
-  const result = { all: false, divisions: new Set<string>() };
+  const result = { all: false, divisions: new Set<string>(), excludedDivisions: new Set<string>() };
   const policies = getUserRbacPolicies(String(user.id));
   for (const policy of policies) {
     if (policy.isSuperadmin) {
@@ -47,6 +47,9 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
       else if (scope.type === 'division') {
         const value = scope.value == null ? '' : String(scope.value).trim().toUpperCase();
         if (value) result.divisions.add(value);
+      } else if (scope.type === 'division_except') {
+        const value = scope.value == null ? '' : String(scope.value).trim().toUpperCase();
+        if (value) result.excludedDivisions.add(value);
       }
     }
   }
@@ -70,7 +73,7 @@ export function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | n
   if (isPostgresPersistenceActive()) {
     const authority = getDynamicAssetWriteAuthority(actor);
     return hasRbacPermission(String(actor.id), permissionKey)
-      && (authority.all || authority.divisions.has(owner));
+      && (authority.divisions.has(owner) || (authority.all && !authority.excludedDivisions.has(owner)));
   }
 
   const legacyOwnerByRole: Record<string, string> = {
@@ -117,6 +120,8 @@ function assetMatchesAssetScope(asset: ServerAsset, scope: AssetScopeSpec, user:
       return asset.assigned_to?.id === String(user.id);
     case 'division':
       return textEquals(asset.owner_division, scope.value);
+    case 'division_except':
+      return !textEquals(asset.owner_division, scope.value);
     case 'unit':
       return textEquals(asset.managing_unit_id, scope.value)
         || (asset.managing_unit_id != null && textEquals(managingUnitNameById.get(String(asset.managing_unit_id)), scope.value));
@@ -139,8 +144,10 @@ export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAs
   if (!owner) return false;
   const scopes = dynamicScopesForUser(user);
   if (scopes == null) return false; // tanpa policy/scope: deny-by-default
-  if (scopes.some(scope => scope.type === 'all')) return true;
-  return scopes.some(scope => assetMatchesAssetScope(asset, scope, user));
+  const hasExplicitMatch = scopes.some(scope => scope.type !== 'all' && scope.type !== 'division_except' && assetMatchesAssetScope(asset, scope, user));
+  const excluded = scopes.some(scope => scope.type === 'division_except' && textEquals(asset.owner_division, scope.value));
+  return hasExplicitMatch || (scopes.some(scope => scope.type === 'all') && !excluded)
+    || (!scopes.some(scope => scope.type === 'all') && !excluded && scopes.some(scope => scope.type === 'division_except' && assetMatchesAssetScope(asset, scope, user)));
 }
 
 function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): ServerAsset[] {
@@ -148,8 +155,13 @@ function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): S
   const scopes = dynamicScopesForUser(user);
   if (scopes == null) return [];
   const classifiedOwnerAssets = assets.filter(asset => String(asset.owner_division || '').trim().length > 0);
-  if (scopes.some(scope => scope.type === 'all')) return classifiedOwnerAssets;
-  return classifiedOwnerAssets.filter(asset => scopes.some(scope => assetMatchesAssetScope(asset, scope, user)));
+  return classifiedOwnerAssets.filter(asset => {
+    const explicitMatch = scopes.some(scope => scope.type !== 'all' && scope.type !== 'division_except' && assetMatchesAssetScope(asset, scope, user));
+    const excluded = scopes.some(scope => scope.type === 'division_except' && textEquals(asset.owner_division, scope.value));
+    const includesAll = scopes.some(scope => scope.type === 'all');
+    const includesExcept = !includesAll && scopes.some(scope => scope.type === 'division_except' && assetMatchesAssetScope(asset, scope, user));
+    return explicitMatch || (!excluded && (includesAll || includesExcept));
+  });
 }
 
 /**
