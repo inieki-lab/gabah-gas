@@ -83,6 +83,9 @@ async function startServer() {
     const safe = sanitizeUser(user) as any;
     if (isPostgresPersistenceActive()) {
       safe.permission_keys = getEffectivePermissionKeys(String(user.id));
+      safe.is_superadmin = isRbacSuperadmin(String(user.id));
+    } else {
+      safe.is_superadmin = user.role === 'Admin GABAH';
     }
     return safe;
   };
