@@ -11,15 +11,9 @@ export function filterDashboardAssets(items: Asset[], role: UserRole): Asset[] {
     case 'Auditor':
       return items;
     case 'IT':
-      return items.filter(item =>
-        item.owner_division === 'IT' || item.category_type === 'IT' || item.category_type === 'License'
-      );
+      return items.filter(item => item.owner_division === 'IT');
     case 'GA':
-      return items.filter(item => item.owner_division === 'GA' || item.category_type === 'GA');
-    case 'Supply Chain':
-      return items.filter(item => item.owner_division === 'SC' || item.owner_division === 'Supply Chain');
-    case 'PIBC':
-      return items.filter(item => item.owner_division === 'PIBC');
+      return items.filter(item => item.owner_division === 'GA');
     default:
       return [];
   }
@@ -31,13 +25,9 @@ export function filterDashboardLoans(items: Loan[], role: UserRole): Loan[] {
     case 'Auditor':
       return items;
     case 'IT':
-      return items.filter(item => item.owner_division === 'IT' || item.category_type === 'IT');
+      return items.filter(item => item.owner_division === 'IT');
     case 'GA':
-      return items.filter(item => item.owner_division === 'GA' || item.category_type === 'GA');
-    case 'Supply Chain':
-      return items.filter(item => item.owner_division === 'SC' || item.owner_division === 'Supply Chain');
-    case 'PIBC':
-      return items.filter(item => item.owner_division === 'PIBC');
+      return items.filter(item => item.owner_division === 'GA');
     default:
       return [];
   }
@@ -46,16 +36,12 @@ export function filterDashboardLoans(items: Loan[], role: UserRole): Loan[] {
 export function filterDashboardTickets(items: Ticket[], role: UserRole): Ticket[] {
   switch (role) {
     case 'Admin GABAH':
-    case 'IT':
     case 'Auditor':
-      // IT is the enterprise helpdesk queue; Auditor is read-only.
       return items;
+    case 'IT':
+      return items.filter(item => item.category === 'IT');
     case 'GA':
-    case 'Supply Chain':
-    case 'PIBC':
-      // gabahService already applies each division's visibility rule,
-      // including tickets reported by the current user.
-      return items;
+      return items.filter(item => item.category === 'GA');
     default:
       return [];
   }
@@ -87,9 +73,8 @@ export function filterMaintenanceForRole<T extends { owner_division?: string }>(
   role: UserRole
 ): T[] {
   if (role === 'Admin GABAH' || role === 'Auditor') return items;
-  const division = role === 'Supply Chain' ? 'SC' : role;
-  if (['IT', 'GA', 'SC', 'PIBC'].includes(division)) {
-    return items.filter(item => item.owner_division === division || (role === 'Supply Chain' && item.owner_division === 'Supply Chain'));
+  if (role === 'IT' || role === 'GA') {
+    return items.filter(item => item.owner_division === role);
   }
   return [];
 }
@@ -99,8 +84,8 @@ export function filterContractsForRole<T extends { owner_division?: string; pic_
   user: UserProfile
 ): T[] {
   if (user.role === 'Admin GABAH' || user.role === 'Auditor') return items;
-  const division = user.role === 'Supply Chain' ? 'SC' : user.role;
-  return items.filter(item =>
-    item.owner_division === division || (user.role === 'Supply Chain' && item.owner_division === 'Supply Chain') || item.pic_user_id === user.id
-  );
+  if (user.role === 'IT' || user.role === 'GA') {
+    return items.filter(item => item.owner_division === user.role || item.pic_user_id === user.id);
+  }
+  return items.filter(item => item.pic_user_id === user.id);
 }
