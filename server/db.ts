@@ -325,6 +325,7 @@ export interface ServerVendor {
   id: string;
   name: string;
   category: string;
+  owner_division?: string | null;
   pic_name: string;
   pic_phone: string;
   pic_email: string;
