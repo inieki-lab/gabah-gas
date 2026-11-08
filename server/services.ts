@@ -19,6 +19,12 @@ export function isLegacyScopedRole(role: string): boolean {
 
 interface AssetScopeSpec { type: string; value: string | null }
 
+function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
+  if (isSuperadminActor(actor)) return true;
+  if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
+  return Boolean(legacyRole && actor.role === legacyRole);
+}
+
 /**
  * Dynamic RBAC Stage 13E: resolve the dynamic asset write authority of a user
  * from gabah_role_division_scopes. This mirrors the Stage 11 read semantics for
@@ -1178,8 +1184,8 @@ export class GabahDomainService {
     interruption_reason?: string;
     notes?: string;
   }, actor: ServerUser): ServerRoomReservation {
-    if (actor.role === 'Auditor') {
-      throw new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).');
+    if (!hasRoomPermission(actor, 'room_reservations.create') && actor.role === 'Auditor') {
+      throw Object.assign(new Error('Akses ditolak: Anda tidak memiliki izin membuat reservasi.'), { statusCode: 403 });
     }
 
     const room = (db.rooms || []).find(r => r.id === payload.room_id);
@@ -1216,12 +1222,13 @@ export class GabahDomainService {
       return payload.start_time < r.end_time && payload.end_time > r.start_time;
     });
 
-    // Interruption is restricted to Admin GABAH or Sekretaris Direksi with HIGH priority.
+    // Priority override is a separate capability. The Sekretariat Direksi
+    // template receives it by migration; Super Admin can grant it to another
+    // approved function without changing the employee's primary role.
+    const canSetDirectorPriority = hasRoomPermission(actor, 'room_reservations.override_priority', 'Sekretaris Direksi');
     const meetingType = (db.meetingTypes || []).find(t => t.code === payload.meeting_type);
-    const requestedPriority = payload.priority || meetingType?.priority_level || (actor.role === 'Sekretaris Direksi' ? 'high' : 'medium');
-    const canInterrupt =
-      isSuperadminActor(actor) ||
-      (actor.role === 'Sekretaris Direksi' && requestedPriority === 'high');
+    const requestedPriority = payload.priority || meetingType?.priority_level || (canSetDirectorPriority ? 'high' : 'medium');
+    const canInterrupt = canSetDirectorPriority && requestedPriority === 'high';
 
     if (conflicting) {
       if (conflicting.status === 'in_use') {
@@ -1452,8 +1459,8 @@ export class GabahDomainService {
   }
 
   static approveRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA') {
-      throw Object.assign(new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menyetujui reservasi ruang rapat.'), { statusCode: 403 });
+    if (!hasRoomPermission(actor, 'room_reservations.approve', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.approve.'), { statusCode: 403 });
     }
 
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
@@ -1534,8 +1541,8 @@ export class GabahDomainService {
   }
 
   static rejectRoomReservation(reservationId: string, reason: string, actor: ServerUser): ServerRoomReservation {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA') {
-      throw new Error('Akses ditolak: Hanya Divisi GA dan Admin GABAH yang berwenang menolak reservasi ruang rapat.');
+    if (!hasRoomPermission(actor, 'room_reservations.reject', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.reject.'), { statusCode: 403 });
     }
 
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
@@ -1567,8 +1574,8 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
-      throw Object.assign(new Error('Akses ditolak: check-in hanya dapat dilakukan oleh pemohon, GA, atau Admin GABAH.'), { statusCode: 403 });
+    if (reservation.organizer_id !== actor.id && !hasRoomPermission(actor, 'room_reservations.checkin', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission check-in untuk reservasi ini.'), { statusCode: 403 });
     }
     if (reservation.status !== 'approved') {
       throw Object.assign(new Error(`Check-in hanya dapat dilakukan pada status "approved" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
@@ -1592,8 +1599,8 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
-      throw Object.assign(new Error('Akses ditolak: check-out hanya dapat dilakukan oleh pemohon, GA, atau Admin GABAH.'), { statusCode: 403 });
+    if (reservation.organizer_id !== actor.id && !hasRoomPermission(actor, 'room_reservations.checkout', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission check-out untuk reservasi ini.'), { statusCode: 403 });
     }
     if (reservation.status !== 'in_use') {
       throw Object.assign(new Error(`Check-out hanya dapat dilakukan pada status "in_use" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
@@ -1617,8 +1624,8 @@ export class GabahDomainService {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && reservation.organizer_id !== actor.id) {
-      throw Object.assign(new Error('Akses ditolak: Anda hanya dapat membatalkan reservasi yang Anda buat sendiri.'), { statusCode: 403 });
+    if (reservation.organizer_id !== actor.id && !hasRoomPermission(actor, 'room_reservations.cancel', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission membatalkan reservasi ini.'), { statusCode: 403 });
     }
     if (!['pending_approval', 'approved'].includes(reservation.status)) {
       throw Object.assign(new Error(`Reservasi tidak dapat dibatalkan dari status "${reservation.status}".`), { statusCode: 409 });
@@ -1637,8 +1644,8 @@ export class GabahDomainService {
   }
 
   static updateMeetingRoom(roomId: string, updates: Partial<ServerMeetingRoom>, actor: ServerUser): ServerMeetingRoom {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA') {
-      throw new Error('Akses ditolak: Hanya GA dan Admin GABAH yang berwenang mengubah status ruangan.');
+    if (!hasRoomPermission(actor, 'meeting_rooms.update', 'GA')) {
+      throw Object.assign(new Error('Akses ditolak: tidak memiliki permission meeting_rooms.update.'), { statusCode: 403 });
     }
 
     const room = (db.rooms || []).find(r => r.id === roomId);
