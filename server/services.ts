@@ -339,8 +339,11 @@ export class GabahDomainService {
       resolvedOwnerDivision = payload.owner_division;
     }
 
-    if (!String(resolvedOwnerDivision || '').trim()) {
-      throw new Error('Owner aset wajib dipilih dari master fungsi/unit pemilik yang aktif.');
+    const configuredOwner = (db.divisions || []).some(division =>
+      String(division.code || '').trim().toUpperCase() === String(resolvedOwnerDivision || '').trim().toUpperCase()
+    );
+    if (!configuredOwner) {
+      throw new Error(`Owner aset "${resolvedOwnerDivision}" belum terdaftar pada master divisi/owner. Tambahkan melalui Administrasi Master Divisi terlebih dahulu.`);
     }
 
     // Authorization is based on the effective create permission AND explicit owner scope.
