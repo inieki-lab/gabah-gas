@@ -10,7 +10,7 @@ const server = read('server.ts');
 const hardeningSource = read('server/runtime-hardening.ts');
 
 const checks = [
-  ['IT list scope hanya owner IT', /if \(user\.role === 'IT'\) \{\s*return dynamicAssets\.filter\(asset => String\(asset\.owner_division \|\| ''\)\.toUpperCase\(\) === 'IT'\);/.test(services)],
+  ['IT and other owner roles use their explicit dynamic scopes', /const dynamicAssets = filterAssetsByDynamicScopes\(db\.assets, user\)/.test(services) && /return dynamicAssets\.filter/.test(services) === false],
   ['GA writable inventory follows explicit dynamic owner scope', /const gaOwnedAssets = dynamicAssets\.filter\(asset =>[\s\S]*?=== 'GA'/.test(services)],
   ['GA IT read scope memerlukan permission khusus', /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)],
   ['GA IT read scope dibatasi taxonomy HLT dan HPC', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(services) && /readOnlyItWorkstations/.test(services)],
@@ -21,7 +21,7 @@ const checks = [
   ['GA read permission didaftarkan khusus untuk role GA', /'assets\.read\.it_workstations'[\s\S]*?WHERE r\.role_key = 'ga'/.test(migration)],
   ['Permission khusus tidak memberi permission mutasi', !/assets\.(create|update|delete|assign|move|lifecycle)/.test(migration)],
   ['RBAC policy mengevaluasi permission efektif per user', /export function hasRbacPermission/.test(policy)],
-  ['Supply Chain/PIBC accounts migrate to Karyawan with office-location attributes', /WHEN 'Supply Chain' THEN 'OFF-RPC'[\s\S]*WHEN 'PIBC' THEN 'OFF-PIBC'[\s\S]*role = 'Karyawan'/.test(branchMigration)],
+  ['Branch migration does not rewrite user role or work-unit assignments', !/\\b(UPDATE|DELETE|INSERT|MERGE)\\b/i.test(branchMigration.replace(/--[^\\n]*/g, ''))],
   ['Legacy branch roles and branch units are retired without deleting historical rows', /UPDATE gabah_roles[\s\S]*role_key IN \('supply_chain', 'pibc'\)[\s\S]*UPDATE org_units[\s\S]*UNIT-SC[\s\S]*UNIT-PIBC/.test(branchMigration)],
   ['Branch role migration does not rewrite historical asset ownership', !/UPDATE assets|UPDATE gabah_assets|owner_division\s*=/.test(branchMigration)],
   ['Movement history is restricted to the same visible asset scope', /visibleAssetIds[\s\S]*db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(server)],
@@ -29,7 +29,7 @@ const checks = [
   ['Unknown roles fail closed for asset list and direct asset access', /if \(owner !== 'IT' && owner !== 'GA'\) return false;/.test(services) && /if \(scopes == null\) return false;/.test(services) && /assetVisibleUnderDynamicScopes\(actor, asset\)/.test(hardeningSource)],
   ['Loan approval/rejection/handover/return use permission and IT/GA owner scope only', /static canOperateLoan\([\s\S]*owner !== 'IT' && owner !== 'GA'[\s\S]*hasRbacPermission[\s\S]*hasRbacScope/.test(services)],
   ['Full asset catalogue menu requires its own explicit permission', /assets\.catalog\.read/.test(read('src/navigation/roleNavigation.ts')) && /assets\.catalog\.read/.test(read('server/migrations/027_dynamic_rbac_asset_catalog_read.sql'))],
-  ['New assets cannot be created with legacy SC/PIBC owner values', /resolvedOwnerDivision !== 'IT' && resolvedOwnerDivision !== 'GA'/.test(services)],
+  ['New assets accept configured owner domains but require explicit create permission and owner scope', /if \\(!String\\(resolvedOwnerDivision \\|\\| ''\\)\\.trim\\(\\)\\)/.test(services) && /canMutateAssetOwner\\(actor, resolvedOwnerDivision, 'assets.create'\\)/.test(services)],
   ['Legacy SC/PIBC asset records are Super Admin-only for mutation', /owner !== 'IT' && owner !== 'GA'/.test(services) && /owner legacy SC\/PIBC/.test(server)],
   ['Legacy SC/PIBC loans remain Super Admin review-only', /SC\/PIBC are locations[\s\S]*Super Admin review-only/.test(services)],
   ['Employee movement history excludes unassigned loanable-pool inventory', /employeeBaseline[\s\S]*asset\.assigned_to\?\.id === actor\.id[\s\S]*db\.movements\.filter/.test(server)],
