@@ -2096,7 +2096,11 @@ async function startServer() {
   app.get('/api/movements', (req, res) => {
     if (!requireRbacPermission(req, res, 'movements.read')) return;
     const actor = getActor(req);
-    const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor).map(asset => asset.id));
+    const scopedAssets = GabahDomainService.getScopedAssets(actor);
+    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
+    const visibleAssetIds = new Set(scopedAssets
+      .filter(asset => !employeeBaseline || asset.assigned_to?.id === actor.id)
+      .map(asset => asset.id));
     const { assetId } = req.query;
     if (assetId) {
       if (!visibleAssetIds.has(String(assetId)) && !isSuperadminActor(actor) && actor.role !== 'Auditor') {
@@ -2328,12 +2332,10 @@ async function startServer() {
     // Maintenance visibility follows the same asset scope as inventory.
     // Branch names are not owner domains; GA's optional IT workstation
     // read-only permission does not grant access to IT maintenance records.
+    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
     const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor)
-      .filter(asset => {
-        if (actor.role === 'IT') return String(asset.owner_division).toUpperCase() === 'IT';
-        if (actor.role === 'GA') return String(asset.owner_division).toUpperCase() === 'GA';
-        return asset.assigned_to?.id === actor.id;
-      })
+      .filter(asset => !employeeBaseline || asset.assigned_to?.id === actor.id)
+      .filter(asset => actor.role !== 'GA' || String(asset.owner_division).toUpperCase() === 'GA')
       .map(asset => asset.id));
     const filtered = db.maintenances.filter(item => visibleAssetIds.has(item.asset_id));
     return res.json({ success: true, data: filtered });
