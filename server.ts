@@ -318,15 +318,15 @@ async function startServer() {
     if (!actor) return;
     const id = Number(req.params.id);
     const scopes = req.body?.scopes;
-    const validTypes = new Set(['all', 'own', 'division', 'unit', 'location']);
+    const validTypes = new Set(['all', 'own', 'division', 'division_except', 'unit', 'location']);
     if (!Number.isSafeInteger(id) || id < 1 || !Array.isArray(scopes)) {
       return res.status(400).json({ success: false, message: 'ID role atau daftar scope tidak valid.' });
     }
     if (scopes.some((scope: any) => !scope || !validTypes.has(scope.type)
       || (scope.module !== undefined && (typeof scope.module !== 'string' || !scope.module.trim()))
-      || (['division', 'unit', 'location'].includes(scope.type) && (typeof scope.value !== 'string' || !scope.value.trim()))
+      || (['division', 'division_except', 'unit', 'location'].includes(scope.type) && (typeof scope.value !== 'string' || !scope.value.trim()))
       || (['all', 'own'].includes(scope.type) && scope.value != null))) {
-      return res.status(400).json({ success: false, message: 'Scope harus memiliki modul, tipe all/own tanpa nilai, atau division/unit/location dengan nilai.' });
+      return res.status(400).json({ success: false, message: 'Scope harus memiliki modul, tipe all/own tanpa nilai, atau division/division_except/unit/location dengan nilai.' });
     }
     try {
       const result = await withRbacTransaction(async client => {
