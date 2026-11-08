@@ -132,6 +132,8 @@ function assetMatchesAssetScope(asset: ServerAsset, scope: AssetScopeSpec, user:
  * dipakai ulang oleh modul lain (mis. Maintenance) tanpa mengubah perilaku.
  */
 export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAsset): boolean {
+  const owner = String(asset.owner_division || '').trim().toUpperCase();
+  if (owner !== 'IT' && owner !== 'GA') return false;
   const scopes = dynamicScopesForUser(user);
   if (scopes == null) return false; // tanpa policy/scope: deny-by-default
   if (scopes.some(scope => scope.type === 'all')) return true;
@@ -142,8 +144,9 @@ function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): S
   if (getUserRbacPolicies(String(user.id)).some(policy => policy.isSuperadmin)) return assets;
   const scopes = dynamicScopesForUser(user);
   if (scopes == null) return [];
-  if (scopes.some(scope => scope.type === 'all')) return assets;
-  return assets.filter(asset => scopes.some(scope => assetMatchesAssetScope(asset, scope, user)));
+  const activeOwnerAssets = assets.filter(asset => ['IT', 'GA'].includes(String(asset.owner_division || '').trim().toUpperCase()));
+  if (scopes.some(scope => scope.type === 'all')) return activeOwnerAssets;
+  return activeOwnerAssets.filter(asset => scopes.some(scope => assetMatchesAssetScope(asset, scope, user)));
 }
 
 /**
@@ -227,7 +230,7 @@ export class GabahDomainService {
 
     if (!isPostgresPersistenceActive()) {
       if (isEmployeeBaseline) {
-        return db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable);
+        return db.assets.filter(asset => asset.assigned_to?.id === user.id || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())));
       }
       if (user.role === 'IT') {
         return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
@@ -258,7 +261,7 @@ export class GabahDomainService {
     }
 
     const personalAssets = isEmployeeBaseline
-      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
+      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())))
       : [];
     const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
     return db.assets.filter(asset => visibleIds.has(asset.id));
