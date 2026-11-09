@@ -23,6 +23,8 @@ interface AssetScopeSpec { type: string; value: string | null }
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
+  if (legacyRole === 'Sekretaris Direksi') return hasRoleCapability(actor, 'sekretaris_direksi');
+  if (legacyRole === 'Humas') return hasRoleCapability(actor, 'humas');
   return Boolean(legacyRole && actor.role === legacyRole);
 }
 
