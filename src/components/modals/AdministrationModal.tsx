@@ -1289,12 +1289,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   // Export snapshot data yang tersedia di panel ini; bukan backup database PostgreSQL.
   const handleDownloadDataSnapshot = () => {
-    const backupBundle = {
+    const snapshotBundle = {
       app: 'GABAH',
       export_type: 'client_data_snapshot',
       backup_warning: 'Snapshot data yang tersedia pada panel administrasi; bukan backup database PostgreSQL dan tidak mencakup seluruh tabel, file upload, atau audit trail lengkap.', 
       company: settingsForm.companyName,
-      backup_timestamp: new Date().toISOString(),
+      exported_at: new Date().toISOString(),
       version: '2026.1.0-ENTERPRISE',
       data: {
         users: userList,
@@ -1311,7 +1311,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         audit_logs_count: auditLogs.length
       }
     };
-    exportDataJson('gabah_admin_data_snapshot', backupBundle);
+    exportDataJson('gabah_admin_data_snapshot', snapshotBundle);
   };
 
 
