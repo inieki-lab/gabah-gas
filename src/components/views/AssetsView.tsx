@@ -73,14 +73,10 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
       // Division filter
       if (selectedDivision !== 'ALL') {
         const div = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : '');
-        if (selectedDivision === 'SC') {
-          if (div !== 'SC' && div !== 'Supply Chain') return false;
-        } else if (selectedDivision === 'PIBC') {
-          if (div !== 'PIBC') return false;
-        } else if (selectedDivision === 'IT') {
-          if (div !== 'IT') return false;
-        } else if (selectedDivision === 'GA') {
-          if (div !== 'GA') return false;
+        if (selectedDivision === 'LEGACY') {
+          if (!['SC', 'PIBC', 'Supply Chain'].includes(String(div))) return false;
+        } else if (selectedDivision === 'IT' || selectedDivision === 'GA') {
+          if (div !== selectedDivision) return false;
         }
       }
 
@@ -483,7 +479,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
-                        {onReportAsset && currentUser?.role !== 'Auditor' && (
+                        {onReportAsset && currentUser?.role !== 'Auditor' && !currentUser?.role_keys?.includes('auditor') && (
                           <button
                             onClick={() => onReportAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
