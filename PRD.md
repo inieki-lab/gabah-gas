@@ -42,7 +42,7 @@ Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun 
 | 3 | **GA** | Siti Rahmawati | General Affairs | Pengelola aset umum (furniture, peralatan kantor, kendaraan dinas, gedung), persetujuan pinjaman kendaraan kantor, pengelolaan tiket GA, persetujuan reservasi ruang rapat, dan koordinasi konsumsi pantry. |
 | 4 | **Sekretaris Direksi** | Dewi Anggraini, S.Sos | GA (Sekretariat Direksi) | Pemesanan ruang rapat prioritas tinggi untuk jajaran Direksi & Dewan Komisaris (otomatis disetujui / auto-approved), peminjaman perlengkapan rapat, dan pelaporan kendala eksekutif. |
 | 5 | **Humas** | Rina Kartika, M.I.Kom | GA (Humas & Protokoler) | Menerima notifikasi khusus permintaan peliputan dan dokumentasi acara/rapat VIP (foto, video, press release). Akses menu aset disembunyikan sesuai SOP protokoler. |
-| 6 | **Supply Chain (legacy)** | Agus Pratama | Lokasi Supply Chain | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
+| 6 | **Supply Chain (legacy)** | Agus Pratama | Lokasi RPC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
 | 7 | **PIBC (legacy)** | Bambang Hermawan | Lokasi PIBC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
 | 8 | **Karyawan** | Hendra Wijaya | Komersial / Operasional | Staf umum perusahaan. Melihat aset kerja yang ditugaskan (*Aset Saya*), mengajukan peminjaman barang dinas, membuat tiket bantuan IT/GA, dan mereservasi ruang rapat. |
 | 9 | **Auditor** | Maya Indriani, SE, Ak, CA | Audit (SPI) | Pengawas kepatuhan internal. Hak akses **Read-Only** ke seluruh modul katalog aset, log sirkulasi, log audit, rekonsiliasi Accurate, dan riwayat helpdesk. Dilarang melakukan mutasi data (403 Forbidden). |
@@ -54,7 +54,7 @@ Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun 
 > Bagian ini menjadi acuan utama untuk desain data, menu, dashboard, RBAC, dan alur kerja. Nama role, nama kantor/lokasi, unit pemilik aset, serta lokasi fisik tidak boleh dipertukarkan maknanya.
 
 ### A. Kepemilikan dan pengelolaan aset ditentukan oleh unit pemilik, bukan lokasi
-- **IT mengelola seluruh aset TI perusahaan di semua lokasi**, termasuk PC, laptop, printer/perangkat periferal, server, perangkat jaringan, perangkat rapat/AV yang menjadi domain IT, software, dan lisensi. Aset TI tetap berada dalam tanggung jawab IT meskipun ditempatkan atau digunakan di Kantor Pusat, kantor Supply Chain, PIBC, gudang, depo, atau lokasi operasional lainnya.
+- **IT mengelola seluruh aset TI perusahaan di semua lokasi**, termasuk PC, laptop, printer/perangkat periferal, server, perangkat jaringan, perangkat rapat/AV yang menjadi domain IT, software, dan lisensi. Aset TI tetap berada dalam tanggung jawab IT meskipun ditempatkan atau digunakan di Kantor Pusat, kantor RPC, PIBC, gudang, depo, atau lokasi operasional lainnya.
 - **GA mengelola seluruh aset umum/sarana-prasarana yang menjadi domain GA di semua lokasi**, termasuk furniture, perlengkapan kantor, fasilitas gedung, kendaraan atau aset umum lain sesuai klasifikasi dan penetapan pemiliknya. Aset GA tetap menjadi tanggung jawab GA meskipun berada di kantor Supply Chain, PIBC, gudang, depo, atau lokasi lain.
 - **Supply Chain dan PIBC dalam konteks pembahasan ini adalah nama kantor/unit lokasi operasional**, bukan otomatis unit pemilik atau pengelola semua aset yang berada di sana. Penempatan aset di lokasi tersebut tidak mengubah kepemilikan/pengelola aset.
 - Lokasi fisik aset, lokasi kerja pengguna, unit pemilik/pengelola aset (owner_division), custodian/PIC, dan role/permission pengguna harus menjadi dimensi data yang terpisah.
@@ -90,7 +90,7 @@ Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun 
 - Pengalaman dasar karyawan digunakan bersama (misalnya Aset Saya, Pengajuan/Peminjaman, Tiket Bantuan, dan Reservasi). Sekretaris Direksi dan Humas memperoleh menu/aksi tambahan yang relevan dengan kewenangannya.
 - Menu pengelolaan aset IT menampilkan aset IT lintas lokasi dan hanya dapat dimutasi oleh petugas berwenang IT. GA memperoleh tampilan baca aset IT sesuai kebutuhan.
 - Menu pengelolaan aset GA menampilkan aset GA lintas lokasi dan dikelola oleh GA.
-- Nama kantor/lokasi Supply Chain dan PIBC tidak boleh dipakai sebagai filter kepemilikan aset secara otomatis. Filter lokasi boleh digunakan untuk menemukan aset berdasarkan tempat fisiknya, tanpa mengubah hak kelola.
+- Nama kantor/lokasi RPC dan PIBC tidak boleh dipakai sebagai filter kepemilikan aset secara otomatis. Filter lokasi boleh digunakan untuk menemukan aset berdasarkan tempat fisiknya, tanpa mengubah hak kelola.
 - Akses harus dibedakan secara eksplisit antara read, create, update, delete, approve, assign, dan admin. Hak read tidak boleh dianggap memberi hak mutasi atau persetujuan.
 - Setiap perubahan RBAC, filter data, dashboard, menu, dan endpoint API wajib mengikuti prinsip di atas. Filter frontend hanya untuk pengalaman pengguna; otorisasi final tetap wajib ditegakkan di backend.
 ### 2.2 Model Target Role Aplikasi, Jabatan, Unit Kerja, dan Lokasi
@@ -100,7 +100,7 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 - **Role aplikasi bukan jabatan dan bukan lokasi.** Role aplikasi adalah paket fungsi yang dapat diberikan kepada pengguna sesuai pekerjaan. Pengguna dapat memperoleh lebih dari satu role aplikasi bila memang diperlukan.
 - **Jabatan** adalah Direksi, Kadiv, Kadep, Kasi, Staf, atau jabatan lain yang dikelola melalui master. Jabatan tidak otomatis memberikan permission.
 - **Unit kerja** menunjukkan bidang/fungsi organisasi dan dapat berada di kantor pusat maupun cabang.
-- **Lokasi kerja** menunjukkan kantor/cabang penempatan pegawai, misalnya HO, Supply Chain, PIBC, atau lokasi lain. Lokasi tidak otomatis memberi akses ke seluruh data di lokasi itu.
+- **Lokasi kerja** menunjukkan kantor/cabang penempatan pegawai, misalnya HO, RPC, PIBC, atau lokasi lain. Lokasi tidak otomatis memberi akses ke seluruh data di lokasi itu.
 - **Permission** menentukan tindakan yang boleh dilakukan (read, create, update, delete, approve, assign, administer). **Data scope** menentukan objek/data yang boleh dijangkau (own, unit, lokasi, owner domain, atau global).
 - Menu frontend diturunkan dari permission efektif pengguna. Backend tetap memeriksa permission dan scope pada setiap endpoint dan objek.
 - Pengalaman dasar pegawai mencakup Aset Saya, pengajuan peminjaman, tiket bantuan, dan reservasi sesuai permission. Sekretaris Direksi dan Humas mendapat fungsi tambahan sesuai pekerjaan.
@@ -123,7 +123,7 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 **Master lokasi kantor aktif saat ini (lima lokasi):**
 1. HO (OFF-KP)
 2. PIBC (OFF-PIBC)
-3. RPC/SC (OFF-RPC)
+3. RPC (OFF-RPC)
 4. Pangsub (OFF-PANGSUB)
 5. Kantor Perawatan (OFF-PERAWATAN)
 
@@ -187,7 +187,7 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 - Penugasan teknisi (*Assignee*), pelacakan status (`open`, `in_progress`, `pending_vendor`, `resolved`, `closed`), catatan solusi (*resolution notes*), dan rating kepuasan.
 
 ### 3.5 Kategori Helpdesk Ticket (Strict Divisional)
-Kategori tiket helpdesk bersifat divisial dan **terbatas**: `IT`, `GA`, `SC`, `PIBC`.
+Kategori tujuan tiket helpdesk adalah **IT**, **GA**, dan **ME (Mechanical, Electrical & Tim Perawatan)**. PIBC dan RPC adalah lokasi, bukan kategori tiket.
 - Software/License/SaaS (Accurate, Microsoft 365, VPN, aktivasi lisensi) → kategori `IT` (License adalah domain aset, bukan kategori tiket).
 - Hardware, jaringan, server, akun → `IT`. Fasilitas gedung → `GA`. Permintaan pergudangan → `SC`. Kendaraan Pasar Induk → `PIBC`.
 - **Contract Management adalah domain tersendiri dan BUKAN kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti (`contract_id` pada tiket).
