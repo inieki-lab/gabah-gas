@@ -3,12 +3,14 @@
 -- to every employee carrying the generic GA role or to the Kasi by job title.
 -- Super Admin assigns this template to the employee who actually handles GA tickets.
 
--- Revoke the broad grant introduced in migration 038 from the generic GA role.
+-- Ticket execution/dispatch belongs to the explicitly assigned helpdesk operator.
+-- Keep all other generic GA capabilities intact (asset operations, reports,
+-- contracts, vendors, facilities, etc.) for both Kasi and Admin/Staf GA.
 DELETE FROM gabah_role_permissions rp
 USING gabah_roles r
 WHERE rp.role_id = r.id
   AND r.role_key = 'ga'
-  AND rp.permission_key = 'tickets.assign';
+  AND rp.permission_key IN ('tickets.update', 'tickets.assign');
 
 INSERT INTO gabah_roles (role_key, name, description, is_superadmin, is_active)
 VALUES (
