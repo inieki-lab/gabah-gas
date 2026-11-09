@@ -711,7 +711,8 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
     is_active: true,
   },
-];
+].filter(user => user.id !== 'USR-ME-ADMIN-001' || process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true');
+
 
 export function seedInitialData() {
   const defaultUsers = CANONICAL_USERS;
