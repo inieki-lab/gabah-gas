@@ -189,6 +189,7 @@ async function main() {
   const cleanup = () => {
     try { child.kill('SIGKILL'); } catch { /* already dead */ }
     if (backupState !== null) fs.writeFileSync(stateFile, backupState);
+    else fs.rmSync(stateFile, { force: true });
     try { fs.rmSync(uploadDir, { recursive: true, force: true }); } catch { /* best effort */ }
   };
   process.on('exit', cleanup);
