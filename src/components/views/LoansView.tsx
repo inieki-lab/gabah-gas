@@ -352,8 +352,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
               {isSelfLoansOnly ? 'Belum Ada Riwayat Peminjaman dari Anda' : 'Tidak Ada Data Peminjaman'}
             </h4>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              {isEmployee 
-                ? 'Anda belum memiliki riwayat pengajuan peminjaman barang. Klik tombol "Ajukan Peminjaman Baru" untuk meminjam mobil operasional atau laptop cadangan.'
+              {isSelfLoansOnly
+                ? 'Anda belum memiliki riwayat pengajuan peminjaman barang. Klik tombol "Ajukan Peminjaman Baru" untuk meminjam aset yang tersedia.'
                 : 'Tidak ada data peminjaman untuk filter status ini.'}
             </p>
             {isSelfLoansOnly && canCreateLoan && (
