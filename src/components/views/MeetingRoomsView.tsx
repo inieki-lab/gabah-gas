@@ -107,7 +107,6 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   const canRejectReservation = hasPermission('room_reservations.reject', ['Admin GABAH', 'GA']);
   const canOperateReservations = canApproveReservation || canRejectReservation;
   const canReadDocumentation = hasPermission('room_reservations.documentation.read', ['Humas']);
-  const canReadITFacilities = hasPermission('room_reservations.it_facilities.read', ['IT']);
   const canOverridePriority = hasPermission('room_reservations.override_priority', ['Sekretaris Direksi']);
   const canCancelReservation = hasPermission('room_reservations.cancel', ['Admin GABAH', 'GA']);
   const canCheckinReservation = hasPermission('room_reservations.checkin', ['Admin GABAH', 'GA']);
@@ -449,7 +448,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             )}
           </button>
 
-          {currentUser.role === 'Humas' && (
+          {canReadDocumentation && (
             <button
               onClick={() => {
                 setActiveTab('reservations');
