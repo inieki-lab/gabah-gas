@@ -235,15 +235,14 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
             />
           </div>
 
-          {/* Division Tabs */}
+          {/* Owner Domain Tabs — lokasi fisik dicari melalui kolom lokasi aset */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto">
-            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Devisi:</span>
+            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Owner Aset:</span>
             {[
-              { id: 'ALL', label: 'Semua Devisi' },
+              { id: 'ALL', label: 'Semua Owner' },
               { id: 'IT', label: 'IT' },
               { id: 'GA', label: 'GA' },
-              { id: 'SC', label: 'SC' },
-              { id: 'PIBC', label: 'PIBC' },
+              { id: 'LEGACY', label: 'Legacy (Review)' },
             ].map(d => (
               <button
                 key={d.id}
