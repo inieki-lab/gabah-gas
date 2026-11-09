@@ -1368,7 +1368,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // ============ IMPORT MASSAL PEGAWAI (CSV/Excel) ============
-  const validImportRoles = SYSTEM_ROLES.map(r => r.value as string);
+  const validImportRoles = PRIMARY_PROFILE_ROLES.map(r => r.value as string);
   const validImportDivisions = divisions.map(d => String(d.code));
 
   const handleImportFilePicked = async (file: File) => {
@@ -2286,7 +2286,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
-                            {SYSTEM_ROLES.map(r => (
+                            {!PRIMARY_PROFILE_ROLES.some(r => r.value === editUserData.role) && (
+                              <option value={editUserData.role} disabled>{editUserData.role} (legacy — pilih role utama yang valid)</option>
+                            )}
+                            {PRIMARY_PROFILE_ROLES.map(r => (
                               <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>
