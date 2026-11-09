@@ -2411,6 +2411,28 @@ async function startServer() {
   });
 
   // Ticket dispatch is a separate capability from status updates.
+  app.get('/api/tickets/:id/assignees', (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.assign')) return;
+    const actor = getActor(req);
+    const ticket = db.tickets.find(item => item.id === req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+    const inScope = ticket.assigned_unit_id
+      ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
+      : hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets');
+    if (!isSuperadminActor(actor) && !inScope) {
+      return res.status(403).json({ success: false, message: 'Anda tidak berwenang melihat petugas untuk antrean ini.' });
+    }
+    const eligible = db.users.filter(user =>
+      user.is_active !== false
+      && hasRbacPermission(String(user.id), 'tickets.update')
+      && (ticket.assigned_unit_id
+        ? user.unit_id === ticket.assigned_unit_id && hasRbacScope(String(user.id), 'unit', ticket.assigned_unit_id, 'tickets')
+        : String(user.division || '').toUpperCase() === String(ticket.category).toUpperCase()
+          && hasRbacScope(String(user.id), 'division', String(ticket.category), 'tickets'))
+    ).map(user => ({ id: user.id, name: user.name, department: user.department }));
+    return res.json({ success: true, data: eligible });
+  });
+
   // The dispatcher may assign only within the ticket's configured owner/unit
   // scope, and only to an active employee explicitly authorized to work that queue.
   app.patch('/api/tickets/:id/assign', async (req, res) => {
