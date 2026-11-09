@@ -2884,6 +2884,7 @@ async function startServer() {
       : db.tickets.filter(ticket =>
         ticket.reporter_id === actor.id
         || ticket.assigned_agent_id === actor.id
+        || (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id)
         || canReadOwnerScope(ticket.category, 'tickets')
       );
 
