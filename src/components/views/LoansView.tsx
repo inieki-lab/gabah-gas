@@ -61,10 +61,10 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
   const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
   const hasPermission = (key: string, legacyRoles: string[] = []) => {
-    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     if (Array.isArray(currentUser?.permission_keys)) {
       return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
     }
+    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     return legacyRoles.includes(currentUser?.role || '');
   };
   const canCreateLoan = !isAuditor && hasPermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
