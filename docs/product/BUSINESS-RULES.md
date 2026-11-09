@@ -84,10 +84,14 @@
 
 ---
 
-## 5. Aturan Kategori Helpdesk Ticket (BR-04b)
-- Kategori tiket **terbatas pada**: `IT`, `GA`, `SC`, `PIBC`. Tidak ada kategori `License`, `General`, atau `Contract`.
-- Software/License/SaaS (Accurate, M365, VPN) adalah domain IT → seluruh tiket terkait menggunakan kategori `IT`.
-- Hardware/jaringan/server/akun → `IT`; fasilitas gedung → `GA`; permintaan SC → `SC`; PIBC → `PIBC`.
+## 5. Aturan Tujuan Layanan Helpdesk Ticket (BR-04b)
+- Tujuan layanan tiket adalah `IT`, `GA`, atau `ME`. `RPC` dan `PIBC` adalah lokasi kerja/kejadian, bukan kategori tiket maupun role.
+- Software/License/SaaS (Accurate, M365, VPN), hardware, jaringan, server, dan akun → `IT`.
+- Fasilitas umum, gedung, kendaraan dinas, kebersihan, dan sarana umum → `GA`.
+- Mesin produksi, conveyor, forklift, genset, pompa, instalasi listrik, pekerjaan mekanikal/elektrikal, serta perawatan teknis dalam lingkup Tim Perawatan → `ME`.
+- Tim Perawatan (ME) adalah unit `UNIT-PIBC-ME` di bawah departemen/divisi PIBC. Tiket ME diarahkan ke unit tersebut, bukan ke seluruh pegawai PIBC. Anggota tim harus ditetapkan melalui `unit_id`; lokasi kantor tidak memberikan akses antrean ME.
+- Lokasi pelapor dan lokasi aset dicatat terpisah dari kategori tujuan tiket. Lokasi tidak boleh menentukan kategori secara otomatis.
+- Data tiket historis kategori `SC`/`PIBC` tetap disimpan dan ditampilkan sebagai histori; tidak dimigrasikan massal ke ME/GA/IT tanpa review tiket.
 - **Contract Management adalah domain tersendiri. Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti.
 - Data tiket lama berkategori `License`/`General` dinormalisasi otomatis saat server boot (License→IT, General→GA).
 
