@@ -44,11 +44,11 @@ GABAH tidak menggunakan sembilan label role lama sebagai daftar role permanen. R
 
 Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC/SC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
 
-Owner domain adalah master fleksibel (misalnya IT, GA, RPC/SC, dan domain lain yang disahkan), bukan enum tetap. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
+Owner domain adalah master fungsi pemilik yang fleksibel. Baseline transaksi baru saat ini IT dan GA; PIBC dan RPC/SC adalah lokasi kerja/operasional, bukan owner domain. Owner domain tambahan hanya dapat diaktifkan melalui keputusan bisnis terpisah, bukan karena nama lokasi. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
 
 ### 1.4 Legacy role labels
 
-Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. Supply Chain dan PIBC adalah lokasi/unit/fungsi operasional, bukan role aplikasi permanen. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
+Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. Supply Chain/RPC-SC dan PIBC adalah label lokasi operasional, bukan role aplikasi permanen dan bukan owner domain. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
 
 Contract Management tetap domain tersendiri; scope kontrak menggunakan owner domain dan PIC. Vendor category tidak boleh dipakai sebagai pengganti owner domain.
 
@@ -65,7 +65,7 @@ Contract Management tetap domain tersendiri; scope kontrak menggunakan owner dom
 | Sekretaris Direksi | Fungsi dasar karyawan + agenda/permintaan dukungan Direksi | Prioritas/override harus permission khusus dan audit |
 | Humas | Fungsi dasar karyawan + antrean pekerjaan dokumentasi yang ditugaskan | Detail agenda disamarkan untuk pihak tanpa kewenangan |
 | Auditor | Read-only sesuai grant audit | Tidak boleh create/update/delete/approve |
-| RPC/SC dan owner operasional lain | Kapabilitas sesuai owner domain dan scope yang diberikan | Nama unit/lokasi tidak otomatis menjadi role atau scope |
+| Pegawai di lokasi PIBC/RPC-SC | Fungsi dasar Karyawan + role tambahan yang ditetapkan | Lokasi tidak memberi permission, owner scope, atau antrean tiket |
 
 Matriks di atas adalah baseline kebijakan. Permission dan scope aktual harus dibaca dari database RBAC, bukan dari nama role atau tabel statis di frontend.
 
