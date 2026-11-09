@@ -59,20 +59,32 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
   const [returnNotes, setReturnNotes] = useState<string>('');
 
-  const isEmployee = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
-  const isAuditor = currentUser?.role === 'Auditor';
+  const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
+  const hasPermission = (key: string, legacyRoles: string[] = []) => {
+    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
+    if (Array.isArray(currentUser?.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
+    }
+    return legacyRoles.includes(currentUser?.role || '');
+  };
+  const canCreateLoan = !isAuditor && hasPermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canRejectLoan = !isAuditor && hasPermission('loans.reject', ['Admin GABAH', 'IT', 'GA']);
+  const canHandoverLoan = !isAuditor && hasPermission('loans.handover', ['Admin GABAH', 'IT', 'GA']);
+  const canReturnLoan = !isAuditor && hasPermission('loans.return', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeAssets = Array.isArray(assets) ? assets : [];
   const currentUserId = currentUser?.id || '';
-
-  const baseLoans = isEmployee
-    ? safeLoans.filter(l => {
-        return (
-          l.borrower_id === currentUserId ||
-          isExactIdentityNameMatch(l.borrower_name, currentUser.name)
-        );
-      })
-    : safeLoans;
+  // PostgreSQL already returns loans inside the effective permission/scope.
+  // Only file-store compatibility applies the legacy personal-view filter.
+  const isEmployee = !isAuditor && !['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
+  const baseLoans = Array.isArray(currentUser?.permission_keys)
+    ? safeLoans
+    : isEmployee
+      ? safeLoans.filter(l => l.borrower_id === currentUserId || isExactIdentityNameMatch(l.borrower_name, currentUser.name))
+      : safeLoans;
+  const isSelfLoansOnly = Array.isArray(currentUser?.permission_keys)
+    ? !baseLoans.some(l => l.borrower_id !== currentUserId && !isExactIdentityNameMatch(l.borrower_name, currentUser.name))
+    : isEmployee;
 
   const filteredLoans = baseLoans.filter((loan) => {
     if (statusFilter === 'ALL') return true;
@@ -82,7 +94,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
   });
 
   const canApprove = (loan: Loan) => {
-    return GabahService.canApproveLoan(currentUser, loan);
+    return Array.isArray(currentUser?.permission_keys)
+      ? !isAuditor && hasPermission('loans.approve')
+      : GabahService.canApproveLoan(currentUser, loan);
   };
 
   return (
@@ -96,8 +110,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
             Peminjaman Barang &amp; Reservasi
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            {isEmployee
-              ? 'Daftar riwayat dan status pengajuan peminjaman kendaraan operasional serta laptop kerja Anda.'
+            {isSelfLoansOnly
+              ? 'Daftar riwayat dan status pengajuan peminjaman aset Anda.'
               : 'Sistem peminjaman kendaraan operasional, laptop cadangan, kamera rapat, dan ruang meeting dengan validasi kalender otomatis.'}
           </p>
         </div>
@@ -112,7 +126,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateLoan && (
             <button
               id="btn-create-loan"
               onClick={handleOpenCreate}
@@ -152,7 +166,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {status === 'ALL' ? (isEmployee ? 'Semua Peminjaman Saya' : 'Semua Reservasi') :
+            {status === 'ALL' ? (isSelfLoansOnly ? 'Semua Peminjaman Saya' : 'Semua Reservasi') :
              status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => l.status === 'pending').length})` :
              status === 'approved' ? `Disetujui (${baseLoans.filter(l => l.status === 'approved').length})` :
              status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => l.status === 'active' || l.status === 'overdue').length})` :
@@ -279,18 +293,18 @@ export const LoansView: React.FC<LoansViewProps> = ({
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Setujui Reservasi
                       </button>
-                      <button
+                      {canRejectLoan && <button
                         onClick={() => setRejectingLoanId(loan.id)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
                       >
                         <XCircle className="w-3.5 h-3.5" />
                         Tolak
-                      </button>
+                      </button>}
                     </>
                   )}
 
                   {/* Status: Approved -> Handover to user */}
-                  {loan.status === 'approved' && userCanApprove && (
+                  {loan.status === 'approved' && canHandoverLoan && (
                     <button
                       onClick={() => onHandoverLoan(loan.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
@@ -301,7 +315,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Status: Active -> Return inspection */}
-                  {!isAuditor && (loan.status === 'active' || loan.status === 'overdue') &&
+                  {canReturnLoan && (loan.status === 'active' || loan.status === 'overdue') &&
                     (userCanApprove || loan.borrower_id === currentUser.id || isExactIdentityNameMatch(loan.borrower_name, currentUser.name)) && (
                     <button
                       onClick={() => setReturningLoan(loan)}
@@ -335,14 +349,14 @@ export const LoansView: React.FC<LoansViewProps> = ({
           <div className="text-center py-12 rounded-2xl bg-white border border-slate-200 p-8 space-y-3 shadow-xs">
             <CalendarClock className="w-12 h-12 mx-auto text-slate-300" />
             <h4 className="font-bold text-slate-800 text-sm">
-              {isEmployee ? 'Belum Ada Riwayat Peminjaman dari Anda' : 'Tidak Ada Data Peminjaman'}
+              {isSelfLoansOnly ? 'Belum Ada Riwayat Peminjaman dari Anda' : 'Tidak Ada Data Peminjaman'}
             </h4>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
               {isEmployee 
                 ? 'Anda belum memiliki riwayat pengajuan peminjaman barang. Klik tombol "Ajukan Peminjaman Baru" untuk meminjam mobil operasional atau laptop cadangan.'
                 : 'Tidak ada data peminjaman untuk filter status ini.'}
             </p>
-            {isEmployee && (
+            {isSelfLoansOnly && canCreateLoan && (
               <button
                 onClick={handleOpenCreate}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
