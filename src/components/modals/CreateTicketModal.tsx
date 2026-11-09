@@ -79,8 +79,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       icon: '❄️',
     },
     {
-      id: 'sc-weighbridge',
-      label: 'Timbangan & Mesin Pabrik',
+      id: 'me-maintenance',
+      label: 'Mesin & Kelistrikan (ME)',
       category: 'ME' as TicketCategory,
       priority: 'medium' as TicketPriority,
       title: 'Kendala Mesin / Kelistrikan / Perawatan',
@@ -191,10 +191,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         setDescription(
           `Tiket kerja terkait kontrak ${linkedContract.contract_number} (${linkedContract.title}) dengan vendor ${linkedContract.vendor_name}. Divisi pemilik: ${linkedContract.owner_division}.`
         );
-        setCategory((linkedContract.owner_division === 'IT' ? 'IT'
-          : linkedContract.owner_division === 'SC' ? 'SC'
-          : linkedContract.owner_division === 'PIBC' ? 'PIBC'
-          : 'GA') as TicketCategory);
+        if (linkedContract.owner_division === 'IT' || linkedContract.owner_division === 'GA') {
+          setCategory(linkedContract.owner_division as TicketCategory);
+        }
       }
     }
   }, [isOpen, preselectedAssetId, linkedContract]);
