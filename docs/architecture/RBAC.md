@@ -184,7 +184,7 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 
 
 ### Role operasional: Admin Tiket ME
-- Migration `037_admin_tiket_me_role_template.sql` menyediakan role template `admin_tiket_me` dengan permission minimum `tickets.read` dan `tickets.update` serta scope modul Tickets pada unit `UNIT-PIBC-ME`.
+- Migration `037_admin_tiket_me_role_template.sql` menyediakan role template `admin_tiket_me` dengan permission `tickets.read`, `tickets.update`, `notifications.read`, dan `notifications.read_all` serta scope modul Tickets pada unit `UNIT-PIBC-ME`.
 - Role template tidak otomatis diberikan kepada siapa pun. Super Admin menetapkan role tersebut kepada staf yang ditunjuk dan memastikan profil pegawai memiliki `unit_id=UNIT-PIBC-ME`.
 - Staf Admin ME mengelola administrasi antrean (membaca tiket ME dan memperbarui status/catatan tindak lanjut). Hak ini tidak memberikan akses ke antrean IT/GA, data aset PIBC secara umum, atau jadwal pemeliharaan.
 - Teknisi Tim Perawatan tetap merupakan pelaksana pekerjaan teknis. Penetapan teknisi/PIC individual adalah kapabilitas terpisah dan tidak diasumsikan tersedia hanya karena role Admin Tiket ME.
