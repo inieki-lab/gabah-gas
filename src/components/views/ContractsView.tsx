@@ -74,7 +74,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   const [uploadingContractId, setUploadingContractId] = useState<string | null>(null);
   const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(null);
 
-  const isAdmin = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH';
+  const isAdmin = currentUser.is_superadmin === true || (currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH');
   const isAuditor = Array.isArray(currentUser.role_keys) ? currentUser.role_keys.includes('auditor') : currentUser.role === 'Auditor';
   const hasPermission = (permission: string, legacyRoles: string[] = []) => {
     if (isAdmin) return true;
