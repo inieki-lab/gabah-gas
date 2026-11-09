@@ -2905,6 +2905,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   <input value={rbacScopeValue} onChange={e => setRbacScopeValue(e.target.value)} disabled={['all', 'own'].includes(rbacScopeType)} placeholder={rbacScopeType === 'division_except' ? 'Kode owner yang dikecualikan' : 'Kode owner / unit / lokasi'} className="px-3 py-2 rounded-xl border border-slate-200 text-xs disabled:bg-slate-50" />
                                   <button type="button" onClick={handleAddRbacScope} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold hover:bg-slate-50">Tambah Scope</button>
                                 </div>
+                                {rbacScopeType === 'division_except' && (
+                                  <p className="text-[11px] text-slate-500">Contoh: modul Assets + kode owner IT berarti role ini mendapat scope semua owner selain IT. Scope hanya membatasi data; permission tindakan (read/update/approve, dan lainnya) tetap harus diberikan terpisah.</p>
+                                )}
                                 {rbacScopes.length === 0 ? <p className="text-xs text-slate-400">Belum ada scope yang dikonfigurasi.</p> : (
                                   <div className="flex flex-wrap gap-2">
                                     {rbacScopes.map((scope, index) => (
