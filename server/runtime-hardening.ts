@@ -27,6 +27,8 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   if (isSuperadmin(actor)) return true;
   if (isAuditorActor(actor)) return false;
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+  // Unit queue visibility is independent of the employee's office location.
+  if (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id) return true;
   if (isPostgresPersistenceActive()) {
     // PostgreSQL RBAC is owner-code agnostic: custom operational functions
     // (e.g. RPC/SC) need the same explicit Tickets scope as IT/GA.
