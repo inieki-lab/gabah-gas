@@ -995,20 +995,22 @@ export class GabahDomainService {
       updated_at: new Date().toISOString(),
     };
 
-    // IT currently has a single support operator. Route directly to that
-    // operator only when exactly one active IT user has explicit ticket-update
-    // permission and IT ticket scope. If staffing changes or is ambiguous,
-    // keep the ticket in the IT queue instead of guessing a recipient.
-    if (payload.category === 'IT' && isPostgresPersistenceActive()) {
-      const eligibleItAgents = db.users.filter(user =>
+    // IT and GA may use direct self-assignment while each has one eligible
+    // frontline operator. Only users with explicit update permission and
+    // matching division scope qualify; dispatchers and messengers are not
+    // treated as technicians merely because of their job title or division.
+    // If staffing is empty or ambiguous, leave the ticket in its division queue.
+    if (['IT', 'GA'].includes(payload.category) && isPostgresPersistenceActive()) {
+      const targetDivision = payload.category;
+      const eligibleAgents = db.users.filter(user =>
         user.is_active !== false
-        && String(user.division || '').toUpperCase() === 'IT'
+        && String(user.division || '').toUpperCase() === targetDivision
         && hasRbacPermission(String(user.id), 'tickets.update')
-        && hasRbacScope(String(user.id), 'division', 'IT', 'tickets')
+        && hasRbacScope(String(user.id), 'division', targetDivision, 'tickets')
       );
-      if (eligibleItAgents.length === 1) {
-        newTicket.assigned_agent_id = eligibleItAgents[0].id;
-        newTicket.assigned_agent_name = eligibleItAgents[0].name;
+      if (eligibleAgents.length === 1) {
+        newTicket.assigned_agent_id = eligibleAgents[0].id;
+        newTicket.assigned_agent_name = eligibleAgents[0].name;
         newTicket.status = 'assigned';
       }
     }
