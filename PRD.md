@@ -129,13 +129,13 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 
 Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifkan dan dipertahankan untuk referensi historis; jangan diaktifkan kembali sebagai lokasi operasional. Lokasi baru di masa depan ditambahkan melalui master oleh Super Admin tanpa perubahan kode. Menutup lokasi berarti menonaktifkan, bukan menghapus atau mengubah histori user/aset.
 
-**Owner domain aset adalah master fungsi/pemilik yang fleksibel**, bukan daftar enum tetap dan bukan nama lokasi. Contoh nilai saat ini dapat mencakup IT, GA, RPC dan domain operasional lain yang disahkan. Kategori aset, lokasi fisik, lokasi kerja pegawai, unit organisasi, serta custodian tidak boleh otomatis menentukan owner tanpa aturan bisnis yang eksplisit.
+**Owner domain aset adalah master fungsi/pemilik yang fleksibel**, bukan daftar enum tetap dan bukan nama lokasi. Contoh nilai saat ini dapat mencakup IT, GA, dan domain operasional lain yang disahkan. RPC adalah lokasi kantor, bukan owner domain. Kategori aset, lokasi fisik, lokasi kerja pegawai, unit organisasi, serta custodian tidak boleh otomatis menentukan owner tanpa aturan bisnis yang eksplisit.
 
 - IT tetap mengelola aset owner IT di seluruh lokasi.
 - GA tetap mengelola aset owner GA di seluruh lokasi.
 - Super Admin dapat mengonfigurasi kebijakan GA yang lebih luas, termasuk pola "semua owner kecuali IT". Kebijakan tersebut adalah opsi konfigurasi, bukan grant otomatis yang boleh diaktifkan tanpa persetujuan bisnis.
 - GA hanya memperoleh akses baca tambahan ke Laptop dan PC/Desktop milik IT jika permission khusus assets.read.it_workstations aktif. Akses tersebut tidak memberikan kemampuan mutasi.
-- Owner operasional historis berkode SC (yang sebelumnya disebut Supply Chain) tetap merupakan data legacy dan harus diverifikasi sebelum ditetapkan sebagai owner aktif; lokasi kantor RPC tidak otomatis menjadi owner aset. Contoh: mesin produksi/gudang yang berada di lokasi Subang (contoh historis) tetap dapat dimiliki fungsi RPC/SC; lokasi tidak memindahkan owner.
+- Owner operasional historis berkode SC (yang sebelumnya disebut Supply Chain) tetap merupakan data legacy dan harus diverifikasi sebelum ditetapkan sebagai owner aktif; lokasi kantor RPC tidak otomatis menjadi owner aset. Contoh: aset operasional historis yang sebelumnya tercatat dengan owner SC harus ditinjau per aset; lokasi RPC atau lokasi lain tidak otomatis menjadi owner.
 - Data owner historis yang ambigu harus masuk daftar review Super Admin. Tidak boleh ada mass reassignment owner berdasarkan nama cabang, lokasi, atau kategori semata.
 
 ### 2.5 Kontrak Data dan Otorisasi Target
