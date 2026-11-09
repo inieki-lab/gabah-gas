@@ -251,36 +251,6 @@ export default function App() {
     }
   };
 
-  const handleSwitchRoleSimulation = async (role: UserRole) => {
-    try {
-      const res = await gabahApi.switchRole({ role });
-      const targetUser = res?.user || res?.data?.user;
-      if (!targetUser) {
-        showToast('Alih peran ditolak oleh server.', 'warning');
-        return;
-      }
-      setCurrentUser(targetUser);
-      setCurrentTab('dashboard');
-      setMeetingCategoryFilter('all');
-      setSelectedAssetForDetail(null);
-      setSelectedAssetForEdit(null);
-      setSelectedAssetForQr(null);
-      setSelectedLoanForBast(null);
-      setPreselectedTicketAssetId(undefined);
-      setContractForLinkedTicket(null);
-      setLinkedTicketContractId(undefined);
-      setIsCreateAssetModalOpen(false);
-      setIsCreateLoanModalOpen(false);
-      setIsCreateTicketModalOpen(false);
-      setIsGlobalSearchOpen(false);
-      setIsAdministrationModalOpen(false);
-      showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
-      await refreshData();
-    } catch (err: any) {
-      showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
-    }
-  };
-
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
   const activeTab: NavTab = currentUser && isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)
@@ -716,7 +686,6 @@ export default function App() {
         currentUser={currentUser}
         allUsers={allUsers}
         onSelectUser={handleSelectUser}
-        onSwitchRoleSimulation={handleSwitchRoleSimulation}
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
         onChangePassword={() => setIsChangePasswordOpen(true)}
