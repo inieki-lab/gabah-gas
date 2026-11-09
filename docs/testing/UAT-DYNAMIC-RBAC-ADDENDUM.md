@@ -96,3 +96,28 @@ Record defects with exact route, user persona, record scope, expected/actual sta
 - Confirm a user in Tim Perawatan can see ME queue tickets regardless of their office location, but cannot see IT/GA queue tickets without their own permission/scope.
 - Confirm legacy ticket categories SC/PIBC remain visible as historical data and cannot be newly submitted.
 - Confirm notification read/read-all authorization follows the same recipient unit rule.
+
+
+## UAT — Dummy Admin Tiket ME
+
+Akun uji ME bersifat opt-in dan tidak dibuat secara default. Aktifkan hanya pada environment development/staging dengan:
+
+- `GABAH_ENABLE_ME_DUMMY_USER=true`
+- Opsional, untuk password khusus akun uji pada mode non-production: `GABAH_ME_DUMMY_PASSWORD`
+- Jika password khusus tidak disetel, mekanisme credential canonical yang sudah ada tetap berlaku (password awal dari environment atau file kredensial dev yang diabaikan Git).
+
+Identitas akun uji:
+- Nama: Dimas Pratama (Dummy Admin ME)
+- Email/login: `admin.me.dummy@foodstation.co.id`
+- User ID: `USR-ME-ADMIN-001`
+- Primary role: Karyawan
+- Additional role: Admin Tiket ME
+- Unit: Tim Perawatan (ME) — `UNIT-PIBC-ME`
+- Lokasi penempatan: Kantor Perawatan — `OFF-PERAWATAN`
+
+Acceptance checks:
+1. Akun muncul pada direktori pegawai saat opt-in aktif.
+2. Akun menerima antrean tiket yang memiliki `assigned_unit_id=UNIT-PIBC-ME`.
+3. Akun dapat membaca notifikasi antrean ME dan memperbarui status/catatan tiket ME sesuai permission.
+4. Akun tidak dapat mengelola tiket IT/GA, data aset PIBC secara umum, atau modul Maintenance.
+5. Saat `GABAH_ENABLE_ME_DUMMY_USER` tidak aktif, akun dummy tidak dibuat. Jangan aktifkan flag ini pada production.
