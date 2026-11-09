@@ -238,3 +238,7 @@ Kategori tujuan tiket helpdesk adalah **IT**, **GA**, dan **ME (Mechanical, Elec
 2. **Kepatuhan RBAC**: Tidak ada akses di luar permission dan scope owner yang disahkan. Owner aset/vendor tidak ditentukan oleh lokasi. IT dan GA mengelola domain masing-masing; owner operasional lain dapat ditambahkan melalui master. GA hanya membaca Laptop/PC owner IT bila permission khusus aktif. Auditor read-only.
 3. **Kinerja UI**: Render antarmuka responsif tanpa lag, Tailwind CSS v4, dynamic counter badges, dan navigasi instan via Quick Search Omnibox (`Ctrl+K`).
 4. **Verifikasi Teknis**: 0 lint error (`tsc --noEmit`), build produksi sukses (`vite build && node scripts/build-server.cjs`), dan berjalan stabil pada Docker container.
+
+
+## Ketentuan Persona Tambahan — Admin Tiket ME
+Untuk kebutuhan operasional mendatang, GABAH menyediakan role template **Admin Tiket ME** (bukan role teknisi). Staf yang ditunjuk bertugas menerima dan memeriksa kelengkapan tiket ME, menjaga status dan catatan tindak lanjut, mengoordinasikan pekerjaan dengan Tim Perawatan, serta memantau SLA. Akses dibatasi pada antrean unit `UNIT-PIBC-ME`. Super Admin harus menetapkan role dan unit pegawai secara eksplisit; lokasi PIBC/RPC saja tidak memberi akses. Teknisi tetap bertanggung jawab atas pemeriksaan dan perbaikan teknis.
