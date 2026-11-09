@@ -59,34 +59,32 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     'Dokumen BAST serah terima perangkat pengganti telah diterbitkan secara resmi melalui GABAH.',
   ];
 
-  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
-  const isIT = currentUser?.role === 'IT';
+  const isSuperAdmin = Boolean(currentUser?.is_superadmin) || currentUser?.role === 'Admin GABAH';
   const isGA = currentUser?.role === 'GA';
-  const isSC = currentUser?.role === 'Supply Chain';
-  const isPIBC = currentUser?.role === 'PIBC';
-  const isAuditor = currentUser?.role === 'Auditor';
-  // Self-service roles see their own submissions; operating divisions see the
-  // tickets already authorized for their division by GabahService.
+  const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
+  const hasPermission = (key: string, legacyRoles: string[] = []) => {
+    if (isSuperAdmin) return true;
+    if (Array.isArray(currentUser?.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
+    }
+    return legacyRoles.includes(currentUser?.role || '');
+  };
+  const canCreateTicket = !isAuditor && hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const baseTickets = safeTickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
-  // In Dynamic RBAC mode the API has already scoped this list. A Karyawan
-  // baseline may also hold an explicitly assigned operational queue role.
+  // The API has already applied effective ticket scope in PostgreSQL mode.
+  // Location labels (SC/PIBC) never create ticket queues or extra visibility.
   const hasScopedQueueTickets = Array.isArray(currentUser?.permission_keys) && baseTickets.some(t =>
     t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
   );
-  const isSelfTicketsOnly = !hasScopedQueueTickets
-    && ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
+  const isSelfTicketsOnly = Array.isArray(currentUser?.permission_keys)
+    ? !hasScopedQueueTickets
+    : !isSuperAdmin && !isAuditor && !['IT', 'GA'].includes(currentUser?.role || '');
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
   const defaultCategories = isSelfTicketsOnly
     ? ['ALL', ...Array.from(baseCategorySet)]
-    : isGA
-    ? ['ALL', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'GA')]
-    : isSC
-    ? ['ALL', 'SC', ...Array.from(baseCategorySet).filter(c => c !== 'SC')]
-    : isPIBC
-    ? ['ALL', 'PIBC', ...Array.from(baseCategorySet).filter(c => c !== 'PIBC')]
-    : ['ALL', 'IT', 'GA', 'SC', 'PIBC'];
+    : ['ALL', 'IT', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'IT' && c !== 'GA')];
   const availableCategories = Array.from(new Set(defaultCategories));
 
   const filteredTickets = baseTickets.filter((t) => {
@@ -120,10 +118,6 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Tiket Helpdesk Saya'
               : isGA
               ? 'Helpdesk & Tiket Layanan GA'
-              : isSC
-              ? 'Helpdesk & Tiket Supply Chain'
-              : isPIBC
-              ? 'Helpdesk & Tiket PIBC'
               : isAuditor
               ? 'Pemantauan Tiket Helpdesk (Read-Only)'
               : 'Helpdesk & Tiket Layanan Internal'}
@@ -133,10 +127,6 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Daftar pengajuan kendala teknis, kerusakan fasilitas, dan permohonan bantuan Anda.'
               : isGA
               ? 'Daftar tiket kendala fasilitas gedung & sarana GA, serta tiket kendala yang Anda ajukan.'
-              : isSC
-              ? 'Daftar kendala operasional Supply Chain dan tiket yang Anda ajukan.'
-              : isPIBC
-              ? 'Daftar kendala operasional PIBC dan tiket yang Anda ajukan.'
               : isAuditor
               ? 'Pemantauan read-only tiket helpdesk lintas divisi untuk kebutuhan audit.'
               : 'Laporan insiden, kerusakan perangkat IT, pemeliharaan fasilitas GA, dan permintaan lisensi software.'}
@@ -153,7 +143,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateTicket && (
             <button
               id="btn-create-ticket"
               onClick={handleOpenCreate}
