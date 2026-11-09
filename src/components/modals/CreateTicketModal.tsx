@@ -8,7 +8,7 @@ import {
   Car, 
   Info 
 } from 'lucide-react';
-import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
+import { Asset, Loan, TicketPriority, UserProfile, Contract } from '../../types';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface CreateTicketModalProps {
@@ -60,7 +60,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'sw-access',
       label: 'Akses Software & Lisensi',
-      category: 'IT' as TicketCategory,
+      category: 'IT' as 'IT' | 'GA',
       priority: 'medium' as TicketPriority,
       title: 'Permohonan Akun ERP Accurate / Microsoft 365 / VPN',
       desc: 'Permintaan aktivasi akun baru atau reset password lisensi kerja resmi Food Station.',
