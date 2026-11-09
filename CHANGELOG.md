@@ -8,6 +8,7 @@
 - Editor scope Dynamic RBAC menampilkan dan mengetikkan `division_except` secara eksplisit, dengan penjelasan bahwa pengecualian owner membatasi data tetapi tidak memberikan permission tindakan.
 - Form edit pegawai dan impor CSV kini hanya menerima role profil utama kanonikal; Humas/Sekretaris Direksi serta Supply Chain/PIBC tetap ditempatkan sebagai capability tambahan atau atribut unit/lokasi, bukan role utama baru.
 - Endpoint create/update pegawai kini menolak role fungsi/cabang sebagai role utama; bulk import mempertahankan kompatibilitas label Supply Chain/PIBC dengan memetakannya ke Karyawan + unit/lokasi, serta menolak Humas/Sekretaris Direksi sebagai role utama.
+- Bulk import menolak role utama yang tidak dikenal, alih-alih diam-diam mengubahnya menjadi Karyawan; pemetaan legacy Supply Chain/PIBC tetap diberi warning dan unit/lokasi eksplisit.
 - Regression test HTTP bulk import ditambahkan ke pipeline CI untuk memeriksa validasi role utama, pemetaan unit/lokasi cabang, dan larangan role fungsi sebagai role utama.
 - Aturan notifikasi dan format nomor yang masih lokal diberi keterangan eksplisit bahwa perubahan tidak mengubah scheduler atau generator sequence server.
 - Ekspor JSON panel dinamai sebagai snapshot data, bukan backup PostgreSQL. Pemeriksaan integritas diberi label sebagai pemeriksaan internal GABAH, bukan rekonsiliasi SAP.
