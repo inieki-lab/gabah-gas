@@ -514,8 +514,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   useEffect(() => {
-    if (activeSection === 'roles' && isCurrentUserAdmin) void refreshRbac();
-  }, [activeSection, isCurrentUserAdmin]);
+    if (isOpen && activeSection === 'roles' && isCurrentUserAdmin) void refreshRbac();
+  }, [isOpen, activeSection, isCurrentUserAdmin]);
 
   const selectedRbacRole = rbacRoles.find(role => role.id === rbacSelectedRoleId) || null;
   const rbacPermissionGroups: Record<string, any[]> = rbacPermissions.reduce<Record<string, any[]>>((groups, permission) => {
@@ -704,11 +704,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   useEffect(() => {
-    if (activeSection === 'users' && isCurrentUserAdmin) {
+    if (isOpen && activeSection === 'users' && isCurrentUserAdmin) {
       void refreshRbac();
       void refreshUserAssignments();
     }
-  }, [activeSection, isCurrentUserAdmin]);
+  }, [isOpen, activeSection, isCurrentUserAdmin]);
 
   // Organization State
   // ORG-MODEL: master Jabatan/Level, Unit, dan Kantor/Lokasi (terpisah).
@@ -779,12 +779,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   // P2#10: live numbering sequences (server snapshot) — no more hardcoded samples.
   const [liveSequences, setLiveSequences] = useState<Array<{ key: string; division: string; code: string; year: number; current: number }> | null>(null);
   useEffect(() => {
+    if (!isOpen) return;
     let cancelled = false;
     gabahApi.getNumberingSequences()
       .then(seq => { if (!cancelled) setLiveSequences(seq); })
       .catch(() => { /* keep null → UI shows honest "unavailable" state */ });
     return () => { cancelled = true; };
-  }, []);
+  }, [isOpen]);
 
   // P2#11: CR-05 reminder subsystem overview (admin-only endpoint).
   const [reminderOverview, setReminderOverview] = useState<any>(null);
@@ -796,8 +797,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       .catch((err: any) => setReminderOverviewError(err.message || 'Gagal memuat overview reminder'));
   };
   useEffect(() => {
-    refreshReminderOverview();
-  }, []);
+    if (isOpen) refreshReminderOverview();
+  }, [isOpen]);
 
   // System Settings State
   const [settingsForm, setSettingsForm] = useState(() => {
@@ -1541,6 +1542,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   // Health snapshot awal sekali per render modal (sekali fetch, tanpa toast).
   useEffect(() => {
+    if (!isOpen) return;
     let cancelled = false;
     (async () => {
       const start = performance.now();
@@ -1563,7 +1565,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [isOpen]);
 
   // P1#2: Reset sandi NYATA — minta server menerbitkan sandi sementara CSPRNG
   // (server meng-hash & menyimpannya), lalu tampilkan SEKALI untuk disampaikan
