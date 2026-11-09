@@ -8,6 +8,8 @@
 - Editor scope Dynamic RBAC menampilkan dan mengetikkan `division_except` secara eksplisit, dengan penjelasan bahwa pengecualian owner membatasi data tetapi tidak memberikan permission tindakan.
 - Form edit pegawai dan impor CSV kini hanya menerima role profil utama kanonikal; Humas/Sekretaris Direksi serta Supply Chain/PIBC tetap ditempatkan sebagai capability tambahan atau atribut unit/lokasi, bukan role utama baru.
 - Endpoint create/update pegawai kini menolak role fungsi/cabang sebagai role utama; bulk import mempertahankan kompatibilitas label Supply Chain/PIBC dengan memetakannya ke Karyawan + unit/lokasi, serta menolak Humas/Sekretaris Direksi sebagai role utama.
+- Seed/mock pegawai Humas dan Sekretariat Direksi kini memakai primary role Karyawan; label pekerjaan dipertahankan terpisah dan capability fungsi diberikan melalui Dynamic RBAC. Sync primary role legacy juga dinormalisasi ke Karyawan.
+- Kontrol simulasi role/persona `SIM-*` di header dihapus. Alih akun hanya menampilkan akun nyata dan hanya terlihat oleh Superadmin; user lain tetap mendapat aksi akun sendiri.
 - Bulk import menolak role utama yang tidak dikenal, alih-alih diam-diam mengubahnya menjadi Karyawan; pemetaan legacy Supply Chain/PIBC tetap diberi warning dan unit/lokasi eksplisit.
 - Regression test HTTP bulk import ditambahkan ke pipeline CI untuk memeriksa validasi role utama, pemetaan unit/lokasi cabang, dan larangan role fungsi sebagai role utama.
 - Semua harness verifikasi yang mengisolasi file-store kini mengembalikan snapshot sebelumnya atau menghapus file state jika sebelumnya belum ada, sehingga password acak test tidak mencemari test berikutnya.
