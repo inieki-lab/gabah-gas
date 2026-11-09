@@ -37,16 +37,21 @@ async function main() {
     // Case 12: Supply Chain and PIBC are not application roles in the target model.
     // Their employee identities remain Karyawan with independent unit/location attributes.
     const users = (await req(b, 'GET', '/api/users', { token: admin })).json?.data || [];
-    const expectedSeedRoles = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Karyawan', 'Auditor'];
+    const expectedSeedRoles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor'];
     const presentRoles = expectedSeedRoles.filter(r => users.some(u => u.role === r));
     const scUser = users.find(u => u.email === 'sc.warehouse@foodstation.co.id');
     const pibcUser = users.find(u => u.email === 'pibc.admin@foodstation.co.id');
     const noBranchRole = !users.some(u => ['Supply Chain', 'PIBC'].includes(u.role));
     const branchProfilesValid = scUser?.role === 'Karyawan' && scUser?.office_location_id === 'OFF-RPC'
       && pibcUser?.role === 'Karyawan' && pibcUser?.office_location_id === 'OFF-PIBC';
-    rec('12: SC/PIBC are employee locations/units, not seeded application roles', '7 canonical roles; SC/RPC + PIBC users are Karyawan with independent locations',
-      `${presentRoles.length}/7; branchProfiles=${branchProfilesValid}; legacyBranchRoles=${noBranchRole}`,
-      presentRoles.length === 7 && noBranchRole && branchProfilesValid);
+    const humasUser = users.find(u => u.email === 'humas@foodstation.co.id');
+    const sekretariatUser = users.find(u => u.email === 'sekretariat.direksi@foodstation.co.id');
+    const functionProfilesValid = humasUser?.role === 'Karyawan' && sekretariatUser?.role === 'Karyawan'
+      && String(humasUser?.role_label || '').toLowerCase().includes('humas')
+      && String(sekretariatUser?.role_label || '').toLowerCase().includes('sekretariat');
+    rec('12: primary profiles are canonical; branch and function labels remain separate attributes', '5 canonical roles; SC/PIBC + Humas/Sekdir are Karyawan with independent attributes',
+      `${presentRoles.length}/5; branchProfiles=${branchProfilesValid}; functionProfiles=${functionProfilesValid}; legacyBranchRoles=${noBranchRole}`,
+      presentRoles.length === 5 && noBranchRole && branchProfilesValid && functionProfilesValid);
 
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
