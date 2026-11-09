@@ -16,6 +16,10 @@ const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
+const loansUi = read('src/components/views/LoansView.tsx');
+const contractsUi = read('src/components/views/ContractsView.tsx');
+const maintenanceUi = read('src/components/views/MaintenanceView.tsx');
+const dashboardUi = read('src/components/views/DashboardView.tsx');
 const ticketUi = read('src/components/views/TicketsView.tsx');
 
 const checks = [
@@ -102,6 +106,15 @@ const checks = [
   ['ME dummy account is opt-in and uses a dedicated password only when enabled', dbSeed.includes("process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true'") && persistence.includes("process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true' ? process.env.GABAH_ME_DUMMY_PASSWORD : undefined") && read('docker-compose.yml').includes('GABAH_ME_DUMMY_PASSWORD: ${GABAH_ME_DUMMY_PASSWORD:-}')],
   ['GA ticket execution/dispatch is limited to an explicitly assigned operator while general GA work permissions remain untouched', read('server/migrations/039_ga_helpdesk_operator_template.sql').includes("'ga_helpdesk_operator'") && read('server/migrations/039_ga_helpdesk_operator_template.sql').includes("'tickets.update'") && read('server/migrations/039_ga_helpdesk_operator_template.sql').includes("'tickets.assign'") && read('server/migrations/039_ga_helpdesk_operator_template.sql').includes("'division', 'GA'") && read('server/migrations/039_ga_helpdesk_operator_template.sql').includes("IN ('tickets.update', 'tickets.assign')") && read('server/migrations/039_ga_helpdesk_operator_template.sql').includes('Keep all other generic GA capabilities intact') && !read('server/migrations/039_ga_helpdesk_operator_template.sql').includes("'assets.")],
   ['Dynamic RBAC scope editor exposes every backend-supported scope type including division exclusions', read('src/components/modals/AdministrationModal.tsx').includes("'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'") && read('src/components/modals/AdministrationModal.tsx').includes('<option value="division_except">') && read('src/components/modals/AdministrationModal.tsx').includes("type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'")],
+  ['Loan, contract, maintenance and dashboard module controls treat Dynamic RBAC permissions as authoritative before legacy role fallback',
+    loansUi.indexOf('if (Array.isArray(currentUser?.permission_keys))') < loansUi.indexOf('if (currentUser?.is_superadmin || currentUser?.role === \'Admin GABAH\')')
+    && maintenanceUi.indexOf('if (Array.isArray(currentUser?.permission_keys))') < maintenanceUi.indexOf('if (currentUser?.is_superadmin || currentUser?.role === \'Admin GABAH\')')
+    && dashboardUi.indexOf('if (Array.isArray(currentUser?.permission_keys))') < dashboardUi.indexOf('if (currentUser?.is_superadmin || currentUser?.role === \'Admin GABAH\')')
+    && contractsUi.includes("currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH'")],
+  ['Vendor create/update controls honor explicit Dynamic RBAC permissions and do not bypass them using a legacy Admin GABAH label',
+    vendorUi.includes("currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH'")
+    && vendorUi.includes("currentUser.permission_keys?.includes('vendors.create') === true")
+    && vendorUi.includes("currentUser.permission_keys?.includes('vendors.update') === true")],
   ['ME ticket dispatch remains separately assigned to the ME dispatcher template', read('server/migrations/038_ticket_dispatch_permission.sql').includes("'tickets.assign'") && read('server/migrations/038_ticket_dispatch_permission.sql').includes("r.role_key = 'admin_tiket_me'")],
   ['Ticket assignment API requires dispatcher permission, matching scope, and an active authorized target', /app\.patch\('\/api\/tickets\/:id\/assign'[\s\S]*requireRbacPermission\(req, res, 'tickets\.assign'\)[\s\S]*hasRbacScope[\s\S]*user\.is_active !== false[\s\S]*tickets\.update/.test(server)],
   ['IT and GA direct routing assigns only one active, explicitly scoped frontline operator', /\['IT', 'GA'\]\.includes\(payload\.category\)[\s\S]*eligibleAgents = db\.users\.filter[\s\S]*user\.is_active !== false[\s\S]*hasRbacPermission\(String\(user\.id\), 'tickets\.update'\)[\s\S]*hasRbacScope\(String\(user\.id\), 'division', targetDivision, 'tickets'\)[\s\S]*eligibleAgents\.length === 1[\s\S]*assigned_agent_id/.test(services)],
