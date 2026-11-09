@@ -109,7 +109,13 @@ async function main() {
     // NOTE: /api/auth/switch-role ROTATES the session (old token destroyed).
     // The non-admin guard test therefore runs LAST, after all admin-token tests.
 
-    // ---------- Happy path: 2 new users + 1 invalid row ----------
+    const invalidPrimaryCreate = await req(base, 'POST', '/api/users', {
+      token: adminToken,
+      body: { name: 'Primary Role Humas', email: `primary.humas.${crypto.randomBytes(3).toString('hex')}@foodstation.co.id`, role: 'Humas' },
+    });
+    record('Create user rejects function role as primary profile', '400', `HTTP ${invalidPrimaryCreate.status}`, invalidPrimaryCreate.status === 400);
+
+    // ---------- Happy path: 2 new users + invalid rows ----------
     const suffix = crypto.randomBytes(3).toString('hex');
     const batch1 = [
       { name: 'Impor Dua', email: `impor.dua.${suffix}@foodstation.co.id`, role: 'GA', division: 'GA', department: 'Sarpras', phone: '081200000002' },
@@ -150,6 +156,11 @@ async function main() {
     record('Updated profile persisted (name+dept+role)', 'Impor Dua (Updated) / Infrastruktur / IT',
       `${updatedUser?.name} / ${updatedUser?.department} / ${updatedUser?.role}`,
       updatedUser?.name === 'Impor Dua (Updated)' && updatedUser?.department === 'Infrastruktur' && updatedUser?.role === 'IT');
+    const invalidPrimaryUpdate = await req(base, 'PATCH', `/api/users/${updatedUser?.id}`, {
+      token: adminToken,
+      body: { role: 'Supply Chain' },
+    });
+    record('Update user rejects branch label as primary profile', '400', `HTTP ${invalidPrimaryUpdate.status}`, invalidPrimaryUpdate.status === 400);
     record('No duplicate account after re-import', 'single account', `count=${users.filter(u => u.email === `impor.dua.${suffix}@foodstation.co.id`).length}`,
       users.filter(u => u.email === `impor.dua.${suffix}@foodstation.co.id`).length === 1);
     const fallbackUser = users.find(u => u.email === `impor.tiga.${suffix}@foodstation.co.id`);
