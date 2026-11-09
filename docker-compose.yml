@@ -40,6 +40,7 @@ services:
       PGPASSWORD: ${PGPASSWORD:?PGPASSWORD wajib diisi di .env sebelum menjalankan docker compose}
       GABAH_INITIAL_ADMIN_PASSWORD: ${GABAH_INITIAL_ADMIN_PASSWORD:-}
       GABAH_INITIAL_USER_PASSWORD: ${GABAH_INITIAL_USER_PASSWORD:-}
+      GABAH_ENABLE_ME_DUMMY_USER: ${GABAH_ENABLE_ME_DUMMY_USER:-false}
       GABAH_UPLOAD_DIR: /app/uploads
     volumes:
       - uploads_data:/app/uploads
