@@ -330,8 +330,8 @@ export function parseUsersImportCsv(
     const divisionRaw = iDiv !== -1 ? (r[iDiv] || '').trim() : '';
     const division = validDivisions.find(d => d.toLowerCase() === divisionRaw.toLowerCase()) || divisionRaw || 'Umum';
     const jobLevelCode = iJobLevel !== -1 ? (r[iJobLevel] || '').trim().toUpperCase() : '';
-    const unitId = iUnit !== -1 ? (r[iUnit] || '').trim() : '';
-    const officeLocationId = iOffice !== -1 ? (r[iOffice] || '').trim() : '';
+    const unitId = iUnit !== -1 ? (r[iUnit] || '').trim().toUpperCase() : '';
+    const officeLocationId = iOffice !== -1 ? (r[iOffice] || '').trim().toUpperCase() : '';
     if (jobLevelCode && !validJobLevels.includes(jobLevelCode)) {
       errors.push(`Baris ${rowNo}: Kode jabatan "${jobLevelCode}" tidak ditemukan atau tidak aktif di master.`);
       continue;
