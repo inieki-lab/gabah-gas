@@ -81,10 +81,10 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'sc-weighbridge',
       label: 'Timbangan & Mesin Pabrik',
-      category: 'SC' as TicketCategory,
-      priority: 'urgent' as TicketPriority,
-      title: 'Kendala Mesin Pabrik Beras / Jembatan Timbang Truk',
-      desc: 'Sensor jembatan timbang atau conveyor penggilingan beras mengalami deviasi/error butuh kalibrasi darurat.',
+      category: 'ME' as TicketCategory,
+      priority: 'medium' as TicketPriority,
+      title: 'Kendala Mesin / Kelistrikan / Perawatan',
+      desc: 'Jelaskan mesin, instalasi listrik, pompa, genset, AC teknis, atau fasilitas mekanikal yang memerlukan pemeriksaan Tim Perawatan (ME).',
       icon: '🌾',
     },
     {
@@ -169,11 +169,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       const selected = safeAssets.find(a => a.id === assetId);
       if (selected) {
         // License/SaaS is an IT domain: software & license tickets route to IT
-        if (selected.owner_division === 'SC') {
-          setCategory('SC');
-        } else if (selected.owner_division === 'PIBC') {
-          setCategory('PIBC');
-        } else if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
+        if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
           setCategory('GA');
         } else {
           setCategory('IT');
@@ -297,7 +293,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { setCategory('General'); setRelatedAssetId(''); }}
+                onClick={() => { setCategory('GA'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'GA' 
                     ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
@@ -315,29 +311,16 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <KeyRound className="w-4 h-4" /> Lisensi (IT)
+                <KeyRound className="w-4 h-4" />
               </button>
               <button
                 type="button"
-                onClick={() => { setCategory('SC'); setRelatedAssetId(''); }}
+                onClick={() => { setCategory('ME'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'SC' 
-                    ? 'bg-orange-600 text-white border-orange-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  category === 'ME' ? 'bg-orange-600 text-white border-orange-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <Package className="w-4 h-4" /> Supply Chain
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('PIBC'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'PIBC' 
-                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Store className="w-4 h-4" /> PIBC
+                <Package className="w-4 h-4" /> Tim Perawatan (ME)
               </button>
             </div>
           </div>
