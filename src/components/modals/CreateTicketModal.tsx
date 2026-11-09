@@ -6,7 +6,6 @@ import {
   Clock, 
   Laptop, 
   Car, 
-  KeyRound, 
   Package,
   Store,
   Info 
@@ -42,7 +41,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   onCreateTicket,
 }) => {
   const [category, setCategory] = useState<TicketCategory>('IT');
-  const [priority, setPriority] = useState<TicketPriority>('high');
+  const [priority, setPriority] = useState<TicketPriority>('medium');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
@@ -53,9 +52,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const serviceCatalogTemplates = [
     {
       id: 'hw-issue',
-      label: 'Laptop / PC Kendala',
+      label: 'Laptop / PC / Printer',
       category: 'IT' as TicketCategory,
-      priority: 'high' as TicketPriority,
+      priority: 'medium' as TicketPriority,
       title: 'Laptop / PC Kerja Mengalami Gangguan Teknis',
       desc: 'Perangkat kerja utama mengalami kendala booting, performa lambat, atau blue screen yang menghambat aktivitas harian.',
       icon: '💻',
@@ -71,30 +70,39 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     },
     {
       id: 'ga-facility',
-      label: 'Fasilitas & AC Kantor',
+      label: 'Fasilitas & Sarana Kantor',
       category: 'GA' as TicketCategory,
       priority: 'medium' as TicketPriority,
-      title: 'Pemeliharaan AC Ruangan / Penggantian Perabotan Kantor',
-      desc: 'Unit AC ruangan kerja kurang dingin / bocor, atau perbaikan meja dan kursi ergonomis kerja.',
+      title: 'Permintaan Perbaikan Fasilitas / Sarana Kantor',
+      desc: 'Jelaskan lokasi dan fasilitas yang bermasalah, misalnya AC, listrik, plumbing, kebersihan, furniture, atau kendaraan dinas.',
       icon: '❄️',
     },
     {
       id: 'sc-weighbridge',
-      label: 'Timbangan & Mesin Pabrik',
+      label: 'Operasional Supply Chain',
       category: 'SC' as TicketCategory,
       priority: 'urgent' as TicketPriority,
-      title: 'Kendala Mesin Pabrik Beras / Jembatan Timbang Truk',
-      desc: 'Sensor jembatan timbang atau conveyor penggilingan beras mengalami deviasi/error butuh kalibrasi darurat.',
+      title: 'Kendala Operasional Supply Chain',
+      desc: 'Jelaskan proses, lokasi, peralatan, atau fasilitas operasional yang terganggu. Hindari memasukkan data rahasia atau kredensial.',
       icon: '🌾',
     },
     {
       id: 'incident-down',
-      label: 'Gangguan Jaringan / Server',
+      label: 'Jaringan & Infrastruktur TI',
       category: 'IT' as TicketCategory,
       priority: 'urgent' as TicketPriority,
-      title: 'Insiden Jaringan Internet / WiFi / Server Down',
-      desc: 'Akses jaringan di lantai kantor atau server database tidak dapat dijangkau oleh tim kerja.',
-      icon: '🚨',
+      title: 'Kendala Jaringan / Infrastruktur TI',
+      desc: 'Jelaskan lokasi, perangkat atau layanan yang terdampak, waktu mulai gangguan, dan jumlah pengguna yang terdampak.',
+      icon: '🌐',
+    },
+    {
+      id: 'pibc-ops',
+      label: 'Operasional PIBC',
+      category: 'PIBC' as TicketCategory,
+      priority: 'medium' as TicketPriority,
+      title: 'Kendala Operasional PIBC',
+      desc: 'Jelaskan area/lokasi, aktivitas operasional, fasilitas atau perangkat yang terdampak, serta dampaknya terhadap layanan pasar.',
+      icon: '🏬',
     },
   ];
 
@@ -232,7 +240,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-base text-slate-900">Buat Tiket Kendala Helpdesk</h3>
-              <p className="text-xs text-slate-500">Laporan penanganan IT, sarana GA, atau permintaan lisensi</p>
+              <p className="text-xs text-slate-500">Laporkan kendala layanan TI, fasilitas umum, atau operasional unit kerja</p>
             </div>
           </div>
 
@@ -262,8 +270,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           {/* Freshservice-style Quick Service Catalog Selector */}
           <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
             <div className="flex items-center justify-between text-slate-700 font-bold text-[11px]">
-              <span>Katalog Layanan Cepat (Freshservice-Style Service Catalog):</span>
-              <span className="text-[10px] text-slate-500 font-normal">Klik untuk auto-fill standar ITSM</span>
+              <span>Pilih jenis kebutuhan (opsional):</span>
+              <span className="text-[10px] text-slate-500 font-normal">Judul dan deskripsi dapat Anda sesuaikan</span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
               {serviceCatalogTemplates.map(tpl => (
@@ -282,7 +290,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
           {/* Category */}
           <div className="space-y-1.5">
-            <label className="text-slate-700 font-bold">Departemen Penanganan:</label>
+            <label className="text-slate-700 font-bold">Unit Penanganan:</label>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               <button
                 type="button"
@@ -297,7 +305,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { setCategory('General'); setRelatedAssetId(''); }}
+                onClick={() => { setCategory('GA'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'GA' 
                     ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
@@ -305,17 +313,6 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 }`}
               >
                 <Car className="w-4 h-4" /> General Affair (GA)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'IT' && title.toLowerCase().includes('lisensi')
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <KeyRound className="w-4 h-4" /> Lisensi (IT)
               </button>
               <button
                 type="button"
@@ -345,17 +342,17 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           {/* Priority Level & Dynamic SLA Preview */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-slate-700 font-bold">Tingkat Prioritas (SLA Target):</label>
+              <label className="text-slate-700 font-bold">Perkiraan Dampak / Prioritas (akan diverifikasi petugas):</label>
               <span className="text-emerald-700 font-bold flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-emerald-600" /> Target Penyelesaian: {slaHours} Jam
+                <Clock className="w-3.5 h-3.5 text-emerald-600" /> Target resolusi indikatif: {slaHours} jam
               </span>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {[
-                { val: 'urgent', label: 'Urgent (4 Jam)', desc: 'Gedung/server lumpuh' },
-                { val: 'high', label: 'High (8 Jam)', desc: 'Kerja utama terhenti' },
-                { val: 'medium', label: 'Medium (24 Jam)', desc: 'Request lisensi/akun' },
-                { val: 'low', label: 'Low (48 Jam)', desc: 'Periferal & konsultasi' },
+                { val: 'urgent', label: 'Urgent (4 Jam)', desc: 'Operasional kritis berhenti' },
+                { val: 'high', label: 'High (8 Jam)', desc: 'Banyak pengguna terdampak' },
+                { val: 'medium', label: 'Medium (24 Jam)', desc: 'Gangguan terbatas / permintaan' },
+                { val: 'low', label: 'Low (48 Jam)', desc: 'Tidak menghambat pekerjaan' },
               ].map((p) => (
                 <button
                   key={p.val}
@@ -400,6 +397,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 ))
               )}
             </select>
+            <p className="text-[10px] text-slate-500">
+              * Pilih aset hanya jika kendala terkait perangkat tertentu. Untuk gangguan umum/fasilitas, biarkan pilihan kosong.
+            </p>
             <p className="text-[10px] text-slate-500">
               * Opsi aset langsung mengacu ke perangkat yang ditugaskan resmi atau sedang dipinjam oleh <span className="font-semibold text-slate-700">{currentUser.name}</span>.
             </p>
