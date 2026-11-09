@@ -201,20 +201,6 @@ const PERMISSION_TEMPLATE_FIELDS: Record<keyof Omit<RolePermissionRow, 'role' | 
   admin: ['Full Control', 'No'],
 };
 
-const DEFAULT_DIVISIONS: OrgDivision[] = [
-  { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
-  { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
-  { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
-  { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
-];
-
-const DEFAULT_LOCATIONS: MasterLocation[] = [
-  { id: 'loc-1', name: 'Kantor Pusat Food Station Cipinang', address: 'Jl. Pisangan Lama No. 1, Jakarta Timur', capacity: '120 Pegawai' },
-  { id: 'loc-2', name: 'Gudang Beras Induk Blok A-D', address: 'Kawasan PIBC, Jakarta Timur', capacity: '48.000 Ton Beras' },
-  { id: 'loc-3', name: 'Depo Armada & Transportasi', address: 'Pintu 3 Pasar Induk Cipinang', capacity: '35 Truk Fuso' },
-  { id: 'loc-4', name: 'Data Center & Server Room', address: 'Gedung Utama Lt. 2, Cipinang', capacity: 'Tier 2 Redundant' }
-];
-
 const DEFAULT_NOTIFICATION_RULES: NotificationRule[] = [
   { id: 'rule-warranty', title: 'Peringatan Masa Garansi & Lisensi Expired', trigger: '30 hari & 7 hari sebelum tanggal kedaluwarsa', target: 'Admin GABAH & Divisi IT', status: 'Aktif', severity: 'warning', daysBefore: 30 },
   { id: 'rule-loan', title: 'Eskalasi Keterlambatan Peminjaman (Overdue Loan)', trigger: 'Melewati batas due date jam 17:00 WIB', target: 'Peminjam, Atasan, dan Admin Penanggung Jawab', status: 'Aktif', severity: 'critical', cutoffTime: '17:00' },
