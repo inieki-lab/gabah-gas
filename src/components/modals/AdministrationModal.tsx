@@ -458,7 +458,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
   const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null }>>([]);
   const [rbacScopeModule, setRbacScopeModule] = useState('assets');
-  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'unit' | 'location'>('division');
+  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'>('division');
   const [rbacScopeValue, setRbacScopeValue] = useState('');
 
   const refreshRbac = async () => {
@@ -584,7 +584,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Isi nilai owner/divisi, unit, atau lokasi untuk scope ini.', 'warning');
       return;
     }
-    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
+    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null };
     if (!rbacScopes.some(item => (item.module || '*') === scope.module && item.type === scope.type && (item.value || null) === (scope.value || null))) {
       setRbacScopes(current => [...current, scope]);
     }
@@ -2894,7 +2894,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                       <option key={module} value={module}>{module}</option>
                                     ))}
                                   </select>
-                                  <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as any)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                                  <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location')} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
                                     <option value="division">Owner / divisi tertentu</option>
                                     <option value="division_except">Semua owner kecuali</option>
                                     <option value="unit">Unit</option>
