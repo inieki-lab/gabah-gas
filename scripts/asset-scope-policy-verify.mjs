@@ -100,6 +100,11 @@ const checks = [
   ['ME dummy admin org attributes persist to normalized users table', persistence.includes('job_level_code,unit_id,office_location_id') && persistence.includes('u.unit_id || null') && persistence.includes('u.office_location_id || null')],
   ['ME dummy admin receives only the additive Admin Tiket ME role', persistence.includes("WHERE u.id = 'USR-ME-ADMIN-001'") && persistence.includes("r.role_key = 'admin_tiket_me'") && persistence.includes("DO UPDATE SET is_primary = FALSE")],
   ['ME dummy account is opt-in and uses a dedicated password only when enabled', dbSeed.includes("process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true'") && persistence.includes("process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true' ? process.env.GABAH_ME_DUMMY_PASSWORD : undefined") && read('docker-compose.yml').includes('GABAH_ME_DUMMY_PASSWORD: ${GABAH_ME_DUMMY_PASSWORD:-}')],
+  ['Ticket dispatch is a distinct permission granted to GA and the ME dispatcher template', read('server/migrations/038_ticket_dispatch_permission.sql').includes("'tickets.assign'") && read('server/migrations/038_ticket_dispatch_permission.sql').includes("r.role_key = 'ga'") && read('server/migrations/038_ticket_dispatch_permission.sql').includes("r.role_key = 'admin_tiket_me'")],
+  ['Ticket assignment API requires dispatcher permission, matching scope, and an active authorized target', /app\.patch\('\/api\/tickets\/:id\/assign'[\s\S]*requireRbacPermission\(req, res, 'tickets\.assign'\)[\s\S]*hasRbacScope[\s\S]*user\.is_active !== false[\s\S]*tickets\.update/.test(server)],
+  ['IT ticket auto-routing assigns only when exactly one active explicitly scoped IT support agent exists', /eligibleItAgents = db\.users\.filter[\s\S]*user\.is_active !== false[\s\S]*hasRbacPermission\(String\(user\.id\), 'tickets\.update'\)[\s\S]*eligibleItAgents\.length === 1[\s\S]*assigned_agent_id/.test(services)],
+  ['Custom Dynamic RBAC ticket roles are not blocked by legacy IT/GA role labels in the UI', /if \(Array\.isArray\(user\.permission_keys\)\)[\s\S]*if \(ticket\.assigned_unit_id\)[\s\S]*return true;/.test(clientService)],
+
 ];
 
 let failed = 0;
