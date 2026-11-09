@@ -832,7 +832,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     setLocations(updated);
     setIsAddLocationOpen(false);
     setNewLocationData({ name: '', address: '', capacity: '' });
-    showToast(`Lokasi fasilitas "${newLoc.name}" berhasil ditambahkan!`, 'success');
+    showToast(`Lokasi fasilitas "${createdLocation.name}" berhasil ditambahkan!`, 'success');
   };
 
   const handleEditLocationSubmit = async (e: React.FormEvent) => {
