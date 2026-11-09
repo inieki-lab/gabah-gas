@@ -693,13 +693,18 @@ export class GabahService {
       : ['Admin GABAH', 'IT', 'GA'].includes(user.role);
     if (!canMutate) return false;
     if (user.is_superadmin || user.role === 'Admin GABAH') return true;
-    // Unit-based queues (e.g. Tim Perawatan ME) are managed only by members
-    // assigned to that exact unit, not by everyone holding tickets.update.
+    // In Dynamic RBAC mode the API has already applied the ticket's owner/unit
+    // scope. Do not re-impose legacy role labels here: custom roles such as
+    // "IT Support", "Admin GA", or "Admin Tiket ME" are permission bundles.
+    if (Array.isArray(user.permission_keys)) {
+      if (ticket.assigned_unit_id) return Boolean(user.unit_id && ticket.assigned_unit_id === user.unit_id);
+      return true;
+    }
+    // File-store compatibility only; production PostgreSQL authorization is
+    // enforced by the API using explicit permission and scope assignments.
     if (ticket.assigned_unit_id) return Boolean(user.unit_id && ticket.assigned_unit_id === user.unit_id);
-    // Existing owner-domain queues remain category-scoped in the UI.
-    const roleKeys = Array.isArray(user.role_keys) ? user.role_keys : [];
-    if (ticket.category === 'IT') return user.role === 'IT' || roleKeys.includes('it');
-    if (ticket.category === 'GA') return user.role === 'GA' || roleKeys.includes('ga');
+    if (ticket.category === 'IT') return user.role === 'IT';
+    if (ticket.category === 'GA') return user.role === 'GA';
     return ticket.assigned_agent_id === user.id;
   }
 
