@@ -204,6 +204,7 @@
   9. Periksa label sumber data pada setiap kartu Administration. Menu lokal harus menyatakan bahwa perubahan hanya tersimpan di browser.
   10. Pastikan *Download Snapshot Data (JSON)* menyatakan bukan backup PostgreSQL; pemeriksaan integritas internal tidak mengklaim terhubung ke SAP; simulasi nomor tidak mengklaim menerbitkan sequence.
   11. Pastikan daftar akun untuk alih akun hanya terlihat oleh Superadmin; non-Superadmin hanya melihat aksi akun sendiri. Tidak boleh ada tombol/persona simulasi `SIM-*`; Superadmin hanya dapat beralih ke akun pegawai yang benar-benar terdaftar dan aktivitasnya tercatat di audit.
+  12. Buat/siapkan pegawai dengan role primer Karyawan, lalu tetapkan capability tambahan Humas atau Sekretaris Direksi melalui Dynamic RBAC. Pastikan Humas melihat antrean dokumentasi yang sudah disamarkan; Sekretaris Direksi mendapat prioritas/override sesuai permission. Hapus capability uji setelah verifikasi.
 - **Kriteria Lulus**: Tombol dan modal administrasi terkunci eksklusif untuk peran `Admin GABAH`; katalog permission dan master data berasal dari server; fungsi lokal diberi batasan yang jelas.
 
 ---
