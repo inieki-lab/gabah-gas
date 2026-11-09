@@ -1093,7 +1093,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             )}
 
                             {/* Check-In / Check-Out */}
-                            {r.status === 'approved' && (
+                            {r.status === 'approved' && canCheckinReservation && (
                               <button
                                 disabled={isLoading}
                                 onClick={() => handleCheckin(r.id)}
@@ -1104,7 +1104,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                               </button>
                             )}
 
-                            {r.status === 'in_use' && (
+                            {r.status === 'in_use' && canCheckoutReservation && (
                               <button
                                 disabled={isLoading}
                                 onClick={() => handleCheckout(r.id)}
