@@ -841,13 +841,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Nama lokasi fasilitas wajib diisi', 'warning');
       return;
     }
+    let savedLocation: MasterLocation;
     try {
-      await gabahApi.updateLocation(editLocationData.id, editLocationData);
+      const saved = await gabahApi.updateLocation(editLocationData.id, editLocationData);
+      if (!saved?.id) throw new Error('Server tidak mengembalikan data lokasi yang diperbarui.');
+      savedLocation = saved as MasterLocation;
     } catch (err: any) {
       showToast(err.message || 'Gagal memperbarui lokasi fasilitas di server.', 'warning');
       return;
     }
-    const updated = locations.map(l => l.id === editLocationData.id ? { ...l, ...editLocationData } : l);
+    const updated = locations.map(l => l.id === savedLocation.id ? savedLocation : l);
     setLocations(updated);
     setIsEditLocationOpen(false);
     setLocationToEdit(null);
