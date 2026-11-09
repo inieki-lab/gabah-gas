@@ -192,7 +192,7 @@ export interface ServerTicket {
   ticket_code: string;
   title: string;
   description: string;
-  category: 'IT' | 'GA' | 'ME';
+  category: 'IT' | 'GA' | 'ME' | 'SC' | 'PIBC';
   contract_id?: string | null; // Linked Contract (optional action linkage, Contract ≠ Ticket)
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
