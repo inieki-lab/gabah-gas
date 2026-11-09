@@ -33,7 +33,7 @@
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | General Affairs & Sarana Prasarana |
 | **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `<INITIAL_USER_PASSWORD>`| Pegawai; fungsi sekretariat Direksi dan VIP Booking melalui role tambahan |
 | **Karyawan + capability Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai; fungsi dokumentasi dan publikasi melalui role tambahan |
-| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
+| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit kerja legacy / lokasi RPC |
 | **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai Biasa / Pemohon Layanan |
 | **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Satuan Pengawas Internal (Read-Only) |
@@ -42,7 +42,7 @@
 
 ## 3. Skenario Pengujian UAT
 
-> **Prinsip model organisasi:** Supply Chain dan PIBC adalah unit/lokasi, bukan role aplikasi permanen. Lokasi kantor aktif saat ini: HO, PIBC, RPC/SC, Pangsub, dan Kantor Perawatan. Subang tidak aktif. Owner aset berbeda dari lokasi fisik dan lokasi kerja pegawai. Pengujian akses dilakukan terhadap permission dan scope efektif di PostgreSQL.
+> **Prinsip model organisasi:** Supply Chain dan PIBC adalah unit/lokasi, bukan role aplikasi permanen. Lokasi kantor aktif saat ini: HO, PIBC, RPC, Pangsub, dan Kantor Perawatan. Subang tidak aktif. Owner aset berbeda dari lokasi fisik dan lokasi kerja pegawai. Pengujian akses dilakukan terhadap permission dan scope efektif di PostgreSQL.
 
 ### Skenario 1: Autentikasi, Token Sesi & Logout
 - **Tujuan**: Memastikan sesi diterbitkan dengan aman dan dibersihkan saat logout.
