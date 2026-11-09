@@ -52,10 +52,10 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
   }, []);
   const legacyVendorManager = currentUser.permission_keys === undefined
     && ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const canCreate = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH'
-    || currentUser.permission_keys?.includes('vendors.create') === true || legacyVendorManager;
-  const canUpdate = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH'
-    || currentUser.permission_keys?.includes('vendors.update') === true || legacyVendorManager;
+  const canCreate = currentUser.is_superadmin === true || (currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH')
+    || currentUser.permission_keys?.includes('*') === true || currentUser.permission_keys?.includes('vendors.create') === true || legacyVendorManager;
+  const canUpdate = currentUser.is_superadmin === true || (currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH')
+    || currentUser.permission_keys?.includes('*') === true || currentUser.permission_keys?.includes('vendors.update') === true || legacyVendorManager;
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
