@@ -89,3 +89,10 @@ A persona is PASS only when all applicable positive and negative UI/API scenario
 Record defects with exact route, user persona, record scope, expected/actual status, sanitized request/response, and reproduction steps. Never attach bearer tokens, passwords, personal contact details, or production records.
 
 **Release rule:** A green CI run is necessary but does not replace this browser/API UAT, legacy-database upgrade rehearsal, backup-and-restore rehearsal, staging deployment, or business-owner approval. Production remains NO-GO until all release gates are signed off.
+
+## 7. Helpdesk queue routing — IT / GA / ME
+- Submit IT, GA, and ME tickets from employee accounts at HO, PIBC, RPC, Pangsub, and Kantor Perawatan. Confirm each ticket's category is the service team, not the submitter's location.
+- For ME, confirm `assigned_unit_id=UNIT-PIBC-ME`; only users whose `unit_id=UNIT-PIBC-ME` can see the unit queue and receive unit-targeted notifications. A user at PIBC without that unit assignment must not see ME queue tickets.
+- Confirm a user in Tim Perawatan can see ME queue tickets regardless of their office location, but cannot see IT/GA queue tickets without their own permission/scope.
+- Confirm legacy ticket categories SC/PIBC remain visible as historical data and cannot be newly submitted.
+- Confirm notification read/read-all authorization follows the same recipient unit rule.
