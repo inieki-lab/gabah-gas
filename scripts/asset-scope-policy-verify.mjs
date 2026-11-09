@@ -99,6 +99,7 @@ const checks = [
   ['ME dummy admin is a canonical active employee assigned to Tim Perawatan and Kantor Perawatan', dbSeed.includes("id: 'USR-ME-ADMIN-001'") && dbSeed.includes("email: 'admin.me.dummy@foodstation.co.id'") && dbSeed.includes("unit_id: 'UNIT-PIBC-ME'") && dbSeed.includes("office_location_id: 'OFF-PERAWATAN'") && dbSeed.includes("role: 'Karyawan'")],
   ['ME dummy admin org attributes persist to normalized users table', persistence.includes('job_level_code,unit_id,office_location_id') && persistence.includes('u.unit_id || null') && persistence.includes('u.office_location_id || null')],
   ['ME dummy admin receives only the additive Admin Tiket ME role', persistence.includes("WHERE u.id = 'USR-ME-ADMIN-001'") && persistence.includes("r.role_key = 'admin_tiket_me'") && persistence.includes("DO UPDATE SET is_primary = FALSE")],
+  ['ME dummy account is opt-in and cannot be seeded by default', dbSeed.includes("process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true'") && persistence.includes("process.env.NODE_ENV === 'production' ? undefined : process.env.GABAH_ME_DUMMY_PASSWORD")],
 ];
 
 let failed = 0;
