@@ -85,18 +85,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || isAuditor;
-  const isDivisionDashboard = currentUser.role === 'IT' || currentUser.role === 'GA';
+  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || (currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH') || isAuditor;
+  const isDivisionDashboard = currentUser.permission_keys === undefined && (currentUser.role === 'IT' || currentUser.role === 'GA');
   const divisionLabel = isDivisionDashboard ? currentUser.role : 'Unit kerja';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
-  const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
+  const isLicenseDashboard = isGlobalDashboard || (currentUser.permission_keys === undefined && currentUser.role === 'IT') || Boolean(currentUser.permission_keys?.includes('*') || currentUser.permission_keys?.includes('licenses.read'));
   const roleDescription = currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
     ? roleDescriptions.Humas
     : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
       ? roleDescriptions['Sekretaris Direksi']
-      : roleDescriptions[currentUser.role];
+      : roleDescriptions[currentUser.role] || 'Akses dan ringkasan operasional sesuai permission serta scope yang ditetapkan.';
   const expiringLicenses = dashboardAssets.filter(asset => {
     const expiry = asset.license_detail?.expiration_date;
     if (!expiry) return false;
