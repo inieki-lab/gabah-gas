@@ -2017,17 +2017,18 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
+                      <label className="block text-slate-600 mb-1 font-medium">Divisi referensi (opsional)</label>
                       <select
                         value={newUserData.division || ''}
                         onChange={e => setNewUserData({ ...newUserData, division: e.target.value as OwnerDivision })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
-                        <option value="">— Pilih divisi —</option>
+                        <option value="">Umum / belum ditetapkan</option>
                         {divisions.map(d => (
                           <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                         ))}
                       </select>
+                      <p className="mt-1 text-[11px] text-slate-500">Atribut kompatibilitas data lama; tidak memberikan hak akses. Unit organisasi dan lokasi kantor diatur terpisah.</p>
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Departemen</label>
