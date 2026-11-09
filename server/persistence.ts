@@ -533,7 +533,7 @@ async function backfillNormalizedTables(): Promise<void> {
       if (!reporterExists) continue;
       const agentId = (t.assigned_agent_id && db.users.some(u => u.id === t.assigned_agent_id)) ? t.assigned_agent_id : null;
       await client.query(
-        `INSERT INTO tickets (id,ticket_number,ticket_code,title,description,category,priority,status,reporter_id,assigned_unit_id,assigned_agent_id,related_asset_id,sla_hours,sla_resolution_deadline,resolved_at,resolution_notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,assigned_agent_id=EXCLUDED.assigned_agent_id,resolved_at=EXCLUDED.resolved_at,resolution_notes=EXCLUDED.resolution_notes,updated_at=EXCLUDED.updated_at`,
+        `INSERT INTO tickets (id,ticket_number,ticket_code,title,description,category,priority,status,reporter_id,assigned_unit_id,assigned_agent_id,related_asset_id,sla_hours,sla_resolution_deadline,resolved_at,resolution_notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,assigned_unit_id=EXCLUDED.assigned_unit_id,assigned_agent_id=EXCLUDED.assigned_agent_id,resolved_at=EXCLUDED.resolved_at,resolution_notes=EXCLUDED.resolution_notes,updated_at=EXCLUDED.updated_at`,
         [t.id,t.ticket_number,t.ticket_code,t.title,t.description,t.category,t.priority,t.status,t.reporter_id,t.assigned_unit_id || null,agentId,t.related_asset_id || null,t.sla_hours,t.sla_resolution_deadline,t.resolved_at || null,t.resolution_notes || null,t.created_at,t.updated_at],
       );
     }
