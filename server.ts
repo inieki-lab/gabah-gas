@@ -144,8 +144,8 @@ async function startServer() {
       'GA': 'ga',
       'Karyawan': 'karyawan',
       'Auditor': 'auditor',
-      'Humas': 'humas',
-      'Sekretaris Direksi': 'sekretaris_direksi',
+      'Humas': 'karyawan',
+      'Sekretaris Direksi': 'karyawan',
       'Supply Chain': 'karyawan',
       'PIBC': 'karyawan',
     };
