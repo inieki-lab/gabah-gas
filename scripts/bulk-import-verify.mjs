@@ -127,10 +127,9 @@ async function main() {
       body: { users: [...batch1, { name: 'Email Rusak', email: 'bukan-email', role: 'Karyawan' }] },
     });
     const d1 = r1.json?.data || {};
-    record('Bulk import returns created=2', 'created=2', `created=${d1.created}`, d1.created === 2);
-    record('Invalid email and function role rows rejected', 'failed=2', `failed=${d1.failed}`, d1.failed === 2);
-    record('Unknown role -> warning; function role -> error', 'warnings>=1 & errors=2', `warnings=${(d1.warnings || []).length} errors=${(d1.errors || []).length}`,
-      (d1.warnings || []).length >= 1 && (d1.errors || []).length === 2);
+    record('Bulk import creates only canonical primary-role row', 'created=1', `created=${d1.created}`, d1.created === 1);
+    record('Invalid email, unknown role, and function role rows rejected', 'failed=3', `failed=${d1.failed}`, d1.failed === 3);
+    record('Unknown/function primary roles are returned as row errors', 'errors=3', `errors=${(d1.errors || []).length}`, (d1.errors || []).length === 3);
     record('Humas is rejected as primary role', 'Humas row rejected with additional-role guidance', (d1.errors || []).some(e => e.includes('role tambahan')), (d1.errors || []).some(e => e.includes('role tambahan')));
     record('No password echoed in response', 'no password fields', JSON.stringify(r1.json).includes('password') ? 'found password key' : 'clean',
       !/temp_password|password_hash/.test(JSON.stringify(r1.json)));
@@ -163,8 +162,8 @@ async function main() {
     record('Update user rejects branch label as primary profile', '400', `HTTP ${invalidPrimaryUpdate.status}`, invalidPrimaryUpdate.status === 400);
     record('No duplicate account after re-import', 'single account', `count=${users.filter(u => u.email === `impor.dua.${suffix}@foodstation.co.id`).length}`,
       users.filter(u => u.email === `impor.dua.${suffix}@foodstation.co.id`).length === 1);
-    const fallbackUser = users.find(u => u.email === `impor.tiga.${suffix}@foodstation.co.id`);
-    record('Unknown role defaulted to Karyawan', 'role=Karyawan', `role=${fallbackUser?.role}`, fallbackUser?.role === 'Karyawan');
+    const unknownRoleUser = users.find(u => u.email === `impor.tiga.${suffix}@foodstation.co.id`);
+    record('Unknown primary role was not created', 'no account', unknownRoleUser ? unknownRoleUser.role : 'not created', !unknownRoleUser);
     const branchUser = users.find(u => u.email === `impor.empat.${suffix}@foodstation.co.id`);
     record('Legacy PIBC role maps to Karyawan + unit + office location', 'Karyawan / UNIT-PIBC / OFF-PIBC', `${branchUser?.role} / ${branchUser?.unit_id} / ${branchUser?.office_location_id}`,
       branchUser?.role === 'Karyawan' && branchUser?.unit_id === 'UNIT-PIBC' && branchUser?.office_location_id === 'OFF-PIBC');
