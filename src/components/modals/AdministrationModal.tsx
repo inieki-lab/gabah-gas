@@ -1179,7 +1179,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     // Update live simulated number
     const seqPadded = String(5).padStart(tempNumberingConfig.paddingDigits, '0');
     setSimulatedNumber(`${testDiv}${tempNumberingConfig.separator}${testCode}${tempNumberingConfig.separator}2026${tempNumberingConfig.separator}${seqPadded}`);
-    showToast('Format dan parameter sequence penomoran aset berhasil disimpan!', 'success');
+    showToast('Pratinjau format tersimpan pada browser ini. Pengaturan ini tidak mengubah format atau sequence nomor yang diterbitkan server.', 'info');
   };
 
   // Notification Rules Handlers
@@ -1302,7 +1302,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { id: 'roles' as AdminSection, label: 'Role & Hak Akses', description: 'Paket permission dan batas data (scope) yang boleh diakses tiap role.', dataSource: 'Database RBAC', icon: LockKeyhole, badge: `${rbacRoles.length} role` },
     { id: 'organization' as AdminSection, label: 'Owner Domain', description: 'Daftar fungsi pemilik aset dan struktur divisi/departemen terkait.', dataSource: 'Perlu konsolidasi dengan master unit', icon: Building2, badge: `${divisions.length} divisi` },
     { id: 'org_masters' as AdminSection, label: 'Struktur Pegawai', description: 'Master jabatan/level, unit organisasi, dan lokasi kantor pegawai.', dataSource: 'Database master', icon: Network, badge: `${jobLevels.length} jabatan` },
-    { id: 'master_data' as AdminSection, label: 'Referensi Aset & Layanan', description: 'Kategori aset, lokasi fasilitas, dan parameter layanan yang dipakai form operasional.', dataSource: 'Campuran: database dan lokal', icon: Database, badge: `${categories.length} kategori` },
+    { id: 'master_data' as AdminSection, label: 'Referensi Aset & Layanan', description: 'Kategori aset, lokasi fasilitas, dan parameter layanan yang dipakai form operasional.', dataSource: 'Database API', icon: Database, badge: `${categories.length} kategori` },
     { id: 'numbering' as AdminSection, label: 'Penomoran Aset', description: 'Format nomor aset dan pemantauan sequence nomor yang diterbitkan server.', dataSource: 'Format masih lokal; sequence dari API', icon: Hash, badge: liveSequences === null ? 'Sequence belum tersedia' : `${liveSequences.length} sequence` },
     { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'Konfigurasi masih lokal', icon: Bell, badge: 'Perlu sentralisasi' },
     { id: 'audit_log' as AdminSection, label: 'Riwayat Aktivitas', description: 'Catatan perubahan dan aktivitas yang direkam sistem.', dataSource: 'Database / API', icon: ScrollText, badge: `${auditLogs.length} catatan` },
@@ -4290,6 +4290,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 <p className="text-xs text-slate-500">
                   Format otoritatif: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[#206f65] font-bold">{'{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}'}</code>
                 </p>
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <strong>Format pratinjau masih lokal.</strong> Pengaturan format pada panel ini hanya disimpan di browser dan belum mengubah generator nomor server. Counter di bawah berasal dari API server dan merupakan sequence aktual.
               </div>
 
               {/* Simulator Card */}
