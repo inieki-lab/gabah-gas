@@ -227,6 +227,7 @@ export class GabahDomainService {
     recipient_role?: string;
     recipient_division?: string;
     recipient_user_id?: string;
+    recipient_unit_id?: string;
     title: string;
     message: string;
     severity: 'critical' | 'action_required' | 'warning' | 'info' | 'success';
