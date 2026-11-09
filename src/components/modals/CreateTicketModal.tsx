@@ -6,9 +6,7 @@ import {
   Clock, 
   Laptop, 
   Car, 
-  KeyRound, 
   Package,
-  Store,
   Info 
 } from 'lucide-react';
 import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
