@@ -2,7 +2,7 @@
 
 **Status:** Source-code audit in progress; this document is not a declaration of browser UAT completion.  
 **Repository baseline:** `main` as inspected on 2026-11-09.  
-**Policy confirmed in this review:** PIBC and RPC/SC are office/work locations. They are not ticket categories, application roles, or automatic permission/asset-owner grants. New Helpdesk requests use IT or GA service queues. Historical records must be preserved pending record-level review.
+**Policy confirmed in this review:** PIBC and RPC are office/work locations. They are not ticket categories, application roles, or automatic permission/asset-owner grants. New Helpdesk requests target IT, GA, or ME; ME is the Tim Perawatan unit under PIBC. Historical records must be preserved pending record-level review.
 
 ## 1. Model that every menu must follow
 
@@ -12,7 +12,7 @@
 | Additional role/capability | Explicit extra responsibility | Humas documentation queue, Sekretariat Direksi priority override |
 | Job level | Organizational position | Kadiv, Kasi, Staf |
 | Organizational unit | Actual work group when verified | Must come from approved HR/org master |
-| Office/work location | Where the employee works | HO, PIBC, RPC/SC, Pangsub, Kantor Perawatan |
+| Office/work location | Where the employee works | HO, PIBC, RPC, Pangsub, Kantor Perawatan |
 | Asset physical location | Where an asset is installed/stored | Office, warehouse, room, site |
 | Asset owner domain | Function accountable for the asset | Must be explicitly approved; never inferred from PIBC/RPC-SC location |
 | Helpdesk service queue | Team that handles the request | IT or GA |
@@ -31,7 +31,7 @@ The review distinguishes menu visibility, page controls, and backend authorizati
 | Karyawan / Humas / Sekretariat Direksi — My Assets | Only assigned assets or explicitly scoped records | Navigation uses `assets.read`; backend scopes assets. Must verify direct detail, dashboard cards, export and search use the same scope. | UAT required |
 | IT / GA / custom owner-scope roles — Assets | Read/write according to permission plus owner scope | Main create/import controls use permission keys; edit uses the dynamic permission helper. Some legacy owner codes and taxonomy defaults still reference SC/PIBC. Do not migrate old assets automatically. | Partial; owner-master policy unresolved |
 | Employees — Loans | See own loans; request borrowing if permitted | Backend filters by borrower or explicit owner scope. UI still identifies employee views from a static list of role labels and hides create only for Auditor. Custom roles and legacy location-labelled users can receive inconsistent labels/controls. | P1 follow-up |
-| IT / GA / employees — Helpdesk | Reporter sees own ticket; IT/GA queues depend on explicit ticket permission/scope | Backend GET is reporter/assignee/explicit category-scope based. The page still had SC/PIBC role-specific queue labels and filters. Corrected in this audit branch: SC/PIBC are no longer role-based queues; create button follows `tickets.create`. Historical ticket categories remain readable. | Code fix in branch; CI pending |
+| IT / GA / employees — Helpdesk | Reporter sees own ticket; IT/GA queues depend on explicit ticket permission/scope | Backend GET is reporter/assignee/explicit category-scope based. The page no longer treats SC/PIBC as queues; new service targets are IT, GA, ME. ME tickets carry `assigned_unit_id=UNIT-PIBC-ME`, and notifications are unit-targeted. Create button follows `tickets.create`. Historical SC/PIBC ticket categories remain readable. | Code fix in branch; CI pending |
 | IT / GA / employees — Maintenance | Read personal/scoped schedules; create/update by permission plus owner scope | Backend uses `maintenances.read/create/update` and owner scope. UI used a hard-coded Admin/IT/GA list, hiding actions from custom roles with valid permissions. Corrected in this audit branch with separate create/update permission checks. | Code fix in branch; CI pending |
 | All permitted employees — Meeting Rooms | Create own reservations; queue capabilities by explicit permission | Backend already separates room approval, IT-facility, Humas documentation and Sekdir priority capabilities. UI used static GA/Humas/Sekdir role-name checks for room master, documentation, approvals and booking. Corrected in this audit branch to use the corresponding permission keys. | Code fix in branch; CI pending |
 | Employees — Knowledge Base | Read/vote; create/update only with explicit permission | View uses `knowledge.create/update` permission keys, with file-store fallback. | Looks aligned; API/UAT verification pending |
@@ -45,7 +45,7 @@ The review distinguishes menu visibility, page controls, and backend authorizati
 ### P1 — Location labels still leak into business model
 - `server/taxonomy.ts` seeds new asset categories with owner `SC` and `PIBC` (for example `KDR-SC`, `MSN`, `MSN-PIBC`).
 - `server/db.ts` fallback organization data includes `UNIT-SC`, `UNIT-PIBC`, owner divisions `SC`/`PIBC`, and legacy role labels.
-- `server/migrations/006_org_model_masters.sql` seeds SC/PIBC as divisions and units, while also creating office locations PIBC and RPC/SC.
+- `server/migrations/006_org_model_masters.sql` seeds SC/PIBC as divisions and units, while also creating office locations PIBC and RPC.
 - Historical migration comments and old documents still describe RPC/SC as an asset-owning function.
 - **Safe action:** preserve existing owner values and history. Do not mass-map operational machinery/trucks to IT or GA without an approved asset-owner decision. New owner master choices and asset-category defaults need a separate controlled decision/migration.
 
@@ -54,11 +54,10 @@ The review distinguishes menu visibility, page controls, and backend authorizati
 - In PostgreSQL mode, do not re-filter API-scoped records using a single primary role label.
 - Ensure Auditor read-only is enforced by permissions and server policy, not only hidden buttons.
 
-### P1 — Ticket queue policy must remain IT/GA only
-- New ticket creation is restricted to IT/GA.
-- Location is a separate field/data dimension and must be populated from the user's office/location or an explicitly selected incident location.
-- Current ticket storage/model does not yet expose a clearly named independent incident-location field in the create-ticket contract. Do not pretend that a location was recorded if the field is absent.
-- Backend ticket creation does not yet auto-assign `assigned_agent_id`; queue notification and individual assignment are separate operations.
+### P1 — Ticket queue policy is IT/GA/ME
+- New ticket creation targets IT, GA, or ME. ME is assigned to `UNIT-PIBC-ME` under PIBC.
+- The API uses `assigned_unit_id` to expose ME tickets to members of that unit and unit-targeted notifications use `recipient_unit_id`.
+- Individual `assigned_agent_id` is still separate from queue routing and is not auto-assigned.
 
 ### P1 — Reports and dashboard aggregates need endpoint-by-endpoint scope verification
 - Compare list, detail, dashboard aggregate, search, export, notification and report totals for each persona.
@@ -84,7 +83,7 @@ Run each applicable persona through every menu and direct API endpoint. Capture 
 | Auditor | Read-only scoped audit | Read-only scope | Read-only scope | Read-only scope | Read-only | Read-only scope | Read-only | Read-only | Read-only | Read-only | Read-only | Deny |
 | Custom role | Exactly granted permissions and scopes | Exactly granted scope | Exactly granted permission + owner scope | Exactly granted permission + owner scope | Exactly granted queue scope | Exactly granted permission + owner scope | Exactly granted reservation capabilities | Exactly granted | Exactly granted | Exactly granted | Exactly granted | Deny |
 
-**Location test:** Repeat employee scenarios with office location HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Changing only the location must not change role, owner scope, ticket queue, or permissions.
+**Location test:** Repeat employee scenarios with office location HO, PIBC, RPC, Pangsub, and Kantor Perawatan. Changing only the location must not change role, owner scope, ticket queue, or permissions.
 
 ## 5. Work sequence
 
@@ -99,4 +98,4 @@ Run each applicable persona through every menu and direct API endpoint. Capture 
 - No browser UAT has been completed by this source inspection.
 - No production database was queried or modified.
 - No legacy user, asset, unit, owner, or ticket records were mass-migrated.
-- SC/PIBC legacy owner/category records are not evidence that those labels are current owner domains.
+- SC/PIBC legacy owner records and ticket categories are not evidence that those labels are current owner domains.
