@@ -129,13 +129,13 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 
 Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifkan dan dipertahankan untuk referensi historis; jangan diaktifkan kembali sebagai lokasi operasional. Lokasi baru di masa depan ditambahkan melalui master oleh Super Admin tanpa perubahan kode. Menutup lokasi berarti menonaktifkan, bukan menghapus atau mengubah histori user/aset.
 
-**Owner domain aset adalah master fungsi/pemilik yang fleksibel**, bukan daftar enum tetap dan bukan nama lokasi. Contoh nilai saat ini dapat mencakup IT, GA, RPC/SC dan domain operasional lain yang disahkan. Kategori aset, lokasi fisik, lokasi kerja pegawai, unit organisasi, serta custodian tidak boleh otomatis menentukan owner tanpa aturan bisnis yang eksplisit.
+**Owner domain aset adalah master fungsi/pemilik yang fleksibel**, bukan daftar enum tetap dan bukan nama lokasi. Untuk pengelolaan rutin saat ini, domain penanggung jawab utama adalah IT dan GA. Supply Chain (SC) dan PIBC pada keputusan organisasi ini adalah lokasi kerja/operasional, bukan owner domain aset dan bukan kategori tiket. Kategori aset, lokasi fisik, lokasi kerja pegawai, unit organisasi, serta custodian tidak boleh otomatis menentukan owner tanpa aturan bisnis yang eksplisit.
 
 - IT tetap mengelola aset owner IT di seluruh lokasi.
 - GA tetap mengelola aset owner GA di seluruh lokasi.
 - Super Admin dapat mengonfigurasi kebijakan GA yang lebih luas, termasuk pola "semua owner kecuali IT". Kebijakan tersebut adalah opsi konfigurasi, bukan grant otomatis yang boleh diaktifkan tanpa persetujuan bisnis.
 - GA hanya memperoleh akses baca tambahan ke Laptop dan PC/Desktop milik IT jika permission khusus assets.read.it_workstations aktif. Akses tersebut tidak memberikan kemampuan mutasi.
-- Fungsi operasional seperti RPC/SC dapat menjadi owner aset terpisah dari lokasi kantor RPC/SC. Contoh: mesin produksi/gudang yang berada di lokasi Subang (contoh historis) tetap dapat dimiliki fungsi RPC/SC; lokasi tidak memindahkan owner.
+- Aset mesin, timbangan, gudang, dan peralatan operasional yang berada di lokasi PIBC atau RPC/SC tetap harus ditetapkan owner/pengelolanya melalui keputusan bisnis yang eksplisit. Label lokasi SC/PIBC tidak boleh otomatis dijadikan owner. Data historis dengan owner SC/PIBC tetap dipertahankan untuk audit dan masuk antrean review per aset; jangan dipindahkan massal ke IT atau GA tanpa verifikasi.
 - Data owner historis yang ambigu harus masuk daftar review Super Admin. Tidak boleh ada mass reassignment owner berdasarkan nama cabang, lokasi, atau kategori semata.
 
 ### 2.5 Kontrak Data dan Otorisasi Target
@@ -187,9 +187,11 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 - Penugasan teknisi (*Assignee*), pelacakan status (`open`, `in_progress`, `pending_vendor`, `resolved`, `closed`), catatan solusi (*resolution notes*), dan rating kepuasan.
 
 ### 3.5 Kategori Helpdesk Ticket (Strict Divisional)
-Kategori tiket helpdesk bersifat divisial dan **terbatas**: `IT`, `GA`, `SC`, `PIBC`.
-- Software/License/SaaS (Accurate, Microsoft 365, VPN, aktivasi lisensi) → kategori `IT` (License adalah domain aset, bukan kategori tiket).
-- Hardware, jaringan, server, akun → `IT`. Fasilitas gedung → `GA`. Permintaan pergudangan → `SC`. Kendaraan Pasar Induk → `PIBC`.
+Kategori tiket helpdesk untuk pengajuan baru adalah **`IT` dan `GA`**, yaitu tim/fungsi penanganan layanan. `PIBC` dan `RPC/SC` adalah lokasi kerja/operasional, bukan kategori tiket.
+- Software/License/SaaS (Accurate, Microsoft 365, VPN, aktivasi lisensi), hardware, jaringan, server, akun, printer → kategori `IT`.
+- Fasilitas gedung, AC, listrik, furniture, kebersihan, kendaraan/fasilitas umum yang menjadi tanggung jawab GA → kategori `GA`.
+- Lokasi kejadian/pemohon (HO, PIBC, RPC/SC, Pangsub, Kantor Perawatan, dan lokasi aktif lain) dicatat sebagai atribut lokasi terpisah dan tidak mengubah kategori maupun owner aset.
+- Kebutuhan operasional non-IT/non-GA tidak boleh diarahkan ke kategori lokasi. Jika kelak dibutuhkan, harus ada keputusan penanggung jawab layanan, antrean, SLA, dan permission tersendiri sebelum kategori baru ditambahkan.
 - **Contract Management adalah domain tersendiri dan BUKAN kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti (`contract_id` pada tiket).
 
 ### 3.6 Preventive Maintenance & Kalibrasi Tera
