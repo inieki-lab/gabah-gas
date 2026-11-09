@@ -65,7 +65,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   });
 
   // Category filter for convenience
-  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA' | 'SC'>('ALL');
+  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA'>('ALL');
 
   // Sync preselectedAssetId if opened with specific asset
   React.useEffect(() => {
@@ -84,7 +84,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   const [startDate, setStartDate] = useState<string>(`${tomorrowStr}T09:00`);
   const [dueDate, setDueDate] = useState<string>(`${tomorrowStr}T17:00`);
   const [purpose, setPurpose] = useState<string>('');
-  const [borrowerPhone, setBorrowerPhone] = useState<string>('0812-3456-7890');
+  const [borrowerPhone, setBorrowerPhone] = useState<string>('');
 
   // Toggle selection for an asset
   const handleToggleAsset = (id: string) => {
@@ -129,8 +129,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   const selectedCounts = useMemo(() => {
     const itCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'IT' || a.category_type === 'IT')).length;
     const gaCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'GA' || a.category_type === 'GA')).length;
-    const scCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'SC' || a.category_type === 'SC')).length;
-    return { it: itCount, ga: gaCount, sc: scCount, total: selectedAssetIds.length };
+    return { it: itCount, ga: gaCount, total: selectedAssetIds.length };
   }, [availablePool, selectedAssetIds]);
 
   if (!isOpen) return null;
@@ -211,7 +210,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 </p>
               </div>
 
-              {/* Filter Tabs */}
+              {/* Filter by asset owner domain; office/location is shown separately on each asset. */}
               <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                 <button
                   type="button"
@@ -332,7 +331,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                   </span>
                 </div>
                 <span className="text-emerald-700 font-bold text-[10px]">
-                  ✓ Tiket otomatis dikirim ke masing-masing divisi
+                  Persetujuan mengikuti owner aset yang dipinjam
                 </span>
               </div>
             )}
