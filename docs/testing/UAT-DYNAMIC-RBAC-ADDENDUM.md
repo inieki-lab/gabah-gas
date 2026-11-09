@@ -27,7 +27,7 @@ Do not infer effective access from a job title, unit name, office location, or m
 | Auditor | Auditor as primary role and, in a separate test, as an additional role | Authorized reads work; all create/update/delete/approve/assign operations are denied by API, not merely hidden in UI |
 | Sekretariat Direksi capability | Employee identity with explicitly approved secretariat capability | Only approved executive reservation/meeting actions appear and succeed; no implicit global asset or contract access |
 | Humas capability | Employee identity with explicitly approved Humas capability | Sees only documentation-request queue items; other people's private contacts, attendee lists, IT facilities, consumption details, and internal notes are redacted |
-| Supply Chain employee | Primary Karyawan; unit/location attributes identify Supply Chain / RPC-SC | Supply Chain is not required as an application role; location alone grants no owner scope or module permission |
+| Supply Chain employee | Primary Karyawan; unit/location attributes identify RPC | Supply Chain is not required as an application role; location alone grants no owner scope or module permission |
 | PIBC employee | Primary Karyawan; unit/location attributes identify PIBC | PIBC is not required as an application role; location alone grants no owner scope or module permission |
 
 Use the currently approved office-location master: HO, PIBC, RPC, Pangsub, and Kantor Perawatan. Subang is inactive and must remain historical; do not provision it as an active office location.
@@ -68,7 +68,7 @@ For every mutation workflow, test valid input, invalid input, wrong owner, missi
 Create synthetic assets with distinct owner domains and locations. Include at least:
 - IT-owned laptop at PIBC;
 - IT-owned network device at HO;
-- GA-owned furniture at RPC/SC;
+- GA-owned furniture at RPC;
 - GA-owned facility asset at Pangsub;
 - a legacy/uncertain owner record reserved for Super Admin review.
 
