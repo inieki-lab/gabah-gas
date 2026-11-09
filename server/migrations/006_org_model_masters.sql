@@ -73,7 +73,7 @@ INSERT INTO org_office_locations (id, name, is_active) VALUES
   ('OFF-PIBC',      'PIBC', TRUE),
   ('OFF-PERAWATAN', 'Kantor Perawatan', TRUE),
   ('OFF-PANGSUB',   'Kantor Pangsub', TRUE),
-  ('OFF-RPC',       'RPC/Supply Chain', TRUE)
+  ('OFF-RPC',       'RPC', TRUE)
 ON CONFLICT (id) DO NOTHING;
 
 -- Atribut user: kombinasi role + jabatan + unit + lokasi disimpan sebagai
