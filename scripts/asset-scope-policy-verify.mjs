@@ -111,6 +111,7 @@ const checks = [
     && maintenanceUi.indexOf('if (Array.isArray(currentUser?.permission_keys))') < maintenanceUi.indexOf('if (currentUser?.is_superadmin || currentUser?.role === \'Admin GABAH\')')
     && dashboardUi.indexOf('if (Array.isArray(currentUser?.permission_keys))') < dashboardUi.indexOf('if (currentUser?.is_superadmin || currentUser?.role === \'Admin GABAH\')')
     && contractsUi.includes("currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH'")],
+  ['Dashboard global and license views do not infer elevated access from legacy role labels in Dynamic RBAC mode', dashboardUi.includes("currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH'") && dashboardUi.includes("currentUser.permission_keys === undefined && (currentUser.role === 'IT' || currentUser.role === 'GA')") && dashboardUi.includes("currentUser.permission_keys === undefined && currentUser.role === 'IT'") && dashboardUi.includes("roleDescriptions[currentUser.role] || 'Akses dan ringkasan operasional")],
   ['Vendor create/update controls honor explicit Dynamic RBAC permissions and do not bypass them using a legacy Admin GABAH label',
     vendorUi.includes("currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH'")
     && vendorUi.includes("currentUser.permission_keys?.includes('vendors.create') === true")
