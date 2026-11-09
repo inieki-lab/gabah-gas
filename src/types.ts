@@ -156,7 +156,7 @@ export type TicketStatus = 'open' | 'in_progress' | 'pending_vendor' | 'resolved
  * Contract Management is a separate domain and is NOT a ticket category.
  * Software/License/SaaS tickets belong to 'IT' (License is an asset domain, not a helpdesk category).
  */
-export type TicketCategory = 'IT' | 'GA' | 'SC' | 'PIBC';
+export type TicketCategory = 'IT' | 'GA' | 'ME';
 
 export interface Ticket {
   id: string;
