@@ -103,7 +103,7 @@
 
 ### BR-05.1: Jalur Cepat Direksi (VIP Auto-Approval)
 - **Aturan**:
-  - Setiap permohonan reservasi ruang rapat yang diajukan oleh `Sekretaris Direksi` (atas nama Direksi & Dewan Komisaris) secara otomatis berstatus disetujui (`approved`), memiliki prioritas `high`, dan mengunci ruangan dari jadwal lain.
+  - Setiap permohonan oleh pegawai yang memiliki capability tambahan `sekretaris_direksi` melalui Dynamic RBAC (atas nama Direksi & Dewan Komisaris) secara otomatis berstatus disetujui (`approved`), memiliki prioritas `high`, dan dapat menggunakan interupsi sesuai permission. Role primer pegawai tetap `Karyawan`.
   - Permohonan dari karyawan/divisi lain berstatus `pending_approval` dan memerlukan persetujuan manual Divisi GA.
 - **Enforcement Kode**: `server/services.ts` (baris 945-976).
 
