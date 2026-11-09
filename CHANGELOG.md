@@ -4,6 +4,7 @@
 - Administration modal menjaga urutan React Hooks dan hanya menjalankan pemuatan RBAC, assignment pengguna, numbering, reminder, dan health snapshot saat modal terbuka.
 - Master kategori, lokasi fasilitas, divisi, jabatan, unit, dan lokasi kantor menggunakan hasil API sebagai sumber kebenaran; respons array kosong kini menggantikan data contoh/cache lama, bukan mempertahankannya.
 - Tombol struktur divisi yang sebelumnya mengembalikan state lokal ke default kini memuat ulang master dari database.
+- CRUD lokasi fasilitas memakai ID dan record yang dikembalikan server setelah create/update; UI tidak lagi membangun ID lokal yang berpotensi berbeda dari ID tersimpan.
 - Aturan notifikasi dan format nomor yang masih lokal diberi keterangan eksplisit bahwa perubahan tidak mengubah scheduler atau generator sequence server.
 - Ekspor JSON panel dinamai sebagai snapshot data, bukan backup PostgreSQL. Pemeriksaan integritas diberi label sebagai pemeriksaan internal GABAH, bukan rekonsiliasi SAP.
 - Keterangan sumber data ditampilkan pada kartu menu Administration.
