@@ -61,7 +61,7 @@
   1. Login sebagai IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC/SC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
   2. Login sebagai GA. Pastikan aset owner GA terlihat lintas lokasi. Jika permission assets.read.it_workstations aktif, hanya Laptop/PC owner IT yang dapat dibaca; mutasi langsung via API harus ditolak.
   3. Login sebagai Karyawan di unit Supply Chain dan PIBC. Pastikan fungsi dasar karyawan tersedia; lokasi kerja tidak otomatis membuka katalog aset unit/lokasi.
-  4. Uji aset operasional owner RPC/SC yang ditempatkan di lokasi fisik berbeda. User dengan permission + scope RPC/SC yang disahkan dapat mengelolanya; GA tidak otomatis mendapat akses karena aset berada di gudang.
+  4. Uji record aset historis dengan owner `SC`/`PIBC`: record tetap dibatasi untuk Super Admin/reviewer sesuai kebijakan transisi; user di lokasi tersebut tidak memperoleh hak kelola karena lokasi. Tidak boleh ada owner reassignment massal.
   5. Login sebagai Humas dan Sekretaris Direksi. Pastikan fungsi dasar karyawan tersedia serta kapabilitas tambahan muncul hanya bila role tambahan/permission diberikan.
   6. Login sebagai Auditor. Pastikan data yang diberi scope audit dapat dibaca dan seluruh operasi mutasi ditolak.
   7. Uji user tanpa role, role nonaktif, dan role tanpa scope: akses harus gagal tertutup.
@@ -181,7 +181,7 @@
 
 ### Skenario 10: Contract Management (Domain Tersendiri) & Kategori Tiket
 1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN), hardware, jaringan → kategori `IT`; fasilitas umum → kategori `GA`. Lokasi pemohon/kejadian seperti HO, PIBC, RPC/SC, Pangsub dicatat sebagai lokasi, bukan kategori. Form pengajuan baru hanya menyediakan IT dan GA; kategori SC/PIBC pada tiket historis tetap dapat dibaca sebagai data legacy, tetapi tidak boleh dipilih untuk tiket baru.
-2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
+2. **Create Contract** untuk kontrak lintas fungsi sesuai owner/PIC yang ditetapkan secara sah. Lokasi PIBC atau RPC/SC tidak otomatis menjadi owner kontrak.
 3. **Dokumen kontrak**: unggah PDF/DOC/JPG yang sah, unduh kembali sebagai PIC/owner yang berwenang, dan pastikan user di luar scope menerima 404. Restart aplikasi; file harus tetap dapat diunduh. Backup database dan volume uploads harus diuji bersama.
 3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
 4. **Email & Telegram**: log pengiriman muncul di `GET /api/contracts/:id/notification-logs` dengan status JUJUR per channel: `sent` (terkirim nyata), `skipped` (provider belum dikonfigurasi — memerlukan `GABAH_SMTP_HOST`+`GABAH_SMTP_FROM` untuk email, `TELEGRAM_BOT_TOKEN` untuk Telegram; recipient divisi tanpa email/chat id juga `skipped`), atau `failed` (provider dikonfigurasi tapi gagal — host tak terjangkau, token invalid). **Tidak pernah ada status sukses palsu.** Scheduler otomatis berjalan tiap `GABAH_REMINDER_INTERVAL_MS` (default 1 jam, leader-lock `pg_try_advisory_lock(842201)` untuk multi-instance); status via `GET /api/contracts/reminders/scheduler-status` (Admin-only).
