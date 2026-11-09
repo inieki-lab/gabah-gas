@@ -267,7 +267,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     name: '',
     email: '',
     role: 'Karyawan',
-    division: 'SC',
+    division: 'Umum',
     department: '',
     job_level_code: '',
     unit_id: '',
@@ -1354,7 +1354,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       name: user.name || '',
       email: user.email || '',
       role: user.role,
-      division: (user.division as OwnerDivision) || 'SC',
+      division: (user.division as OwnerDivision) || 'Umum',
       department: user.department || '',
       job_level_code: (user as any).job_level_code || '',
       unit_id: (user as any).unit_id || '',
@@ -2296,16 +2296,18 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Divisi Utama *</label>
+                          <label className="text-xs font-bold text-slate-700">Divisi referensi (opsional)</label>
                           <select
                             value={editUserData.division}
                             onChange={e => setEditUserData(prev => ({ ...prev, division: e.target.value as OwnerDivision }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
+                            <option value="Umum">Umum / belum ditetapkan</option>
                             {divisions.map(d => (
                               <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                             ))}
                           </select>
+                          <p className="text-[11px] text-slate-500">Atribut kompatibilitas data lama; tidak memberikan hak akses. Unit organisasi dan lokasi kantor diatur terpisah.</p>
                         </div>
 
                         <div className="space-y-1.5">
