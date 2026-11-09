@@ -22,7 +22,7 @@ interface CreateTicketModalProps {
   onCreateTicket: (ticketData: {
     title: string;
     description: string;
-    category: TicketCategory;
+    category: 'IT' | 'GA';
     priority: TicketPriority;
     related_asset_id?: string;
   }) => void;
@@ -47,12 +47,20 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const isAuditor = currentUser?.role === 'Auditor';
 
   // Freshservice-inspired Quick Service Catalog Templates
-  const serviceCatalogTemplates = [
+  const serviceCatalogTemplates: Array<{
+    id: string;
+    label: string;
+    category: 'IT' | 'GA';
+    priority: TicketPriority;
+    title: string;
+    desc: string;
+    icon: string;
+  }> = [
     {
       id: 'hw-issue',
       label: 'Laptop / PC / Printer',
-      category: 'IT' as 'IT' | 'GA',
-      priority: 'medium' as TicketPriority,
+      category: 'IT',
+      priority: 'medium',
       title: 'Laptop / PC Kerja Mengalami Gangguan Teknis',
       desc: 'Perangkat kerja utama mengalami kendala booting, performa lambat, atau blue screen yang menghambat aktivitas harian.',
       icon: '💻',
@@ -60,8 +68,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'sw-access',
       label: 'Akses Software & Lisensi',
-      category: 'IT' as 'IT' | 'GA',
-      priority: 'medium' as TicketPriority,
+      category: 'IT',
+      priority: 'medium',
       title: 'Permohonan Akun ERP Accurate / Microsoft 365 / VPN',
       desc: 'Permintaan aktivasi akun baru atau reset password lisensi kerja resmi Food Station.',
       icon: '🔑',
@@ -69,23 +77,21 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'ga-facility',
       label: 'Fasilitas & Sarana Kantor',
-      category: 'GA' as 'IT' | 'GA',
-      priority: 'medium' as TicketPriority,
+      category: 'GA',
+      priority: 'medium',
       title: 'Permintaan Perbaikan Fasilitas / Sarana Kantor',
       desc: 'Jelaskan lokasi dan fasilitas yang bermasalah, misalnya AC, listrik, plumbing, kebersihan, furniture, atau kendaraan dinas.',
       icon: '❄️',
     },
     {
-    {
       id: 'incident-down',
       label: 'Jaringan & Infrastruktur TI',
-      category: 'IT' as TicketCategory,
-      priority: 'urgent' as TicketPriority,
+      category: 'IT',
+      priority: 'urgent',
       title: 'Kendala Jaringan / Infrastruktur TI',
       desc: 'Jelaskan lokasi, perangkat atau layanan yang terdampak, waktu mulai gangguan, dan jumlah pengguna yang terdampak.',
       icon: '🌐',
     },
-    {
   ];
 
   const applyCatalogTemplate = (tpl: typeof serviceCatalogTemplates[0]) => {
