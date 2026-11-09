@@ -55,8 +55,8 @@ Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun 
 
 ### A. Kepemilikan dan pengelolaan aset ditentukan oleh unit pemilik, bukan lokasi
 - **IT mengelola seluruh aset TI perusahaan di semua lokasi**, termasuk PC, laptop, printer/perangkat periferal, server, perangkat jaringan, perangkat rapat/AV yang menjadi domain IT, software, dan lisensi. Aset TI tetap berada dalam tanggung jawab IT meskipun ditempatkan atau digunakan di Kantor Pusat, kantor RPC, PIBC, gudang, depo, atau lokasi operasional lainnya.
-- **GA mengelola seluruh aset umum/sarana-prasarana yang menjadi domain GA di semua lokasi**, termasuk furniture, perlengkapan kantor, fasilitas gedung, kendaraan atau aset umum lain sesuai klasifikasi dan penetapan pemiliknya. Aset GA tetap menjadi tanggung jawab GA meskipun berada di kantor Supply Chain, PIBC, gudang, depo, atau lokasi lain.
-- **Supply Chain dan PIBC dalam konteks pembahasan ini adalah nama kantor/unit lokasi operasional**, bukan otomatis unit pemilik atau pengelola semua aset yang berada di sana. Penempatan aset di lokasi tersebut tidak mengubah kepemilikan/pengelola aset.
+- **GA mengelola seluruh aset umum/sarana-prasarana yang menjadi domain GA di semua lokasi**, termasuk furniture, perlengkapan kantor, fasilitas gedung, kendaraan atau aset umum lain sesuai klasifikasi dan penetapan pemiliknya. Aset GA tetap menjadi tanggung jawab GA meskipun berada di kantor RPC, PIBC, gudang, depo, atau lokasi lain.
+- **RPC dan PIBC dalam konteks pembahasan ini adalah nama kantor/lokasi operasional**, bukan otomatis unit pemilik atau pengelola semua aset yang berada di sana. Penempatan aset di lokasi tersebut tidak mengubah kepemilikan/pengelola aset.
 - Lokasi fisik aset, lokasi kerja pengguna, unit pemilik/pengelola aset (owner_division), custodian/PIC, dan role/permission pengguna harus menjadi dimensi data yang terpisah.
 - Jika suatu aset di lokasi cabang dimiliki/dikelola IT, maka IT tetap berwenang mengelola lifecycle dan datanya. Jika aset tersebut milik GA, GA yang mengelolanya. Jangan mengalihkan kewenangan hanya karena aset berada di lokasi cabang.
 
@@ -135,7 +135,7 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 - GA tetap mengelola aset owner GA di seluruh lokasi.
 - Super Admin dapat mengonfigurasi kebijakan GA yang lebih luas, termasuk pola "semua owner kecuali IT". Kebijakan tersebut adalah opsi konfigurasi, bukan grant otomatis yang boleh diaktifkan tanpa persetujuan bisnis.
 - GA hanya memperoleh akses baca tambahan ke Laptop dan PC/Desktop milik IT jika permission khusus assets.read.it_workstations aktif. Akses tersebut tidak memberikan kemampuan mutasi.
-- Fungsi operasional seperti RPC/SC dapat menjadi owner aset terpisah dari lokasi kantor RPC/SC. Contoh: mesin produksi/gudang yang berada di lokasi Subang (contoh historis) tetap dapat dimiliki fungsi RPC/SC; lokasi tidak memindahkan owner.
+- Owner operasional historis berkode SC (yang sebelumnya disebut Supply Chain) tetap merupakan data legacy dan harus diverifikasi sebelum ditetapkan sebagai owner aktif; lokasi kantor RPC tidak otomatis menjadi owner aset. Contoh: mesin produksi/gudang yang berada di lokasi Subang (contoh historis) tetap dapat dimiliki fungsi RPC/SC; lokasi tidak memindahkan owner.
 - Data owner historis yang ambigu harus masuk daftar review Super Admin. Tidak boleh ada mass reassignment owner berdasarkan nama cabang, lokasi, atau kategori semata.
 
 ### 2.5 Kontrak Data dan Otorisasi Target
@@ -189,7 +189,7 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 ### 3.5 Kategori Helpdesk Ticket (Strict Divisional)
 Kategori tujuan tiket helpdesk adalah **IT**, **GA**, dan **ME (Mechanical, Electrical & Tim Perawatan)**. PIBC dan RPC adalah lokasi, bukan kategori tiket.
 - Software/License/SaaS (Accurate, Microsoft 365, VPN, aktivasi lisensi) → kategori `IT` (License adalah domain aset, bukan kategori tiket).
-- Hardware, jaringan, server, akun → `IT`. Fasilitas gedung → `GA`. Permintaan pergudangan → `SC`. Kendaraan Pasar Induk → `PIBC`.
+- Hardware, jaringan, server, akun, software/lisensi → `IT`; fasilitas umum/gedung/kendaraan dinas → `GA`; mesin, kelistrikan, mekanikal/elektrikal, dan perawatan teknis lingkup Tim Perawatan → `ME` (unit `UNIT-PIBC-ME` di bawah PIBC). Lokasi RPC/PIBC tidak menentukan kategori tiket.
 - **Contract Management adalah domain tersendiri dan BUKAN kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti (`contract_id` pada tiket).
 
 ### 3.6 Preventive Maintenance & Kalibrasi Tera
