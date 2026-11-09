@@ -284,23 +284,23 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 <div className="flex items-center gap-2">
                   
                   {/* Status: Pending -> Approve or Reject */}
-                  {(loan.status === 'pending') && userCanApprove && (
-                    <>
-                      <button
-                        onClick={() => onApproveLoan(loan.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Setujui Reservasi
-                      </button>
-                      {canRejectLoan && <button
-                        onClick={() => setRejectingLoanId(loan.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        Tolak
-                      </button>}
-                    </>
+                  {loan.status === 'pending' && userCanApprove && (
+                    <button
+                      onClick={() => onApproveLoan(loan.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Setujui Reservasi
+                    </button>
+                  )}
+                  {loan.status === 'pending' && canRejectLoan && (
+                    <button
+                      onClick={() => setRejectingLoanId(loan.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      Tolak
+                    </button>
                   )}
 
                   {/* Status: Approved -> Handover to user */}
