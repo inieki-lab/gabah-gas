@@ -102,7 +102,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
   const totalAssetCount = filteredAssets.length || 1;
 
-  // Breakdown per Division (IT, GA, SC, PIBC) — mengikuti filter aktif
+  // Breakdown per owner aktif (IT/GA), record owner legacy, dan lokasi fisik — mengikuti filter aktif
   const itAssets = filteredAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
   const gaAssets = filteredAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
   const legacyOwnerAssets = filteredAssets.filter(a => ['SC', 'PIBC', 'Supply Chain'].includes(String(a.owner_division || '')));
