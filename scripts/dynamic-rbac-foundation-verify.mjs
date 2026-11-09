@@ -32,6 +32,8 @@ const frontend = fs.readFileSync('src/components/modals/AdministrationModal.tsx'
 const contractsView = fs.readFileSync('src/components/views/ContractsView.tsx', 'utf8');
 const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const userImportService = fs.readFileSync('src/services/gabahService.ts', 'utf8');
+const headerNavbar = fs.readFileSync('src/components/HeaderNavbar.tsx', 'utf8');
+const appSource = fs.readFileSync('src/App.tsx', 'utf8');
 const dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
 const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 const deployScript = fs.readFileSync('deploy.sh', 'utf8');
@@ -41,6 +43,7 @@ const checks = [
   ['custom role creation rejects an empty permission selection at the API boundary', createRoleRoute.includes('permissionKeys.length === 0') && createRoleRoute.includes('minimal satu permission aktif')],
   ['custom roles cannot receive protected system authentication, audit, or superadmin permissions', createRoleRoute.includes('system.authentication') && createRoleRoute.includes('system.audit') && createRoleRoute.includes('system.super_admin') && server.includes("permission_key NOT IN ('system.authentication', 'system.audit', 'system.super_admin')")],
   ['Superadmin create-role form displays grouped permission checkboxes and refuses empty catalogue/selection', /Pilih Permission/.test(frontend) && /rbacNewPermissionKeys\.includes/.test(frontend) && /Buat Role \+ Simpan Hak Akses/.test(frontend) && /Katalog permission kosong/.test(frontend) && /Pilih minimal satu permission/.test(frontend)],
+  ['Obsolete virtual role simulation is removed and account switching is Superadmin-only', !headerNavbar.includes('SIM-') && !headerNavbar.includes('Role Simulation') && !appSource.includes('handleSwitchRoleSimulation') && /currentUser\.is_superadmin \|\| currentUser\.role === 'Admin GABAH'/.test(headerNavbar)],
   ['Admin scope editor exposes and types division-except scope for explicit owner exclusions', /useState<'all' \| 'own' \| 'division' \| 'division_except' \| 'unit' \| 'location'>\('division'\)/.test(frontend) && /<option value="division_except">Semua owner kecuali<\/option>/.test(frontend) && /type: 'all' \| 'own' \| 'division' \| 'division_except' \| 'unit' \| 'location'/.test(frontend)],
   ['facility location create stores the server-returned ID for subsequent edit/delete operations', /const created = await gabahApi\.createLocation\(locationPayload\);[\s\S]{0,220}if \(!created\?\.id\)[\s\S]{0,180}createdLocation = created as MasterLocation/.test(frontend)],
   ['facility location update replaces the row with the server-returned record', /const saved = await gabahApi\.updateLocation\(editLocationData\.id, editLocationData\);[\s\S]{0,180}savedLocation = saved as MasterLocation/.test(frontend)],
