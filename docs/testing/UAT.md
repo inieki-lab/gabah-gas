@@ -180,7 +180,7 @@
 ---
 
 ### Skenario 10: Contract Management (Domain Tersendiri) & Kategori Tiket
-1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware → `IT`; fasilitas → `GA`; SC → `SC`; PIBC → `PIBC`. Tidak ada opsi License/General/Contract di form.
+1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN), hardware, jaringan → kategori `IT`; fasilitas umum → kategori `GA`. Lokasi pemohon/kejadian seperti HO, PIBC, RPC/SC, Pangsub dicatat sebagai lokasi, bukan kategori. Form pengajuan baru hanya menyediakan IT dan GA; kategori SC/PIBC pada tiket historis tetap dapat dibaca sebagai data legacy, tetapi tidak boleh dipilih untuk tiket baru.
 2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
 3. **Dokumen kontrak**: unggah PDF/DOC/JPG yang sah, unduh kembali sebagai PIC/owner yang berwenang, dan pastikan user di luar scope menerima 404. Restart aplikasi; file harus tetap dapat diunduh. Backup database dan volume uploads harus diuji bersama.
 3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
