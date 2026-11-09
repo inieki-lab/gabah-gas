@@ -62,10 +62,10 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   });
 
   const hasPermission = (key: string, legacyRoles: string[] = []) => {
-    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     if (Array.isArray(currentUser?.permission_keys)) {
       return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
     }
+    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     return legacyRoles.includes(currentUser?.role || '');
   };
   const canCreate = hasPermission('maintenances.create', ['Admin GABAH', 'IT', 'GA']);
