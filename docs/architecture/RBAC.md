@@ -189,6 +189,7 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 
 - Role aplikasi adalah **paket permission dan scope**, bukan nama jabatan. Super Admin dapat membuat role kustom, memilih permission, mengatur scope, dan menetapkan satu atau lebih role kepada pegawai mana pun.
 - Jabatan/posisi (mis. Admin IT, Staf IT Support, Admin GA, Admin ME, Teknisi ME) tetap menjadi atribut organisasi/pekerjaan; jabatan tidak otomatis memberikan permission.
-- `tickets.assign` adalah permission terpisah dari `tickets.update`. Dispatcher dapat mendelegasikan, sedangkan teknisi/petugas pelaksana cukup diberi `tickets.update` dan scope yang sesuai.
+- `tickets.assign` adalah permission terpisah dari `tickets.update`. Dispatcher dapat mendelegasikan, sedangkan teknisi/petugas pelaksana cukup diberi `tickets.update` dan scope yang sesuai. Aksi perubahan status tiket di UI dan API mensyaratkan `tickets.update`; hak delegasi saja tidak memberi hak mengubah status.
+- Scope yang dapat dikonfigurasi per modul meliputi `all`, `own`, `division`, `division_except`, `unit`, dan `location`. `division_except` mendukung pembatasan owner luas seperti semua owner kecuali IT; pengecualian harus diuji bersama scope positif agar tidak berubah menjadi akses global tanpa sengaja.
 - Migration `037_admin_tiket_me_role_template.sql` dan `038_ticket_dispatch_permission.sql` menyediakan preset Admin Tiket ME. Preset bukan role jabatan permanen dan tidak otomatis ditetapkan kepada akun mana pun.
 - Penambahan atau perubahan personel dilakukan melalui assignment role, scope, unit, dan konfigurasi routing; tidak perlu mengubah kode hanya karena nama jabatan atau struktur staf berubah.
