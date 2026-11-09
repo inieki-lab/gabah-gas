@@ -65,7 +65,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   });
 
   // Category filter for convenience
-  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA' | 'SC' | 'PIBC'>('ALL');
+  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA'>('ALL');
 
   // Sync preselectedAssetId if opened with specific asset
   React.useEffect(() => {
@@ -129,9 +129,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   const selectedCounts = useMemo(() => {
     const itCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'IT' || a.category_type === 'IT')).length;
     const gaCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'GA' || a.category_type === 'GA')).length;
-    const scCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && a.owner_division === 'SC').length;
-    const pibcCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && a.owner_division === 'PIBC').length;
-    return { it: itCount, ga: gaCount, sc: scCount, pibc: pibcCount, total: selectedAssetIds.length };
+    return { it: itCount, ga: gaCount, total: selectedAssetIds.length };
   }, [availablePool, selectedAssetIds]);
 
   if (!isOpen) return null;
@@ -212,7 +210,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 </p>
               </div>
 
-              {/* Filter Tabs */}
+              {/* Filter owner domain aset; lokasi fisik ditampilkan pada detail aset, bukan sebagai owner. */}
               <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                 <button
                   type="button"
@@ -248,17 +246,6 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                     filterDivision === 'SC' ? 'bg-white text-orange-700 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Supply Chain
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterDivision('PIBC')}
-                  className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
-                    filterDivision === 'PIBC' ? 'bg-white text-emerald-700 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  PIBC
-                </button>
               </div>
             </div>
 
@@ -348,8 +335,6 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                     {selectedCounts.it > 0 && ` ${selectedCounts.it} Aset IT (Approve: IT)`}
                     {selectedCounts.it > 0 && selectedCounts.ga > 0 && ` + `}
                     {selectedCounts.ga > 0 && ` ${selectedCounts.ga} Aset GA`}
-                    {selectedCounts.sc > 0 && ` ${selectedCounts.sc} Aset SC`}
-                    {selectedCounts.pibc > 0 && ` ${selectedCounts.pibc} Aset PIBC`}
                   </span>
                 </div>
                 <span className="text-emerald-700 font-bold text-[10px]">
