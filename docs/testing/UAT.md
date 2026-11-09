@@ -203,6 +203,7 @@
   8. Buka menu *Referensi Aset & Layanan*. Pastikan data kosong dari API tidak diganti diam-diam oleh contoh/localStorage browser. Buat satu lokasi fasilitas uji, edit, refresh panel, lalu hapus; ID yang dipakai harus ID dari respons server dan perubahan harus tetap ada setelah refresh.
   9. Periksa label sumber data pada setiap kartu Administration. Menu lokal harus menyatakan bahwa perubahan hanya tersimpan di browser.
   10. Pastikan *Download Snapshot Data (JSON)* menyatakan bukan backup PostgreSQL; pemeriksaan integritas internal tidak mengklaim terhubung ke SAP; simulasi nomor tidak mengklaim menerbitkan sequence.
+  11. Pastikan daftar akun untuk alih akun hanya terlihat oleh Superadmin; non-Superadmin hanya melihat aksi akun sendiri. Tidak boleh ada tombol/persona simulasi `SIM-*`; Superadmin hanya dapat beralih ke akun pegawai yang benar-benar terdaftar dan aktivitasnya tercatat di audit.
 - **Kriteria Lulus**: Tombol dan modal administrasi terkunci eksklusif untuk peran `Admin GABAH`; katalog permission dan master data berasal dari server; fungsi lokal diberi batasan yang jelas.
 
 ---
