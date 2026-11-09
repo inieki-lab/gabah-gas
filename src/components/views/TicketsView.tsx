@@ -450,7 +450,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               </h4>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {isSelfTicketsOnly 
-                  ? 'Anda belum memiliki riwayat pengajuan tiket kendala. Klik "Buat Tiket Baru" jika Anda mengalami gangguan IT atau fasilitas kantor.'
+                  ? 'Anda belum memiliki riwayat pengajuan tiket kendala. Klik "Buat Tiket Baru" jika Anda mengalami gangguan IT, fasilitas umum, atau mesin/kelistrikan yang ditangani Tim Perawatan.'
                   : isGA
                   ? 'Tidak ada tiket kendala fasilitas GA yang menunggu penanganan.'
                   : 'Tidak ada tiket yang cocok dengan pencarian atau filter status yang dipilih.'}
