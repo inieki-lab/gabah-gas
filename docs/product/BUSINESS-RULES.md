@@ -148,6 +148,6 @@
 
 ### BR-04c: Administrasi Tiket ME
 - GABAH menyediakan role template **Admin Tiket ME** untuk staf administrasi yang kelak ditunjuk mengurus tiket Mechanical & Electrical.
-- Hak minimum: melihat tiket pada antrean `UNIT-PIBC-ME` dan memperbarui status/catatan tindak lanjut. Role ini tidak otomatis menjadi teknisi, tidak mengelola jadwal Maintenance, dan tidak memperoleh akses ke seluruh data PIBC.
+- Hak minimum: melihat tiket pada antrean `UNIT-PIBC-ME`, memperbarui status/catatan tindak lanjut, dan membaca notifikasi antrean unit. Role ini tidak otomatis menjadi teknisi, tidak mengelola jadwal Maintenance, dan tidak memperoleh akses ke seluruh data PIBC.
 - Super Admin harus menetapkan role kepada akun staf yang benar dan mengisi `unit_id=UNIT-PIBC-ME`. Tidak ada penetapan akun otomatis atau berdasarkan lokasi kerja.
 - Tim Perawatan menangani pemeriksaan/perbaikan teknis; Admin Tiket ME menangani administrasi, kelengkapan informasi, koordinasi, dan pemantauan progres.
