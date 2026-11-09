@@ -65,7 +65,7 @@
 
 ### FR-09: Reservasi Ruang Rapat VIP & Integrasi Notifikasi
 - **FR-09.1**: Sistem harus menyediakan jadwal kalender dan pemesanan ruang rapat representatif.
-- **FR-09.2**: Pemesanan oleh `Sekretaris Direksi` berstatus VIP dan otomatis disetujui (*auto-approved*); pemesanan oleh staf umum berstatus `pending_approval` menunggu verifikasi GA.
+- **FR-09.2**: Pemesanan oleh pegawai dengan capability Dynamic RBAC `sekretaris_direksi` berstatus VIP dan otomatis disetujui (*auto-approved*); role primer tetap Karyawan. Pemesanan pegawai tanpa capability tersebut berstatus `pending_approval` menunggu verifikasi GA.
 - **FR-09.3**: Sistem harus mendeteksi tabrakan jadwal ruangan pada tanggal dan rentang jam yang sama.
 - **FR-09.4**: Sistem harus mendistribusikan notifikasi otomatis secara granular:
   - Notifikasi ke Tim IT jika terdapat kebutuhan perangkat IT (Polycom, Smart TV, Proyektor, HDMI, WiFi).
