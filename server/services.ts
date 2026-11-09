@@ -240,6 +240,7 @@ export class GabahDomainService {
       recipient_role: data.recipient_role,
       recipient_division: data.recipient_division,
       recipient_user_id: data.recipient_user_id,
+      recipient_unit_id: data.recipient_unit_id,
       title: data.title,
       message: data.message,
       severity: data.severity,
