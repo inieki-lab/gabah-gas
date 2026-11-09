@@ -6,8 +6,6 @@ import {
   Clock, 
   Laptop, 
   Car, 
-  Package,
-  Store,
   Info 
 } from 'lucide-react';
 import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
@@ -40,7 +38,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   linkedContract,
   onCreateTicket,
 }) => {
-  const [category, setCategory] = useState<TicketCategory>('IT');
+  const [category, setCategory] = useState<'IT' | 'GA'>('IT');
   const [priority, setPriority] = useState<TicketPriority>('medium');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -53,7 +51,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'hw-issue',
       label: 'Laptop / PC / Printer',
-      category: 'IT' as TicketCategory,
+      category: 'IT' as 'IT' | 'GA',
       priority: 'medium' as TicketPriority,
       title: 'Laptop / PC Kerja Mengalami Gangguan Teknis',
       desc: 'Perangkat kerja utama mengalami kendala booting, performa lambat, atau blue screen yang menghambat aktivitas harian.',
@@ -71,7 +69,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     {
       id: 'ga-facility',
       label: 'Fasilitas & Sarana Kantor',
-      category: 'GA' as TicketCategory,
+      category: 'GA' as 'IT' | 'GA',
       priority: 'medium' as TicketPriority,
       title: 'Permintaan Perbaikan Fasilitas / Sarana Kantor',
       desc: 'Jelaskan lokasi dan fasilitas yang bermasalah, misalnya AC, listrik, plumbing, kebersihan, furniture, atau kendaraan dinas.',
@@ -183,7 +181,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         setDescription(
           `Tiket kerja terkait kontrak ${linkedContract.contract_number} (${linkedContract.title}) dengan vendor ${linkedContract.vendor_name}. Divisi pemilik: ${linkedContract.owner_division}.`
         );
-        setCategory((linkedContract.owner_division === 'IT' ? 'IT' : 'GA') as TicketCategory);
+        setCategory(linkedContract.owner_division === 'IT' ? 'IT' : 'GA');
       }
     }
   }, [isOpen, preselectedAssetId, linkedContract]);
