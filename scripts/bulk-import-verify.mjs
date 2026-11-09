@@ -114,6 +114,7 @@ async function main() {
     const batch1 = [
       { name: 'Impor Dua', email: `impor.dua.${suffix}@foodstation.co.id`, role: 'GA', division: 'GA', department: 'Sarpras', phone: '081200000002' },
       { name: 'Impor Tiga', email: `impor.tiga.${suffix}@foodstation.co.id`, role: 'Peran Ngawur', division: 'XX', department: 'Gudang', phone: '' },
+      { name: 'Impor Humas', email: `impor.humas.${suffix}@foodstation.co.id`, role: 'Humas', division: 'Umum', department: 'Humas', phone: '' },
     ];
     const r1 = await req(base, 'POST', '/api/users/bulk-import', {
       token: adminToken,
@@ -121,9 +122,10 @@ async function main() {
     });
     const d1 = r1.json?.data || {};
     record('Bulk import returns created=2', 'created=2', `created=${d1.created}`, d1.created === 2);
-    record('Invalid email row rejected', 'failed=1', `failed=${d1.failed}`, d1.failed === 1);
-    record('Unknown role -> warning (not failure); bad email -> error', 'warnings>=1 & errors=1', `warnings=${(d1.warnings || []).length} errors=${(d1.errors || []).length}`,
-      (d1.warnings || []).length >= 1 && (d1.errors || []).length === 1);
+    record('Invalid email and function role rows rejected', 'failed=2', `failed=${d1.failed}`, d1.failed === 2);
+    record('Unknown role -> warning; function role -> error', 'warnings>=1 & errors=2', `warnings=${(d1.warnings || []).length} errors=${(d1.errors || []).length}`,
+      (d1.warnings || []).length >= 1 && (d1.errors || []).length === 2);
+    record('Humas is rejected as primary role', 'Humas row rejected with additional-role guidance', (d1.errors || []).some(e => e.includes('role tambahan')), (d1.errors || []).some(e => e.includes('role tambahan')));
     record('No password echoed in response', 'no password fields', JSON.stringify(r1.json).includes('password') ? 'found password key' : 'clean',
       !/temp_password|password_hash/.test(JSON.stringify(r1.json)));
 
@@ -152,6 +154,11 @@ async function main() {
       users.filter(u => u.email === `impor.dua.${suffix}@foodstation.co.id`).length === 1);
     const fallbackUser = users.find(u => u.email === `impor.tiga.${suffix}@foodstation.co.id`);
     record('Unknown role defaulted to Karyawan', 'role=Karyawan', `role=${fallbackUser?.role}`, fallbackUser?.role === 'Karyawan');
+    const branchUser = users.find(u => u.email === `impor.empat.${suffix}@foodstation.co.id`);
+    record('Legacy PIBC role maps to Karyawan + unit + office location', 'Karyawan / UNIT-PIBC / OFF-PIBC', `${branchUser?.role} / ${branchUser?.unit_id} / ${branchUser?.office_location_id}`,
+      branchUser?.role === 'Karyawan' && branchUser?.unit_id === 'UNIT-PIBC' && branchUser?.office_location_id === 'OFF-PIBC');
+    const functionRoleUser = users.find(u => u.email === `impor.humas.${suffix}@foodstation.co.id`);
+    record('Function role was not created as primary profile', 'no Humas user', functionRoleUser ? functionRoleUser.role : 'not created', !functionRoleUser);
 
     // ---------- Empty batch rejected ----------
     const r3 = await req(base, 'POST', '/api/users/bulk-import', { token: adminToken, body: { users: [] } });
