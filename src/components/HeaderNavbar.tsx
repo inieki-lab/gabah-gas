@@ -358,11 +358,13 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
               <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
             </button>
 
-            {/* Dropdown Menu for Roles & Simulation */}
+            {/* Account dropdown: account switching is Superadmin-only */}
             {showRoleDropdown && (
               <div 
                 className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 z-50 max-h-[85vh] overflow-y-auto"
               >
+                {(currentUser.is_superadmin || currentUser.role === 'Admin GABAH') && (
+                  <>
                 <div className="px-3 py-2 border-b border-slate-100 mb-2">
                   <div className="flex items-center justify-between">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
@@ -410,6 +412,9 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     })}
                   </div>
                 </div>
+
+                  </>
+                )}
 
                 {/* Account actions */}
                 <div className="mt-2.5 pt-2 border-t border-slate-100">
