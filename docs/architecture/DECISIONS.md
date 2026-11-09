@@ -91,3 +91,16 @@
   2. Pemesanan oleh staf umum berstatus `pending_approval` menunggu verifikasi GA.
   3. Dispatching notifikasi multi-divisi otomatis: mengirim peringatan ke IT Support jika fasilitas IT dipilih, ke GA Sarpras jika kebutuhan fisik dipilih, ke GA Pantry jika konsumsi dipesan, dan ke Humas jika peliputan/dokumentasi dicentang.
 - **Status**: Diterapkan & Aktif (`server/services.ts` baris 945-1065).
+
+
+## ADR-013: Canonical employee primary roles and function capabilities
+
+- **Status:** Accepted — 9 November 2026
+- **Context:** Legacy GABAH accounts mixed employee profile, business unit/location, and function capabilities in one `users.role` field. This made Supply Chain/PIBC appear as application roles and Humas/Sekretariat Direksi behave as primary roles even though they are functions performed by employees.
+- **Decision:**
+  1. Primary employee profile roles are limited to `Admin GABAH`, `IT`, `GA`, `Karyawan`, and `Auditor`.
+  2. Supply Chain and PIBC are represented by independent `unit_id` and `office_location_id` attributes; they are not primary application roles.
+  3. Humas and Sekretaris Direksi are additional Dynamic RBAC capabilities (`humas`, `sekretaris_direksi`). They do not replace the employee's primary profile role.
+  4. Create/update APIs reject function or branch labels as primary roles. Legacy bulk-import aliases Supply Chain/PIBC are mapped to Karyawan plus unit/location only for backward compatibility; unknown and function-role primary labels are rejected.
+  5. UI and server authorization must use effective `role_keys`/permissions for function capabilities. `role_label` fallback is permitted only in the development file-store fixture; PostgreSQL Dynamic RBAC is authoritative in production.
+- **Consequences:** User profile, job level, organizational unit, office location, owner domain, and capability are independently managed. Migration 031 preserves Humas/Sekretariat capabilities while normalizing primary profiles. UAT must verify both UI visibility and server-side enforcement.
