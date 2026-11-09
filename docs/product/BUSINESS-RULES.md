@@ -20,12 +20,13 @@
 - **Enforcement Kode**: `server/services.ts` (baris 120-123 & 135-137), `server/taxonomy.ts` (baris 51-53).
 - **Konsekuensi**: Pendaftaran kategori furniture secara otomatis dialokasikan ke divisi pemilik `GA`.
 
-### BR-01.3: Kepemilikan Armada & Mesin Pabrik (SC & PIBC)
+### BR-01.3: Aset Operasional di Lokasi PIBC dan RPC/SC
 - **Aturan**:
-  - Truk muatan beras (`KDR-SC`) dan mesin pabrik/forklift (`MSN`) adalah hak milik Divisi Supply Chain.
-  - Mesin jembatan timbang truk 60 ton (`MSN-PIBC`) dan sarana pasar induk adalah hak milik Divisi PIBC.
-  - Kendaraan dinas operasional kantor (`KDR`) adalah hak milik Divisi GA.
-- **Enforcement Kode**: `server/services.ts` (baris 138-144), `server/taxonomy.ts` (baris 57-64).
+  - PIBC dan RPC/SC adalah lokasi operasional, bukan divisi pemilik aset.
+  - Truk, mesin produksi, forklift, jembatan timbang, sarana pasar, dan aset operasional lain diklasifikasikan berdasarkan jenis aset serta penetapan owner/pengelola yang sah; keberadaan aset di PIBC atau RPC/SC tidak otomatis menjadikan owner-nya PIBC atau SC.
+  - Untuk transaksi baru, owner mengikuti master fungsi pemilik yang disahkan. Baseline pengelolaan yang berlaku saat ini adalah IT untuk aset TI dan GA untuk aset umum/sarpras yang menjadi tanggung jawab GA.
+  - Record owner historis `SC`/`PIBC` dipertahankan untuk histori dan audit, tetapi tidak boleh dipakai sebagai pilihan owner baru atau dasar pemberian akses. Review dilakukan per aset dengan bukti; tidak ada pemindahan massal.
+- **Enforcement**: lokasi fisik dan owner domain harus disimpan serta diperiksa sebagai atribut terpisah.
 
 ---
 
@@ -34,7 +35,7 @@
 ### BR-02.1: Format Nomor Kanonikal
 - **Aturan**: Format nomor aset resmi sistem adalah:
   `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}`
-  - Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`, `SC-KDR-SC-2026-0001`, `PIBC-MSN-2026-0001`.
+  - Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`. Kode owner historis `SC`/`PIBC` hanya dipertahankan untuk record lama yang sedang direview.
 - **Enforcement Kode**: `server/numbering.ts` (`AssetNumberingEngine.generateAssetNumber()`).
 - **Ketentuan Sequence**: Nomor urut (*sequence*) dimulai dari `0001` dan mereset setiap pergantian tahun takwim per kombinasi unik `owner_division` dan `asset_code`.
 
@@ -85,14 +86,16 @@
 ---
 
 ## 5. Aturan Kategori Helpdesk Ticket (BR-04b)
-- Kategori tiket **terbatas pada**: `IT`, `GA`, `SC`, `PIBC`. Tidak ada kategori `License`, `General`, atau `Contract`.
-- Software/License/SaaS (Accurate, M365, VPN) adalah domain IT → seluruh tiket terkait menggunakan kategori `IT`.
-- Hardware/jaringan/server/akun → `IT`; fasilitas gedung → `GA`; permintaan SC → `SC`; PIBC → `PIBC`.
+- Kategori tiket untuk pengajuan baru **hanya** `IT` dan `GA`. Tidak ada kategori layanan `SC`, `PIBC`, `License`, `General`, atau `Contract`.
+- Software/License/SaaS (Accurate, M365, VPN), hardware, jaringan, server, printer, dan akun → kategori `IT`.
+- Fasilitas gedung, AC, listrik, furniture, kebersihan, kendaraan/fasilitas umum yang menjadi tanggung jawab GA → kategori `GA`.
+- HO, PIBC, RPC/SC, Pangsub, Kantor Perawatan, dan lokasi baru adalah atribut lokasi pemohon/kejadian; lokasi tidak menentukan kategori tiket atau owner aset.
+- Kategori `SC`/`PIBC` pada tiket lama hanya data historis. Backend menolak kategori tersebut untuk tiket baru.
 - **Contract Management adalah domain tersendiri. Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti.
 - Data tiket lama berkategori `License`/`General` dinormalisasi otomatis saat server boot (License→IT, General→GA).
 
 ## 6. Aturan Contract Management (BR-06)
-- Contract = record bisnis: nomor `CTR-YYYY-NNNN`, tipe, vendor, divisi pemilik (tidak terbatas GA/IT/SC/PIBC), PIC, periode, notice period, nilai, auto-renewal, status, dokumen append-only, notes.
+- Contract = record bisnis: nomor `CTR-YYYY-NNNN`, tipe, vendor, fungsi/owner domain pemilik yang disahkan; nama lokasi seperti PIBC atau RPC/SC tidak boleh dijadikan owner hanya berdasarkan lokasi, PIC, periode, notice period, nilai, auto-renewal, status, dokumen append-only, notes.
 - Reminder kedaluwarsa menggunakan threshold **configurable** (default 60/35/7 hari): >60 normal; ≤60 warning; ≤35 urgent; ≤7 critical; kedaluwarsa = expired. Tampilan selalu menyertakan teks status + sisa hari (bukan warna saja).
 - Reminder dikirim ke PIC + divisi pemilik (bukan broadcast), dengan eskalasi opsional pada threshold 35/7 hari; seluruh penerima di-resolve **server-side** dari data kontrak/user (input klien tidak pernah menentukan penerima/kanal).
 - Channel notifikasi: in-app, email, telegram — semuanya melalui satu engine reminder dengan log `contract_notification_logs` (notification_type, channel, recipient, status, error_message, attempts). Idempoten per (kontrak, tipe, kanal, penerima, due-day) — UNIQUE index di PostgreSQL + guard in-memory. Status jujur: `sent` (terkirim nyata), `failed` (provider gagal + alasan), `skipped` (provider belum dikonfigurasi / penerima tanpa alamat) — tidak pernah ada sukses palsu.
