@@ -191,8 +191,17 @@ function hydrateDbFromState(state: any): void {
       // Sync canonical role and label if needed
       mergedUsers[foundIndex].role = cu.role;
       mergedUsers[foundIndex].role_label = cu.role_label || mergedUsers[foundIndex].role_label;
+      if (cu.job_level_code) mergedUsers[foundIndex].job_level_code = cu.job_level_code;
+      if (cu.unit_id) mergedUsers[foundIndex].unit_id = cu.unit_id;
+      if (cu.office_location_id) mergedUsers[foundIndex].office_location_id = cu.office_location_id;
       if (typeof mergedUsers[foundIndex].authVersion !== 'number') mergedUsers[foundIndex].authVersion = 1;
     }
+  }
+
+  // Remove any stale persisted copy when the explicit dummy-account opt-in is off.
+  if (process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') {
+    const dummyIndex = mergedUsers.findIndex(u => u.id === 'USR-ME-ADMIN-001');
+    if (dummyIndex !== -1) mergedUsers.splice(dummyIndex, 1);
   }
 
   // SECURITY (CR-02): never backfill missing password hashes from hardcoded
