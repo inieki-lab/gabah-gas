@@ -239,7 +239,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   onRefreshData
 }) => {
   // Hak akses administrasi dibatasi HANYA untuk Super Admin ('Admin GABAH')
-  const isCurrentUserAdmin = (activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH');
+  const isCurrentUserAdmin = Boolean(currentUser?.is_superadmin) || (activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH');
   const currentRoleName = activeRole || currentUser?.role || 'Admin GABAH';
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 
@@ -490,24 +490,43 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const refreshRbac = async () => {
     setRbacLoading(true);
     try {
-      const [roles, permissionRows] = await Promise.all([gabahApi.getRbacRoles(), gabahApi.getRbacPermissions()]);
-      setRbacRoles(Array.isArray(roles) ? roles : []);
-      setRbacPermissions(Array.isArray(permissionRows) ? permissionRows : []);
-      setRbacLoadError('');
-      const selected = Array.isArray(roles) ? roles.find((role: any) => role.id === rbacSelectedRoleId) : null;
+      // Load role definitions and permission catalogue independently. A failure
+      // in the permission catalogue must not erase valid roles from the user
+      // assignment dialog (and vice versa).
+      const [rolesResult, permissionsResult] = await Promise.allSettled([
+        gabahApi.getRbacRoles(),
+        gabahApi.getRbacPermissions(),
+      ]);
+      const roles = rolesResult.status === 'fulfilled' && Array.isArray(rolesResult.value)
+        ? rolesResult.value
+        : [];
+      const permissionRows = permissionsResult.status === 'fulfilled' && Array.isArray(permissionsResult.value)
+        ? permissionsResult.value
+        : [];
+      setRbacRoles(roles);
+      setRbacPermissions(permissionRows);
+
+      const errors: string[] = [];
+      if (rolesResult.status === 'rejected') {
+        errors.push('Daftar role gagal dimuat: ' + (rolesResult.reason?.message || 'API role tidak tersedia.'));
+      }
+      if (permissionsResult.status === 'rejected') {
+        errors.push('Katalog permission gagal dimuat: ' + (permissionsResult.reason?.message || 'API permission tidak tersedia.'));
+      } else if (permissionRows.filter((permission: any) => permission.is_active).length === 0) {
+        errors.push('Katalog permission aktif kosong. Periksa migration Dynamic RBAC.');
+      }
+      setRbacLoadError(errors.join(' '));
+
+      const selected = roles.find((role: any) => role.id === rbacSelectedRoleId) || null;
       if (selected) {
         setRbacName(selected.name);
         setRbacDescription(selected.description || '');
         setRbacSelectedPermissionKeys(selected.permissions || []);
         setRbacScopes(selected.scopes || []);
-      } else if (rbacSelectedRoleId !== null) {
+      } else if (rbacSelectedRoleId !== null && rolesResult.status === 'fulfilled') {
         setRbacSelectedRoleId(null);
       }
-    } catch (error: any) {
-      setRbacRoles([]);
-      setRbacPermissions([]);
-      setRbacLoadError(error?.message || 'Gagal memuat katalog permission. Periksa koneksi PostgreSQL dan migration Dynamic RBAC.');
-      showToast(error?.message || 'Gagal memuat konfigurasi Dynamic RBAC. Pastikan PostgreSQL aktif dan akun memiliki akses Superadmin.', 'warning');
+      if (errors.length > 0) showToast(errors.join(' '), 'warning');
     } finally {
       setRbacLoading(false);
     }
@@ -2694,7 +2713,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         );
                       })}
                       {!assignmentsLoading && rbacRoles.filter((role: any) => role.is_active).length === 0 && (
-                        <p className="text-sm text-slate-500 text-center py-6">Belum ada role aktif. Muat ulang konfigurasi RBAC.</p>
+                        <div className="text-center py-6 space-y-2">
+                          <p className="text-sm text-rose-700">{rbacLoadError || 'Belum ada role aktif yang tersedia.'}</p>
+                          <button type="button" onClick={() => void refreshRbac()} disabled={rbacLoading} className="text-xs font-bold text-emerald-700 underline disabled:opacity-50">
+                            {rbacLoading ? 'Memuat ulang...' : 'Muat ulang daftar role'}
+                          </button>
+                        </div>
                       )}
                     </div>
                     <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
