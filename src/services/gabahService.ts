@@ -688,12 +688,19 @@ export class GabahService {
 
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
-    if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
-    }
-    if (user.role === 'Admin GABAH' || user.role === 'IT') return true;
-    if (user.role === 'GA' && ticket.category === 'GA') return true;
-    return false;
+    const canMutate = Array.isArray(user.permission_keys)
+      ? ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key))
+      : ['Admin GABAH', 'IT', 'GA'].includes(user.role);
+    if (!canMutate) return false;
+    if (user.is_superadmin || user.role === 'Admin GABAH') return true;
+    // Unit-based queues (e.g. Tim Perawatan ME) are managed only by members
+    // assigned to that exact unit, not by everyone holding tickets.update.
+    if (ticket.assigned_unit_id) return Boolean(user.unit_id && ticket.assigned_unit_id === user.unit_id);
+    // Existing owner-domain queues remain category-scoped in the UI.
+    const roleKeys = Array.isArray(user.role_keys) ? user.role_keys : [];
+    if (ticket.category === 'IT') return user.role === 'IT' || roleKeys.includes('it');
+    if (ticket.category === 'GA') return user.role === 'GA' || roleKeys.includes('ga');
+    return ticket.assigned_agent_id === user.id;
   }
 
   static generateCorporateAssetNumber(categoryCodeOrAssets?: any, year: number = new Date().getFullYear()): string {
