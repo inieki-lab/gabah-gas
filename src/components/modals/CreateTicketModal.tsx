@@ -42,7 +42,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   onCreateTicket,
 }) => {
   const [category, setCategory] = useState<TicketCategory>('IT');
-  const [priority, setPriority] = useState<TicketPriority>('high');
+  const [priority, setPriority] = useState<TicketPriority>('medium');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
@@ -55,7 +55,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       id: 'hw-issue',
       label: 'Laptop / PC Kendala',
       category: 'IT' as TicketCategory,
-      priority: 'high' as TicketPriority,
+      priority: 'medium' as TicketPriority,
       title: 'Laptop / PC Kerja Mengalami Gangguan Teknis',
       desc: 'Perangkat kerja utama mengalami kendala booting, performa lambat, atau blue screen yang menghambat aktivitas harian.',
       icon: '💻',
@@ -279,7 +279,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           {/* Category */}
           <div className="space-y-1.5">
             <label className="text-slate-700 font-bold">Departemen Penanganan:</label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
@@ -301,17 +301,6 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 }`}
               >
                 <Car className="w-4 h-4" /> General Affair (GA)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'IT' && title.toLowerCase().includes('lisensi')
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <KeyRound className="w-4 h-4" />
               </button>
               <button
                 type="button"
