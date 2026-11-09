@@ -31,6 +31,8 @@ interface TicketsViewProps {
   onOpenCreateModal?: () => void;
   onOpenNewTicketModal?: () => void;
   onUpdateTicketStatus: (ticketId: string, status: TicketStatus, notes?: string) => void;
+  onLoadTicketAssignees?: (ticketId: string) => Promise<Array<{ id: string; name: string; department: string }>>;
+  onAssignTicket?: (ticketId: string, assignedAgentId: string) => void;
 }
 
 export const TicketsView: React.FC<TicketsViewProps> = ({
@@ -40,6 +42,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   onOpenCreateModal,
   onOpenNewTicketModal,
   onUpdateTicketStatus,
+  onLoadTicketAssignees,
+  onAssignTicket,
 }) => {
   const handleOpenCreate = onOpenCreateModal || onOpenNewTicketModal || (() => {});
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -49,6 +53,9 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
   const [resolvingTicketId, setResolvingTicketId] = useState<string | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState<string>('');
+  const [assigneesByTicket, setAssigneesByTicket] = useState<Record<string, Array<{ id: string; name: string; department: string }>>>({});
+  const [selectedAssignees, setSelectedAssignees] = useState<Record<string, string>>({});
+  const [loadingAssigneesFor, setLoadingAssigneesFor] = useState<string | null>(null);
 
   // Freshservice Canned Responses
   const cannedSolutions = [
@@ -103,6 +110,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   });
 
   const canManage = GabahService.canManageTickets(currentUser);
+  const canAssignTickets = hasPermission('tickets.assign', ['GA']);
 
   // SLA logic moved to reusable <SlaTimer /> component (live countdown, 30s refresh)
 
@@ -426,6 +434,50 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                     </div>
                   )}
                 </div>
+
+                {canAssignTickets && onLoadTicketAssignees && onAssignTicket && (
+                  <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                    {!assigneesByTicket[ticket.id] ? (
+                      <button
+                        onClick={async () => {
+                          setLoadingAssigneesFor(ticket.id);
+                          try {
+                            const options = await onLoadTicketAssignees(ticket.id);
+                            setAssigneesByTicket(previous => ({ ...previous, [ticket.id]: options }));
+                            if (options.length === 1) setSelectedAssignees(previous => ({ ...previous, [ticket.id]: options[0].id }));
+                          } finally {
+                            setLoadingAssigneesFor(null);
+                          }
+                        }}
+                        disabled={loadingAssigneesFor === ticket.id}
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 font-semibold text-xs disabled:opacity-50"
+                      >
+                        {loadingAssigneesFor === ticket.id ? 'Memuat petugas...' : 'Delegasikan'}
+                      </button>
+                    ) : (
+                      <>
+                        <select
+                          value={selectedAssignees[ticket.id] || ''}
+                          onChange={event => setSelectedAssignees(previous => ({ ...previous, [ticket.id]: event.target.value }))}
+                          className="min-w-48 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700"
+                        >
+                          <option value="">Pilih petugas berwenang</option>
+                          {assigneesByTicket[ticket.id].map(person => (
+                            <option key={person.id} value={person.id}>{person.name} — {person.department}</option>
+                          ))}
+                        </select>
+                        <button
+                          disabled={!selectedAssignees[ticket.id]}
+                          onClick={() => onAssignTicket(ticket.id, selectedAssignees[ticket.id])}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs disabled:opacity-50"
+                        >
+                          Tugaskan
+                        </button>
+                        {assigneesByTicket[ticket.id].length === 0 && <span className="text-xs text-amber-700">Belum ada petugas aktif dengan akses sesuai.</span>}
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {/* Resolution Notes preview if resolved */}
                 {ticket.resolution_notes && (
