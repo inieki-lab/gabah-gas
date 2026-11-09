@@ -1,3 +1,20 @@
+## [2026-11-09] — Clarify Administration data sources and remove misleading local actions
+
+### Perubahan
+- Administration modal menjaga urutan React Hooks dan hanya menjalankan pemuatan RBAC, assignment pengguna, numbering, reminder, dan health snapshot saat modal terbuka.
+- Master kategori, lokasi fasilitas, divisi, jabatan, unit, dan lokasi kantor menggunakan hasil API sebagai sumber kebenaran; respons array kosong kini menggantikan data contoh/cache lama, bukan mempertahankannya.
+- Tombol struktur divisi yang sebelumnya mengembalikan state lokal ke default kini memuat ulang master dari database.
+- Aturan notifikasi dan format nomor yang masih lokal diberi keterangan eksplisit bahwa perubahan tidak mengubah scheduler atau generator sequence server.
+- Ekspor JSON panel dinamai sebagai snapshot data, bukan backup PostgreSQL. Pemeriksaan integritas diberi label sebagai pemeriksaan internal GABAH, bukan rekonsiliasi SAP.
+- Keterangan sumber data ditampilkan pada kartu menu Administration.
+
+### Validasi
+- `npm audit` lokal: 0 vulnerabilities setelah pembaruan dependency.
+- `npm run lint` dan `npm run build` lokal: PASS pada working tree pengguna.
+- CI branch untuk perubahan Administration terbaru sedang berjalan; UAT browser/PostgreSQL tetap diperlukan.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
