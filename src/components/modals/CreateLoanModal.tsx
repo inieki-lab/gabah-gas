@@ -129,8 +129,9 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   const selectedCounts = useMemo(() => {
     const itCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'IT' || a.category_type === 'IT')).length;
     const gaCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'GA' || a.category_type === 'GA')).length;
-    const scCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'SC' || a.category_type === 'SC')).length;
-    return { it: itCount, ga: gaCount, sc: scCount, total: selectedAssetIds.length };
+    const scCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && a.owner_division === 'SC').length;
+    const pibcCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && a.owner_division === 'PIBC').length;
+    return { it: itCount, ga: gaCount, sc: scCount, pibc: pibcCount, total: selectedAssetIds.length };
   }, [availablePool, selectedAssetIds]);
 
   if (!isOpen) return null;
@@ -240,6 +241,24 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 >
                   GA / Mobil
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterDivision('SC')}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
+                    filterDivision === 'SC' ? 'bg-white text-orange-700 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Supply Chain
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterDivision('PIBC')}
+                  className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
+                    filterDivision === 'PIBC' ? 'bg-white text-emerald-700 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  PIBC
+                </button>
               </div>
             </div>
 
@@ -328,11 +347,13 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                     Dipilih <strong>{selectedCounts.total} barang</strong>:
                     {selectedCounts.it > 0 && ` ${selectedCounts.it} Aset IT (Approve: IT)`}
                     {selectedCounts.it > 0 && selectedCounts.ga > 0 && ` + `}
-                    {selectedCounts.ga > 0 && ` ${selectedCounts.ga} Kendaraan (Approve: GA)`}
+                    {selectedCounts.ga > 0 && ` ${selectedCounts.ga} Aset GA`}
+                    {selectedCounts.sc > 0 && ` ${selectedCounts.sc} Aset SC`}
+                    {selectedCounts.pibc > 0 && ` ${selectedCounts.pibc} Aset PIBC`}
                   </span>
                 </div>
                 <span className="text-emerald-700 font-bold text-[10px]">
-                  ✓ Tiket otomatis dikirim ke masing-masing divisi
+                  ✓ Permohonan mengikuti owner aset untuk proses persetujuan
                 </span>
               </div>
             )}
