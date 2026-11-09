@@ -267,8 +267,8 @@ export function exportUsersToCsv(users: any[]) {
 export function downloadUsersImportTemplate() {
   downloadCsv(
     'template_import_pegawai_gabah.csv',
-    ['Nama', 'Email', 'Peran (Role)', 'Divisi', 'Departemen', 'Telepon'],
-    [['Budi Karyawan', 'budi.karyawan@foodstation.co.id', 'Karyawan', 'SC', 'Pergudangan & Distribusi', '08123456789']]
+    ['Nama', 'Email', 'Role Utama', 'Divisi Referensi (Opsional)', 'Departemen', 'Telepon', 'Kode Jabatan', 'ID Unit', 'ID Lokasi Kantor'],
+    [['Contoh Pegawai (hapus sebelum impor)', 'contoh@foodstation.co.id', 'Karyawan', 'Umum', 'Operasional', '', 'STAF', 'UNIT-PIBC', 'OFF-PIBC']]
   );
 }
 
@@ -280,8 +280,11 @@ export function downloadUsersImportTemplate() {
 export function parseUsersImportCsv(
   text: string,
   validRoles: string[],
-  validDivisions: string[]
-): { valid: { name: string; email: string; role: string; division: string; department: string; phone: string }[]; errors: string[] } {
+  validDivisions: string[],
+  validJobLevels: string[] = [],
+  validUnitIds: string[] = [],
+  validOfficeLocationIds: string[] = []
+): { valid: { name: string; email: string; role: string; division: string; department: string; phone: string; job_level_code?: string; unit_id?: string; office_location_id?: string }[]; errors: string[] } {
   const rows = parseCsvText(text);
   if (rows.length < 2) {
     return { valid: [], errors: ['File kosong atau hanya berisi header.'] };
@@ -294,17 +297,20 @@ export function parseUsersImportCsv(
   const iDiv = idx(['divisi', 'division']);
   const iDept = idx(['departemen', 'department', 'dept']);
   const iPhone = idx(['telepon', 'phone', 'telp']);
+  const iJobLevel = idx(['kode jabatan', 'job level', 'job_level_code']);
+  const iUnit = idx(['id unit', 'unit id', 'unit_id']);
+  const iOffice = idx(['id lokasi kantor', 'office location id', 'office_location_id']);
   if (iName === -1 || iEmail === -1) {
-    return { valid: [], errors: ['Header tidak dikenali. Gunakan template: Nama, Email, Peran (Role), Divisi, Departemen, Telepon.'] };
+    return { valid: [], errors: ['Header tidak dikenali. Gunakan template Nama, Email, Role Utama, Divisi Referensi, Departemen, Telepon, Kode Jabatan, ID Unit, ID Lokasi Kantor.'] };
   }
-  const valid: { name: string; email: string; role: string; division: string; department: string; phone: string }[] = [];
+  const valid: ReturnType<typeof parseUsersImportCsv>['valid'] = [];
   const errors: string[] = [];
   const seenEmails = new Set<string>();
   const normRole = (v: string) => {
-    const s = (v || '').trim().toLowerCase();
-    return validRoles.find(r => r.toLowerCase() === s)
-      || validRoles.find(r => r.toLowerCase().startsWith(s) && s.length >= 2)
-      || 'Karyawan';
+    const normalized = (v || '').trim().toLowerCase();
+    return validRoles.find(r => r.toLowerCase() === normalized)
+      || validRoles.find(r => r.toLowerCase().startsWith(normalized) && normalized.length >= 2)
+      || '';
   };
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
@@ -317,12 +323,27 @@ export function parseUsersImportCsv(
     seenEmails.add(email);
     const roleRaw = iRole !== -1 ? (r[iRole] || '').trim() : '';
     const role = roleRaw ? normRole(roleRaw) : 'Karyawan';
-    if (roleRaw && !validRoles.includes(role)) {
-      errors.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenali. Pilihan: ${validRoles.join(', ')}.`);
+    if (roleRaw && !role) {
+      errors.push(`Baris ${rowNo}: Role utama "${roleRaw}" tidak valid. Pilihan: ${validRoles.join(', ')}. Role fungsi ditetapkan setelah akun dibuat.`);
       continue;
     }
     const divisionRaw = iDiv !== -1 ? (r[iDiv] || '').trim() : '';
     const division = validDivisions.find(d => d.toLowerCase() === divisionRaw.toLowerCase()) || divisionRaw || 'Umum';
+    const jobLevelCode = iJobLevel !== -1 ? (r[iJobLevel] || '').trim().toUpperCase() : '';
+    const unitId = iUnit !== -1 ? (r[iUnit] || '').trim() : '';
+    const officeLocationId = iOffice !== -1 ? (r[iOffice] || '').trim() : '';
+    if (jobLevelCode && !validJobLevels.includes(jobLevelCode)) {
+      errors.push(`Baris ${rowNo}: Kode jabatan "${jobLevelCode}" tidak ditemukan atau tidak aktif di master.`);
+      continue;
+    }
+    if (unitId && !validUnitIds.includes(unitId)) {
+      errors.push(`Baris ${rowNo}: ID unit "${unitId}" tidak ditemukan atau tidak aktif di master.`);
+      continue;
+    }
+    if (officeLocationId && !validOfficeLocationIds.includes(officeLocationId)) {
+      errors.push(`Baris ${rowNo}: ID lokasi kantor "${officeLocationId}" tidak ditemukan atau tidak aktif di master.`);
+      continue;
+    }
     valid.push({
       name,
       email,
@@ -330,6 +351,9 @@ export function parseUsersImportCsv(
       division,
       department: iDept !== -1 ? (r[iDept] || '').trim() : '',
       phone: iPhone !== -1 ? (r[iPhone] || '').trim() : '',
+      ...(jobLevelCode ? { job_level_code: jobLevelCode } : {}),
+      ...(unitId ? { unit_id: unitId } : {}),
+      ...(officeLocationId ? { office_location_id: officeLocationId } : {}),
     });
   }
   return { valid, errors };
