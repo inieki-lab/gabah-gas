@@ -466,7 +466,7 @@ export default function App() {
   const handleCreateTicket = async (data: {
     title: string;
     description: string;
-    category: AssetCategoryType;
+    category: 'IT' | 'GA';
     priority: TicketPriority;
     related_asset_id?: string;
   }) => {
