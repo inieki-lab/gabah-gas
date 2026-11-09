@@ -7,6 +7,8 @@
 - CRUD lokasi fasilitas memakai ID dan record yang dikembalikan server setelah create/update; UI tidak lagi membangun ID lokal yang berpotensi berbeda dari ID tersimpan.
 - Editor scope Dynamic RBAC menampilkan dan mengetikkan `division_except` secara eksplisit, dengan penjelasan bahwa pengecualian owner membatasi data tetapi tidak memberikan permission tindakan.
 - Form edit pegawai dan impor CSV kini hanya menerima role profil utama kanonikal; Humas/Sekretaris Direksi serta Supply Chain/PIBC tetap ditempatkan sebagai capability tambahan atau atribut unit/lokasi, bukan role utama baru.
+- Endpoint create/update pegawai kini menolak role fungsi/cabang sebagai role utama; bulk import mempertahankan kompatibilitas label Supply Chain/PIBC dengan memetakannya ke Karyawan + unit/lokasi, serta menolak Humas/Sekretaris Direksi sebagai role utama.
+- Regression test HTTP bulk import ditambahkan ke pipeline CI untuk memeriksa validasi role utama, pemetaan unit/lokasi cabang, dan larangan role fungsi sebagai role utama.
 - Aturan notifikasi dan format nomor yang masih lokal diberi keterangan eksplisit bahwa perubahan tidak mengubah scheduler atau generator sequence server.
 - Ekspor JSON panel dinamai sebagai snapshot data, bukan backup PostgreSQL. Pemeriksaan integritas diberi label sebagai pemeriksaan internal GABAH, bukan rekonsiliasi SAP.
 - Keterangan sumber data ditampilkan pada kartu menu Administration.
