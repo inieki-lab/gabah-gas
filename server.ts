@@ -105,7 +105,6 @@ async function startServer() {
       safe.role_keys = getEffectiveRoleKeys(String(user.id));
     } else {
       safe.is_superadmin = user.role === 'Admin GABAH';
-      const legacyLabel = String(user.role_label || '').toLowerCase();
       safe.role_keys = [
         ...(hasRoleCapability(user, 'humas') ? ['humas'] : []),
         ...(hasRoleCapability(user, 'sekretaris_direksi') ? ['sekretaris_direksi'] : []),
