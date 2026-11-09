@@ -14,6 +14,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
+import { hasRoleCapability } from './server/role-capabilities';
 import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
@@ -79,6 +80,21 @@ async function startServer() {
     throw new Error('Pengguna tidak terautentikasi.');
   };
 
+  const isNotificationRecipient = (actor: ServerUser, notification: any): boolean => {
+    if (isSuperadminActor(actor)) return true;
+    if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
+    if (notification.recipient_role) {
+      if (notification.recipient_role === actor.role) return true;
+      if (notification.recipient_role === 'Humas') return hasRoleCapability(actor, 'humas');
+      if (notification.recipient_role === 'Sekretaris Direksi') return hasRoleCapability(actor, 'sekretaris_direksi');
+      if (notification.recipient_role === 'Supply Chain') return actor.unit_id === 'UNIT-SC';
+      if (notification.recipient_role === 'PIBC') return actor.unit_id === 'UNIT-PIBC';
+      return false;
+    }
+    if (notification.recipient_division) return notification.recipient_division === actor.division;
+    return false;
+  };
+
   // Effective permissions are returned only to the authenticated principal.
   // This drives the UI menu; backend route guards remain authoritative.
   const serializeAuthenticatedUser = (user: ServerUser): any => {
@@ -89,6 +105,11 @@ async function startServer() {
       safe.role_keys = getEffectiveRoleKeys(String(user.id));
     } else {
       safe.is_superadmin = user.role === 'Admin GABAH';
+      const legacyLabel = String(user.role_label || '').toLowerCase();
+      safe.role_keys = [
+        ...(hasRoleCapability(user, 'humas') ? ['humas'] : []),
+        ...(hasRoleCapability(user, 'sekretaris_direksi') ? ['sekretaris_direksi'] : []),
+      ];
     }
     return safe;
   };
@@ -2816,20 +2837,12 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'notifications.read')) return;
     const actor = getActor(req);
-    const isRecipient = (notification: any): boolean => {
-      if (isSuperadminActor(actor)) return true;
-      // Explicit user recipient takes precedence over role/division fallbacks.
-      if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
-      if (notification.recipient_role) return notification.recipient_role === actor.role;
-      if (notification.recipient_division) return notification.recipient_division === actor.division;
-      return false;
-    };
     const filtered = db.notifications.filter(n => {
       const isPhotoNotification = n.recipient_role === 'Humas' ||
         (n.title && (n.title.toLowerCase().includes('foto') || n.title.toLowerCase().includes('dokumentasi humas') || n.title.toLowerCase().includes('liputan foto'))) ||
         (n.message && (n.message.toLowerCase().includes('peliputan foto') || n.message.toLowerCase().includes('dokumentasi foto')));
-      if (isPhotoNotification && actor.role !== 'Humas' && !isSuperadminActor(actor)) return false;
-      return isRecipient(n);
+      if (isPhotoNotification && !hasRoleCapability(actor, 'humas') && !isSuperadminActor(actor)) return false;
+      return isNotificationRecipient(actor, n);
     });
     res.json({ success: true, data: filtered });
   });
@@ -2839,10 +2852,7 @@ async function startServer() {
     
     const actor = getActor(req);
     const notif = db.notifications.find(n => n.id === req.params.id);
-    const isRecipient = isSuperadminActor(actor)
-      || (notif?.recipient_user_id ? notif.recipient_user_id === actor.id
-        : notif?.recipient_role ? notif.recipient_role === actor.role
-          : notif?.recipient_division ? notif.recipient_division === actor.division : false);
+    const isRecipient = Boolean(notif && isNotificationRecipient(actor, notif));
     if (!notif || !isRecipient) {
       return res.status(404).json({ success: false, message: 'Notifikasi tidak ditemukan.' });
     }
@@ -2855,11 +2865,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
     const actor = getActor(req);
     for (const n of db.notifications) {
-      const isRecipient = isSuperadminActor(actor)
-        || (n.recipient_user_id ? n.recipient_user_id === actor.id
-          : n.recipient_role ? n.recipient_role === actor.role
-            : n.recipient_division ? n.recipient_division === actor.division : false);
-      if (isRecipient) n.is_read = true;
+      if (isNotificationRecipient(actor, n)) n.is_read = true;
     }
     res.json({ success: true, message: 'Semua notifikasi ditandai telah dibaca' });
   });
