@@ -1284,11 +1284,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         categories,
         locations,
         divisions,
-        permissions,
-        numbering_config: numberingConfig,
-        notification_rules: notificationRules,
-        settings: settingsForm,
         audit_logs_count: auditLogs.length
+      },
+      local_browser_state: {
+        numbering_preview_config: numberingConfig,
+        notification_rule_examples: notificationRules,
+        display_settings: settingsForm
       }
     };
     exportDataJson('gabah_admin_data_snapshot', snapshotBundle);
