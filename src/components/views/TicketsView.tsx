@@ -82,7 +82,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   // The API has already applied effective ticket scope in PostgreSQL mode.
   // Location labels (SC/PIBC) never create ticket queues or extra visibility.
   const hasScopedQueueTickets = Array.isArray(currentUser?.permission_keys) && baseTickets.some(t =>
-    t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
+    t.reporter_id !== currentUser?.id
   );
   const isSelfTicketsOnly = Array.isArray(currentUser?.permission_keys)
     ? !hasScopedQueueTickets
