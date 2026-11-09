@@ -49,10 +49,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewTicketModal,
   onOpenNewAssetModal,
 }) => {
-  const isStaff = currentUser?.role === 'Karyawan' || currentUser?.role === 'Sekretaris Direksi' || currentUser?.role === 'Humas';
-  const isEmployee = isStaff;
-  const isHumas = currentUser?.role === 'Humas';
-  const isSekdir = currentUser?.role === 'Sekretaris Direksi';
+  const hasPermission = (key: string, legacyRoles: string[] = []) => {
+    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
+    if (Array.isArray(currentUser?.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
+    }
+    return legacyRoles.includes(currentUser?.role || '');
+  };
+  const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
+  const isEmployee = !isAuditor
+    && !hasPermission('assets.create', ['Admin GABAH', 'IT', 'GA'])
+    && !hasPermission('loans.approve', ['Admin GABAH', 'IT', 'GA'])
+    && !hasPermission('tickets.update', ['Admin GABAH', 'IT', 'GA']);
+  const isHumas = hasPermission('room_reservations.documentation.read', ['Humas']);
+  const canCreateLoan = !isAuditor && hasPermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Sekretaris Direksi', 'Humas']);
+  const canCreateTicket = !isAuditor && hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Sekretaris Direksi', 'Humas']);
+  const canCreateAsset = !isAuditor && hasPermission('assets.create', ['Admin GABAH', 'IT', 'GA']);
   const roleDescriptions: Record<UserRole, string> = {
     'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
@@ -73,7 +85,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || currentUser.role === 'Auditor';
+  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || isAuditor;
   const isDivisionDashboard = currentUser.role === 'IT' || currentUser.role === 'GA';
   const divisionLabel = isDivisionDashboard ? currentUser.role : 'Unit kerja';
   const attentionAssets = dashboardAssets.filter(a =>
@@ -167,7 +179,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {currentUser.role !== 'Auditor' && (
+            {canCreateLoan && (
               <button
                 id="btn-quick-loan"
                 onClick={onOpenNewLoanModal}
@@ -177,7 +189,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Pinjam Aset
               </button>
             )}
-            {currentUser?.role !== 'Auditor' ? (
+            {canCreateTicket ? (
               <button
                 id="btn-quick-ticket"
                 onClick={onOpenNewTicketModal}
@@ -192,7 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span>Tiket (Read-Only)</span>
               </div>
             )}
-            {!isEmployee && currentUser?.role !== 'Auditor' && (
+            {canCreateAsset && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
@@ -618,7 +630,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Tiket Kendala Saya
               </h3>
               <div className="flex items-center gap-2">
-                {currentUser?.role !== 'Auditor' && (
+                {canCreateTicket && (
                   <button
                     onClick={onOpenNewTicketModal}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -759,7 +771,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : currentUser.role === 'Auditor' ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
-                  {currentUser?.role !== 'Auditor' && (
+                  {canCreateTicket && (
                     <button
                       onClick={onOpenNewTicketModal}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
