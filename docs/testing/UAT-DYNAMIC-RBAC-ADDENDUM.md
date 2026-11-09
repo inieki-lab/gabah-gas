@@ -30,7 +30,7 @@ Do not infer effective access from a job title, unit name, office location, or m
 | Supply Chain employee | Primary Karyawan; unit/location attributes identify Supply Chain / RPC-SC | Supply Chain is not required as an application role; location alone grants no owner scope or module permission |
 | PIBC employee | Primary Karyawan; unit/location attributes identify PIBC | PIBC is not required as an application role; location alone grants no owner scope or module permission |
 
-Use the currently approved office-location master: HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is inactive and must remain historical; do not provision it as an active office location.
+Use the currently approved office-location master: HO, PIBC, RPC, Pangsub, and Kantor Perawatan. Subang is inactive and must remain historical; do not provision it as an active office location.
 
 ## 3. Cross-module authorization matrix
 
