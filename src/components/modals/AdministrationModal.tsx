@@ -484,7 +484,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
   const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null }>>([]);
   const [rbacScopeModule, setRbacScopeModule] = useState('assets');
-  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'unit' | 'location'>('division');
+  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'>('division');
   const [rbacScopeValue, setRbacScopeValue] = useState('');
 
   const refreshRbac = async () => {
@@ -629,7 +629,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Isi nilai owner/divisi, unit, atau lokasi untuk scope ini.', 'warning');
       return;
     }
-    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
+    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null };
     if (!rbacScopes.some(item => (item.module || '*') === scope.module && item.type === scope.type && (item.value || null) === (scope.value || null))) {
       setRbacScopes(current => [...current, scope]);
     }
