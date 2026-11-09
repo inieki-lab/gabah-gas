@@ -1628,7 +1628,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   <span>SUPER ADMIN (FULL ACCESS)</span>
                   <span className="text-emerald-400">•</span>
-                  <span className="text-emerald-950 font-extrabold">{currentUser?.name || 'Budi Santoso'}</span>
+                  <span className="text-emerald-950 font-extrabold">{currentUser?.name || 'Pengguna aktif'}</span>
                 </span>
               </div>
               <p className="text-xs text-slate-500">
@@ -1669,7 +1669,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     Otoritas Penuh Super Administrator (Admin GABAH)
                   </div>
                   <div className="text-[11px] text-emerald-700 mt-0.5">
-                    Anda berwenang mengedit pengguna, master kategori &amp; lokasi, struktur divisi, penomoran aset, aturan notifikasi, dan parameter sistem. <b>Audit Trail</b> tetap dipertahankan permanen (WORM immutable) untuk kepatuhan regulasi.
+                    Anda dapat mengelola akun, role, permission, scope, serta master data yang sudah terhubung ke database. Beberapa menu konfigurasi lama masih tersimpan di browser ini dan belum menjadi pengaturan bersama; sumber data ditampilkan pada setiap menu.
                   </div>
                 </div>
               </div>
@@ -1690,7 +1690,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     Mode Verifikasi &amp; Pemeriksaan (Hanya-Baca / Read-Only)
                   </div>
                   <div className="text-[11px] text-purple-700 mt-0.5">
-                    Anda masuk sebagai <b>{activeRole || currentUser?.role || 'Auditor'}</b>. Anda dapat memverifikasi seluruh konfigurasi, struktur organisasi, SLA, dan mengunduh data audit. Perubahan data hanya dapat dieksekusi oleh <b>Admin GABAH</b>.
+                    Anda masuk sebagai <b>{activeRole || currentUser?.role || 'Auditor'}</b>. Anda dapat melihat data sesuai hak akses. Sebagian pengaturan lama masih tersimpan di browser lokal dan bukan konfigurasi bersama; periksa keterangan sumber data pada setiap menu.
                   </div>
                 </div>
               </div>
@@ -1760,10 +1760,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                           {item.description}
                         </p>
+                        <p className="mt-2 text-[10px] font-semibold text-slate-500">
+                          Sumber data: {item.dataSource}
+                        </p>
                       </div>
 
                       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-[#4ABDAC] group-hover:text-[#206f65]">
-                        <span>Buka Konfigurasi</span>
+                        <span>Buka Menu</span>
                         <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                       </div>
                     </button>
