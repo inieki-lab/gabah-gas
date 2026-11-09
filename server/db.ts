@@ -199,6 +199,7 @@ export interface ServerTicket {
   reporter_id: string;
   reporter_name: string;
   reporter_department: string;
+  assigned_unit_id?: string;
   assigned_agent_id?: string;
   assigned_agent_name?: string;
   related_asset_id?: string;
