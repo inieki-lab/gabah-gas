@@ -102,9 +102,9 @@ Record defects with exact route, user persona, record scope, expected/actual sta
 
 Akun uji ME bersifat opt-in dan tidak dibuat secara default. Aktifkan hanya pada environment development/staging dengan:
 
-- `GABAH_ENABLE_ME_DUMMY_USER=true`
-- Opsional, untuk password khusus akun uji pada mode non-production: `GABAH_ME_DUMMY_PASSWORD`
-- Jika password khusus tidak disetel, mekanisme credential canonical yang sudah ada tetap berlaku (password awal dari environment atau file kredensial dev yang diabaikan Git).
+- `GABAH_ENABLE_ME_DUMMY_USER=true` pada `.env` environment development/staging (Docker Compose meneruskan flag ini ke container).
+- Untuk Docker Compose yang berjalan dengan `NODE_ENV=production`, pastikan `GABAH_INITIAL_USER_PASSWORD` sudah diisi sebelum akun dummy pertama kali dibuat; kredensial ini hanya dipakai jika akun belum memiliki password hash. Akun canonical lain yang sudah memiliki password tidak ditimpa.
+- Untuk mode non-production di luar Compose, password khusus akun uji dapat diatur melalui `GABAH_ME_DUMMY_PASSWORD`. Jika tidak disetel, mekanisme credential canonical dev yang ada berlaku.
 
 Identitas akun uji:
 - Nama: Dimas Pratama (Dummy Admin ME)
