@@ -1224,7 +1224,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast('Parameter tampilan panel administrasi tersimpan (local browser).', 'success');
   };
 
-  // P1#1: Rekonsiliasi INTEGRITAS DATA NYATA (bukan toast palsu).
+  // Pemeriksaan integritas referensi pada data GABAH yang sedang dimuat di panel (bukan rekonsiliasi SAP).
   // Memeriksa konsistensi referensi lintas data pada datastore aktif:
   // aset tanpa kategori valid, tiket tanpa reporter valid, pinjaman
   // tanpa aset/peminjam valid, dan nomor aset yang melanggar format kanonikal.
@@ -1251,11 +1251,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     const totalIssues = issues.reduce((s, g) => s + g.items.length, 0);
 
     if (totalIssues === 0) {
-      showToast(`Integritas data 100% konsisten: ${assets.length} aset, ${loans.length} peminjaman, ${tickets.length} tiket diperiksa — 0 anomali.`, 'success');
+      showToast(`Pemeriksaan internal selesai: ${assets.length} aset, ${loans.length} peminjaman, ${tickets.length} tiket diperiksa — 0 anomali referensial ditemukan. Ini bukan rekonsiliasi SAP.`, 'success');
     } else {
       const detail = issues.filter(g => g.items.length > 0).map(g => `${g.items.length} ${g.label.toLowerCase()}`).join('; ');
-      showToast(`Rekonsiliasi menemukan ${totalIssues} anomali: ${detail}. Ekspor JSON aset untuk analisis lanjutan.`, 'warning');
-      exportDataJson('gabah_reconciliation_anomalies', {
+      showToast(`Pemeriksaan internal menemukan ${totalIssues} anomali referensial: ${detail}. Ringkasan anomali diekspor untuk analisis lanjutan.`, 'warning');
+      exportDataJson('gabah_internal_integrity_findings', {
         generated_at: new Date().toISOString(),
         summary: issues.map(g => ({ check: g.label, count: g.items.length, samples: g.items.slice(0, 20) })),
       });
@@ -1287,10 +1287,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast('Audit Log format CSV berhasil diunduh untuk kebutuhan audit eksternal!', 'success');
   };
 
-  // Full Database Backup Export
+  // Export snapshot data yang tersedia di panel ini; bukan backup database PostgreSQL.
   const handleFullSystemBackup = () => {
     const backupBundle = {
-      app: 'GABAH Enterprise Engine',
+      app: 'GABAH',
+      export_type: 'client_data_snapshot',
+      backup_warning: 'Snapshot data yang tersedia pada panel administrasi; bukan backup database PostgreSQL dan tidak mencakup seluruh tabel, file upload, atau audit trail lengkap.', 
       company: settingsForm.companyName,
       backup_timestamp: new Date().toISOString(),
       version: '2026.1.0-ENTERPRISE',
@@ -1309,7 +1311,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         audit_logs_count: auditLogs.length
       }
     };
-    exportDataJson('gabah_full_system_backup', backupBundle);
+    exportDataJson('gabah_admin_data_snapshot', backupBundle);
   };
 
 
@@ -4313,7 +4315,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Simulator Card */}
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-200">
                 <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-3">
-                  Live Sequence Generator & Simulator
+                  Simulasi Format Nomor (Tidak Menerbitkan Nomor)
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -4355,10 +4357,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 text-[11px] text-emerald-800 leading-relaxed">
-                  ✓ Sequence direset otomatis setiap awal tahun per kombinasi (Divisi, Kode Aset, Tahun).
-                  <br />
-                  ✓ Thread-safe & concurrency-safe dengan pemulihan sequence otomatis dari database.
+                <div className="mt-3 text-[11px] text-emerald-900 leading-relaxed">
+                  Ini hanya pratinjau format berdasarkan pilihan divisi dan kode aset. Angka contoh tidak dipesan, tidak disimpan, dan tidak menambah sequence database. Nomor aktual diterbitkan server saat aset didaftarkan; lihat counter live di bawah.
                 </div>
               </div>
 
@@ -4416,6 +4416,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 )}
               </div>
 
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <strong>Konfigurasi lokal / belum terhubung ke server.</strong> Tombol Aktif/Nonaktif di bawah hanya mengubah contoh aturan pada browser ini. Perubahan tidak mengubah scheduler, SLA, email, Telegram, atau notifikasi operasional GABAH.
+              </div>
+
               <div className="space-y-3">
                 {notificationRules.map((rule, idx) => (
                   <div key={rule.id || idx} className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-4 flex-wrap">
@@ -4440,7 +4444,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleToggleNotificationRule(rule.id)}
-                          title="Aktifkan/nonaktifkan aturan — tersimpan di panel administrasi ini"
+                          title="Ubah contoh lokal browser ini saja; tidak mengubah scheduler atau pengiriman notifikasi server"
                           className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                             rule.status === 'Aktif'
                               ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -4849,7 +4853,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <h3 className="text-base font-black text-slate-900">Data Administration &amp; Reconciliation</h3>
-                  <p className="text-xs text-slate-500">Ekspor data komprehensif, backup database, dan rekonsiliasi SAP</p>
+                  <p className="text-xs text-slate-500">Ekspor snapshot data yang sedang tersedia di panel dan pemeriksaan integritas referensi internal. Bukan backup database atau koneksi SAP.</p>
                 </div>
                 {isCurrentUserAdmin && (
                   <button
@@ -4857,7 +4861,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     className="px-3.5 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
                     <Database className="w-3.5 h-3.5" />
-                    <span>Download Full Backup System</span>
+                    <span>Download Snapshot Data (JSON)</span>
                   </button>
                 )}
               </div>
@@ -4906,9 +4910,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
                       <RefreshCw className="w-5 h-5" />
                     </div>
-                    <h4 className="text-sm font-extrabold text-slate-800">Audit Rekonsiliasi SAP</h4>
+                    <h4 className="text-sm font-extrabold text-slate-800">Pemeriksaan Integritas Data GABAH</h4>
                     <p className="text-xs text-slate-500 mt-1">
-                      Cocokkan kode aset fisik ASTICK dengan catatan akuntansi buku besar SAP BUMD.
+                      Memeriksa referensi kategori aset, format nomor aset, reporter tiket, serta relasi peminjam dan aset di data GABAH yang sedang dimuat. Tidak membaca data SAP.
                     </p>
                   </div>
                   <button
@@ -4916,7 +4920,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     className="mt-4 w-full py-2 rounded-xl bg-amber-50 text-amber-800 text-xs font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Jalankan Rekonsiliasi</span>
+                    <span>Periksa Integritas Data</span>
                   </button>
                 </div>
               </div>
