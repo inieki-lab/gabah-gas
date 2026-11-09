@@ -65,7 +65,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   });
 
   // Category filter for convenience
-  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA' | 'SC'>('ALL');
+  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA' | 'SC' | 'PIBC'>('ALL');
 
   // Sync preselectedAssetId if opened with specific asset
   React.useEffect(() => {
@@ -84,7 +84,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   const [startDate, setStartDate] = useState<string>(`${tomorrowStr}T09:00`);
   const [dueDate, setDueDate] = useState<string>(`${tomorrowStr}T17:00`);
   const [purpose, setPurpose] = useState<string>('');
-  const [borrowerPhone, setBorrowerPhone] = useState<string>('0812-3456-7890');
+  const [borrowerPhone, setBorrowerPhone] = useState<string>('');
 
   // Toggle selection for an asset
   const handleToggleAsset = (id: string) => {
