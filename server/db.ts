@@ -192,7 +192,7 @@ export interface ServerTicket {
   ticket_code: string;
   title: string;
   description: string;
-  category: 'IT' | 'GA' | 'SC' | 'PIBC';
+  category: 'IT' | 'GA' | 'ME';
   contract_id?: string | null; // Linked Contract (optional action linkage, Contract ≠ Ticket)
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
@@ -296,6 +296,7 @@ export interface ServerContract {
 
 export interface ServerNotification {
   id: string;
+  recipient_unit_id?: string;
   recipient_role?: string;
   recipient_division?: string;
   recipient_user_id?: string;
@@ -518,6 +519,7 @@ export const db = {
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
     { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
     { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
+    { id: 'UNIT-PIBC-ME', name: 'Tim Perawatan (ME)', division_code: 'PIBC', is_active: true },
     { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
   ] as OrgUnit[],
@@ -529,7 +531,7 @@ export const db = {
     // Lokasi kantor aktif saat ini. IDs dipertahankan agar relasi user historis aman.
     { id: 'OFF-KP', name: 'HO', is_active: true },
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
-    { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC', is_active: true },
     { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
     { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
   ] as OrgOfficeLocation[],
