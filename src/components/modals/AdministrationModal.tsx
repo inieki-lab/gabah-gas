@@ -1228,7 +1228,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   // Memeriksa konsistensi referensi lintas data pada datastore aktif:
   // aset tanpa kategori valid, tiket tanpa reporter valid, pinjaman
   // tanpa aset/peminjam valid, dan nomor aset yang melanggar format kanonikal.
-  const handleSapReconciliation = () => {
+  const handleInternalIntegrityCheck = () => {
     const validCodes = new Set(categories.map(c => c.code));
     const orphanAssets = assets.filter(a => a.category_code && !validCodes.has(a.category_code));
     const invalidNumberAssets = assets.filter(a => {
@@ -1288,7 +1288,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // Export snapshot data yang tersedia di panel ini; bukan backup database PostgreSQL.
-  const handleFullSystemBackup = () => {
+  const handleDownloadDataSnapshot = () => {
     const backupBundle = {
       app: 'GABAH',
       export_type: 'client_data_snapshot',
@@ -1327,7 +1327,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'Konfigurasi masih lokal', icon: Bell, badge: 'Perlu sentralisasi' },
     { id: 'audit_log' as AdminSection, label: 'Riwayat Aktivitas', description: 'Catatan perubahan dan aktivitas yang direkam sistem.', dataSource: 'Database / API', icon: ScrollText, badge: `${auditLogs.length} catatan` },
     { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Identitas perusahaan, parameter PSAK, SLA, dan retensi data.', dataSource: 'Konfigurasi masih lokal', icon: Settings2, badge: 'Perlu sentralisasi' },
-    { id: 'data_admin' as AdminSection, label: 'Ekspor & Rekonsiliasi', description: 'Fungsi ekspor dan pemeriksaan konsistensi data; bukan pengganti backup terjadwal.', dataSource: 'Operasi administratif', icon: FileSpreadsheet, badge: 'Alat data' },
+    { id: 'data_admin' as AdminSection, label: 'Ekspor & Rekonsiliasi', description: 'Fungsi ekspor dan pemeriksaan konsistensi data; bukan pengganti backup terjadwal.', dataSource: 'Snapshot JSON dan pemeriksaan internal; bukan backup database/SAP', icon: FileSpreadsheet, badge: 'Alat data' },
     { id: 'health' as AdminSection, label: 'Kesehatan Sistem', description: 'Pemeriksaan langsung API dan informasi runtime yang benar-benar tersedia.', dataSource: 'Live check', icon: HeartPulse, badge: healthStatus.status },
   ];
 
@@ -4857,7 +4857,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
                 {isCurrentUserAdmin && (
                   <button
-                    onClick={handleFullSystemBackup}
+                    onClick={handleDownloadDataSnapshot}
                     className="px-3.5 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
                     <Database className="w-3.5 h-3.5" />
@@ -4916,7 +4916,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </p>
                   </div>
                   <button
-                    onClick={handleSapReconciliation}
+                    onClick={handleInternalIntegrityCheck}
                     className="mt-4 w-full py-2 rounded-xl bg-amber-50 text-amber-800 text-xs font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
