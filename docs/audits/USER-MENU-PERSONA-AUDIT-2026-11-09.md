@@ -46,7 +46,7 @@ The review distinguishes menu visibility, page controls, and backend authorizati
 - `server/taxonomy.ts` seeds new asset categories with owner `SC` and `PIBC` (for example `KDR-SC`, `MSN`, `MSN-PIBC`).
 - `server/db.ts` fallback organization data includes `UNIT-SC`, `UNIT-PIBC`, owner divisions `SC`/`PIBC`, and legacy role labels.
 - `server/migrations/006_org_model_masters.sql` seeds SC/PIBC as divisions and units, while also creating office locations PIBC and RPC.
-- Historical migration comments and old documents still describe RPC/SC as an asset-owning function.
+- Historical migration comments and old documents still describe legacy SC code as an asset-owner value.
 - **Safe action:** preserve existing owner values and history. Do not mass-map operational machinery/trucks to IT or GA without an approved asset-owner decision. New owner master choices and asset-category defaults need a separate controlled decision/migration.
 
 ### P1 — Dashboard and Loans still use role names for UI capabilities
