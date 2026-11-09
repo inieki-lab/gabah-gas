@@ -114,16 +114,16 @@ async function startServer() {
   };
 
   const hasApplicationRole = (actor: ServerUser, roleKey: string): boolean => {
+    if (roleKey === 'humas') return hasRoleCapability(actor, 'humas');
+    if (roleKey === 'sekretaris_direksi') return hasRoleCapability(actor, 'sekretaris_direksi');
+    if (roleKey === 'supply_chain') return actor.role === 'Supply Chain' || actor.unit_id === 'UNIT-SC';
+    if (roleKey === 'pibc') return actor.role === 'PIBC' || actor.unit_id === 'UNIT-PIBC';
     const legacyLabels: Record<string, string> = {
       superadmin: 'Admin GABAH',
       it: 'IT',
       ga: 'GA',
       karyawan: 'Karyawan',
       auditor: 'Auditor',
-      humas: 'Humas',
-      sekretaris_direksi: 'Sekretaris Direksi',
-      supply_chain: 'Supply Chain',
-      pibc: 'PIBC',
     };
     if (actor.role === legacyLabels[roleKey]) return true;
     return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
