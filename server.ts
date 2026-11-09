@@ -2410,6 +2410,60 @@ async function startServer() {
     }
   });
 
+  // Ticket dispatch is a separate capability from status updates.
+  // The dispatcher may assign only within the ticket's configured owner/unit
+  // scope, and only to an active employee explicitly authorized to work that queue.
+  app.patch('/api/tickets/:id/assign', async (req, res) => {
+    try {
+      if (!requireRbacPermission(req, res, 'tickets.assign')) return;
+      const actor = getActor(req);
+      const ticket = db.tickets.find(item => item.id === req.params.id);
+      if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+
+      const ticketScopeAllowed = ticket.assigned_unit_id
+        ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
+        : hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets');
+      if (!isSuperadminActor(actor) && !ticketScopeAllowed) {
+        return res.status(403).json({ success: false, message: 'Anda tidak memiliki kewenangan mendelegasikan tiket pada unit/kategori ini.' });
+      }
+
+      const targetId = String(req.body?.assigned_agent_id || '').trim();
+      if (!targetId) return res.status(400).json({ success: false, message: 'Petugas tujuan wajib dipilih.' });
+      const target = db.users.find(user => user.id === targetId && user.is_active !== false);
+      if (!target) return res.status(400).json({ success: false, message: 'Petugas tujuan tidak ditemukan atau tidak aktif.' });
+
+      const targetCanWorkQueue = hasRbacPermission(String(target.id), 'tickets.update')
+        && (ticket.assigned_unit_id
+          ? target.unit_id === ticket.assigned_unit_id && hasRbacScope(String(target.id), 'unit', ticket.assigned_unit_id, 'tickets')
+          : String(target.division || '').toUpperCase() === String(ticket.category).toUpperCase()
+            && hasRbacScope(String(target.id), 'division', String(ticket.category), 'tickets'));
+      if (!targetCanWorkQueue) {
+        return res.status(400).json({ success: false, message: 'Petugas tujuan belum memiliki permission dan scope untuk menangani tiket ini.' });
+      }
+
+      const previousAgent = ticket.assigned_agent_name || 'Belum ditugaskan';
+      ticket.assigned_agent_id = target.id;
+      ticket.assigned_agent_name = target.name;
+      if (ticket.status === 'open') ticket.status = 'assigned';
+      ticket.updated_at = new Date().toISOString();
+
+      GabahDomainService.notify({
+        recipient_user_id: target.id,
+        title: `Tiket Ditugaskan: ${ticket.ticket_number}`,
+        message: `Tiket ${ticket.title} ditugaskan kepada Anda oleh ${actor.name}.`,
+        severity: ticket.priority === 'urgent' ? 'critical' : ticket.priority === 'high' ? 'action_required' : 'info',
+        category: 'sla',
+        link_type: 'ticket',
+        link_id: ticket.id,
+      });
+      GabahDomainService.recordAudit('TICKET_ASSIGNED', 'Tickets', `Tiket ${ticket.ticket_number} dialihkan dari ${previousAgent} kepada ${target.name}.`, actor, ticket.id);
+      await persistDataStore();
+      return res.json({ success: true, data: ticket });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message || 'Gagal mendelegasikan tiket.' });
+    }
+  });
+
   // SECURITY (CR-06): authoritative ticket status state machine.
   // open → in_progress → resolved → closed; open/reopened work may be
   // assigned. Arbitrary status strings and skipped transitions are rejected.
