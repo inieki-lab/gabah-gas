@@ -637,7 +637,7 @@ export class GabahService {
   static canManageTickets(user?: UserProfile): boolean {
     if (!user) return false;
     if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+      return user.permission_keys.includes('tickets.update');
     }
     return ['Admin GABAH', 'IT', 'GA'].includes(user.role);
   }
@@ -689,7 +689,7 @@ export class GabahService {
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
     const canMutate = Array.isArray(user.permission_keys)
-      ? ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key))
+      ? user.permission_keys.includes('tickets.update')
       : ['Admin GABAH', 'IT', 'GA'].includes(user.role);
     if (!canMutate) return false;
     if (user.is_superadmin || user.role === 'Admin GABAH') return true;
