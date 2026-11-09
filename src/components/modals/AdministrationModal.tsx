@@ -814,19 +814,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Nama lokasi fasilitas wajib diisi', 'warning');
       return;
     }
-    const newLoc: MasterLocation = {
-      id: `loc-${Date.now()}`,
+    const locationPayload = {
       name: newLocationData.name.trim(),
       address: newLocationData.address.trim() || 'Kawasan PIBC, Jakarta Timur',
       capacity: newLocationData.capacity.trim() || 'Fasilitas Operasional'
     };
+    let createdLocation: MasterLocation;
     try {
-      await gabahApi.createLocation({ name: newLoc.name, address: newLoc.address, capacity: newLoc.capacity });
+      const created = await gabahApi.createLocation(locationPayload);
+      if (!created?.id) throw new Error('Server tidak mengembalikan ID lokasi yang tersimpan.');
+      createdLocation = created as MasterLocation;
     } catch (err: any) {
       showToast(err.message || 'Gagal menyimpan lokasi fasilitas ke server.', 'warning');
       return;
     }
-    const updated = [...locations, newLoc];
+    const updated = [...locations, createdLocation];
     setLocations(updated);
     setIsAddLocationOpen(false);
     setNewLocationData({ name: '', address: '', capacity: '' });
