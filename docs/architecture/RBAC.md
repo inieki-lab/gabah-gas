@@ -176,16 +176,19 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 
 
 
-## Helpdesk service queues (keputusan 9 November 2026)
-- Kategori/tujuan tiket: IT, GA, ME.
-- ME adalah unit Tim Perawatan (Mechanical & Electrical) di bawah PIBC, direpresentasikan oleh `UNIT-PIBC-ME`.
-- Tiket ME disimpan dengan `assigned_unit_id=UNIT-PIBC-ME`; hanya anggota dengan `unit_id` tersebut yang menerima notifikasi unit dan melihat antrean unit melalui endpoint tiket, selain Super Admin/Auditor sesuai permission.
-- Lokasi RPC/PIBC tidak otomatis memberi akses antrean ME.
+## Helpdesk service queues and dispatch (keputusan 10 November 2026)
 
+- Kategori/tujuan tiket adalah **IT, GA, dan ME**. Kategori tidak diturunkan dari lokasi kantor.
+- **IT:** tiket diarahkan langsung kepada satu petugas IT aktif apabila hanya ada satu user dengan permission `tickets.update` dan scope Tickets untuk divisi IT. Bila tidak ada atau kandidat lebih dari satu, tiket tetap berada di antrean IT; sistem tidak memilih petugas secara acak.
+- **GA:** tiket masuk ke antrean GA. Pegawai yang diberi permission `tickets.assign` dan scope GA dapat mendelegasikan tiket kepada petugas aktif yang memiliki permission `tickets.update` serta scope GA.
+- **ME:** ME adalah unit Tim Perawatan (Mechanical & Electrical) di bawah PIBC, direpresentasikan oleh `UNIT-PIBC-ME`. Tiket ME disimpan dengan `assigned_unit_id=UNIT-PIBC-ME`; dispatcher dengan permission `tickets.assign` dan scope unit tersebut dapat mendelegasikan kepada petugas aktif yang menjadi anggota unit dan memiliki permission `tickets.update`.
+- Lokasi RPC/PIBC tidak otomatis memberi akses antrean ME. Unit ME juga bukan lokasi kantor atau role aplikasi.
+- Endpoint penugasan memvalidasi permission dispatcher, scope tiket, status aktif target, permission target, serta kecocokan unit/divisi. Daftar petugas yang ditampilkan ke dispatcher hanya berisi target yang lolos validasi tersebut.
 
-### Role operasional: Admin Tiket ME
-- Migration `037_admin_tiket_me_role_template.sql` menyediakan role template `admin_tiket_me` dengan permission `tickets.read`, `tickets.update`, `notifications.read`, dan `notifications.read_all` serta scope modul Tickets pada unit `UNIT-PIBC-ME`.
-- Role template tidak otomatis diberikan kepada siapa pun. Super Admin menetapkan role tersebut kepada staf yang ditunjuk dan memastikan profil pegawai memiliki `unit_id=UNIT-PIBC-ME`.
-- Staf Admin ME mengelola administrasi antrean (membaca tiket ME dan memperbarui status/catatan tindak lanjut). Hak ini tidak memberikan akses ke antrean IT/GA, data aset PIBC secara umum, atau jadwal pemeliharaan.
-- Teknisi Tim Perawatan tetap merupakan pelaksana pekerjaan teknis. Penetapan teknisi/PIC individual adalah kapabilitas terpisah dan tidak diasumsikan tersedia hanya karena role Admin Tiket ME.
-- Enforcement antrean unit memerlukan kecocokan `assigned_unit_id` tiket dengan `unit_id` pegawai; permission tanpa keanggotaan unit tidak cukup.
+### Role, jabatan, dan assignment pegawai
+
+- Role aplikasi adalah **paket permission dan scope**, bukan nama jabatan. Super Admin dapat membuat role kustom, memilih permission, mengatur scope, dan menetapkan satu atau lebih role kepada pegawai mana pun.
+- Jabatan/posisi (mis. Admin IT, Staf IT Support, Admin GA, Admin ME, Teknisi ME) tetap menjadi atribut organisasi/pekerjaan; jabatan tidak otomatis memberikan permission.
+- `tickets.assign` adalah permission terpisah dari `tickets.update`. Dispatcher dapat mendelegasikan, sedangkan teknisi/petugas pelaksana cukup diberi `tickets.update` dan scope yang sesuai.
+- Migration `037_admin_tiket_me_role_template.sql` dan `038_ticket_dispatch_permission.sql` menyediakan preset Admin Tiket ME. Preset bukan role jabatan permanen dan tidak otomatis ditetapkan kepada akun mana pun.
+- Penambahan atau perubahan personel dilakukan melalui assignment role, scope, unit, dan konfigurasi routing; tidak perlu mengubah kode hanya karena nama jabatan atau struktur staf berubah.
