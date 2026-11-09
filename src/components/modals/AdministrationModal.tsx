@@ -727,7 +727,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [tempNumberingConfig, setTempNumberingConfig] = useState(numberingConfig);
   const [testDiv, setTestDiv] = useState<OwnerDivision>('IT');
   const [testCode, setTestCode] = useState('HLT');
-  const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0005');
+  const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0001');
 
   // Notification Rules State
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => {
@@ -1168,7 +1168,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     localStorage.setItem('gabah_numbering_config', JSON.stringify(tempNumberingConfig));
     setIsEditingNumbering(false);
     // Update live simulated number
-    const seqPadded = String(5).padStart(tempNumberingConfig.paddingDigits, '0');
+    const seqPadded = String(1).padStart(tempNumberingConfig.paddingDigits, '0');
     setSimulatedNumber(`${testDiv}${tempNumberingConfig.separator}${testCode}${tempNumberingConfig.separator}2026${tempNumberingConfig.separator}${seqPadded}`);
     showToast('Pratinjau format tersimpan pada browser ini. Pengaturan ini tidak mengubah format atau sequence nomor yang diterbitkan server.', 'info');
   };
@@ -4307,7 +4307,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       onChange={e => {
                         const d = e.target.value as OwnerDivision;
                         setTestDiv(d);
-                        setSimulatedNumber(`${d}-${testCode}-2026-000${Math.floor(Math.random() * 5) + 1}`);
+                        setSimulatedNumber(`${d}-${testCode}-2026-0001`);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold"
                     >
