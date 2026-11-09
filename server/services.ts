@@ -983,6 +983,7 @@ export class GabahDomainService {
       reporter_id: actor.id,
       reporter_name: actor.name,
       reporter_department: actor.department,
+      assigned_unit_id: payload.category === 'ME' ? 'UNIT-PIBC-ME' : undefined,
       related_asset_id: payload.related_asset_id,
       related_asset_name: relatedAssetName,
       related_asset_number: relatedAssetNumber,
