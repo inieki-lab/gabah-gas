@@ -87,6 +87,8 @@ const checks = [
   ['Ticket status guard honors any configured owner scope in PostgreSQL, not IT/GA role labels', /if \(isPostgresPersistenceActive\(\)\)[\s\S]*const owner = String\(ticket\.category \|\| ''\)\.trim\(\);[\s\S]*hasRbacScope\(String\(actor\.id\), 'division', owner, 'tickets'\)/.test(hardeningSource) && /File-store compatibility only/.test(hardeningSource)],
   ['Dashboard ticket counts reuse dynamic ticket owner scope and personal visibility', /canReadOwnerScope = \(owner: string, module: 'loans' \| 'tickets'\)/.test(server) && /canReadOwnerScope\(ticket\.category, 'tickets'\)/.test(server) && /ticket\.reporter_id === actor\.id/.test(server)],
   ['Loan list and dashboard counts follow borrower and explicit owner scope', /hasRbacScope\(String\(actor.id\), 'division', loan\.owner_division, 'loans'\)/.test(server) && /canReadOwnerScope\(loan\.owner_division, 'loans'\)/.test(server) && /loans\.approve[\s\S]*hasRbacScope/.test(services)],
+  ['ME unit assignment survives PostgreSQL ticket upserts', /assigned_unit_id=EXCLUDED\.assigned_unit_id/.test(persistence) && /assigned_unit_id\s*\|\|\s*null/.test(persistence)],
+  ['Dashboard ticket counts include the actor assigned ME unit queue', /ticket\.assigned_unit_id && ticket\.assigned_unit_id === actor\.unit_id/.test(server)],
   ['User-targeted notifications cannot be read or marked by same-role colleagues', /if \(notification\.recipient_user_id\) return notification\.recipient_user_id === actor\.id;[\s\S]*if \(notification\.recipient_role\) return notification\.recipient_role === actor\.role;/.test(server) && /recipient_user_id \? n\.recipient_user_id === actor\.id[\s\S]*recipient_role \? n\.recipient_role === actor\.role/.test(server)],
 ];
 
