@@ -736,6 +736,7 @@ export default function App() {
           )).length}
           currentUserRole={currentUser.role}
           currentUserPermissions={currentUser.permission_keys}
+          currentUserRoleKeys={currentUser.role_keys}
           currentUserIsSuperAdmin={currentUser.is_superadmin}
           onOpenAdministration={() => {
             if (currentUser.is_superadmin || currentUser.role === 'Admin GABAH') {
