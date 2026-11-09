@@ -475,6 +475,9 @@ async function backfillNormalizedTables(): Promise<void> {
         [u.id,u.name,u.email,u.role,u.division,u.department || null,u.job_level_code || null,u.unit_id || null,u.office_location_id || null,u.phone || null,u.avatar || null,u.is_active,u.password_hash || null,u.password_salt || null],
       );
     }
+    if (process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') {
+      await client.query(`UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = 'USR-ME-ADMIN-001'`);
+    }
     // SECURITY (CR-03): db.sessions are deliberately NOT backfilled into
     // user_sessions — bearer tokens must never be restored to a durable store
     // from the application runtime (they were previously committed to Git).
