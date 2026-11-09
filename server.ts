@@ -553,7 +553,7 @@ async function startServer() {
         id: `USR-${Date.now().toString().slice(-6)}`,
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        role: primaryRole,
+        role: primaryRole as ServerUser['role'],
         role_label: roleLabels[primaryRole] || 'Pegawai Operasional',
         division: division || 'Umum',
         department: department || 'Operasional',
