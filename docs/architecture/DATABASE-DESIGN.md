@@ -22,8 +22,8 @@ Sistem juga mengimplementasikan mekanisme **Dual-Persistence Bridge** (`server/p
 ### 2.1 Tabel `divisions` (Divisi Korporat)
 Menyimpan struktur divisi resmi BUMD PT Food Station Tjipinang Jaya.
 - `id` (BIGSERIAL, PRIMARY KEY)
-- `code` (VARCHAR(20), NOT NULL, UNIQUE) — Contoh: `'SC'`, `'PIBC'`, `'IT'`, `'GA'`
-- `name` (VARCHAR(100), NOT NULL) — Contoh: `'Supply Chain'`, `'Pasar'`, `'IT'`, `'General Affairs'`
+- `code` (VARCHAR(20), NOT NULL, UNIQUE) — owner domain aktif baseline: `'IT'`, `'GA'`; kode legacy `'SC'`/`'PIBC'` dapat tetap ada untuk histori dan review, bukan owner baru
+- `name` (VARCHAR(100), NOT NULL) — nama fungsi pemilik aset; jangan gunakan nama kantor/lokasi sebagai owner
 - `is_active` (BOOLEAN, NOT NULL, DEFAULT TRUE)
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 
@@ -173,7 +173,7 @@ Mencatat permohonan bantuan teknis dan pemenuhan SLA layanan.
 - `ticket_code` (VARCHAR(100), NOT NULL)
 - `title` (VARCHAR(255), NOT NULL)
 - `description` (TEXT, NOT NULL)
-- `category` (VARCHAR(40), NOT NULL) — `'IT'`, `'GA'`, `'SC'`, `'PIBC'`, `'License'`, `'General'`
+- `category` (VARCHAR(40), NOT NULL) — pengajuan baru hanya `'IT'` atau `'GA'`; nilai `'SC'`/`'PIBC'`/`'License'`/`'General'` dapat muncul pada record historis selama masa transisi
 - `priority` (VARCHAR(20), NOT NULL) — `'urgent'`, `'high'`, `'medium'`, `'low'`
 - `status` (VARCHAR(30), NOT NULL) — `'open'`, `'assigned'`, `'in_progress'`, `'pending_user'`, `'resolved'`, `'closed'`
 - `reporter_id` (VARCHAR(64), NOT NULL, REFERENCES users(id))
