@@ -144,3 +144,10 @@
 ### BR-08.1: Rekam Jejak Audit yang Tidak Dapat Dihapus (*Immutable*)
 - **Aturan**: Setiap aksi yang mengubah keadaan sistem (*state-changing action*) wajib dicatat ke tabel `audit_logs` dengan informasi: aksi, nama entitas, ID entitas, nama aktor, peran aktor, rincian perubahan, serta timestamp presisi.
 - **Enforcement Kode**: `server/services.ts` (`GabahDomainService.recordAudit()`), `server.ts` (baris 40-49).
+
+
+### BR-04c: Administrasi Tiket ME
+- GABAH menyediakan role template **Admin Tiket ME** untuk staf administrasi yang kelak ditunjuk mengurus tiket Mechanical & Electrical.
+- Hak minimum: melihat tiket pada antrean `UNIT-PIBC-ME` dan memperbarui status/catatan tindak lanjut. Role ini tidak otomatis menjadi teknisi, tidak mengelola jadwal Maintenance, dan tidak memperoleh akses ke seluruh data PIBC.
+- Super Admin harus menetapkan role kepada akun staf yang benar dan mengisi `unit_id=UNIT-PIBC-ME`. Tidak ada penetapan akun otomatis atau berdasarkan lokasi kerja.
+- Tim Perawatan menangani pemeriksaan/perbaikan teknis; Admin Tiket ME menangani administrasi, kelengkapan informasi, koordinasi, dan pemantauan progres.
