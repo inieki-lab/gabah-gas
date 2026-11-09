@@ -1026,12 +1026,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                           {/* Status */}
                           <td className="py-3.5 px-4">
-                            {r.status === 'approved' && (
+                            {r.status === 'approved' && canCheckinReservation && (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                 Disetujui GA
                               </span>
                             )}
-                            {r.status === 'in_use' && (
+                            {r.status === 'in_use' && canCheckoutReservation && (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1 w-fit">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping" />
                                 Sedang Dipakai
@@ -1074,22 +1074,22 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                             {/* GA / Admin Approve / Reject */}
                             {canApproveReservation && r.status === 'pending_approval' && (
-                              <>
-                                <button
-                                  disabled={isLoading}
-                                  onClick={() => handleApprove(r.id)}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
-                                >
-                                  Setujui
-                                </button>
-                                <button
-                                  disabled={isLoading}
-                                  onClick={() => setRejectReasonPromptId(r.id)}
-                                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
-                                >
-                                  Tolak
-                                </button>
-                              </>
+                              <button
+                                disabled={isLoading}
+                                onClick={() => handleApprove(r.id)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
+                              >
+                                Setujui
+                              </button>
+                            )}
+                            {canRejectReservation && r.status === 'pending_approval' && (
+                              <button
+                                disabled={isLoading}
+                                onClick={() => setRejectReasonPromptId(r.id)}
+                                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
+                              >
+                                Tolak
+                              </button>
                             )}
 
                             {/* Check-In / Check-Out */}
