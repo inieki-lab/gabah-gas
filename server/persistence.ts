@@ -30,8 +30,8 @@ export function provisionCanonicalUserPasswords(): void {
   // roles without managing credentials. Sessions are not revoked here; users
   // simply re-login with the test password.
   const testPassword = process.env.NODE_ENV === 'production' ? undefined : process.env.GABAH_TEST_PASSWORD;
-  // Optional per-account credential for the ME dummy UAT user; never honored in production.
-  const meDummyPassword = process.env.NODE_ENV === 'production' ? undefined : process.env.GABAH_ME_DUMMY_PASSWORD;
+  // Optional per-account credential for the ME dummy UAT user; honored only when the dummy account is explicitly enabled.
+  const meDummyPassword = process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true' ? process.env.GABAH_ME_DUMMY_PASSWORD : undefined;
 
   let devNote: string[] | null = devFallback ? [] : null;
   let devFile: string | null = devFallback ? path.join(DATA_DIR, 'initial_credentials_dev.txt') : null;
