@@ -933,7 +933,7 @@ export class GabahDomainService {
   static createTicket(payload: {
     title: string;
     description: string;
-    category: 'IT' | 'GA' | 'SC' | 'PIBC';
+    category: 'IT' | 'GA' | 'ME';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
     contract_id?: string;
@@ -943,7 +943,7 @@ export class GabahDomainService {
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
     // ticket: notification goes to a role that does not exist and nobody ever
     // picks it up.
-    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'SC', 'PIBC'] as const;
+    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'ME'] as const;
     if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
       throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
     }
@@ -1006,10 +1006,11 @@ export class GabahDomainService {
     }
 
     // Notify respective division (IT covers software/license/SaaS)
-    const targetDivision = payload.category;
+    const targetDivision = payload.category === 'ME' ? 'PIBC' : payload.category;
     this.notify({
-      recipient_role: targetDivision,
-      recipient_division: targetDivision,
+      recipient_role: payload.category === 'ME' ? undefined : targetDivision,
+      recipient_division: payload.category === 'ME' ? undefined : targetDivision,
+      recipient_unit_id: payload.category === 'ME' ? 'UNIT-PIBC-ME' : undefined,
       title: `Tiket Baru: [${payload.priority.toUpperCase()}] ${ticketNumber}`,
       message: `${actor.name} (${actor.department}) melaporkan: ${payload.title}`,
       severity: payload.priority === 'urgent' ? 'critical' : payload.priority === 'high' ? 'action_required' : 'info',
