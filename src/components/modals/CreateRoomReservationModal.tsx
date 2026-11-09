@@ -113,7 +113,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const [serverConflictData, setServerConflictData] = useState<any | null>(null);
 
   // Privileged capability check (Sekdir is an additional Dynamic RBAC role).
-  const isSekdir = isSekdir || currentUser.role_keys?.includes('sekretaris_direksi') === true;
+  const isSekdir = currentUser.role === 'Sekretaris Direksi' || currentUser.role_keys?.includes('sekretaris_direksi') === true;
   const canOverride = useMemo(() => {
     return (
       isSekdir ||
