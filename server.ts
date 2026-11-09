@@ -2383,6 +2383,7 @@ async function startServer() {
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
       || ticket.assigned_agent_id === actor.id
+      || (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id)
       || canReadTicketOwner(ticket.category)
     );
     return res.json({ success: true, data });
@@ -2811,6 +2812,7 @@ async function startServer() {
       if (isSuperadminActor(actor)) return true;
       // Explicit user recipient takes precedence over role/division fallbacks.
       if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
+      if (notification.recipient_unit_id) return notification.recipient_unit_id === actor.unit_id;
       if (notification.recipient_role) return notification.recipient_role === actor.role;
       if (notification.recipient_division) return notification.recipient_division === actor.division;
       return false;
@@ -2832,6 +2834,7 @@ async function startServer() {
     const notif = db.notifications.find(n => n.id === req.params.id);
     const isRecipient = isSuperadminActor(actor)
       || (notif?.recipient_user_id ? notif.recipient_user_id === actor.id
+        : notif?.recipient_unit_id ? notif.recipient_unit_id === actor.unit_id
         : notif?.recipient_role ? notif.recipient_role === actor.role
           : notif?.recipient_division ? notif.recipient_division === actor.division : false);
     if (!notif || !isRecipient) {
@@ -2848,6 +2851,7 @@ async function startServer() {
     for (const n of db.notifications) {
       const isRecipient = isSuperadminActor(actor)
         || (n.recipient_user_id ? n.recipient_user_id === actor.id
+          : n.recipient_unit_id ? n.recipient_unit_id === actor.unit_id
           : n.recipient_role ? n.recipient_role === actor.role
             : n.recipient_division ? n.recipient_division === actor.division : false);
       if (isRecipient) n.is_read = true;
