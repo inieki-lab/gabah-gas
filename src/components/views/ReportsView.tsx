@@ -48,32 +48,46 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
-  const divisionOptions = useMemo(
-    () => Array.from(new Set(safeAssets.map(a => a.owner_division || 'Umum'))).sort(),
-    [safeAssets]
-  );
+  const divisionOptions = useMemo(() => {
+    const legacyCodes = new Set(['SC', 'PIBC', 'Supply Chain']);
+    const activeOwners = new Set<string>();
+    const allOwners = [
+      ...safeAssets.map(a => a.owner_division),
+      ...safeLoans.map(l => l.owner_division),
+      ...safeMaintenances.map(m => m.owner_division),
+      ...safeTickets.map(t => t.category),
+    ].filter((value): value is string => Boolean(value));
+    allOwners.forEach(owner => { if (!legacyCodes.has(owner)) activeOwners.add(owner); });
+    const hasLegacy = allOwners.some(owner => legacyCodes.has(owner));
+    return [...Array.from(activeOwners).sort(), ...(hasLegacy ? ['LEGACY'] : [])];
+  }, [safeAssets, safeLoans, safeMaintenances, safeTickets]);
   const departmentOptions = useMemo(
     () => Array.from(new Set(safeAssets.map(a => a.assigned_to?.department).filter(Boolean) as string[])).sort(),
     [safeAssets]
   );
 
+  const isLegacyOwner = (owner?: string | null) => ['SC', 'PIBC', 'Supply Chain'].includes(String(owner || ''));
+  const matchesOwnerFilter = (owner?: string | null) =>
+    divisionFilter === 'all'
+      || (divisionFilter === 'LEGACY' ? isLegacyOwner(owner) : (owner || 'Umum') === divisionFilter);
+
   const filteredAssets = useMemo(() => safeAssets.filter(a =>
-    (divisionFilter === 'all' || (a.owner_division || 'Umum') === divisionFilter) &&
+    matchesOwnerFilter(a.owner_division) &&
     (departmentFilter === 'all' || (a.assigned_to?.department || '') === departmentFilter)
   ), [safeAssets, divisionFilter, departmentFilter]);
 
   const filteredLoans = useMemo(() => safeLoans.filter(l =>
-    (divisionFilter === 'all' || (l.owner_division || l.asset_number?.split('-')[0]) === divisionFilter) &&
+    matchesOwnerFilter(l.owner_division || l.asset_number?.split('-')[0]) &&
     (departmentFilter === 'all' || (l.borrower_department || '') === departmentFilter)
   ), [safeLoans, divisionFilter, departmentFilter]);
 
   const filteredTickets = useMemo(() => safeTickets.filter(t =>
-    (divisionFilter === 'all' || t.category === divisionFilter) &&
+    (divisionFilter === 'all' || (divisionFilter === 'LEGACY' ? isLegacyOwner(t.category) : t.category === divisionFilter)) &&
     (departmentFilter === 'all' || (t.reporter_department || '') === departmentFilter)
   ), [safeTickets, divisionFilter, departmentFilter]);
 
   const filteredMaintenances = useMemo(() => safeMaintenances.filter(m =>
-    divisionFilter === 'all' || (m.owner_division || 'Umum') === divisionFilter
+    matchesOwnerFilter(m.owner_division)
   ), [safeMaintenances, divisionFilter]);
 
   const isFilterActive = divisionFilter !== 'all' || departmentFilter !== 'all';
@@ -209,11 +223,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
             value={divisionFilter}
             onChange={e => setDivisionFilter(e.target.value)}
             className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-semibold focus:outline-none focus:border-emerald-500"
-            title="Filter semua laporan berdasarkan divisi pemilik aset / kategori tiket"
+            title="Filter berdasarkan owner aset atau kategori layanan; nilai legacy ditampilkan terpisah"
           >
-            <option value="all">Semua Divisi ({divisionOptions.length})</option>
+            <option value="all">Semua Owner/Layanan ({divisionOptions.length})</option>
             {divisionOptions.map(d => (
-              <option key={d} value={d}>{d}</option>
+              <option key={d} value={d}>{d === 'LEGACY' ? 'Legacy SC/PIBC (review)' : d}</option>
             ))}
           </select>
           <select
