@@ -665,12 +665,14 @@ async function startServer() {
           errors.push(`Baris ${rowNo}: Lokasi kantor "${officeLocationId}" tidak terdaftar/aktif.`); continue;
         }
 
-        const requestedRole = roleRaw && validRoles.includes(roleRaw) ? roleRaw : 'Karyawan';
-        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
         if (roleRaw && !validRoles.includes(roleRaw)) {
-          warnings.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenali (memakai Karyawan).`);
-        } else if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
-          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai lokasi kerja, bukan role; role aplikasi menjadi Karyawan.`);
+          errors.push(`Baris ${rowNo}: Role utama "${roleRaw}" tidak dikenali. Gunakan salah satu role profil utama yang valid.`);
+          continue;
+        }
+        const requestedRole = roleRaw || 'Karyawan';
+        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
+        if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
+          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai Karyawan dengan unit/lokasi kerja; bukan role aplikasi.`);
         }
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
