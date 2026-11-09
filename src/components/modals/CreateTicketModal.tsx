@@ -78,14 +78,6 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       icon: '❄️',
     },
     {
-      id: 'sc-weighbridge',
-      label: 'Operasional Supply Chain',
-      category: 'SC' as TicketCategory,
-      priority: 'urgent' as TicketPriority,
-      title: 'Kendala Operasional Supply Chain',
-      desc: 'Jelaskan proses, lokasi, peralatan, atau fasilitas operasional yang terganggu. Hindari memasukkan data rahasia atau kredensial.',
-      icon: '🌾',
-    },
     {
       id: 'incident-down',
       label: 'Jaringan & Infrastruktur TI',
@@ -96,14 +88,6 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       icon: '🌐',
     },
     {
-      id: 'pibc-ops',
-      label: 'Operasional PIBC',
-      category: 'PIBC' as TicketCategory,
-      priority: 'medium' as TicketPriority,
-      title: 'Kendala Operasional PIBC',
-      desc: 'Jelaskan area/lokasi, aktivitas operasional, fasilitas atau perangkat yang terdampak, serta dampaknya terhadap layanan pasar.',
-      icon: '🏬',
-    },
   ];
 
   const applyCatalogTemplate = (tpl: typeof serviceCatalogTemplates[0]) => {
@@ -177,11 +161,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       const selected = safeAssets.find(a => a.id === assetId);
       if (selected) {
         // License/SaaS is an IT domain: software & license tickets route to IT
-        if (selected.owner_division === 'SC') {
-          setCategory('SC');
-        } else if (selected.owner_division === 'PIBC') {
-          setCategory('PIBC');
-        } else if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
+        if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
           setCategory('GA');
         } else {
           setCategory('IT');
@@ -203,10 +183,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         setDescription(
           `Tiket kerja terkait kontrak ${linkedContract.contract_number} (${linkedContract.title}) dengan vendor ${linkedContract.vendor_name}. Divisi pemilik: ${linkedContract.owner_division}.`
         );
-        setCategory((linkedContract.owner_division === 'IT' ? 'IT'
-          : linkedContract.owner_division === 'SC' ? 'SC'
-          : linkedContract.owner_division === 'PIBC' ? 'PIBC'
-          : 'GA') as TicketCategory);
+        setCategory((linkedContract.owner_division === 'IT' ? 'IT' : 'GA') as TicketCategory);
       }
     }
   }, [isOpen, preselectedAssetId, linkedContract]);
@@ -291,7 +268,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           {/* Category */}
           <div className="space-y-1.5">
             <label className="text-slate-700 font-bold">Unit Penanganan:</label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            <p className="text-xs text-slate-500">Pilih tim berdasarkan jenis layanan. Lokasi kerja atau lokasi kejadian bukan kategori tiket.</p>
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
@@ -313,28 +291,6 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 }`}
               >
                 <Car className="w-4 h-4" /> General Affair (GA)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('SC'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'SC' 
-                    ? 'bg-orange-600 text-white border-orange-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Package className="w-4 h-4" /> Supply Chain
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('PIBC'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'PIBC' 
-                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Store className="w-4 h-4" /> PIBC
               </button>
             </div>
           </div>
