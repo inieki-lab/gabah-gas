@@ -933,17 +933,14 @@ export class GabahDomainService {
   static createTicket(payload: {
     title: string;
     description: string;
-    category: 'IT' | 'GA' | 'SC' | 'PIBC';
+    category: 'IT' | 'GA';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
     contract_id?: string;
   }, actor: ServerUser): ServerTicket {
-    // Strict divisional categories per PRD §3.5: a ticket must target an
-    // operational division that actually staffs a queue. Without this gate a
-    // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
-    // ticket: notification goes to a role that does not exist and nobody ever
-    // picks it up.
-    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'SC', 'PIBC'] as const;
+    // Helpdesk routing targets service teams, not office/work locations.
+    // SC and PIBC are legacy location labels, not ticket categories.
+    const VALID_TICKET_CATEGORIES = ['IT', 'GA'] as const;
     if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
       throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
     }
