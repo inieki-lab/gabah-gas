@@ -48,7 +48,7 @@ Owner domain adalah master fleksibel (misalnya IT, GA, RPC/SC, dan domain lain y
 
 ### 1.4 Legacy role labels
 
-Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. Supply Chain dan PIBC adalah lokasi/unit/fungsi operasional, bukan role aplikasi permanen. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
+Role primer profil yang boleh dipilih untuk pegawai: **Admin GABAH, IT, GA, Karyawan, dan Auditor**. Sekretaris Direksi dan Humas adalah capability/role tambahan, bukan role primer. Supply Chain dan PIBC adalah unit/lokasi kerja, bukan role aplikasi. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
 
 Contract Management tetap domain tersendiri; scope kontrak menggunakan owner domain dan PIC. Vendor category tidak boleh dipakai sebagai pengganti owner domain.
 
@@ -62,8 +62,8 @@ Contract Management tetap domain tersendiri; scope kontrak menggunakan owner dom
 | IT | Owner IT lintas lokasi | Aksi per modul tetap memerlukan permission dan scope |
 | GA | Owner GA lintas lokasi | IT workstation hanya read-only melalui permission khusus |
 | Karyawan | Fungsi dasar pribadi: aset ditugaskan, permintaan pinjaman, tiket sendiri, reservasi | Role tambahan dapat memberi kapabilitas kerja yang disahkan |
-| Sekretaris Direksi | Fungsi dasar karyawan + agenda/permintaan dukungan Direksi | Prioritas/override harus permission khusus dan audit |
-| Humas | Fungsi dasar karyawan + antrean pekerjaan dokumentasi yang ditugaskan | Detail agenda disamarkan untuk pihak tanpa kewenangan |
+| Role tambahan Sekretaris Direksi | Karyawan tetap memiliki fungsi dasar; capability tambahan untuk agenda/permintaan dukungan Direksi | Prioritas/override harus permission khusus dan audit; bukan role primer |
+| Role tambahan Humas | Karyawan tetap memiliki fungsi dasar; capability tambahan untuk antrean pekerjaan dokumentasi yang ditugaskan | Detail agenda disamarkan untuk pihak tanpa kewenangan; bukan role primer |
 | Auditor | Read-only sesuai grant audit | Tidak boleh create/update/delete/approve |
 | RPC/SC dan owner operasional lain | Kapabilitas sesuai owner domain dan scope yang diberikan | Nama unit/lokasi tidak otomatis menjadi role atau scope |
 
