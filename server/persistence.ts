@@ -449,14 +449,17 @@ async function backfillNormalizedTables(): Promise<void> {
     }
     for (const u of db.users) {
       await client.query(
-        `INSERT INTO users (id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,updated_at)
-         VALUES ($1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),$6,$7,$8,$9,$10,NOW())
+        `INSERT INTO users (id,name,email,role,division_id,department_id,job_level_code,unit_id,office_location_id,phone,avatar,is_active,password_hash,password_salt,updated_at)
+         VALUES ($1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),
+           (SELECT id FROM departments WHERE code=$6),$7,$8,$9,$10,$11,$12,$13,$14,NOW())
          ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,email=EXCLUDED.email,role=EXCLUDED.role,
-           division_id=EXCLUDED.division_id,phone=EXCLUDED.phone,avatar=EXCLUDED.avatar,is_active=EXCLUDED.is_active,
+           division_id=EXCLUDED.division_id,department_id=EXCLUDED.department_id,
+           job_level_code=EXCLUDED.job_level_code,unit_id=EXCLUDED.unit_id,office_location_id=EXCLUDED.office_location_id,
+           phone=EXCLUDED.phone,avatar=EXCLUDED.avatar,is_active=EXCLUDED.is_active,
            password_hash=COALESCE(EXCLUDED.password_hash, users.password_hash),
            password_salt=COALESCE(EXCLUDED.password_salt, users.password_salt),
            updated_at=NOW()`,
-        [u.id,u.name,u.email,u.role,u.division,u.phone || null,u.avatar || null,u.is_active,u.password_hash || null,u.password_salt || null],
+        [u.id,u.name,u.email,u.role,u.division,u.department || null,u.job_level_code || null,u.unit_id || null,u.office_location_id || null,u.phone || null,u.avatar || null,u.is_active,u.password_hash || null,u.password_salt || null],
       );
     }
     // SECURITY (CR-03): db.sessions are deliberately NOT backfilled into
@@ -637,6 +640,18 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
     "WHERE u.id::text = ANY($1::text[]) " +
     "ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE",
     [userIds],
+  );
+
+  // This canonical dummy account is provisioned only for ME queue UAT.
+  // Its base employee role remains primary; Admin Tiket ME is an additive,
+  // least-privilege role scoped to UNIT-PIBC-ME.
+  await pool.query(
+    `INSERT INTO gabah_user_roles (user_id, role_id, is_primary)
+     SELECT u.id::text, r.id, FALSE
+     FROM users u
+     JOIN gabah_roles r ON r.role_key = 'admin_tiket_me' AND r.is_active = TRUE
+     WHERE u.id = 'USR-ME-ADMIN-001'
+     ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = FALSE`,
   );
 }
 
