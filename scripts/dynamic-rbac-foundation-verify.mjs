@@ -40,6 +40,8 @@ const checks = [
   ['custom role creation rejects an empty permission selection at the API boundary', createRoleRoute.includes('permissionKeys.length === 0') && createRoleRoute.includes('minimal satu permission aktif')],
   ['custom roles cannot receive protected system authentication, audit, or superadmin permissions', createRoleRoute.includes('system.authentication') && createRoleRoute.includes('system.audit') && createRoleRoute.includes('system.super_admin') && server.includes("permission_key NOT IN ('system.authentication', 'system.audit', 'system.super_admin')")],
   ['Superadmin create-role form displays grouped permission checkboxes and refuses empty catalogue/selection', /Pilih Permission/.test(frontend) && /rbacNewPermissionKeys\.includes/.test(frontend) && /Buat Role \+ Simpan Hak Akses/.test(frontend) && /Katalog permission kosong/.test(frontend) && /Pilih minimal satu permission/.test(frontend)],
+  ['facility location create stores the server-returned ID for subsequent edit/delete operations', /const created = await gabahApi\.createLocation\(locationPayload\);[\s\S]{0,220}if \(!created\?\.id\)[\s\S]{0,180}createdLocation = created as MasterLocation/.test(frontend)],
+  ['facility location update replaces the row with the server-returned record', /const saved = await gabahApi\.updateLocation\(editLocationData\.id, editLocationData\);[\s\S]{0,180}savedLocation = saved as MasterLocation/.test(frontend)],
 
   ['roles table is additive/idempotent', /CREATE TABLE IF NOT EXISTS gabah_roles/i.test(migration)],
   ['permission catalogue exists', /CREATE TABLE IF NOT EXISTS gabah_permissions/i.test(migration)],
