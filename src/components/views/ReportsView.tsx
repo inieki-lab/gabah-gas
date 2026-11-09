@@ -105,13 +105,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   // Breakdown per Division (IT, GA, SC, PIBC) — mengikuti filter aktif
   const itAssets = filteredAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
   const gaAssets = filteredAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
-  const scAssets = filteredAssets.filter(a => a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('SC-'));
-  const pibcAssets = filteredAssets.filter(a => a.owner_division === 'PIBC' || a.asset_number?.startsWith('PIBC-'));
+  const legacyOwnerAssets = filteredAssets.filter(a => ['SC', 'PIBC', 'Supply Chain'].includes(String(a.owner_division || '')));
 
   const itValue = itAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
   const gaValue = gaAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
-  const scValue = scAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
-  const pibcValue = pibcAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
+  const legacyOwnerValue = legacyOwnerAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
+  const locationBreakdown = Array.from(filteredAssets.reduce((map, asset) => {
+    const location = String(asset.location || '').trim() || 'Lokasi belum diisi';
+    map.set(location, (map.get(location) || 0) + 1);
+    return map;
+  }, new Map<string, number>()).entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
   // Breakdown per 9 Jenis Aset Tetap
   const taxonomyGroups = [
@@ -365,7 +368,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Total Jadwal Pemeliharaan</div>
             <div className="text-2xl font-black text-slate-900">{safeMaintenances.length} Jadwal</div>
-            <div className="text-[10px] text-slate-500">Mencakup IT, GA, Supply Chain, &amp; PIBC</div>
+            <div className="text-[10px] text-slate-500">Jadwal dikelompokkan berdasarkan owner aset dan lokasi fisik</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
@@ -387,17 +390,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       {/* Visual Chart Breakdown Simulation */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Division Distribution */}
+        {/* Owner and physical-location distribution */}
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
           <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
             <PieChart className="w-4 h-4 text-emerald-600" />
-            Distribusi Aset Berdasarkan Devisi Korporat
+            Distribusi Owner Aset dan Lokasi Fisik
           </h3>
 
           <div className="space-y-3 text-xs">
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi IT (Hardware &amp; Software)</span>
+                <span>Owner IT</span>
                 <span className="font-bold text-slate-900">{itAssets.length} Unit ({Math.round((itAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -408,7 +411,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi GA (General Affair &amp; Fasilitas)</span>
+                <span>Owner GA</span>
                 <span className="font-bold text-slate-900">{gaAssets.length} Unit ({Math.round((gaAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -417,30 +420,32 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
               <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(gaValue)}</div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi SC (Supply Chain &amp; Gudang Beras)</span>
-                <span className="font-bold text-slate-900">{scAssets.length} Unit ({Math.round((scAssets.length / totalAssetCount) * 100)}%)</span>
+            {legacyOwnerAssets.length > 0 && (
+              <div>
+                <div className="flex justify-between text-slate-700 mb-1 font-medium">
+                  <span>Record owner legacy (perlu review)</span>
+                  <span className="font-bold text-slate-900">{legacyOwnerAssets.length} Unit ({Math.round((legacyOwnerAssets.length / totalAssetCount) * 100)}%)</span>
+                </div>
+                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                  <div className="bg-slate-500 h-2.5 rounded-full" style={{ width: `${(legacyOwnerAssets.length / totalAssetCount) * 100}%` }} />
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(legacyOwnerValue)}. Nilai historis dipertahankan; bukan owner/lokasi aktif.</div>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-600 h-2.5 rounded-full" style={{ width: `${(scAssets.length / totalAssetCount) * 100}%` }} />
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(scValue)}</div>
-            </div>
+            )}
+          </div>
 
-            <div>
-              <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi PIBC (Pasar Induk Beras Cipinang)</span>
-                <span className="font-bold text-slate-900">{pibcAssets.length} Unit ({Math.round((pibcAssets.length / totalAssetCount) * 100)}%)</span>
+          <div className="border-t border-slate-200 pt-3 space-y-2">
+            <div className="text-xs font-bold text-slate-700">Distribusi berdasarkan lokasi fisik aset</div>
+            {locationBreakdown.length === 0 ? (
+              <p className="text-[11px] text-slate-500">Belum ada data lokasi fisik aset.</p>
+            ) : locationBreakdown.map(([location, count]) => (
+              <div key={location} className="flex items-center justify-between gap-3 text-xs">
+                <span className="text-slate-600 truncate">{location}</span>
+                <span className="font-bold text-slate-900 shrink-0">{count} unit</span>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${(pibcAssets.length / totalAssetCount) * 100}%` }} />
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(pibcValue)}</div>
-            </div>
+            ))}
           </div>
         </div>
-
         {/* SLA Breakdown by Priority */}
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
           <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -536,7 +541,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
                       </span>
                     ) : group.code === 'MSN' ? (
                       <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200 text-[10px]">
-                        SC / PIBC (Pabrik &amp; Timbangan)
+                        Owner legacy — perlu review per aset; lokasi tidak menentukan owner
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold border border-slate-200 text-[10px]">
