@@ -245,7 +245,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   // Import pegawai massal (CSV/Excel) state
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<{
-    valid: { name: string; email: string; role: string; division: string; department: string; phone: string }[];
+    valid: {
+      name: string; email: string; role: string; division: string; department: string; phone: string;
+      job_level_code?: string; unit_id?: string; office_location_id?: string;
+    }[];
     errors: string[];
   } | null>(null);
   const [isSubmittingImport, setIsSubmittingImport] = useState(false);
@@ -1374,7 +1377,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const handleImportFilePicked = async (file: File) => {
     try {
       const text = await file.text();
-      const parsed = parseUsersImportCsv(text, validImportRoles, validImportDivisions);
+      const parsed = parseUsersImportCsv(
+        text,
+        validImportRoles,
+        validImportDivisions,
+        jobLevels.filter(item => item.is_active).map(item => item.code),
+        orgUnits.filter(item => item.is_active).map(item => item.id),
+        officeLocations.filter(item => item.is_active).map(item => item.id)
+      );
       setImportPreview(parsed);
       if (parsed.valid.length === 0 && parsed.errors.length > 0) {
         showToast(`Tidak ada baris valid. Periksa: ${parsed.errors[0]}`, 'warning');
