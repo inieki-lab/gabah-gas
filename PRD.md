@@ -20,7 +20,7 @@ PT Food Station Tjipinang Jaya (Perseroda) mengelola aset bernilai tinggi yang t
 Sebelum adanya GABAH, pencatatan aset inventaris, penjadwalan pemeliharaan armada/mesin, peminjaman barang dinas, pelaporan tiket kendala operasional, dan reservasi fasilitas ruang rapat VIP masih terfragmentasi.
 
 **GABAH** hadir sebagai portal internal perusahaan terpadu (*single pane of glass*) untuk:
-1. **Manajemen Inventaris Multi-Divisi**: Pencatatan aset komprehensif (IT Hardware, Software & Lisensi SaaS, Sarana/Prasarana General Affairs, Mesin Pengolahan Beras Supply Chain, dan Timbangan Pasar PIBC) dengan klasifikasi akuntansi PSAK 16 BUMD.
+1. **Manajemen Inventaris Multi-Divisi**: Pencatatan aset komprehensif (IT Hardware, Software & Lisensi SaaS, Sarana/Prasarana General Affairs, mesin operasional, dan sarana pasar PIBC; owner aset ditetapkan terpisah dari lokasi) dengan klasifikasi akuntansi PSAK 16 BUMD.
 2. **Penomoran Aset Standar Korporat**: Generator nomor otomatis terpusat `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` dan rekonsiliasi nomor ERP Accurate BUMD.
 3. **Peminjaman Aset Anti-Bentrok Jadwal (*Conflict-Free Loans*)**: Validasi tumpang tindih tanggal berbasis server untuk aset pool, alur persetujuan divisi pemilik, dan cetak Berita Acara Serah Terima (BAST).
 4. **Helpdesk & Gangguan Layanan (SLA-Driven)**: Pelaporan kendala operasional dengan matriks SLA otomatis (Urgent 4 jam, High 8 jam, Medium 24 jam, Low 48 jam) dan eskalasi teknisi.
@@ -129,7 +129,7 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 
 Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifkan dan dipertahankan untuk referensi historis; jangan diaktifkan kembali sebagai lokasi operasional. Lokasi baru di masa depan ditambahkan melalui master oleh Super Admin tanpa perubahan kode. Menutup lokasi berarti menonaktifkan, bukan menghapus atau mengubah histori user/aset.
 
-**Owner domain aset adalah master fungsi/pemilik yang fleksibel**, bukan daftar enum tetap dan bukan nama lokasi. Contoh nilai saat ini dapat mencakup IT, GA, RPC/SC dan domain operasional lain yang disahkan. Kategori aset, lokasi fisik, lokasi kerja pegawai, unit organisasi, serta custodian tidak boleh otomatis menentukan owner tanpa aturan bisnis yang eksplisit.
+**Owner domain aset adalah master fungsi/pemilik yang fleksibel**, bukan daftar enum tetap dan bukan nama lokasi. Contoh nilai saat ini dapat mencakup IT, GA, RPC dan domain operasional lain yang disahkan. Kategori aset, lokasi fisik, lokasi kerja pegawai, unit organisasi, serta custodian tidak boleh otomatis menentukan owner tanpa aturan bisnis yang eksplisit.
 
 - IT tetap mengelola aset owner IT di seluruh lokasi.
 - GA tetap mengelola aset owner GA di seluruh lokasi.
