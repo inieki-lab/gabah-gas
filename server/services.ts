@@ -995,6 +995,24 @@ export class GabahDomainService {
       updated_at: new Date().toISOString(),
     };
 
+    // IT currently has a single support operator. Route directly to that
+    // operator only when exactly one active IT user has explicit ticket-update
+    // permission and IT ticket scope. If staffing changes or is ambiguous,
+    // keep the ticket in the IT queue instead of guessing a recipient.
+    if (payload.category === 'IT' && isPostgresPersistenceActive()) {
+      const eligibleItAgents = db.users.filter(user =>
+        user.is_active !== false
+        && String(user.division || '').toUpperCase() === 'IT'
+        && hasRbacPermission(String(user.id), 'tickets.update')
+        && hasRbacScope(String(user.id), 'division', 'IT', 'tickets')
+      );
+      if (eligibleItAgents.length === 1) {
+        newTicket.assigned_agent_id = eligibleItAgents[0].id;
+        newTicket.assigned_agent_name = eligibleItAgents[0].name;
+        newTicket.status = 'assigned';
+      }
+    }
+
     db.tickets.unshift(newTicket);
 
     // Linked contract (optional): Ticket = pekerjaan atas suatu Contract, bukan kategori
@@ -1011,8 +1029,9 @@ export class GabahDomainService {
     // Notify respective division (IT covers software/license/SaaS)
     const targetDivision = payload.category === 'ME' ? 'PIBC' : payload.category;
     this.notify({
-      recipient_role: payload.category === 'ME' ? undefined : targetDivision,
-      recipient_division: payload.category === 'ME' ? undefined : targetDivision,
+      recipient_user_id: newTicket.assigned_agent_id || undefined,
+      recipient_role: payload.category === 'ME' ? undefined : (newTicket.assigned_agent_id ? undefined : targetDivision),
+      recipient_division: payload.category === 'ME' || newTicket.assigned_agent_id ? undefined : targetDivision,
       recipient_unit_id: payload.category === 'ME' ? 'UNIT-PIBC-ME' : undefined,
       title: `Tiket Baru: [${payload.priority.toUpperCase()}] ${ticketNumber}`,
       message: `${actor.name} (${actor.department}) melaporkan: ${payload.title}`,
