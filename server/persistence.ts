@@ -30,6 +30,8 @@ export function provisionCanonicalUserPasswords(): void {
   // roles without managing credentials. Sessions are not revoked here; users
   // simply re-login with the test password.
   const testPassword = process.env.NODE_ENV === 'production' ? undefined : process.env.GABAH_TEST_PASSWORD;
+  // Optional per-account credential for the ME dummy UAT user; never honored in production.
+  const meDummyPassword = process.env.NODE_ENV === 'production' ? undefined : process.env.GABAH_ME_DUMMY_PASSWORD;
 
   let devNote: string[] | null = devFallback ? [] : null;
   let devFile: string | null = devFallback ? path.join(DATA_DIR, 'initial_credentials_dev.txt') : null;
@@ -39,7 +41,9 @@ export function provisionCanonicalUserPasswords(): void {
     if (!user) continue;
 
     let plain: string;
-    if (testPassword) {
+    if (cu.id === 'USR-ME-ADMIN-001' && meDummyPassword) {
+      plain = meDummyPassword;
+    } else if (testPassword) {
       plain = testPassword;
     } else {
       // Never clobber an existing credential (e.g. an operator already changed it)
@@ -173,7 +177,7 @@ function hydrateDbFromState(state: any): void {
   const existingUsers: any[] = Array.isArray(state.users) ? state.users : [];
   const mergedUsers: any[] = [...existingUsers];
 
-  // Guarantee all 9 canonical enterprise users are always present in the datastore.
+  // Guarantee all canonical enterprise users are always present in the datastore.
   // SECURITY (CR-02): canonical users are merged WITHOUT password material —
   // provisioning happens in provisionCanonicalUserPasswords() from env secrets.
   for (const cu of CANONICAL_USERS) {
