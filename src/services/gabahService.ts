@@ -303,7 +303,7 @@ export function parseUsersImportCsv(
   if (iName === -1 || iEmail === -1) {
     return { valid: [], errors: ['Header tidak dikenali. Gunakan template Nama, Email, Role Utama, Divisi Referensi, Departemen, Telepon, Kode Jabatan, ID Unit, ID Lokasi Kantor.'] };
   }
-  const valid: ReturnType<typeof parseUsersImportCsv>['valid'] = [];
+  const valid: { name: string; email: string; role: string; division: string; department: string; phone: string; job_level_code?: string; unit_id?: string; office_location_id?: string }[] = [];
   const errors: string[] = [];
   const seenEmails = new Set<string>();
   const normRole = (v: string) => {
