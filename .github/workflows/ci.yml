@@ -106,6 +106,9 @@ jobs:
       - name: Organization model regression
         run: npm run test:org-model
 
+      - name: Employee bulk import and canonical primary-role verification
+        run: npm run test:bulk-import
+
       - name: Asset managing-unit regression
         run: npm run test:t2b1
 
