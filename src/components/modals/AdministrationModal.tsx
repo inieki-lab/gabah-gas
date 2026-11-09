@@ -1311,7 +1311,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     exportDataJson('gabah_full_system_backup', backupBundle);
   };
 
-  if (!isOpen) return null;
 
   // Menu administrasi diberi keterangan sumber data agar Super Admin tahu mana
   // yang tersimpan di database dan mana yang masih lokal pada browser.
@@ -1610,6 +1609,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     URL.revokeObjectURL(url);
     showToast(`File ${filename} berhasil diekspor!`);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/45 backdrop-blur-[3px] flex items-start justify-center p-3 sm:p-5 lg:p-8 overflow-y-auto">
