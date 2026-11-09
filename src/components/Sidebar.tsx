@@ -39,6 +39,7 @@ interface SidebarProps {
   userRole?: UserRole;
   currentUserRole?: UserRole;
   currentUserPermissions?: string[];
+  currentUserRoleKeys?: string[];
   currentUserIsSuperAdmin?: boolean;
   pendingLoansCount?: number;
   openTicketsCount?: number;
@@ -69,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   userRole,
   currentUserRole,
   currentUserPermissions,
+  currentUserRoleKeys = [],
   currentUserIsSuperAdmin = false,
   pendingLoansCount = 0,
   openTicketsCount = 0,
@@ -79,9 +81,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
-  const isHumas = activeRole === 'Humas';
-  const isSekdir = activeRole === 'Sekretaris Direksi';
+  const isHumas = activeRole === 'Humas' || currentUserRoleKeys.includes('humas');
+  const isSekdir = activeRole === 'Sekretaris Direksi' || currentUserRoleKeys.includes('sekretaris_direksi');
+  const isStaff = Boolean(activeRole && ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole)) || isHumas || isSekdir;
   const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
   const [showAdministration, setShowAdministration] = useState(false);
 
