@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus.  
-**Terakhir Diperbarui:** 8 November 2026
+**Terakhir Diperbarui:** 11 November 2026
 
 ---
 
@@ -149,6 +149,23 @@
 - **Kriteria Lulus**: SLA dihitung tepat, notifikasi terkirim ke divisi IT, dan audit log tercatat.
 
 ---
+
+### Skenario 6A: Hak Pemohon Tiket IT, GA, dan ME
+- **Tujuan**: Memastikan semua pegawai non-Auditor dapat mengajukan tiket IT, sedangkan tiket GA dan ME hanya dapat diajukan oleh pegawai yang mendapat role tambahan secara eksplisit.
+- **Persiapan**:
+  1. Pastikan migration 040 dan 041 sudah diterapkan pada database UAT.
+  2. Siapkan tiga akun pegawai non-Auditor: akun tanpa role tambahan GA/ME, akun dengan role `Pemohon Tiket GA`, dan akun dengan role `Pemohon Tiket ME`.
+  3. Siapkan satu akun Auditor untuk uji penolakan.
+- **Langkah Pengujian**:
+  1. Login sebagai pegawai tanpa role tambahan GA/ME. Form tiket harus menampilkan IT saja.
+  2. Ajukan tiket kategori IT. Hasil yang diharapkan: HTTP 201 dan tiket masuk antrean IT.
+  3. Coba kirim langsung `POST /api/tickets` dengan kategori GA dan ME tanpa role tambahan. Hasil yang diharapkan: HTTP 403 untuk keduanya.
+  4. Sebagai Superadmin, buka Administration → User Management → Assignment Role. Tambahkan role `Pemohon Tiket GA` kepada akun uji GA dan `Pemohon Tiket ME` kepada akun uji ME sebagai role tambahan; jangan mengganti primary role pegawai.
+  5. Login ulang/refresh sesi akun uji. Akun GA hanya menampilkan IT dan GA; akun ME hanya menampilkan IT dan ME.
+  6. Uji submit GA/ME sesuai role. Hasil yang diharapkan: HTTP 201 dan tiket masuk kategori/antrean yang benar.
+  7. Cabut role tambahan GA/ME, lalu ulangi request langsung ke API. Hasil yang diharapkan: HTTP 403; tiket historis tetap tersimpan dan tidak dihapus.
+  8. Login sebagai Auditor. Form tidak boleh memberi opsi membuat tiket dan seluruh percobaan POST tiket harus ditolak HTTP 403.
+- **Kriteria Lulus**: IT tersedia untuk seluruh pegawai non-Auditor; GA/ME hanya tersedia bagi user dengan role tambahan aktif; API menerapkan aturan yang sama dengan UI; pencabutan role tidak menghapus histori tiket; Auditor tetap read-only.
 
 ### Skenario 7: Preventive Maintenance & Uji Tera
 - **Tujuan**: Memvalidasi pencatatan pemeliharaan berkala dan tera resmi PIBC.
