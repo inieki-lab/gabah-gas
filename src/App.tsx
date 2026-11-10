@@ -782,9 +782,9 @@ export default function App() {
           )).length}
           currentUserRole={currentUser.role}
           currentUserPermissions={currentUser.permission_keys}
-          currentUserIsSuperAdmin={currentUser.is_superadmin}
+          currentUserIsSuperAdmin={Boolean(currentUser.is_superadmin || currentUser.permission_keys?.includes('*'))}
           onOpenAdministration={() => {
-            if (currentUser.is_superadmin || currentUser.role === 'Admin GABAH') {
+            if (currentUser.is_superadmin || currentUser.permission_keys?.includes('*') || currentUser.role === 'Admin GABAH') {
               setIsAdministrationModalOpen(true);
             }
           }}
@@ -1108,7 +1108,7 @@ export default function App() {
       />
 
       <AdministrationModal
-        isOpen={isAdministrationModalOpen && Boolean(currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH')}
+        isOpen={isAdministrationModalOpen && Boolean(currentUser?.is_superadmin || currentUser?.permission_keys?.includes('*') || currentUser?.role === 'Admin GABAH')}
         onClose={() => setIsAdministrationModalOpen(false)}
         users={allUsers}
         auditLogs={auditLogs}
