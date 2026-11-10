@@ -16,6 +16,7 @@ import {
   isSuperadminActorForMode,
   wouldRemoveLastActiveSuperadmin,
 } from '../server/rbac-policy.ts';
+import { clearOrphanedTicketAssetLinks } from '../server/persistence-integrity.ts';
 
 const clonePolicies = policies => policies.map(policy => ({
   ...policy,
@@ -79,6 +80,37 @@ function test(name, fn) {
 }
 
 try {
+  test('legacy_ticket_with_missing_asset_keeps_ticket_and_clears_only_stale_link', () => {
+    const legacyTicket = {
+      id: 'TKT-LEGACY',
+      related_asset_id: 'AST-001',
+      related_asset_name: 'Server lama',
+      related_asset_number: 'IT-LEGACY-001',
+    };
+    const validTicket = {
+      id: 'TKT-VALID',
+      related_asset_id: 'AST-HLT-001',
+      related_asset_name: 'Laptop valid',
+    };
+    const detached = clearOrphanedTicketAssetLinks(
+      [legacyTicket, validTicket],
+      [{ id: 'AST-HLT-001' }],
+    );
+
+    if (detached.length !== 1 || detached[0].ticketId !== 'TKT-LEGACY' || detached[0].assetId !== 'AST-001') {
+      throw new Error('Expected only the orphaned legacy asset link to be detached');
+    }
+    if (legacyTicket.related_asset_id !== undefined) {
+      throw new Error('Orphaned related_asset_id was not cleared');
+    }
+    if (legacyTicket.related_asset_name !== 'Server lama' || legacyTicket.related_asset_number !== 'IT-LEGACY-001') {
+      throw new Error('Legacy ticket asset description was not preserved');
+    }
+    if (validTicket.related_asset_id !== 'AST-HLT-001') {
+      throw new Error('Valid ticket asset link was changed');
+    }
+  });
+
   testablePoliciesByUser.clear();
   for (const [userId, policies] of fixtures) testablePoliciesByUser.set(userId, policies);
 
