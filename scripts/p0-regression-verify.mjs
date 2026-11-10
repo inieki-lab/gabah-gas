@@ -166,8 +166,8 @@ try {
   });
 
   test('last_superadmin_guard_counts_only_active_users_and_roles', () => {
-    const currentQuery = serverSource.match(/const current = await client\.query\\('([^']+)'/);
-    const remainingQuery = serverSource.match(/const remaining = await client\.query\\(\s*'([^']+)'/);
+    const currentQuery = serverSource.match(/const current = await client\.query\('([^']+)'/);
+    const remainingQuery = serverSource.match(/const remaining = await client\.query\(\s*'([^']+)'/);
     if (!currentQuery || !remainingQuery) throw new Error('Superadmin assignment guard queries were not found');
     for (const [name, query] of [['current', currentQuery[1]], ['remaining', remainingQuery[1]]]) {
       if (!/JOIN users u ON u\.id = ur\.user_id/.test(query)) throw new Error(`${name} query does not join user activity state`);
