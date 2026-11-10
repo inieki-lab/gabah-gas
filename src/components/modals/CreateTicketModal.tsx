@@ -54,9 +54,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     if (Array.isArray(currentUser?.permission_keys)) {
       return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permissionKey);
     }
-    // Compatibility mode: legacy accounts may submit IT requests only.
-    return target === 'IT' && !isAuditor
-      && ['IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser?.role || '');
+    // GA/ME require an explicit permission; absence of RBAC data fails closed.
+    return false;
   };
 
   // Freshservice-inspired Quick Service Catalog Templates
