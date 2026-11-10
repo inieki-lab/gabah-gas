@@ -84,7 +84,7 @@ async function startServer() {
   const serializeAuthenticatedUser = (user: ServerUser): any => {
     const safe = sanitizeUser(user) as any;
     if (isPostgresPersistenceActive()) {
-      safe.is_superadmin = isRbacSuperadmin(String(user.id));
+      safe.is_superadmin = isSuperadminActor(user);
       safe.permission_keys = safe.is_superadmin ? ['*'] : getEffectivePermissionKeys(String(user.id));
       safe.role_keys = getEffectiveRoleKeys(String(user.id));
     } else {
@@ -129,7 +129,7 @@ async function startServer() {
       res.status(503).json({ success: false, message: 'Dynamic RBAC memerlukan PostgreSQL aktif.' });
       return null;
     }
-    if (!actor || !isRbacSuperadmin(actor.id)) {
+    if (!actor || !isSuperadminActor(actor)) {
       res.status(403).json({ success: false, message: 'Hanya user dengan assignment Superadmin aktif yang berwenang mengelola role dan permission.' });
       return null;
     }
