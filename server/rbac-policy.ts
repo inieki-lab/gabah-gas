@@ -174,3 +174,7 @@ export function getRbacPolicyStatus(): { source: 'postgresql' | 'unavailable'; l
     cached_users: policiesByUser.size,
   };
 }
+
+// Exported for testing purposes only — allows test fixtures to inject a
+// simulated policy state without mutating the production database.
+export const testablePoliciesByUser = policiesByUser;
