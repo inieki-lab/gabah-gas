@@ -82,12 +82,30 @@ export function isSuperadminFromAssignment(policy: UserRbacPolicy): boolean {
   return policy.isSuperadmin;
 }
 
-/** Preserve local file-store development while making PostgreSQL role identity authoritative. */
+/** Resolve the legacy profile-role fallback only in file-store mode.
+ * PostgreSQL mode must use the explicit role assignment as the sole authority. */
+export function isSuperadminActorForMode(
+  actor: { id: string; role?: string },
+  postgresActive: boolean,
+  hasSuperadminAssignment: boolean,
+): boolean {
+  return postgresActive
+    ? hasSuperadminAssignment
+    : actor.role === 'Admin GABAH' || hasSuperadminAssignment;
+}
+
 export function isSuperadminActor(actor: { id: string; role?: string }): boolean {
-  // The authenticated user's primary profile role is server-loaded from the
-  // users table and remains a valid bootstrap signal if the RBAC assignment
-  // cache is missing/stale. Dynamic Superadmin roles continue to use RBAC.
-  return actor.role === 'Admin GABAH' || isRbacSuperadmin(actor.id);
+  return isSuperadminActorForMode(actor, isPostgresPersistenceActive(), isRbacSuperadmin(actor.id));
+}
+
+/** Shared guard used by profile changes, account deletion, and Dynamic RBAC assignment.
+ * otherActiveSuperadmins excludes the target user. */
+export function wouldRemoveLastActiveSuperadmin(
+  targetHasSuperadmin: boolean,
+  replacementHasSuperadmin: boolean,
+  otherActiveSuperadmins: number,
+): boolean {
+  return targetHasSuperadmin && !replacementHasSuperadmin && otherActiveSuperadmins <= 0;
 }
 
 /** Auditor is a deny-write capability: assigning it as an additional role must not bypass read-only enforcement. */
