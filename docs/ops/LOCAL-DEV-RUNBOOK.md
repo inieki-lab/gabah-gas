@@ -96,17 +96,22 @@ Login (password = isi `GABAH_TEST_PASSWORD`, default di atas: `GABAH2026`):
 PGPASSWORD=passku123 docker compose up -d database
 
 # 2. Tambahkan ke .env:
-#    DATABASE_URL=postgresql://gabah_user:passku123@localhost:5432/gabah_db
+#    DATABASE_URL=postgresql://gabah_user:passku123@127.0.0.1:15432/gabah_db
 #    PGUSER=gabah_user
 #    PGPASSWORD=passku123
 #    PGDATABASE=gabah_db
+#    GABAH_DB_PORT=15432
 
 # 3. Jalankan app seperti biasa
 npm run dev
 ```
 
-Migrasi skema (16 tabel) jalan **otomatis** saat boot. Data aman di Docker volume
-`postgres_data` walau container di-restart. Cek: `docker compose ps`, log: `docker compose logs -f database`.
+Migrasi skema jalan **otomatis** saat boot. Data aman di Docker volume
+`postgres_data` walau container di-restart. Port host PostgreSQL adalah **15432**
+(default; bisa diubah lewat `GABAH_DB_PORT`), sedangkan port internal container tetap
+5432. Untuk menjalankan seluruh aplikasi melalui Docker Compose:
+`docker compose up -d --build`, lalu buka **http://localhost:8080**
+(default; bisa diubah lewat `GABAH_WEB_PORT`).
 
 ---
 
@@ -158,7 +163,7 @@ git push origin main
 | Gejala | Solusi |
 |---|---|
 | `npm run dev` gagal port terpakai | matikan proses lain di port 3000, atau `PORT=3001 npm run dev` |
-| Tidak bisa login | pastikan `GABAH_TEST_PASSWORD` ada di `.env` dan **restart** `npm run dev`; password UAT hanya diprovision saat boot |
+| Tidak bisa login | `GABAH_INITIAL_ADMIN_PASSWORD` / `GABAH_INITIAL_USER_PASSWORD` hanya mengisi password akun kanonik yang belum punya hash; keduanya tidak mereset password akun lama. `GABAH_TEST_PASSWORD` hanya berlaku untuk `npm run dev` non-production dan diabaikan oleh image Docker (`NODE_ENV=production`). |
 | Halaman putih / error JS | `npm run lint` — biasanya ada file belum ter-pull; `git status` |
 | Data hilang setelah restart (mode file) | normal bila file state dihapus; pakai Opsi B untuk data permanen |
 | `git pull` konflik | `git stash` → `git pull` → `git stash pop`, selesaikan konflik lalu commit |
