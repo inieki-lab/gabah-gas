@@ -1263,7 +1263,17 @@ async function startServer() {
         });
       }
 
-      if (!isSuperadminActor(actor)) {
+      // Keep the original Superadmin authority across account-switch sessions.
+      // The active persona may be an ordinary employee, but only the original
+      // authenticated Superadmin can continue switching identities.
+      const currentSession = (req as any).session as ServerSession | undefined;
+      const originalAdminId = currentSession?.original_admin_id || actor.id;
+      const originalAdmin = db.users.find(user => user.id === originalAdminId && user.is_active);
+      const authorizedAdmin = originalAdmin && isSuperadminActor(originalAdmin)
+        ? originalAdmin
+        : (isSuperadminActor(actor) ? actor : null);
+
+      if (!authorizedAdmin) {
         GabahDomainService.recordAudit(
           'AUTH_SWITCH_ROLE_DENIED',
           'Auth',
@@ -1296,10 +1306,7 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Akun target tidak aktif.' });
       }
 
-      const currentSession = (req as any).session as ServerSession | undefined;
-      const originalAdminId = currentSession?.original_admin_id || actor.id;
-
-      // Rotate: the previous admin session is revoked; a fresh token is issued
+      // Rotate: the previous session is revoked; a fresh token is issued
       // for the target identity (new token per authentication event — CR-03).
       if (currentSession?.token) {
         destroySession(currentSession.token);
@@ -1310,8 +1317,8 @@ async function startServer() {
       GabahDomainService.recordAudit(
         'AUTH_SWITCH_ROLE',
         'Auth',
-        `Admin ${actor.name} beralih identitas aktif ke ${targetUser.name} (${targetUser.role})`,
-        actor,
+        `Admin ${authorizedAdmin.name} beralih identitas aktif ke ${targetUser.name} (${targetUser.role})`,
+        authorizedAdmin,
         targetUser.id
       );
 
