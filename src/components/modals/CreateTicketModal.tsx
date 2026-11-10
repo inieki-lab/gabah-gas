@@ -56,7 +56,6 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     return target === 'IT' && !isAuditor
       && ['IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser?.role || '');
   };
-  const availableTicketCategories = (['IT', 'GA', 'ME'] as TicketCategory[]).filter(canCreateCategory);
 
   // Freshservice-inspired Quick Service Catalog Templates
   const serviceCatalogTemplates = [
@@ -192,6 +191,10 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   React.useEffect(() => {
     if (isOpen) {
+      if (!canCreateCategory(category)) {
+        const fallbackCategory = (['IT', 'GA', 'ME'] as TicketCategory[]).find(canCreateCategory);
+        if (fallbackCategory) setCategory(fallbackCategory);
+      }
       if (preselectedAssetId) {
         handleAssetSelect(preselectedAssetId);
       } else {
@@ -208,7 +211,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         }
       }
     }
-  }, [isOpen, preselectedAssetId, linkedContract]);
+  }, [isOpen, preselectedAssetId, linkedContract, category, currentUser]);
 
   if (!isOpen) return null;
 
