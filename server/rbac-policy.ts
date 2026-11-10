@@ -15,6 +15,9 @@ export interface UserRbacPolicy {
 }
 
 const policiesByUser = new Map<string, UserRbacPolicy[]>();
+
+/** Mutable policy-cache seam for isolated regression tests; never used by runtime routes. */
+export const testablePoliciesByUser = policiesByUser;
 let lastLoadedAt: string | null = null;
 
 /**
