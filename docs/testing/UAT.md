@@ -29,7 +29,7 @@
 
 | Peran (Role) | Nama Persona | Email Login | Password | Peran Operasional |
 |:---|:---|:---|:---|:---|
-| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | Super Administrator (Full Control) |
+| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | Super Administrator; PostgreSQL access requires explicit active `superadmin` assignment |
 | **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT Support & Aset Komputasi |
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | General Affairs & Sarana Prasarana |
 | **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `<INITIAL_USER_PASSWORD>`| Pegawai; fungsi sekretariat Direksi dan VIP Booking melalui role tambahan |
@@ -196,10 +196,11 @@
 - **Langkah Pengujian**:
   1. Login sebagai `IT` atau `GA` atau `Karyawan`. Periksa sidebar menu.
   2. Verifikasi tombol *Administration Control Panel* **tidak tampil**.
-  3. Login sebagai `Admin GABAH`.
-  4. Verifikasi tombol *Administration Control Panel* tampil di bagian bawah sidebar.
+  3. Login sebagai akun yang memiliki assignment RBAC aktif dengan `is_superadmin = TRUE` (akun kanonik Admin GABAH pada seed UAT).
+  4. Pastikan hak akses berasal dari assignment Superadmin di PostgreSQL, bukan semata-mata label profil `Admin GABAH`; label legacy hanya menjadi fallback pada mode file-store.
+  5. Verifikasi tombol *Administration Control Panel* tampil di bagian bawah sidebar.
   5. Buka panel $\to$ uji tab *User Management*, *Organisasi*, *Master Data*, dan *Audit Trail*.
-- **Kriteria Lulus**: Tombol dan modal administrasi terkunci eksklusif untuk peran `Admin GABAH`.
+- **Kriteria Lulus**: Tombol, route, dan API administrasi hanya dapat diakses oleh user dengan assignment Superadmin aktif; mengganti label profil menjadi `Admin GABAH` tanpa assignment tidak boleh memberi akses.
 
 ---
 
