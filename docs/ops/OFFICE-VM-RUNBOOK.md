@@ -53,7 +53,7 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Edit .env secara lokal di VM. Isi PGPASSWORD dengan password PostgreSQL yang kuat dan unik. Untuk instalasi database baru, isi juga GABAH_INITIAL_ADMIN_PASSWORD dan GABAH_INITIAL_USER_PASSWORD dengan password unik yang kuat. Jangan menimpa .env lama saat update. Set GABAH_IMAGE_TAG ke tag release yang mencerminkan commit SHA yang telah di-merge (jangan memakai tag bergerak untuk rilis produksi). Docker Compose menggunakan tag tersebut untuk image hasil build lokal.
+Edit .env secara lokal di VM. Isi PGPASSWORD dengan password PostgreSQL yang kuat dan unik. Untuk instalasi database baru, isi juga GABAH_INITIAL_ADMIN_PASSWORD dan GABAH_INITIAL_USER_PASSWORD dengan password unik yang kuat. Jangan menimpa .env lama saat update. Set GABAH_IMAGE_TAG ke tag release yang mencerminkan commit SHA yang telah di-merge (jangan memakai tag bergerak untuk rilis produksi). Docker Compose menggunakan tag tersebut untuk image hasil build lokal. Untuk deployment VM kantor, set `GABAH_WEB_PORT=80` dan `GABAH_DB_PORT=5432` agar sesuai dengan akses operasional yang didokumentasikan; PostgreSQL tetap hanya bind ke loopback. `deploy.sh` otomatis memakai `GABAH_WEB_PORT` untuk health check, atau gunakan `GABAH_HEALTH_URL` bila health check berada di reverse proxy.
 
 Validasi konfigurasi tanpa menampilkan secret:
 
