@@ -75,6 +75,13 @@ export function isRbacSuperadmin(userId: string): boolean {
   return (policiesByUser.get(String(userId)) || []).some(policy => policy.isSuperadmin);
 }
 
+/** Active-database role assignment: the superadmin flag (isSuperadmin) read from the
+ *  PostgreSQL role catalogue for a given policy. This is the authoritative source for
+ *  menu rendering and the authenticated user serializer. */
+export function isSuperadminFromAssignment(policy: UserRbacPolicy): boolean {
+  return policy.isSuperadmin;
+}
+
 /** Preserve local file-store development while making PostgreSQL role identity authoritative. */
 export function isSuperadminActor(actor: { id: string; role?: string }): boolean {
   // The authenticated user's primary profile role is server-loaded from the
