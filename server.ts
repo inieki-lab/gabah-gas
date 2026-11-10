@@ -2407,8 +2407,18 @@ async function startServer() {
   app.post('/api/tickets', async (req, res) => {
     try {
       
-    if (!requireRbacPermission(req, res, 'tickets.create')) return;
-    const actor = getActor(req);
+    const requestedCategory = String(req.body?.category || '').trim().toUpperCase();
+      const ticketCreatePermission: Record<string, string> = {
+        IT: 'tickets.create',
+        GA: 'tickets.create.ga',
+        ME: 'tickets.create.me',
+      };
+      const requiredPermission = ticketCreatePermission[requestedCategory];
+      if (!requiredPermission) {
+        return res.status(400).json({ success: false, message: 'Kategori tiket tidak valid. Pilihan: IT, GA, atau ME.' });
+      }
+      if (!requireRbacPermission(req, res, requiredPermission)) return;
+      const actor = getActor(req);
       const newTicket = GabahDomainService.createTicket(req.body, actor);
       // Optional contract linkage: Contract = data, Ticket = pekerjaan (action).
       // SECURITY: linkage is only honored when the actor may actually see the
