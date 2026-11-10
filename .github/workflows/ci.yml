@@ -53,6 +53,9 @@ jobs:
       - name: Branch migration non-destructive safety check
         run: npm run test:branch-migration-safety
 
+      - name: Module lifecycle registry contract checks
+        run: npm run test:module-lifecycle-registry
+
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
