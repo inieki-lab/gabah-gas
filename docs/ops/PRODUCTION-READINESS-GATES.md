@@ -1,9 +1,9 @@
 # GABAH — Production Readiness Gates
 
 **Owner:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Working integration branch:** fix/role-based-navigation (PR #18)  
+**Working integration branch:** `fix/user-menu-location-rbac-audit` (PR #36)  
 **Status:** NO-GO / stabilization in progress  
-**Last reviewed:** 8 November 2026
+**Last reviewed:** 10 November 2026
 
 This checklist is the release control record. A green build is necessary but is not proof of production readiness. Every gate needs a timestamp, commit SHA, actual result, evidence, and reviewer.
 
@@ -89,7 +89,8 @@ Run docs/testing/UAT.md in a browser against PostgreSQL using disposable test da
 | G2 | a1cd3d4ce082c547736f67a863d2981abb6dfcaa | PARTIAL PASS | CI #589: Dynamic RBAC 63/63, asset scope 37/37, P0 37/37, maintenance 33/33, Auditor additional-role denial/read, primary/additional role UI, org model PASS; live HR mapping and full endpoint review remain | — | 8 Nov 2026 |
 | G3 | — | NOT VERIFIED | Manual browser UAT required | Business owners | — |
 | G4 | — | NOT STARTED | Staging and production controls | Infrastructure owner | — |
+| PR #36 current head | `2cd878fd4096d1c129d48f1483cd6f0992a72920` | CI PASS | [GitHub Actions run 42806766859](https://github.com/inieki-lab/gabah-gas/actions/runs/42806766859): verify SUCCESS — Compose config, deploy shell validation, lint, RBAC/regression suites, production Docker runtime smoke, PostgreSQL 17 fresh-database/persistence integration, live HTTP security checks, and module scope checks | — | 10 Nov 2026 |
 
 ## Current release decision
 
-**NO-GO.** PostgreSQL fresh-boot and persistence integration has been exercised in CI, but the complete current-head CI must pass. Manual browser UAT, production backup/restore rehearsal, staging deployment, TLS, monitoring, and business-owner sign-off remain outstanding.
+**NO-GO.** PR #36 current-head CI passed at commit `2cd878fd4096d1c129d48f1483cd6f0992a72920` (verify job success, including Docker runtime smoke and PostgreSQL 17 fresh-database/persistence integration). This is not production approval. Manual browser/API UAT, formal GA helpdesk operator assignment, legacy production-database upgrade rehearsal, production backup/restore rehearsal, staging deployment, TLS, monitoring, and business-owner sign-off remain outstanding.

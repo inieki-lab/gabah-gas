@@ -163,7 +163,7 @@ git push origin main
 | Gejala | Solusi |
 |---|---|
 | `npm run dev` gagal port terpakai | matikan proses lain di port 3000, atau `PORT=3001 npm run dev` |
-| Tidak bisa login | `GABAH_INITIAL_ADMIN_PASSWORD` / `GABAH_INITIAL_USER_PASSWORD` hanya mengisi password akun kanonik yang belum punya hash; keduanya tidak mereset password akun lama. `GABAH_TEST_PASSWORD` hanya berlaku untuk `npm run dev` non-production dan diabaikan oleh image Docker (`NODE_ENV=production`). |
+| Tidak bisa login | `GABAH_INITIAL_ADMIN_PASSWORD` / `GABAH_INITIAL_USER_PASSWORD` hanya mengisi password akun kanonik yang belum punya hash; keduanya tidak mereset password akun lama. Pada `npm run dev` non-production, `GABAH_TEST_PASSWORD` justru memprovision ulang semua akun kanonik setiap boot. Image Docker menetapkan `NODE_ENV=production`, sehingga mengabaikan `GABAH_TEST_PASSWORD`. Untuk akun lama di PostgreSQL, gunakan reset password resmi melalui panel Super Admin; jangan berharap mengubah initial password akan mereset hash yang sudah tersimpan. |
 | Halaman putih / error JS | `npm run lint` — biasanya ada file belum ter-pull; `git status` |
 | Data hilang setelah restart (mode file) | normal bila file state dihapus; pakai Opsi B untuk data permanen |
 | `git pull` konflik | `git stash` → `git pull` → `git stash pop`, selesaikan konflik lalu commit |

@@ -98,6 +98,22 @@ Record defects with exact route, user persona, record scope, expected/actual sta
 - Confirm notification read/read-all authorization follows the same recipient unit rule.
 
 
+## 8. Explicit GA helpdesk operator handover
+
+Migration 039 creates the role template `ga_helpdesk_operator` and its `tickets.read`, `tickets.update`, and `tickets.assign` permissions, scoped to division `GA`. It deliberately does **not** assign the role to any employee. The migration also removes `tickets.update` and `tickets.assign` from the generic `ga` role so ticket dispatch authority is held by a designated operator rather than every GA user.
+
+Before applying this migration to a database used by real GA staff, the process owner must identify the actual employee(s) who handle GA helpdesk intake and delegation. Do not infer the operator from the job title Kasi, department, or sample seed identity.
+
+Acceptance checks in an isolated UAT database:
+1. Record the designated GA operator's user ID and approval from the GA process owner.
+2. Assign `ga_helpdesk_operator` explicitly to that test user through the Super Admin administration workflow; verify the assignment and GA division scope persist after restart.
+3. Verify the designated operator can read, update, and assign GA tickets within GA scope, but cannot dispatch IT or ME tickets without separate permissions/scopes.
+4. Verify a generic GA user without the operator assignment cannot update/assign GA tickets, while their other approved GA permissions (assets, facilities, vendors, contracts, reports) remain unchanged.
+5. Verify removing the operator assignment removes only the ticket-handling capability and is reflected in the audit trail.
+6. Do not perform production assignment or migration until the actual operator is named, the change is approved, a database backup is verified, and the production change window is authorized.
+
+**Release blocker:** If no GA operator has been formally designated, mark GA ticket dispatch as **BLOCKED — operator assignment pending**. Do not mark the GA helpdesk workflow PASS and do not silently grant the role to all GA users.
+
 ## UAT — Dummy Admin Tiket ME
 
 Akun uji ME bersifat opt-in dan tidak dibuat secara default. Aktifkan hanya pada environment development/staging dengan:

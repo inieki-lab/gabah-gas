@@ -11,7 +11,8 @@
 ## 1. Lingkungan Pengujian (Test Environment)
 
 - **Development Port**: `http://localhost:3000` (dijalankan via `npm run dev`)
-- **Docker Production Port**: `http://localhost:80` (dijalankan via `docker compose up -d`)
+- **Docker local test default**: `http://localhost:8080` (host port configurable via `GABAH_WEB_PORT`)
+- **Office VM default**: `http://localhost:80` (set `GABAH_WEB_PORT=80` in the VM `.env`)
 - **Database Engine**: PostgreSQL 17 (driver `pg`)
 - **Token Format**: Bearer Token pada header `Authorization`
 - **Metode Pengujian**: Manual UI end-to-end melalui browser dan verifikasi otomatis via API client.
