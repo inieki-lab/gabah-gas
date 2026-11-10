@@ -14,7 +14,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, wouldRemoveLastActiveSuperadmin, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -426,7 +426,11 @@ async function startServer() {
             'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE r.is_superadmin = TRUE AND ur.user_id <> $1',
             [userId],
           );
-          if (Number(remaining.rows[0]?.count || 0) === 0) throw new Error('RBAC_LAST_SUPERADMIN');
+          if (wouldRemoveLastActiveSuperadmin(
+            current.rowCount > 0,
+            valid.rows.some(row => row.is_superadmin),
+            Number(remaining.rows[0]?.count || 0),
+          )) throw new Error('RBAC_LAST_SUPERADMIN');
         }
         // Replace whole assignment set in one transaction: partial writes roll
         // back together, so a user is never left with half of a new set.
@@ -763,8 +767,10 @@ async function startServer() {
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
       const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
       const wouldDeactivateSuperadmin = is_active === false;
-      if (targetIsSuperadmin && (wouldDemoteSuperadmin || wouldDeactivateSuperadmin)
-        && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
+      const activeSuperadminCount = countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id));
+      const otherActiveSuperadmins = activeSuperadminCount - (targetIsSuperadmin ? 1 : 0);
+      if ((wouldDemoteSuperadmin || wouldDeactivateSuperadmin)
+        && wouldRemoveLastActiveSuperadmin(targetIsSuperadmin, false, otherActiveSuperadmins)) {
         return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh diturunkan atau dinonaktifkan.' });
       }
       // ORG-MODEL: jabatan/unit/lokasi ditugaskan independen — TIDAK mengubah
@@ -891,8 +897,10 @@ async function startServer() {
       }
 
       const targetUser = db.users[userIndex];
-      if (targetUser.is_active && isRbacSuperadmin(targetUser.id)
-        && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
+      const targetHasSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
+      const otherActiveSuperadmins = countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id))
+        - (targetHasSuperadmin ? 1 : 0);
+      if (wouldRemoveLastActiveSuperadmin(targetHasSuperadmin, false, otherActiveSuperadmins)) {
         return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh dihapus.' });
       }
 
