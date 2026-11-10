@@ -45,7 +45,18 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
 
-  const isAuditor = currentUser?.role === 'Auditor';
+  const isAuditor = currentUser?.role === 'Auditor' || currentUser?.role_keys?.includes('auditor') === true;
+  const canCreateCategory = (target: TicketCategory): boolean => {
+    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
+    const permissionKey = target === 'IT' ? 'tickets.create' : `tickets.create.${target.toLowerCase()}`;
+    if (Array.isArray(currentUser?.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permissionKey);
+    }
+    // Compatibility mode: legacy accounts may submit IT requests only.
+    return target === 'IT' && !isAuditor
+      && ['IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser?.role || '');
+  };
+  const availableTicketCategories = (['IT', 'GA', 'ME'] as TicketCategory[]).filter(canCreateCategory);
 
   // Freshservice-inspired Quick Service Catalog Templates
   const serviceCatalogTemplates = [
@@ -95,6 +106,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       icon: '🚨',
     },
   ];
+
+  const visibleServiceCatalogTemplates = serviceCatalogTemplates.filter(tpl => canCreateCategory(tpl.category));
 
   const applyCatalogTemplate = (tpl: typeof serviceCatalogTemplates[0]) => {
     setCategory(tpl.category);
@@ -168,7 +181,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       if (selected) {
         // License/SaaS is an IT domain: software & license tickets route to IT
         if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
-          setCategory('GA');
+          if (canCreateCategory('GA')) setCategory('GA');
+          else { setRelatedAssetId(''); setCategory('IT'); }
         } else {
           setCategory('IT');
         }
@@ -202,7 +216,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor || !title.trim() || !description.trim()) return;
+    if (isAuditor || !canCreateCategory(category) || !title.trim() || !description.trim()) return;
 
     onCreateTicket({
       title,
@@ -259,7 +273,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               <span className="text-[10px] text-slate-500 font-normal">Klik untuk auto-fill standar ITSM</span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              {serviceCatalogTemplates.map(tpl => (
+              {visibleServiceCatalogTemplates.map(tpl => (
                 <button
                   key={tpl.id}
                   type="button"
@@ -277,6 +291,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           <div className="space-y-1.5">
             <label className="text-slate-700 font-bold">Departemen Penanganan:</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {canCreateCategory('IT') && (
               <button
                 type="button"
                 onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
@@ -288,6 +303,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               >
                 <Laptop className="w-4 h-4" /> IT / Lisensi
               </button>
+              )}
+              {canCreateCategory('GA') && (
               <button
                 type="button"
                 onClick={() => { setCategory('GA'); setRelatedAssetId(''); }}
@@ -299,6 +316,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               >
                 <Car className="w-4 h-4" /> General Affair (GA)
               </button>
+              )}
+              {canCreateCategory('ME') && (
               <button
                 type="button"
                 onClick={() => { setCategory('ME'); setRelatedAssetId(''); }}
@@ -308,6 +327,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               >
                 <Package className="w-4 h-4" /> Tim Perawatan (ME)
               </button>
+              )}
             </div>
           </div>
 
