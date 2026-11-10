@@ -9,6 +9,7 @@ import { AssetNumberingEngine } from './numbering';
 import { normalizeAssetManagingUnits } from './managing-unit';
 import { normalizeAssetAssetLocations } from './asset-location';
 import { normalizeCategoryMaster } from './taxonomy';
+import { clearOrphanedTicketAssetLinks } from './persistence-integrity';
 
 /**
  * SECURITY (CR-02): initial canonical-account passwords are provisioned from
@@ -712,6 +713,17 @@ export async function initializePersistence(): Promise<void> {
       if (!db.assets || db.assets.length === 0) {
         seedInitialData();
       }
+
+      // Legacy snapshots can retain ticket -> asset identifiers that no longer
+      // exist in the canonical asset collection. Clear only the FK field;
+      // preserve the ticket and its descriptive related_asset_* snapshot.
+      const detachedTicketAssetLinks = clearOrphanedTicketAssetLinks(db.tickets, db.assets);
+      for (const link of detachedTicketAssetLinks) {
+        console.warn(
+          `[GABAH Persistence] Ticket ${link.ticketId} references missing asset ${link.assetId}; relational link cleared, ticket description preserved.`,
+        );
+      }
+
       // T2B-1: backfill managing_unit_id sebelum state di-persist (baik dari
       // blob hasil hydrate maupun seed baru); idempoten & ownership-based.
       backfillManagingUnits('postgresql');
