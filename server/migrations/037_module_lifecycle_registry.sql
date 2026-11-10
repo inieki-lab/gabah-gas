@@ -48,3 +48,30 @@ VALUES
   ('knowledge', 'Knowledge Base', 'Artikel panduan dan basis pengetahuan.', TRUE, 110, TRUE),
   ('reports', 'Laporan', 'Laporan dan analisis operasional.', TRUE, 120, TRUE)
 ON CONFLICT (module_key) DO NOTHING;
+
+-- Enforce the audit trail as append-only at the database boundary.
+-- UPDATE/DELETE and TRUNCATE are rejected even if an application path is added
+-- incorrectly in the future. Database superusers can still administer the schema.
+CREATE OR REPLACE FUNCTION gabah_reject_module_audit_mutation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'gabah_module_status_audit is append-only; % is not permitted', TG_OP
+    USING ERRCODE = '55000';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS gabah_module_status_audit_no_row_mutation
+  ON gabah_module_status_audit;
+CREATE TRIGGER gabah_module_status_audit_no_row_mutation
+  BEFORE UPDATE OR DELETE ON gabah_module_status_audit
+  FOR EACH ROW
+  EXECUTE FUNCTION gabah_reject_module_audit_mutation();
+
+DROP TRIGGER IF EXISTS gabah_module_status_audit_no_truncate
+  ON gabah_module_status_audit;
+CREATE TRIGGER gabah_module_status_audit_no_truncate
+  BEFORE TRUNCATE ON gabah_module_status_audit
+  FOR EACH STATEMENT
+  EXECUTE FUNCTION gabah_reject_module_audit_mutation();
