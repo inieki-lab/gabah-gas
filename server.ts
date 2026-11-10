@@ -2417,8 +2417,15 @@ async function startServer() {
       if (!requiredPermission) {
         return res.status(400).json({ success: false, message: 'Kategori tiket tidak valid. Pilihan: IT, GA, atau ME.' });
       }
-      if (!requireRbacPermission(req, res, requiredPermission)) return;
       const actor = getActor(req);
+      // IT is the company-wide employee helpdesk channel. Auditor remains
+      // strictly read-only even if another role is accidentally assigned.
+      if (isAuditorActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor memiliki hak akses Read-Only.' });
+      }
+      // GA and ME are restricted requester capabilities granted through
+      // additional application roles assigned to individual employees.
+      if (requestedCategory !== 'IT' && !requireRbacPermission(req, res, requiredPermission)) return;
       const newTicket = GabahDomainService.createTicket(req.body, actor);
       // Optional contract linkage: Contract = data, Ticket = pekerjaan (action).
       // SECURITY: linkage is only honored when the actor may actually see the
