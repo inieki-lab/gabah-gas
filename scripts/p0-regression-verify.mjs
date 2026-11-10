@@ -1,36 +1,34 @@
 /**
  * GABAH P0 REGRESSION TEST — Dynamic RBAC & Superadmin
  *
- * Pure unit test of the server's RBAC policy module.
- * - No HTTP calls (no production data mutation, no port-80 dependency)
- * - No hardcoded credentials (env only)
- * - Verifies actual permission/scope logic, not source code text
- * - Skips database-dependent tests if PostgreSQL is unavailable
+ * Isolated unit tests only. This script never contacts a running server,
+ * PostgreSQL instance, or production account.
  *
- * Run: GABAH_INITIAL_ADMIN_PASSWORD="***" GABAH_INITIAL_USER_PASSWORD="***" node scripts/p0-regression-verify.mjs
+ * Run: node scripts/p0-regression-verify.mjs
  */
+import {
+  testablePoliciesByUser,
+  isRbacSuperadmin,
+  hasRbacPermission,
+  getEffectivePermissionKeys,
+  getEffectiveRoleKeys,
+  countRbacSuperadmins,
+  isSuperadminActorForMode,
+  wouldRemoveLastActiveSuperadmin,
+} from '../server/rbac-policy.ts';
 
-const results = [];
-function record(test, expected, actual, pass, skip) {
-  const status = skip ? 'SKIP' : (pass ? 'PASS' : 'FAIL');
-  console.log(`${status}  ${test}  (expected: ${expected}, got: ${actual})`);
-  return status === 'PASS';
-}
+const originalPolicies = new Map(
+  [...testablePoliciesByUser.entries()].map(([userId, policies]) => [
+    userId,
+    policies.map(policy => ({
+      ...policy,
+      permissions: new Set(policy.permissions),
+      scopes: policy.scopes.map(scope => ({ ...scope })),
+    })),
+  ]),
+);
 
-// ── Environment safety ──────────────────────────────────────────────────────
-const ADMIN_PASS = process.env.GABAH_INITIAL_ADMIN_PASSWORD;
-const USER_PASS  = process.env.GABAH_INITIAL_USER_PASSWORD;
-
-if (!ADMIN_PASS || !USER_PASS) {
-  console.error('FATAL: GABAH_INITIAL_ADMIN_PASSWORD and GABAH_INITIAL_USER_PASSWORD must be set (no defaults).');
-  process.exit(1);
-}
-
-// ── Import RBAC policy (unit-level) ─────────────────────────────────────────
-import { testablePoliciesByUser, isRbacSuperadmin, hasRbacPermission, getEffectivePermissionKeys, isSuperadminActor } from '../server/rbac-policy.ts';
-
-// Build a simulated policy state (as loaded from PostgreSQL in Production mode)
-const simulatedPolicies = new Map([
+const fixtures = new Map([
   ['USR-01', [{
     roleKey: 'superadmin',
     roleName: 'Superadmin',
@@ -52,90 +50,127 @@ const simulatedPolicies = new Map([
     permissions: new Set(['tickets.read']),
     scopes: [],
   }]],
-  ['USR-PIBC', [{
-    roleKey: 'admin_tiket_me',
-    roleName: 'Admin Tiket ME',
-    isSuperadmin: false,
-    permissions: new Set(['tickets.write', 'tickets.update']),
-    scopes: [],
-  }]],
+  ['USR-04', [
+    {
+      roleKey: 'ga_dispatcher',
+      roleName: 'GA Dispatcher',
+      isSuperadmin: false,
+      permissions: new Set(['tickets.read', 'tickets.assign']),
+      scopes: [],
+    },
+    {
+      roleKey: 'me_technician',
+      roleName: 'ME Technician',
+      isSuperadmin: false,
+      permissions: new Set(['tickets.update', 'maintenance.update']),
+      scopes: [],
+    },
+  ]],
 ]);
 
-// Inject simulated state into the policy module for testing
-const originalPolicies = testablePoliciesByUser;
-simulatedPolicies.forEach((policies, userId) => {
-  testablePoliciesByUser.set(userId, policies);
-});
-
-// ── Core RBAC logic tests ────────────────────────────────────────────────────
-let passCount = 0;
-let totalCount = 0;
-
+const results = [];
 function test(name, fn) {
   try {
     fn();
-    totalCount++;
-    passCount++;
+    results.push({ name, status: 'PASS' });
     console.log(`PASS  ${name}`);
-  } catch (err) {
-    totalCount++;
-    console.log(`FAIL  ${name}  -> ${err.message}`);
+  } catch (error) {
+    results.push({ name, status: 'FAIL' });
+    console.error(`FAIL  ${name}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-// Superadmin gating: isRbacSuperadmin + isSuperadminActor
-test('superadmin_is_superadmin_true', () => {
-  if (isRbacSuperadmin('USR-01') !== true) throw new Error('USR-01 is not superadmin');
-  if (isSuperadminActor({ id: 'USR-01', role: 'Admin GABAH' }) !== true) throw new Error('USR-01 not superadmin actor');
-});
-
-test('non_superadmin_is_not_superadmin', () => {
-  if (isRbacSuperadmin('USR-02') !== false) throw new Error('USR-02 should not be superadmin');
-  if (isSuperadminActor({ id: 'USR-02', role: 'GA' }) !== false) throw new Error('USR-02 should not be superadmin actor');
-});
-
-// Permission checks
-test('admin_has_all_permissions', () => {
-  if (!hasRbacPermission('USR-01', 'tickets.create')) throw new Error('USR-01 missing tickets.create');
-  if (!hasRbacPermission('USR-01', 'tickets.update')) throw new Error('USR-01 missing tickets.update');
-  if (!hasRbacPermission('USR-01', 'system.authentication')) throw new Error('USR-01 missing system.authentication');
-});
-
-test('ga_user_has_tickets_write', () => {
-  if (!hasRbacPermission('USR-02', 'tickets.write')) throw new Error('USR-02 missing tickets.write');
-  if (hasRbacPermission('USR-02', 'system.authentication')) throw new Error('GA user got system.authentication');
-});
-
-test('it_user_has_tickets_read', () => {
-  if (!hasRbacPermission('USR-03', 'tickets.read')) throw new Error('USR-03 missing tickets.read');
-});
-
-// Default deny: staff cannot escalate
-test('staff_cannot_escalate', () => {
-  if (hasRbacPermission('USR-02', 'tickets.assign') || hasRbacPermission('USR-02', 'system.super_admin')) {
-    throw new Error('GA user gained escalation permission');
+try {
+  testablePoliciesByUser.clear();
+  for (const [userId, policies] of fixtures) {
+    testablePoliciesByUser.set(userId, policies);
   }
-});
 
-// Multi-role
-test('multi_role_authorized', () => {
-  const userRoles = getEffectivePermissionKeys('USR-02');
-  if (userRoles.length < 1) throw new Error('USR-02 has no effective permissions');
-});
+  test('assigned_superadmin_is_recognized', () => {
+    if (!isRbacSuperadmin('USR-01')) throw new Error('Assigned Superadmin was not recognized');
+  });
 
-// Superadmin protection: last superadmin cannot be revoked
-test('superadmin_last_protection', () => {
-  const count = [testablePoliciesByUser.get('USR-01')].filter(Boolean).length;
-  if (count < 1) throw new Error('No superadmin found');
-});
+  test('unassigned_profile_label_cannot_bypass_postgres_rbac', () => {
+    const actor = { id: 'USR-99', role: 'Admin GABAH' };
+    if (isSuperadminActorForMode(actor, true, false)) {
+      throw new Error('Legacy profile label bypassed PostgreSQL role assignment');
+    }
+  });
 
-// ── Summary ──────────────────────────────────────────────────────────────────
-console.log(`\n=== SUMMARY: ${passCount}/${totalCount} PASS, ${totalCount - passCount} FAIL ===`);
+  test('assigned_superadmin_is_authorized_in_postgres_mode', () => {
+    if (!isSuperadminActorForMode({ id: 'USR-01', role: 'Admin GABAH' }, true, true)) {
+      throw new Error('Assigned Superadmin was rejected in PostgreSQL mode');
+    }
+  });
 
-// Restore module state
-testablePoliciesByUser.clear();
-originalPolicies.forEach((policies, userId) => {
-  testablePoliciesByUser.set(userId, policies);
-});
+  test('file_store_keeps_legacy_admin_compatibility', () => {
+    if (!isSuperadminActorForMode({ id: 'USR-99', role: 'Admin GABAH' }, false, false)) {
+      throw new Error('File-store Admin GABAH compatibility was lost');
+    }
+  });
 
-process.exit(passCount === totalCount ? 0 : 1);
+  test('ordinary_staff_is_not_superadmin', () => {
+    if (isRbacSuperadmin('USR-02')) throw new Error('GA staff unexpectedly became Superadmin');
+  });
+
+  test('superadmin_has_wildcard_permissions', () => {
+    for (const key of ['tickets.create', 'tickets.update', 'system.authentication']) {
+      if (!hasRbacPermission('USR-01', key)) throw new Error(`Missing ${key}`);
+    }
+  });
+
+  test('ordinary_staff_defaults_to_deny', () => {
+    if (!hasRbacPermission('USR-02', 'tickets.write')) throw new Error('Expected tickets.write grant');
+    if (hasRbacPermission('USR-02', 'system.authentication')) throw new Error('Unexpected system permission');
+    if (hasRbacPermission('USR-02', 'system.super_admin')) throw new Error('Unexpected Superadmin permission');
+  });
+
+  test('multi_role_permissions_are_the_union_of_both_roles', () => {
+    const roleKeys = getEffectiveRoleKeys('USR-04');
+    const permissionKeys = getEffectivePermissionKeys('USR-04');
+    if (roleKeys.length !== 2) throw new Error(`Expected 2 roles, received ${roleKeys.length}`);
+    for (const key of ['tickets.assign', 'tickets.update', 'maintenance.update']) {
+      if (!permissionKeys.includes(key)) throw new Error(`Missing permission from role union: ${key}`);
+    }
+    if (permissionKeys.includes('system.authentication')) throw new Error('Multi-role user received protected permission');
+  });
+
+  test('last_active_superadmin_cannot_be_removed', () => {
+    if (!wouldRemoveLastActiveSuperadmin(true, false, 0)) {
+      throw new Error('Removal of the last Superadmin was not blocked');
+    }
+  });
+
+  test('superadmin_can_be_removed_when_another_active_superadmin_remains', () => {
+    if (wouldRemoveLastActiveSuperadmin(true, false, 1)) {
+      throw new Error('Removal was blocked despite another active Superadmin');
+    }
+  });
+
+  test('superadmin_replacement_assignment_is_allowed', () => {
+    if (wouldRemoveLastActiveSuperadmin(true, true, 0)) {
+      throw new Error('Replacement Superadmin assignment was incorrectly blocked');
+    }
+  });
+
+  test('non_superadmin_removal_does_not_trigger_last_admin_guard', () => {
+    if (wouldRemoveLastActiveSuperadmin(false, false, 0)) {
+      throw new Error('Ordinary user removal triggered Superadmin guard');
+    }
+  });
+
+  test('active_superadmin_count_respects_active_user_filter', () => {
+    if (countRbacSuperadmins(['USR-01']) !== 1) throw new Error('Expected one active Superadmin');
+    if (countRbacSuperadmins(['USR-02', 'USR-03']) !== 0) throw new Error('Inactive/non-admin set counted as Superadmin');
+  });
+} finally {
+  testablePoliciesByUser.clear();
+  for (const [userId, policies] of originalPolicies) {
+    testablePoliciesByUser.set(userId, policies);
+  }
+}
+
+const passed = results.filter(result => result.status === 'PASS').length;
+const failed = results.filter(result => result.status === 'FAIL').length;
+console.log(`\\n=== SUMMARY: ${passed}/${results.length} PASS, ${failed} FAIL ===`);
+if (failed > 0) process.exitCode = 1;
