@@ -82,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
-  const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
+  const isSuperAdmin = currentUserIsSuperAdmin || currentUserPermissions?.includes('*') === true || activeRole === 'Admin GABAH';
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
