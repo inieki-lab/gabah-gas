@@ -23,6 +23,10 @@ const primaryRoleMigration = fs.readFileSync('server/migrations/030_rbac_primary
 const employeeCapabilityMigration = fs.readFileSync('server/migrations/031_employee_primary_role_with_job_capabilities.sql', 'utf8');
 const branchLocationMigration = fs.readFileSync('server/migrations/026_map_branch_accounts_to_employee_location.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
+const ticketRequesterPermissionSeed = fs.readFileSync('server/migrations/040_ticket_requester_category_permissions.sql', 'utf8');
+const ticketCreateRoute = server.slice(server.indexOf("app.post('/api/tickets'"), server.indexOf("app.get('/api/tickets/:id/assignees'"));
+const ticketCreateModal = fs.readFileSync('src/components/modals/CreateTicketModal.tsx', 'utf8');
+
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -155,6 +159,8 @@ const checks = [
   ['IT and GA have explicit owner-division write scopes; branch roles do not', itGaOwnerScopeSeed.includes("'division', 'IT'") && itGaOwnerScopeSeed.includes("'division', 'GA'") && !/role_key\s*=\s*'(supply_chain|pibc)'/i.test(itGaOwnerScopeSeed)],
   ['employee baseline navigation permissions are seeded idempotently', employeeNavigationPermissionSeed.includes("'loans.read'") && employeeNavigationPermissionSeed.includes("'tickets.read'") && employeeNavigationPermissionSeed.includes("'room_reservations.read'") && employeeNavigationPermissionSeed.includes('ON CONFLICT (role_id, permission_key) DO NOTHING')],
   ['legacy Supply Chain/PIBC roles lose asset mutation grants without rewriting asset records', /DELETE FROM gabah_role_permissions/.test(employeeNavigationPermissionSeed) && /r\.role_key IN \('supply_chain', 'pibc'\)/.test(employeeNavigationPermissionSeed) && /Historical owner_division values are not migrated/.test(employeeNavigationPermissionSeed)],
+  ['ticket requester permissions distinguish company-wide IT from opt-in GA and ME', ticketRequesterPermissionSeed.includes("'tickets.create.ga'") && ticketRequesterPermissionSeed.includes("'tickets.create.me'") && !/INSERT INTO gabah_role_permissions/.test(ticketRequesterPermissionSeed) && ticketCreateRoute.includes("IT: 'tickets.create'") && ticketCreateRoute.includes("GA: 'tickets.create.ga'") && ticketCreateRoute.includes("ME: 'tickets.create.me'") && ticketCreateRoute.includes('requireRbacPermission(req, res, requiredPermission)')],
+  ['ticket creation UI only exposes categories granted to the current user', ticketCreateModal.includes('canCreateCategory') && ticketCreateModal.includes('visibleServiceCatalogTemplates') && ticketCreateModal.includes("!canCreateCategory(category)")],
   ['authenticated API exposes effective permission keys for menu rendering', /getEffectivePermissionKeys/.test(server) && /permission_keys = safe\.is_superadmin \? \['\*'\] : getEffectivePermissionKeys/.test(server) && /safe\.is_superadmin = isSuperadminActor\(user\)/.test(server) && /export function getEffectivePermissionKeys/.test(policy)],
   ['new employee form keeps branch/function roles out of primary profile and assigns office location independently', /export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES\.filter/.test(frontend) && /Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'/.test(frontend) && /office_location_id: newUserData\.office_location_id \|\| null/.test(frontend) && /officeLocations\.filter\(location => location\.is_active\)/.test(frontend)],
   ['employee directory displays assigned additional roles and explains Auditor read-only precedence', /userAssignments\[String\(user\.id\)\][\s\S]*assignedRole\.name/.test(frontend) && /Auditor dipilih sebagai role tambahan[\s\S]*read-only/.test(frontend)],
