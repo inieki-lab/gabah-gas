@@ -50,6 +50,9 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: P0 Dynamic RBAC unit regression
+        run: npm run test:p0-rbac
+
       - name: Branch migration non-destructive safety check
         run: npm run test:branch-migration-safety
 
