@@ -48,7 +48,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const isAuditor = currentUser?.role === 'Auditor' || currentUser?.role_keys?.includes('auditor') === true;
   const canCreateCategory = (target: TicketCategory): boolean => {
     if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
-    const permissionKey = target === 'IT' ? 'tickets.create' : `tickets.create.${target.toLowerCase()}`;
+    // IT is the universal employee helpdesk channel; Auditor is read-only.
+    if (target === 'IT') return !isAuditor;
+    const permissionKey = `tickets.create.${target.toLowerCase()}`;
     if (Array.isArray(currentUser?.permission_keys)) {
       return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permissionKey);
     }
