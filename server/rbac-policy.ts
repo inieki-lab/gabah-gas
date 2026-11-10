@@ -84,7 +84,7 @@ export function isSuperadminActorForMode(
 ): boolean {
   return postgresActive
     ? hasSuperadminAssignment
-    : actor.role === 'Admin GABAH' || hasSuperadminAssignment;
+    : actor.role === 'Admin GABAH';
 }
 
 export function isSuperadminActor(actor: { id: string; role?: string }): boolean {
