@@ -596,6 +596,7 @@ const canonicalUsers = [
     phone: '081398765432',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
     is_active: true,
+    unit_id: 'UNIT-GA-SARPRAS',
   },
   {
     id: 'USR-SEKDIR',
@@ -632,6 +633,7 @@ const canonicalUsers = [
     phone: '081233445566',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     is_active: true,
+    unit_id: 'UNIT-IT-MIS',
   },
   {
     id: 'USR-SC',
@@ -660,6 +662,7 @@ const canonicalUsers = [
     phone: '081211223344',
     avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
     is_active: true,
+    unit_id: 'UNIT-PIBC-ME',
   },
   {
     id: 'USR-04',
