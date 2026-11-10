@@ -4,8 +4,9 @@
  * Isolated unit tests only. This script never contacts a running server,
  * PostgreSQL instance, or production account.
  *
- * Run: node scripts/p0-regression-verify.mjs
+ * Run: npm run test:p0-rbac
  */
+import fs from 'node:fs';
 import {
   testablePoliciesByUser,
   isRbacSuperadmin,
@@ -26,6 +27,8 @@ const clonePolicies = policies => policies.map(policy => ({
 const originalPolicies = new Map(
   [...testablePoliciesByUser.entries()].map(([userId, policies]) => [userId, clonePolicies(policies)]),
 );
+
+const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 
 const fixtures = new Map([
   ['USR-01', [{
@@ -160,6 +163,17 @@ try {
       if (!permissionKeys.includes(key)) throw new Error(`Missing permission from role union: ${key}`);
     }
     if (permissionKeys.includes('system.authentication')) throw new Error('Multi-role user received protected permission');
+  });
+
+  test('last_superadmin_guard_counts_only_active_users_and_roles', () => {
+    const currentQuery = serverSource.match(/const current = await client\\.query\\('([^']+)'/);
+    const remainingQuery = serverSource.match(/const remaining = await client\\.query\\(\\s*'([^']+)'/);
+    if (!currentQuery || !remainingQuery) throw new Error('Superadmin assignment guard queries were not found');
+    for (const [name, query] of [['current', currentQuery[1]], ['remaining', remainingQuery[1]]]) {
+      if (!/JOIN users u ON u\\.id = ur\\.user_id/.test(query)) throw new Error(`${name} query does not join user activity state`);
+      if (!/u\\.is_active = TRUE/.test(query)) throw new Error(`${name} query counts inactive users`);
+      if (!/r\\.is_active = TRUE/.test(query)) throw new Error(`${name} query counts inactive Superadmin roles`);
+    }
   });
 
   test('last_active_superadmin_cannot_be_removed', () => {

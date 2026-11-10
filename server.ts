@@ -420,10 +420,10 @@ async function startServer() {
         if (valid.rowCount !== assignmentIds.length) throw new Error('RBAC_ROLE_INVALID');
         // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
         // target must keep a superadmin-capable role if it is the only holder.
-        const current = await client.query('SELECT ur.role_id FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE ur.user_id = $1 AND r.is_superadmin = TRUE', [userId]);
+        const current = await client.query('SELECT ur.role_id FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id JOIN users u ON u.id = ur.user_id WHERE ur.user_id = $1 AND r.is_superadmin = TRUE AND r.is_active = TRUE AND u.is_active = TRUE', [userId]);
         if (current.rowCount > 0 && !valid.rows.some(row => row.is_superadmin)) {
           const remaining = await client.query(
-            'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE r.is_superadmin = TRUE AND ur.user_id <> $1',
+            'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id JOIN users u ON u.id = ur.user_id WHERE r.is_superadmin = TRUE AND r.is_active = TRUE AND u.is_active = TRUE AND ur.user_id <> $1',
             [userId],
           );
           if (wouldRemoveLastActiveSuperadmin(
