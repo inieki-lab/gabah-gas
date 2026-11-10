@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Spesifikasi target Dynamic RBAC; implementasi masih dalam audit dan UAT. Matriks role lama di bawah bukan sumber otorisasi aktif.  
-**Terakhir Diperbarui:** 8 November 2026  
+**Terakhir Diperbarui:** 11 November 2026  
 
 ---
 
@@ -177,6 +177,15 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 
 
 ## Helpdesk service queues and dispatch (keputusan 10 November 2026)
+
+### Hak pemohon tiket (keputusan 11 November 2026)
+
+- **IT:** kanal helpdesk umum perusahaan. Semua user aktif non-Auditor yang terautentikasi dapat mengajukan tiket IT tanpa assignment permission khusus. Auditor tetap read-only dan ditolak di backend, termasuk bila memiliki role tambahan lain.
+- **GA:** pengajuan tiket memerlukan permission `tickets.create.ga`, yang diberikan melalui role tambahan `Pemohon Tiket GA`. Role template dibuat oleh migration `041` dan tidak ditetapkan otomatis ke user.
+- **ME:** pengajuan tiket memerlukan permission `tickets.create.me`, yang diberikan melalui role tambahan `Pemohon Tiket ME`. Role template dibuat oleh migration `041` dan tidak ditetapkan otomatis ke user.
+- Superadmin menetapkan atau mencabut role Pemohon GA/ME per user melalui Administration → User Management → Assignment Role. Role tersebut bersifat tambahan; primary role dan jabatan organisasi tidak perlu diubah.
+- Hak pemohon (`tickets.create.*`) tidak memberikan hak membaca antrean tim, mengubah status, atau mendelegasikan tiket. Hak operator tetap terpisah melalui `tickets.read`, `tickets.update`, `tickets.assign` dan scope antrean yang sesuai.
+- Pencabutan role hanya memengaruhi pengajuan tiket berikutnya; tiket historis tidak dihapus. Semua assignment role mengikuti audit log Dynamic RBAC.
 
 - Kategori/tujuan tiket adalah **IT, GA, dan ME**. Kategori tidak diturunkan dari lokasi kantor.
 - **IT:** tiket diarahkan langsung kepada satu petugas IT aktif apabila hanya ada satu user dengan permission `tickets.update` dan scope Tickets untuk divisi IT. Bila tidak ada atau kandidat lebih dari satu, tiket tetap berada di antrean IT; sistem tidak memilih petugas secara acak.
