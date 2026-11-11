@@ -422,8 +422,29 @@ export class GabahDomainService {
           UPPER($2),
           $3,
           COALESCE((
-            SELECT MAX((regexp_match(a.asset_number, '^([^-]+)-(.+)-([0-9]{4})-([0-9]+)
-
+            SELECT MAX((regexp_match(a.asset_number, '^([^-]+)-(.+)-([0-9]{4})-([0-9]+)$'))[4]::INTEGER)
+            FROM assets a
+            WHERE a.owner_division_id = d.id
+              AND (regexp_match(a.asset_number, '^([^-]+)-(.+)-([0-9]{4})-([0-9]+)$'))[1] = UPPER(d.code)
+              AND (regexp_match(a.asset_number, '^([^-]+)-(.+)-([0-9]{4})-([0-9]+)$'))[2] = UPPER($2)
+              AND (regexp_match(a.asset_number, '^([^-]+)-(.+)-([0-9]{4})-([0-9]+)$'))[3] = $3::TEXT
+          ), 0) + 1
+         FROM divisions d
+         WHERE UPPER(d.code) = UPPER($1) AND d.is_active = TRUE
+         ON CONFLICT (owner_division_id, asset_code, sequence_year)
+         DO UPDATE SET last_sequence =
+           GREATEST(asset_number_sequences.last_sequence, EXCLUDED.last_sequence - 1) + 1
+         RETURNING last_sequence`,
+        [resolvedOwnerDivision, taxonomy.code, targetYear]
+      );
+      if (!sequenceResult.rows.length) {
+        throw new Error(`Owner aset "${resolvedOwnerDivision}" tidak ditemukan atau nonaktif pada database.`);
+      }
+      assetNumber = `${resolvedOwnerDivision.toUpperCase()}-${taxonomy.code.toUpperCase()}-${targetYear}-${String(sequenceResult.rows[0].last_sequence).padStart(4, '0')}`;
+    } else {
+      // Local file-store fallback only; production uses the PostgreSQL counter above.
+      assetNumber = AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code, targetYear);
+    }
     // T2B-1: managing unit operasional — divalidasi terhadap master org_units
     // (harus ada & aktif). Jika tidak dispesifikasikan, diisi hasil resolusi
     // berbasis ownership (owner_division), BUKAN lokasi. owner_division, RBAC,
