@@ -66,7 +66,8 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
   tickets: ['tickets.read'],
-  licenses: ['licenses.read'],
+  // Licenses are currently modeled as asset records; GET /api/assets is the source of truth.
+  licenses: ['assets.read'],
   contracts: ['contracts.read'],
   vendors: ['vendors.read'],
   knowledge: ['knowledge.read'],
