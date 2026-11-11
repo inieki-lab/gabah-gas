@@ -2270,13 +2270,13 @@ async function startServer() {
     const visibleAssetIds = new Set(movementAssets.map(asset => asset.id));
     const { assetId } = req.query;
     if (assetId) {
-      if (!visibleAssetIds.has(String(assetId)) && !isSuperadminActor(actor) && !isAuditorActor(actor)) {
+      if (!visibleAssetIds.has(String(assetId)) && !isSuperadminActor(actor)) {
         return res.status(404).json({ success: false, message: 'Aset tidak ditemukan.' });
       }
       const filtered = db.movements.filter(m => m.asset_id === assetId);
       return res.json({ success: true, data: filtered });
     }
-    const filtered = isSuperadminActor(actor) || isAuditorActor(actor)
+    const filtered = isSuperadminActor(actor)
       ? db.movements
       : db.movements.filter(m => visibleAssetIds.has(m.asset_id));
     res.json({ success: true, data: filtered });
@@ -2399,8 +2399,16 @@ async function startServer() {
       ticket.reporter_id === actor.id
       || (Boolean(ticket.reporter_name) && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
 
-    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
+    if (isSuperadminActor(actor)) {
       return res.json({ success: true, data: db.tickets });
+    }
+    if (isAuditorActor(actor) && isPostgresPersistenceActive()) {
+      const data = db.tickets.filter(ticket =>
+        (ticket.assigned_unit_id != null
+          && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'))
+        || hasRbacScope(String(actor.id), 'division', ticket.category, 'tickets')
+      );
+      return res.json({ success: true, data });
     }
     const canReadTicketOwner = (owner: string) =>
       isPostgresPersistenceActive()
@@ -2593,7 +2601,7 @@ async function startServer() {
   app.get('/api/maintenances', (req, res) => {
     const actor = getActor(req);
     if (!requireRbacPermission(req, res, 'maintenances.read')) return;
-    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
+    if (isSuperadminActor(actor)) {
       return res.json({ success: true, data: db.maintenances });
     }
 
@@ -3409,9 +3417,15 @@ async function startServer() {
     const { room_id, date, status, organizer_id } = req.query as any;
     let data = GabahDomainService.getRoomReservations({ room_id, date, status, organizer_id });
 
+    // Auditor is read-only and scope-bound: absent a dedicated reservation
+    // scope, only reservations organized by the auditor are visible.
+    if (isAuditorActor(actor) && isPostgresPersistenceActive()) {
+      data = data.filter(item => item.organizer_id === actor.id);
+    }
+
     // Agenda details are private by default. Operational queues are granted
     // by explicit capabilities, never by the employee's primary role label.
-    if (!isSuperadminActor(actor) && !isAuditorActor(actor)) {
+    if (!isSuperadminActor(actor)) {
       const canOperateRooms = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.approve')
           || hasRbacPermission(String(actor.id), 'room_reservations.reject')
