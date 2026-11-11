@@ -186,16 +186,16 @@ const checks = [
   ['production Docker runtime smoke checks PostgreSQL and writable uploads', /gabah-gas:ci/.test(dockerSmoke) && /persistence.*postgresql/.test(dockerSmoke) && /touch \/app\/uploads/.test(dockerSmoke)],
 
 
-  ['dashboard license metrics require the asset read permission used by their data collection', /isLicenseDashboard = [^;]*assets\.read/.test(dashboardView) && !/isLicenseDashboard = [^;]*licenses\.read/.test(dashboardView)],
+  ['dashboard license metrics require the full catalogue permission used by their data collection', /isLicenseDashboard = [^;]*assets\.catalog\.read/.test(dashboardView) && !/isLicenseDashboard = [^;]*licenses\.read/.test(dashboardView)],
   ['report SLA compliance is calculated only from backend-measured resolved ticket outcomes', /slaMeasuredTickets = resolvedTickets\.filter\(ticket => typeof ticket\.is_over_sla === 'boolean'\)/.test(reportsView) && !/slaOnTimePct = 96\.8/.test(reportsView)],
   ['report does not display an invented first-response duration when no timestamp source exists', /timestamp respons pertama belum tercatat/.test(reportsView) && !/18 Menit/.test(reportsView)],
-  ['license page reads from the same asset permission as its authoritative data source', /licenses: \['assets\.read'\]/.test(navigation) && /requireRbacPermission\(req, res, 'assets\.read'\)/.test(server)],
+  ['license page uses the scoped asset catalogue permission and matching dashboard capability', /licenses: \['assets\.catalog\.read'\]/.test(navigation) && /assets\.catalog\.read/.test(dashboardView) && /expiringSoonLicenses = licenseAssets/.test(licensesView)],
   ['license create action follows effective asset-create permission and Auditor read-only precedence', /const canCreateLicense = !isAuditor/.test(licensesView) && /permission_keys\.includes\('assets\.create'\)/.test(licensesView)],
   ['license expiry KPI is derived from live license records and contains no hardcoded sample contract', /expiringSoonLicenses = licenseAssets/.test(licensesView) && !/1 Kontrak \(54 Hari\)|Sophos Intercept X Advanced/.test(licensesView)],
   ['Administration menu visibility follows effective Superadmin capability in PostgreSQL mode', /currentUserPermissions !== undefined[\s\S]*currentUserPermissions\.includes\('\*'\)/.test(sidebar) && /currentUserPermissions !== undefined[\s\S]*activeRole === 'Admin GABAH'/.test(sidebar)],
   ['authenticated collections never initialize from demo fixtures and clear stale rows when API requests fail', !/from '\.\/data\/mockData'/.test(app) && /Promise\.allSettled/.test(app) && /setter\(\[\]\)/.test(app) && /applyCollection\(results\[4\], setAllUsers, 'users'\)/.test(app)],
   ['empty API collections replace prior rows instead of preserving seeded or stale data', /Empty is an authoritative result too; clear stale rows/.test(app) && /applyCollection\(results\[8\], setMaintenanceSchedules/.test(app) && /applyCollection\(results\[9\], setVendors/.test(app) && /applyCollection\(results\[10\], setKnowledgeBase/.test(app)],
-  ['asset page navigation follows the exact read permission enforced by GET /api/assets', /assets: \['assets\.read'\]/.test(navigation) && /requireRbacPermission\(req, res, 'assets\.read'\)/.test(server)],
+  ['full asset catalogue navigation requires catalog permission and API accepts personal or catalogue read grant', /assets: \['assets\.catalog\.read'\]/.test(navigation) && /hasRbacPermission\(String\(actor\.id\), 'assets\.read'\)/.test(server) && /hasRbacPermission\(String\(actor\.id\), 'assets\.catalog\.read'\)/.test(server)],
   ['meeting room navigation cannot be exposed by create-only permission', /meeting_rooms: \['meeting_rooms\.read', 'room_reservations\.read'\]/.test(navigation) && !/meeting_rooms: \[[^\]]*room_reservations\.create/.test(navigation)],
   ['user create, profile edit, and bulk import refresh per-user RBAC assignments after profile changes', (() => {
     const hasRefresh = name => {
