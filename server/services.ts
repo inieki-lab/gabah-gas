@@ -313,7 +313,7 @@ export class GabahDomainService {
   /**
    * Authoritative Asset Creation
    */
-  static createAsset(payload: {
+  static async createAsset(payload: {
     category_name_or_code?: string;
     category_code?: string;
     category_name?: string;
