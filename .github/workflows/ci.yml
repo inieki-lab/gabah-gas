@@ -115,6 +115,9 @@ jobs:
       - name: Asset category master regression
         run: npm run test:t2b3
 
+      - name: Asset numbering atomicity and RPC migration source checks
+        run: npm run test:asset-numbering-source
+
       - name: Sidebar menu API connectivity
         run: node scripts/menu-connectivity-verify.mjs
 
