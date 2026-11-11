@@ -32,11 +32,10 @@
 ## 2. Aturan Penomoran Aset & Rekonsiliasi ERP Accurate (BR-02)
 
 ### BR-02.1: Format Nomor Kanonikal
-- **Aturan**: Format nomor aset resmi sistem adalah:
-  `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}`
-  - Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`, `RPC-KDR-RPC-2026-0001`, `PIBC-MSN-2026-0001`.
-- **Enforcement Kode**: `server/numbering.ts` (`AssetNumberingEngine.generateAssetNumber()`).
-- **Ketentuan Sequence**: Nomor urut (*sequence*) dimulai dari `0001` dan mereset setiap pergantian tahun takwim per kombinasi unik `owner_division` dan `asset_code`.
+- **Aturan IT dan GA**: format `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}`. Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`.
+- **PIBC dan RPC**: domain owner terpisah. Format usulan `PIBC-XXXX-XXXX` dan `RPC-XXXX-XXX` belum aktif pada generator; keduanya perlu rule tersendiri setelah arti setiap segmen dikonfirmasi.
+- **Enforcement Kode**: `server/services.ts` mengalokasikan sequence PostgreSQL secara atomik melalui `asset_number_sequences`; `server/numbering.ts` hanya fallback file-store.
+- **Ketentuan Sequence IT/GA**: nomor urut dimulai dari `0001` dan berlanjut per kombinasi owner, kode aset, dan tahun.
 
 ### BR-02.2: Integritas Nomor Seri & Accurate ERP
 - **Aturan**:
