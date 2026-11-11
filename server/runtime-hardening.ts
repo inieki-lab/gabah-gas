@@ -6,7 +6,7 @@ import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
 import { GabahDomainService } from './services';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
-const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || isAuditorActor(actor);
+const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor);
 
 export function actorFor(req: Request): ServerUser | null {
   if ((req as any).user) return (req as any).user as ServerUser;
@@ -46,7 +46,7 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
 }
 
 function scopedAttention(actor: ServerUser, items: any[]) {
-  if (isGlobalObserver(actor)) return items;
+  if (isSuperadmin(actor)) return items;
   return items.filter(item => {
     if (item.link_type === 'asset') return canSeeAsset(actor, item.link_id);
     if (item.link_type === 'loan') {
