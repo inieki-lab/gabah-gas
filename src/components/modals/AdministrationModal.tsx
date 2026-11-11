@@ -256,6 +256,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isSubmittingEditUser, setIsSubmittingEditUser] = useState(false);
+
+  // Password reset dialog state — keep all hooks before the closed-modal return.
+  const [passwordResetTarget, setPasswordResetTarget] = useState<UserProfile | null>(null);
+  const [tempIssuedPassword, setTempIssuedPassword] = useState<string | null>(null);
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
   // Import pegawai massal (CSV/Excel) state
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<{
@@ -1590,9 +1595,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   // (server meng-hash & menyimpannya), lalu tampilkan SEKALI untuk disampaikan
   // out-of-band. Tanpa provider email yang terkonfigurasi, klaim "link email
   // terkirim" adalah palsu — sehingga UI menampilkan sandinya secara eksplisit.
-  const [passwordResetTarget, setPasswordResetTarget] = useState<UserProfile | null>(null);
-  const [tempIssuedPassword, setTempIssuedPassword] = useState<string | null>(null);
-  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
   const handleRealPasswordReset = async () => {
     if (!passwordResetTarget) return;
     try {
