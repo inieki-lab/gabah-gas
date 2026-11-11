@@ -93,7 +93,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const isFilterActive = divisionFilter !== 'all' || departmentFilter !== 'all';
 
   const resolvedTickets = filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed');
-  const slaOnTimePct = 96.8;
+  // Report only SLA outcomes explicitly calculated by the backend. Never
+  // substitute a sample percentage when the source data is incomplete.
+  const slaMeasuredTickets = resolvedTickets.filter(ticket => typeof ticket.is_over_sla === 'boolean');
+  const slaOnTimePct = slaMeasuredTickets.length > 0
+    ? Math.round((slaMeasuredTickets.filter(ticket => ticket.is_over_sla === false).length / slaMeasuredTickets.length) * 1000) / 10
+    : null;
 
   const totalAssetValue = filteredAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
@@ -268,16 +273,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Tingkat Kepatuhan SLA</div>
-          <div className="text-3xl font-black text-emerald-700 mt-2">{slaOnTimePct}%</div>
+          <div className="text-3xl font-black text-emerald-700 mt-2">
+            {slaOnTimePct === null ? '—' : `${slaOnTimePct}%`}
+          </div>
           <div className="text-xs text-slate-600 mt-1 flex items-center gap-1 font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Target KPI ≥ 95% Terpenuhi
+            {slaOnTimePct === null
+              ? 'Belum ada data SLA penyelesaian yang terukur'
+              : slaOnTimePct >= 95
+                ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Target KPI ≥ 95% terpenuhi</>
+                : <><AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Di bawah target KPI ≥ 95%</>}
           </div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Rata-Rata Respon Helpdesk</div>
-          <div className="text-3xl font-black text-slate-900 mt-2">18 Menit</div>
-          <div className="text-xs text-emerald-700 font-medium mt-1">First Response Time</div>
+          <div className="text-3xl font-black text-slate-900 mt-2">—</div>
+          <div className="text-xs text-slate-600 font-medium mt-1">Belum tersedia: timestamp respons pertama belum tercatat</div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
