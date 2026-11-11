@@ -27,7 +27,7 @@ const checks = [
   ['RPC migration aborts on an asset-number collision', migration.includes('RAISE EXCEPTION') && migration.includes("legacy.asset_number LIKE 'SC-%'")],
   ['RPC migration merges sequence counters without lowering them', migration.includes('GREATEST(asset_number_sequences.last_sequence, EXCLUDED.last_sequence)')],
   ['RPC migration preserves asset managing-unit references', migration.includes("UPDATE assets SET managing_unit_id = 'UNIT-RPC' WHERE managing_unit_id = 'UNIT-SC'")],
-  ['RPC migration merges old role permissions and user assignments', migration.includes('INSERT INTO gabah_role_permissions') && migration.includes('UPDATE gabah_user_roles legacy')),
+  ['RPC migration merges old role permissions and user assignments', migration.includes('INSERT INTO gabah_role_permissions') && migration.includes('UPDATE gabah_user_roles legacy'),
   ['RPC migration merges role scopes safely', migration.includes('INSERT INTO gabah_role_division_scopes') && migration.includes('ON CONFLICT DO NOTHING')],
   ['SC-to-RPC rename has no known accidental SQL/identifier corruption', !server.includes('DERPC') && !assetDetail.includes('isSC') && !admin.includes('DERPC')],
 ];
