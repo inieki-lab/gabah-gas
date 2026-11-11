@@ -426,14 +426,14 @@ async function main() {
     });
     record('Karyawan can receive a separate vendor owner capability without changing primary role', '200', `HTTP ${assignVendorRole.status}`, assignVendorRole.status === 200);
 
-    const rpcscVendor = await req(base, 'POST', '/api/vendors', {
+    const rpcVendor = await req(base, 'POST', '/api/vendors', {
       token: karyawanToken,
       body: { name: 'VERIFY Vendor RPC', category: 'IT Hardware', owner_division: 'RPC', rating: 4.1 },
     });
-    const rpcscVendorId = rpcscVendor.json?.data?.id || '';
+    const rpcVendorId = rpcVendor.json?.data?.id || '';
     record('Custom RPC owner can manage vendor; category does not determine owner', '201 + owner RPC',
-      `HTTP ${rpcscVendor.status} owner=${rpcscVendor.json?.data?.owner_division || '-'}`,
-      rpcscVendor.status === 201 && rpcscVendor.json?.data?.owner_division === 'RPC');
+      `HTTP ${rpcVendor.status} owner=${rpcVendor.json?.data?.owner_division || '-'}`,
+      rpcVendor.status === 201 && rpcVendor.json?.data?.owner_division === 'RPC');
 
     const karyawanVendors = await req(base, 'GET', '/api/vendors', { token: karyawanToken });
     record('Combined GA + custom RPC roles see only their combined owner scopes', 'GA and RPC; no IT',
