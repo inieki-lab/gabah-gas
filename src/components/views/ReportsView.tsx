@@ -88,15 +88,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
   const totalAssetCount = filteredAssets.length || 1;
 
-  // Breakdown per Division (IT, GA, SC, PIBC) — mengikuti filter aktif
+  // Breakdown per Division (IT, GA, RPC, PIBC) — mengikuti filter aktif
   const itAssets = filteredAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
   const gaAssets = filteredAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
-  const rpcAssets = filteredAssets.filter(a => a.owner_division === 'RPC' || a.owner_division === 'RPC' || a.asset_number?.startsWith('RPC-'));
+  const rpcAssets = filteredAssets.filter(a => a.owner_division === 'RPC' || a.asset_number?.startsWith('RPC-'));
   const pibcAssets = filteredAssets.filter(a => a.owner_division === 'PIBC' || a.asset_number?.startsWith('PIBC-'));
 
   const itValue = itAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
   const gaValue = gaAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
-  const scValue = rpcAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
+  const rpcValue = rpcAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
   const pibcValue = pibcAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
   // Breakdown per 9 Jenis Aset Tetap
