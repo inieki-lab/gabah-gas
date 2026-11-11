@@ -182,14 +182,14 @@ const checks = [
   ['user create, profile edit, and bulk import refresh per-user RBAC assignments after profile changes', (() => {
     const hasRefresh = name => {
       const start = frontend.indexOf('const ' + name);
-      const end = frontend.indexOf('\\n  };', start);
+      const end = frontend.indexOf('\n  };', start);
       return start >= 0 && end > start && frontend.slice(start, end).includes('await refreshUserAssignments()');
     };
     return hasRefresh('handleAddUserSubmit') && hasRefresh('handleEditUserSubmit') && hasRefresh('handleConfirmImport');
   })()],
   ['profile edit refreshes the primary-role lock before reporting success', (() => {
     const start = frontend.indexOf('const handleEditUserSubmit');
-    const end = frontend.indexOf('\\n  };', start);
+    const end = frontend.indexOf('\n  };', start);
     const handler = frontend.slice(start, end);
     return handler.indexOf('await refreshUserAssignments()') > handler.indexOf('if (onRefreshData) await onRefreshData()')
       && handler.indexOf('Data pengguna') > handler.indexOf('await refreshUserAssignments()');
