@@ -4319,14 +4319,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       onChange={e => {
                         const d = e.target.value as OwnerDivision;
                         setTestDiv(d);
-                        setSimulatedNumber(`${d}-${testCode}-2026-000${Math.floor(Math.random() * 5) + 1}`);
+                        setSimulatedNumber(`${d}-${testCode}-2026-0001`);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold"
                     >
                       <option value="IT">IT (Teknologi Informasi)</option>
-                      <option value="RPC">RPC (RPC Beras)</option>
                       <option value="GA">GA (General Affairs)</option>
-                      <option value="PIBC">PIBC (Pasar Induk)</option>
                     </select>
                   </div>
                   <div>
@@ -4354,20 +4352,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 <div className="mt-3 text-[11px] text-emerald-800 leading-relaxed">
                   ✓ Sequence direset otomatis setiap awal tahun per kombinasi (Divisi, Kode Aset, Tahun).
                   <br />
-                  ✓ Thread-safe & concurrency-safe dengan pemulihan sequence otomatis dari database.
+                  ✓ Ini simulasi format, bukan penerbitan nomor aset aktual.
                 </div>
               </div>
 
               {/* Status Sequence Terkini — live dari server (P2#10) */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4">
                 <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
-                  Sequence Counter Terdaftar (Live dari Server)
+                  Snapshot Counter Proses Aplikasi
                 </h4>
                 {liveSequences === null ? (
                   <div className="text-xs text-slate-400 py-3 text-center">Memuat snapshot sequence dari server…</div>
                 ) : liveSequences.length === 0 ? (
                   <div className="text-xs text-slate-500 py-3 text-center">
-                    Belum ada sequence terdaftar — counter terisi otomatis saat aset pertama didaftarkan per kombinasi (Divisi, Kode, Tahun).
+                    Belum ada snapshot counter pada proses aplikasi ini.
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -4388,6 +4386,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 {liveSequences !== null && liveSequences.length > 12 && (
                   <div className="mt-2 text-[10px] text-slate-400">Menampilkan 12 dari {liveSequences.length} kombinasi sequence terdaftar.</div>
                 )}
+                <p className="mt-3 text-[10px] text-amber-700">Catatan: snapshot ini berasal dari memori proses aplikasi, belum menjadi counter database yang aman untuk multi-instance.</p>
               </div>
             </div>
           )}
