@@ -79,9 +79,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       icon: '❄️',
     },
     {
-      id: 'sc-weighbridge',
+      id: 'rpc-weighbridge',
       label: 'Timbangan & Mesin Pabrik',
-      category: 'SC' as TicketCategory,
+      category: 'RPC' as TicketCategory,
       priority: 'urgent' as TicketPriority,
       title: 'Kendala Mesin Pabrik Beras / Jembatan Timbang Truk',
       desc: 'Sensor jembatan timbang atau conveyor penggilingan beras mengalami deviasi/error butuh kalibrasi darurat.',
@@ -169,8 +169,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       const selected = safeAssets.find(a => a.id === assetId);
       if (selected) {
         // License/SaaS is an IT domain: software & license tickets route to IT
-        if (selected.owner_division === 'SC') {
-          setCategory('SC');
+        if (selected.owner_division === 'RPC') {
+          setCategory('RPC');
         } else if (selected.owner_division === 'PIBC') {
           setCategory('PIBC');
         } else if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
@@ -196,7 +196,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           `Tiket kerja terkait kontrak ${linkedContract.contract_number} (${linkedContract.title}) dengan vendor ${linkedContract.vendor_name}. Divisi pemilik: ${linkedContract.owner_division}.`
         );
         setCategory((linkedContract.owner_division === 'IT' ? 'IT'
-          : linkedContract.owner_division === 'SC' ? 'SC'
+          : linkedContract.owner_division === 'RPC' ? 'RPC'
           : linkedContract.owner_division === 'PIBC' ? 'PIBC'
           : 'GA') as TicketCategory);
       }
@@ -319,14 +319,14 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { setCategory('SC'); setRelatedAssetId(''); }}
+                onClick={() => { setCategory('RPC'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'SC' 
+                  category === 'RPC' 
                     ? 'bg-orange-600 text-white border-orange-600 shadow-sm' 
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <Package className="w-4 h-4" /> Supply Chain
+                <Package className="w-4 h-4" /> RPC
               </button>
               <button
                 type="button"

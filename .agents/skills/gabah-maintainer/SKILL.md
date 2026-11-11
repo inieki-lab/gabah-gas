@@ -46,7 +46,7 @@ Treat these as hypotheses to validate against actual requirements, not as automa
 - **Superadmin:** system configuration, user and role administration, permission management, and audit.
 - **IT:** IT helpdesk, device incidents, maintenance, and IT asset responsibilities.
 - **GA:** facilities, general services, room/facility requests, loans, and GA asset responsibilities.
-- **Supply Chain:** operational assets and workflows within explicitly approved scope.
+- **RPC:** operational assets and workflows within explicitly approved scope.
 - **PIBC:** operational assets and facility workflows within explicitly approved scope.
 - **Karyawan:** own requests, own tickets, own assigned assets, and own loans.
 - **Auditor:** explicitly authorized read-only records and reports.

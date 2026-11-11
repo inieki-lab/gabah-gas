@@ -185,9 +185,9 @@ async function main() {
     record('Duplicate SN inside file rejected', 'created=1 & failed>=1', `created=${d4.created} failed=${d4.failed}`,
       d4.created === 1 && (d4.failed || 0) >= 1);
 
-    // ---------- Division authority enforced per row (IT user, SC vehicle) ----------
+    // ---------- Division authority enforced per row (IT user, RPC vehicle) ----------
     // Catatan: furniture INV-F SENGAJA boleh dibuat peran mana pun (jadi milik GA),
-    // jadi uji authority pakai kategori SC.
+    // jadi uji authority pakai kategori RPC.
     const itLogin = await req(base, 'POST', '/api/auth/login', {
       body: { email: 'it.support@foodstation.co.id', password: userPass },
     });
@@ -199,7 +199,7 @@ async function main() {
         body: { assets: [{ name: `Truk IT ${suffix}`, category: 'Kendaraan Logistik / Truk Beras' }] },
       });
       const d5 = r5.json?.data || {};
-      record('IT user importing SC vehicle -> row error', 'failed=1', `failed=${d5.failed}`, d5.failed === 1);
+      record('IT user importing RPC vehicle -> row error', 'failed=1', `failed=${d5.failed}`, d5.failed === 1);
     }
 
     // ---------- Non-authorized role guard (LAST: switch-role rotates token) ----------

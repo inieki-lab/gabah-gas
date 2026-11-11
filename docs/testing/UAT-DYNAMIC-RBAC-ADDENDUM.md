@@ -27,10 +27,10 @@ Do not infer effective access from a job title, unit name, office location, or m
 | Auditor | Auditor as primary role and, in a separate test, as an additional role | Authorized reads work; all create/update/delete/approve/assign operations are denied by API, not merely hidden in UI |
 | Sekretariat Direksi capability | Employee identity with explicitly approved secretariat capability | Only approved executive reservation/meeting actions appear and succeed; no implicit global asset or contract access |
 | Humas capability | Employee identity with explicitly approved Humas capability | Sees only documentation-request queue items; other people's private contacts, attendee lists, IT facilities, consumption details, and internal notes are redacted |
-| Supply Chain employee | Primary Karyawan; unit/location attributes identify Supply Chain / RPC-SC | Supply Chain is not required as an application role; location alone grants no owner scope or module permission |
+| RPC employee | Primary Karyawan; unit/location attributes identify RPC / RPC | RPC is not required as an application role; location alone grants no owner scope or module permission |
 | PIBC employee | Primary Karyawan; unit/location attributes identify PIBC | PIBC is not required as an application role; location alone grants no owner scope or module permission |
 
-Use the currently approved office-location master: HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is inactive and must remain historical; do not provision it as an active office location.
+Use the currently approved office-location master: HO, PIBC, RPC, Pangsub, and Kantor Perawatan. Subang is inactive and must remain historical; do not provision it as an active office location.
 
 ## 3. Cross-module authorization matrix
 
@@ -68,13 +68,13 @@ For every mutation workflow, test valid input, invalid input, wrong owner, missi
 Create synthetic assets with distinct owner domains and locations. Include at least:
 - IT-owned laptop at PIBC;
 - IT-owned network device at HO;
-- GA-owned furniture at RPC/SC;
+- GA-owned furniture at RPC;
 - GA-owned facility asset at Pangsub;
 - a legacy/uncertain owner record reserved for Super Admin review.
 
 Verify that physical location does not change owner authority. IT's cross-location scope must not grant GA-owned asset mutation; GA's cross-location scope must not grant IT-owned asset mutation. If GA's `assets.read.it_workstations` permission is enabled, verify Laptop/PC read succeeds but every mutation attempt is denied.
 
-Do not reclassify legacy SC/PIBC owner records from location labels alone. They remain review-only until an approved record-by-record mapping exists.
+Do not reclassify legacy RPC/PIBC owner records from location labels alone. They remain review-only until an approved record-by-record mapping exists.
 
 ## 6. Exit criteria
 

@@ -27,7 +27,7 @@ interface CreateContractModalProps {
 }
 
 /** Divisi pemilik kontrak — bebas per departemen, tidak terbatas GA/IT/SC/PIBC saja. */
-const OWNER_DIVISION_OPTIONS = ['GA', 'IT', 'SC', 'PIBC', 'Sekretariat Direksi', 'Humas', 'Komersial', 'Keuangan', 'SDM'];
+const OWNER_DIVISION_OPTIONS = ['GA', 'IT', 'RPC', 'PIBC', 'Sekretariat Direksi', 'Humas', 'Komersial', 'Keuangan', 'SDM'];
 
 const CONTRACT_TYPE_PRESETS = ['Security', 'Maintenance', 'Supplier Barang', 'Layanan Pasar', 'Sewa', 'Konsultansi', 'Langganan Layanan', 'Umum'];
 

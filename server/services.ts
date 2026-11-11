@@ -10,7 +10,7 @@ import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermissi
 import { isPostgresPersistenceActive } from './persistence';
 
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
-const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
+const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'RPC', 'PIBC']);
 
 /** Dibagikan agar guard rute (mis. Maintenance Stage 13F) memakai satu definisi. */
 export function isLegacyScopedRole(role: string): boolean {
@@ -72,7 +72,7 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
 export function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
   if (isSuperadminActor(actor)) return true;
   const owner = String(ownerDivision || '').trim().toUpperCase();
-  // Owner codes are configurable business domains (IT, GA, RPC/SC, PIBC,
+  // Owner codes are configurable business domains (IT, GA, RPC, PIBC,
   // and future operational owners). A non-empty owner is never sufficient:
   // PostgreSQL mode still requires operation permission + matching owner scope.
   // File-store fallback remains IT/GA-only.
@@ -258,7 +258,7 @@ export class GabahDomainService {
   static getScopedAssets(user: ServerUser): ServerAsset[] {
     if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
 
-    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'RPC', 'PIBC'];
     const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
 
     if (!isPostgresPersistenceActive()) {
@@ -933,7 +933,7 @@ export class GabahDomainService {
   static createTicket(payload: {
     title: string;
     description: string;
-    category: 'IT' | 'GA' | 'SC' | 'PIBC';
+    category: 'IT' | 'GA' | 'RPC' | 'PIBC';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
     contract_id?: string;
@@ -943,7 +943,7 @@ export class GabahDomainService {
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
     // ticket: notification goes to a role that does not exist and nobody ever
     // picks it up.
-    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'SC', 'PIBC'] as const;
+    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'RPC', 'PIBC'] as const;
     if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
       throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
     }

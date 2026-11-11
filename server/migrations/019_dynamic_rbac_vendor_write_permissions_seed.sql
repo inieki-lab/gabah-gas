@@ -1,5 +1,5 @@
 -- Dynamic RBAC Stage 13C: vendor create/update permissions.
--- Only Super Admin, IT, and GA may manage vendor records. Supply Chain/PIBC
+-- Only Super Admin, IT, and GA may manage vendor records. RPC/PIBC
 -- are work locations, not application roles with global vendor authority.
 -- IT/GA category restrictions remain enforced by the route's domain checks.
 -- Additive and idempotent; the migration runner owns the transaction.

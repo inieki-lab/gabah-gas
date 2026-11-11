@@ -94,10 +94,10 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   ];
 
   const ownerDivision = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : 'GA');
-  const isSC = ownerDivision === 'SC' || ownerDivision === 'Supply Chain';
+  const isSC = ownerDivision === 'RPC' || ownerDivision === 'RPC';
   const isPIBC = ownerDivision === 'PIBC';
   const isIT = ownerDivision === 'IT' || asset.category_type === 'IT';
-  const isGA = ownerDivision === 'GA' || (!isSC && !isPIBC && !isIT);
+  const isGA = ownerDivision === 'GA' || (!isRPC && !isPIBC && !isIT);
   const isLicense = asset.category_type === 'License' || asset.category_code === 'SLIC' || asset.asset_number?.includes('-SLIC-');
   const canEdit = currentUser ? GabahService.canEditAsset(currentUser, asset) : false;
 
@@ -144,7 +144,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               'bg-amber-100 text-amber-700'
             }`}>
               {isIT && <Laptop className="w-5 h-5" />}
-              {isSC && <Truck className="w-5 h-5" />}
+              {isRPC && <Truck className="w-5 h-5" />}
               {isPIBC && <Scale className="w-5 h-5" />}
               {isGA && <Building2 className="w-5 h-5" />}
             </div>
@@ -425,7 +425,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         <span>Cetak BAST</span>
                       </button>
                     )}
-                    {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                    {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'RPC') && (
                       <button
                         type="button"
                         onClick={() => onEditThisAsset(asset)}
@@ -449,7 +449,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <div className="text-[11px] text-slate-600">Aset siap ditugaskan secara manual ke karyawan Food Station.</div>
                     </div>
                   </div>
-                  {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                  {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'RPC') && (
                     <button
                       type="button"
                       onClick={() => onEditThisAsset(asset)}
@@ -715,7 +715,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 </button>
               )}
 
-              {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+              {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'RPC') && (
                 <button
                   type="button"
                   onClick={() => {

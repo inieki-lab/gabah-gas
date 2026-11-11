@@ -65,7 +65,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   });
 
   // Category filter for convenience
-  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA' | 'SC'>('ALL');
+  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA' | 'RPC'>('ALL');
 
   // Sync preselectedAssetId if opened with specific asset
   React.useEffect(() => {
@@ -129,7 +129,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   const selectedCounts = useMemo(() => {
     const itCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'IT' || a.category_type === 'IT')).length;
     const gaCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'GA' || a.category_type === 'GA')).length;
-    const scCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'SC' || a.category_type === 'SC')).length;
+    const scCount = availablePool.filter(a => selectedAssetIds.includes(a.id) && (a.owner_division === 'RPC' || a.category_type === 'RPC')).length;
     return { it: itCount, ga: gaCount, sc: scCount, total: selectedAssetIds.length };
   }, [availablePool, selectedAssetIds]);
 

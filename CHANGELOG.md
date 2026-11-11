@@ -74,7 +74,7 @@
 
 ### Perubahan
 - Auditor read-only ditentukan dari role efektif, termasuk role tambahan. PostgreSQL integration membuktikan Karyawan + GA + Auditor: assignment 200, API write 403, audit read 200.
-- Form tambah pegawai menggunakan primary profile role; Humas/Sekretariat Direksi ditetapkan sebagai role tambahan, Supply Chain/PIBC dicatat sebagai unit/lokasi kerja. Lokasi kantor dapat dipilih terpisah dan role tambahan ditampilkan di direktori pengguna.
+- Form tambah pegawai menggunakan primary profile role; Humas/Sekretariat Direksi ditetapkan sebagai role tambahan, RPC/PIBC dicatat sebagai unit/lokasi kerja. Lokasi kantor dapat dipilih terpisah dan role tambahan ditampilkan di direktori pengguna.
 - Dokumen kontrak sekarang benar-benar ditulis ke storage persisten; upload divalidasi berdasarkan ekstensi, MIME, dan signature; file path dibuat server-side dan diisolasi per kontrak. Download memeriksa permission serta visibility contract dan tidak diekspos sebagai static public file.
 - ContractsView menyediakan upload dan download dokumen dengan token autentikasi dan capability efektif.
 - Docker production memakai multi-stage Node 22 Alpine image, npm ci dari lockfile, production dependencies, non-root runtime, migration SQL yang disertakan, dan tidak bind-mount source atau install dependency saat startup.
@@ -153,7 +153,7 @@
 ## [2026-10-21] — Dynamic RBAC Stage 13E: Audit dan Perbaikan Authority Divisi Aset
 
 ### Temuan audit (re-verifikasi kode pada HEAD `d30315d`, tidak menerima catatan lama mentah-mentah)
-- **Klaim Stage 13A tentang "bypass" ditelusuri ulang dan TIDAK terbukti sebagaimana tertulis**: pemegang role kustom dengan permission `assets.update`/`assets.bulk_import` tetap DITOLAK pada aset milik divisi (IT/GA/SC/PIBC) karena guard membandingkan `actor.role` — dan pada mode PostgreSQL `actor.role` selalu berasal dari `users.role` legacy (compat bridge yang memang disengaja sejak Stage 5/12).
+- **Klaim Stage 13A tentang "bypass" ditelusuri ulang dan TIDAK terbukti sebagaimana tertulis**: pemegang role kustom dengan permission `assets.update`/`assets.bulk_import` tetap DITOLAK pada aset milik divisi (IT/GA/RPC/PIBC) karena guard membandingkan `actor.role` — dan pada mode PostgreSQL `actor.role` selalu berasal dari `users.role` legacy (compat bridge yang memang disengaja sejak Stage 5/12).
 - **Celah yang benar-benar terbukti** adalah asimetri baca/tulis: baca aset (Stage 11) menghormati scope dinamis `all`/`division` dari `gabah_role_division_scopes`, tetapi tulis (PATCH dan bulk import UPDATE) sama sekali tidak — role dinamis dengan authority divisi yang sah tidak bisa memperbarui aset yang bisa mereka baca; role dinamis tanpa scope memang tidak mendapat apa pun, tetapi scope yang sah juga tidak diakui.
 
 ### Perubahan
@@ -196,7 +196,7 @@ Verifikasi status aktual Stage 13B/13C sepenuhnya dari GitHub dan jalankan pemer
 ### Perubahan
 - `POST /api/vendors` memakai permission `vendors.create` saat PostgreSQL aktif.
 - `PATCH /api/vendors/:id` memakai permission `vendors.update` saat PostgreSQL aktif.
-- Mode file-store tetap memakai allowlist legacy Admin GABAH, IT, GA, Supply Chain, dan PIBC.
+- Mode file-store tetap memakai allowlist legacy Admin GABAH, IT, GA, RPC, dan PIBC.
 - Migration `019_dynamic_rbac_vendor_write_permissions_seed.sql` memberi grant awal secara idempoten hanya kepada lima role legacy yang sebelumnya dapat mengelola vendor. Role custom tidak mendapat grant otomatis.
 - Pemeriksaan domain IT/GA pada kategori vendor dan allowlist field update tetap dipertahankan.
 - Verify script ditambah empat pemeriksaan statis. Pengujian PostgreSQL live tetap diperlukan.
@@ -282,7 +282,7 @@ Diff di-scoped ke docs saja; `npm run lint` tetap lolos (tidak ada perubahan kod
 ### Perubahan
 - `GET /api/movements` kini memeriksa permission dinamis `movements.read` via `requireRbacPermission` saat PostgreSQL aktif. Migration baru `017_dynamic_rbac_movements_read_permission_seed.sql` (additive, idempotent) memberi grant ke sembilan role legacy — mencerminkan perilaku aktual endpoint ini sebelumnya (GET tanpa pembatasan peran), sehingga tidak ada perubahan akses bagi pengguna legacy. Role custom tidak menerima grant otomatis.
 - Visibilitas aset untuk role dinamis (non-legacy) saat PostgreSQL aktif kini di-resolve dari `gabah_role_division_scopes` di `GabahDomainService.getScopedAssets()`, bukan lagi fallback all-seeing: `all` (semua), `own` (aset yang ditugaskan ke user), `division` (owner_division), `unit` (managing_unit_id atau nama unit pengelola), dan `location` (asset_location_id, nama lokasi fisik, atau teks location). Role dinamis tanpa scope/assignment tidak melihat aset apa pun (deny-by-default). Menutup catatan risiko "fallback all-seeing untuk role tak-dikenal" dari Stage 10.
-- Sembilan role legacy mempertahankan rule `getScopedAssets()` yang berjalan di atas permission gate — visibilitas Admin GABAH/Auditor/Humas/Karyawan/Sekdir/IT/GA/SC/PIBC tidak berubah sama sekali. Filter scope dinamis ini juga berlaku konsisten pada `GET /api/assets`, `GET /api/assets/:id`, dan lihat perhatian dashboard (`/api/dashboard/attention`) karena semuanya lewat fungsi yang sama.
+- Sembilan role legacy mempertahankan rule `getScopedAssets()` yang berjalan di atas permission gate — visibilitas Admin GABAH/Auditor/Humas/Karyawan/Sekdir/IT/GA/RPC/PIBC tidak berubah sama sekali. Filter scope dinamis ini juga berlaku konsisten pada `GET /api/assets`, `GET /api/assets/:id`, dan lihat perhatian dashboard (`/api/dashboard/attention`) karena semuanya lewat fungsi yang sama.
 - `scripts/dynamic-rbac-foundation-verify.mjs` ditambah 7 pemeriksaan (total 65): gate movements, seed 017 idempotent 9 role, resolusi scope dinamis deny-by-default, passthrough superadmin dinamis, coverage tipe scope, dan preservasi rule legacy.
 
 ### Batas tahap
@@ -296,8 +296,8 @@ Diff di-scoped ke docs saja; `npm run lint` tetap lolos (tidak ada perubahan kod
 
 ### Perubahan
 - Enam endpoint tulis aset kini memeriksa permission dinamis via `requireRbacPermission` saat PostgreSQL aktif: `assets.create` (`POST /api/assets`), `assets.update` (`PATCH /api/assets/:id`), `assets.bulk_import` (bulk import), `assets.assign`, `assets.move`, dan `assets.lifecycle` (assign/move/lifecycle). Development file-store tetap memakai perilaku legacy (gate no-op) sehingga kompatibilitas tidak berubah.
-- Migration baru `016_dynamic_rbac_asset_write_permissions_seed.sql` bersifat additive dan idempotent: memberikan enam permission tersebut **hanya** kepada role legacy yang memang berhak mengikuti guard aktual (superadmin, it, ga, supply_chain, pibc; join `gabah_permissions`, hanya yang aktif). Role Karyawan/Auditor/Humas/Sekretaris Direksi serta role custom **tidak menerima grant otomatis**.
-- Jalur UPDATE pada bulk-import kini meniru authority divisi `PATCH /api/assets/:id` (IT/GA/SC/PIBC hanya memperbarui aset divisi miliknya; Admin GABAH bebas). Sebelumnya impor massal bisa memperbarui aset lintas divisi tanpa pemeriksaan — diperbaiki di tahap ini dan dicatat transparan di changelog (SEC-10).
+- Migration baru `016_dynamic_rbac_asset_write_permissions_seed.sql` bersifat additive dan idempotent: memberikan enam permission tersebut **hanya** kepada role legacy yang memang berhak mengikuti guard aktual (superadmin, it, ga, rpc, pibc; join `gabah_permissions`, hanya yang aktif). Role Karyawan/Auditor/Humas/Sekretaris Direksi serta role custom **tidak menerima grant otomatis**.
+- Jalur UPDATE pada bulk-import kini meniru authority divisi `PATCH /api/assets/:id` (IT/GA/RPC/PIBC hanya memperbarui aset divisi miliknya; Admin GABAH bebas). Sebelumnya impor massal bisa memperbarui aset lintas divisi tanpa pemeriksaan — diperbaiki di tahap ini dan dicatat transparan di changelog (SEC-10).
 - `scripts/dynamic-rbac-foundation-verify.mjs` ditambah 12 pemeriksaan (total 58): gate per endpoint, authority divisi bulk-update, seed idempotent sesuai daftar role, dan tanpa grant implisit untuk role tanpa hak.
 
 ### Yang dipertahankan (tidak berubah)
@@ -518,7 +518,7 @@ Master **`asset_categories`** kini menjadi **satu-satunya sumber kebenaran** unt
 
 ### API
 - **`GET /api/taxonomy/categories`**: respons selalu dinormalkan (`is_active` boolean, `main_type` pada domain kanonikal).
-- **`POST`**: wajib `main_type` ∈ 9 kanonikal, `owner_division` ∈ IT/GA/SC/PIBC, `category_type` ∈ IT/General/License (di luar itu → 400); **duplikat kode & duplikat nama (case-insensitive) → 400**; `is_active` default true.
+- **`POST`**: wajib `main_type` ∈ 9 kanonikal, `owner_division` ∈ IT/GA/RPC/PIBC, `category_type` ∈ IT/General/License (di luar itu → 400); **duplikat kode & duplikat nama (case-insensitive) → 400**; `is_active` default true.
 - **`PATCH /api/taxonomy/categories/:code`**: validasi enum yang sama; dukungan **toggle `is_active`** (enable/disable); audit `CATEGORY_UPDATED` mencatat aktivasi/nonaktifasi.
 - **`DELETE`**: tetap ter-guard (400 bila kategori masih dipakai aset) — disable adalah jalur utama penghapusan.
 - **`POST /api/taxonomy/resolve`**: resolusi terhadap master (opsional `owner_division`).
@@ -544,7 +544,7 @@ Master **`asset_categories`** kini menjadi **satu-satunya sumber kebenaran** unt
 ### Tests / build / lint — hasil aktual
 - `npm run lint` (`tsc --noEmit`): **PASS** (0 error)
 - `npm run build` (vite + esbuild): **PASS**
-- `npm run test:t2b3` (baru — `scripts/t2b3-category-master-verify.mjs`): **26/26 PASS** — migration additive/idempotent (inspeksi statis), master seed tervalidasi (22 kode, domain `main_type`), CRUD admin (create/rename/disable/enable, duplikat kode & nama ditolak, `main_type` legacy ditolak 400), non-admin 403, auditor read-only, kategori baru admin langsung bisa dipakai buat aset (kode & owner dari master, nomor `SC-DRN-2026-0001`), rename terlihat oleh resolve & create by nama baru, kategori nonaktif ditolak untuk aset baru namun tetap terbaca + aset historis utuh, re-enable kembali berfungsi, hapus kategori terpakai ditolak, input bebas legacy tetap fallback, edit `is_loanable_by_default` berlaku untuk aset baru, penomoran regresi `IT-HLT-<tahun>-<seq>`, aset existing tidak berubah, roundtrip master+aset lewat restart (termasuk status nonaktif).
+- `npm run test:t2b3` (baru — `scripts/t2b3-category-master-verify.mjs`): **26/26 PASS** — migration additive/idempotent (inspeksi statis), master seed tervalidasi (22 kode, domain `main_type`), CRUD admin (create/rename/disable/enable, duplikat kode & nama ditolak, `main_type` legacy ditolak 400), non-admin 403, auditor read-only, kategori baru admin langsung bisa dipakai buat aset (kode & owner dari master, nomor `RPC-DRN-2026-0001`), rename terlihat oleh resolve & create by nama baru, kategori nonaktif ditolak untuk aset baru namun tetap terbaca + aset historis utuh, re-enable kembali berfungsi, hapus kategori terpakai ditolak, input bebas legacy tetap fallback, edit `is_loanable_by_default` berlaku untuk aset baru, penomoran regresi `IT-HLT-<tahun>-<seq>`, aset existing tidak berubah, roundtrip master+aset lewat restart (termasuk status nonaktif).
 - Regresi: `test:t2b1` **18/18**, `test:t2b2` **22/22**, `test:org-model` **14/14**, `test:loan-authz` **37/37**, `test:meeting-room` **18/18**, `p0-security-verify` **37/37**, `menu-connectivity-verify` **23/23**, `asset-import-verify` **20/20**, `bulk-import-verify` **14/14**, `p1-features-verify` **16/16** — semua PASS.
 
 Catatan: T2B-4 (kompatibilitas numbering) serta redesign RBAC/Maintenance/Contract/Loan **belum** dikerjakan.
@@ -583,7 +583,7 @@ Field relasi pada aset memakai **`asset_location_id`** (konsisten dengan pola `o
 - `org_office_locations` (kantor user) tidak berubah sama sekali.
 
 ### Tidak berubah (scope guard T2B-2)
-`owner_division`, `managing_unit_id` & logika backfill T2B-1, `asset_number`/`corporate_asset_number`/numbering engine & sequence table, taxonomy kategori, RBAC/authorization lintas divisi, Maintenance, Contract, Loan/Assignment, Helpdesk, Meeting Room, Vendor, KB, Procurement, workflow PIBC/Supply Chain, skema office location user.
+`owner_division`, `managing_unit_id` & logika backfill T2B-1, `asset_number`/`corporate_asset_number`/numbering engine & sequence table, taxonomy kategori, RBAC/authorization lintas divisi, Maintenance, Contract, Loan/Assignment, Helpdesk, Meeting Room, Vendor, KB, Procurement, workflow PIBC/RPC, skema office location user.
 
 ### Tests / build / lint — hasil aktual
 - `npm run lint` (`tsc --noEmit`): **PASS** (0 error)
@@ -602,7 +602,7 @@ Field baru **`managing_unit_id`** pada aset: unit operasional yang mengelola lif
 - **`ServerAsset`** (`server/db.ts`) & **`Asset`** (`src/types.ts`): field baru opsional `managing_unit_id?: string | null` (relasi ke `org_units.id`).
 - **Modul baru `server/managing-unit.ts`**: resolusi ownership-based (`resolveManagingUnitForOwnerDivision`), validasi master (`validateManagingUnit`, unit harus ada & aktif), dan normalisasi backfill idempoten (`normalizeAssetManagingUnits`).
 - **Migration `server/migrations/007_asset_managing_unit.sql`** (additive & idempoten): `ALTER TABLE assets ADD COLUMN IF NOT EXISTS managing_unit_id VARCHAR(64) REFERENCES org_units(id) ON DELETE SET NULL` + index `idx_assets_managing_unit` + backfill. Tidak mengubah kolom lama apa pun; `ON DELETE SET NULL` aman terhadap data aset existing.
-- **Backfill aman, berbasis OWNERSHIP (bukan lokasi)**: aturan deterministik — unit dengan id persis `UNIT-{DIVISION}` (SC → `UNIT-SC`, PIBC → `UNIT-PIBC`), selanjutnya tepat satu unit dengan `division_code` sama (IT → `UNIT-IT-MIS`), selain itu **dibiarkan NULL** (contoh: GA punya dua kandidat unit → unresolved, tidak ditebak). Nilai eksplisit tidak pernah ditimpa saat hydrate ulang.
+- **Backfill aman, berbasis OWNERSHIP (bukan lokasi)**: aturan deterministik — unit dengan id persis `UNIT-{DIVISION}` (RPC → `UNIT-RPC`, PIBC → `UNIT-PIBC`), selanjutnya tepat satu unit dengan `division_code` sama (IT → `UNIT-IT-MIS`), selain itu **dibiarkan NULL** (contoh: GA punya dua kandidat unit → unresolved, tidak ditebak). Nilai eksplisit tidak pernah ditimpa saat hydrate ulang.
 
 ### API
 - `POST /api/assets` & `PATCH /api/assets/:id` menerima `managing_unit_id` (validasi: unit terdaftar & aktif, selain itu `400`); `GET /api/assets` & `GET /api/assets/:id` mengembalikannya. `null` eksplisit diterima (nullable).
@@ -631,12 +631,12 @@ Role, Jabatan/Level, Unit, dan Lokasi/Kantor kini **empat master terpisah yang c
 - **`ServerUser`** (`server/db.ts`, `src/types.ts`): field baru `job_level_code?`, `unit_id?`, `office_location_id?` — atribut independen dari role/division.
 - **Master baru** (`server/db.ts`): `db.jobLevels: OrgJobLevel[]` (kode+label+order+is_active), `db.orgUnits: OrgUnit[]` (id+name+division_code+is_active), `db.officeLocations: OrgOfficeLocation[]` (id+name+is_active).
 - Tipe interface baru: `OrgJobLevel`, `OrgUnit`, `OrgOfficeLocation`.
-- **Model aset TIDAK berubah**: `owner_division` tetap IT/GA/SC/PIBC; `location` bebas; asset numbering `{DIV}-{CODE}-{YEAR}-{SEQ}` tetap berbasis owner.
+- **Model aset TIDAK berubah**: `owner_division` tetap IT/GA/RPC/PIBC; `location` bebas; asset numbering `{DIV}-{CODE}-{YEAR}-{SEQ}` tetap berbasis owner.
 
 ### Migration
 - **JSON/file store (`server/persistence.ts`)**: hydrate merge master default (5 jabatan, 9 unit, 5 lokasi kantor) dengan state lama secara idempoten; backfill user lama tanpa `job_level_code` → `STAF` **tanpa mengubah role/divisi**; `unit_id`/`office_location_id` referensi invalid → `null`. Data existing tetap terbaca.
 - **PostgreSQL (`server/migrations/006_org_model_masters.sql`)**: tabel `org_job_levels`, `org_units` (FK divisions), `org_office_locations`; kolom users `job_level_code`/`unit_id`/`office_location_id` (FK) dengan backfill STAF; idempoten (`IF NOT EXISTS`/`ON CONFLICT DO NOTHING`). Dijalankan otomatis oleh migration runner CR-04.
-- Seed master default: Jabatan = Direksi, Kepala Divisi, Kepala Departemen, Kepala Seksi, Staf; Lokasi = Kantor Pusat, PIBC, Kantor Perawatan, Kantor Pangsub, RPC/Supply Chain. **Tanpa mapping permanen level→lokasi** (contoh kondisi organisasi, bukan aturan sistem).
+- Seed master default: Jabatan = Direksi, Kepala Divisi, Kepala Departemen, Kepala Seksi, Staf; Lokasi = Kantor Pusat, PIBC, Kantor Perawatan, Kantor Pangsub, RPC. **Tanpa mapping permanen level→lokasi** (contoh kondisi organisasi, bukan aturan sistem).
 
 ### API baru (Admin GABAH only; perubahan ter-audit)
 - `GET/POST /api/master/job-levels`, `PATCH /api/master/job-levels/:code` (tambah/edit/enable/disable).
@@ -678,9 +678,9 @@ Role, Jabatan/Level, Unit, dan Lokasi/Kantor kini **empat master terpisah yang c
 - Scope: sidebar/menu per role, API authorization aset, helpdesk, maintenance, vendor, contract, meeting room, dan larangan mutasi Auditor. Tidak ada fitur baru di luar itu.
 
 ### Fixed — API authorization (root cause RBAC)
-- **Meeting room** (`server.ts`): `POST /api/room-reservations` kini meneruskan `err.statusCode` dari domain service — penolakan override/interupsi (GA, Sekretaris Direksi non-HIGH, role lain) kini **403** dan proteksi rapat `in_use` kini **409** (sebelumnya selalu 400). Verifikasi: override ditolak 403 untuk GA/IT/Humas/SC/PIBC/Karyawan/Sekdir-LOW; Sekdir HIGH & Admin GABAH tetap bisa interupsi (201).
-- **Maintenance** (`server.ts`): management action kini dibatasi **Admin GABAH, IT, GA** (server-side allowlist di `POST`/`PATCH /api/maintenances`, tetap per-scope divisi pemilik aset). Sebelumnya deny-list hanya Auditor/Karyawan sehingga SC/PIBC/Sekdir/Humas masih bisa create/update jadwal via API — kini 403.
-- **Contract** (`server/contracts.ts`): `canEditContract` kini mensyaratkan peran manajemen kontrak (Admin GABAH, IT, GA, SC, PIBC). Sebelumnya Sekretaris Direksi/Humas (divisi GA) masih bisa **edit kontrak** dan **memutus renewal** kontrak divisi GA; kini ditolak (request/read-only).
+- **Meeting room** (`server.ts`): `POST /api/room-reservations` kini meneruskan `err.statusCode` dari domain service — penolakan override/interupsi (GA, Sekretaris Direksi non-HIGH, role lain) kini **403** dan proteksi rapat `in_use` kini **409** (sebelumnya selalu 400). Verifikasi: override ditolak 403 untuk GA/IT/Humas/RPC/PIBC/Karyawan/Sekdir-LOW; Sekdir HIGH & Admin GABAH tetap bisa interupsi (201).
+- **Maintenance** (`server.ts`): management action kini dibatasi **Admin GABAH, IT, GA** (server-side allowlist di `POST`/`PATCH /api/maintenances`, tetap per-scope divisi pemilik aset). Sebelumnya deny-list hanya Auditor/Karyawan sehingga RPC/PIBC/Sekdir/Humas masih bisa create/update jadwal via API — kini 403.
+- **Contract** (`server/contracts.ts`): `canEditContract` kini mensyaratkan peran manajemen kontrak (Admin GABAH, IT, GA, RPC, PIBC). Sebelumnya Sekretaris Direksi/Humas (divisi GA) masih bisa **edit kontrak** dan **memutus renewal** kontrak divisi GA; kini ditolak (request/read-only).
 - **Aset — mutasi lintas scope** (`server/services.ts`): `moveAsset()` & `mutateLifecycle()` kini memiliki guard otoritas divisi eksplisit (mirror `assignAsset`/PATCH): setiap divisi hanya boleh memutasi aset miliknya sendiri; Admin GABAH bebas. Sebelumnya **IT bisa merelokasi & memutasi lifecycle aset GA** karena view scope IT mencakup aset GA — view kini tidak lagi memperluas hak mutasi.
 - **Lint** (`server/services.ts`, `src/components/views/MaintenanceView.tsx`): memperbaiki error kompilasi (`asset.asset_code` tidak ada di tipe `ServerAsset`; referensi `isStaff` yang sudah dihapus). `npm run lint` kini 0 error.
 
@@ -694,7 +694,7 @@ Role, Jabatan/Level, Unit, dan Lokasi/Kantor kini **empat master terpisah yang c
 - `npm run test:loan-authz` — **37/37 PASS**.
 - `npm run test:meeting-room` — **18/18 PASS** (sebelum perbaikan: 10/18).
 - `node scripts/menu-connectivity-verify.mjs` — **23/23 PASS**.
-- Probe RBAC lintas 9 role (sementara, tidak di-commit) — **60/60 sesuai matriks**: sidebar per role sesuai RBAC.md; aset (GA read-only PC/Laptop IT, mutasi lintas divisi ditolak, Auditor read-only semua); vendor (IT=IT/License, GA=non-IT, Admin full); kontrak (Admin/IT/GA/SC/PIBC sesuai owner; Sekdir/Humas/Karyawan/Auditor tidak bisa create/edit/renewal); maintenance (hanya Admin/IT/GA); meeting room (override hanya Admin GABAH & Sekdir HIGH); Auditor 403 untuk semua mutasi API; helpdesk kategori hanya IT/GA/SC/PIBC (400 untuk kategori lain).
+- Probe RBAC lintas 9 role (sementara, tidak di-commit) — **60/60 sesuai matriks**: sidebar per role sesuai RBAC.md; aset (GA read-only PC/Laptop IT, mutasi lintas divisi ditolak, Auditor read-only semua); vendor (IT=IT/License, GA=non-IT, Admin full); kontrak (Admin/IT/GA/RPC/PIBC sesuai owner; Sekdir/Humas/Karyawan/Auditor tidak bisa create/edit/renewal); maintenance (hanya Admin/IT/GA); meeting room (override hanya Admin GABAH & Sekdir HIGH); Auditor 403 untuk semua mutasi API; helpdesk kategori hanya IT/GA/RPC/PIBC (400 untuk kategori lain).
 
 ---
 
@@ -707,17 +707,17 @@ Role, Jabatan/Level, Unit, dan Lokasi/Kantor kini **empat master terpisah yang c
   - GA: Aset GA + read-only PC/Laptop IT, Pinjam, Helpdesk, Maintenance, Vendor non-IT, KB, Contract GA, Meeting Room Sarpras, Reports.
   - Sekretaris Direksi: Dashboard, Aset Saya, Pinjam, Helpdesk, Maintenance request flow, Knowledge Base read, Contract view, Meeting Room/VIP workflow.
   - Humas: Dashboard, Aset Saya hidden from catalog, Pinjam, Helpdesk, Knowledge Base read, Meeting Room + documentation/photo workflow.
-  - Supply Chain / PIBC: operational asset scope, Pinjam request, Helpdesk category scope, Maintenance request, Knowledge Base read, Contract scope, Meeting Room request, scoped Reports.
+  - RPC / PIBC: operational asset scope, Pinjam request, Helpdesk category scope, Maintenance request, Knowledge Base read, Contract scope, Meeting Room request, scoped Reports.
   - Karyawan: self-service Dashboard, Aset Saya, Pinjam, Helpdesk, Knowledge Base, Meeting Room request; no executive override.
   - Auditor: read-only global access; no mutation/admin menu.
 - Asset ownership vs location separated in access rules: physical location no longer determines ownership.
 - IT asset visibility: IT manages IT assets; GA may only view IT workstation assets (PC/Laptop) read-only, not servers/network/firewall/other IT equipment.
-- SC/PIBC asset visibility: scope now considers their operational owner and relevant physical location/department where available.
+- RPC/PIBC asset visibility: scope now considers their operational owner and relevant physical location/department where available.
 - Asset edit buttons: frontend now uses the same authoritative GabahService.canEditAsset() rule as the intended role/object scope; PIBC edit authority is represented consistently.
 - Maintenance: menu renamed to Maintenance; schedule creation is limited to Admin GABAH, IT, and GA. Other operational/request roles do not receive the management action.
 - Vendor: IT can manage IT/License vendors; GA can manage non-IT vendors; Admin GABAH full; Auditor read-only. API GET/POST/PATCH now enforce the same domain scope.
-- Contract: management/create action is exposed only to Admin GABAH, IT, GA, Supply Chain, and PIBC; Auditor and request/read-only roles remain read-only.
-- Helpdesk remains a single menu with categories/routing IT, GA, SC, PIBC. Contract is not a Helpdesk category; Software/License/SaaS remains IT.
+- Contract: management/create action is exposed only to Admin GABAH, IT, GA, RPC, and PIBC; Auditor and request/read-only roles remain read-only.
+- Helpdesk remains a single menu with categories/routing IT, GA, RPC, PIBC. Contract is not a Helpdesk category; Software/License/SaaS remains IT.
 
 ### Verification
 - Changes are committed directly to GitHub main in small atomic commits so Freebuff can test each scope without a large token-consuming task.
@@ -799,7 +799,7 @@ apa yang sudah dikerjakan, di mana kodenya, dan bagaimana memverifikasinya.
   - `AssetDetailModal.tsx`: timeline tab *history* kini menampilkan entri `kind: 'movement'`
     (warna amber, ikon Truck) — mutasi lokasi/pengguna/status aset.
   - Endpoint `GET /api/movements` mendukung `?assetId=` untuk filter per aset.
-- **Import massal aset via CSV** (peran IT, GA, Supply Chain, PIBC, Admin GABAH):
+- **Import massal aset via CSV** (peran IT, GA, RPC, PIBC, Admin GABAH):
   - Endpoint `POST /api/assets/bulk-import` (`server.ts` ~1142) — setiap baris diproses
     individual via `GabahDomainService.createAsset` sehingga resolusi taxonomi kategori,
     authority divisi, deteksi duplikat SN/No. Accurate, dan **penomoran aset resmi**
@@ -822,7 +822,7 @@ apa yang sudah dikerjakan, di mana kodenya, dan bagaimana memverifikasinya.
   anonim 401, batch kosong/oversize 400, created=2 + failed=1 (baris tanpa nama),
   nomor aset `IT-HLT-*` & `GA-INV-F-*` otomatis, kondisi tak dikenal → warning,
   harga & is_loanable tersimpan, duplikat SN ditolak, `allow_update` memperbarui,
-  duplikat SN dalam satu berkas ditolak, authority per baris (IT impor kendaraan SC
+  duplikat SN dalam satu berkas ditolak, authority per baris (IT impor kendaraan RPC
   → row error), Karyawan → 403.
 - **Skrip verifikasi** `scripts/p1-features-verify.mjs` — 16 tes end-to-end:
   anonim 401, sandi lama salah 401, sandi baru pendek 400, sukses + token baru,
@@ -918,14 +918,14 @@ Menu kini sepenuhnya sinkron dengan izin akses yang dimiliki masing-masing role.
 ### Perubahan Menu
 
 #### 1. Aset (Assets)  Tambah Sekretaris Direksi & Humas
-- **Sebelum**: Hanya Admin GABAH, IT, GA, Supply Chain, PIBC, Auditor
+- **Sebelum**: Hanya Admin GABAH, IT, GA, RPC, PIBC, Auditor
 - **Sesudah**: Tambah Sekretaris Direksi & Humas
 - **Alasan**: Kedua role ini seharusnya bisa lihat aset assigned/loanable sesuai scope (read-only)
 
-#### 2. Vendor Rekanan  Tambah Supply Chain & PIBC
+#### 2. Vendor Rekanan  Tambah RPC & PIBC
 - **Sebelum**: Hanya Admin GABAH, IT, GA, Auditor
-- **Sesudah**: Tambah Supply Chain & PIBC
-- **Alasan**: SC & PIBC perlu akses vendor untuk kontrak di divisinya
+- **Sesudah**: Tambah RPC & PIBC
+- **Alasan**: RPC & PIBC perlu akses vendor untuk kontrak di divisinya
 
 #### 3. Contract Management  Tetap tanpa Sekretaris Direksi & Humas
 - **Keputusan**: Menu Contract Management **tidak ditampilkan** untuk Sekretaris Direksi & Humas
@@ -933,7 +933,7 @@ Menu kini sepenuhnya sinkron dengan izin akses yang dimiliki masing-masing role.
 - **Catatan**: Jika diperlukan read-only, perlu penambahan logic server-side
 
 ### Server-Side RBAC Konsistensi
-- `canManageContracts()`: Hanya Admin GABAH, IT, GA, Supply Chain, PIBC
+- `canManageContracts()`: Hanya Admin GABAH, IT, GA, RPC, PIBC
 - `canSeeContract()`: Admin, Auditor, PIC, owner division, atau non-restricted (org-wide)
 - `canSeeAsset()`: Setiap role punya scope sesuai divisinya
 
@@ -958,34 +958,34 @@ node scripts/asset-import-verify.mjs        # 20 tes import aset
 Skrip boot `dist/server.cjs` di port acak 39000+, backup/restore state file,
 dan self-terminating (aman dijalankan berulang).
 
-## [2026-10-15] \u0014 Vendor RBAC Fix: SC & PIBC Access + Contract Menu for Sekdir/Humas
+## [2026-10-15] \u0014 Vendor RBAC Fix: RPC & PIBC Access + Contract Menu for Sekdir/Humas
 
 ### Ringkasan
-Perbaikan ketidaksesuaian menu Vendor dengan server-side RBAC untuk Supply Chain dan PIBC, serta penambahan menu Contract Management untuk Sekretaris Direksi & Humas (read-only).
+Perbaikan ketidaksesuaian menu Vendor dengan server-side RBAC untuk RPC dan PIBC, serta penambahan menu Contract Management untuk Sekretaris Direksi & Humas (read-only).
 
 ### Root Cause
-- Sidebar menampilkan menu Vendor untuk SC & PIBC, tetapi GET /api/vendors hanya mengizinkan Admin GABAH, IT, GA, Auditor
-- SC & PIBC mendapatkan 403 saat mengakses menu Vendor
+- Sidebar menampilkan menu Vendor untuk RPC & PIBC, tetapi GET /api/vendors hanya mengizinkan Admin GABAH, IT, GA, Auditor
+- RPC & PIBC mendapatkan 403 saat mengakses menu Vendor
 - Sekretaris Direksi & Humas tidak bisa melihat menu Contract Management, padahal punya akses read-only
 
 ### Perubahan
 
 #### 1. Vendor API RBAC (`server.ts`)
-- **GET /api/vendors**: Tambah SC & PIBC ke allowed roles - kini dapat melihat semua vendor
-- **POST /api/vendors**: Tambah SC & PIBC ke allowed roles - kini dapat membuat vendor
-- **PATCH /api/vendors/:id**: Tambah SC & PIBC ke allowed roles - kini dapat update vendor
+- **GET /api/vendors**: Tambah RPC & PIBC ke allowed roles - kini dapat melihat semua vendor
+- **POST /api/vendors**: Tambah RPC & PIBC ke allowed roles - kini dapat membuat vendor
+- **PATCH /api/vendors/:id**: Tambah RPC & PIBC ke allowed roles - kini dapat update vendor
 
 #### 2. Contract Management Menu (`Sidebar.tsx`)
 - **Tambah**: Sekretaris Direksi & Humas ke roles
 - **Alasan**: Kedua role punya akses read-only via `canSeeContract()` (non-restricted contracts visible org-wide)
 
 ### Server-Side RBAC Rules
-- `canManageContracts()`: Admin GABAH, IT, GA, Supply Chain, PIBC
+- `canManageContracts()`: Admin GABAH, IT, GA, RPC, PIBC
 - `canSeeContract()`: Admin, Auditor, PIC, owner division, atau non-restricted (org-wide)
 - `canSeeAsset()`: GA hanya bisa lihat aset IT yang merupakan workstation (Laptop/PC) via `isItWorkstation()`
 
 ### Dampak
-- SC & PIBC **SEKARANG DAPAT** mengakses menu Vendor dan semua API vendor
+- RPC & PIBC **SEKARANG DAPAT** mengakses menu Vendor dan semua API vendor
 - Sekretaris Direksi & Humas **SEKARANG DAPAT** melihat menu Contract Management (read-only)
 - Menu visibility **SEKARANG KONSISTEN** dengan server-side RBAC
 
@@ -1106,8 +1106,8 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 ## [2026-11-08] — Prevent destructive branch-role migration
 
 ### Fixed
-- Replaced the unsafe body of `server/migrations/026_map_branch_accounts_to_employee_location.sql` with an intentional no-op compatibility marker. The previous draft rewrote Supply Chain/PIBC users to Karyawan, deleted their branch-role assignments, and deactivated `UNIT-SC`/`UNIT-PIBC` based only on the legacy role label.
-- The revised migration preserves employee role, primary/additional role assignments, job level, organizational unit, and history. It explicitly states that location alone grants no data scope and that RPC/SC can be an operational asset owner independently of the physical site.
+- Replaced the unsafe body of `server/migrations/026_map_branch_accounts_to_employee_location.sql` with an intentional no-op compatibility marker. The previous draft rewrote RPC/PIBC users to Karyawan, deleted their branch-role assignments, and deactivated `UNIT-RPC`/`UNIT-PIBC` based only on the legacy role label.
+- The revised migration preserves employee role, primary/additional role assignments, job level, organizational unit, and history. It explicitly states that location alone grants no data scope and that RPC can be an operational asset owner independently of the physical site.
 - Added `scripts/branch-migration-safety-verify.mjs` and `npm run test:branch-migration-safety`; wired the check into `.github/workflows/ci.yml`.
 
 ### Important migration caveat
@@ -1119,7 +1119,7 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 ## [2026-11-08] — Extensible asset-owner scopes across modules
 
 ### Business model implemented
-- Owner domain is now an extensible code backed by the existing Super Admin-managed Master Divisi (db.divisions / PostgreSQL divisions), not a hardcoded IT/GA-only allowlist. Initial owner domains remain IT, GA, SC, PIBC, Umum, Audit; Super Admin can add future owner codes before assigning category/asset ownership.
+- Owner domain is now an extensible code backed by the existing Super Admin-managed Master Divisi (db.divisions / PostgreSQL divisions), not a hardcoded IT/GA-only allowlist. Initial owner domains remain IT, GA, RPC, PIBC, Umum, Audit; Super Admin can add future owner codes before assigning category/asset ownership.
 - Physical site, employee office location, managing unit, asset owner domain, and custodian remain independent. Location never grants owner scope.
 - New asset creation and category owner assignment require the owner code to exist in the configured division/owner master. Division code is validated to 2–20 uppercase alphanumeric / underscore / hyphen characters. Referenced owner master records cannot be deleted while referenced by assets, categories, employees, or org units.
 - PostgreSQL persistence now synchronizes configurable division/owner master rows before users, categories, and assets so new owner codes satisfy foreign keys.
@@ -1149,7 +1149,7 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Continue auditing vendor/report/reconciliation/admin endpoints for remaining owner/role shortcuts.
 - Replace stale role-name navigation assumptions with the effective-permission model end-to-end and verify menu/page actions per user.
 - Reconcile historical owner codes and any previously applied migration 026 effects only from verified backup/audit/HR evidence. No mass owner or employee remapping.
-- Complete cross-role UAT for RPC/SC production machinery at Subang (owner RPC/SC, location Subang), GA-owned assets, IT-owned assets, and GA's read-only HLT/HPC exception.
+- Complete cross-role UAT for RPC production machinery at Subang (owner RPC, location Subang), GA-owned assets, IT-owned assets, and GA's read-only HLT/HPC exception.
 
 
 ### Final handoff status (2026-11-08)
@@ -1185,14 +1185,14 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 
 
 ### Office location master correction — 2026-11-08
-- Current active office locations are exactly HO, PIBC, RPC/SC, and Pangsub.
+- Current active office locations are exactly HO, PIBC, RPC, and Pangsub.
 - The retired Kantor Perawatan office is inactive, not deleted. Existing location IDs are preserved so user references and history remain intact.
 - Future locations remain configurable by Super Admin; Subang is not seeded or treated as an active site.
 - Added migration 033 and regression assertions. Migration has not been applied to production.
 
 
 ### Corrected office master — 2026-11-08
-- User correction: **Kantor Perawatan is still active**. The five active office locations are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is closed and is not seeded as an active office location.
+- User correction: **Kantor Perawatan is still active**. The five active office locations are HO, PIBC, RPC, Pangsub, and Kantor Perawatan. Subang is closed and is not seeded as an active office location.
 - Corrected `server/db.ts`, persistence fallback, migration 033, and asset-scope regression assertions. No users or assets are reassigned.
 
 
@@ -1212,7 +1212,7 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 
 ### Office master regression coverage — 2026-11-08
 - Migration 033 now safely deactivates an existing `org_office_locations` row whose name is Subang, if present, without deleting it. This does not touch `asset_locations`, so physical asset-location history is preserved.
-- Kantor Perawatan remains explicitly active. The five currently confirmed active offices are HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan; future office sites may still be added through Super Admin master data.
+- Kantor Perawatan remains explicitly active. The five currently confirmed active offices are HO, PIBC, RPC, Pangsub, and Kantor Perawatan; future office sites may still be added through Super Admin master data.
 - Updated `scripts/org-model-verify.mjs`: the nine legacy role labels are documented as compatibility data, the old Kantor Pusat label was replaced by HO, and the live API check requires the five confirmed offices while allowing future locations.
 
 
@@ -1223,7 +1223,7 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 
 
 ### Ticket authorization follow-up — 2026-11-08
-- `canManageTicket()` in `server/runtime-hardening.ts` previously allowed dynamic PostgreSQL scopes only for IT and GA ticket categories. Custom operational owner categories such as RPC/SC were blocked even when their users had explicit `tickets.update` permission and matching owner scope.
+- `canManageTicket()` in `server/runtime-hardening.ts` previously allowed dynamic PostgreSQL scopes only for IT and GA ticket categories. Custom operational owner categories such as RPC were blocked even when their users had explicit `tickets.update` permission and matching owner scope.
 - PostgreSQL mode now evaluates the ticket's owner/category code generically through `hasRbacScope(user, 'division', owner, 'tickets')`. IT/GA role-label fallback remains only for file-store compatibility. Reporter/assignee self-access and Auditor read-only behavior remain intact.
 - Added regression coverage for custom owner-code ticket status authorization.
 
@@ -1232,12 +1232,12 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - CI run #441 (run `42487422969`) passed on source head `9f3faf86f7f23f40ea8db167a9554f0abf8ef48e`: 46/46 asset-scope checks, production build, 37/37 P0 HTTP security assertions, and 33/33 maintenance authorization assertions; the workflow also completed lint and Dynamic RBAC contract checks successfully.
 - CI run #443 (run `42487486675`) passed on documentation head `6f3e2b2a772d632d6f17ea82d1f5cb90859ac746`, confirming the migration 033 correction and office regression checks at that point.
 - Subsequent ticket custom-owner-scope fix and regression check were added in commits `0b0db0a66d7a3e1ca2d049ce77740b0717818548` and `e02a522f5efaec49dea5466e0edc0c5aac29f30a`. CI #446 is running on the newest head; pending result.
-- Additional audit finding (not yet changed): vendor visibility/write ownership is still inferred from vendor `category` using an IT-vs-GA fallback. This cannot represent configurable owner domains such as RPC/SC safely. Requires a separate schema/API/UI design; do not infer vendor owner from employee location or category text.
+- Additional audit finding (not yet changed): vendor visibility/write ownership is still inferred from vendor `category` using an IT-vs-GA fallback. This cannot represent configurable owner domains such as RPC safely. Requires a separate schema/API/UI design; do not infer vendor owner from employee location or category text.
 
 
 ### Latest CI and additional UI/domain audit — 2026-11-08
 - CI #446 (`42487582277`) passed with the dynamic ticket-owner authorization fix; CI #447 (`42487587798`) and #448 (`42487694450`) also passed on subsequent documentation heads.
-- Vendor audit confirms a broader issue than backend category mapping: `VendorsView.tsx` enables management only for hardcoded role labels Admin GABAH/IT/GA, while `/api/vendors` infers owner from category IT/License vs everything else GA. Vendor category and responsible owner are distinct concepts; future RPC/SC vendors cannot be represented safely yet.
+- Vendor audit confirms a broader issue than backend category mapping: `VendorsView.tsx` enables management only for hardcoded role labels Admin GABAH/IT/GA, while `/api/vendors` infers owner from category IT/License vs everything else GA. Vendor category and responsible owner are distinct concepts; future RPC vendors cannot be represented safely yet.
 - Room reservation list still applies legacy role branches for GA, IT, Humas, and self-only users. These rules include privacy redaction and must be translated carefully into effective capabilities/scopes without exposing agenda descriptions, attendee lists, or documentation notes.
 
 

@@ -16,7 +16,7 @@ Status yang digunakan: `NOT RUN`, `PASS`, `FAIL`, `BLOCKED`.
 | UAT-006 | Dynamic roles | Buat role kustom, ubah nama/permission, lalu hapus role yang tidak terpakai | CRUD sesuai izin; tidak ada role/permission hardcoded yang diam-diam memberi akses | NOT RUN | |
 | UAT-007 | User-role assignment | Assign dan cabut role kustom dari user | Assignment tersimpan; otorisasi berubah sesuai role baru | NOT RUN | |
 | UAT-008 | Permission & scope | Uji permission tanpa scope, scope division, dan scope all | Akses mengikuti permission dan scope; default deny untuk yang tidak berwenang | NOT RUN | |
-| UAT-009 | Isolasi divisi | Akun IT, GA, Supply Chain, PIBC, Auditor, Karyawan, dan custom role mengakses data lintas divisi | Data dibatasi sesuai kebijakan; tidak ada akses lintas divisi yang tidak sah | NOT RUN | |
+| UAT-009 | Isolasi divisi | Akun IT, GA, RPC, PIBC, Auditor, Karyawan, dan custom role mengakses data lintas divisi | Data dibatasi sesuai kebijakan; tidak ada akses lintas divisi yang tidak sah | NOT RUN | |
 | UAT-010 | Asset read/update | Baca dan update aset sendiri/divisi lain menggunakan role yang berbeda | Gate permission dan authority divisi konsisten | NOT RUN | |
 | UAT-011 | Bulk import | Uji insert dan update aset, termasuk aset lintas divisi dan baris invalid | Update tidak melewati otorisasi; error per baris jelas; data tidak korup | NOT RUN | |
 | UAT-012 | Maintenance read | Uji jadwal maintenance dengan role legacy dan custom, termasuk tanpa scope | Gate permission dan filter scope berlaku; jadwal tanpa aset rujukan ditangani fail-closed sesuai implementasi | NOT RUN | |
@@ -54,11 +54,11 @@ Aplikasi tidak dinyatakan production-ready sebelum:
 | PREV-003 | Karyawan PIBC | Ulangi skenario Karyawan dari lokasi PIBC | Lokasi kerja PIBC tidak otomatis memberi role/owner aset PIBC atau akses kelola lintas domain | NOT RUN |
 | PREV-004 | GA | Buka aset GA di HO dan lokasi cabang; coba aset IT | GA dapat mengelola sesuai permission + owner scope; aset IT tidak bisa diubah tanpa otorisasi | NOT RUN |
 | PREV-005 | IT | Buka aset IT di semua lokasi; coba aset GA | IT tetap mengelola domain aset IT lintas lokasi; tidak otomatis mengelola aset GA | NOT RUN |
-| PREV-006 | Supply Chain / RPC-SC | Buka data sesuai scope; coba akses kelola aset IT/GA | Nama unit/lokasi tidak otomatis menjadi role aplikasi atau owner domain | NOT RUN |
+| PREV-006 | RPC / RPC | Buka data sesuai scope; coba akses kelola aset IT/GA | Nama unit/lokasi tidak otomatis menjadi role aplikasi atau owner domain | NOT RUN |
 | PREV-007 | Auditor | Buka dashboard, aset, kontrak, tiket, audit log; coba aksi tulis | Data hanya sesuai scope Auditor; semua aksi tulis ditolak | NOT RUN |
 | PREV-008 | Role custom create-only Knowledge | Buka Knowledge Base dan coba buat/edit artikel | Tombol buat tampil; tombol edit tidak tampil; API tetap menolak update tanpa permission | NOT RUN |
 | PREV-009 | Role custom update-only Knowledge | Buka artikel yang dapat diakses | Tombol edit tampil; tombol buat tidak tampil; API tetap menolak create tanpa permission | NOT RUN |
-| PREV-010 | Perpindahan aset | Pindahkan aset uji dari lokasi yang dinonaktifkan ke RPC/SC | Riwayat perpindahan tercatat; owner/pengelola aset tidak berubah hanya karena lokasi berubah | NOT RUN |
+| PREV-010 | Perpindahan aset | Pindahkan aset uji dari lokasi yang dinonaktifkan ke RPC | Riwayat perpindahan tercatat; owner/pengelola aset tidak berubah hanya karena lokasi berubah | NOT RUN |
 | PREV-011 | Helpdesk | Buat tiket sebagai Karyawan; proses sebagai petugas yang diberi permission | Pelapor melihat tiketnya; petugas melihat antrean sesuai scope; status dan audit trail konsisten | NOT RUN |
 | PREV-012 | Sesi & refresh | Cabut permission/role dari akun uji, logout-login kembali, ulangi akses UI dan API | Akses lama tidak bertahan; menu, tombol, dan API mengikuti assignment terbaru | NOT RUN |
 

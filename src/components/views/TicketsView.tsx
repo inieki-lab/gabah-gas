@@ -62,7 +62,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const isSuperAdmin = currentUser?.role === 'Admin GABAH';
   const isIT = currentUser?.role === 'IT';
   const isGA = currentUser?.role === 'GA';
-  const isSC = currentUser?.role === 'Supply Chain';
+  const isRPC = currentUser?.role === 'RPC';
   const isPIBC = currentUser?.role === 'PIBC';
   const isAuditor = currentUser?.role === 'Auditor';
   // Self-service roles see their own submissions; operating divisions see the
@@ -82,11 +82,11 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     ? ['ALL', ...Array.from(baseCategorySet)]
     : isGA
     ? ['ALL', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'GA')]
-    : isSC
-    ? ['ALL', 'SC', ...Array.from(baseCategorySet).filter(c => c !== 'SC')]
+    : isRPC
+    ? ['ALL', 'RPC', ...Array.from(baseCategorySet).filter(c => c !== 'RPC')]
     : isPIBC
     ? ['ALL', 'PIBC', ...Array.from(baseCategorySet).filter(c => c !== 'PIBC')]
-    : ['ALL', 'IT', 'GA', 'SC', 'PIBC'];
+    : ['ALL', 'IT', 'GA', 'RPC', 'PIBC'];
   const availableCategories = Array.from(new Set(defaultCategories));
 
   const filteredTickets = baseTickets.filter((t) => {
@@ -120,8 +120,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Tiket Helpdesk Saya'
               : isGA
               ? 'Helpdesk & Tiket Layanan GA'
-              : isSC
-              ? 'Helpdesk & Tiket Supply Chain'
+              : isRPC
+              ? 'Helpdesk & Tiket RPC'
               : isPIBC
               ? 'Helpdesk & Tiket PIBC'
               : isAuditor
@@ -133,8 +133,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Daftar pengajuan kendala teknis, kerusakan fasilitas, dan permohonan bantuan Anda.'
               : isGA
               ? 'Daftar tiket kendala fasilitas gedung & sarana GA, serta tiket kendala yang Anda ajukan.'
-              : isSC
-              ? 'Daftar kendala operasional Supply Chain dan tiket yang Anda ajukan.'
+              : isRPC
+              ? 'Daftar kendala operasional RPC dan tiket yang Anda ajukan.'
               : isPIBC
               ? 'Daftar kendala operasional PIBC dan tiket yang Anda ajukan.'
               : isAuditor

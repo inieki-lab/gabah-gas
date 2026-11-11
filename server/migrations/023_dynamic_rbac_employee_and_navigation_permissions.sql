@@ -1,7 +1,7 @@
 -- Stage 16: seed navigation/read permissions for the employee baseline and
 -- the current IT/GA/Auditor workspaces. Menu visibility is derived from these
 -- permissions; the backend endpoints still enforce their own authorization.
--- Supply Chain and PIBC are legacy account labels for office locations, not
+-- RPC and PIBC are legacy account labels for office locations, not
 -- asset-owner roles. Remove their legacy asset mutation grants; Super Admin
 -- can explicitly grant new role templates after organizational mapping.
 -- Additive/idempotent and safe to re-run.
@@ -26,7 +26,7 @@ JOIN (VALUES
   ('knowledge.read')
 ) AS p(permission_key) ON TRUE
 WHERE r.role_key IN (
-  'superadmin', 'it', 'ga', 'supply_chain', 'pibc',
+  'superadmin', 'it', 'ga', 'rpc', 'pibc',
   'karyawan', 'auditor', 'sekretaris_direksi', 'humas'
 )
   AND r.is_active = TRUE
@@ -53,13 +53,13 @@ WHERE r.role_key IN ('superadmin', 'it', 'ga', 'auditor')
   AND r.is_active = TRUE
 ON CONFLICT (role_id, permission_key) DO NOTHING;
 
--- Legacy Supply Chain/PIBC labels no longer authorize asset management.
+-- Legacy RPC/PIBC labels no longer authorize asset management.
 -- Historical owner_division values are not migrated here; those assets require
 -- per-record ownership review and a separate approved migration.
 DELETE FROM gabah_role_permissions rp
 USING gabah_roles r
 WHERE rp.role_id = r.id
-  AND r.role_key IN ('supply_chain', 'pibc')
+  AND r.role_key IN ('rpc', 'pibc')
   AND rp.permission_key IN (
     'assets.create', 'assets.update', 'assets.bulk_import',
     'assets.assign', 'assets.move', 'assets.lifecycle'

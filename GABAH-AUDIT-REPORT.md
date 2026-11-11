@@ -106,18 +106,18 @@ Berdasarkan kode aktual (`server/runtime-hardening.ts`, `server/services.ts`, `s
 
 Legenda: R=Read, C=Create, U=Update, D=Delete, A=Approve, -=No access. `Own` = hanya milik sendiri/divisinya.
 
-| Modul | Admin GABAH | IT | GA | Supply Chain | PIBC | Karyawan | Auditor | Sekretaris Direksi | Humas |
+| Modul | Admin GABAH | IT | GA | RPC | PIBC | Karyawan | Auditor | Sekretaris Direksi | Humas |
 |---|---|---|---|---|---|---|---|---|---|
-| **Asset — Read** | R semua | R IT + read GA/furniture | R GA + read IT (read-only) | R SC | R PIBC | R assigned/loanable saja | R semua | R assigned/loanable | - (katalog disembunyikan) |
-| **Asset — Create/Assign/Move/Lifecycle** | CRUD | C/U (IT only) | C/U (non-IT only) | C/U (SC only) | C/U (PIBC only) | - | - (read-only dipaksa) | - | - |
+| **Asset — Read** | R semua | R IT + read GA/furniture | R GA + read IT (read-only) | R RPC | R PIBC | R assigned/loanable saja | R semua | R assigned/loanable | - (katalog disembunyikan) |
+| **Asset — Create/Assign/Move/Lifecycle** | CRUD | C/U (IT only) | C/U (non-IT only) | C/U (RPC only) | C/U (PIBC only) | - | - (read-only dipaksa) | - | - |
 | **Asset — Disposal approval** | A (eksklusif) | - | - | - | - | - | - | - | - |
-| **Ticket — Read** | R semua | R IT-category | R GA-category | R SC-category | R PIBC-category | R own (fuzzy reporter match) | R semua | R own | R own |
+| **Ticket — Read** | R semua | R IT-category | R GA-category | R RPC-category | R PIBC-category | R own (fuzzy reporter match) | R semua | R own | R own |
 | **Ticket — Create** | C | C | C | C | C | C | - (403) | C | C |
-| **Ticket — Update status/assign** | U semua | U IT-cat | U GA-cat | U SC-cat | U PIBC-cat | - | - | - | - |
+| **Ticket — Update status/assign** | U semua | U IT-cat | U GA-cat | U RPC-cat | U PIBC-cat | - | - | - | - |
 | **Ticket — Status transition validity** | ⚠ TIDAK DIVERIFIKASI di server (arbitrary status diterima) — temuan SEC-05 | ⚠ | ⚠ | ⚠ | ⚠ | - | - | - | - |
 | **Loan — Request** | C | C | C | C | C | C | - (403) | C | C |
-| **Loan — Approve/Reject** | A semua | A (aset IT) | A (aset GA) | A (aset SC) | A (aset PIBC) | - | - | - | - |
-| **Loan — Handover/Return** | U semua | U (aset IT) | U (aset GA) | U (aset SC) | U (aset PIBC) | - | - | - | - |
+| **Loan — Approve/Reject** | A semua | A (aset IT) | A (aset GA) | A (aset RPC) | A (aset PIBC) | - | - | - | - |
+| **Loan — Handover/Return** | U semua | U (aset IT) | U (aset GA) | U (aset RPC) | U (aset PIBC) | - | - | - | - |
 | **Loan — Handover/Return otoritas ⚠** | endpoint TANPA cek aktor/status — bisa dipanggil siapa pun untuk pinjaman apa pun (SEC-04) | ⚠ | ⚠ | ⚠ | ⚠ | ⚠ (bocor) | - | ⚠ | ⚠ |
 | **Room — Create reservation** | C | C | C | C | C | C (pending GA) | - | C (VIP auto-approve) | C |
 | **Room — Approve/Reject** | A | - | A | - | - | - | - | - | - |
@@ -299,7 +299,7 @@ Timeline (terlama → terbaru). Status: GOOD-SAFE / NEEDS UAT / RISK / REDUNDANT
 | 29 | `5078795` | Docs source of truth | Docs | Low | REDUNDANT (duplikat) |
 | 30 | `747e13f` | Docs source of truth | Docs | Low | REDUNDANT (duplikat) |
 | 31 | `de83074` | Asset-linked ticketing & role restrictions | Ticket/RBAC | Medium | NEEDS UAT |
-| 32 | `a2c4b83` | Loan rejection flow + RBAC PIBC/SC/Auditor | Loan/RBAC | Medium — rejection path perlu UAT end-to-end | NEEDS UAT |
+| 32 | `a2c4b83` | Loan rejection flow + RBAC PIBC/RPC/Auditor | Loan/RBAC | Medium — rejection path perlu UAT end-to-end | NEEDS UAT |
 | 33 | `14b8041` | Live SLA timer + per-asset history timeline (SlaTimer.tsx) | Ticket/UI | Medium — client-side countdown only | NEEDS UAT |
 | 34 | `610c899` | **Contract Management domain + restrict ticket categories** (contracts.ts, ContractsView, modal, migrasi 004, ticket categories) | Contract/DB | 🔴 High — migrasi 004 gagal jalan (CR-04); reminder manual-only (CR-05); no real email | RISK + INCOMPLETE |
 

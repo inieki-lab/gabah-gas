@@ -77,7 +77,7 @@
 ## ADR-009: Pemisahan Entitas Peran Login (9 Roles) dari Vendor dan Manajemen
 - **Konteks**: Sebelumnya terdapat kerancuan mengenai peran `Management` dan `Vendor` dalam RBAC login.
 - **Keputusan**:
-  1. Menetapkan **9 peran login resmi**: `Admin GABAH`, `IT`, `GA`, `Sekretaris Direksi`, `Humas`, `Supply Chain`, `PIBC`, `Karyawan`, dan `Auditor`.
+  1. Menetapkan **9 peran login resmi**: `Admin GABAH`, `IT`, `GA`, `Sekretaris Direksi`, `Humas`, `RPC`, `PIBC`, `Karyawan`, dan `Auditor`.
   2. Peran `Management` dihapus dari autentikasi login pengguna (fungsi pengawasan eksekutif menggunakan akun `Auditor` atau `Admin GABAH`).
   3. Entitas `Vendor` dikelola murni sebagai entitas data master rekanan servis/kontrak pada tabel `contracts` dan modul Master Data.
 - **Status**: Diterapkan & Aktif (`server/db.ts`, `src/types.ts`).

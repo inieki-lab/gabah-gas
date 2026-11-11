@@ -108,7 +108,7 @@ async function main() {
     const assets0 = (await req(s1.base, 'GET', '/api/assets', { token: admin })).json?.data || [];
     const unmapped = assets0.filter(a => !a.asset_location_id);
     const undefinedCount = assets0.filter(a => a.asset_location_id === undefined).length;
-    const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: 'UNIT-SC', PIBC: 'UNIT-PIBC', GA: null };
+    const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', RPC: 'UNIT-RPC', PIBC: 'UNIT-PIBC', GA: null };
     const unitOk = assets0.every(a => a.managing_unit_id === (EXPECTED_BY_DIV[a.owner_division] ?? null));
     rec('B1: seluruh aset seed terpetakan deterministik (exact-match path)', '0 belum terpetak, 0 undefined',
       `total=${assets0.length}, unMapped=${unmapped.length}, undefined=${undefinedCount}`,

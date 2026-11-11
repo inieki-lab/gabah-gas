@@ -432,7 +432,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                       { role: 'Humas' as UserRole, label: 'Staf Humas', color: 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100' },
                       { role: 'GA' as UserRole, label: 'GA & Sarpras', color: 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100' },
                       { role: 'IT' as UserRole, label: 'IT Support', color: 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' },
-                      { role: 'Supply Chain' as UserRole, label: 'Supply Chain', color: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
+                      { role: 'RPC' as UserRole, label: 'RPC', color: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
                       { role: 'PIBC' as UserRole, label: 'Pasar PIBC', color: 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' },
                       { role: 'Auditor' as UserRole, label: 'Auditor SPI', color: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' },
                     ].map(item => {

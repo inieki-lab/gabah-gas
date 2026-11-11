@@ -53,10 +53,10 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 | `TNH` | Tanah & Lahan Korporat | `General` | `TNH` | Lahan kawasan Cipinang & sentra produksi daerah |
 | `LNY` | Aset Tetap Lainnya | `General` | `LNY` | Aset sarana penunjang umum lainnya |
 
-### 2.3 Divisi Supply Chain & Logistik (`SC`)
+### 2.3 Divisi RPC & Logistik (`RPC`)
 | Kode Aset | Nama Kategori | Tipe Taksonomi | Klasifikasi PSAK 16 | Deskripsi Singkat |
 |:---|:---|:---:|:---:|:---|
-| `KDR-SC` | Kendaraan Logistik Truk | `General` | `KDR` | Truk tronton beras, fuso wingbox, colt diesel |
+| `KDR-RPC` | Kendaraan Logistik Truk | `General` | `KDR` | Truk tronton beras, fuso wingbox, colt diesel |
 | `MSN` | Mesin Pabrik & Forklift | `General` | `MSN` | Rice milling plant, forklift gudang, conveyor |
 
 ### 2.4 Divisi Pasar Induk Beras Cipinang (`PIBC`)
@@ -73,8 +73,8 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 3. **Lisensi Microsoft 365 E3**: `IT-SLIC-2026-0001`
 4. **Meja Kerja Kayu Jati Kantor**: `GA-INV-F-2026-0001`
 5. **Mobil Dinas Toyota Innova**: `GA-KDR-2026-0001`
-6. **Truk Logistik Fuso Wingbox**: `SC-KDR-SC-2026-0001`
-7. **Forklift Komatsu Pergudangan**: `SC-MSN-2026-0001`
+6. **Truk Logistik Fuso Wingbox**: `RPC-KDR-RPC-2026-0001`
+7. **Forklift Komatsu Pergudangan**: `RPC-MSN-2026-0001`
 8. **Jembatan Timbang Truk 60 Ton PIBC**: `PIBC-MSN-PIBC-2026-0001`
 
 ---

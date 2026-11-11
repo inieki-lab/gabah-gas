@@ -25,7 +25,7 @@ JOIN (VALUES
   ('meeting_facilities.read')
 ) AS p(permission_key) ON TRUE
 WHERE r.role_key IN (
-  'superadmin', 'it', 'ga', 'supply_chain', 'pibc',
+  'superadmin', 'it', 'ga', 'rpc', 'pibc',
   'karyawan', 'auditor', 'sekretaris_direksi', 'humas'
 )
   AND r.is_active = TRUE
@@ -77,7 +77,7 @@ JOIN (VALUES
   ('room_reservations.create')
 ) AS p(permission_key) ON TRUE
 WHERE r.role_key IN (
-  'superadmin', 'it', 'ga', 'supply_chain', 'pibc',
+  'superadmin', 'it', 'ga', 'rpc', 'pibc',
   'karyawan', 'auditor', 'sekretaris_direksi', 'humas'
 )
   AND r.is_active = TRUE
@@ -103,5 +103,5 @@ ON CONFLICT (role_id, permission_key) DO NOTHING;
 DELETE FROM gabah_role_permissions rp
 USING gabah_roles r
 WHERE rp.role_id = r.id
-  AND r.role_key IN ('supply_chain', 'pibc')
+  AND r.role_key IN ('rpc', 'pibc')
   AND rp.permission_key IN ('vendors.create', 'vendors.update');

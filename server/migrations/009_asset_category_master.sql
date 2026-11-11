@@ -41,7 +41,7 @@ SET main_type = CASE
   WHEN code = 'SLIC'   THEN 'IT-S'
   WHEN code = 'INV-F'  THEN 'INV-F'
   WHEN code = 'INV-P'  THEN 'INV-P'
-  WHEN code IN ('KDR','KDR-SC')       THEN 'KDR'
+  WHEN code IN ('KDR','KDR-RPC')       THEN 'KDR'
   WHEN code IN ('MSN','MSN-PIBC')     THEN 'MSN'
   WHEN code = 'BGN'    THEN 'BGN'
   WHEN code = 'TNH'    THEN 'TNH'
@@ -86,8 +86,8 @@ FROM (VALUES
   ('INV-F',  'Inventaris Furniture (Meja, Kursi, Lemari)','General', 'INV-F', 'Meja kerja, kursi, lemari arsip (Semua furniture milik GA meski ada dimanapun)', 'GA', FALSE),
   ('INV-P',  'Inventaris Peralatan & Perlengkapan',      'General', 'INV-P', 'Kompor, dispenser, AC, microwave, vacuum cleaner, APAR (Milik GA)',  'GA',  TRUE),
   ('KDR',    'Kendaraan Dinas & Operasional',            'General', 'KDR',   'Mobil dinas, minibus operasional, sepeda motor (Milik GA)',         'GA',  TRUE),
-  ('KDR-SC', 'Kendaraan Logistik / Truk Beras',          'General', 'KDR',   'Truk wingbox, colt diesel muatan beras (Milik SC)',                 'SC',  TRUE),
-  ('MSN',    'Mesin Produksi & Forklift',                'General', 'MSN',   'Forklift, rice milling plant, conveyor packaging (Milik SC)',       'SC',  FALSE),
+  ('KDR-RPC', 'Kendaraan Logistik / Truk Beras',          'General', 'KDR',   'Truk wingbox, colt diesel muatan beras (Milik RPC)',                 'RPC',  TRUE),
+  ('MSN',    'Mesin Produksi & Forklift',                'General', 'MSN',   'Forklift, rice milling plant, conveyor packaging (Milik RPC)',       'RPC',  FALSE),
   ('MSN-PIBC','Mesin Jembatan Timbang & Tera PIBC',      'General', 'MSN',   'Jembatan timbang 60 ton & alat ukur kawasan pasar (Milik PIBC)',    'PIBC',FALSE),
   ('BGN',    'Bangunan Fisik & Gudang',                  'General', 'BGN',   'Gedung kantor pusat, pergudangan Cipinang & Sragen (Milik GA)',     'GA',  FALSE),
   ('TNH',    'Tanah & Lahan Korporat',                   'General', 'TNH',   'Lahan kawasan Food Station Cipinang & sentra produksi (Milik GA)',  'GA',  FALSE),

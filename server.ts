@@ -102,7 +102,7 @@ async function startServer() {
       auditor: 'Auditor',
       humas: 'Humas',
       sekretaris_direksi: 'Sekretaris Direksi',
-      supply_chain: 'Supply Chain',
+      rpc: 'RPC',
       pibc: 'PIBC',
     };
     if (actor.role === legacyLabels[roleKey]) return true;
@@ -146,7 +146,7 @@ async function startServer() {
       'Auditor': 'auditor',
       'Humas': 'humas',
       'Sekretaris Direksi': 'sekretaris_direksi',
-      'Supply Chain': 'karyawan',
+      'RPC': 'karyawan',
       'PIBC': 'karyawan',
     };
     return canonical[normalized] || normalized.toLowerCase().normalize('NFKD')
@@ -207,7 +207,7 @@ async function startServer() {
   app.get('/api/admin/rbac/roles', async (req, res) => {
     if (!requireRbacSuperadmin(req, res)) return;
     try {
-      const roles = await queryRbac<any>('SELECT r.id, r.role_key, r.name, r.description, r.is_superadmin, r.is_active, r.created_at, r.updated_at, (SELECT COUNT(*)::int FROM gabah_user_roles ur WHERE ur.role_id = r.id) AS assigned_user_count FROM gabah_roles r ORDER BY r.is_superadmin DESC, r.name');
+      const roles = await queryRbac<any>('SELECT r.id, r.role_key, r.name, r.description, r.is_superadmin, r.is_active, r.created_at, r.updated_at, (SELECT COUNT(*)::int FROM gabah_user_roles ur WHERE ur.role_id = r.id) AS assigned_user_count FROM gabah_roles r ORDER BY r.is_superadmin DERPC, r.name');
       const [permissions, scopes] = await Promise.all([
         queryRbac<any>('SELECT rp.role_id, p.permission_key FROM gabah_role_permissions rp JOIN gabah_permissions p USING (permission_key) WHERE p.is_active = TRUE ORDER BY p.module, p.action'),
         queryRbac<any>('SELECT role_id, module, scope_type, scope_value FROM gabah_role_division_scopes ORDER BY role_id, module, scope_type, scope_value')
@@ -225,7 +225,7 @@ async function startServer() {
     try {
       const result = await queryRbac<any>(
         'SELECT u.id AS user_id, u.name, u.email, u.role AS primary_profile_role, ' +
-        'COALESCE(array_agg(ur.role_id ORDER BY ur.is_primary DESC, ur.role_id) FILTER (WHERE ur.role_id IS NOT NULL), ARRAY[]::bigint[]) AS role_ids, ' +
+        'COALESCE(array_agg(ur.role_id ORDER BY ur.is_primary DERPC, ur.role_id) FILTER (WHERE ur.role_id IS NOT NULL), ARRAY[]::bigint[]) AS role_ids, ' +
         'MAX(ur.role_id) FILTER (WHERE ur.is_primary = TRUE) AS primary_role_id ' +
         'FROM users u LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id::text ' +
         'GROUP BY u.id, u.name, u.email, u.role ORDER BY u.name'
@@ -491,8 +491,8 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body;
-      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : (role || 'Karyawan');
-      const inferredOfficeLocation = role === 'Supply Chain' ? 'OFF-RPC' : role === 'PIBC' ? 'OFF-PIBC' : undefined;
+      const primaryRole = role === 'RPC' || role === 'PIBC' ? 'Karyawan' : (role || 'Karyawan');
+      const inferredOfficeLocation = role === 'RPC' ? 'OFF-RPC' : role === 'PIBC' ? 'OFF-PIBC' : undefined;
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
@@ -531,7 +531,7 @@ async function startServer() {
         'Superadmin': 'Super Admin',
         'IT': 'IT Technical Support',
         'GA': 'Fasilitas & Gedung',
-        'Supply Chain': 'Logistik Beras',
+        'RPC': 'Logistik Beras',
         'PIBC': 'Pengawas Pasar PIBC',
         'Auditor': 'Internal Auditor',
         'Karyawan': 'Pegawai Operasional',
@@ -551,7 +551,7 @@ async function startServer() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         role: primaryRole,
-        role_label: (role === 'Supply Chain' || role === 'PIBC') ? 'Karyawan — Lokasi ' + role : (roleLabels[role] || roleLabels[primaryRole] || 'Pegawai Operasional'),
+        role_label: (role === 'RPC' || role === 'PIBC') ? 'Karyawan — Lokasi ' + role : (roleLabels[role] || roleLabels[primaryRole] || 'Pegawai Operasional'),
         division: division || 'Umum',
         department: department || 'Operasional',
         job_level_code: newJobLevel,
@@ -608,14 +608,14 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Maksimal 500 baris per impor. Pisahkan menjadi beberapa berkas.' });
       }
 
-      const validRoles = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'];
+      const validRoles = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'RPC', 'PIBC', 'Karyawan', 'Auditor'];
       const roleLabels: Record<string, string> = {
         'Admin GABAH': 'Super Admin',
         'IT': 'IT Technical Support',
         'GA': 'Fasilitas & Gedung',
         'Sekretaris Direksi': 'Sekretariat Direksi',
         'Humas': 'Humas & Protokoler',
-        'Supply Chain': 'Logistik Beras',
+        'RPC': 'Logistik Beras',
         'PIBC': 'Pengawas Pasar PIBC',
         'Auditor': 'Internal Auditor',
         'Karyawan': 'Pegawai Operasional'
@@ -640,7 +640,7 @@ async function startServer() {
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
         const unitId = String(row.unit_id || '').trim();
         const requestedOfficeLocation = String(row.office_location_id || '').trim();
-        const officeLocationId = requestedOfficeLocation || (roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '');
+        const officeLocationId = requestedOfficeLocation || (roleRaw === 'RPC' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '');
 
         if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
         if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
@@ -657,10 +657,10 @@ async function startServer() {
         }
 
         const requestedRole = roleRaw && validRoles.includes(roleRaw) ? roleRaw : 'Karyawan';
-        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
+        const role = requestedRole === 'RPC' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
         if (roleRaw && !validRoles.includes(roleRaw)) {
           warnings.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenali (memakai Karyawan).`);
-        } else if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
+        } else if (requestedRole === 'RPC' || requestedRole === 'PIBC') {
           warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai lokasi kerja, bukan role; role aplikasi menjadi Karyawan.`);
         }
 
@@ -670,13 +670,13 @@ async function startServer() {
           existing.name = name;
           existing.role = role as ServerUser['role'];
           (existing as any).role_label = roleLabels[role] || role;
-          if (requestedRole === 'Supply Chain' && !existing.office_location_id) existing.office_location_id = 'OFF-RPC';
+          if (requestedRole === 'RPC' && !existing.office_location_id) existing.office_location_id = 'OFF-RPC';
           if (requestedRole === 'PIBC' && !existing.office_location_id) existing.office_location_id = 'OFF-PIBC';
           existing.division = division as ServerUser['division'];
           existing.department = department;
           if (jobLevelCode) existing.job_level_code = jobLevelCode;
           if (unitId) existing.unit_id = unitId;
-          else if (requestedRole === 'Supply Chain' && existing.unit_id === 'UNIT-SC') existing.unit_id = null;
+          else if (requestedRole === 'RPC' && existing.unit_id === 'UNIT-RPC') existing.unit_id = null;
           else if (requestedRole === 'PIBC' && existing.unit_id === 'UNIT-PIBC') existing.unit_id = null;
           if (officeLocationId) existing.office_location_id = officeLocationId;
           if (phone) existing.phone = phone;
@@ -759,7 +759,7 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
-      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
+      const primaryRole = role === 'RPC' || role === 'PIBC' ? 'Karyawan' : role;
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
       const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
       const wouldDeactivateSuperadmin = is_active === false;
@@ -813,7 +813,7 @@ async function startServer() {
           'Admin GABAH': 'Admin GABAH (Super Admin)',
           'IT': 'Staff Divisi IT',
           'GA': 'Staff Divisi General Affairs',
-          'Supply Chain': 'Karyawan — Lokasi Supply Chain',
+          'RPC': 'Karyawan — Lokasi RPC',
           'PIBC': 'Karyawan — Lokasi PIBC',
           'Sekretaris Direksi': 'Sekretariat Direksi',
           'Humas': 'Humas & Protokoler',
@@ -831,7 +831,7 @@ async function startServer() {
       if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
       if (orgUnit !== undefined) targetUser.unit_id = orgUnit;
       if (orgOffice !== undefined) targetUser.office_location_id = orgOffice;
-      if (role === 'Supply Chain' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-RPC';
+      if (role === 'RPC' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-RPC';
       if (role === 'PIBC' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-PIBC';
 
       if (password) {
@@ -1088,7 +1088,7 @@ async function startServer() {
         if (u.role === 'GA' && ['ga', 'ga.officer', 'siti', 'siti.rahmawati'].includes(inPrefix)) return true;
         if (u.role === 'Sekretaris Direksi' && ['sekdir', 'sekretariat.direksi', 'dewi', 'dewi.anggraini'].includes(inPrefix)) return true;
         if (u.role === 'Humas' && ['humas', 'rina', 'rina.kartika'].includes(inPrefix)) return true;
-        if (u.role === 'Supply Chain' && ['sc', 'sc.warehouse', 'supplychain', 'agus', 'agus.pratama'].includes(inPrefix)) return true;
+        if (u.role === 'RPC' && ['sc', 'sc.warehouse', 'rpc', 'agus', 'agus.pratama'].includes(inPrefix)) return true;
         if (u.role === 'PIBC' && ['pibc', 'pibc.admin', 'pasar', 'bambang', 'bambang.h'].includes(inPrefix)) return true;
         if (u.role === 'Karyawan' && ['karyawan', 'pegawai', 'hendra', 'hendra.w'].includes(inPrefix)) return true;
         if (u.role === 'Auditor' && ['auditor', 'spi', 'maya', 'maya.indriani'].includes(inPrefix)) return true;
@@ -2229,7 +2229,7 @@ async function startServer() {
     // with every explicit dynamic role scope. Do not re-filter by legacy
     // primary-role labels here: that would hide scoped assets from employees
     // who hold additional operational roles.
-    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'RPC', 'PIBC'];
     const isEmployeeBaseline = employeeBaselineRoles.includes(actor.role);
     const scopedAssets = GabahDomainService.getScopedAssets(actor);
     // Employee baseline may see unassigned loanable assets in the asset catalogue
@@ -2484,7 +2484,7 @@ async function startServer() {
       const dynamicallyScopedScheduleIds = new Set(
         filterMaintenanceSchedulesByDynamicScopes(db.maintenances, actor).map(schedule => schedule.id)
       );
-      const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+      const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'RPC', 'PIBC'];
       const personalAssetIds = new Set(employeeBaselineRoles.includes(actor.role)
         ? db.assets.filter(asset => asset.assigned_to?.id === actor.id).map(asset => asset.id)
         : []);
@@ -2495,7 +2495,7 @@ async function startServer() {
     }
 
     // File-store compatibility: preserve the established legacy behavior.
-    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
+    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'RPC', 'PIBC'].includes(actor.role);
     const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor)
       .filter(asset => !employeeBaseline || asset.assigned_to?.id === actor.id)
       .filter(asset => actor.role !== 'GA' || String(asset.owner_division).toUpperCase() === 'GA')

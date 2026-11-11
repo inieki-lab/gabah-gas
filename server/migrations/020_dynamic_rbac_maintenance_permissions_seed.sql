@@ -20,7 +20,7 @@ WHERE r.role_key IN (
   'superadmin',
   'it',
   'ga',
-  'supply_chain',
+  'rpc',
   'pibc',
   'karyawan',
   'auditor',

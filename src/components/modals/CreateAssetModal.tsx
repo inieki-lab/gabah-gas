@@ -125,26 +125,26 @@ export const FIXED_ASSET_TAXONOMY: FixedAssetCategoryDef[] = [
     categoryType: 'General',
     defaultDivision: 'GA',
     isDivisionLocked: false,
-    ruleNote: 'Armada mobil dinas operasional GA dan truk logistik angkutan beras SC.',
+    ruleNote: 'Armada mobil dinas operasional GA dan truk logistik angkutan beras RPC.',
     iconName: 'car',
     subcategories: [
       { code: 'KDR', name: 'Mobil Dinas / Penumpang Operasional (GA)', placeholderName: 'Toyota Avanza 1.5 G M/T Operasional', placeholderBrand: 'Toyota', placeholderModel: 'Avanza 1.5 G', isLoanableDefault: true, divisionOverride: 'GA' },
       { code: 'KDR', name: 'Sepeda Motor Patroli / Kurir (GA)', placeholderName: 'Honda Vario 125 CBS Kurir Kantor', placeholderBrand: 'Honda', placeholderModel: 'Vario 125 CBS', isLoanableDefault: true, divisionOverride: 'GA' },
-      { code: 'KDR', name: 'Truk Wingbox / Angkutan Beras Logistik (SC)', placeholderName: 'Truk Hino Dutro 130 HD Wingbox Beras', placeholderBrand: 'Hino', placeholderModel: 'Dutro 130 HD', isLoanableDefault: true, divisionOverride: 'SC' },
+      { code: 'KDR', name: 'Truk Wingbox / Angkutan Beras Logistik (RPC)', placeholderName: 'Truk Hino Dutro 130 HD Wingbox Beras', placeholderBrand: 'Hino', placeholderModel: 'Dutro 130 HD', isLoanableDefault: true, divisionOverride: 'RPC' },
     ],
   },
   {
     type: 'MSN',
     label: 'MSN — Mesin Produksi, Milling & Timbangan',
     categoryType: 'General',
-    defaultDivision: 'SC',
+    defaultDivision: 'RPC',
     isDivisionLocked: false,
-    ruleNote: 'Mesin rice milling plant, forklift gudang beras SC, dan jembatan timbang PIBC.',
+    ruleNote: 'Mesin rice milling plant, forklift gudang beras RPC, dan jembatan timbang PIBC.',
     iconName: 'cog',
     subcategories: [
-      { code: 'MSN', name: 'Mesin Rice Milling Plant / Penggilingan Beras (SC)', placeholderName: 'Paddy Husker & Rice Polisher 10 Ton/Jam', placeholderBrand: 'Satake', placeholderModel: 'HR-10D Rice Mill', isLoanableDefault: false, divisionOverride: 'SC' },
-      { code: 'MSN', name: 'Forklift Diesel / Elektrik Gudang (SC)', placeholderName: 'Forklift Diesel 3 Ton Mast 4.5 Meter', placeholderBrand: 'Toyota Forklift', placeholderModel: '8FD30', isLoanableDefault: false, divisionOverride: 'SC' },
-      { code: 'MSN', name: 'Mesin Packing & Sealing Beras Otomatis (SC)', placeholderName: 'Automatic Packaging Machine 5Kg-25Kg', placeholderBrand: 'Newlong', placeholderModel: 'DS-9C Packing Line', isLoanableDefault: false, divisionOverride: 'SC' },
+      { code: 'MSN', name: 'Mesin Rice Milling Plant / Penggilingan Beras (RPC)', placeholderName: 'Paddy Husker & Rice Polisher 10 Ton/Jam', placeholderBrand: 'Satake', placeholderModel: 'HR-10D Rice Mill', isLoanableDefault: false, divisionOverride: 'RPC' },
+      { code: 'MSN', name: 'Forklift Diesel / Elektrik Gudang (RPC)', placeholderName: 'Forklift Diesel 3 Ton Mast 4.5 Meter', placeholderBrand: 'Toyota Forklift', placeholderModel: '8FD30', isLoanableDefault: false, divisionOverride: 'RPC' },
+      { code: 'MSN', name: 'Mesin Packing & Sealing Beras Otomatis (RPC)', placeholderName: 'Automatic Packaging Machine 5Kg-25Kg', placeholderBrand: 'Newlong', placeholderModel: 'DS-9C Packing Line', isLoanableDefault: false, divisionOverride: 'RPC' },
       { code: 'MSN', name: 'Jembatan Timbang 60 Ton Kalibrasi Tera (PIBC)', placeholderName: 'Jembatan Timbang Truk 60 Ton Tera Sah', placeholderBrand: 'Avery Weigh-Tronix', placeholderModel: 'BridgeScale 60T', isLoanableDefault: false, divisionOverride: 'PIBC' },
       { code: 'MSN', name: 'Genset Utama Pembangkit Daya Darurat (GA/PIBC)', placeholderName: 'Genset Silent Diesel 250 kVA Standby', placeholderBrand: 'Cummins', placeholderModel: 'C250 D5e', isLoanableDefault: false, divisionOverride: 'GA' },
     ],
@@ -249,7 +249,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
       } else if (userRole === 'GA') {
         // GA owns INV-F, INV-P, KDR, BGN, TNH, LNY (All IT items are owned by IT; GA has read-only)
         roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => ['INV-F', 'INV-P', 'KDR', 'BGN', 'TNH', 'LNY'].includes(cat.type));
-      } else if (userRole === 'Supply Chain') {
+      } else if (userRole === 'RPC') {
         roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'KDR');
       } else if (userRole === 'PIBC') {
         roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'BGN');
@@ -326,7 +326,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
     } else if (activeSub.divisionOverride) {
       setSelectedDivision(activeSub.divisionOverride);
     } else if (!isSuperadmin) {
-      if (userRole === 'Supply Chain') setSelectedDivision('SC');
+      if (userRole === 'RPC') setSelectedDivision('RPC');
       else if (userRole === 'PIBC') setSelectedDivision('PIBC');
       else if (userRole === 'GA') setSelectedDivision('GA');
       else setSelectedDivision(activeMainCat.defaultDivision);
@@ -500,7 +500,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
               >
                 <option value="IT">IT — Tim Teknologi Informasi</option>
                 <option value="GA">GA — Tim General Affair</option>
-                <option value="SC">SC — Tim Supply Chain &amp; Pergudangan</option>
+                <option value="RPC">RPC — Tim RPC &amp; Pergudangan</option>
                 <option value="PIBC">PIBC — Tim Pasar Induk Beras Cipinang</option>
               </select>
 

@@ -40,7 +40,7 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 ### 2.3 Hak Milik Divisi (Division Asset Ownership)
 - **Barang IT (IT-H & IT-S)**: Seluruh laptop, komputer, server, perangkat jaringan, dan lisensi software adalah hak milik mutlak Divisi IT. Divisi GA hanya memiliki akses baca (*read-only*).
 - **Furniture (INV-F)**: Seluruh furniture (meja, kursi, lemari) adalah hak milik mutlak Divisi GA di manapun furniture tersebut diletakkan secara fisik.
-- **Armada Logistik & Mesin Pabrik**: Truk muatan beras (`KDR-SC`) dan mesin pabrik/forklift (`MSN`) adalah milik Divisi Supply Chain.
+- **Armada Logistik & Mesin Pabrik**: Truk muatan beras (`KDR-RPC`) dan mesin pabrik/forklift (`MSN`) adalah milik Divisi RPC.
 - **Sarana Pasar & Timbangan**: Jembatan timbang truk 60 ton dan sarana los/kios adalah milik Divisi PIBC.
 
 ---

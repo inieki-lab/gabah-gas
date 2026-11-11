@@ -3,7 +3,7 @@
  * Master Source of Truth for Asset Categories, Human-readable mapping, and Owner Divisions
  * 
  * Divisi / Departemen:
- * - SC: Tim Supply Chain
+ * - RPC: Tim RPC
  * - PIBC: Tim Pasar Induk Beras Cipinang
  * - IT: Tim IT (IT Hardware IT-H, IT Software IT-S)
  * - GA: Tim General Affair (Furniture INV-F, Peralatan INV-P, Bangunan BGN, Tanah TNH, Kendaraan KDR)
@@ -12,7 +12,7 @@
  * - TNH: Tanah
  * - BGN: Bangunan
  * - MSN: Mesin (Milling plant, Forklift, Jembatan timbang PIBC, Genset)
- * - KDR: Kendaraan (Mobil dinas GA, Truk logistik SC)
+ * - KDR: Kendaraan (Mobil dinas GA, Truk logistik RPC)
  * - INV-F: Inventaris Furniture (meja, kursi, lemari - Semua furniture adalah milik GA meski ada dimanapun)
  * - INV-P: Inventaris Peralatan (kompor, dispenser, AC, kulkas, APAR, toolkit)
  * - IT-H: IT Hardware (HLT laptop, HPC komputer/PC, HSV server, HMON monitor, HPRN printer, HSCN scanner, HNET switch/router, HUPS)
@@ -48,7 +48,7 @@ export const FIXED_ASSET_MAIN_TYPES = [
 export type FixedAssetMainType = (typeof FIXED_ASSET_MAIN_TYPES)[number];
 
 // Initial owner-domain seeds only; the owner vocabulary is intentionally extensible.
-export const ASSET_OWNER_DIVISIONS = ['IT', 'GA', 'SC', 'PIBC'] as const;
+export const ASSET_OWNER_DIVISIONS = ['IT', 'GA', 'RPC', 'PIBC'] as const;
 export const ASSET_CATEGORY_TYPES = ['IT', 'General', 'License'] as const;
 
 export function isFixedAssetMainType(v: unknown): v is FixedAssetMainType {
@@ -137,12 +137,12 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
   // General Affairs: Peralatan (INV-P)
   { code: 'INV-P', name: 'Inventaris Peralatan & Perlengkapan', main_type: 'INV-P', owner_division: 'GA', category_type: 'General', description: 'Kompor, dispenser, AC, microwave, vacuum cleaner, APAR (Milik GA)', is_loanable_by_default: true },
 
-  // Kendaraan (KDR) - GA atau SC
+  // Kendaraan (KDR) - GA atau RPC
   { code: 'KDR', name: 'Kendaraan Dinas & Operasional', main_type: 'KDR', owner_division: 'GA', category_type: 'General', description: 'Mobil dinas, minibus operasional, sepeda motor (Milik GA)', is_loanable_by_default: true },
-  { code: 'KDR-SC', name: 'Kendaraan Logistik / Truk Beras', main_type: 'KDR', owner_division: 'SC', category_type: 'General', description: 'Truk wingbox, colt diesel muatan beras (Milik SC)', is_loanable_by_default: true },
+  { code: 'KDR-RPC', name: 'Kendaraan Logistik / Truk Beras', main_type: 'KDR', owner_division: 'RPC', category_type: 'General', description: 'Truk wingbox, colt diesel muatan beras (Milik RPC)', is_loanable_by_default: true },
 
-  // Mesin (MSN) - SC atau PIBC
-  { code: 'MSN', name: 'Mesin Produksi & Forklift', main_type: 'MSN', owner_division: 'SC', category_type: 'General', description: 'Forklift, rice milling plant, conveyor packaging (Milik SC)', is_loanable_by_default: false },
+  // Mesin (MSN) - RPC atau PIBC
+  { code: 'MSN', name: 'Mesin Produksi & Forklift', main_type: 'MSN', owner_division: 'RPC', category_type: 'General', description: 'Forklift, rice milling plant, conveyor packaging (Milik RPC)', is_loanable_by_default: false },
   { code: 'MSN-PIBC', name: 'Mesin Jembatan Timbang & Tera PIBC', main_type: 'MSN', owner_division: 'PIBC', category_type: 'General', description: 'Jembatan timbang 60 ton & alat ukur kawasan pasar (Milik PIBC)', is_loanable_by_default: false },
 
   // Bangunan & Fisik (BGN)
@@ -176,7 +176,7 @@ export function resolveTaxonomyByHumanName(
   if (!nameOrCode || typeof nameOrCode !== 'string' || !nameOrCode.trim()) {
     if (requestedDivision === 'IT') return pick('HLT');
     if (requestedDivision === 'GA') return pick('INV-P');
-    if (requestedDivision === 'SC') return pick('KDR-SC');
+    if (requestedDivision === 'RPC') return pick('KDR-RPC');
     if (requestedDivision === 'PIBC') return pick('MSN-PIBC');
     return pool[0] || CANONICAL_TAXONOMY[0];
   }
@@ -221,7 +221,7 @@ export function resolveTaxonomyByHumanName(
     return pick('INV-P');
   }
   if (query.includes('mobil') || query.includes('motor') || query.includes('kendaraan') || query.includes('truk') || query.includes('kdr')) {
-    const div = requestedDivision || (query.includes('truk') ? 'SC' : 'GA');
+    const div = requestedDivision || (query.includes('truk') ? 'RPC' : 'GA');
     return {
       code: 'KDR',
       name: 'Kendaraan',
@@ -236,7 +236,7 @@ export function resolveTaxonomyByHumanName(
     return pick('MSN-PIBC');
   }
   if (query.includes('mesin') || query.includes('forklift') || query.includes('mill') || query.includes('packing') || query.includes('msn')) {
-    const div = requestedDivision || 'SC';
+    const div = requestedDivision || 'RPC';
     return {
       code: 'MSN',
       name: 'Mesin',

@@ -34,15 +34,15 @@ async function main() {
     const emails = ['admin@foodstation.co.id', 'it.support@foodstation.co.id', 'ga@foodstation.co.id', 'auditor@foodstation.co.id'];
     const [admin, it, ga, aud] = await Promise.all(emails.map(login));
 
-    // Case 12: Supply Chain and PIBC are not application roles in the target model.
+    // Case 12: RPC and PIBC are not application roles in the target model.
     // Their employee identities remain Karyawan with independent unit/location attributes.
     const users = (await req(b, 'GET', '/api/users', { token: admin })).json?.data || [];
     const expectedSeedRoles = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Karyawan', 'Auditor'];
     const presentRoles = expectedSeedRoles.filter(r => users.some(u => u.role === r));
-    const scUser = users.find(u => u.email === 'sc.warehouse@foodstation.co.id');
+    const rpcUser = users.find(u => u.email === 'sc.warehouse@foodstation.co.id');
     const pibcUser = users.find(u => u.email === 'pibc.admin@foodstation.co.id');
-    const noBranchRole = !users.some(u => ['Supply Chain', 'PIBC'].includes(u.role));
-    const branchProfilesValid = scUser?.role === 'Karyawan' && scUser?.office_location_id === 'OFF-RPC'
+    const noBranchRole = !users.some(u => ['RPC', 'PIBC'].includes(u.role));
+    const branchProfilesValid = rpcUser?.role === 'Karyawan' && rpcUser?.office_location_id === 'OFF-RPC'
       && pibcUser?.role === 'Karyawan' && pibcUser?.office_location_id === 'OFF-PIBC';
     rec('12: SC/PIBC are employee locations/units, not seeded application roles', '7 canonical roles; SC/RPC + PIBC users are Karyawan with independent locations',
       `${presentRoles.length}/7; branchProfiles=${branchProfilesValid}; legacyBranchRoles=${noBranchRole}`,
@@ -54,10 +54,10 @@ async function main() {
     const offices = (await req(b, 'GET', '/api/master/office-locations', { token: admin })).json?.data || [];
     const levels = (await req(b, 'GET', '/api/master/job-levels', { token: admin })).json?.data || [];
     const activeOfficeNames = offices.filter(l => l.is_active !== false).map(l => l.name).sort();
-    const expectedActiveOfficeNames = ['HO', 'Kantor Perawatan', 'PIBC', 'Pangsub', 'RPC/SC'].sort();
+    const expectedActiveOfficeNames = ['HO', 'Kantor Perawatan', 'PIBC', 'Pangsub', 'RPC'].sort();
     rec('13: lima lokasi kantor aktif sesuai keputusan bisnis; Subang tidak aktif', expectedActiveOfficeNames.join('|') + ' (+future sites allowed)', activeOfficeNames.join('|'), expectedActiveOfficeNames.every(name => activeOfficeNames.includes(name)) && !activeOfficeNames.includes('Subang'));
     const unitPIBC = units.find(u => u.name === 'PIBC');
-    const unitSC = units.find(u => u.name === 'Supply Chain');
+    const unitSC = units.find(u => u.name === 'RPC');
     const offPIBC = offices.find(l => l.name === 'PIBC');
     const offKP = offices.find(l => l.name === 'HO');
     const itUser = users.find(u => u.role === 'IT');
