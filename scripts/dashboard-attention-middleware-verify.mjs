@@ -9,6 +9,7 @@ const checks = [
   ['Borrower can always see own loan attention card', /loan\.borrower_id === actor\.id\) return true/.test(block)],
   ['PostgreSQL loan attention uses explicit loans owner scope', /isPostgresPersistenceActive\(\)[\s\S]*hasRbacScope\(String\(actor\.id\), 'division', owner, 'loans'\)/.test(block)],
   ['Primary IT/GA role fallback is limited to file-store compatibility', /File-store compatibility only[\s\S]*actor\.role === 'IT' \|\| actor\.role === 'GA'/.test(block)],
+  ['Auditor ticket attention cards require explicit PostgreSQL unit or division scope', /if \(isAuditorActor\(actor\)\)[\s\S]{0,100}if \(!isPostgresPersistenceActive\(\)\) return false;[\s\S]{0,220}hasRbacScope\(String\(actor\.id\), 'unit'[\s\S]{0,180}hasRbacScope\(String\(actor\.id\), 'division'/.test(block) && /return canManageTicket\(actor, item\.link_id\)/.test(block)],
 ];
 let failed = 0;
 for (const [name, pass] of checks) {
