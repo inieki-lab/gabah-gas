@@ -71,8 +71,13 @@ export function canSeeContract(user: ServerUser, contract: ServerContract): bool
   if (!owner) return false;
 
   if (isPostgresPersistenceActive()) {
-    return hasRbacPermission(String(user.id), 'contracts.read')
-      && hasRbacScope(String(user.id), 'division', owner, 'contracts');
+    // Auditor is an explicit read-only exception for the contract domain:
+    // audit authority includes restricted contracts and their documents.
+    // This exception is intentionally local to contracts; other modules remain
+    // bound to their own dynamic scopes. canEditContract never grants Auditor writes.
+    if (!hasRbacPermission(String(user.id), 'contracts.read')) return false;
+    if (isAuditorActor(user)) return true;
+    return hasRbacScope(String(user.id), 'division', owner, 'contracts');
   }
 
   return user.role === owner;
