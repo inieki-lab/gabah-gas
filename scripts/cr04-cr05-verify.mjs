@@ -233,9 +233,9 @@ async function main() {
     // ---------- Module lifecycle registry + immutable audit history ----------
     try {
       const moduleLedger = await mig.query(
-        "SELECT version FROM schema_migrations WHERE version = '037'",
+        "SELECT version FROM schema_migrations WHERE version = '042'",
       );
-      record('Module lifecycle migration 037 applied on fresh PostgreSQL database',
+      record('Module lifecycle migration 042 applied on fresh PostgreSQL database',
         'version 037 in schema_migrations', `rows=${moduleLedger.rowCount}`, moduleLedger.rowCount === 1);
 
       const moduleRows = await mig.query(
