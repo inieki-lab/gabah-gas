@@ -94,7 +94,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   ];
 
   const ownerDivision = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : 'GA');
-  const isSC = ownerDivision === 'RPC' || ownerDivision === 'RPC';
+  const isRPC = ownerDivision === 'RPC';
   const isPIBC = ownerDivision === 'PIBC';
   const isIT = ownerDivision === 'IT' || asset.category_type === 'IT';
   const isGA = ownerDivision === 'GA' || (!isRPC && !isPIBC && !isIT);
