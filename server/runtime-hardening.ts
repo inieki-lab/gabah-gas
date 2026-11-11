@@ -61,7 +61,21 @@ function scopedAttention(actor: ServerUser, items: any[]) {
       // module scope, never a primary-role label, for owner-division visibility.
       return (actor.role === 'IT' || actor.role === 'GA') && loan.owner_division === actor.role;
     }
-    if (item.link_type === 'ticket') return canManageTicket(actor, item.link_id);
+    if (item.link_type === 'ticket') {
+      const ticket = db.tickets.find(t => t.id === item.link_id);
+      if (!ticket) return false;
+      // Auditor may read ticket attention cards only through explicit module
+      // scopes. This is read visibility, not ticket-management authority.
+      if (isAuditorActor(actor)) {
+        if (!isPostgresPersistenceActive()) return false;
+        return Boolean(
+          (ticket.assigned_unit_id
+            && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'))
+          || hasRbacScope(String(actor.id), 'division', String(ticket.category || '').trim(), 'tickets')
+        );
+      }
+      return canManageTicket(actor, item.link_id);
+    }
     return false;
   });
 }
