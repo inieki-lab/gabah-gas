@@ -7,6 +7,7 @@ const server = read('server.ts');
 const admin = read('src/components/modals/AdministrationModal.tsx');
 const assetDetail = read('src/components/modals/AssetDetailModal.tsx');
 const migration = read('server/migrations/037_rename_supply_chain_domain_to_rpc.sql');
+const migrationFiles = fs.readdirSync('server/migrations').filter((file) => file.endsWith('.sql'));
 
 const sectionStart = admin.indexOf("VIEW: 5. ASSET NUMBERING");
 const sectionEnd = admin.indexOf("VIEW: 6. NOTIFICATION CENTER", sectionStart);
@@ -24,6 +25,7 @@ const checks = [
   ['File-store fallback remains explicit', /AssetNumberingEngine\.generateAssetNumber\(resolvedOwnerDivision, taxonomy\.code, targetYear\)/.test(service)],
   ['Initial numbering simulator exposes IT and GA only', numberingUi.includes('<option value="IT">') && numberingUi.includes('<option value="GA">') && !numberingUi.includes('<option value="RPC">') && !numberingUi.includes('<option value="PIBC">')],
   ['Simulator does not claim to allocate a real asset number', numberingUi.includes('bukan penerbitan nomor aset aktual')],
+  ['RPC migration has a unique version 037 for the migration ledger', migrationFiles.filter(file => /^037/.test(file)).length === 1 && !migrationFiles.includes('034_rename_supply_chain_domain_to_rpc.sql')],
   ['RPC migration aborts on an asset-number collision', migration.includes('RAISE EXCEPTION') && migration.includes("legacy.asset_number LIKE 'SC-%'")],
   ['RPC migration renames legacy KDR-SC category tokens inside asset numbers', migration.includes("'-KDR-SC-', '-KDR-RPC-'")],
   ['RPC migration merges sequence counters without lowering them', migration.includes('GREATEST(asset_number_sequences.last_sequence, EXCLUDED.last_sequence)')],
