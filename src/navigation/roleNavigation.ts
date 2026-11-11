@@ -61,7 +61,7 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   my_assets: ['assets.read'],
   meeting_rooms: ['meeting_rooms.read', 'room_reservations.read'],
   // The full inventory is distinct from the employee's personal asset workspace.
-  assets: ['assets.catalog.read'],
+  assets: ['assets.catalog.read', 'assets.audit.read'],
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
   tickets: ['tickets.read'],
