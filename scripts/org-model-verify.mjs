@@ -57,7 +57,7 @@ async function main() {
     const expectedActiveOfficeNames = ['HO', 'Kantor Perawatan', 'PIBC', 'Pangsub', 'RPC'].sort();
     rec('13: lima lokasi kantor aktif sesuai keputusan bisnis; Subang tidak aktif', expectedActiveOfficeNames.join('|') + ' (+future sites allowed)', activeOfficeNames.join('|'), expectedActiveOfficeNames.every(name => activeOfficeNames.includes(name)) && !activeOfficeNames.includes('Subang'));
     const unitPIBC = units.find(u => u.name === 'PIBC');
-    const unitSC = units.find(u => u.name === 'RPC');
+    const unitRPC = units.find(u => u.name === 'RPC');
     const offPIBC = offices.find(l => l.name === 'PIBC');
     const offKP = offices.find(l => l.name === 'HO');
     const itUser = users.find(u => u.role === 'IT');
