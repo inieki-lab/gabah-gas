@@ -26,11 +26,17 @@ BEGIN
     SELECT 1
     FROM assets legacy
     JOIN assets canonical
-      ON canonical.asset_number = 'RPC-' || SUBSTRING(legacy.asset_number FROM 4)
+      ON canonical.asset_number = REPLACE(
+        CASE
+          WHEN legacy.asset_number LIKE 'SC-%' THEN 'RPC-' || SUBSTRING(legacy.asset_number FROM 4)
+          ELSE legacy.asset_number
+        END,
+        '-KDR-SC-', '-KDR-RPC-'
+      )
      AND canonical.id <> legacy.id
-    WHERE legacy.asset_number LIKE 'SC-%'
+    WHERE legacy.asset_number LIKE 'SC-%' OR legacy.asset_number LIKE '%-KDR-SC-%'
   ) THEN
-    RAISE EXCEPTION 'RPC migration stopped: an SC-* asset number maps to an existing RPC-* number. Resolve the duplicate before retrying.';
+    RAISE EXCEPTION 'RPC migration stopped: a legacy SC/KDR-SC asset number maps to an existing canonical RPC/KDR-RPC number. Resolve the duplicate before retrying.';
   END IF;
 
   IF old_division_id IS NOT NULL THEN
@@ -101,8 +107,14 @@ BEGIN
   END IF;
 
   UPDATE assets
-  SET asset_number = 'RPC-' || SUBSTRING(asset_number FROM 4)
-  WHERE asset_number LIKE 'SC-%';
+  SET asset_number = REPLACE(
+    CASE
+      WHEN asset_number LIKE 'SC-%' THEN 'RPC-' || SUBSTRING(asset_number FROM 4)
+      ELSE asset_number
+    END,
+    '-KDR-SC-', '-KDR-RPC-'
+  )
+  WHERE asset_number LIKE 'SC-%' OR asset_number LIKE '%-KDR-SC-%';
 
   UPDATE contracts SET owner_division = 'RPC' WHERE UPPER(owner_division) = 'SC';
   UPDATE tickets SET category = 'RPC' WHERE UPPER(category) = 'SC';
