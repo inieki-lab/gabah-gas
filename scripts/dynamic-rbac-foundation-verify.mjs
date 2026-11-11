@@ -38,6 +38,7 @@ const contractsView = fs.readFileSync('src/components/views/ContractsView.tsx', 
 const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const app = fs.readFileSync('src/App.tsx', 'utf8');
 const navigation = fs.readFileSync('src/navigation/roleNavigation.ts', 'utf8');
+const sidebar = fs.readFileSync('src/components/Sidebar.tsx', 'utf8');
 const dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
 const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 const deployScript = fs.readFileSync('deploy.sh', 'utf8');
@@ -182,6 +183,7 @@ const checks = [
   ['production Docker runtime smoke checks PostgreSQL and writable uploads', /gabah-gas:ci/.test(dockerSmoke) && /persistence.*postgresql/.test(dockerSmoke) && /touch \/app\/uploads/.test(dockerSmoke)],
 
 
+  ['Administration menu visibility follows effective Superadmin capability in PostgreSQL mode', /currentUserPermissions !== undefined[\s\S]*currentUserPermissions\.includes\('\*'\)/.test(sidebar) && /currentUserPermissions !== undefined[\s\S]*activeRole === 'Admin GABAH'/.test(sidebar)],
   ['authenticated collections never initialize from demo fixtures and clear stale rows when API requests fail', !/from '\.\/data\/mockData'/.test(app) && /Promise\.allSettled/.test(app) && /setter\(\[\]\)/.test(app) && /applyCollection\(results\[4\], setAllUsers, 'users'\)/.test(app)],
   ['empty API collections replace prior rows instead of preserving seeded or stale data', /Empty is an authoritative result too; clear stale rows/.test(app) && /applyCollection\(results\[8\], setMaintenanceSchedules/.test(app) && /applyCollection\(results\[9\], setVendors/.test(app) && /applyCollection\(results\[10\], setKnowledgeBase/.test(app)],
   ['asset page navigation follows the exact read permission enforced by GET /api/assets', /assets: \['assets\.read'\]/.test(navigation) && /requireRbacPermission\(req, res, 'assets\.read'\)/.test(server)],
