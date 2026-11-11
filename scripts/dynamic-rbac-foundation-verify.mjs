@@ -33,6 +33,7 @@ const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
 const domainServices = fs.readFileSync('server/services.ts', 'utf8');
 const runtimeHardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
+const contracts = fs.readFileSync('server/contracts.ts', 'utf8');
 const frontend = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
 const contractsView = fs.readFileSync('src/components/views/ContractsView.tsx', 'utf8');
 const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
@@ -187,6 +188,12 @@ const checks = [
   ['production Docker runtime smoke checks PostgreSQL and writable uploads', /gabah-gas:ci/.test(dockerSmoke) && /persistence.*postgresql/.test(dockerSmoke) && /touch \/app\/uploads/.test(dockerSmoke)],
 
 
+  ['Auditor loan API is scope-bound in PostgreSQL and only Superadmin receives global rows', /if \(isSuperadminActor\(actor\)\) \{[\s\S]{0,100}data: db\.loans/.test(server) && !/if \(isSuperadminActor\(actor\) \|\| isAuditorActor\(actor\)\)[\s\S]{0,100}data: db\.loans/.test(server)],
+  ['Auditor vendor API is scope-bound in PostgreSQL and only Superadmin receives global rows', /if \(isSuperadminActor\(actor\)\) \{[\s\S]{0,100}data: db\.vendors/.test(server) && !/if \(isSuperadminActor\(actor\) \|\| isAuditorActor\(actor\)\)[\s\S]{0,100}data: db\.vendors/.test(server)],
+  ['Auditor contract records and notification logs require explicit module scope in PostgreSQL', /if \(isSuperadminActor\(user\)\) return true;[\s\S]{0,150}isAuditorActor\(user\) && !isPostgresPersistenceActive\(\)/.test(contracts) && /if \(isSuperadminActor\(user\) \|\| \(isAuditorActor\(user\) && !isPostgresPersistenceActive\(\)\)\) return logs;/.test(contracts)],
+  ['Dashboard statistics do not grant Auditor global loan or ticket aggregates', /const visibleLoans = isSuperadminActor\(actor\)[\s\S]{0,100}\? db\.loans/.test(server) && /const visibleTickets = isSuperadminActor\(actor\)[\s\S]{0,100}\? db\.tickets/.test(server)],
+  ['Dashboard attention and reconciliation use scoped Auditor datasets rather than global bypass', /const isGlobalReader = isSuperadminActor\(actor\);/.test(server) && /const visibleAssets = isSuperadminActor\(actor\)[\s\S]{0,100}GabahDomainService\.getScopedAssets\(actor\)/.test(server) && /if \(isSuperadmin\(actor\)\) return items;/.test(runtimeHardening)],
+  ['Runtime global-observer gate is Superadmin-only; Auditor read access still requires scoped module permissions', /const isGlobalObserver = \(actor: ServerUser\) => isSuperadmin\(actor\);/.test(runtimeHardening)],
   ['dashboard license metrics require the full catalogue permission used by their data collection', /isLicenseDashboard = [^;]*assets\.catalog\.read/.test(dashboardView) && !/isLicenseDashboard = [^;]*licenses\.read/.test(dashboardView)],
   ['report SLA compliance is calculated only from backend-measured resolved ticket outcomes', /slaMeasuredTickets = resolvedTickets\.filter\(ticket => typeof ticket\.is_over_sla === 'boolean'\)/.test(reportsView) && !/slaOnTimePct = 96\.8/.test(reportsView)],
   ['report does not display an invented first-response duration when no timestamp source exists', /timestamp respons pertama belum tercatat/.test(reportsView) && !/18 Menit/.test(reportsView)],
