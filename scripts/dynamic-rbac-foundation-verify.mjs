@@ -39,6 +39,7 @@ const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const app = fs.readFileSync('src/App.tsx', 'utf8');
 const navigation = fs.readFileSync('src/navigation/roleNavigation.ts', 'utf8');
 const sidebar = fs.readFileSync('src/components/Sidebar.tsx', 'utf8');
+const licensesView = fs.readFileSync('src/components/views/LicensesView.tsx', 'utf8');
 const dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
 const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 const deployScript = fs.readFileSync('deploy.sh', 'utf8');
@@ -183,6 +184,9 @@ const checks = [
   ['production Docker runtime smoke checks PostgreSQL and writable uploads', /gabah-gas:ci/.test(dockerSmoke) && /persistence.*postgresql/.test(dockerSmoke) && /touch \/app\/uploads/.test(dockerSmoke)],
 
 
+  ['license page reads from the same asset permission as its authoritative data source', /licenses: \['assets\.read'\]/.test(navigation) && /requireRbacPermission\(req, res, 'assets\.read'\)/.test(server)],
+  ['license create action follows effective asset-create permission and Auditor read-only precedence', /const canCreateLicense = !isAuditor/.test(licensesView) && /permission_keys\.includes\('assets\.create'\)/.test(licensesView)],
+  ['license expiry KPI is derived from live license records and contains no hardcoded sample contract', /expiringSoonLicenses = licenseAssets/.test(licensesView) && !/1 Kontrak \(54 Hari\)|Sophos Intercept X Advanced/.test(licensesView)],
   ['Administration menu visibility follows effective Superadmin capability in PostgreSQL mode', /currentUserPermissions !== undefined[\s\S]*currentUserPermissions\.includes\('\*'\)/.test(sidebar) && /currentUserPermissions !== undefined[\s\S]*activeRole === 'Admin GABAH'/.test(sidebar)],
   ['authenticated collections never initialize from demo fixtures and clear stale rows when API requests fail', !/from '\.\/data\/mockData'/.test(app) && /Promise\.allSettled/.test(app) && /setter\(\[\]\)/.test(app) && /applyCollection\(results\[4\], setAllUsers, 'users'\)/.test(app)],
   ['empty API collections replace prior rows instead of preserving seeded or stale data', /Empty is an authoritative result too; clear stale rows/.test(app) && /applyCollection\(results\[8\], setMaintenanceSchedules/.test(app) && /applyCollection\(results\[9\], setVendors/.test(app) && /applyCollection\(results\[10\], setKnowledgeBase/.test(app)],
