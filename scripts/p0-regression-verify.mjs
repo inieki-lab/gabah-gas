@@ -29,6 +29,9 @@ const originalPolicies = new Map(
 );
 
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const sidebarSource = fs.readFileSync(new URL('../src/components/Sidebar.tsx', import.meta.url), 'utf8');
+const appSource = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+const administrationModalSource = fs.readFileSync(new URL('../src/components/modals/AdministrationModal.tsx', import.meta.url), 'utf8');
 
 const fixtures = new Map([
   ['USR-01', [{
@@ -83,6 +86,38 @@ function test(name, fn) {
 }
 
 try {
+  test('superadmin_sidebar_opens_the_single_app_owned_administration_panel', () => {
+    if (!sidebarSource.includes('id="nav-item-administration"') || !sidebarSource.includes('onClick={() => onOpenAdministration?.()}')) {
+      throw new Error('Administration menu is not wired to the App callback');
+    }
+    if (sidebarSource.includes('showAdministration') || sidebarSource.includes('<AdministrationModal')) {
+      throw new Error('Sidebar still owns a duplicate Administration modal');
+    }
+    if (!appSource.includes('onOpenAdministration={() => {') || !appSource.includes('setIsAdministrationModalOpen(true)')) {
+      throw new Error('App does not open Administration from the Sidebar callback');
+    }
+  });
+
+  test('administration_panel_receives_real_app_data_and_superadmin_identity', () => {
+    const modalMount = appSource.slice(appSource.indexOf('<AdministrationModal'), appSource.indexOf('<ChangePasswordModal'));
+    for (const prop of ['users={allUsers}', 'auditLogs={auditLogs}', 'assets={assets}', 'loans={loans}', 'tickets={tickets}', 'currentUser={currentUser}']) {
+      if (!modalMount.includes(prop)) throw new Error(`Administration panel missing real prop: ${prop}`);
+    }
+    if (!modalMount.includes('isAdministrationModalOpen && Boolean(currentUser?.is_superadmin')) {
+      throw new Error('Administration panel is not gated by Superadmin identity');
+    }
+  });
+
+  test('administration_modal_declares_hooks_before_closed_state_return', () => {
+    const earlyReturn = administrationModalSource.indexOf('if (!isOpen) return null;');
+    if (earlyReturn < 0) throw new Error('Administration modal closed-state return is missing');
+    const lastHook = Math.max(
+      administrationModalSource.lastIndexOf('useState('),
+      administrationModalSource.lastIndexOf('useEffect('),
+    );
+    if (lastHook > earlyReturn) throw new Error('A React Hook is declared after the closed-state return');
+  });
+
   test('legacy_ticket_with_missing_asset_keeps_ticket_and_clears_only_stale_link', () => {
     const legacyTicket = {
       id: 'TKT-LEGACY',
