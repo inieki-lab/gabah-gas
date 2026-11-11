@@ -2287,7 +2287,7 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'loans.read')) return;
     const actor = getActor(req);
-    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
+    if (isSuperadminActor(actor)) {
       return res.json({ success: true, data: db.loans });
     }
     // Loan visibility follows borrower ownership or an explicit owner scope
@@ -2724,7 +2724,7 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'vendors.read')) return;
     const actor = getActor(req);
-    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
+    if (isSuperadminActor(actor)) {
       return res.json({ success: true, data: db.vendors });
     }
     const data = db.vendors.filter(v => {
@@ -2994,13 +2994,13 @@ async function startServer() {
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, module)
         : actor.role === owner;
-    const visibleLoans = isSuperadminActor(actor) || isAuditorActor(actor)
+    const visibleLoans = isSuperadminActor(actor)
       ? db.loans
       : db.loans.filter(loan =>
         loan.borrower_id === actor.id
         || canReadOwnerScope(loan.owner_division, 'loans')
       );
-    const visibleTickets = isSuperadminActor(actor) || isAuditorActor(actor)
+    const visibleTickets = isSuperadminActor(actor)
       ? db.tickets
       : db.tickets.filter(ticket =>
         ticket.reporter_id === actor.id
@@ -3031,7 +3031,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'dashboard.read')) return;
     const actor = getActor(req);
     const items = GabahDomainService.getAttentionCenter(actor);
-    const isGlobalReader = isSuperadminActor(actor) || isAuditorActor(actor);
+    const isGlobalReader = isSuperadminActor(actor);
     const visibleAssets = isGlobalReader ? db.assets : GabahDomainService.getScopedAssets(actor);
     const canReadOwnerScope = (module: 'loans' | 'tickets', owner: string) =>
       isPostgresPersistenceActive()
@@ -3053,7 +3053,7 @@ async function startServer() {
   app.get('/api/reconciliation', (req, res) => {
     if (!requireRbacPermission(req, res, 'reconciliation.read')) return;
     const actor = getActor(req);
-    const visibleAssets = isSuperadminActor(actor) || isAuditorActor(actor)
+    const visibleAssets = isSuperadminActor(actor)
       ? db.assets
       : GabahDomainService.getScopedAssets(actor);
     const reconData = GabahDomainService.getReconciliationData(visibleAssets);
