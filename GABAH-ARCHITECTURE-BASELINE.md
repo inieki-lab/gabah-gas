@@ -65,7 +65,7 @@ Dokumen ini memetakan baseline arsitektur lengkap sistem **GABAH** (General Asse
 | **Simulasi Peran** | `Sidebar.tsx`<br>`gabahApi.switchRole()` | `POST /api/auth/switch-role` | `createSession()`<br>`GabahDomainService.recordAudit()` | `user_sessions`<br>`audit_logs` |
 | **Manajemen Pengguna** | `AdministrationModal.tsx`<br>`gabahApi.getUsers()` | `GET /api/users`<br>`POST /api/users`<br>`PATCH /api/users/:id`<br>`DELETE /api/users/:id` | `GabahDomainService.recordAudit()`<br>`hashPassword()` | `users`<br>`user_sessions` |
 | **Katalog Aset Tetap** | `AssetsView.tsx`<br>`gabahApi.getAssets()` | `GET /api/assets`<br>`GET /api/assets/:id` | `GabahDomainService.getScopedAssets()` | `assets`<br>`asset_categories`<br>`divisions` |
-| **Registrasi Aset Baru** | `CreateAssetModal.tsx`<br>`gabahApi.createAsset()` | `POST /api/assets` | `GabahDomainService.createAsset()`<br>`AssetNumberingEngine.generateAssetNumber()` | `assets`<br>`asset_number_sequences` |
+| **Registrasi Aset Baru** | `CreateAssetModal.tsx`<br>`gabahApi.createAsset()` | `POST /api/assets` | `GabahDomainService.createAsset()`<br>`asset_number_sequences` atomic upsert | `assets`<br>`asset_number_sequences` |
 | **Update Aset & ERP** | `AssetDetailModal.tsx`<br>`gabahApi.updateAsset()` | `PATCH /api/assets/:id` | `GabahDomainService.recordAudit()` | `assets` (termasuk `corporate_asset_number`) |
 | **Penugasan (Assignment)** | `AssetDetailModal.tsx`<br>`gabahApi.assignAsset()` | `POST /api/assets/:id/assign` | `GabahDomainService.assignAsset()` | `assets`<br>`asset_assignments`<br>`asset_movements` |
 | **Mutasi Lokasi Fisik** | `AssetDetailModal.tsx`<br>`gabahApi.moveAsset()` | `POST /api/assets/:id/move` | `GabahDomainService.moveAsset()` | `assets`<br>`asset_movements` |
