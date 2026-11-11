@@ -13,7 +13,7 @@
 
 Format awal yang disepakati untuk owner **IT** dan **GA**:
 
-$$\\mathbf{\\{OWNER\\_DIVISION\\}-\\{ASSET\\_CODE\\}-\\{YEAR\\}-\\{SEQUENCE\\}}$$
+$$\mathbf{\{OWNER\_DIVISION\}-\{ASSET\_CODE\}-\{YEAR\}-\{SEQUENCE\}}$$
 
 Contoh:
 - IT: `IT-HLT-2026-0001`, `IT-HPC-2026-0001`
