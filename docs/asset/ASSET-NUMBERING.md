@@ -91,10 +91,10 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 ## 4. Mekanisme Penomoran & Aturan Duplikasi
 
 ### 4.1 Siklus & Reset Sequence
-- Saat ini `AssetNumberingEngine` (`server/numbering.ts`) menaikkan counter dalam `Map` memori proses. Tabel `asset_number_sequences` sudah tersedia, tetapi generator belum menggunakan transaksi database sebagai sumber counter.
+- Pada mode PostgreSQL, `GabahDomainService.createAsset()` mengalokasikan nomor melalui atomic upsert ke tabel `asset_number_sequences`. `AssetNumberingEngine` berbasis `Map` hanya dipakai sebagai fallback file-store pengembangan.
 - Kunci desain sequence IT/GA menggunakan kombinasi:
   $$\text{Key} = \text{OWNER\_DIVISION} : \text{ASSET\_CODE} : \text{YEAR}$$
-- Secara desain, tahun menjadi bagian kunci sehingga sequence tahun baru dimulai dari `0001`. Implementasi memori saat ini dapat kehilangan counter ketika proses aplikasi restart dan belum aman untuk beberapa instance.
+- Tahun menjadi bagian kunci sehingga sequence tahun baru dimulai dari `0001`. PostgreSQL menghitung nomor tertinggi dari aset existing ketika counter belum tersedia atau tertinggal, lalu menaikkan counter secara atomik. Fallback file-store tetap hanya aman untuk satu proses dan dapat kehilangan counter saat restart.
 
 ### 4.2 Validasi Duplikasi Nomor Seri Fisik
 - Sistem memvalidasi keunikan `serial_number`. Jika serial number yang sama sudah ada di database, server menolak pendaftaran dengan pesan:
@@ -116,7 +116,8 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 ## 5. Status Implementasi dan Sumber Kode
 
 Logika di atas tertanam secara otoritatif pada:
-- `server/numbering.ts`: Class `AssetNumberingEngine`; generator saat ini masih berbasis memori dan belum atomik terhadap PostgreSQL.
+- `server/services.ts`: alokasi nomor aset atomik melalui PostgreSQL pada mode database.
+- `server/numbering.ts`: `AssetNumberingEngine` untuk fallback file-store pengembangan.
 - `server/taxonomy.ts`: Array `CANONICAL_TAXONOMY` dan fungsi `resolveTaxonomyByHumanName()`.
 - `server/services.ts`: Fungsi `createAsset()` pada `GabahDomainService`.
 - `server/migrations/001_gabah_normalized_schema.sql`: DDL tabel `assets`, `asset_categories`, dan `asset_number_sequences`.
