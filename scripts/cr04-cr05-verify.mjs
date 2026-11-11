@@ -390,7 +390,7 @@ async function main() {
 
     const newOwner = await req(base, 'POST', '/api/master/divisions', {
       token: adminToken,
-      body: { code: 'RPC', name: 'RPC Operations', leader: 'Kepala Operasional RPC', depts: ['Gudang', 'Produksi'] },
+      body: { code: 'FUTURECI', name: 'Future Owner CI', leader: 'Kepala Future Owner CI', depts: ['Gudang', 'Produksi'] },
     });
     record('Super Admin can add future owner domain without code change', '201', `HTTP ${newOwner.status}`, newOwner.status === 201);
 
