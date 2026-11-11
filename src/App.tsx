@@ -18,6 +18,7 @@ import {
   Contract,
   AssetMovement
 } from './types';
+import { INITIAL_USERS } from './data/mockData'; // Demo account picker only; never used as authenticated directory data.
 import { gabahApi } from './services/gabahApi';
 import { GabahService } from './services/gabahService';
 
@@ -654,7 +655,7 @@ export default function App() {
             setLoginEmail(u.email || '');
             setViewMode('login');
           }}
-          demoUsers={allUsers}
+          demoUsers={INITIAL_USERS}
         />
       </div>
     );
