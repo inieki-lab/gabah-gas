@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const migration = fs.readFileSync(path.join(root, 'server/migrations/037_module_lifecycle_registry.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(root, 'server/migrations/042_module_lifecycle_registry.sql'), 'utf8');
 const navigation = fs.readFileSync(path.join(root, 'src/navigation/roleNavigation.ts'), 'utf8');
 
 const expectedTabs = [
