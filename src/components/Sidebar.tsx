@@ -81,7 +81,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
-  const isSuperAdmin = currentUserIsSuperAdmin || currentUserPermissions?.includes('*') === true || activeRole === 'Admin GABAH';
+  // In PostgreSQL/Dynamic RBAC mode, the effective superadmin capability is authoritative.
+  // Keep the role-label fallback only for legacy file-store sessions without permission keys.
+  const isSuperAdmin = currentUserPermissions !== undefined
+    ? currentUserIsSuperAdmin || currentUserPermissions.includes('*')
+    : currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
 
   const sections: NavSectionConfig[] = [
     {
