@@ -11,16 +11,25 @@
 
 ## 1. Format Penomoran Kanonikal
 
-Sistem GABAH menetapkan format penomoran aset resmi yang seragam dan dihasilkan secara otomatis oleh server:
+Format awal yang disepakati untuk owner **IT** dan **GA**:
 
-$$\mathbf{\{OWNER\_DIVISION\}-\{ASSET\_CODE\}-\{YEAR\}-\{SEQUENCE\}}$$
+$$\\mathbf{\\{OWNER\\_DIVISION\\}-\\{ASSET\\_CODE\\}-\\{YEAR\\}-\\{SEQUENCE\\}}$$
 
-Setiap komponen memiliki arti teknis dan akuntansi:
-1. `{OWNER_DIVISION}`: Kode divisi pemilik yang bertanggung jawab secara anggaran dan legalitas aset.
-2. `{ASSET_CODE}`: Kode spesifik kategori barang berdasarkan taksonomi standar BUMD.
-3. `{YEAR}`: 4 digit tahun perolehan/pendaftaran aset (contoh: `2026`).
-4. `{SEQUENCE}`: 4 digit angka urut desimal dengan padding nol (`0001`, `0002`, dst.).
+Contoh:
+- IT: `IT-HLT-2026-0001`, `IT-HPC-2026-0001`
+- GA: `GA-INV-F-2026-0001`, `GA-INV-P-2026-0001`
 
+PIBC dan RPC adalah domain/owner terpisah, bukan kategori aset IT atau GA. Format ringkas yang sedang dipertimbangkan:
+- PIBC: `PIBC-XXXX-XXXX`
+- RPC: `RPC-XXXX-XXX`
+
+Format ringkas PIBC/RPC belum dianggap aktif oleh generator. Keduanya harus menjadi aturan terpisah yang dapat ditambahkan, diedit, diaktifkan/nonaktifkan, atau dihapus bila belum dipakai melalui master konfigurasi penomoran. Jangan memaksakan format IT/GA kepada PIBC/RPC.
+
+Komponen format IT/GA:
+1. `{OWNER_DIVISION}`: kode owner aset yang bertanggung jawab secara anggaran dan legalitas.
+2. `{ASSET_CODE}`: kode kategori aset.
+3. `{YEAR}`: empat digit tahun pendaftaran.
+4. `{SEQUENCE}`: urutan empat digit dengan padding nol.
 ---
 
 ## 2. Taksonomi Divisi & Kode Kategori Aset
