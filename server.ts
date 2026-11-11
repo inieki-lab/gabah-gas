@@ -3010,12 +3010,18 @@ async function startServer() {
       );
     const visibleTickets = isSuperadminActor(actor)
       ? db.tickets
-      : db.tickets.filter(ticket =>
-        ticket.reporter_id === actor.id
-        || ticket.assigned_agent_id === actor.id
-        || (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id)
-        || canReadOwnerScope(ticket.category, 'tickets')
-      );
+      : isAuditorActor(actor) && isPostgresPersistenceActive()
+        ? db.tickets.filter(ticket =>
+          (ticket.assigned_unit_id != null
+            && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'))
+          || hasRbacScope(String(actor.id), 'division', ticket.category, 'tickets')
+        )
+        : db.tickets.filter(ticket =>
+          ticket.reporter_id === actor.id
+          || ticket.assigned_agent_id === actor.id
+          || (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id)
+          || canReadOwnerScope(ticket.category, 'tickets')
+        );
 
     const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;
     const pendingLoans = visibleLoans.filter(l => l.status === 'pending_approval').length;
@@ -3053,6 +3059,8 @@ async function startServer() {
       loans: db.loans,
       tickets: db.tickets,
       canReadOwnerScope,
+      isAuditor: isAuditorActor(actor) && isPostgresPersistenceActive(),
+      canReadUnitScope: (unitId: string) => hasRbacScope(String(actor.id), 'unit', unitId, 'tickets'),
     });
     res.json({ success: true, data: visibleItems });
   });
