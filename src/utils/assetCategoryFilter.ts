@@ -23,7 +23,7 @@ const CATEGORY_CODES: Record<string, readonly string[]> = {
 };
 
 const ALL_KNOWN_CODES = new Set(Object.values(CATEGORY_CODES).flat());
-const ASSET_NUMBER_CODE = /-(HLT|HPC|HSV|HWS|HMON|HPRN|HSCN|HNET|HFW|HSTG|HUPS|HRCK|SLIC|INV-F|INV-P|KDR-SC|KDR|MSN-PIBC|MSN|BGN|TNH|LNY)-/i;
+const ASSET_NUMBER_CODE = /-(IT-H|IT-S|HLT|HPC|HSV|HWS|HMON|HPRN|HSCN|HNET|HFW|HSTG|HUPS|HRCK|SLIC|INV-F|INV-P|KDR-SC|KDR|MSN-PIBC|MSN|BGN|TNH|LNY)-/i;
 
 const LEGACY_NAME_PATTERNS: Record<string, RegExp> = {
   'IT-H': /\b(macbook|laptop|notebook|komputer|desktop|server|workstation|monitor|printer|scanner|switch|router|firewall|storage|nas|ups|rack)\b/i,
