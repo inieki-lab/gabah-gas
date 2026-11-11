@@ -1417,6 +1417,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         unit_id: null
       });
       if (onRefreshData) await onRefreshData();
+      await refreshUserAssignments();
     } catch (err: any) {
       showToast(`Gagal menambahkan pengguna: ${err.message}`, 'warning');
     } finally {
@@ -1496,6 +1497,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         showToast(serverErrors.slice(0, 3).join(' | '), 'warning');
       }
       if (onRefreshData) await onRefreshData();
+      await refreshUserAssignments();
     } catch (err: any) {
       showToast(`Gagal impor: ${err.message}`, 'warning');
     } finally {
@@ -1534,10 +1536,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       if (onUpdateUser) {
         onUpdateUser(updatedUser);
       }
-      showToast(`Data pengguna ${updatedUser.name} berhasil diperbarui!`, 'success');
       setIsEditUserOpen(false);
       setUserToEdit(null);
       if (onRefreshData) await onRefreshData();
+      // The profile's primary role may have changed; reload the role IDs and
+      // primary-role lock before the next assignment dialog is opened.
+      await refreshUserAssignments();
+      showToast(`Data pengguna ${updatedUser.name} berhasil diperbarui!`, 'success');
     } catch (err: any) {
       showToast(`Gagal memperbarui pengguna: ${err.message}`, 'warning');
     } finally {
