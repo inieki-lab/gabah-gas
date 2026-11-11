@@ -106,7 +106,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
     ownershipRuleText = 'Semua perabotan/furniture adalah aset GA di manapun penempatannya.';
   } else if (isIT || asset.category_code?.startsWith('IT') || isLicense) {
     ownershipRuleText = 'Semua hardware & lisensi adalah aset milik IT (GA hanya memiliki hak lihat / read-only).';
-  } else if (isSC) {
+  } else if (isRPC) {
     ownershipRuleText = 'Aset logistik, pergudangan modern & rice milling plant Food Station.';
   } else if (isPIBC) {
     ownershipRuleText = 'Aset dan fasilitas operasional Pasar Induk Beras Cipinang (timbangan & tera sah).';
@@ -139,7 +139,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
               isIT ? 'bg-blue-100 text-blue-700' :
-              isSC ? 'bg-emerald-100 text-emerald-700' :
+              isRPC ? 'bg-emerald-100 text-emerald-700' :
               isPIBC ? 'bg-purple-100 text-purple-700' :
               'bg-amber-100 text-amber-700'
             }`}>
@@ -153,7 +153,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 <h3 className="font-extrabold text-base text-slate-900">{asset.name}</h3>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                   isIT ? 'bg-blue-50 text-blue-800 border-blue-200' :
-                  isSC ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                  isRPC ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
                   isPIBC ? 'bg-purple-50 text-purple-800 border-purple-200' :
                   'bg-amber-50 text-amber-800 border-amber-200'
                 }`}>
