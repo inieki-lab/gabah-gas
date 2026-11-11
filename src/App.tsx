@@ -18,7 +18,6 @@ import {
   Contract,
   AssetMovement
 } from './types';
-import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_USERS, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
 import { gabahApi } from './services/gabahApi';
 import { GabahService } from './services/gabahService';
 
@@ -62,10 +61,10 @@ export default function App() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [allUsers, setAllUsers] = useState<UserProfile[]>(INITIAL_USERS);
-  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
-  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>(INITIAL_KNOWLEDGE_BASE);
-  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>(INITIAL_MAINTENANCE_SCHEDULES);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>([]);
+  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
   const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
   const [roomReservations, setRoomReservations] = useState<RoomReservation[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -134,45 +133,48 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Fetch all authoritative data from Backend API
+  // Fetch each authoritative collection independently. A denied or failed
+  // endpoint must never fall back to demo data or retain another user's data.
   const refreshData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge, fetchedMovements] = await Promise.all([
-        gabahApi.getAssets().catch(() => []),
-        gabahApi.getLoans().catch(() => []),
-        gabahApi.getTickets().catch(() => []),
-        gabahApi.getAuditLogs().catch(() => []),
-        gabahApi.getUsers().catch(() => INITIAL_USERS),
-        gabahApi.getMeetingRooms().catch(() => []),
-        gabahApi.getRoomReservations().catch(() => []),
-        gabahApi.getContracts().catch(() => []),
-        gabahApi.getMaintenances().catch(() => []),
-        gabahApi.getVendors().catch(() => []),
-        gabahApi.getKnowledgeArticles().catch(() => []),
-        gabahApi.getMovements().catch(() => []),
-      ]);
+    setIsLoading(true);
+    const results = await Promise.allSettled([
+      gabahApi.getAssets(),
+      gabahApi.getLoans(),
+      gabahApi.getTickets(),
+      gabahApi.getAuditLogs(),
+      gabahApi.getUsers(),
+      gabahApi.getMeetingRooms(),
+      gabahApi.getRoomReservations(),
+      gabahApi.getContracts(),
+      gabahApi.getMaintenances(),
+      gabahApi.getVendors(),
+      gabahApi.getKnowledgeArticles(),
+      gabahApi.getMovements(),
+    ]);
 
-      if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
-      if (Array.isArray(fetchedLoans)) setLoans(fetchedLoans);
-      if (Array.isArray(fetchedTickets)) setTickets(fetchedTickets);
-      if (Array.isArray(fetchedLogs)) setAuditLogs(fetchedLogs);
-      if (Array.isArray(fetchedUsers) && fetchedUsers.length > 0) setAllUsers(fetchedUsers);
-      if (Array.isArray(fetchedRooms)) setMeetingRooms(fetchedRooms);
-      if (Array.isArray(fetchedReservations)) setRoomReservations(fetchedReservations);
-      if (Array.isArray(fetchedContracts)) setContracts(fetchedContracts);
-      if (Array.isArray(fetchedMaintenances)) {
-        if (fetchedMaintenances.length > 0) setMaintenanceSchedules(fetchedMaintenances);
-        else console.warn('Backend returned an empty maintenance list; keeping seeded schedules for offline dev.');
+    const applyCollection = <T,>(result: PromiseSettledResult<T[]>, setter: React.Dispatch<React.SetStateAction<T[]>>, label: string) => {
+      if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+        // Empty is an authoritative result too; clear stale rows.
+        setter(result.value);
+      } else {
+        setter([]);
+        console.warn(`GABAH: failed to load ${label}; cleared client data to prevent stale or demo data exposure.`, result.status === 'rejected' ? result.reason : 'Invalid API response');
       }
-      if (Array.isArray(fetchedVendors) && fetchedVendors.length > 0) setVendors(fetchedVendors);
-      if (Array.isArray(fetchedKnowledge) && fetchedKnowledge.length > 0) setKnowledgeBase(fetchedKnowledge);
-      if (Array.isArray(fetchedMovements)) setMovements(fetchedMovements);
-    } catch (err: any) {
-      console.error('Failed to fetch from backend:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    applyCollection(results[0], setAssets, 'assets');
+    applyCollection(results[1], setLoans, 'loans');
+    applyCollection(results[2], setTickets, 'tickets');
+    applyCollection(results[3], setAuditLogs, 'audit logs');
+    applyCollection(results[4], setAllUsers, 'users');
+    applyCollection(results[5], setMeetingRooms, 'meeting rooms');
+    applyCollection(results[6], setRoomReservations, 'room reservations');
+    applyCollection(results[7], setContracts, 'contracts');
+    applyCollection(results[8], setMaintenanceSchedules, 'maintenance schedules');
+    applyCollection(results[9], setVendors, 'vendors');
+    applyCollection(results[10], setKnowledgeBase, 'knowledge articles');
+    applyCollection(results[11], setMovements, 'asset movements');
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
