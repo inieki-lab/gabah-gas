@@ -3,11 +3,10 @@ import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByH
 import { AssetNumberingEngine } from './numbering';
 import { resolveManagingUnitForOwnerDivision, validateManagingUnit } from './managing-unit';
 import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-location';
-import { persistDataStore, getDbPool } from './persistence';
+import { persistDataStore, getDbPool, isPostgresPersistenceActive } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
-import { isPostgresPersistenceActive } from './persistence';
 
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
 const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'RPC', 'PIBC']);
