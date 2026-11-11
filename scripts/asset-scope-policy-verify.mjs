@@ -66,7 +66,7 @@ const checks = [
   ['Permission khusus tidak memberi permission mutasi', !/assets\.(create|update|delete|assign|move|lifecycle)/.test(migration)],
   ['RBAC policy mengevaluasi permission efektif per user', /export function hasRbacPermission/.test(policy)],
   ['Branch migration does not rewrite user role or work-unit assignments', !/\b(UPDATE|DELETE|INSERT|MERGE)\b/i.test(branchMigration.replace(/--[^\n]*/g, ''))],
-  ['Branch migration preserves role templates and operational units', /RPC\/SC may also be an operational asset-owning function/i.test(branchMigration) && !/UPDATE gabah_roles|UPDATE org_units/i.test(branchMigration)],
+  ['Branch migration preserves role templates and operational units', /RPC may also be an operational asset-owning function/i.test(branchMigration) && !/UPDATE gabah_roles|UPDATE org_units/i.test(branchMigration)],
   ['Branch role migration does not rewrite historical asset ownership', !/UPDATE assets|UPDATE gabah_assets|owner_division\s*=/.test(branchMigration)],
   ['Movement history is restricted to the same visible asset scope', /visibleAssetIds[\s\S]*db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(server)],
   ['Maintenance schedules follow visible asset scope and exclude branch-wide fallback', /visibleAssetIds[\s\S]*db\.maintenances\.filter\(item => visibleAssetIds\.has\(item\.asset_id\)\)/.test(server)],
