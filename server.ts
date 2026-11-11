@@ -1943,8 +1943,9 @@ async function startServer() {
     // still requires assets.catalog.read before exposing the full inventory.
     if (isPostgresPersistenceActive()) {
       if (!hasRbacPermission(String(actor.id), 'assets.read')
-        && !hasRbacPermission(String(actor.id), 'assets.catalog.read')) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: permission assets.read atau assets.catalog.read diperlukan.' });
+        && !hasRbacPermission(String(actor.id), 'assets.catalog.read')
+        && !hasRbacPermission(String(actor.id), 'assets.audit.read')) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: permission assets.read, assets.catalog.read, atau assets.audit.read diperlukan.' });
       }
     } else if (!requireRbacPermission(req, res, 'assets.read')) {
       return;
