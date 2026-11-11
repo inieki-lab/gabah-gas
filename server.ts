@@ -2126,8 +2126,16 @@ async function startServer() {
   });
 
   app.get('/api/assets/:id', (req, res) => {
-    if (!requireRbacPermission(req, res, 'assets.read')) return;
     const actor = getActor(req);
+    if (isPostgresPersistenceActive()) {
+      if (!hasRbacPermission(String(actor.id), 'assets.read')
+        && !hasRbacPermission(String(actor.id), 'assets.catalog.read')
+        && !hasRbacPermission(String(actor.id), 'assets.audit.read')) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: permission baca katalog aset tidak diberikan.' });
+      }
+    } else if (!requireRbacPermission(req, res, 'assets.read')) {
+      return;
+    }
     // Apply the same legacy division/ownership scope as the catalogue endpoint;
     // a direct ID lookup must not bypass list-level visibility.
     const asset = GabahDomainService.getScopedAssets(actor).find(a => a.id === req.params.id);
