@@ -91,7 +91,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
-  const isLicenseDashboard = isGlobalDashboard || (currentUser.permission_keys === undefined && currentUser.role === 'IT') || Boolean(currentUser.permission_keys?.includes('*') || currentUser.permission_keys?.includes('licenses.read'));
+  // License dashboard cards are derived from the scoped asset collection, not a separate licenses API.
+  const isLicenseDashboard = isGlobalDashboard || (currentUser.permission_keys === undefined && currentUser.role === 'IT') || Boolean(currentUser.permission_keys?.includes('*') || currentUser.permission_keys?.includes('assets.read'));
   const roleDescription = currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
     ? roleDescriptions.Humas
     : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
