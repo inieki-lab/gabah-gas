@@ -1937,8 +1937,18 @@ async function startServer() {
 
   // Assets Management
   app.get('/api/assets', (req, res) => {
-    if (!requireRbacPermission(req, res, 'assets.read')) return;
     const actor = getActor(req);
+    // Employee workspace access and full catalogue access are distinct grants.
+    // Either capability may read the same scope-filtered collection; the UI
+    // still requires assets.catalog.read before exposing the full inventory.
+    if (isPostgresPersistenceActive()) {
+      if (!hasRbacPermission(String(actor.id), 'assets.read')
+        && !hasRbacPermission(String(actor.id), 'assets.catalog.read')) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: permission assets.read atau assets.catalog.read diperlukan.' });
+      }
+    } else if (!requireRbacPermission(req, res, 'assets.read')) {
+      return;
+    }
     const scopedAssets = GabahDomainService.getScopedAssets(actor);
     res.json({ success: true, data: scopedAssets });
   });
