@@ -258,7 +258,10 @@ export class GabahDomainService {
    * Filter assets based on user's role and division scope
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
-    if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
+    if (isSuperadminActor(user)) return db.assets;
+    // PostgreSQL Auditor access is read-only but still scope-bound. Only the
+    // legacy file-store compatibility mode retains its historical broad view.
+    if (isAuditorActor(user) && !isPostgresPersistenceActive()) return db.assets;
 
     const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
     const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
