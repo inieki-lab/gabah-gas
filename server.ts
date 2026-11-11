@@ -207,7 +207,7 @@ async function startServer() {
   app.get('/api/admin/rbac/roles', async (req, res) => {
     if (!requireRbacSuperadmin(req, res)) return;
     try {
-      const roles = await queryRbac<any>('SELECT r.id, r.role_key, r.name, r.description, r.is_superadmin, r.is_active, r.created_at, r.updated_at, (SELECT COUNT(*)::int FROM gabah_user_roles ur WHERE ur.role_id = r.id) AS assigned_user_count FROM gabah_roles r ORDER BY r.is_superadmin DERPC, r.name');
+      const roles = await queryRbac<any>('SELECT r.id, r.role_key, r.name, r.description, r.is_superadmin, r.is_active, r.created_at, r.updated_at, (SELECT COUNT(*)::int FROM gabah_user_roles ur WHERE ur.role_id = r.id) AS assigned_user_count FROM gabah_roles r ORDER BY r.is_superadmin DESC, r.name');
       const [permissions, scopes] = await Promise.all([
         queryRbac<any>('SELECT rp.role_id, p.permission_key FROM gabah_role_permissions rp JOIN gabah_permissions p USING (permission_key) WHERE p.is_active = TRUE ORDER BY p.module, p.action'),
         queryRbac<any>('SELECT role_id, module, scope_type, scope_value FROM gabah_role_division_scopes ORDER BY role_id, module, scope_type, scope_value')
@@ -225,7 +225,7 @@ async function startServer() {
     try {
       const result = await queryRbac<any>(
         'SELECT u.id AS user_id, u.name, u.email, u.role AS primary_profile_role, ' +
-        'COALESCE(array_agg(ur.role_id ORDER BY ur.is_primary DERPC, ur.role_id) FILTER (WHERE ur.role_id IS NOT NULL), ARRAY[]::bigint[]) AS role_ids, ' +
+        'COALESCE(array_agg(ur.role_id ORDER BY ur.is_primary DESC, ur.role_id) FILTER (WHERE ur.role_id IS NOT NULL), ARRAY[]::bigint[]) AS role_ids, ' +
         'MAX(ur.role_id) FILTER (WHERE ur.is_primary = TRUE) AS primary_role_id ' +
         'FROM users u LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id::text ' +
         'GROUP BY u.id, u.name, u.email, u.role ORDER BY u.name'
