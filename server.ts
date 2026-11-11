@@ -2398,7 +2398,9 @@ async function startServer() {
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
       || ticket.assigned_agent_id === actor.id
-      || (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id)
+      || (ticket.assigned_unit_id
+        && ticket.assigned_unit_id === actor.unit_id
+        && (!isPostgresPersistenceActive() || hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')))
       || canReadTicketOwner(ticket.category)
     );
     return res.json({ success: true, data });
