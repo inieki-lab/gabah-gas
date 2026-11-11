@@ -411,7 +411,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                 <div className="bg-emerald-600 h-2.5 rounded-full" style={{ width: `${(rpcAssets.length / totalAssetCount) * 100}%` }} />
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(scValue)}</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(rpcValue)}</div>
             </div>
 
             <div>
