@@ -1330,6 +1330,33 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     exportDataJson('gabah_full_system_backup', backupBundle);
   };
 
+  // Health snapshot awal sekali per render modal (sekali fetch, tanpa toast).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const start = performance.now();
+      try {
+        const res = await fetch('/api/health');
+        const latency = Math.round(performance.now() - start);
+        const body = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok) {
+          setHealthStatus({
+            status: 'Operational (200 OK)',
+            latency,
+            timestamp: new Date().toLocaleTimeString(),
+            isChecking: false,
+            persistence: typeof body.persistence === 'string' ? body.persistence : undefined,
+            scheduler: body.scheduler && typeof body.scheduler === 'object' ? body.scheduler : undefined,
+          });
+        }
+      } catch {
+        /* biarkan state default: belum diperiksa — jangan mengarang status */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+
   if (!isOpen) return null;
 
   // Menu administrasi diberi keterangan sumber data agar Super Admin tahu mana
@@ -1558,32 +1585,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Gagal menghubungi backend API', 'warning');
     }
   };
-
-  // Health snapshot awal sekali per render modal (sekali fetch, tanpa toast).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const start = performance.now();
-      try {
-        const res = await fetch('/api/health');
-        const latency = Math.round(performance.now() - start);
-        const body = await res.json().catch(() => ({}));
-        if (!cancelled && res.ok) {
-          setHealthStatus({
-            status: 'Operational (200 OK)',
-            latency,
-            timestamp: new Date().toLocaleTimeString(),
-            isChecking: false,
-            persistence: typeof body.persistence === 'string' ? body.persistence : undefined,
-            scheduler: body.scheduler && typeof body.scheduler === 'object' ? body.scheduler : undefined,
-          });
-        }
-      } catch {
-        /* biarkan state default: belum diperiksa — jangan mengarang status */
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   // P1#2: Reset sandi NYATA — minta server menerbitkan sandi sementara CSPRNG
   // (server meng-hash & menyimpannya), lalu tampilkan SEKALI untuk disampaikan
