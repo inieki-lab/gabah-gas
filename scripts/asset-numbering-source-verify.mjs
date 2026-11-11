@@ -6,7 +6,7 @@ const service = read('server/services.ts');
 const server = read('server.ts');
 const admin = read('src/components/modals/AdministrationModal.tsx');
 const assetDetail = read('src/components/modals/AssetDetailModal.tsx');
-const migration = read('server/migrations/034_rename_supply_chain_domain_to_rpc.sql');
+const migration = read('server/migrations/037_rename_supply_chain_domain_to_rpc.sql');
 
 const sectionStart = admin.indexOf("VIEW: 5. ASSET NUMBERING");
 const sectionEnd = admin.indexOf("VIEW: 6. NOTIFICATION CENTER", sectionStart);
