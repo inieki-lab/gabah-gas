@@ -60,14 +60,13 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   dashboard: ['dashboard.read'],
   my_assets: ['assets.read'],
   meeting_rooms: ['meeting_rooms.read', 'room_reservations.read'],
-  // Match the permission enforced by GET /api/assets; write-only grants must
-  // not expose a page whose authoritative collection endpoint returns 403.
-  assets: ['assets.read'],
+  // The full inventory is distinct from the employee's personal asset workspace.
+  assets: ['assets.catalog.read'],
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
   tickets: ['tickets.read'],
-  // Licenses are currently modeled as asset records; GET /api/assets is the source of truth.
-  licenses: ['assets.read'],
+  // License inventory is a view over the scoped corporate asset catalogue.
+  licenses: ['assets.catalog.read'],
   contracts: ['contracts.read'],
   vendors: ['vendors.read'],
   knowledge: ['knowledge.read'],
