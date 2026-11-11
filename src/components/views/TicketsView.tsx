@@ -76,7 +76,13 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     }
     return legacyRoles.includes(currentUser?.role || '');
   };
-  const canCreateTicket = !isAuditor && hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  // Show the create action when the user can submit at least one category.
+  // IT remains the universal channel; GA and ME are explicit opt-in capabilities.
+  const canCreateTicket = !isAuditor && (
+    hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'])
+    || hasPermission('tickets.create.ga')
+    || hasPermission('tickets.create.me')
+  );
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const baseTickets = safeTickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
   // The API has already applied effective ticket scope in PostgreSQL mode.
