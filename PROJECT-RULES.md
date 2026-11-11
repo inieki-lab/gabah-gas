@@ -25,9 +25,10 @@
 Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server backend** (`server/services.ts`, `server/runtime-hardening.ts`, `server/auth.ts`, `server/numbering.ts`). Klien frontend (`src/`) hanya berperan sebagai antarmuka presentasi dan tidak boleh dijadikan satu-satunya pelindung integritas data.
 
 ### 2.1 Penomoran Aset (Asset Numbering)
-- Format resmi: `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` (Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`).
-- Penomoran di-generate secara atomik oleh backend melalui `AssetNumberingEngine.generateAssetNumber()`.
-- Urutan sequence nomor mereset per tahun per kombinasi divisi pemilik dan kode aset.
+- Preset awal hanya IT dan GA dengan format `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` (contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`).
+- PIBC dan RPC adalah domain owner terpisah, bukan preset IT/GA. Formatnya harus ditambahkan sebagai rule tersendiri; template ringkas PIBC/RPC belum diaktifkan sampai tokennya dikonfirmasi.
+- Mode PostgreSQL mengalokasikan sequence secara atomik melalui upsert tabel `asset_number_sequences` di `GabahDomainService.createAsset()`.
+- Sequence terpisah per owner + kode aset + tahun. Fallback file-store pengembangan menggunakan counter memori dan tidak menjamin multi-instance.
 - Frontend dilarang meng-generate atau meng-hardcode nomor aset secara manual saat create asset.
 - Nomor ERP Accurate disimpan secara terpisah di kolom `corporate_asset_number` dan tidak boleh menimpa nomor kanonikal.
 
