@@ -4309,7 +4309,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Simulator Card */}
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-200">
                 <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-3">
-                  Live Sequence Generator & Simulator
+                  Format Simulator
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -4350,7 +4350,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                 </div>
                 <div className="mt-3 text-[11px] text-emerald-800 leading-relaxed">
-                  ✓ Sequence direset otomatis setiap awal tahun per kombinasi (Divisi, Kode Aset, Tahun).
+                  ✓ Format IT/GA menggunakan kombinasi owner, kode aset, tahun, dan nomor urut.
                   <br />
                   ✓ Ini simulasi format, bukan penerbitan nomor aset aktual.
                 </div>
