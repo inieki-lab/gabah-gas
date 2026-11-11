@@ -11,6 +11,8 @@ const cases: [string, Record<string, string>, string, boolean][] = [
   ['Dispenser masuk INV-P', { name: 'Dispenser Galon Bawah', category_code: 'INV-P' }, 'INV-P', true],
   ['Kursi masuk INV-F', { name: 'Kursi Ergonomis', category_code: 'INV-F' }, 'INV-F', true],
   ['Nomor aset IT-HLT menjadi acuan', { name: 'Laptop', asset_number: 'IT-HLT-2026-0001' }, 'IT-H', true],
+  ['Nomor aset legacy -IT-H- tetap dikenali', { name: 'Laptop', asset_number: 'ASSET-IT-H-2024-0001' }, 'IT-H', true],
+  ['Nomor aset legacy -IT-S- tetap dikenali', { name: 'Lisensi ERP', asset_number: 'ASSET-IT-S-2024-0001' }, 'IT-S', true],
   ['Nomor aset GA-INV-P menjadi acuan', { name: 'Peralatan pantry', asset_number: 'GA-INV-P-2026-0001' }, 'INV-P', true],
   ['Kode kategori kanonikal mengalahkan nama ambigu', { name: 'ACME MacBook', category_code: 'HLT' }, 'INV-P', false],
 ];
@@ -19,4 +21,4 @@ for (const [label, asset, category, expected] of cases) {
   assert.equal(matchesAssetCategoryFilter(asset, category), expected, label);
   console.log('PASS', label);
 }
-console.log('\n11 asset category filter checks passed.');
+console.log('\n13 asset category filter checks passed.');
