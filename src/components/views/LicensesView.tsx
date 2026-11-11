@@ -32,6 +32,21 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
   const handleOpenCreate = onOpenCreateLicenseModal || onOpenNewAssetModal || (() => {});
   const safeAssets = Array.isArray(assets) ? assets : [];
   const licenseAssets = safeAssets.filter((a) => a.category_type === 'License');
+  const expiringSoonLicenses = licenseAssets
+    .map(license => ({
+      license,
+      daysRemaining: license.license_detail?.expiration_date
+        ? calculateDaysRemaining(license.license_detail.expiration_date)
+        : null,
+    }))
+    .filter(item => item.daysRemaining !== null && item.daysRemaining >= 0 && item.daysRemaining <= 90)
+    .sort((a, b) => (a.daysRemaining ?? 0) - (b.daysRemaining ?? 0));
+  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+  const canCreateLicense = !isAuditor && (
+    Array.isArray(currentUser.permission_keys)
+      ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('assets.create')
+      : currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH' || currentUser.role === 'IT'
+  );
 
   const totalAnnualCost = licenseAssets.reduce((sum, a) => {
     return sum + (a.license_detail?.renewal_cost || a.purchase_price || a.price || 0);
@@ -55,7 +70,7 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
           </p>
         </div>
 
-        {(currentUser.role === 'Admin GABAH' || currentUser.role === 'IT') && (
+        {canCreateLicense && (
           <button
             onClick={handleOpenCreate}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
@@ -84,8 +99,14 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Peringatan Jatuh Tempo Segera</div>
-          <div className="text-2xl font-black text-amber-600 mt-2">1 Kontrak (54 Hari)</div>
-          <div className="text-xs text-slate-500 mt-1">Sophos Intercept X Advanced</div>
+          <div className="text-2xl font-black text-amber-600 mt-2">
+            {expiringSoonLicenses.length} Lisensi
+          </div>
+          <div className="text-xs text-slate-500 mt-1">
+            {expiringSoonLicenses[0]
+              ? `${expiringSoonLicenses[0].license.name} · ${expiringSoonLicenses[0].daysRemaining} hari lagi`
+              : 'Tidak ada lisensi jatuh tempo dalam 90 hari'}
+          </div>
         </div>
       </div>
 
