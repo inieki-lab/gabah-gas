@@ -4359,7 +4359,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Status Sequence Terkini — live dari server (P2#10) */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4">
                 <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
-                  Sequence Counter Terdaftar (Server)
+                  Snapshot Sequence (Proses Aplikasi)
                 </h4>
                 {liveSequences === null ? (
                   <div className="text-xs text-slate-400 py-3 text-center">Memuat snapshot sequence dari server…</div>
@@ -4386,7 +4386,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 {liveSequences !== null && liveSequences.length > 12 && (
                   <div className="mt-2 text-[10px] text-slate-400">Menampilkan 12 dari {liveSequences.length} kombinasi sequence terdaftar.</div>
                 )}
-                <p className="mt-3 text-[10px] text-amber-700">Catatan: PostgreSQL memakai counter database atomik. Fallback file-store pengembangan hanya memakai memori proses.</p>
+                <p className="mt-3 text-[10px] text-amber-700">Catatan: counter saat ini disimpan di memori proses aplikasi, bukan counter database atomik. Jangan jadikan snapshot ini sebagai jaminan nomor unik lintas restart atau multi-instance.</p>
               </div>
             </div>
           )}
