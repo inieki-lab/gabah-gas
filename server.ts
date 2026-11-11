@@ -995,10 +995,31 @@ async function startServer() {
 
   // P2#10: live numbering sequence snapshot for the admin Asset Numbering panel
   // (replaces the hardcoded sample counters previously shown in the UI).
-  app.get('/api/numbering/sequences', (req, res) => {
+  app.get('/api/numbering/sequences', async (req, res) => {
     if (!requireRbacPermission(req, res, 'numbering.read')) return;
-    
-    res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
+    try {
+      if (isPostgresPersistenceActive()) {
+        const result = await queryRbac<{ division: string; code: string; year: number; current: number }>(
+          `SELECT d.code AS division, s.asset_code AS code,
+                  s.sequence_year AS year, s.last_sequence AS current
+           FROM asset_number_sequences s
+           JOIN divisions d ON d.id = s.owner_division_id
+           ORDER BY s.sequence_year DESC, d.code, s.asset_code`
+        );
+        const data = result.rows.map(row => ({
+          key: `${row.division}:${row.code}:${row.year}`,
+          division: row.division,
+          code: row.code,
+          year: Number(row.year),
+          current: Number(row.current),
+        }));
+        return res.json({ success: true, data });
+      }
+      // File-store development fallback only.
+      return res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || 'Gagal membaca sequence aset.' });
+    }
   });
 
   // P2#11: CR-05 reminder subsystem overview for the admin Notification Center —
@@ -1934,7 +1955,7 @@ async function startServer() {
       const actor = getActor(req);
       // Effective permission and explicit owner-domain scope are enforced by
       // createAsset() for every user, regardless of job title or work location.
-      const newAsset = GabahDomainService.createAsset(req.body, actor);
+      const newAsset = await GabahDomainService.createAsset(req.body, actor);
       await persistDataStore();
       res.status(201).json({ success: true, data: newAsset });
     } catch (err: any) {
@@ -2055,7 +2076,7 @@ async function startServer() {
         const priceRaw = String(row.purchase_price ?? '').replace(/[^0-9.-]/g, '');
         const priceNum = Number(priceRaw);
         try {
-          const asset = GabahDomainService.createAsset({
+          const asset = await GabahDomainService.createAsset({
             category_name_or_code: String(row.category_name_or_code || row.category || '').trim() || undefined,
             name,
             owner_division: (division || undefined) as any,
