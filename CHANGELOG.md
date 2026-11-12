@@ -6,6 +6,8 @@
 - GA's optional read-only IT workstation inventory exception does not grant IT maintenance-record visibility; explicit dynamic asset scopes remain independently evaluated.
 - File-store legacy behavior is preserved.
 
+- Added a focused regression contract and CI step. CI has not yet run on this branch.
+
 ## 2026-11-12 — Navigation dan filter aset RPC
 
 - Filter owner RPC tetap menampilkan record legacy ber-owner `SC` selama migrasi data belum dijalankan.
@@ -13,7 +15,6 @@
 - Regression check navigasi diperbarui untuk memastikan `assets.update` atau `assets.audit.read` saja tidak cukup membuka menu Aset.
 - Perubahan dibuat pada branch `fix/nov12-rpc-filter-and-nav-read`; build, lint, dan UAT belum dijalankan dari lingkungan ini.
 
-- Added a focused regression contract and CI step. CI has not yet run on this branch.
 
 ---
 
