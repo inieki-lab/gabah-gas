@@ -69,7 +69,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<SubTab>(initialCategoryFilter ? 'reservations' : 'calendar');
   const [selectedDate, setSelectedDate] = useState<string>(
-    formatLocalDate()
+    formatJakartaDate()
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<string | undefined>();
