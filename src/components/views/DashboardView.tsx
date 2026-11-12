@@ -22,7 +22,6 @@ import {
 import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation } from '../../types';
 import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
-import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -120,8 +119,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const myLoans = safeLoans.filter(l => {
     return (
-      l.borrower_id === currentUserId ||
-      isExactIdentityNameMatch(l.borrower_name, currentUser.name)
+      l.borrower_id === currentUserId
     );
   });
   const myActiveLoans = myLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
@@ -129,8 +127,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const myTickets = safeTickets.filter(t => {
     return (
-      t.reporter_id === currentUserId ||
-      isExactIdentityNameMatch(t.reporter_name, currentUser.name)
+      t.reporter_id === currentUserId
     );
   });
   const myOpenTickets = myTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
@@ -138,12 +135,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const myAssignedAssets = dashboardAssets.filter(a => {
     if (!a.assigned_to) return false;
     const assignedId = a.assigned_to.id;
-    const assignedEmail = a.assigned_to.email?.toLowerCase();
-    const currentEmail = currentUser?.email?.toLowerCase();
     return (
-      assignedId === currentUserId ||
-      (assignedEmail && currentEmail && assignedEmail === currentEmail) ||
-      isExactIdentityNameMatch(a.assigned_to.name, currentUser.name)
+      assignedId === currentUserId
     );
   });
 
