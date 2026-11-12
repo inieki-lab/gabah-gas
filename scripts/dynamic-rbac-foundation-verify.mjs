@@ -25,6 +25,7 @@ const branchLocationMigration = fs.readFileSync('server/migrations/026_map_branc
 const server = fs.readFileSync('server.ts', 'utf8');
 const ticketRequesterPermissionSeed = fs.readFileSync('server/migrations/040_ticket_requester_category_permissions.sql', 'utf8');
 const ticketRequesterRoleTemplateSeed = fs.readFileSync('server/migrations/041_ticket_requester_role_templates.sql', 'utf8');
+const auditorReadOnlyPermissionSeed = fs.readFileSync('server/migrations/042_dynamic_rbac_auditor_read_only_permissions.sql', 'utf8');
 const ticketCreateRoute = server.slice(server.indexOf("app.post('/api/tickets'"), server.indexOf("app.get('/api/tickets/:id/assignees'"));
 const ticketCreateModal = fs.readFileSync('src/components/modals/CreateTicketModal.tsx', 'utf8');
 
@@ -60,6 +61,7 @@ const checks = [
   ['user-role assignment mapping exists', /CREATE TABLE IF NOT EXISTS gabah_user_roles/i.test(migration)],
   ['Superadmin capability is a stable field', /is_superadmin BOOLEAN NOT NULL DEFAULT FALSE/i.test(migration)],
   ['Auditor read-only is derived from effective assigned roles, including additional roles', /export function isAuditorActor\([\s\S]*getEffectiveRoleKeys\(actor\.id\)\.includes\('auditor'\)/.test(policy) && /isAuditorActor\(actor\)/.test(runtimeHardening) && /isAuditorActor\(user\)/.test(domainServices)],
+  ['Auditor base template has no write permissions for loans, tickets, knowledge voting, or room reservations', /DELETE FROM gabah_role_permissions[\s\S]*r\.role_key = 'auditor'[\s\S]*'loans\.create'[\s\S]*'loans\.return'[\s\S]*'tickets\.create'[\s\S]*'knowledge\.vote'[\s\S]*'room_reservations\.create'[\s\S]*'room_reservations\.cancel'/.test(auditorReadOnlyPermissionSeed) && /isAuditorActor\(actor\) && req\.method !== 'GET'/.test(runtimeHardening)],
   ['Superadmin seed is keyed independently from display name', /\('superadmin',\s*'Admin GABAH'.*TRUE\)/i.test(migration)],
   ['role deletion is restricted while assigned', /gabah_user_roles[\s\S]*?REFERENCES gabah_roles\(id\) ON DELETE RESTRICT/i.test(migration)],
   ['migration does not drop legacy data', !/\bDROP\s+(TABLE|COLUMN|DATABASE)\b/i.test(migration)],
