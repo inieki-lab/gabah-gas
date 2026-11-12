@@ -139,7 +139,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     setFormData({
       title: '',
       asset_id: '',
-      scheduled_date: new Date().toISOString().split('T')[0],
+      scheduled_date: formatJakartaDate(),
       frequency: 'quarterly',
       technician_name: '',
       vendor_name: '',
