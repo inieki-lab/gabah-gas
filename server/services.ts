@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility, ServerMaintenance } from './db';
 import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
@@ -247,7 +248,7 @@ export class GabahDomainService {
    */
   static recordAudit(action: string, entity: string, details: string, user: { id?: string; name: string; role: string }, entityId?: string, persist = true) {
     const log: ServerAuditLog = {
-      id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `LOG-${randomUUID()}`,
       action,
       entity,
       entity_id: entityId,
