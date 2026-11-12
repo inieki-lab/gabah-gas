@@ -286,6 +286,8 @@ async function main() {
     const hOk = await req(base, 'POST', `/api/loans/${L1.id}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan' } });
     record('Authorized handover: IT custodian on approved IT loan', '200 + borrowed',
       `HTTP ${hOk.status} + ${hOk.json?.data?.status}`, hOk.status === 200 && hOk.json?.data?.status === 'borrowed');
+    const adminSessionAfterHandover = await req(base, 'GET', '/api/auth/me', { token: admin });
+    record('Admin session remains valid after custodian handover', 'HTTP 200', `HTTP ${adminSessionAfterHandover.status}`, adminSessionAfterHandover.status === 200);
     const deleteBorrower = await req(base, 'DELETE', `/api/users/${karyawanId}`, { token: admin });
     const borrowerStillExists = (await req(base, 'GET', '/api/users', { token: admin })).json?.data?.some(user => user.id === karyawanId);
     record('User with physically outstanding loan cannot be deleted', '409 and user preserved',
