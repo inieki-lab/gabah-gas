@@ -77,6 +77,9 @@ jobs:
       - name: Asset loan concurrent collision guard
         run: npm run test:loan-reservation-exclusion
 
+      - name: Append-only audit log protection
+        run: npm run test:audit-append-only
+
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
