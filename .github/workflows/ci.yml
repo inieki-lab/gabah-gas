@@ -74,6 +74,9 @@ jobs:
       - name: Room reservation concurrent collision guard
         run: npm run test:room-reservation-exclusion
 
+      - name: Asset loan concurrent collision guard
+        run: npm run test:loan-reservation-exclusion
+
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
