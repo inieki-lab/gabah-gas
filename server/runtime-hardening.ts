@@ -2,11 +2,18 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
-import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
+import { isSuperadminActor, isAuditorActor, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { GabahDomainService, getTicketOwnerDivision } from './services';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
-const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor);
+const canReadAuditTrail = (actor: ServerUser) =>
+  isSuperadmin(actor)
+  || (isPostgresPersistenceActive() && isAuditorActor(actor)
+    && hasRbacPermission(String(actor.id), 'audit.read'));
+const canReadReconciliation = (actor: ServerUser) =>
+  isSuperadmin(actor)
+  || (isPostgresPersistenceActive() && isAuditorActor(actor)
+    && hasRbacPermission(String(actor.id), 'reconciliation.read'));
 
 export function actorFor(req: Request): ServerUser | null {
   if ((req as any).user) return (req as any).user as ServerUser;
@@ -150,10 +157,13 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     }
   }
 
-  if (req.path === '/api/audit-logs' && !isGlobalObserver(actor)) {
+  // Migration 025 explicitly grants Auditor read-only audit and reconciliation
+  // capabilities. Preserve the Superadmin-only default while allowing Auditor
+  // through only when PostgreSQL RBAC confirms the matching module permission.
+  if (req.path === '/api/audit-logs' && !canReadAuditTrail(actor)) {
     return res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });
   }
-  if (req.path === '/api/reconciliation' && !isGlobalObserver(actor)) {
+  if (req.path === '/api/reconciliation' && !canReadReconciliation(actor)) {
     return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
   }
 
