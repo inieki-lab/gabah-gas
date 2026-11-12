@@ -2341,18 +2341,31 @@ async function startServer() {
   // Privacy-safe availability check across all reservations.
   app.post('/api/loans/availability', (req, res) => {
     if (!requireRbacPermission(req, res, 'loans.create')) return;
+    const actor = getActor(req);
     const assetIds = Array.isArray(req.body?.asset_ids)
-      ? [...new Set(req.body.asset_ids.map((id: unknown) => String(id)))]
+      ? [...new Set(req.body.asset_ids.map((id: unknown) => String(id || '').trim()))]
       : [];
     const start = new Date(String(req.body?.start_date || '')).getTime();
     const due = new Date(String(req.body?.due_date || '')).getTime();
-    if (assetIds.length === 0 || assetIds.length > 50 || assetIds.some(id => !id)
+    if (assetIds.length === 0 || assetIds.length > 20 || assetIds.some(id => !id)
       || !Number.isFinite(start) || !Number.isFinite(due) || start >= due) {
       return res.status(400).json({ success: false, message: 'Daftar aset atau rentang tanggal peminjaman tidak valid.' });
     }
+
+    // Do not let a caller probe arbitrary asset IDs. The caller may check only
+    // assets already visible through the canonical asset-scope resolver.
+    const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor).map(asset => asset.id));
+    if (assetIds.some(id => !visibleAssetIds.has(id))) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: satu atau lebih aset berada di luar cakupan akses Anda.' });
+    }
+
+    const unavailableStatuses = new Set([
+      'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
+      'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive',
+    ]);
     const conflicts = assetIds.filter(assetId => {
       const asset = db.assets.find(item => item.id === assetId);
-      if (!asset || !asset.is_loanable) return true;
+      if (!asset || !asset.is_loanable || unavailableStatuses.has(asset.status)) return true;
       return db.loans.some(loan => {
         if (loan.asset_id !== assetId || !['approved', 'borrowed'].includes(loan.status)) return false;
         const existingStart = new Date(loan.start_date).getTime();
