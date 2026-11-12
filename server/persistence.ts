@@ -794,13 +794,14 @@ export async function initializePersistence(): Promise<void> {
 
 export function persistDataStore(): Promise<void> {
   const payload = createPayload();
-  // Always persist immediately to local storage file
-  saveStateToFile(payload);
 
-  // PostgreSQL is authoritative whenever it is active. Do not swallow a
-  // failed database write: callers must not return a success response when
-  // the authoritative store did not persist the change.
-  if (!isPostgresAvailable) return persistQueue;
+  // File-store mode writes directly. When PostgreSQL is active, do NOT write
+  // the JSON mirror until the authoritative PostgreSQL transaction commits;
+  // otherwise a failed database write could leave an uncommitted snapshot on disk.
+  if (!isPostgresAvailable) {
+    saveStateToFile(payload);
+    return persistQueue;
+  }
 
   const write = persistQueue.then(async () => {
     if (!isPostgresAvailable) {
@@ -808,6 +809,7 @@ export function persistDataStore(): Promise<void> {
     }
     try {
       await persistPostgresState();
+      saveStateToFile(createPayload());
     } catch (error: any) {
       // In development, preserve the historical file-store fallback, but
       // reject THIS write so the API caller can report the persistence failure.
