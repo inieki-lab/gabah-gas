@@ -31,7 +31,8 @@
     "test:dependency-security": "node scripts/dependency-security-verify.mjs",
     "test:room-reservation-exclusion": "node scripts/room-reservation-exclusion-verify.mjs",
     "test:persistence-response": "node scripts/persistence-response-verify.mjs",
-    "test:upload-security": "node scripts/upload-security-verify.mjs"
+    "test:upload-security": "node scripts/upload-security-verify.mjs",
+    "test:client-ip-security": "node scripts/client-ip-security-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
