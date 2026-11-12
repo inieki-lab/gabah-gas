@@ -1,11 +1,11 @@
 import crypto from 'node:crypto';
 import { Request } from 'express';
 import { db, ServerUser, ServerSession } from './db';
-import { hashPassword, verifyPassword, generateToken } from './crypto';
+import { hashPassword, verifyPassword, generateToken, needsPasswordRehash } from './crypto';
 import { getSecurityEpoch } from './persistence';
 import { extractClientIp } from './requestContext';
 
-export { hashPassword, verifyPassword, generateToken };
+export { hashPassword, verifyPassword, generateToken, needsPasswordRehash };
 
 // Rate limiting state for brute-force protection
 interface LoginAttemptRecord {
