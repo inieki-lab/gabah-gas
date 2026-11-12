@@ -2371,7 +2371,10 @@ async function startServer() {
     const actor = getActor(req);
     const isReporter = (ticket: any) =>
       ticket.reporter_id === actor.id
-      || (Boolean(ticket.reporter_name) && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+      // Legacy name fallback is permitted only when no stable reporter ID
+      // exists. Never let a same-name employee inherit another user's ticket.
+      || (!ticket.reporter_id && Boolean(ticket.reporter_name)
+        && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
 
     if (isSuperadminActor(actor) || isAuditorActor(actor)) {
       return res.json({ success: true, data: db.tickets });
