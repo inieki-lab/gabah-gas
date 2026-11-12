@@ -680,6 +680,9 @@ export class GabahDomainService {
     }
     const asset = db.assets.find(a => a.id === payload.asset_id);
     if (!asset) throw new Error('Aset tidak ditemukan');
+    if (!this.getScopedAssets(actor).some(visibleAsset => visibleAsset.id === asset.id)) {
+      throw Object.assign(new Error('Akses ditolak: aset berada di luar cakupan akses peminjam.'), { statusCode: 403 });
+    }
     if (!asset.is_loanable) throw new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).');
     if (!isAssetEligibleForLoan(asset)) {
       throw Object.assign(new Error('Aset sedang tidak layak dipinjam karena status atau kondisi fisiknya.'), { statusCode: 409 });
@@ -992,10 +995,14 @@ export class GabahDomainService {
     let relatedAssetNumber = '';
     if (payload.related_asset_id) {
       const ast = db.assets.find(a => a.id === payload.related_asset_id);
-      if (ast) {
-        relatedAssetName = ast.name;
-        relatedAssetNumber = ast.asset_number;
+      if (!ast) {
+        throw Object.assign(new Error('Aset terkait tidak ditemukan.'), { statusCode: 404 });
       }
+      if (!this.getScopedAssets(actor).some(visibleAsset => visibleAsset.id === ast.id)) {
+        throw Object.assign(new Error('Akses ditolak: aset terkait berada di luar cakupan akses Anda.'), { statusCode: 403 });
+      }
+      relatedAssetName = ast.name;
+      relatedAssetNumber = ast.asset_number;
     }
 
     const newTicket: ServerTicket = {
