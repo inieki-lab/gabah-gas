@@ -637,8 +637,8 @@ async function startServer() {
 
   // Bulk import pegawai (IMPORT Excel/CSV). Upsert per email:
   //  - email BARU    → akun dibuat (password CSPRNG server-side, out-of-band).
-  //  - email SUDAH ADA → data profil (nama/divisi/departemen/telepon/role) di-update,
-  //    password & status sesi TIDAK disentuh.
+  //  - email SUDAH ADA → data profil diperbarui; password dan status aktif tetap.
+  //    Sesi dicabut bila role/divisi/unit berubah karena ketiganya memengaruhi akses.
   // Guard: hanya Admin GABAH. Setiap baris divalidasi individual agar satu
   // baris buruk tidak menggagalkan seluruh batch.
   app.post('/api/users/bulk-import', async (req, res) => {
@@ -717,7 +717,10 @@ async function startServer() {
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
         if (existing) {
-          // UPDATE profil (password, is_active, dan sesi tidak disentuh)
+          // Revoke sessions whenever access-bearing identity fields change.
+          const accessContextChanged = existing.role !== role
+            || existing.division !== division
+            || (Boolean(unitId) && existing.unit_id !== unitId);
           existing.name = name;
           existing.role = role as ServerUser['role'];
           (existing as any).role_label = roleLabels[role] || role;
@@ -727,6 +730,7 @@ async function startServer() {
           if (unitId) existing.unit_id = unitId;
           if (officeLocationId) existing.office_location_id = officeLocationId;
           if (phone) existing.phone = phone;
+          if (accessContextChanged) revokeUserSessions(existing.id);
           importedUsers.push(existing);
           updated++;
           GabahDomainService.recordAudit(
@@ -875,7 +879,9 @@ async function startServer() {
         }
         targetUser.email = trimmedEmail;
       }
-      const privilegeChanged = role !== undefined && primaryRole !== targetUser.role;
+      const accessContextChanged = (division !== undefined && String(division).trim() !== targetUser.division)
+        || (orgUnit !== undefined && orgUnit !== targetUser.unit_id);
+      const privilegeChanged = (role !== undefined && primaryRole !== targetUser.role) || accessContextChanged;
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
 
       if (role !== undefined) {
