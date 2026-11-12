@@ -3,7 +3,7 @@ import { X, FileText, ShieldAlert } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
 import { hasPermission } from '../../utils/access';
-import { formatLocalDate } from '../../utils/datetime';
+import { formatJakartaDate } from '../../utils/datetime';
 
 interface CreateContractModalProps {
   isOpen: boolean;
@@ -39,7 +39,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
   const [vendorName, setVendorName] = useState('');
   const [ownerDivision, setOwnerDivision] = useState('');
   const [picUserId, setPicUserId] = useState(currentUser.id);
-  const [startDate, setStartDate] = useState(formatLocalDate());
+  const [startDate, setStartDate] = useState(formatJakartaDate());
 
   useEffect(() => {
     if (!isOpen) return;
