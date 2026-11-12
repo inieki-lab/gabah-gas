@@ -96,19 +96,21 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
 
   if (!asset) return null;
 
-  // Freshservice Asset Lifecycle State Machine
-  const currentStep = 
-    asset.status === 'retired' ? 5 :
-    asset.status === 'maintenance' ? 4 :
-    asset.status === 'in_use' ? 3 :
-    asset.status === 'available' ? 2 : 1;
+  // Normalize legacy and current lifecycle states into the five visual stages.
+  const lifecycleStatus = String(asset.status || '').toLowerCase();
+  const terminalStatuses = ['retired', 'disposed', 'auctioned', 'cannibalized', 'lost', 'inactive'];
+  const serviceStatuses = ['maintenance', 'in_repair', 'damaged', 'pending_disposal', 'pending_auction'];
+  const currentStep = terminalStatuses.includes(lifecycleStatus) ? 5
+    : serviceStatuses.includes(lifecycleStatus) ? 4
+    : ['assigned', 'in_use'].includes(lifecycleStatus) ? 3
+    : ['available', 'reserved'].includes(lifecycleStatus) ? 2 : 1;
 
   const lifecycleSteps = [
     { step: 1, label: 'Pengadaan', desc: formatDate(asset.purchase_date) },
-    { step: 2, label: 'Tersedia', desc: asset.status === 'available' ? 'Stok Aktif' : 'Tersedia' },
-    { step: 3, label: 'Digunakan', desc: asset.assigned_to ? asset.assigned_to.name : (asset.status === 'in_use' ? 'In Use' : '-') },
-    { step: 4, label: 'Servis', desc: asset.status === 'maintenance' ? 'Dalam Perbaikan' : 'Pemeliharaan' },
-    { step: 5, label: 'Afkir', desc: asset.status === 'retired' ? 'Hapus Buku' : 'Aktif' },
+    { step: 2, label: 'Tersedia', desc: ['available', 'reserved'].includes(lifecycleStatus) ? 'Stok aktif / terreservasi' : 'Menunggu pemulihan' },
+    { step: 3, label: 'Digunakan', desc: asset.assigned_to ? asset.assigned_to.name : (['in_use', 'assigned'].includes(lifecycleStatus) ? 'Dalam penggunaan' : '-') },
+    { step: 4, label: 'Servis', desc: serviceStatuses.includes(lifecycleStatus) ? `Status: ${asset.status}` : 'Pemeliharaan' },
+    { step: 5, label: 'Afkir', desc: terminalStatuses.includes(lifecycleStatus) ? `Status: ${asset.status}` : 'Aktif' },
   ];
 
   const ownerDivision = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : 'GA');
