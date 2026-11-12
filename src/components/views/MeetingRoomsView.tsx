@@ -28,7 +28,7 @@ import {
   Laptop
 } from 'lucide-react';
 import { MeetingRoom, RoomReservation, UserProfile } from '../../types';
-import { formatLocalDate } from '../../utils/datetime';
+import { formatJakartaDate, formatLocalDate } from '../../utils/datetime';
 import { CreateRoomReservationModal } from '../modals/CreateRoomReservationModal';
 import { RoomReservationSlipModal } from '../modals/RoomReservationSlipModal';
 import { MeetingMasterSettingsModal } from '../modals/MeetingMasterSettingsModal';
@@ -115,7 +115,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
   // Stats
   const stats = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = formatJakartaDate();
     const todayReservations = reservations.filter(r => r.date === todayStr && !['cancelled', 'rejected'].includes(r.status));
     const pendingCount = reservations.filter(r => r.status === 'pending_approval').length;
     const inUseCount = reservations.filter(r => r.status === 'in_use').length;
@@ -186,7 +186,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   const handleShiftDate = (days: number) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + days);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate(formatLocalDate(d));
   };
 
   const handleApprove = async (id: string) => {
