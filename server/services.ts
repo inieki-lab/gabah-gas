@@ -34,6 +34,8 @@ interface AssetScopeSpec { type: string; value: string | null }
 const LOAN_UNAVAILABLE_ASSET_STATUSES = new Set([
   'maintenance', 'retired', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
   'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive',
+  // Legacy/ERP lifecycle values may still exist in imported records.
+  'maintenance', 'retired', 'in_use', 'under_maintenance', 'decommissioned',
 ]);
 const ASSET_MUTATION_BLOCKING_LOAN_STATUSES = new Set([
   'pending_approval', 'pending', 'approved', 'borrowed', 'overdue',
@@ -58,11 +60,14 @@ function assertNoBlockingAssetLoan(assetId: string, action: string, excludeLoanI
 }
 
 /** Shared eligibility rule for both availability preview and authoritative mutations. */
-export function isAssetEligibleForLoan(asset: Pick<ServerAsset, 'is_loanable' | 'status' | 'condition'>): boolean {
+export function isAssetEligibleForLoan(asset: Pick<ServerAsset, 'is_loanable' | 'status' | 'condition' | 'assigned_to'>): boolean {
+  const status = String(asset.status || '').trim().toLowerCase();
+  const condition = String(asset.condition || '').trim().toLowerCase();
   return Boolean(asset.is_loanable)
-    && asset.status !== 'assigned'
-    && !LOAN_UNAVAILABLE_ASSET_STATUSES.has(asset.status)
-    && !['broken', 'damaged'].includes(String(asset.condition));
+    && status !== 'assigned'
+    && !asset.assigned_to?.id
+    && !LOAN_UNAVAILABLE_ASSET_STATUSES.has(status)
+    && !['broken', 'damaged', 'poor'].includes(condition);
 }
 
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
