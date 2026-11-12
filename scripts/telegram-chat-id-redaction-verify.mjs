@@ -9,7 +9,7 @@ const sanitizer = sanitizeStart >= 0 && sanitizeEnd > sanitizeStart ? auth.slice
 const checks = [
   ['Default user serialization destructures and omits Telegram chat ID', /telegram_chat_id/.test(sanitizer) && /: safe;/.test(sanitizer)],
   ['Telegram chat ID is returned only behind explicit include option', /options\.includeTelegramChatId && telegram_chat_id/.test(sanitizer)],
-  ['Authenticated user serialization includes Telegram ID only for Superadmin', /sanitizeUser\(user, \{ includeTelegramChatId: isSuperadminActor\(user\) \}\)/.test(server)],
+  ['Authentication/session serialization never includes Telegram ID', /const safe = sanitizeUser\(user\) as any;/.test(server) && /user: serializeAuthenticatedUser\(user\)/.test(server) && /data: serializeAuthenticatedUser\(actor\)/.test(server)],
   ['User directory includes Telegram ID only for Superadmin', /db\.users\.map\(u => sanitizeUser\(u, \{ includeTelegramChatId: isSuperadminActor\(actor\) \}\)\)/.test(server)],
   ['Admin-managed create/import/edit responses explicitly opt in', /sanitizeUser\(newUser, \{ includeTelegramChatId: true \}\)/.test(server) && /sanitizeUser\(targetUser, \{ includeTelegramChatId: true \}\)/.test(server) && /sanitizeUser\(u, \{ includeTelegramChatId: true \}\)/.test(server)],
   ['Role-switch response keeps Telegram ID redacted by default', /data: \{ user: sanitizeUser\(user\), token: session\.token/.test(server)],
