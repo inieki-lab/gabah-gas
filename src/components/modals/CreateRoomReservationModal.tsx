@@ -35,7 +35,7 @@ import {
 import { gabahApi } from '../../services/gabahApi';
 import { GabahService } from '../../services/gabahService';
 import { hasPermission, hasRole } from '../../utils/access';
-import { formatLocalDate } from '../../utils/datetime';
+import { formatJakartaDate } from '../../utils/datetime';
 
 interface CreateRoomReservationModalProps {
   isOpen: boolean;
@@ -72,7 +72,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   onSuccess,
   onSubmit,
 }) => {
-  const todayStr = formatLocalDate();
+  const todayStr = formatJakartaDate();
 
   // Dynamic Master Data
   const [meetingTypes, setMeetingTypes] = useState<MeetingTypeItem[]>(DEFAULT_TYPES);
