@@ -139,6 +139,7 @@ const checks = [
   ['Loanable pool excludes assets already assigned to a person and legacy maintenance/retired states',
     /asset\.status !== 'assigned'/.test(services)
       && /!asset\.assigned_to\?\.id/.test(services)
+      && /LOAN_ELIGIBLE_ASSET_STATUSES = new Set\(\['active', 'available'\]\)/.test(services)
       && /'maintenance', 'retired', 'in_use'/.test(services)
       && /'broken', 'damaged', 'poor'/.test(services)
       && /!asset\.assigned_to\?\.id/.test(loanCreateUi)],
