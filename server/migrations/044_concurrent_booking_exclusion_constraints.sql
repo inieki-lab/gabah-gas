@@ -70,7 +70,7 @@ BEGIN
       ADD CONSTRAINT room_reservations_no_time_overlap
       EXCLUDE USING gist (
         room_id WITH =,
-        tstzrange(start_datetime, end_datetime, '[)') WITH &&
+        (tstzrange(start_datetime, end_datetime, '[)')) WITH &&
       )
       WHERE (status IN ('pending_approval', 'pending', 'approved', 'in_use', 'checked_in'));
   END IF;
