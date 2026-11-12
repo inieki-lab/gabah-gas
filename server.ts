@@ -529,16 +529,16 @@ async function startServer() {
       if (!validApplicationRoles.includes(requestedRole)) {
         return res.status(400).json({ success: false, message: 'Peran aplikasi tidak dikenal.' });
       }
-      const primaryRole = ['Supply Chain', 'PIBC'].includes(requestedRole)
+      const primaryRole = (['Supply Chain', 'PIBC'].includes(requestedRole)
         ? 'Karyawan'
-        : requestedRole === 'Superadmin' ? 'Admin GABAH' : requestedRole;
+        : requestedRole === 'Superadmin' ? 'Admin GABAH' : requestedRole) as ServerUser['role'];
       if (typeof name !== 'string' || !name.trim()
         || typeof email !== 'string' || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim())) {
         return res.status(400).json({ success: false, message: 'Nama wajib diisi dan alamat email harus valid.' });
       }
       const normalizedName = name.trim();
       const normalizedEmail = email.trim().toLowerCase();
-      const normalizedDivision = typeof division === 'string' && division.trim() ? division.trim() : 'Umum';
+      const normalizedDivision = (typeof division === 'string' && division.trim() ? division.trim() : 'Umum') as ServerUser['division'];
       const normalizedDepartment = typeof department === 'string' && department.trim() ? department.trim() : 'Operasional';
       const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
@@ -806,9 +806,9 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Peran aplikasi tidak dikenal.' });
       }
       const primaryRole = requestedRole === undefined ? undefined
-        : ['Supply Chain', 'PIBC'].includes(requestedRole)
+        : (['Supply Chain', 'PIBC'].includes(requestedRole)
           ? 'Karyawan'
-          : requestedRole === 'Superadmin' ? 'Admin GABAH' : requestedRole;
+          : requestedRole === 'Superadmin' ? 'Admin GABAH' : requestedRole) as ServerUser['role'];
       if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
         return res.status(400).json({ success: false, message: 'Nama pengguna tidak boleh kosong.' });
       }
