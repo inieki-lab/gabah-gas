@@ -30,9 +30,30 @@ export function isLegacyScopedRole(role: string): boolean {
 interface AssetScopeSpec { type: string; value: string | null }
 
 const LOAN_UNAVAILABLE_ASSET_STATUSES = new Set([
-  'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
+  'assigned', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
   'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive',
 ]);
+const ASSET_MUTATION_BLOCKING_LOAN_STATUSES = new Set([
+  'pending_approval', 'pending', 'approved', 'borrowed', 'overdue',
+]);
+
+function findBlockingAssetLoan(assetId: string, excludeLoanId?: string): ServerLoan | undefined {
+  return db.loans.find(loan =>
+    loan.asset_id === assetId
+    && loan.id !== excludeLoanId
+    && ASSET_MUTATION_BLOCKING_LOAN_STATUSES.has(String(loan.status)),
+  );
+}
+
+function assertNoBlockingAssetLoan(assetId: string, action: string, excludeLoanId?: string): void {
+  const loan = findBlockingAssetLoan(assetId, excludeLoanId);
+  if (loan) {
+    throw Object.assign(
+      new Error(`Aset tidak dapat ${action} selama permohonan/peminjaman ${loan.loan_number} masih berstatus ${loan.status}. Selesaikan atau batalkan proses peminjaman terlebih dahulu.`),
+      { statusCode: 409 },
+    );
+  }
+}
 
 /** Shared eligibility rule for both availability preview and authoritative mutations. */
 export function isAssetEligibleForLoan(asset: Pick<ServerAsset, 'is_loanable' | 'status' | 'condition'>): boolean {
@@ -523,13 +544,14 @@ export class GabahDomainService {
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.assign')) {
       throw new Error('Akses ditolak: Anda tidak memiliki permission assign pada domain pemilik aset ini.');
     }
+    assertNoBlockingAssetLoan(assetId, 'diubah penugasannya');
 
     const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
 
     // Support Unassign (Return to Pool/Warehouse as available/idle)
     if (!targetUserId) {
       asset.assigned_to = undefined;
-      asset.status = 'available';
+      if (asset.status === 'assigned') asset.status = 'available';
       asset.updated_at = new Date().toISOString();
 
       const movement: ServerAssetMovement = {
@@ -553,6 +575,12 @@ export class GabahDomainService {
 
     const targetUser = db.users.find(u => u.id === targetUserId);
     if (!targetUser) throw new Error('User penerima tidak ditemukan');
+    if (targetUser.is_active === false) {
+      throw Object.assign(new Error('Tidak dapat menugaskan aset kepada pengguna yang nonaktif.'), { statusCode: 409 });
+    }
+    if (LOAN_UNAVAILABLE_ASSET_STATUSES.has(asset.status)) {
+      throw Object.assign(new Error(`Aset berstatus ${asset.status} tidak dapat ditugaskan sebelum dipulihkan melalui proses lifecycle.`), { statusCode: 409 });
+    }
 
     asset.assigned_to = {
       id: targetUser.id,
@@ -595,6 +623,7 @@ export class GabahDomainService {
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.move')) {
       throw new Error('Akses ditolak: Anda tidak memiliki permission move pada domain pemilik aset ini.');
     }
+    assertNoBlockingAssetLoan(assetId, 'dipindahkan lokasinya');
 
     const oldLocation = asset.location;
     asset.location = newLocation;
@@ -631,6 +660,7 @@ export class GabahDomainService {
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.lifecycle')) {
       throw new Error('Akses ditolak: Anda tidak memiliki permission lifecycle pada domain pemilik aset ini.');
     }
+    assertNoBlockingAssetLoan(assetId, 'diubah status lifecycle-nya');
 
     switch (action) {
       case 'repair':
@@ -909,6 +939,21 @@ export class GabahDomainService {
     loan.updated_at = new Date().toISOString();
 
     const asset = db.assets.find(a => a.id === loan.asset_id);
+    if (!asset || !isAssetEligibleForLoan(asset)) {
+      throw Object.assign(new Error('Aset tidak lagi memenuhi syarat serah terima (misalnya sudah rusak, nonaktif, atau masuk proses disposal).'), { statusCode: 409 });
+    }
+    const physicalConflict = db.loans.find(other => {
+      if (other.id === loan.id || other.asset_id !== loan.asset_id) return false;
+      if (!['approved', 'borrowed', 'overdue'].includes(other.status)) return false;
+      const otherDue = new Date(other.due_date).getTime();
+      if (other.status === 'overdue' || (other.status === 'borrowed' && Number.isFinite(otherDue) && otherDue < Date.now())) return true;
+      const otherStart = new Date(other.start_date).getTime();
+      return Number.isFinite(otherStart) && Number.isFinite(otherDue)
+        && start < otherDue && due > otherStart;
+    });
+    if (physicalConflict) {
+      throw Object.assign(new Error('Serah terima ditolak karena aset masih dipinjam atau sudah memiliki reservasi aktif yang bertabrakan.'), { statusCode: 409 });
+    }
     if (asset) {
       asset.status = 'assigned';
     }
@@ -959,7 +1004,10 @@ export class GabahDomainService {
 
     const asset = db.assets.find(a => a.id === loan.asset_id);
     if (asset) {
-      asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
+      const nonOperationalStatuses = new Set(['in_repair', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive']);
+      if (!nonOperationalStatuses.has(asset.status)) {
+        asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
+      }
       asset.condition = condition;
       // Preserve the recorded physical location. Returning a loan changes custody/status,
       // not the asset's site; a real relocation must use the asset-mutation workflow.
