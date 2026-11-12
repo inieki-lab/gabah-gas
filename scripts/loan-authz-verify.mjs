@@ -63,6 +63,17 @@ function isoDatePlus(days) {
 
 async function main() {
   const loanModalSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/modals/CreateLoanModal.tsx'), 'utf8');
+  const dateUtilsSource = fs.readFileSync(path.resolve(process.cwd(), 'src/utils/datetime.ts'), 'utf8');
+  record(
+    'datetime-local loan values are sent as explicit ISO instants and local date defaults do not shift at UTC midnight',
+    'browser-local parsing + ISO API payload + local calendar formatter',
+    'timezone-safe loan date handling',
+    /const toIsoDateTime = \(value: string\)/.test(loanModalSource)
+      && /start_date: startDateIso/.test(loanModalSource)
+      && /due_date: dueDateIso/.test(loanModalSource)
+      && /formatLocalDate\(tomorrow\)/.test(loanModalSource)
+      && /date\.getFullYear\(\)/.test(dateUtilsSource),
+  );
   record(
     'Loan request modal lists only explicitly loanable, available, non-damaged assets',
     'is_loanable=true + status=available + condition not broken/damaged',
