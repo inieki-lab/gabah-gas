@@ -9,7 +9,7 @@ const requestContext = fs.readFileSync(new URL('../server/requestContext.ts', im
 
 const checks = [
   ['audit model stores stable user_id', /export interface ServerAuditLog \{[\s\S]*user_id\?: string/.test(db)],
-  ['recordAudit accepts and records actor ID', /recordAudit\([\s\S]*user: \{ id\?: string; name: string; role: string \}/.test(services) && /user_id: user\.id/.test(services)],
+  ['recordAudit accepts and records actor ID', /recordAudit\([\s\S]*user: \{ id\?: string; name: string; role: string \}/.test(services) && /user_id: auditActor\.id/.test(services)],
   ['PostgreSQL audit persistence never infers identity from display name', /const userId = log\.user_id \|\| null/.test(persistence) && !/db\.users\.find\(u => u\.name === log\.user_name\)/.test(persistence)],
   ['audit actor ID is a historical identifier, not a cascading user foreign key', /DROP CONSTRAINT IF EXISTS audit_logs_user_id_fkey/.test(fs.readFileSync(new URL('../server/migrations/046_audit_logs_append_only.sql', import.meta.url), 'utf8'))],
   ['role-switch sessions retain the original Superadmin principal in request context', /session\?\.original_admin_id/.test(runtime) && /originalAdminId\?: string/.test(requestContext)],
