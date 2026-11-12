@@ -7,6 +7,7 @@ import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
+import { hasRoleCapability } from './role-capabilities';
 import { isPostgresPersistenceActive } from './persistence';
 
 /** Resolve ticket service categories to their authoritative owner division.
@@ -1449,7 +1450,7 @@ export class GabahDomainService {
     const year = new Date().getFullYear();
     const existingCount = (db.roomReservations || []).length + 1;
     const reservationNumber = `RSV-${year}-${String(existingCount).padStart(4, '0')}`;
-    const isAutoApproved = isSuperadminActor(actor) || actor.role === 'Sekretaris Direksi';
+    const isAutoApproved = isSuperadminActor(actor) || hasRoleCapability(actor, 'sekretaris_direksi');
 
     const reservation: ServerRoomReservation = {
       id: `rsv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
