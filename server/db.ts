@@ -313,6 +313,7 @@ export interface ServerNotification {
 
 export interface ServerAuditLog {
   id: string;
+  user_id?: string;
   action: string;
   entity: string;
   entity_id?: string;
