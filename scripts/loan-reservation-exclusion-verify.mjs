@@ -17,7 +17,7 @@ const checks = [
   ['only approved, borrowed, and overdue loans reserve the asset', /status IN \('approved', 'borrowed', 'overdue'\)/i.test(migration)],
   ['legacy conflicts are preflighted without rewriting loans', /overlapping active asset loans exist/i.test(migration) && !/DELETE FROM loans|UPDATE loans/i.test(migration)],
   ['constraint creation is idempotent', /IF NOT EXISTS \([\s\S]*pg_constraint[\s\S]*loans_no_double_booking/i.test(migration)],
-  ['race-prone trigger is removed after the exclusion constraint is installed', /DROP TRIGGER IF EXISTS trg_check_loan_schedule_collision/i.test(migration) && /DROP FUNCTION IF EXISTS check_loan_schedule_collision/i.test(migration)],
+  ['overdue checks serialize on the parent asset row', /PERFORM 1 FROM assets WHERE id = NEW\\.asset_id FOR UPDATE/i.test(migration) && /status = 'overdue'/i.test(migration)],
   ['migration runner discovers and orders numbered SQL migrations', /readdirSync\(migrationsDir\)[\s\S]*filter\(f => f\.endsWith\('\.sql'\)\)\.sort\(\)/i.test(persistence)],
 ];
 
