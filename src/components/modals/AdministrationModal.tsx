@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
+import { isSuperAdmin } from '../../utils/access';
 import { exportUsersToCsv, downloadUsersImportTemplate, parseUsersImportCsv } from '../../services/gabahService';
 
 export type AdminSection =
@@ -239,7 +240,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   onRefreshData
 }) => {
   // Hak akses administrasi dibatasi HANYA untuk Super Admin ('Admin GABAH')
-  const isCurrentUserAdmin = Boolean(currentUser?.is_superadmin || currentUser?.permission_keys?.includes('*')) || (activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH');
+  const isCurrentUserAdmin = isSuperAdmin(currentUser) || (!Array.isArray(currentUser?.permission_keys) && activeRole === 'Admin GABAH');
   const currentRoleName = activeRole || currentUser?.role || 'Admin GABAH';
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 
