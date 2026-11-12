@@ -29,6 +29,7 @@ import {
   LifeBuoy
 } from 'lucide-react';
 import { Asset, AssetCategoryType, AssetStatus, UserProfile } from '../../types';
+import { matchesAssetCategoryFilter } from '../../utils/assetCategoryFilter';
 import { GabahService, formatRupiah, formatDate, exportAssetsToCsv } from '../../services/gabahService';
 import { BatchQRPrintModal } from '../modals/BatchQRPrintModal';
 
@@ -80,41 +81,9 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
         }
       }
 
-      // Taxonomy / Category filter
-      if (selectedCategory !== 'ALL') {
-        const code = asset.category_code || '';
-        const num = asset.asset_number || '';
-        const name = (asset.name || '').toLowerCase();
-        
-        if (selectedCategory === 'IT-H') {
-          const isITH = code === 'IT-H' || ['HLT','HPC','HSV','HWS','HMON','HPRN','HSCN','HNET','HFW','HSTG','HUPS','HRCK'].includes(code) || num.includes('-HLT-') || num.includes('-HPC-') || num.includes('-HSV-') || num.includes('-HMON-') || num.includes('-HNET-') || num.includes('-IT-H-');
-          if (!isITH) return false;
-        } else if (selectedCategory === 'IT-S') {
-          const isITS = code === 'IT-S' || code === 'SLIC' || asset.category_type === 'License' || num.includes('-SLIC-') || num.includes('-IT-S-');
-          if (!isITS) return false;
-        } else if (selectedCategory === 'INV-F') {
-          const isInvF = code === 'INV-F' || num.includes('-INV-F-') || name.includes('meja') || name.includes('kursi') || name.includes('lemari');
-          if (!isInvF) return false;
-        } else if (selectedCategory === 'INV-P') {
-          const isInvP = code === 'INV-P' || num.includes('-INV-P-') || name.includes('kompor') || name.includes('dispenser') || name.includes('ac') || name.includes('apar');
-          if (!isInvP) return false;
-        } else if (selectedCategory === 'KDR') {
-          const isKdr = code.startsWith('KDR') || num.includes('-KDR-') || name.includes('avanza') || name.includes('truk') || name.includes('motor') || name.includes('mobil');
-          if (!isKdr) return false;
-        } else if (selectedCategory === 'MSN') {
-          const isMsn = code.startsWith('MSN') || num.includes('-MSN-') || name.includes('mesin') || name.includes('forklift') || name.includes('timbang');
-          if (!isMsn) return false;
-        } else if (selectedCategory === 'BGN') {
-          const isBgn = code.startsWith('BGN') || num.includes('-BGN-') || name.includes('gedung') || name.includes('gudang') || name.includes('bangunan');
-          if (!isBgn) return false;
-        } else if (selectedCategory === 'TNH') {
-          const isTnh = code.startsWith('TNH') || num.includes('-TNH-') || name.includes('tanah') || name.includes('lahan');
-          if (!isTnh) return false;
-        } else if (selectedCategory === 'LNY') {
-          const isLny = code === 'LNY' || num.includes('-LNY-');
-          if (!isLny) return false;
-        }
-      }
+      // Canonical taxonomy and asset numbers take precedence; names are a
+      // word-boundary fallback only for legacy rows without reliable codes.
+      if (!matchesAssetCategoryFilter(asset, selectedCategory)) return false;
 
       // Status filter
       if (selectedStatus !== 'ALL') {
