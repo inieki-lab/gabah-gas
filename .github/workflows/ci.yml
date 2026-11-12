@@ -47,6 +47,9 @@ jobs:
       - name: Typecheck (lint)
         run: npm run lint
 
+      - name: Jakarta business-date and timezone contract
+        run: npm run test:business-date
+
       - name: Dependency security baseline
         run: npm run test:dependency-security
 
