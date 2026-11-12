@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const getLocalDateString = (date = new Date()): string => {
-  const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return localTime.toISOString().slice(0, 10);
-};
+const getLocalDateString = (date = new Date()): string => formatJakartaDate(date);
 import { 
   Asset, 
   Loan, 
@@ -25,6 +22,7 @@ import {
 } from './types';
 import { INITIAL_USERS } from './data/mockData'; // Demo account picker only; never used as authenticated directory data.
 import { gabahApi } from './services/gabahApi';
+import { formatJakartaDate } from './utils/datetime';
 import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
@@ -463,7 +461,7 @@ export default function App() {
         borrower_department: ast.assigned_to?.department || currentUser.department,
         borrower_phone: '021-5000-888',
         start_date: ast.purchase_date || getLocalDateString(),
-        due_date: ast.warranty_until || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
+        due_date: ast.warranty_until || formatJakartaDate(new Date(Date.now() + 365*24*60*60*1000)),
         purpose: `Penyerahan & Inventarisasi Resmi Aktiva Tetap (Devisi ${ast.owner_division || 'GA'})`,
         status: 'approved',
         category_type: ast.category_type,
