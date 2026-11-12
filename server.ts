@@ -2492,7 +2492,11 @@ async function startServer() {
     const actor = getActor(req);
     const isReporter = (ticket: any) =>
       ticket.reporter_id === actor.id
-      || (Boolean(ticket.reporter_name) && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+      // Legacy name matching is allowed only when the historical row has no
+      // reporter_id. A duplicate employee name must never expose another
+      // employee's ticket when a different reporter_id is already recorded.
+      || (!ticket.reporter_id && Boolean(ticket.reporter_name)
+        && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
 
     if (isSuperadminActor(actor)) {
       return res.json({ success: true, data: db.tickets });
@@ -3099,7 +3103,10 @@ async function startServer() {
         : db.tickets.filter(ticket =>
           ticket.reporter_id === actor.id
           || ticket.assigned_agent_id === actor.id
-          || (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id)
+          || (ticket.assigned_unit_id
+            && ticket.assigned_unit_id === actor.unit_id
+            && (!isPostgresPersistenceActive()
+              || hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')))
           || canReadOwnerScope(ticket.category, 'tickets')
         );
 
