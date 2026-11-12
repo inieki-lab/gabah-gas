@@ -2352,8 +2352,8 @@ async function startServer() {
   app.post('/api/loans/availability', (req, res) => {
     if (!requireRbacPermission(req, res, 'loans.create')) return;
     const actor = getActor(req);
-    const assetIds = Array.isArray(req.body?.asset_ids)
-      ? [...new Set(req.body.asset_ids.map((id: unknown) => String(id || '').trim()))]
+    const assetIds: string[] = Array.isArray(req.body?.asset_ids)
+      ? Array.from(new Set<string>(req.body.asset_ids.map((id: unknown) => String(id || '').trim())))
       : [];
     const start = new Date(String(req.body?.start_date || '')).getTime();
     const due = new Date(String(req.body?.due_date || '')).getTime();
@@ -2794,7 +2794,7 @@ async function startServer() {
       owner_division: asset.owner_division,
       scheduled_date: req.body.scheduled_date || new Date().toISOString().split('T')[0],
       frequency: req.body.frequency || 'one_time',
-      status: 'scheduled',
+      status: 'scheduled' as const,
       technician_name: req.body.technician_name || 'Tim Internal',
       vendor_id: req.body.vendor_id,
       vendor_name: req.body.vendor_name,
