@@ -106,7 +106,16 @@ async function startServer() {
       pibc: 'PIBC',
     };
     if (actor.role === legacyLabels[roleKey]) return true;
-    return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
+    if (!isPostgresPersistenceActive()) {
+      // File-store mode has no secondary RBAC assignment table. Preserve only
+      // the two function capabilities represented by admin-managed role labels;
+      // PostgreSQL production authorization never trusts this display field.
+      const roleLabel = String((actor as any).role_label || '').toLowerCase();
+      if (roleKey === 'humas' && roleLabel.includes('humas')) return true;
+      if (roleKey === 'sekretaris_direksi' && roleLabel.includes('sekretariat direksi')) return true;
+      return false;
+    }
+    return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
   };
 
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
