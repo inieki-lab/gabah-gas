@@ -55,7 +55,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     return [];
   }, [loanableAssets, assets]);
 
-  const isAuditor = currentUser?.role === 'Auditor';
+  const isAuditor = currentUser?.role === 'Auditor' || currentUser?.role_keys?.includes('auditor') === true;
 
   // Selected asset IDs (supports multiple selections, e.g. 1 Laptop IT + 1 Mobil GA)
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(() => {
