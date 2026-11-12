@@ -137,7 +137,7 @@ const checks = [
     /static handoverLoan[\s\S]*isAssetEligibleForLoan\(asset\)[\s\S]*physicalConflict[\s\S]*loan\.status = 'borrowed'/.test(services)],
   ['Loanable pool excludes assets already assigned to a person and legacy maintenance/retired states',
     /asset\.status !== 'assigned'/.test(services)
-      && /'maintenance', 'retired'/.test(services)],
+      && /'maintenance', 'retired', 'in_use'/.test(services) && /'broken', 'damaged', 'poor'/.test(services)],
   ['Asset edit form no longer sends location, condition, or lifecycle status through generic metadata update',
     /is_loanable: formData\.is_loanable/.test(assetEditUi)
       && !/location: \(formData\.asset_location_id/.test(assetEditUi)
