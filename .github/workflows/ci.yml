@@ -62,6 +62,9 @@ jobs:
       - name: Trusted client IP and reverse proxy security
         run: npm run test:client-ip-security
 
+      - name: Password hash strength and legacy upgrade
+        run: npm run test:password-hash-security
+
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
