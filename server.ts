@@ -583,7 +583,7 @@ async function startServer() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         role: primaryRole,
-        role_label: (roleLabels[role] || roleLabels[primaryRole] || 'Pegawai Operasional'),
+        role_label: roleLabels[primaryRole] || 'Pegawai Operasional',
         division: division || 'Umum',
         department: department || 'Operasional',
         job_level_code: newJobLevel,
@@ -851,7 +851,7 @@ async function startServer() {
           'Auditor': 'Satuan Pengawas Internal (SPI)',
           'Karyawan': 'Karyawan / Pemohon',
         };
-        (targetUser as any).role_label = roleLabels[role] || roleLabels[primaryRole] || primaryRole;
+        (targetUser as any).role_label = roleLabels[primaryRole] || primaryRole;
       }
       if (division !== undefined) targetUser.division = division;
       if (department !== undefined) targetUser.department = department.trim();
