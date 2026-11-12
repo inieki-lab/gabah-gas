@@ -4,6 +4,7 @@
 
 - Server-side create, update, and bulk-import flows now normalize Humas, Sekretaris Direksi, Supply Chain, and PIBC to the Karyawan primary profile, consistent with the employee baseline model.
 - Humas and Sekretariat Direksi are added as secondary Dynamic RBAC capability assignments; existing additional role assignments are preserved.
+- Humas/Sekretariat capabilities created automatically by profile normalization are removed when a later profile import/update no longer requests them; explicitly Superadmin-assigned role grants are preserved.
 - Profile role input is validated server-side. Unknown labels are rejected instead of being persisted before a failed RBAC synchronization.
 - Bulk import retains the requested function label and emits a row warning when a function capability is mapped to the employee baseline.
 - Added `npm run test:employee-role-normalization` source regression checks.
