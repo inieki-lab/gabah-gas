@@ -16,19 +16,13 @@ import {
 import { Asset, Loan, UserProfile } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
 import { isAuditor } from '../../utils/access';
+import { formatLocalDate } from '../../utils/datetime';
 
 // datetime-local inputs are interpreted in the user's browser timezone.
 // Send an explicit UTC instant to the API so server/DB timezone cannot shift it.
 const toIsoDateTime = (value: string): string | null => {
   const parsed = new Date(value);
   return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null;
-};
-
-const formatLocalDate = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 };
 
 interface CreateLoanModalProps {
