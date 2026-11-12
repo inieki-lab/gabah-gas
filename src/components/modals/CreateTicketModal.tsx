@@ -10,7 +10,7 @@ import {
   Info 
 } from 'lucide-react';
 import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
-import { isAuditor } from '../../utils/access';
+import { hasPermission, isAuditor } from '../../utils/access';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface CreateTicketModalProps {
@@ -48,15 +48,16 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   const isAuditorUser = isAuditor(currentUser);
   const canCreateCategory = (target: TicketCategory): boolean => {
-    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
-    // IT is the universal employee helpdesk channel; Auditor is read-only.
-    if (target === 'IT') return !isAuditorUser;
-    const permissionKey = `tickets.create.${target.toLowerCase()}`;
-    if (Array.isArray(currentUser?.permission_keys)) {
-      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permissionKey);
+    if (isAuditorUser) return false;
+    if (target === 'IT') {
+      return hasPermission(currentUser, 'tickets.create', [
+        'Admin GABAH', 'IT', 'GA', 'Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC',
+      ]);
     }
-    // GA/ME require an explicit permission; absence of RBAC data fails closed.
-    return false;
+    if (target === 'GA') {
+      return hasPermission(currentUser, 'tickets.create.ga', ['Admin GABAH', 'GA']);
+    }
+    return hasPermission(currentUser, 'tickets.create.me', ['Admin GABAH', 'PIBC']);
   };
 
   // Freshservice-inspired Quick Service Catalog Templates
