@@ -60,13 +60,16 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 }) => {
   // Filter available pool of loanable assets
   const availablePool = useMemo(() => {
-    if (loanableAssets && Array.isArray(loanableAssets) && loanableAssets.length > 0) {
-      return loanableAssets;
-    }
-    if (assets && Array.isArray(assets) && assets.length > 0) {
-      return assets.filter(a => a.is_loanable || a.status === 'available');
-    }
-    return [];
+    const source = loanableAssets && Array.isArray(loanableAssets) && loanableAssets.length > 0
+      ? loanableAssets
+      : (Array.isArray(assets) ? assets : []);
+    // Match the backend's pool eligibility contract: availability alone does
+    // not make an ordinary assigned/registered asset borrowable.
+    return source.filter(asset =>
+      asset.is_loanable === true
+      && asset.status === 'available'
+      && !['broken', 'damaged'].includes(String(asset.condition))
+    );
   }, [loanableAssets, assets]);
 
   const isAuditor = currentUser?.role === 'Auditor' || currentUser?.role_keys?.includes('auditor') === true;
