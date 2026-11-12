@@ -1,12 +1,15 @@
--- GABAH migration 045: enforce asset-loan collision prevention atomically.
+-- GABAH migration 045: make loan schedule collision prevention concurrency-safe.
 --
 -- The previous BEFORE trigger used SELECT-before-INSERT. Concurrent requests
 -- for the same asset could both pass that check before either transaction
--- committed. The GiST EXCLUDE constraint makes overlap prevention atomic.
+-- committed. A GiST EXCLUDE constraint atomically protects overlapping
+-- approved/borrowed schedule intervals.
 --
--- Approved loans reserve their requested interval. Borrowed/overdue loans
--- reserve the asset through infinity until a recorded return changes the status.
--- Pending requests do not reserve inventory. No legacy loan rows are rewritten.
+-- Overdue loans are handled by the serialized trigger below: they block every
+-- NEW reservation, but an existing future reservation is not silently erased
+-- and a loan must still be allowed to transition to overdue for audit accuracy.
+-- The asset row is locked before the trigger checks conflicts, serializing
+-- same-asset mutations. No legacy loan rows are rewritten.
 
 DO $$
 BEGIN
@@ -16,24 +19,13 @@ BEGIN
     JOIN loans b
       ON a.asset_id = b.asset_id
      AND a.id < b.id
-     AND a.status IN ('approved', 'borrowed', 'overdue')
-     AND b.status IN ('approved', 'borrowed', 'overdue')
-     AND tstzrange(
-           a.start_date,
-           CASE WHEN a.status IN ('borrowed', 'overdue')
-             THEN 'infinity'::timestamptz ELSE a.due_date END,
-           '[)'
-         )
-         &&
-         tstzrange(
-           b.start_date,
-           CASE WHEN b.status IN ('borrowed', 'overdue')
-             THEN 'infinity'::timestamptz ELSE b.due_date END,
-           '[)'
-         )
+     AND a.status IN ('approved', 'borrowed')
+     AND b.status IN ('approved', 'borrowed')
+     AND tstzrange(a.start_date, a.due_date, '[)')
+         && tstzrange(b.start_date, b.due_date, '[)')
   ) THEN
     RAISE EXCEPTION
-      'Migration 045 blocked: overlapping active asset loans exist. Reconcile conflicts; no loan data was changed.';
+      'Migration 045 blocked: overlapping approved/borrowed asset loans exist. Reconcile conflicts; no loan data was changed.';
   END IF;
 
   IF NOT EXISTS (
@@ -46,19 +38,44 @@ BEGIN
       ADD CONSTRAINT loans_no_double_booking
       EXCLUDE USING gist (
         asset_id WITH =,
-        tstzrange(
-          start_date,
-          CASE WHEN status IN ('borrowed', 'overdue')
-            THEN 'infinity'::timestamptz ELSE due_date END,
-          '[)'
-        ) WITH &&
+        tstzrange(start_date, due_date, '[)') WITH &&
       )
-      WHERE (status IN ('approved', 'borrowed', 'overdue'));
+      WHERE (status IN ('approved', 'borrowed'));
   END IF;
 END
 $$;
 
--- The exclusion constraint replaces the race-prone trigger as the authoritative
--- collision guard. Application-level checks remain for friendly validation.
+-- Keep the trigger for overdue lockout and friendly domain errors, but serialize
+-- all same-asset mutations on the parent asset row before checking the schedule.
+CREATE OR REPLACE FUNCTION check_loan_schedule_collision()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status IN ('approved', 'borrowed', 'overdue') THEN
+    PERFORM 1 FROM assets WHERE id = NEW.asset_id FOR UPDATE;
+
+    -- An overdue transition must be recorded even if a future reservation
+    -- already exists; that reservation remains visible for operator resolution.
+    IF NEW.status <> 'overdue' AND EXISTS (
+      SELECT 1 FROM loans
+      WHERE asset_id = NEW.asset_id
+        AND id <> NEW.id
+        AND status IN ('approved', 'borrowed', 'overdue')
+        AND (
+          status = 'overdue'
+          OR (status = 'borrowed' AND due_date < NOW())
+          OR (NEW.start_date < due_date AND NEW.due_date > start_date)
+        )
+    ) THEN
+      RAISE EXCEPTION 'Tabrakan Jadwal: Aset masih direservasi, dipinjam, atau belum dikembalikan.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 DROP TRIGGER IF EXISTS trg_check_loan_schedule_collision ON loans;
-DROP FUNCTION IF EXISTS check_loan_schedule_collision();
+CREATE TRIGGER trg_check_loan_schedule_collision
+  BEFORE INSERT OR UPDATE OF asset_id, start_date, due_date, status
+  ON loans
+  FOR EACH ROW
+  EXECUTE FUNCTION check_loan_schedule_collision();
