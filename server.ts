@@ -3006,10 +3006,12 @@ async function startServer() {
     const loanableAssets = assets.filter(a => a.is_loanable && a.status === 'available').length;
     const inRepairAssets = assets.filter(a => a.status === 'in_repair').length;
 
-    const canReadOwnerScope = (owner: string, module: 'loans' | 'tickets') =>
-      isPostgresPersistenceActive()
-        ? hasRbacScope(String(actor.id), 'division', owner, module)
-        : actor.role === owner;
+    const canReadOwnerScope = (owner: string, module: 'loans' | 'tickets') => {
+      const ownerScope = module === 'tickets' ? getTicketOwnerDivision(owner) : owner;
+      return isPostgresPersistenceActive()
+        ? hasRbacScope(String(actor.id), 'division', ownerScope, module)
+        : actor.role === ownerScope;
+    };
     const visibleLoans = isSuperadminActor(actor)
       ? db.loans
       : db.loans.filter(loan =>
@@ -3028,7 +3030,7 @@ async function startServer() {
           ticket.reporter_id === actor.id
           || ticket.assigned_agent_id === actor.id
           || (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id)
-          || canReadOwnerScope(getTicketOwnerDivision(ticket.category), 'tickets')
+          || canReadOwnerScope(ticket.category, 'tickets')
         );
 
     const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;
