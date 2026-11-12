@@ -1,6 +1,7 @@
 ## Security — ticket ownership by immutable user ID (2026-11-12)
 
 - Removed display-name matching as a ticket ownership fallback from the API list, dashboard attention filter, and client-side visibility helper.
+- Personal loan and asset filters across Dashboard, Loans, My Assets, and Create Ticket now use borrower/reporter/assignee IDs only; email and display-name matches no longer classify records as personal ownership.
 - Ticket ownership now requires `reporter_id === actor.id`; assignment and explicit module-owner scope remain independent visibility grants.
 - The PostgreSQL schema already requires `tickets.reporter_id` with a foreign key to `users.id`. Name-only legacy records in file-store mode now fail closed instead of being attributed to a same-name employee.
 - Expanded dashboard scope regression data for name-only legacy tickets and a different user with the same display name.
