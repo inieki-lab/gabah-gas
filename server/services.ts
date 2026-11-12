@@ -9,6 +9,15 @@ import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
 
+/** Resolve ticket service categories to their authoritative owner division.
+ * ME is the Maintenance Engineering queue under PIBC, not a standalone division.
+ * Legacy SC/PIBC ticket categories retain their own owner-domain values.
+ */
+export function getTicketOwnerDivision(category: string | null | undefined): string {
+  const normalized = String(category || '').trim().toUpperCase();
+  return normalized === 'ME' ? 'PIBC' : normalized;
+}
+
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
 const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
 
