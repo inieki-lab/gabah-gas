@@ -633,6 +633,8 @@ async function ensureEmployeeCapabilityAssignments(assignments: Array<{ userId: 
 async function persistPostgresState(): Promise<void> {
   const employeeCapabilities = normalizeLegacyEmployeeProfileRoles();
   const payload = createPayload();
+  // Keep the local recovery snapshot aligned with normalized in-memory roles.
+  saveStateToFile(payload);
   await pool.query(
     `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
     [JSON.stringify(payload)],
