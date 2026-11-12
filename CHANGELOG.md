@@ -2,6 +2,7 @@
 
 - User creation and bulk import now use cryptographically generated UUID-based user IDs instead of millisecond timestamps and a two-digit random suffix, avoiding predictable collisions in large imports.
 - Persistence now normalizes legacy Humas/Sekretariat/SC/PIBC values in the authoritative JSON state before PostgreSQL backfill, restores Humas/Sekretariat as secondary capabilities, and keeps Karyawan as the primary role across restarts.
+- File-store/development mode retains Humas and Sekretariat function checks through the admin-managed role label only when PostgreSQL Dynamic RBAC is unavailable; PostgreSQL authorization continues to use effective role assignments.
 
 - Server-side create, update, and bulk-import flows now normalize Humas, Sekretaris Direksi, Supply Chain, and PIBC to the Karyawan primary profile, consistent with the employee baseline model.
 - Humas and Sekretariat Direksi are added as secondary Dynamic RBAC capability assignments; existing additional role assignments are preserved.
