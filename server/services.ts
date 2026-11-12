@@ -222,7 +222,7 @@ export class GabahDomainService {
   /**
    * Log action to immutable audit trail
    */
-  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string) {
+  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string, persist = true) {
     const log: ServerAuditLog = {
       id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       action,
@@ -237,7 +237,7 @@ export class GabahDomainService {
       timestamp: new Date().toISOString(),
     };
     db.auditLogs.unshift(log);
-    persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
+    if (persist) persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
     return log;
   }
 
@@ -747,7 +747,9 @@ export class GabahDomainService {
       link_id: newLoan.id,
     });
 
-    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id);
+    // The API route persists the completed request (or whole batch) once.
+    // Avoid fire-and-forget snapshots while a multi-asset request is still being built.
+    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id, false);
 
     return newLoan;
   }
