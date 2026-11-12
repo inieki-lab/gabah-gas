@@ -10,6 +10,7 @@ import {
   Info 
 } from 'lucide-react';
 import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
+import { isAuditorUser } from '../../utils/access';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface CreateTicketModalProps {
@@ -45,11 +46,11 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
 
-  const isAuditor = currentUser?.role === 'Auditor' || currentUser?.role_keys?.includes('auditor') === true;
+  const isAuditorUser = currentUser?.role === 'Auditor' || currentUser?.role_keys?.includes('auditor') === true;
   const canCreateCategory = (target: TicketCategory): boolean => {
     if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     // IT is the universal employee helpdesk channel; Auditor is read-only.
-    if (target === 'IT') return !isAuditor;
+    if (target === 'IT') return !isAuditorUser;
     const permissionKey = `tickets.create.${target.toLowerCase()}`;
     if (Array.isArray(currentUser?.permission_keys)) {
       return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permissionKey);
@@ -220,7 +221,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor || !canCreateCategory(category) || !title.trim() || !description.trim()) return;
+    if (isAuditorUser || !canCreateCategory(category) || !title.trim() || !description.trim()) return;
 
     onCreateTicket({
       title,
@@ -425,7 +426,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           </div>
 
           {/* Auditor Warning */}
-          {isAuditor && (
+          {isAuditorUser && (
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>Akun Auditor berstatus <strong>Read-Only</strong> untuk kepatuhan SPI. Anda tidak dapat membuat tiket baru.</span>
@@ -443,9 +444,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isAuditor}
+              disabled={isAuditorUser}
               className={`px-5 py-2 rounded-xl font-bold transition-all shadow-xs ${
-                isAuditor 
+                isAuditorUser 
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
                   : 'bg-rose-600 hover:bg-rose-700 text-white'
               }`}
