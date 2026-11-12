@@ -20,6 +20,7 @@ const checks = [
   ['Humas, Sekretaris Direksi, Supply Chain, and PIBC normalize to Karyawan primary profile', /\['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'\]\.includes\(normalized\)\) return 'Karyawan'/.test(helpers)],
   ['Humas and Sekretariat resolve to secondary capability role keys', /label === 'Humas'\) return 'humas'/.test(helpers) && /label === 'Sekretaris Direksi'\) return 'sekretaris_direksi'/.test(helpers)],
   ['Secondary capabilities are stored as non-primary RBAC assignments', /INSERT INTO gabah_user_roles \(user_id, role_id, is_primary, assigned_by_user_id\)[\s\S]*FALSE, NULL/.test(helpers)],
+  ['Role changes remove only stale auto-assigned capabilities and preserve explicit grants', /DELETE FROM gabah_user_roles ur[\s\S]*ur\.assigned_by_user_id IS NULL[\s\S]*r\.role_key <> \$3/.test(helpers)],
   ['Create-user API validates profile role and syncs secondary capability', createRoute.includes('isKnownProfileRole(requestedRole)') && createRoute.includes('secondaryCapabilityRoleKey(requestedRole)')],
   ['Edit-user API validates profile role and syncs secondary capability', patchRoute.includes('isKnownProfileRole(requestedRole)') && patchRoute.includes('secondaryCapabilityRoleKey(requestedRole)')],
   ['Bulk import normalizes role and preserves Humas/Sekretariat as capability', importRoute.includes('normalizePrimaryProfileRole(requestedRole)') && importRoute.includes('secondaryRoleByUserId.set') && importRoute.includes('capabilityRoleKey: secondaryRoleByUserId.get(user.id)')],
