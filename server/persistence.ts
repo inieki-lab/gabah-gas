@@ -446,10 +446,11 @@ function ensureCanonicalAdministrator(): void {
   }
 }
 
-async function backfillNormalizedTables(): Promise<void> {
-  const client = await pool.connect();
+async function backfillNormalizedTables(sharedClient?: PoolClient): Promise<void> {
+  const ownsClient = !sharedClient;
+  const client = sharedClient || await pool.connect();
   try {
-    await client.query('BEGIN');
+    if (ownsClient) await client.query('BEGIN');
     // Division codes are the extensible owner-domain master used by assets,
     // categories, loans, and module data scopes. Sync them before any FK-backed
     // user/category/asset rows so a newly configured owner works in PostgreSQL.
@@ -600,36 +601,52 @@ async function backfillNormalizedTables(): Promise<void> {
         [log.id,log.action,log.entity,log.entity_id || null,user?.id || null,log.user_name,log.user_role,log.details,log.timestamp],
       );
     }
-    await client.query('COMMIT');
-  } catch (error) { await client.query('ROLLBACK'); throw error; }
-  finally { client.release(); }
+    if (ownsClient) await client.query('COMMIT');
+  } catch (error) {
+    if (ownsClient) await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    if (ownsClient) client.release();
+  }
 }
 
 async function persistPostgresState(): Promise<void> {
-  const payload = createPayload();
-  await pool.query(
-    `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
-    [JSON.stringify(payload)],
-  );
-  await backfillNormalizedTables();
-  await backfillDynamicRbacUserRoles();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const payload = createPayload();
+    await client.query(
+      `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
+      [JSON.stringify(payload)],
+    );
+    await backfillNormalizedTables(client);
+    await backfillDynamicRbacUserRoles(client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
-async function backfillDynamicRbacUserRoles(): Promise<void> {
+async function backfillDynamicRbacUserRoles(sharedClient?: PoolClient): Promise<void> {
+  const execute = (sql: string, params: unknown[] = []) =>
+    sharedClient ? sharedClient.query(sql, params as any[]) : pool.query(sql, params as any[]);
   // Do not wipe assignments if the in-memory user store is unexpectedly empty.
   const userIds = db.users.map(user => String(user.id));
   if (userIds.length === 0) return;
 
   // Remove assignments for deleted application users. This prevents a deleted
   // Superadmin's role assignment from being inherited if an ID is reused later.
-  await pool.query(
+  await execute(
     'DELETE FROM gabah_user_roles WHERE NOT (user_id = ANY($1::text[]))',
     [userIds],
   );
 
   // Reconcile only the primary role mirror from users.role. Additional dynamic
   // role assignments are preserved and remain additive.
-  await pool.query(
+  await execute(
     "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
     "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
     "AND ur.is_primary = TRUE " +
@@ -642,11 +659,11 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
   );
   // The users.role field is the primary application role; additional roles
   // remain assigned but are never marked primary by this compatibility bridge.
-  await pool.query(
+  await execute(
     'UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = ANY($1::text[])',
     [userIds],
   );
-  await pool.query(
+  await execute(
     "INSERT INTO gabah_user_roles (user_id, role_id, is_primary) " +
     "SELECT u.id::text, r.id, TRUE FROM users u " +
     "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
@@ -662,7 +679,7 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
   // This canonical dummy account is provisioned only for ME queue UAT.
   // Its base employee role remains primary; Admin Tiket ME is an additive,
   // least-privilege role scoped to UNIT-PIBC-ME.
-  await pool.query(
+  await execute(
     `INSERT INTO gabah_user_roles (user_id, role_id, is_primary)
      SELECT u.id::text, r.id, FALSE
      FROM users u
@@ -732,7 +749,6 @@ export async function initializePersistence(): Promise<void> {
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
       await persistPostgresState();
-      await backfillNormalizedTables();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
