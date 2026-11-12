@@ -186,6 +186,20 @@ async function startServer() {
           'INSERT INTO gabah_user_roles (user_id, role_id, is_primary) VALUES ($1, $2, TRUE) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE',
           [user.id, roleId]
         );
+        // Remove only auto-migrated/auto-created function capabilities that
+        // are no longer requested by the profile import/update. Explicit
+        // Superadmin assignments (assigned_by_user_id != NULL) are preserved.
+        await client.query(
+          `DELETE FROM gabah_user_roles ur
+           USING gabah_roles r
+           WHERE ur.role_id = r.id
+             AND ur.user_id = $1
+             AND r.role_key = ANY($2::text[])
+             AND ur.is_primary = FALSE
+             AND ur.assigned_by_user_id IS NULL
+             AND ($3::text IS NULL OR r.role_key <> $3)`,
+          [user.id, ['humas', 'sekretaris_direksi'], user.capabilityRoleKey || null]
+        );
         if (user.capabilityRoleKey) {
           const capability = await client.query(
             'SELECT id FROM gabah_roles WHERE role_key = $1 AND is_active = TRUE LIMIT 1',
