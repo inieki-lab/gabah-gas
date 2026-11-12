@@ -1,3 +1,10 @@
+## Security — ticket reporter ownership (2026-11-13)
+
+- Ticket list ownership fallback by reporter name now applies only to legacy records without a stable `reporter_id`.
+- A matching display name can no longer override a different, populated reporter ID and expose another employee's ticket.
+- Added `npm run test:ticket-reporter-ownership` source regression checks.
+- Runtime integration and duplicate-name account tests remain required before deployment.
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
