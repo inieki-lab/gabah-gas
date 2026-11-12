@@ -1301,7 +1301,11 @@ export class GabahDomainService {
 
     if (conflicting) {
       if (conflicting.status === 'in_use') {
-        const err: any = new Error(`Tabrakan Jadwal! Ruangan "${room.name}" sedang digunakan untuk rapat "${conflicting.title}".`);
+        const canSeeConflictDetails = isSuperadminActor(actor) || conflicting.organizer_id === actor.id;
+        const message = canSeeConflictDetails
+          ? `Tabrakan Jadwal! Ruangan "${room.name}" sedang digunakan untuk rapat "${conflicting.title}".`
+          : `Ruangan "${room.name}" sedang digunakan pada rentang waktu yang dipilih.`;
+        const err: any = new Error(message);
         err.statusCode = 409;
         throw err;
       }
@@ -1362,10 +1366,14 @@ export class GabahDomainService {
           conflicting.id
         );
       } else {
-        const err: any = new Error(
-          `Tabrakan Jadwal! Ruangan "${room.name}" sudah dipesan pada ${payload.date} pukul ${conflicting.start_time} - ${conflicting.end_time} untuk agenda "${conflicting.title}" oleh ${conflicting.organizer_name} (${conflicting.organizer_department}).`
-        );
-        err.conflict = {
+        const canSeeConflictDetails = isSuperadminActor(actor) || conflicting.organizer_id === actor.id;
+        const err: any = new Error(canSeeConflictDetails
+          ? `Tabrakan Jadwal! Ruangan "${room.name}" sudah dipesan pada ${payload.date} pukul ${conflicting.start_time} - ${conflicting.end_time} untuk agenda "${conflicting.title}" oleh ${conflicting.organizer_name} (${conflicting.organizer_department}).`
+          : `Tabrakan Jadwal! Ruangan "${room.name}" sudah dipesan pada ${payload.date} pukul ${conflicting.start_time} - ${conflicting.end_time}.`);
+        // Match GET /api/room-reservations privacy: non-owners receive only
+        // the minimum schedule data needed to choose another time, never the
+        // other meeting's title, organizer, department, priority, or notes.
+        err.conflict = canSeeConflictDetails ? {
           reservation_number: conflicting.reservation_number,
           title: conflicting.title,
           organizer_name: conflicting.organizer_name,
@@ -1376,6 +1384,12 @@ export class GabahDomainService {
           room_name: room.name,
           room_id: room.id,
           priority: conflicting.priority,
+        } : {
+          date: conflicting.date,
+          start_time: conflicting.start_time,
+          end_time: conflicting.end_time,
+          room_name: room.name,
+          room_id: room.id,
         };
         err.can_override = canInterrupt;
         if (payload.override_conflict && !canInterrupt) {
