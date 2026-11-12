@@ -28,6 +28,17 @@ BEGIN
       'Migration 045 blocked: overlapping approved/borrowed asset loans exist. Reconcile conflicts; no loan data was changed.';
   END IF;
 
+  IF EXISTS (
+    SELECT asset_id
+    FROM loans
+    WHERE status = 'overdue'
+    GROUP BY asset_id
+    HAVING COUNT(*) > 1
+  ) THEN
+    RAISE EXCEPTION
+      'Migration 045 blocked: more than one overdue loan exists for an asset. Reconcile overdue records; no loan data was changed.';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM pg_constraint
@@ -43,7 +54,11 @@ BEGIN
       WHERE (status IN ('approved', 'borrowed'));
   END IF;
 END
-$$;
+$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS loans_one_overdue_per_asset
+  ON loans (asset_id)
+  WHERE status = 'overdue';
 
 -- Keep the trigger for overdue lockout and friendly domain errors, but serialize
 -- all same-asset mutations on the parent asset row before checking the schedule.
