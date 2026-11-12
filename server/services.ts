@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { formatJakartaDate } from './time';
 import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility, ServerMaintenance } from './db';
 import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
@@ -502,7 +503,7 @@ export class GabahDomainService {
           name: assignedUser.name,
           email: assignedUser.email,
           department: assignedUser.department,
-          assigned_date: new Date().toISOString().split('T')[0],
+          assigned_date: formatJakartaDate(),
         };
         initialStatus = 'assigned';
       }
@@ -522,9 +523,9 @@ export class GabahDomainService {
       model: payload.model?.trim() || '',
       serial_number: payload.serial_number?.trim() || `SN-${Date.now().toString().slice(-6)}`,
       specifications: payload.specifications?.trim() || '',
-      purchase_date: payload.purchase_date || new Date().toISOString().split('T')[0],
+      purchase_date: payload.purchase_date || formatJakartaDate(),
       purchase_price: Number(payload.purchase_price) || 0,
-      warranty_until: payload.warranty_until || new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split('T')[0],
+      warranty_until: payload.warranty_until || formatJakartaDate(new Date(Date.now() + 365 * 24 * 3600 * 1000)),
       status: initialStatus,
       condition: payload.condition || 'new',
       location: payload.location?.trim() || 'Head Office - Gudang Utama',
@@ -597,7 +598,7 @@ export class GabahDomainService {
       name: targetUser.name,
       email: targetUser.email,
       department: targetUser.department,
-      assigned_date: new Date().toISOString().split('T')[0],
+      assigned_date: formatJakartaDate(),
     };
     asset.status = 'assigned';
     asset.updated_at = new Date().toISOString();
