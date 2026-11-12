@@ -34,7 +34,8 @@
     "test:upload-security": "node scripts/upload-security-verify.mjs",
     "test:client-ip-security": "node scripts/client-ip-security-verify.mjs",
     "test:loan-reservation-exclusion": "node scripts/loan-reservation-exclusion-verify.mjs",
-    "test:audit-append-only": "node scripts/audit-append-only-verify.mjs"
+    "test:audit-append-only": "node scripts/audit-append-only-verify.mjs",
+    "test:audit-identity": "node scripts/audit-identity-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
