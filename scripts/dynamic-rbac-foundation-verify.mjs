@@ -228,7 +228,7 @@ const checks = [
       && handler.indexOf('Data pengguna') > handler.indexOf('await refreshUserAssignments()');
   })()],
 
-  ['notification role recipients honor primary and additional RBAC role assignments across list/read/read-all and Humas filtering', /const hasNotificationRole = \(actor: ServerUser, recipientRole: string\)[\\s\\S]{0,400}getEffectiveRoleKeys\(String\(actor\.id\)\)\.includes\(notificationRoleKey\(recipientRole\)\)/.test(server) && /const isNotificationRecipient = \(notification: any, actor: ServerUser\)[\\s\\S]{0,500}hasNotificationRole\(actor, notification\.recipient_role\)/.test(server) && /if \(!notif \|\| !isNotificationRecipient\(notif, actor\)\)/.test(server) && /if \(isNotificationRecipient\(n, actor\)\) n\.is_read = true/.test(server) && /if \(isPhotoNotification && !hasNotificationRole\(actor, 'Humas'\)\)/.test(server) && !/notification\.recipient_role === actor\.role/.test(server)],
+  ['notification role recipients honor primary and additional RBAC role assignments across list/read/read-all and Humas filtering', server.includes('getEffectiveRoleKeys(String(actor.id)).includes(notificationRoleKey(recipientRole))') && server.includes('hasNotificationRole(actor, notification.recipient_role)') && server.includes('if (!notif || !isNotificationRecipient(notif, actor))') && server.includes('if (isNotificationRecipient(n, actor)) n.is_read = true') && server.includes("if (isPhotoNotification && !hasNotificationRole(actor, 'Humas'))") && !server.includes('notification.recipient_role === actor.role')],
 
 
 ];
