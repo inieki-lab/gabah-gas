@@ -135,8 +135,23 @@ async function startServer() {
     }
     return actor;
   };
-  const primaryRoleKey = (label: string): string => {
+  const normalizePrimaryProfileRole = (label: string): string => {
     const normalized = String(label || 'Karyawan').trim();
+    // Humas/Sekretariat are employee capabilities; Supply Chain/PIBC are
+    // organizational placement. None of these labels is a primary profile role.
+    if (['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(normalized)) return 'Karyawan';
+    return normalized;
+  };
+  const secondaryCapabilityRoleKey = (label: string): string | undefined => {
+    if (label === 'Humas') return 'humas';
+    if (label === 'Sekretaris Direksi') return 'sekretaris_direksi';
+    return undefined;
+  };
+  const isKnownProfileRole = (label: string): boolean =>
+    ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(label);
+
+  const primaryRoleKey = (label: string): string => {
+    const normalized = normalizePrimaryProfileRole(label);
     const canonical: Record<string, string> = {
       'Admin GABAH': 'superadmin',
       'Superadmin': 'superadmin',
@@ -144,25 +159,21 @@ async function startServer() {
       'GA': 'ga',
       'Karyawan': 'karyawan',
       'Auditor': 'auditor',
-      'Humas': 'humas',
-      'Sekretaris Direksi': 'sekretaris_direksi',
-      'Supply Chain': 'karyawan',
-      'PIBC': 'karyawan',
     };
     return canonical[normalized] || normalized.toLowerCase().normalize('NFKD')
       .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   };
 
   // Keep users.role and the primary dynamic RBAC assignment synchronized,
-  // while preserving any additional job-function roles assigned by Super Admin.
-  const syncPrimaryRbacRoles = async (users: Array<{ id: string; role: string }>): Promise<void> => {
+  // while preserving and explicitly adding Humas/Sekretariat capabilities.
+  const syncPrimaryRbacRoles = async (users: Array<{ id: string; role: string; capabilityRoleKey?: string }>): Promise<void> => {
     if (!isPostgresPersistenceActive() || users.length === 0) return;
     await withRbacTransaction(async client => {
       for (const user of users) {
         const roleKey = primaryRoleKey(user.role);
         const result = await client.query(
           'SELECT id FROM gabah_roles WHERE is_active = TRUE AND (role_key = $1 OR name = $2) ORDER BY CASE WHEN role_key = $1 THEN 0 ELSE 1 END LIMIT 1',
-          [roleKey, user.role]
+          [roleKey, normalizePrimaryProfileRole(user.role)]
         );
         const roleId = Number(result.rows[0]?.id);
         if (!Number.isSafeInteger(roleId) || roleId < 1) {
@@ -173,11 +184,25 @@ async function startServer() {
           'INSERT INTO gabah_user_roles (user_id, role_id, is_primary) VALUES ($1, $2, TRUE) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE',
           [user.id, roleId]
         );
+        if (user.capabilityRoleKey) {
+          const capability = await client.query(
+            'SELECT id FROM gabah_roles WHERE role_key = $1 AND is_active = TRUE LIMIT 1',
+            [user.capabilityRoleKey]
+          );
+          const capabilityRoleId = Number(capability.rows[0]?.id);
+          if (!Number.isSafeInteger(capabilityRoleId) || capabilityRoleId < 1) {
+            throw new Error('Capability role "' + user.capabilityRoleKey + '" belum tersedia/aktif di master RBAC.');
+          }
+          await client.query(
+            'INSERT INTO gabah_user_roles (user_id, role_id, is_primary, assigned_by_user_id) VALUES ($1, $2, FALSE, NULL) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = FALSE',
+            [user.id, capabilityRoleId]
+          );
+        }
       }
     });
   };
-  const syncPrimaryRbacRole = async (userId: string, roleLabel: string): Promise<void> => {
-    await syncPrimaryRbacRoles([{ id: userId, role: roleLabel }]);
+  const syncPrimaryRbacRole = async (userId: string, roleLabel: string, capabilityRoleKey?: string): Promise<void> => {
+    await syncPrimaryRbacRoles([{ id: userId, role: roleLabel, capabilityRoleKey }]);
   };
 
   const rbacFailure = (res: express.Response, error: any) => {
