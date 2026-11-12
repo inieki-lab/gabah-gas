@@ -30,7 +30,7 @@ export function isLegacyScopedRole(role: string): boolean {
 interface AssetScopeSpec { type: string; value: string | null }
 
 const LOAN_UNAVAILABLE_ASSET_STATUSES = new Set([
-  'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
+  'maintenance', 'retired', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
   'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive',
 ]);
 const ASSET_MUTATION_BLOCKING_LOAN_STATUSES = new Set([
