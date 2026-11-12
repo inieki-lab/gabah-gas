@@ -151,11 +151,12 @@ async function main() {
     const itAsset2 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 2');
     const itAsset3 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 3');
     const itAsset4 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 4');
+    const itAsset5 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 5 Overdue');
     const gaAsset1 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 1');
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
-    record('Setup: 5 loanable fixtures created (4 IT + 2 GA)', 'ids issued',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].every(a => a.id));
+    record('Setup: 7 loanable fixtures created (5 IT + 2 GA)', '7 ids issued',
+      [itAsset1, itAsset2, itAsset3, itAsset4, itAsset5, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
+      [itAsset1, itAsset2, itAsset3, itAsset4, itAsset5, gaAsset1, gaAsset2].every(a => a.id));
 
     const mkLoan = async (token, assetId, borrowerId) => {
       const r = await req(base, 'POST', '/api/loans', {
@@ -196,6 +197,40 @@ async function main() {
     const aL4 = await appr(L4.id, ga.token);
     const aL5 = await appr(L5.id, it.token);
     record('Setup: loans approved by owner-division custodians', '200', [aL1, aL2, aL4, aL5].map(r => r.status).join(','), [aL1, aL2, aL4, aL5].every(r => r.status === 200));
+
+    // Overdue physical possession must continue blocking new reservations.
+    const overdueCreate = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: {
+        asset_id: itAsset5.id,
+        purpose: 'Regression test overdue lock',
+        start_date: isoDatePlus(-3),
+        due_date: isoDatePlus(-1),
+      },
+    });
+    const overdueLoanId = overdueCreate.json?.data?.id;
+    const overdueApprove = overdueLoanId ? await appr(overdueLoanId, it.token) : { status: 0 };
+    const overdueHandover = overdueLoanId
+      ? await req(base, 'POST', `/api/loans/${overdueLoanId}/handover`, { token: it.token, body: { handoverNotes: 'Overdue test handover' } })
+      : { status: 0 };
+    const overdueList = await req(base, 'GET', '/api/loans', { token: admin.token });
+    const overdueStatus = (overdueList.json?.data || []).find(item => item.id === overdueLoanId)?.status || '(missing)';
+    record('Overdue loan is exposed as overdue after due date', 'overdue', overdueStatus, overdueCreate.status === 201 && overdueApprove.status === 200 && overdueHandover.status === 200 && overdueStatus === 'overdue');
+    const blockedRebooking = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: { asset_id: itAsset5.id, purpose: 'Must be blocked', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    record('Overdue asset cannot be rebooked before physical return', '400', `HTTP ${blockedRebooking.status}`, blockedRebooking.status === 400);
+    const overdueReturn = await req(base, 'POST', `/api/loans/${overdueLoanId}/return`, {
+      token: karyawan.token,
+      body: { condition: 'good', returnNotes: 'Returned after due date' },
+    });
+    record('Borrower can return an overdue loan', '200 + returned', `HTTP ${overdueReturn.status} + ${overdueReturn.json?.data?.status}`, overdueReturn.status === 200 && overdueReturn.json?.data?.status === 'returned');
+    const rebookAfterReturn = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: { asset_id: itAsset5.id, purpose: 'Rebook after return', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    record('Asset becomes requestable again after recorded return', '201', `HTTP ${rebookAfterReturn.status}`, rebookAfterReturn.status === 201);
 
     // ===================== 5. Invalid transitions (before any handover) =====================
     // Handover from pending_approval is not a valid transition.
