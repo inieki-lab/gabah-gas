@@ -10,7 +10,7 @@ import {
   Info 
 } from 'lucide-react';
 import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
-import { isAuditorUser } from '../../utils/access';
+import { isAuditor } from '../../utils/access';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface CreateTicketModalProps {
@@ -46,7 +46,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
 
-  const isAuditorUser = currentUser?.role === 'Auditor' || currentUser?.role_keys?.includes('auditor') === true;
+  const isAuditorUser = isAuditor(currentUser);
   const canCreateCategory = (target: TicketCategory): boolean => {
     if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     // IT is the universal employee helpdesk channel; Auditor is read-only.
