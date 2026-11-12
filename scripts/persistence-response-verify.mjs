@@ -12,6 +12,10 @@ const checks = [
   ['failed persistence converts the response to HTTP 500', /\.catch\([\s\S]*res\.statusCode = 500/.test(middleware)],
   ['failed persistence returns an explicit non-success response', /Perubahan gagal disimpan ke database/.test(middleware)],
   ['the unsafe post-response finish hook is absent', !/res\.on\('finish'/.test(middleware)],
+  ['PostgreSQL state blob and normalized relations share one transaction', /async function persistPostgresState\(\)[\s\S]*client\.query\('BEGIN'\)[\s\S]*INSERT INTO gabah_state[\s\S]*backfillNormalizedTables\(client\)[\s\S]*backfillDynamicRbacUserRoles\(client\)[\s\S]*client\.query\('COMMIT'\)/.test(source)],
+  ['persistence transaction rolls back all database writes on failure', /async function persistPostgresState\(\)[\s\S]*catch \(error\)[\s\S]*client\.query\('ROLLBACK'\)/.test(source)],
+  ['normalized table backfill reuses the caller transaction when provided', /async function backfillNormalizedTables\(sharedClient\?: PoolClient\)[\s\S]*const ownsClient = !sharedClient[\s\S]*if \(ownsClient\) await client\.query\('BEGIN'\)[\s\S]*if \(ownsClient\) await client\.query\('COMMIT'\)/.test(source)],
+  ['dynamic role backfill uses the same transaction client when provided', /async function backfillDynamicRbacUserRoles\(sharedClient\?: PoolClient\)[\s\S]*sharedClient \? sharedClient\.query/.test(source)],
 ];
 
 let failed = 0;
