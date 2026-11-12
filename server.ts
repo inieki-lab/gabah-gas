@@ -82,7 +82,7 @@ async function startServer() {
   // Effective permissions are returned only to the authenticated principal.
   // This drives the UI menu; backend route guards remain authoritative.
   const serializeAuthenticatedUser = (user: ServerUser): any => {
-    const safe = sanitizeUser(user, { includeTelegramChatId: isSuperadminActor(user) }) as any;
+    const safe = sanitizeUser(user) as any;
     if (isPostgresPersistenceActive()) {
       safe.is_superadmin = isRbacSuperadmin(String(user.id));
       safe.permission_keys = safe.is_superadmin ? ['*'] : getEffectivePermissionKeys(String(user.id));
