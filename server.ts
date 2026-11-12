@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import crypto from 'node:crypto';
+import { formatJakartaDate } from './server/time';
 import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs/promises';
@@ -2950,7 +2951,7 @@ async function startServer() {
       asset_number: asset.asset_number,
       category_type: asset.category_type || 'General',
       owner_division: asset.owner_division,
-      scheduled_date: req.body.scheduled_date || new Date().toISOString().split('T')[0],
+      scheduled_date: req.body.scheduled_date || formatJakartaDate(),
       frequency: req.body.frequency || 'one_time',
       status: 'scheduled' as const,
       technician_name: req.body.technician_name || 'Tim Internal',
