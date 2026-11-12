@@ -2755,6 +2755,22 @@ async function startServer() {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.create dan scope owner "${asset.owner_division}" wajib dimiliki.` });
     }
 
+    const validMaintenanceStatuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
+    if (req.body.status !== undefined && req.body.status !== 'scheduled') {
+      return res.status(400).json({ success: false, message: 'Jadwal baru harus dimulai dengan status scheduled.' });
+    }
+    for (const field of ['estimated_cost', 'actual_cost']) {
+      if (req.body[field] !== undefined && (!Number.isFinite(Number(req.body[field])) || Number(req.body[field]) < 0)) {
+        return res.status(400).json({ success: false, message: field + ' harus berupa angka nol atau lebih.' });
+      }
+    }
+    if (req.body.checklist !== undefined && !Array.isArray(req.body.checklist)) {
+      return res.status(400).json({ success: false, message: 'Checklist pemeliharaan harus berupa daftar.' });
+    }
+    if (req.body.vendor_id && !db.vendors.some(vendor => vendor.id === String(req.body.vendor_id))) {
+      return res.status(400).json({ success: false, message: 'Vendor pemeliharaan tidak ditemukan.' });
+    }
+
     const count = db.maintenances.length + 1;
     const scheduleCode = `MNT-2026-${String(count).padStart(3, '0')}`;
     const newSchedule = {
@@ -2768,7 +2784,7 @@ async function startServer() {
       owner_division: asset.owner_division,
       scheduled_date: req.body.scheduled_date || new Date().toISOString().split('T')[0],
       frequency: req.body.frequency || 'one_time',
-      status: req.body.status || 'scheduled',
+      status: 'scheduled',
       technician_name: req.body.technician_name || 'Tim Internal',
       vendor_id: req.body.vendor_id,
       vendor_name: req.body.vendor_name,
@@ -2800,6 +2816,22 @@ async function startServer() {
     // through the same dynamic owner policy as asset/loan operations.
     if (!canMutateAssetOwner(actor, schedule.owner_division, 'maintenances.update')) {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.update dan scope owner "${schedule.owner_division}" wajib dimiliki.` });
+    }
+
+    const validMaintenanceStatuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
+    if (req.body.status !== undefined && !validMaintenanceStatuses.includes(String(req.body.status))) {
+      return res.status(400).json({ success: false, message: 'Status pemeliharaan tidak valid.' });
+    }
+    for (const field of ['estimated_cost', 'actual_cost']) {
+      if (req.body[field] !== undefined && (!Number.isFinite(Number(req.body[field])) || Number(req.body[field]) < 0)) {
+        return res.status(400).json({ success: false, message: field + ' harus berupa angka nol atau lebih.' });
+      }
+    }
+    if (req.body.checklist !== undefined && !Array.isArray(req.body.checklist)) {
+      return res.status(400).json({ success: false, message: 'Checklist pemeliharaan harus berupa daftar.' });
+    }
+    if (req.body.vendor_id && !db.vendors.some(vendor => vendor.id === String(req.body.vendor_id))) {
+      return res.status(400).json({ success: false, message: 'Vendor pemeliharaan tidak ditemukan.' });
     }
 
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
