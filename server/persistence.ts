@@ -600,8 +600,8 @@ async function backfillNormalizedTables(sharedClient?: PoolClient): Promise<void
       // must never override an explicit actor identity when names are duplicated.
       const userId = log.user_id || db.users.find(u => u.name === log.user_name)?.id;
       await client.query(
-        `INSERT INTO audit_logs (id,action,entity,entity_id,user_id,user_name,user_role,details,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
-        [log.id,log.action,log.entity,log.entity_id || null,userId || null,log.user_name,log.user_role,log.details,log.timestamp],
+        `INSERT INTO audit_logs (id,action,entity,entity_id,user_id,user_name,user_role,details,ip_address,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO NOTHING`,
+        [log.id,log.action,log.entity,log.entity_id || null,userId || null,log.user_name,log.user_role,log.details,log.ip_address || null,log.timestamp],
       );
     }
     if (ownsClient) await client.query('COMMIT');
@@ -692,6 +692,35 @@ async function backfillDynamicRbacUserRoles(sharedClient?: PoolClient): Promise<
   );
 }
 
+/**
+ * The normalized audit_logs table is authoritative in PostgreSQL mode.
+ * A non-empty table wins over the legacy JSON snapshot so edits to the
+ * gabah_state payload cannot rewrite historical audit records. On a fresh
+ * database, legacy snapshot rows are retained for one-time backfill.
+ */
+async function hydrateAuditLogsFromPostgres(): Promise<boolean> {
+  const result = await pool.query(
+    'SELECT id,action,entity,entity_id,user_id,user_name,user_role,details,ip_address,timestamp FROM audit_logs ORDER BY timestamp DESC, id DESC'
+  );
+  if (result.rows.length === 0) return false;
+
+  db.auditLogs = result.rows.map((row: any) => ({
+    id: String(row.id),
+    action: String(row.action),
+    entity: String(row.entity),
+    entity_id: row.entity_id == null ? undefined : String(row.entity_id),
+    user_id: row.user_id == null ? undefined : String(row.user_id),
+    user_name: String(row.user_name),
+    user_role: String(row.user_role),
+    details: String(row.details),
+    ip_address: row.ip_address == null ? undefined : String(row.ip_address),
+    timestamp: row.timestamp instanceof Date
+      ? row.timestamp.toISOString()
+      : new Date(row.timestamp).toISOString(),
+  }));
+  return true;
+}
+
 export async function initializePersistence(): Promise<void> {
   // If PostgreSQL is not configured with an external address, operate standalone with local persistent file store
   if (!dbConfig.isConfigured) {
@@ -730,6 +759,9 @@ export async function initializePersistence(): Promise<void> {
           hydrateDbFromState(state);
         }
       }
+      // Prefer immutable normalized audit rows whenever they already exist.
+      // Empty audit tables retain legacy snapshot rows for one-time backfill.
+      await hydrateAuditLogsFromPostgres();
       if (!db.assets || db.assets.length === 0) {
         seedInitialData();
       }
@@ -752,6 +784,7 @@ export async function initializePersistence(): Promise<void> {
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
       await persistPostgresState();
+      await hydrateAuditLogsFromPostgres();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
@@ -814,6 +847,7 @@ export function persistDataStore(): Promise<void> {
     }
     try {
       await persistPostgresState();
+      await hydrateAuditLogsFromPostgres();
       saveStateToFile(createPayload());
       markPersistenceCommitted();
     } catch (error: any) {
