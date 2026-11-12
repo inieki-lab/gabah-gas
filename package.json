@@ -36,7 +36,8 @@
     "test:loan-reservation-exclusion": "node scripts/loan-reservation-exclusion-verify.mjs",
     "test:audit-append-only": "node scripts/audit-append-only-verify.mjs",
     "test:audit-identity": "node scripts/audit-identity-verify.mjs",
-    "test:password-hash-security": "node scripts/password-hash-security-verify.mjs"
+    "test:password-hash-security": "node scripts/password-hash-security-verify.mjs",
+    "test:business-date": "node scripts/business-date-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
