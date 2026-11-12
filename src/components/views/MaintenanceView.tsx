@@ -22,6 +22,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { MaintenanceSchedule, MaintenanceStatus, MaintenanceFrequency, UserProfile, Asset } from '../../types';
+import { formatLocalDate } from '../../utils/datetime';
 import { exportMaintenanceToCsv } from '../../services/gabahService';
 
 interface MaintenanceViewProps {
@@ -52,7 +53,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   const [formData, setFormData] = useState({
     title: '',
     asset_id: '',
-    scheduled_date: new Date().toISOString().split('T')[0],
+    scheduled_date: formatLocalDate(),
     frequency: 'quarterly' as MaintenanceFrequency,
     technician_name: '',
     vendor_name: '',
