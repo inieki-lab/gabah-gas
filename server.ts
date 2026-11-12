@@ -1008,6 +1008,7 @@ async function startServer() {
         if (loan.borrower_id === targetId && ['pending_approval', 'approved'].includes(loan.status)) {
           loan.status = 'closed';
           loan.return_condition = 'Pengajuan ditutup karena akun pengguna dihapus sebelum serah terima.';
+          loan.updated_at = new Date().toISOString();
           closedLoansCount++;
         }
       }
