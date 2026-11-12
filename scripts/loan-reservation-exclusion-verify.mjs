@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const migration = fs.readFileSync(
-  new URL('../server/migrations/045_loan_reservations_exclusion_constraint.sql', import.meta.url),
+  new URL('../server/migrations/044_concurrent_booking_exclusion_constraints.sql', import.meta.url),
   'utf8',
 );
 const persistence = fs.readFileSync(
