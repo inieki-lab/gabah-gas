@@ -210,6 +210,52 @@ async function main() {
     const mig = new pg.Client({ connectionString: TEST_DB_URL });
     mig.on('error', e => console.error('[pg ledger async error]', e.message));
     await mig.connect();
+
+    // Employee profile normalization must survive JSON-state hydration and
+    // PostgreSQL normalized-table backfill on a fresh boot.
+    const capabilityRows = await mig.query(
+      `SELECT u.email, u.role, r.role_key, ur.is_primary
+       FROM users u
+       LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id
+       LEFT JOIN gabah_roles r ON r.id = ur.role_id
+       WHERE u.email = ANY($1::text[])
+       ORDER BY u.email, ur.is_primary DESC`,
+      [['humas@foodstation.co.id', 'sekretariat.direksi@foodstation.co.id']],
+    );
+    const checkEmployeeCapability = (email, capabilityKey) => {
+      const rows = capabilityRows.rows.filter(row => row.email === email);
+      return rows.length > 0
+        && rows.every(row => row.role === 'Karyawan')
+        && rows.some(row => row.role_key === 'karyawan' && row.is_primary === true)
+        && rows.some(row => row.role_key === capabilityKey && row.is_primary === false);
+    };
+    record(
+      'Legacy Humas profile normalizes to Karyawan primary + Humas secondary',
+      'Karyawan primary and humas secondary',
+      JSON.stringify(capabilityRows.rows.filter(row => row.email === 'humas@foodstation.co.id')),
+      checkEmployeeCapability('humas@foodstation.co.id', 'humas'),
+    );
+    record(
+      'Legacy Sekretariat profile normalizes to Karyawan primary + Sekretariat secondary',
+      'Karyawan primary and sekretaris_direksi secondary',
+      JSON.stringify(capabilityRows.rows.filter(row => row.email === 'sekretariat.direksi@foodstation.co.id')),
+      checkEmployeeCapability('sekretariat.direksi@foodstation.co.id', 'sekretaris_direksi'),
+    );
+    const stateUsers = await mig.query("SELECT payload->'users' AS users FROM gabah_state WHERE id = 1");
+    const stateUser = (stateUsers.rows[0]?.users || []).find(user =>
+      ['humas@foodstation.co.id', 'sekretariat.direksi@foodstation.co.id'].includes(user.email),
+    );
+    const stateRolesNormalized = ['humas@foodstation.co.id', 'sekretariat.direksi@foodstation.co.id'].every(email => {
+      const user = (stateUsers.rows[0]?.users || []).find(item => item.email === email);
+      return user?.role === 'Karyawan' && Boolean(user?.role_label);
+    });
+    record(
+      'Authoritative gabah_state payload retains normalized employee profiles and function labels',
+      'Both legacy users are Karyawan with role_label preserved',
+      stateUser ? JSON.stringify({ sample: stateUser.role, role_label: stateUser.role_label, allNormalized: stateRolesNormalized }) : 'users missing from state',
+      stateRolesNormalized,
+    );
+
     let ledger, ownerDivCol, uqIdx;
     try {
       ledger = await mig.query('SELECT version, name FROM schema_migrations ORDER BY applied_at, version');
