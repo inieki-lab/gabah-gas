@@ -22,6 +22,7 @@ const checks = [
   ['overdue checks serialize on the parent asset row', /FROM assets WHERE id = NEW\.asset_id FOR UPDATE/i.test(migration)],
   ['new requests are blocked by overdue or past-due borrowed loans', /status = 'overdue'[\s\S]*OR \(status = 'borrowed' AND due_date < NOW\(\)\)/i.test(migration)],
   ['database trigger enforces loanable status, condition, and no active assignment before request/approval', /asset_is_loanable[\s\S]*NOT IN \('active', 'available'\)[\s\S]*IN \('poor', 'broken', 'damaged'\)[\s\S]*FROM asset_assignments[\s\S]*returned_date IS NULL/i.test(migration)],
+  ['handover cannot transfer an asset already assigned to another employee', /NEW\.status = 'borrowed'[\s\S]*assigned_to_user_id <> NEW\.borrower_id/i.test(migration)],
   ['service loan eligibility is default-deny for unknown lifecycle states and assigned assets', /LOAN_ELIGIBLE_ASSET_STATUSES = new Set\(\['active', 'available'\]\)/.test(services) && /!asset\.assigned_to\?\.id/.test(services) && /'broken', 'damaged', 'poor'/.test(services)],
   ['legacy approved/borrowed conflicts are preflighted without rewriting loans', /pasangan pinjaman aset approved\/borrowed yang bertabrakan/i.test(migration) && !/DELETE FROM loans|UPDATE loans/i.test(migration)],
   ['constraint creation is idempotent', /IF NOT EXISTS \([\s\S]*pg_constraint[\s\S]*loans_no_confirmed_asset_overlap/i.test(migration)],
