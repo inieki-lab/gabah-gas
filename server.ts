@@ -524,7 +524,23 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body;
-      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : (role || 'Karyawan');
+      const validApplicationRoles = ['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor', 'Sekretaris Direksi', 'Humas'];
+      const requestedRole = role === undefined || role === null || role === '' ? 'Karyawan' : String(role).trim();
+      if (!validApplicationRoles.includes(requestedRole)) {
+        return res.status(400).json({ success: false, message: 'Peran aplikasi tidak dikenal.' });
+      }
+      const primaryRole = ['Supply Chain', 'PIBC'].includes(requestedRole)
+        ? 'Karyawan'
+        : requestedRole === 'Superadmin' ? 'Admin GABAH' : requestedRole;
+      if (typeof name !== 'string' || !name.trim()
+        || typeof email !== 'string' || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim())) {
+        return res.status(400).json({ success: false, message: 'Nama wajib diisi dan alamat email harus valid.' });
+      }
+      const normalizedName = name.trim();
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedDivision = typeof division === 'string' && division.trim() ? division.trim() : 'Umum';
+      const normalizedDepartment = typeof department === 'string' && department.trim() ? department.trim() : 'Operasional';
+      const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
@@ -551,10 +567,7 @@ async function startServer() {
         }
         newOfficeId = lid;
       }
-      if (!name || !email) {
-        return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi' });
-      }
-      if (db.users.some(u => u.email.toLowerCase() === email.toLowerCase().trim())) {
+      if (db.users.some(u => u.email.toLowerCase() === normalizedEmail)) {
         return res.status(400).json({ success: false, message: 'Email sudah digunakan oleh akun lain' });
       }
 
@@ -580,16 +593,16 @@ async function startServer() {
 
       const newUser: ServerUser = {
         id: `USR-${Date.now().toString().slice(-6)}`,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
+        name: normalizedName,
+        email: normalizedEmail,
         role: primaryRole,
         role_label: roleLabels[primaryRole] || 'Pegawai Operasional',
-        division: division || 'Umum',
-        department: department || 'Operasional',
+        division: normalizedDivision,
+        department: normalizedDepartment,
         job_level_code: newJobLevel,
         unit_id: newUnitId || null,
         office_location_id: newOfficeId || null,
-        phone: phone || '',
+        phone: normalizedPhone,
         avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
         is_active: true,
         password_hash: hash,
@@ -787,7 +800,29 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
-      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
+      const validApplicationRoles = ['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor', 'Sekretaris Direksi', 'Humas'];
+      const requestedRole = role === undefined ? undefined : String(role).trim();
+      if (requestedRole !== undefined && !validApplicationRoles.includes(requestedRole)) {
+        return res.status(400).json({ success: false, message: 'Peran aplikasi tidak dikenal.' });
+      }
+      const primaryRole = requestedRole === undefined ? undefined
+        : ['Supply Chain', 'PIBC'].includes(requestedRole)
+          ? 'Karyawan'
+          : requestedRole === 'Superadmin' ? 'Admin GABAH' : requestedRole;
+      if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
+        return res.status(400).json({ success: false, message: 'Nama pengguna tidak boleh kosong.' });
+      }
+      if (email !== undefined && email !== ''
+        && (typeof email !== 'string' || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim()))) {
+        return res.status(400).json({ success: false, message: 'Alamat email tidak valid.' });
+      }
+      if (is_active !== undefined && typeof is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'Status aktif harus berupa boolean.' });
+      }
+      if (password !== undefined && password !== ''
+        && (typeof password !== 'string' || password.length < 8)) {
+        return res.status(400).json({ success: false, message: 'Kata sandi admin minimal 8 karakter.' });
+      }
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
       const wouldDemoteSuperadmin = role !== undefined && targetUser.role === 'Admin GABAH' && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
       const wouldDeactivateSuperadmin = is_active === false;
@@ -853,10 +888,19 @@ async function startServer() {
         };
         (targetUser as any).role_label = roleLabels[primaryRole] || primaryRole;
       }
-      if (division !== undefined) targetUser.division = division;
-      if (department !== undefined) targetUser.department = department.trim();
+      if (division !== undefined) {
+        if (typeof division !== 'string' || !division.trim()) return res.status(400).json({ success: false, message: 'Divisi tidak boleh kosong.' });
+        targetUser.division = division.trim() as ServerUser['division'];
+      }
+      if (department !== undefined) {
+        if (typeof department !== 'string' || !department.trim()) return res.status(400).json({ success: false, message: 'Departemen tidak boleh kosong.' });
+        targetUser.department = department.trim();
+      }
       if (is_active !== undefined) targetUser.is_active = Boolean(is_active);
-      if (phone !== undefined) targetUser.phone = phone.trim();
+      if (phone !== undefined) {
+        if (typeof phone !== 'string') return res.status(400).json({ success: false, message: 'Nomor telepon tidak valid.' });
+        targetUser.phone = phone.trim();
+      }
       // ORG-MODEL: atribut jabatan/unit/lokasi — independen dari role/permission.
       if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
       if (orgUnit !== undefined) targetUser.unit_id = orgUnit;
