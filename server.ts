@@ -8,7 +8,7 @@ import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole, getTicketOwnerDivision } from './server/services';
+import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole, getTicketOwnerDivision, isAssetEligibleForLoan } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -2359,13 +2359,9 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Akses ditolak: satu atau lebih aset berada di luar cakupan akses Anda.' });
     }
 
-    const unavailableStatuses = new Set([
-      'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
-      'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive',
-    ]);
     const conflicts = assetIds.filter(assetId => {
       const asset = db.assets.find(item => item.id === assetId);
-      if (!asset || !asset.is_loanable || unavailableStatuses.has(asset.status)) return true;
+      if (!asset || !isAssetEligibleForLoan(asset)) return true;
       return db.loans.some(loan => {
         if (loan.asset_id !== assetId || !['approved', 'borrowed'].includes(loan.status)) return false;
         const existingStart = new Date(loan.start_date).getTime();
