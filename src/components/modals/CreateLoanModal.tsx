@@ -143,8 +143,8 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   }, [selectedAssetIds, serverConflicts]);
 
   const hasAnyConflict = useMemo(
-    () => Object.values(assetConflictMap).some(result => result.hasConflict),
-    [assetConflictMap],
+    () => selectedAssetIds.some(id => serverConflicts.has(id)),
+    [selectedAssetIds, serverConflicts],
   );
 
   const conflictedAssets = useMemo(
