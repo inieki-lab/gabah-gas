@@ -16,14 +16,7 @@ import {
 import { Asset, Loan, UserProfile } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
 import { isAuditor } from '../../utils/access';
-import { formatLocalDate } from '../../utils/datetime';
-
-// datetime-local inputs are interpreted in the user's browser timezone.
-// Send an explicit UTC instant to the API so server/DB timezone cannot shift it.
-const toIsoDateTime = (value: string): string | null => {
-  const parsed = new Date(value);
-  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null;
-};
+import { formatJakartaDate, toJakartaIsoDateTime } from '../../utils/datetime';
 
 interface CreateLoanModalProps {
   isOpen: boolean;
@@ -89,9 +82,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   }, [preselectedAssetId, availablePool]);
 
   // Default tomorrow 09:00 to 17:00
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = formatLocalDate(tomorrow);
+  const tomorrowStr = formatJakartaDate(new Date(Date.now() + 86400000));
 
   const [startDate, setStartDate] = useState<string>(`${tomorrowStr}T09:00`);
   const [dueDate, setDueDate] = useState<string>(`${tomorrowStr}T17:00`);
@@ -122,7 +113,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
       setAvailabilityError(null);
       return;
     }
-    const startDateIso = toIsoDateTime(startDate);
+    const startDateIso = toJakartaIsoDateTime(startDate);
     const dueDateIso = toIsoDateTime(dueDate);
     if (!startDateIso || !dueDateIso || new Date(startDateIso).getTime() >= new Date(dueDateIso).getTime()) {
       setServerConflicts(new Set(selectedAssetIds));
