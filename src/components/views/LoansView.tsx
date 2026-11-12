@@ -18,6 +18,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { Loan, Asset, UserProfile, LoanStatus } from '../../types';
+import { isAuditor } from '../../utils/access';
 import { GabahService, formatDateTime, exportLoansToCsv } from '../../services/gabahService';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
@@ -59,7 +60,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
   const [returnNotes, setReturnNotes] = useState<string>('');
 
-  const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
+  const isAuditorUser = isAuditor(currentUser);
   const hasPermission = (key: string, legacyRoles: string[] = []) => {
     if (Array.isArray(currentUser?.permission_keys)) {
       return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
@@ -67,16 +68,16 @@ export const LoansView: React.FC<LoansViewProps> = ({
     if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     return legacyRoles.includes(currentUser?.role || '');
   };
-  const canCreateLoan = !isAuditor && hasPermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
-  const canRejectLoan = !isAuditor && hasPermission('loans.reject', ['Admin GABAH', 'IT', 'GA']);
-  const canHandoverLoan = !isAuditor && hasPermission('loans.handover', ['Admin GABAH', 'IT', 'GA']);
-  const canReturnLoan = !isAuditor && hasPermission('loans.return', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canCreateLoan = !isAuditorUser && hasPermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canRejectLoan = !isAuditorUser && hasPermission('loans.reject', ['Admin GABAH', 'IT', 'GA']);
+  const canHandoverLoan = !isAuditorUser && hasPermission('loans.handover', ['Admin GABAH', 'IT', 'GA']);
+  const canReturnLoan = !isAuditorUser && hasPermission('loans.return', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeAssets = Array.isArray(assets) ? assets : [];
   const currentUserId = currentUser?.id || '';
   // PostgreSQL already returns loans inside the effective permission/scope.
   // Only file-store compatibility applies the legacy personal-view filter.
-  const isEmployee = !isAuditor && !['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
+  const isEmployee = !isAuditorUser && !['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
   const baseLoans = Array.isArray(currentUser?.permission_keys)
     ? safeLoans
     : isEmployee
@@ -95,7 +96,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
   const canApprove = (loan: Loan) => {
     return Array.isArray(currentUser?.permission_keys)
-      ? !isAuditor && hasPermission('loans.approve')
+      ? !isAuditorUser && hasPermission('loans.approve')
       : GabahService.canApproveLoan(currentUser, loan);
   };
 
