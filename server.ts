@@ -533,7 +533,7 @@ async function startServer() {
         ? 'Karyawan'
         : requestedRole === 'Superadmin' ? 'Admin GABAH' : requestedRole) as ServerUser['role'];
       if (typeof name !== 'string' || !name.trim()
-        || typeof email !== 'string' || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim())) {
+        || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
         return res.status(400).json({ success: false, message: 'Nama wajib diisi dan alamat email harus valid.' });
       }
       const normalizedName = name.trim();
@@ -813,7 +813,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Nama pengguna tidak boleh kosong.' });
       }
       if (email !== undefined && email !== ''
-        && (typeof email !== 'string' || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim()))) {
+        && (typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()))) {
         return res.status(400).json({ success: false, message: 'Alamat email tidak valid.' });
       }
       if (is_active !== undefined && typeof is_active !== 'boolean') {
