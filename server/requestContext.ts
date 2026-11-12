@@ -7,6 +7,27 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 export interface RequestAuditContext {
   ip?: string;
+  persistenceCommitted?: boolean;
+}
+
+/** Mark the current request's last persistence attempt as pending. */
+export function markPersistencePending(): void {
+  const context = requestContext.getStore();
+  if (context) context.persistenceCommitted = false;
+}
+
+/** Mark a successful persistence commit for the current request. */
+export function markPersistenceCommitted(): void {
+  const context = requestContext.getStore();
+  if (context) context.persistenceCommitted = true;
+}
+
+/** Consume a commit completed by an explicit route/service await. */
+export function consumePersistenceCommit(): boolean {
+  const context = requestContext.getStore();
+  if (!context?.persistenceCommitted) return false;
+  context.persistenceCommitted = false;
+  return true;
 }
 
 export const requestContext = new AsyncLocalStorage<RequestAuditContext>();
