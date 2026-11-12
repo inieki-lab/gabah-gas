@@ -11,6 +11,10 @@ const deleteStart = source.indexOf("app.delete('/api/users/:id'");
 const createRoute = source.slice(createStart, importStart);
 const importRoute = source.slice(importStart, patchStart);
 const patchRoute = source.slice(patchStart, deleteStart);
+const hasCollisionResistantIds = /const generateUserId = \(\): string => `USR-\$\{crypto\.randomUUID\(\)\.toUpperCase\(\)\}`/.test(source)
+  && createRoute.includes('id: generateUserId()')
+  && importRoute.includes('id: generateUserId()')
+  && !source.includes('USR-${Date.now().toString().slice(-6)}');
 
 const checks = [
   ['Humas, Sekretaris Direksi, Supply Chain, and PIBC normalize to Karyawan primary profile', /\['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'\]\.includes\(normalized\)\) return 'Karyawan'/.test(helpers)],
@@ -20,7 +24,7 @@ const checks = [
   ['Edit-user API validates profile role and syncs secondary capability', patchRoute.includes('isKnownProfileRole(requestedRole)') && patchRoute.includes('secondaryCapabilityRoleKey(requestedRole)')],
   ['Bulk import normalizes role and preserves Humas/Sekretariat as capability', importRoute.includes('normalizePrimaryProfileRole(requestedRole)') && importRoute.includes('secondaryRoleByUserId.set') && importRoute.includes('capabilityRoleKey: secondaryRoleByUserId.get(user.id)')],
   ['Bulk import keeps employee capability label for file-store compatibility', importRoute.includes('roleLabels[requestedRole] || roleLabels[role]')],
-  ['User create and bulk import use collision-resistant generated IDs', /const generateUserId = \(\): string => `USR-\$\{crypto\.randomUUID\(\)\.toUpperCase\(\)\}`/.test(source) && (createRoute.includes('id: generateUserId()') || source.slice(source.indexOf("app.post('/api/users'"), source.indexOf("app.post('/api/users/bulk-import'")).includes('id: generateUserId()')) && importRoute.includes('id: generateUserId()') && !source.includes('USR-${Date.now().toString().slice(-6)}'))],
+  ['User create and bulk import use collision-resistant generated IDs', hasCollisionResistantIds],
 ];
 
 let failed = 0;
