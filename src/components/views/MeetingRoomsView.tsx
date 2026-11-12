@@ -501,7 +501,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                onClick={() => setSelectedDate(formatJakartaDate())}
                 className="px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100"
               >
                 Hari Ini
