@@ -82,7 +82,7 @@ async function startServer() {
   // Effective permissions are returned only to the authenticated principal.
   // This drives the UI menu; backend route guards remain authoritative.
   const serializeAuthenticatedUser = (user: ServerUser): any => {
-    const safe = sanitizeUser(user) as any;
+    const safe = sanitizeUser(user, { includeTelegramChatId: isSuperadminActor(user) }) as any;
     if (isPostgresPersistenceActive()) {
       safe.is_superadmin = isRbacSuperadmin(String(user.id));
       safe.permission_keys = safe.is_superadmin ? ['*'] : getEffectivePermissionKeys(String(user.id));
@@ -481,7 +481,7 @@ async function startServer() {
     } else if (!isSuperadminActor(actor) && !['IT', 'GA'].includes(actor.role)) {
       return res.status(403).json({ success: false, message: 'Akses direktori pegawai hanya untuk Super Admin, IT, dan GA.' });
     }
-    res.json({ success: true, data: db.users.map(u => sanitizeUser(u)) });
+    res.json({ success: true, data: db.users.map(u => sanitizeUser(u, { includeTelegramChatId: isSuperadminActor(actor) })) });
   });
 
   app.post('/api/users', async (req, res) => {
@@ -580,7 +580,7 @@ async function startServer() {
 
       res.status(201).json({
         success: true,
-        data: sanitizeUser(newUser),
+        data: sanitizeUser(newUser, { includeTelegramChatId: true }),
       });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -738,7 +738,7 @@ async function startServer() {
           failed: errors.length,
           errors: errors.slice(0, 50),
           warnings: warnings.slice(0, 50),
-          users: importedUsers.map(u => sanitizeUser(u)),
+          users: importedUsers.map(u => sanitizeUser(u, { includeTelegramChatId: true })),
         },
       });
     } catch (err: any) {
@@ -862,7 +862,7 @@ async function startServer() {
       if (role !== undefined) await syncPrimaryRbacRole(targetUser.id, targetUser.role);
       await refreshRbacPolicy();
 
-      res.json({ success: true, data: sanitizeUser(targetUser) });
+      res.json({ success: true, data: sanitizeUser(targetUser, { includeTelegramChatId: true }) });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
