@@ -584,17 +584,23 @@ async function backfillNormalizedTables(): Promise<void> {
   finally { client.release(); }
 }
 
-function normalizeLegacyEmployeeProfileRoles(): Array<{ userId: string; roleKey: string }> {
-  const capabilityAssignments: Array<{ userId: string; roleKey: string }> = [];
+function collectLegacyEmployeeCapabilityAssignments(): Array<{ userId: string; roleKey: string }> {
+  return (db.users as any[])
+    .filter(user => ['Humas', 'Sekretaris Direksi'].includes(String(user.role || '').trim()))
+    .map(user => ({
+      userId: String(user.id),
+      roleKey: String(user.role).trim() === 'Humas' ? 'humas' : 'sekretaris_direksi',
+    }));
+}
+
+function normalizeLegacyEmployeeProfileRoles(): void {
   for (const user of db.users as any[]) {
     const legacyRole = String(user.role || '').trim();
     if (!['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(legacyRole)) continue;
 
     if (legacyRole === 'Humas') {
-      capabilityAssignments.push({ userId: String(user.id), roleKey: 'humas' });
       if (!user.role_label) user.role_label = 'Humas & Protokoler';
     } else if (legacyRole === 'Sekretaris Direksi') {
-      capabilityAssignments.push({ userId: String(user.id), roleKey: 'sekretaris_direksi' });
       if (!user.role_label) user.role_label = 'Sekretariat Direksi';
     } else if (legacyRole === 'Supply Chain') {
       if (!user.role_label) user.role_label = 'Karyawan — Lokasi Supply Chain';
@@ -610,7 +616,6 @@ function normalizeLegacyEmployeeProfileRoles(): Array<{ userId: string; roleKey:
 
     user.role = 'Karyawan';
   }
-  return capabilityAssignments;
 }
 
 async function ensureEmployeeCapabilityAssignments(assignments: Array<{ userId: string; roleKey: string }>): Promise<void> {
@@ -631,7 +636,11 @@ async function ensureEmployeeCapabilityAssignments(assignments: Array<{ userId: 
 }
 
 async function persistPostgresState(): Promise<void> {
-  const employeeCapabilities = normalizeLegacyEmployeeProfileRoles();
+  // Ensure function-role rows before mutating the in-memory legacy profile.
+  // If a capability role is missing/inactive, the original profile stays intact.
+  const employeeCapabilities = collectLegacyEmployeeCapabilityAssignments();
+  await ensureEmployeeCapabilityAssignments(employeeCapabilities);
+  normalizeLegacyEmployeeProfileRoles();
   const payload = createPayload();
   // Keep the local recovery snapshot aligned with normalized in-memory roles.
   saveStateToFile(payload);
@@ -640,7 +649,6 @@ async function persistPostgresState(): Promise<void> {
     [JSON.stringify(payload)],
   );
   await backfillNormalizedTables();
-  await ensureEmployeeCapabilityAssignments(employeeCapabilities);
   await backfillDynamicRbacUserRoles();
 }
 
