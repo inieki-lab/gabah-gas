@@ -152,11 +152,12 @@ async function main() {
     const itAsset3 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 3');
     const itAsset4 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 4');
     const itAsset5 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 5 Overdue');
+    const itAsset6 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 6 Batch Atomic');
     const gaAsset1 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 1');
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
-    record('Setup: 7 loanable fixtures created (5 IT + 2 GA)', '7 ids issued',
-      [itAsset1, itAsset2, itAsset3, itAsset4, itAsset5, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
-      [itAsset1, itAsset2, itAsset3, itAsset4, itAsset5, gaAsset1, gaAsset2].every(a => a.id));
+    record('Setup: 8 loanable fixtures created (6 IT + 2 GA)', '8 ids issued',
+      [itAsset1, itAsset2, itAsset3, itAsset4, itAsset5, itAsset6, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
+      [itAsset1, itAsset2, itAsset3, itAsset4, itAsset5, itAsset6, gaAsset1, gaAsset2].every(a => a.id));
 
     const mkLoan = async (token, assetId, borrowerId) => {
       const r = await req(base, 'POST', '/api/loans', {
@@ -197,6 +198,32 @@ async function main() {
     const aL4 = await appr(L4.id, ga.token);
     const aL5 = await appr(L5.id, it.token);
     record('Setup: loans approved by owner-division custodians', '200', [aL1, aL2, aL4, aL5].map(r => r.status).join(','), [aL1, aL2, aL4, aL5].every(r => r.status === 200));
+
+    // Availability preview checks every reservation but returns no borrower data.
+    const availability = await req(base, 'POST', '/api/loans/availability', {
+      token: karyawan.token,
+      body: { asset_ids: [itAsset1.id], start_date: isoDatePlus(2), due_date: isoDatePlus(3) },
+    });
+    const availabilityData = availability.json?.data || {};
+    record('Availability API detects another borrower reservation without disclosure', 'conflicting asset ID only',
+      `HTTP ${availability.status}; ids=${(availabilityData.conflicting_asset_ids || []).join(',')}; borrowerField=${Object.hasOwn(availabilityData, 'borrower_name')}`,
+      availability.status === 200 && availabilityData.conflicting_asset_ids?.includes(itAsset1.id) && !Object.hasOwn(availabilityData, 'borrower_name'));
+
+    // Multi-asset requests must roll back all writes if one selected asset is invalid.
+    const batchFailure = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: {
+        asset_ids: [itAsset6.id, 'ASSET-ID-NOT-FOUND'],
+        borrower_id: karyawanId,
+        purpose: 'Atomic batch regression',
+        start_date: isoDatePlus(1),
+        due_date: isoDatePlus(2),
+      },
+    });
+    const afterBatchLoans = await req(base, 'GET', '/api/loans', { token: admin.token });
+    const partialBatchLoan = (afterBatchLoans.json?.data || []).some(loan => loan.asset_id === itAsset6.id && loan.purpose === 'Atomic batch regression');
+    record('Failed multi-asset request leaves no partial loan record', 'HTTP 400 and no partial row',
+      `HTTP ${batchFailure.status}; partial=${partialBatchLoan}`, batchFailure.status === 400 && !partialBatchLoan);
 
     // Overdue physical possession must continue blocking new reservations.
     const overdueCreate = await req(base, 'POST', '/api/loans', {
