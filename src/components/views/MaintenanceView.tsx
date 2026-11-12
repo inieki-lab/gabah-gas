@@ -68,8 +68,9 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     return legacyRoles.includes(currentUser?.role || '');
   };
-  const canCreate = hasPermission('maintenances.create', ['Admin GABAH', 'IT', 'GA']);
-  const canUpdate = hasPermission('maintenances.update', ['Admin GABAH', 'IT', 'GA']);
+  const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
+  const canCreate = !isAuditor && hasPermission('maintenances.create', ['Admin GABAH', 'IT', 'GA']);
+  const canUpdate = !isAuditor && hasPermission('maintenances.update', ['Admin GABAH', 'IT', 'GA']);
 
   // Filtered schedules
   const filteredSchedules = schedules.filter((sch) => {
