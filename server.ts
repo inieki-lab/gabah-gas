@@ -17,7 +17,7 @@ import { initializePersistence, persistDataStore, isPostgresPersistenceActive, q
 import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, wouldRemoveLastActiveSuperadmin, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
-import { requestContext, extractClientIp } from './server/requestContext';
+import { requestContext, extractClientIp, consumePersistenceCommit } from './server/requestContext';
 import { filterDashboardAttentionItems } from './server/dashboard-attention-scope';
 import {
   createSession,
