@@ -235,6 +235,29 @@ async function main() {
     record('Failed multi-asset request leaves no partial loan record', 'HTTP 400 and no partial row',
       `HTTP ${batchFailure.status}; partial=${partialBatchLoan}`, batchFailure.status === 400 && !partialBatchLoan);
 
+    const mutationLockLoan = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: { asset_id: itAsset6.id, purpose: 'Block asset mutation while loan pending', start_date: isoDatePlus(2), due_date: isoDatePlus(3) },
+    });
+    const blockedAssignDuringLoan = await req(base, 'POST', `/api/assets/${itAsset6.id}/assign`, {
+      token: it.token, body: { targetUserId: gaId, reason: 'Regression: assignment must respect loan lock' },
+    });
+    const blockedMoveDuringLoan = await req(base, 'POST', `/api/assets/${itAsset6.id}/move`, {
+      token: it.token, body: { newLocation: 'Head Office - Gudang IT Pool (Lt. 2)', reason: 'Regression: move must respect loan lock' },
+    });
+    const blockedLifecycleDuringLoan = await req(base, 'POST', `/api/assets/${itAsset6.id}/lifecycle`, {
+      token: it.token, body: { action: 'damaged', notes: 'Regression: lifecycle must respect loan lock' },
+    });
+    record('Pending loan prevents assignment, physical move, and lifecycle mutation of the same asset', '409 / 409 / 409',
+      `${blockedAssignDuringLoan.status} / ${blockedMoveDuringLoan.status} / ${blockedLifecycleDuringLoan.status}`,
+      mutationLockLoan.status === 201 && blockedAssignDuringLoan.status === 409
+        && blockedMoveDuringLoan.status === 409 && blockedLifecycleDuringLoan.status === 409);
+    if (mutationLockLoan.json?.data?.id) {
+      await req(base, 'POST', `/api/loans/${mutationLockLoan.json.data.id}/reject`, {
+        token: it.token, body: { reason: 'Regression fixture cleanup' },
+      });
+    }
+
     // Overdue physical possession must continue blocking new reservations.
     const overdueCreate = await req(base, 'POST', '/api/loans', {
       token: karyawan.token,
