@@ -745,7 +745,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                         loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                        loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                        (loan.status === 'pending_approval' || loan.status === 'pending') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                         loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                         'bg-slate-200 text-slate-700'
                       }`}>
