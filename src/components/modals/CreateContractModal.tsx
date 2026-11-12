@@ -76,6 +76,14 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!canCreateContract) {
+      setError('Akun ini tidak memiliki permission contracts.create.');
+      return;
+    }
+    if (!ownerDivision) {
+      setError('Pilih domain pemilik kontrak dari master yang aktif.');
+      return;
+    }
     if (!title.trim() || !vendorName.trim() || !endDate) {
       setError('Judul, vendor, dan tanggal berakhir wajib diisi.');
       return;
