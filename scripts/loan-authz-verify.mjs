@@ -236,6 +236,18 @@ async function main() {
       },
     });
     const overdueLoanId = overdueCreate.json?.data?.id;
+    // Create a second pending request before the first physical loan is handed
+    // over. It must not be approved after the first borrower becomes overdue.
+    const stalePendingCreate = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: {
+        asset_id: itAsset5.id,
+        purpose: 'Pending request must be blocked after prior loan overdue',
+        start_date: isoDatePlus(1),
+        due_date: isoDatePlus(7),
+      },
+    });
+    const stalePendingLoanId = stalePendingCreate.json?.data?.id;
     const overdueApprove = overdueLoanId ? await appr(overdueLoanId, it.token) : { status: 0 };
     const overdueHandover = overdueLoanId
       ? await req(base, 'POST', `/api/loans/${overdueLoanId}/handover`, { token: it.token, body: { handoverNotes: 'Overdue test handover' } })
@@ -243,6 +255,16 @@ async function main() {
     const overdueList = await req(base, 'GET', '/api/loans', { token: admin.token });
     const overdueStatus = (overdueList.json?.data || []).find(item => item.id === overdueLoanId)?.status || '(missing)';
     record('Overdue loan is exposed as overdue after due date', 'overdue', overdueStatus, overdueCreate.status === 201 && overdueApprove.status === 200 && overdueHandover.status === 200 && overdueStatus === 'overdue');
+    const stalePendingApproval = stalePendingLoanId
+      ? await appr(stalePendingLoanId, it.token)
+      : { status: 0 };
+    record('Pending request cannot be approved while an earlier borrowed asset is overdue', '409',
+      `HTTP ${stalePendingApproval.status}`, stalePendingCreate.status === 201 && stalePendingApproval.status === 409);
+    if (stalePendingLoanId) {
+      await req(base, 'POST', `/api/loans/${stalePendingLoanId}/reject`, {
+        token: it.token, body: { reason: 'Regression fixture cleanup' },
+      });
+    }
     const blockedRebooking = await req(base, 'POST', '/api/loans', {
       token: karyawan.token,
       body: { asset_id: itAsset5.id, purpose: 'Must be blocked', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
