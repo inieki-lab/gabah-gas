@@ -80,7 +80,7 @@ async function main() {
     'frontend pool eligibility policy',
     /asset\.is_loanable === true/.test(loanModalSource)
       && /asset\.status === 'available'/.test(loanModalSource)
-      && /!\['broken', 'damaged'\]\.includes\(String\(asset\.condition\)\)/.test(loanModalSource),
+      && /!\['broken', 'damaged', 'poor'\]\.includes\(String\(asset\.condition\)\)/.test(loanModalSource),
   );
 
   const serverPath = path.resolve(process.cwd(), 'dist/server.cjs');
