@@ -8,7 +8,7 @@ import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
+import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole, getTicketOwnerDivision } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -2414,7 +2414,7 @@ async function startServer() {
       const data = db.tickets.filter(ticket =>
         (ticket.assigned_unit_id != null
           && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'))
-        || hasRbacScope(String(actor.id), 'division', ticket.category, 'tickets')
+        || hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets')
       );
       return res.json({ success: true, data });
     }
@@ -2479,7 +2479,7 @@ async function startServer() {
     if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
     const inScope = ticket.assigned_unit_id
       ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
-      : hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets');
+      : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets');
     if (!isSuperadminActor(actor) && !inScope) {
       return res.status(403).json({ success: false, message: 'Anda tidak berwenang melihat petugas untuk antrean ini.' });
     }
@@ -2488,8 +2488,8 @@ async function startServer() {
       && hasRbacPermission(String(user.id), 'tickets.update')
       && (ticket.assigned_unit_id
         ? user.unit_id === ticket.assigned_unit_id && hasRbacScope(String(user.id), 'unit', ticket.assigned_unit_id, 'tickets')
-        : String(user.division || '').toUpperCase() === String(ticket.category).toUpperCase()
-          && hasRbacScope(String(user.id), 'division', String(ticket.category), 'tickets'))
+        : String(user.division || '').toUpperCase() === getTicketOwnerDivision(ticket.category)
+          && hasRbacScope(String(user.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
     ).map(user => ({ id: user.id, name: user.name, department: user.department }));
     return res.json({ success: true, data: eligible });
   });
@@ -2505,7 +2505,7 @@ async function startServer() {
 
       const ticketScopeAllowed = ticket.assigned_unit_id
         ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
-        : hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets');
+        : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets');
       if (!isSuperadminActor(actor) && !ticketScopeAllowed) {
         return res.status(403).json({ success: false, message: 'Anda tidak memiliki kewenangan mendelegasikan tiket pada unit/kategori ini.' });
       }
@@ -2518,8 +2518,8 @@ async function startServer() {
       const targetCanWorkQueue = hasRbacPermission(String(target.id), 'tickets.update')
         && (ticket.assigned_unit_id
           ? target.unit_id === ticket.assigned_unit_id && hasRbacScope(String(target.id), 'unit', ticket.assigned_unit_id, 'tickets')
-          : String(target.division || '').toUpperCase() === String(ticket.category).toUpperCase()
-            && hasRbacScope(String(target.id), 'division', String(ticket.category), 'tickets'));
+          : String(target.division || '').toUpperCase() === getTicketOwnerDivision(ticket.category)
+            && hasRbacScope(String(target.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'));
       if (!targetCanWorkQueue) {
         return res.status(400).json({ success: false, message: 'Petugas tujuan belum memiliki permission dan scope untuk menangani tiket ini.' });
       }
@@ -3022,13 +3022,13 @@ async function startServer() {
         ? db.tickets.filter(ticket =>
           (ticket.assigned_unit_id != null
             && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'))
-          || hasRbacScope(String(actor.id), 'division', ticket.category, 'tickets')
+          || hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets')
         )
         : db.tickets.filter(ticket =>
           ticket.reporter_id === actor.id
           || ticket.assigned_agent_id === actor.id
           || (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id)
-          || canReadOwnerScope(ticket.category, 'tickets')
+          || canReadOwnerScope(getTicketOwnerDivision(ticket.category), 'tickets')
         );
 
     const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;
@@ -3057,8 +3057,8 @@ async function startServer() {
     const visibleAssets = isGlobalReader ? db.assets : GabahDomainService.getScopedAssets(actor);
     const canReadOwnerScope = (module: 'loans' | 'tickets', owner: string) =>
       isPostgresPersistenceActive()
-        ? hasRbacScope(String(actor.id), 'division', owner, module)
-        : actor.role === owner;
+        ? hasRbacScope(String(actor.id), 'division', module === 'tickets' ? getTicketOwnerDivision(owner) : owner, module)
+        : actor.role === (module === 'tickets' ? getTicketOwnerDivision(owner) : owner);
     const visibleItems = filterDashboardAttentionItems(items, {
       actorId: String(actor.id),
       actorName: String(actor.name || ''),
