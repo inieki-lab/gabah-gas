@@ -1220,7 +1220,7 @@ async function startServer() {
   });
 
   // Secure Authentication Endpoints
-  app.post('/api/auth/login', (req, res) => {
+  app.post('/api/auth/login', async (req, res) => {
     try {
       const ip = extractClientIp(req) || 'unknown';
       const lockCheck = isLoginLocked(ip);
