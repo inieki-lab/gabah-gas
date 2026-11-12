@@ -596,9 +596,9 @@ async function backfillNormalizedTables(sharedClient?: PoolClient): Promise<void
       }
     }
     for (const log of db.auditLogs) {
-      // Stable user IDs are authoritative. Name matching is legacy-only and
-      // must never override an explicit actor identity when names are duplicated.
-      const userId = log.user_id || db.users.find(u => u.name === log.user_name)?.id;
+      // Never infer an actor ID from a display name: duplicate names are valid.
+      // Legacy rows without a stable ID keep their actor-name snapshot and NULL user_id.
+      const userId = log.user_id || null;
       await client.query(
         `INSERT INTO audit_logs (id,action,entity,entity_id,user_id,user_name,user_role,details,ip_address,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO NOTHING`,
         [log.id,log.action,log.entity,log.entity_id || null,userId || null,log.user_name,log.user_role,log.details,log.ip_address || null,log.timestamp],
