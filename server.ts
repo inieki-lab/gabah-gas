@@ -2324,8 +2324,18 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'loans.read')) return;
     const actor = getActor(req);
+    // A physically outstanding loan becomes overdue as soon as its due date
+    // passes, even if no background status updater has run yet.
+    const exposeEffectiveStatus = (loan: any) => ({
+      ...loan,
+      status: loan.status === 'borrowed' && !loan.actual_returned_at
+        && Number.isFinite(new Date(loan.due_date).getTime())
+        && new Date(loan.due_date).getTime() < Date.now()
+        ? 'overdue'
+        : loan.status,
+    });
     if (isSuperadminActor(actor)) {
-      return res.json({ success: true, data: db.loans });
+      return res.json({ success: true, data: db.loans.map(exposeEffectiveStatus) });
     }
     // Loan visibility follows borrower ownership or an explicit owner scope
     // for this module. Employee work location never grants owner-domain access.
@@ -2334,7 +2344,7 @@ async function startServer() {
       || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', loan.owner_division, 'loans')
         : actor.role === loan.owner_division)
-    );
+    ).map(exposeEffectiveStatus);
     return res.json({ success: true, data });
   });
 
@@ -2364,9 +2374,9 @@ async function startServer() {
       if (!asset || !isAssetEligibleForLoan(asset)) return true;
       return db.loans.some(loan => {
         if (loan.asset_id !== assetId || !['approved', 'borrowed', 'overdue'].includes(loan.status)) return false;
-        if (loan.status === 'overdue') return true;
         const existingStart = new Date(loan.start_date).getTime();
         const existingDue = new Date(loan.due_date).getTime();
+        if (loan.status === 'overdue' || (loan.status === 'borrowed' && Number.isFinite(existingDue) && existingDue < Date.now())) return true;
         return Number.isFinite(existingStart) && Number.isFinite(existingDue)
           && start < existingDue && due > existingStart;
       });
