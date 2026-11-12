@@ -28,7 +28,8 @@
     "test:contract-renewal-integrity": "node scripts/contract-renewal-integrity-verify.mjs",
     "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
     "test:movement-scope": "node scripts/movement-scope-verify.mjs",
-    "test:dependency-security": "node scripts/dependency-security-verify.mjs"
+    "test:dependency-security": "node scripts/dependency-security-verify.mjs",
+    "test:room-reservation-exclusion": "node scripts/room-reservation-exclusion-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
