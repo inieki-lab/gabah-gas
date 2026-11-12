@@ -18,6 +18,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import { UserProfile, UserRole, Ticket, Loan, RoomReservation } from '../types';
+import { hasPermission } from '../utils/access';
 import { GabahService } from '../services/gabahService';
 
 interface HeaderNavbarProps {
@@ -58,26 +59,26 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
 
   const safeLoans = Array.isArray(pendingLoans) ? pendingLoans : [];
   const safeTickets = Array.isArray(urgentTickets) ? urgentTickets : [];
-  const isHumas = currentUser.role === 'Humas';
-  const isIT = currentUser.role === 'IT' || currentUser.role === 'Admin GABAH';
-  const isGA = currentUser.role === 'GA' || currentUser.role === 'Admin GABAH';
+  const canReadDocumentationQueue = hasPermission(currentUser, 'room_reservations.documentation.read', ['Humas']);
+  const canReadITFacilityQueue = hasPermission(currentUser, 'room_reservations.it_facilities.read', ['IT']);
+  const canManageGAQueue = hasPermission(currentUser, 'room_reservations.approve', ['GA'])
+    || hasPermission(currentUser, 'room_reservations.reject', ['GA']);
 
-  // 1. Photo & documentation request notifications - strictly for Humas (and Admin GABAH)
-  const docReservations = (isHumas || currentUser.role === 'Admin GABAH')
+  // Backend has already applied reservation scope and privacy redaction.
+  // Build notification counts from effective capabilities, not primary role.
+  const docReservations = canReadDocumentationQueue
     ? (roomReservations || []).filter(
         r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
       )
     : [];
 
-  // 2. IT Support facility notifications: reservations requesting IT items (Polycom, Projector, Smart TV, HDMI, etc.)
-  const itFacilityReservations = isIT
+  const itFacilityReservations = canReadITFacilityQueue
     ? (roomReservations || []).filter(
         r => !['cancelled', 'rejected'].includes(r.status) && GabahService.getITFacilities(r).length > 0
       )
     : [];
 
-  // 3. GA facility & pantry notifications: reservations requesting GA facilities, pantry consumption, or pending approval
-  const gaReservations = isGA
+  const gaReservations = canManageGAQueue
     ? (roomReservations || []).filter(
         r => !['cancelled', 'rejected'].includes(r.status) && (
           GabahService.getGAFacilities(r).length > 0 ||
@@ -87,13 +88,12 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
       )
     : [];
 
-  const totalNotifications = 
-    safeLoans.length + 
-    safeTickets.length + 
-    (isHumas ? docReservations.length : 0) +
-    (currentUser.role === 'IT' ? itFacilityReservations.length : 0) +
-    (currentUser.role === 'GA' ? gaReservations.length : 0) +
-    (currentUser.role === 'Admin GABAH' ? (docReservations.length + itFacilityReservations.length + gaReservations.length) : 0);
+  const totalNotifications =
+    safeLoans.length +
+    safeTickets.length +
+    (canReadDocumentationQueue ? docReservations.length : 0) +
+    (canReadITFacilityQueue ? itFacilityReservations.length : 0) +
+    (canManageGAQueue ? gaReservations.length : 0);
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#DFDCE3] text-slate-800 shadow-xs">
@@ -259,7 +259,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   })}
 
                   {/* Photo / Documentation Requests - Strictly for Humas employees only (or Admin GABAH) */}
-                  {(isHumas || currentUser.role === 'Admin GABAH') && docReservations.map(res => (
+                  {canReadDocumentationQueue && docReservations.map(res => (
                     <div 
                       key={`doc-${res.id}`}
                       onClick={() => {
