@@ -16,6 +16,8 @@ const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
+const assetEditUi = read('src/components/modals/EditAssetModal.tsx');
+const assetDetailUi = read('src/components/modals/AssetDetailModal.tsx');
 const loansUi = read('src/components/views/LoansView.tsx');
 const contractsUi = read('src/components/views/ContractsView.tsx');
 const maintenanceUi = read('src/components/views/MaintenanceView.tsx');
@@ -136,6 +138,15 @@ const checks = [
   ['Loanable pool excludes assets already assigned to a person and legacy maintenance/retired states',
     /asset\.status !== 'assigned'/.test(services)
       && /'maintenance', 'retired'/.test(services)],
+  ['Asset edit form no longer sends location, condition, or lifecycle status through generic metadata update',
+    /is_loanable: formData\.is_loanable/.test(assetEditUi)
+      && !/location: \(formData\.asset_location_id/.test(assetEditUi)
+      && !/condition: formData\.condition/.test(assetEditUi)
+      && !/status: selectedUserId/.test(assetEditUi)],
+  ['Asset detail exposes dedicated movement and lifecycle APIs with audit reasons',
+    /gabahApi\.moveAsset\(asset\.id, targetLocation, moveReason\.trim\(\)\)/.test(assetDetailUi)
+      && /gabahApi\.mutateLifecycle\(asset\.id, lifecycleAction, lifecycleNotes\.trim\(\)\)/.test(assetDetailUi)],
+
 
 
 
