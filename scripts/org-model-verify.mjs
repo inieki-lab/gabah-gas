@@ -55,7 +55,7 @@ async function main() {
       body: { name: 'Uji Legacy RPC', email: 'uji.legacy.rpc@foodstation.co.id', role: 'Supply Chain', division: 'SC', department: 'RPC' },
     });
     const legacyCreated = legacyCreate.json?.data || {};
-    rec('13: legacy Supply Chain label creates Karyawan without inferred office location',
+    rec('12a: legacy Supply Chain label creates Karyawan without inferred office location',
       'Karyawan + office_location_id null',
       `${legacyCreate.status} + ${legacyCreated.role} + ${legacyCreated.office_location_id}`,
       legacyCreate.status === 201 && legacyCreated.role === 'Karyawan' && legacyCreated.office_location_id == null);
@@ -67,7 +67,7 @@ async function main() {
       body: { users: [{ name: scUser?.name, email: scUser?.email, role: 'Supply Chain', division: 'SC', department: scUser?.department }] },
     });
     const scAfterImport = ((await req(b, 'GET', '/api/users', { token: admin })).json?.data || []).find(u => u.email === scUser?.email);
-    rec('14: bulk import preserves existing unit and office when columns are omitted',
+    rec('12b: bulk import preserves existing unit and office when columns are omitted',
       `${scUnitBefore} + ${scOfficeBefore}`,
       `${scAfterImport?.unit_id} + ${scAfterImport?.office_location_id}`,
       legacyImport.status === 200 && scAfterImport?.role === 'Karyawan'
