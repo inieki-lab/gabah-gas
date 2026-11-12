@@ -539,6 +539,9 @@ async function startServer() {
       const normalizedName = name.trim();
       const normalizedEmail = email.trim().toLowerCase();
       const normalizedDivision = (typeof division === 'string' && division.trim() ? division.trim() : 'Umum') as ServerUser['division'];
+      if (!(db.divisions || []).some(item => item.code === normalizedDivision)) {
+        return res.status(400).json({ success: false, message: `Divisi "${normalizedDivision}" tidak terdaftar pada master organisasi.` });
+      }
       const normalizedDepartment = typeof department === 'string' && department.trim() ? department.trim() : 'Operasional';
       const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
@@ -681,6 +684,9 @@ async function startServer() {
         const roleRaw = String(row.role || '').trim();
         const division = String(row.division || '').trim() || 'Umum';
         const department = String(row.department || '').trim() || 'Operasional';
+        if (!(db.divisions || []).some(item => item.code === division)) {
+          errors.push(`Baris ${rowNo}: Divisi "${division}" tidak terdaftar pada master organisasi.`); continue;
+        }
         const phone = String(row.phone || '').trim();
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
         const unitId = String(row.unit_id || '').trim();
@@ -890,7 +896,11 @@ async function startServer() {
       }
       if (division !== undefined) {
         if (typeof division !== 'string' || !division.trim()) return res.status(400).json({ success: false, message: 'Divisi tidak boleh kosong.' });
-        targetUser.division = division.trim() as ServerUser['division'];
+        const normalizedDivision = division.trim();
+        if (!(db.divisions || []).some(item => item.code === normalizedDivision)) {
+          return res.status(400).json({ success: false, message: `Divisi "${normalizedDivision}" tidak terdaftar pada master organisasi.` });
+        }
+        targetUser.division = normalizedDivision as ServerUser['division'];
       }
       if (department !== undefined) {
         if (typeof department !== 'string' || !department.trim()) return res.status(400).json({ success: false, message: 'Departemen tidak boleh kosong.' });
