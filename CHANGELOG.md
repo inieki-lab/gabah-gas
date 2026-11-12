@@ -1,3 +1,11 @@
+## Fix — notification routing for additional roles (2026-11-12)
+
+- Notification list, mark-one-read, and mark-all-read now resolve known application-role recipients against the user's effective role assignments, not only the primary `users.role` label.
+- Humas documentation notifications now recognize the secondary Humas capability while the user's primary profile remains Karyawan.
+- Legacy recipient labels that are not application roles retain the existing exact primary-role fallback; explicit user recipients still take precedence.
+- Added `npm run test:notification-role-routing` source regression checks.
+- Static source review only; runtime UAT with a real multi-role account and existing notifications remains pending.
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
