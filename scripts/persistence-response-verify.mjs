@@ -22,7 +22,7 @@ const checks = [
   ['normalized table backfill reuses the caller transaction when provided', /async function backfillNormalizedTables\(sharedClient\?: PoolClient\)[\s\S]*const ownsClient = !sharedClient[\s\S]*if \(ownsClient\) await client\.query\('BEGIN'\)[\s\S]*if \(ownsClient\) await client\.query\('COMMIT'\)/.test(persistence)],
   ['dynamic role backfill uses the same transaction client when provided', /async function backfillDynamicRbacUserRoles\(sharedClient\?: PoolClient\)[\s\S]*sharedClient \? sharedClient\.query/.test(persistence)],
   ['JSON mirror is written only after PostgreSQL commit succeeds', /await persistPostgresState\(\);\s*saveStateToFile\(createPayload\(\)\)/.test(persistence)],
-  ['file-store fallback remains available only when PostgreSQL is inactive', /if \(!isPostgresAvailable\) \{\s*saveStateToFile\(payload\);\s*return persistQueue;/m.test(persistence)],
+  ['file-store fallback remains available only when PostgreSQL is inactive', /if \(!isPostgresAvailable\) \{\s*saveStateToFile\(payload\);\s*markPersistenceCommitted\(\);\s*return persistQueue;/m.test(persistence)],
 ];
 
 let failed = 0;
