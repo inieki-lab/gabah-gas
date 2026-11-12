@@ -14,6 +14,7 @@ interface LoginAttemptRecord {
 }
 
 const loginAttempts = new Map<string, LoginAttemptRecord>();
+let loginAttemptOperations = 0;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -23,11 +24,19 @@ interface ApiRateLimitRecord {
   resetAt: number;
 }
 const apiRateLimits = new Map<string, ApiRateLimitRecord>();
+let apiRateLimitOperations = 0;
 const API_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_API_REQUESTS_PER_MINUTE = 200; // 200 requests/minute per client IP
 
 export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaining: number; resetSeconds: number } {
   const now = Date.now();
+  // Remove expired client buckets periodically so rotating source IPs cannot
+  // grow this in-memory registry for the lifetime of the server process.
+  if ((++apiRateLimitOperations & 0xff) === 0) {
+    for (const [ip, record] of apiRateLimits) {
+      if (record.resetAt <= now) apiRateLimits.delete(ip);
+    }
+  }
   let bucket = apiRateLimits.get(clientIp);
 
   if (!bucket || bucket.resetAt <= now) {
@@ -54,6 +63,13 @@ export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
  */
 export function recordFailedLogin(identifier: string): { isLocked: boolean; remainingLockoutSeconds?: number } {
   const now = Date.now();
+  // Expired lockout identities are no longer useful and must not accumulate
+  // indefinitely when an attacker rotates source addresses.
+  if ((++loginAttemptOperations & 0xff) === 0) {
+    for (const [key, record] of loginAttempts) {
+      if (record.lockedUntil <= now && now - record.lastAttempt > LOCKOUT_MS) loginAttempts.delete(key);
+    }
+  }
   let record = loginAttempts.get(identifier);
 
   if (!record) {
