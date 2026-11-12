@@ -10,6 +10,7 @@ import { normalizeAssetManagingUnits } from './managing-unit';
 import { normalizeAssetAssetLocations } from './asset-location';
 import { normalizeCategoryMaster } from './taxonomy';
 import { clearOrphanedTicketAssetLinks } from './persistence-integrity';
+import { markPersistencePending, markPersistenceCommitted } from './requestContext';
 
 /**
  * SECURITY (CR-02): initial canonical-account passwords are provisioned from
@@ -793,6 +794,7 @@ export async function initializePersistence(): Promise<void> {
 }
 
 export function persistDataStore(): Promise<void> {
+  markPersistencePending();
   const payload = createPayload();
 
   // File-store mode writes directly. When PostgreSQL is active, do NOT write
@@ -800,6 +802,7 @@ export function persistDataStore(): Promise<void> {
   // otherwise a failed database write could leave an uncommitted snapshot on disk.
   if (!isPostgresAvailable) {
     saveStateToFile(payload);
+    markPersistenceCommitted();
     return persistQueue;
   }
 
@@ -810,6 +813,7 @@ export function persistDataStore(): Promise<void> {
     try {
       await persistPostgresState();
       saveStateToFile(createPayload());
+      markPersistenceCommitted();
     } catch (error: any) {
       // In development, preserve the historical file-store fallback, but
       // reject THIS write so the API caller can report the persistence failure.
