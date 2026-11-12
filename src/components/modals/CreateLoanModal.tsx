@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Asset, Loan, UserProfile } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
+import { isAuditor } from '../../utils/access';
 
 // datetime-local inputs are interpreted in the user's browser timezone.
 // Send an explicit UTC instant to the API so server/DB timezone cannot shift it.
@@ -72,7 +73,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     );
   }, [loanableAssets, assets]);
 
-  const isAuditor = currentUser?.role === 'Auditor' || currentUser?.role_keys?.includes('auditor') === true;
+  const isAuditorUser = isAuditor(currentUser);
 
   // Selected asset IDs (supports multiple selections, e.g. 1 Laptop IT + 1 Mobil GA)
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(() => {
@@ -194,7 +195,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor || hasAnyConflict || isCheckingAvailability || availabilityError) return;
+    if (isAuditorUser || hasAnyConflict || isCheckingAvailability || availabilityError) return;
     if (selectedAssetIds.length === 0 || !purpose.trim()) return;
     const startDateIso = toIsoDateTime(startDate);
     const dueDateIso = toIsoDateTime(dueDate);
@@ -482,7 +483,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isAuditor || hasAnyConflict || isCheckingAvailability || Boolean(availabilityError) || selectedAssetIds.length === 0}
+              disabled={isAuditorUser || hasAnyConflict || isCheckingAvailability || Boolean(availabilityError) || selectedAssetIds.length === 0}
               className={`px-5 py-2 rounded-xl font-bold transition-all ${
                 hasAnyConflict || selectedAssetIds.length === 0
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
