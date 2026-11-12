@@ -699,11 +699,13 @@ export class GabahDomainService {
     // Different assets (e.g. laptop IT + vehicle GA) can be borrowed concurrently by the same user with zero conflict.
     const conflicting = db.loans.find(l => {
       if (l.asset_id !== asset.id) return false;
-      if (!['approved', 'borrowed'].includes(l.status)) return false;
+      if (!['approved', 'borrowed', 'overdue'].includes(l.status)) return false;
+      // An overdue loan means the asset has not physically returned. It blocks
+      // every new reservation until the return transaction is completed.
+      if (l.status === 'overdue') return true;
 
       const existingStart = new Date(l.start_date).getTime();
       const existingDue = new Date(l.due_date).getTime();
-
       return start < existingDue && due > existingStart;
     });
 
@@ -775,11 +777,11 @@ export class GabahDomainService {
     const conflicting = db.loans.find(l => {
       if (l.id === loan.id) return false;
       if (l.asset_id !== loan.asset_id) return false;
-      if (!['approved', 'borrowed'].includes(l.status)) return false;
+      if (!['approved', 'borrowed', 'overdue'].includes(l.status)) return false;
+      if (l.status === 'overdue') return true;
 
       const existingStart = new Date(l.start_date).getTime();
       const existingDue = new Date(l.due_date).getTime();
-
       return start < existingDue && due > existingStart;
     });
 
@@ -928,11 +930,12 @@ export class GabahDomainService {
       throw Object.assign(new Error('Akses ditolak: Hanya peminjam, penanggung jawab divisi pemilik aset, atau Admin GABAH yang berwenang mengembalikan pinjaman ini.'), { statusCode: 403 });
     }
 
-    // State transition: only a physically handed-over (borrowed) unit can be
-    // returned. Blocks return of approved/pending loans and double return.
-    if (loan.status !== 'borrowed') {
+    // Return is valid for a handed-over loan whether it is still on time or
+    // already marked overdue. Pending/approved loans and double returns remain
+    // invalid transitions.
+    if (!['borrowed', 'overdue'].includes(loan.status)) {
       this.recordAudit('LOAN_RETURN_INVALID_STATE', 'Loans', `Ditolak: pengembalian pinjaman ${loan.loan_number} dari status "${loan.status}" bukan transisi valid`, actor, loan.id);
-      throw Object.assign(new Error(`Pengembalian hanya dapat dilakukan pada pinjaman berstatus "borrowed" (status saat ini: "${loan.status}"). Pinjaman yang sudah dikembalikan tidak dapat dikembalikan ulang.`), { statusCode: 409 });
+      throw Object.assign(new Error(`Pengembalian hanya dapat dilakukan pada pinjaman berstatus "borrowed" atau "overdue" (status saat ini: "${loan.status}"). Pinjaman yang sudah dikembalikan tidak dapat dikembalikan ulang.`), { statusCode: 409 });
     }
 
     const allowedConditions = ['good', 'fair', 'poor', 'broken', 'excellent', 'damaged'] as const;
