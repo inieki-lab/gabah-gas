@@ -28,6 +28,7 @@ import {
   Laptop
 } from 'lucide-react';
 import { MeetingRoom, RoomReservation, UserProfile } from '../../types';
+import { formatLocalDate } from '../../utils/datetime';
 import { CreateRoomReservationModal } from '../modals/CreateRoomReservationModal';
 import { RoomReservationSlipModal } from '../modals/RoomReservationSlipModal';
 import { MeetingMasterSettingsModal } from '../modals/MeetingMasterSettingsModal';
@@ -68,7 +69,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<SubTab>(initialCategoryFilter ? 'reservations' : 'calendar');
   const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    formatLocalDate()
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<string | undefined>();
