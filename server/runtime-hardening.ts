@@ -4,7 +4,7 @@ import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
 import { isSuperadminActor, isAuditorActor, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { GabahDomainService, getTicketOwnerDivision } from './services';
-import { extractClientIp } from './requestContext';
+import { extractClientIp, requestContext } from './requestContext';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
 const canReadAuditTrail = (actor: ServerUser) =>
@@ -17,6 +17,9 @@ const canReadReconciliation = (actor: ServerUser) =>
     && hasRbacPermission(String(actor.id), 'reconciliation.read'));
 
 export function actorFor(req: Request): ServerUser | null {
+  const session = (req as any).session as ServerSession | undefined;
+  const context = requestContext.getStore();
+  if (context && session?.original_admin_id) context.originalAdminId = String(session.original_admin_id);
   if ((req as any).user) return (req as any).user as ServerUser;
   const result = authenticateRequest(req);
   return result.user;
