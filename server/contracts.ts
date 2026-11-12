@@ -151,7 +151,7 @@ export const ContractDomainService = {
     const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
     const startDate = String(payload.start_date || '').trim();
     const endDate = String(payload.end_date || '').trim();
-    const validDate = (value: string) => /^\\d{4}-\\d{2}-\\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+    const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
     if (!validDate(startDate) || !validDate(endDate) || endDate < startDate) {
       throw new Error('Tanggal mulai dan berakhir kontrak tidak valid; tanggal berakhir harus sama atau setelah tanggal mulai.');
     }
