@@ -1268,16 +1268,57 @@ export class GabahDomainService {
       throw new Error('Judul / Agenda rapat wajib diisi.');
     }
 
-    if (!payload.date || !payload.start_time || !payload.end_time) {
-      throw new Error('Tanggal, jam mulai, dan jam selesai wajib diisi.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(payload.date || ''))
+      || Number.isNaN(new Date(`${payload.date}T00:00:00`).getTime())
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(payload.start_time || ''))
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(payload.end_time || ''))) {
+      throw Object.assign(new Error('Tanggal dan jam rapat harus menggunakan format tanggal valid dan HH:mm.'), { statusCode: 400 });
     }
 
     if (payload.start_time >= payload.end_time) {
       throw new Error('Jam mulai harus lebih awal dari jam selesai rapat.');
     }
 
-    if (Number(payload.attendees_count) > room.capacity) {
-      throw new Error(`Jumlah peserta (${payload.attendees_count}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`);
+    const attendeeCount = Number(payload.attendees_count);
+    if (!Number.isInteger(attendeeCount) || attendeeCount < 1) {
+      throw Object.assign(new Error('Jumlah peserta harus berupa bilangan bulat minimal 1.'), { statusCode: 400 });
+    }
+    if (attendeeCount > room.capacity) {
+      throw new Error(`Jumlah peserta (${attendeeCount}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`);
+    }
+
+    const validPriorities = ['high', 'medium', 'low'];
+    if (payload.priority !== undefined && !validPriorities.includes(String(payload.priority))) {
+      throw Object.assign(new Error('Prioritas reservasi tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.meeting_type && !(db.meetingTypes || []).some(type => type.code === payload.meeting_type)) {
+      throw Object.assign(new Error('Jenis rapat tidak ditemukan pada master.'), { statusCode: 400 });
+    }
+    if (payload.facilities_requested !== undefined && (!Array.isArray(payload.facilities_requested)
+      || payload.facilities_requested.some(name => typeof name !== 'string'
+        || !(db.meetingFacilities || []).some(facility => facility.is_active && facility.name === name)))) {
+      throw Object.assign(new Error('Daftar fasilitas rapat tidak valid atau memuat fasilitas nonaktif.'), { statusCode: 400 });
+    }
+    if (payload.consumption_requested !== undefined && typeof payload.consumption_requested !== 'boolean') {
+      throw Object.assign(new Error('Status permintaan konsumsi harus berupa boolean.'), { statusCode: 400 });
+    }
+    if (payload.documentation_requested !== undefined && typeof payload.documentation_requested !== 'boolean') {
+      throw Object.assign(new Error('Status permintaan dokumentasi harus berupa boolean.'), { statusCode: 400 });
+    }
+    if (payload.consumption_type !== undefined
+      && !['snack_box', 'lunch_box', 'coffee_tea', 'vip_buffet', 'custom'].includes(String(payload.consumption_type))) {
+      throw Object.assign(new Error('Jenis konsumsi tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.documentation_type !== undefined
+      && !['foto', 'video', 'press_release', 'notulensi', 'lengkap'].includes(String(payload.documentation_type))) {
+      throw Object.assign(new Error('Jenis dokumentasi tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.consumption_requested && payload.consumption_pax !== undefined
+      && (!Number.isInteger(Number(payload.consumption_pax)) || Number(payload.consumption_pax) < 1)) {
+      throw Object.assign(new Error('Jumlah pax konsumsi harus berupa bilangan bulat minimal 1.'), { statusCode: 400 });
+    }
+    if (payload.override_conflict !== undefined && typeof payload.override_conflict !== 'boolean') {
+      throw Object.assign(new Error('Flag override konflik harus berupa boolean.'), { statusCode: 400 });
     }
 
     // Anti-Collision Check: StartA < EndB && EndA > StartB on the same date for this room
@@ -1422,7 +1463,7 @@ export class GabahDomainService {
       organizer_department: actor.department,
       organizer_phone: actor.phone || '-',
       organizer_role: actor.role,
-      attendees_count: Number(payload.attendees_count) || 1,
+      attendees_count: attendeeCount,
       attendees_list: payload.attendees_list?.trim() || '',
       meeting_type: payload.meeting_type || 'internal',
       priority: requestedPriority,
