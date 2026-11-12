@@ -579,7 +579,7 @@ async function startServer() {
         id: `USR-${Date.now().toString().slice(-6)}`,
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        role: primaryRole,
+        role: primaryRole as ServerUser['role'],
         role_label: (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') ? 'Karyawan — Lokasi ' + requestedRole : (roleLabels[requestedRole] || roleLabels[primaryRole] || 'Pegawai Operasional'),
         division: division || 'Umum',
         department: department || 'Operasional',
@@ -847,7 +847,7 @@ async function startServer() {
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
 
       if (requestedRole !== undefined) {
-        targetUser.role = primaryRole;
+        targetUser.role = primaryRole as ServerUser['role'];
         const roleLabels: Record<string, string> = {
           'Admin GABAH': 'Admin GABAH (Super Admin)',
           'IT': 'Staff Divisi IT',
