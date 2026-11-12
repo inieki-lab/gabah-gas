@@ -1,3 +1,10 @@
+## Security — trusted client IP handling (2026-11-12)
+
+- Removed direct trust in the client-supplied `X-Forwarded-For` header for API rate limiting, login lockout keys, session IP metadata, and audit IP context.
+- The current Express application does not configure a trusted proxy chain. Client IP now resolves from the transport peer (`req.socket.remoteAddress`) only; proxy-aware handling must be added only alongside an explicitly configured and verified trusted-proxy topology.
+- Added `npm run test:trusted-client-ip` source regression checks.
+- Verification is source-level only at this stage; production proxy/NAT behavior, build, and runtime rate-limit behavior remain to be verified.
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
