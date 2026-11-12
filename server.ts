@@ -2755,7 +2755,6 @@ async function startServer() {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.create dan scope owner "${asset.owner_division}" wajib dimiliki.` });
     }
 
-    const validMaintenanceStatuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
     if (req.body.status !== undefined && req.body.status !== 'scheduled') {
       return res.status(400).json({ success: false, message: 'Jadwal baru harus dimulai dengan status scheduled.' });
     }
