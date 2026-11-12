@@ -662,6 +662,12 @@ export class GabahDomainService {
       throw new Error('Akses ditolak: Anda tidak memiliki permission lifecycle pada domain pemilik aset ini.');
     }
     assertNoBlockingAssetLoan(assetId, 'diubah status lifecycle-nya');
+    if (asset.assigned_to?.id) {
+      throw Object.assign(
+        new Error('Aset masih ditugaskan kepada pegawai. Lepaskan penugasan terlebih dahulu sebelum menjalankan aksi lifecycle.'),
+        { statusCode: 409 },
+      );
+    }
 
     switch (action) {
       case 'repair':
