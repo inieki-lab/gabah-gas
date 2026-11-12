@@ -1025,7 +1025,7 @@ export class GabahDomainService {
 
     const asset = db.assets.find(a => a.id === loan.asset_id);
     if (asset) {
-      const nonOperationalStatuses = new Set(['in_repair', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive']);
+      const nonOperationalStatuses = new Set(['maintenance', 'retired', 'in_use', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive']);
       if (!nonOperationalStatuses.has(asset.status)) {
         asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
       }
