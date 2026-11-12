@@ -4,6 +4,7 @@ import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
 import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
 import { GabahDomainService } from './services';
+import { extractClientIp } from './requestContext';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
 const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || isAuditorActor(actor);
@@ -74,7 +75,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   if (!req.path.startsWith('/api/')) return next();
 
   // General API rate limiter across all endpoints (mitigates brute-force, scraping, and enumeration)
-  const clientIp = (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
+  const clientIp = extractClientIp(req) || 'unknown';
   const rateLimit = checkApiRateLimit(clientIp);
   res.setHeader('X-RateLimit-Limit', '200');
   res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
