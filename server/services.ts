@@ -30,7 +30,7 @@ export function isLegacyScopedRole(role: string): boolean {
 interface AssetScopeSpec { type: string; value: string | null }
 
 const LOAN_UNAVAILABLE_ASSET_STATUSES = new Set([
-  'assigned', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
+  'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
   'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive',
 ]);
 const ASSET_MUTATION_BLOCKING_LOAN_STATUSES = new Set([
@@ -58,6 +58,7 @@ function assertNoBlockingAssetLoan(assetId: string, action: string, excludeLoanI
 /** Shared eligibility rule for both availability preview and authoritative mutations. */
 export function isAssetEligibleForLoan(asset: Pick<ServerAsset, 'is_loanable' | 'status' | 'condition'>): boolean {
   return Boolean(asset.is_loanable)
+    && asset.status !== 'assigned'
     && !LOAN_UNAVAILABLE_ASSET_STATUSES.has(asset.status)
     && !['broken', 'damaged'].includes(String(asset.condition));
 }
@@ -932,15 +933,14 @@ export class GabahDomainService {
       throw Object.assign(new Error(`Serah terima hanya dapat dilakukan pada pinjaman berstatus "approved" (status saat ini: "${loan.status}"). Pinjaman yang sudah diserahkan tidak dapat diserahkan ulang.`), { statusCode: 409 });
     }
 
-    loan.status = 'borrowed';
-    loan.handover_by_id = actor.id;
-    loan.handover_at = new Date().toISOString();
-    loan.handover_notes = handoverNotes || 'Unit diserahkan dalam kondisi baik.';
-    loan.updated_at = new Date().toISOString();
-
     const asset = db.assets.find(a => a.id === loan.asset_id);
     if (!asset || !isAssetEligibleForLoan(asset)) {
       throw Object.assign(new Error('Aset tidak lagi memenuhi syarat serah terima (misalnya sudah rusak, nonaktif, atau masuk proses disposal).'), { statusCode: 409 });
+    }
+    const loanStart = new Date(loan.start_date).getTime();
+    const loanDue = new Date(loan.due_date).getTime();
+    if (!Number.isFinite(loanStart) || !Number.isFinite(loanDue) || loanStart >= loanDue) {
+      throw Object.assign(new Error('Rentang tanggal pinjaman tidak valid; serah terima ditolak.'), { statusCode: 409 });
     }
     const physicalConflict = db.loans.find(other => {
       if (other.id === loan.id || other.asset_id !== loan.asset_id) return false;
@@ -949,14 +949,19 @@ export class GabahDomainService {
       if (other.status === 'overdue' || (other.status === 'borrowed' && Number.isFinite(otherDue) && otherDue < Date.now())) return true;
       const otherStart = new Date(other.start_date).getTime();
       return Number.isFinite(otherStart) && Number.isFinite(otherDue)
-        && start < otherDue && due > otherStart;
+        && loanStart < otherDue && loanDue > otherStart;
     });
     if (physicalConflict) {
       throw Object.assign(new Error('Serah terima ditolak karena aset masih dipinjam atau sudah memiliki reservasi aktif yang bertabrakan.'), { statusCode: 409 });
     }
-    if (asset) {
-      asset.status = 'assigned';
-    }
+
+    // Mutate only after every authorization, asset-state, and collision check passes.
+    loan.status = 'borrowed';
+    loan.handover_by_id = actor.id;
+    loan.handover_at = new Date().toISOString();
+    loan.handover_notes = handoverNotes || 'Unit diserahkan dalam kondisi baik.';
+    loan.updated_at = new Date().toISOString();
+    asset.status = 'assigned';
 
     this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id);
 
