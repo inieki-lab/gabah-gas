@@ -1054,7 +1054,7 @@ async function startServer() {
   // Secure Authentication Endpoints
   app.post('/api/auth/login', (req, res) => {
     try {
-      const ip = (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
+      const ip = extractClientIp(req) || 'unknown';
       const lockCheck = isLoginLocked(ip);
       if (lockCheck.isLocked) {
         return res.status(429).json({
