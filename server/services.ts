@@ -22,7 +22,11 @@ interface AssetScopeSpec { type: string; value: string | null }
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
-  return Boolean(legacyRole && actor.role === legacyRole);
+  if (legacyRole && actor.role === legacyRole) return true;
+  // File-store compatibility only. Production PostgreSQL uses the permission
+  // assignment above and never treats role_label as an authorization source.
+  const roleLabel = String((actor as any).role_label || '').toLowerCase();
+  return legacyRole === 'Sekretaris Direksi' && roleLabel.includes('sekretariat direksi');
 }
 
 /**
