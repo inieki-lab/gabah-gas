@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { hashPassword, verifyPassword, generateToken } from './crypto';
 import { getSecurityEpoch } from './persistence';
+import { extractClientIp } from './requestContext';
 
 export { hashPassword, verifyPassword, generateToken };
 
@@ -143,7 +144,7 @@ export function createSession(
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_DURATION_MS);
 
-  const ip = req ? (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim() : '127.0.0.1';
+  const ip = req ? (extractClientIp(req) || '127.0.0.1') : '127.0.0.1';
   const userAgent = req ? (req.headers['user-agent'] || 'Unknown') : 'Unknown';
 
   const session: ServerSession = {
