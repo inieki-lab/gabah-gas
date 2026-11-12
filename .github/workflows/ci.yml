@@ -53,6 +53,9 @@ jobs:
       - name: Production dependency vulnerability audit
         run: npm audit --omit=dev --audit-level=high
 
+      - name: API persistence response contract
+        run: npm run test:persistence-response
+
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
