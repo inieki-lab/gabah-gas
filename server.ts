@@ -2418,10 +2418,12 @@ async function startServer() {
       );
       return res.json({ success: true, data });
     }
-    const canReadTicketOwner = (owner: string) =>
-      isPostgresPersistenceActive()
-        ? hasRbacScope(String(actor.id), 'division', owner, 'tickets')
-        : actor.role === owner;
+    const canReadTicketOwner = (owner: string) => {
+      const ownerScope = getTicketOwnerDivision(owner);
+      return isPostgresPersistenceActive()
+        ? hasRbacScope(String(actor.id), 'division', ownerScope, 'tickets')
+        : actor.role === ownerScope;
+    };
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
       || ticket.assigned_agent_id === actor.id
