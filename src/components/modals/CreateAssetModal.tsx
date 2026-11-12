@@ -18,6 +18,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { Asset, AssetCategoryType, OwnerDivision, UserProfile } from '../../types';
+import { hasPermission, isSuperAdmin as isSuperAdminAccess } from '../../utils/access';
 import { gabahApi } from '../../services/gabahApi';
 
 interface CreateAssetModalProps {
@@ -205,9 +206,14 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
     }).catch(() => undefined);
   }, [isOpen, currentUser]);
 
-  // Determine user role and authorized divisions
+  // Effective permission data is authoritative in PostgreSQL mode. Legacy
+  // role labels are retained only for local file-store compatibility.
   const userRole = resolvedUser?.role || 'Karyawan';
-  const isSuperadmin = userRole === 'Admin GABAH' || userRole === 'Superadmin' || userRole === 'Management';
+  const isDynamicRbac = Array.isArray(resolvedUser?.permission_keys);
+  const isSuperadmin = isSuperAdminAccess(resolvedUser);
+  const canCreateAsset = isDynamicRbac
+    ? hasPermission(resolvedUser, 'assets.create')
+    : ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(userRole);
 
   // T2B-3: master kategori aset tetap dari server (`db.categories`, hasil CRUD
   // Admin GABAH) — sumber kebenaran tunggal untuk pilihan kategori di form ini.
@@ -242,17 +248,31 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
 
   // Allowed fixed asset main categories according to corporate RBAC
   const allowedMainCategories = useMemo<FixedAssetCategoryDef[]>(() => {
-    let roleGroups = FIXED_ASSET_TAXONOMY;
-    if (!isSuperadmin) {
-      if (userRole === 'IT') {
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'IT-H' || cat.type === 'IT-S');
-      } else if (userRole === 'GA') {
-        // GA owns INV-F, INV-P, KDR, BGN, TNH, LNY (All IT items are owned by IT; GA has read-only)
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => ['INV-F', 'INV-P', 'KDR', 'BGN', 'TNH', 'LNY'].includes(cat.type));
-      } else if (userRole === 'Supply Chain') {
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'KDR');
-      } else if (userRole === 'PIBC') {
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'BGN');
+    let roleGroups: FixedAssetCategoryDef[] = [];
+    if (isDynamicRbac) {
+      if (!canCreateAsset) return [];
+      if (isSuperadmin) return FIXED_ASSET_TAXONOMY;
+      const roleKeys = resolvedUser?.role_keys || [];
+      const domainGroups: FixedAssetCategoryDef[] = [];
+      if (roleKeys.includes('it')) domainGroups.push(...FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'IT-H' || cat.type === 'IT-S'));
+      if (roleKeys.includes('ga')) domainGroups.push(...FIXED_ASSET_TAXONOMY.filter(cat => ['INV-F', 'INV-P', 'KDR', 'BGN', 'TNH', 'LNY'].includes(cat.type)));
+      // Custom roles can carry assets.create with owner scopes not encoded as
+      // application roles. Show the catalog; the backend enforces each owner's
+      // division scope before accepting a selected category.
+      roleGroups = domainGroups.length > 0 ? domainGroups : FIXED_ASSET_TAXONOMY;
+    } else {
+      if (!canCreateAsset) return [];
+      roleGroups = FIXED_ASSET_TAXONOMY;
+      if (!isSuperadmin) {
+        if (userRole === 'IT') {
+          roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'IT-H' || cat.type === 'IT-S');
+        } else if (userRole === 'GA') {
+          roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => ['INV-F', 'INV-P', 'KDR', 'BGN', 'TNH', 'LNY'].includes(cat.type));
+        } else if (userRole === 'Supply Chain') {
+          roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'KDR');
+        } else if (userRole === 'PIBC') {
+          roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'BGN');
+        }
       }
     }
 
