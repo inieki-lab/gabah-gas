@@ -123,6 +123,20 @@ const checks = [
   ['Custom Dynamic RBAC ticket roles are not blocked by legacy IT/GA role labels in the UI', /if \(Array\.isArray\(user\.permission_keys\)\)[\s\S]*if \(ticket\.assigned_unit_id\)[\s\S]*return true;/.test(clientService)],
   ['Ticket delegation UI loads a filtered assignee list and calls the assignment API', /getTicketAssignees\(id: string\)/.test(read('src/services/gabahApi.ts')) && /assignTicket\(id: string, assignedAgentId: string\)/.test(read('src/services/gabahApi.ts')) && /onLoadTicketAssignees/.test(ticketUi) && /onAssignTicket/.test(ticketUi) && /gabahApi\.getTicketAssignees/.test(read('src/App.tsx'))],
   ['Assignee discovery exposes only active employees with matching unit/division scope and ticket update permission', /app\.get\('\/api\/tickets\/:id\/assignees'[\s\S]*user\.is_active !== false[\s\S]*tickets\.update[\s\S]*hasRbacScope/.test(server)],
+  ['Generic asset PATCH cannot bypass dedicated location and lifecycle mutation workflows',
+    /controlledFields: Array<keyof typeof asset> = \['location', 'asset_location_id', 'condition', 'status'\]/.test(server)
+      && /const allowed = \['name', 'brand', 'model', 'serial_number', 'specifications', 'notes', 'is_loanable', 'corporate_asset_number'\]/.test(server)],
+  ['Asset assignment, movement, and lifecycle changes are blocked while a loan request or physical loan is active',
+    /function assertNoBlockingAssetLoan/.test(services)
+      && /assertNoBlockingAssetLoan\(assetId, 'diubah penugasannya'\)/.test(services)
+      && /assertNoBlockingAssetLoan\(assetId, 'dipindahkan lokasinya'\)/.test(services)
+      && /assertNoBlockingAssetLoan\(assetId, 'diubah status lifecycle-nya'\)/.test(services)],
+  ['Loan handover revalidates current asset eligibility and competing confirmed loans before mutating state',
+    /static handoverLoan[\s\S]*isAssetEligibleForLoan\(asset\)[\s\S]*physicalConflict[\s\S]*loan\.status = 'borrowed'/.test(services)],
+  ['Loanable pool excludes assets already assigned to a person and legacy maintenance/retired states',
+    /asset\.status !== 'assigned'/.test(services)
+      && /'maintenance', 'retired'/.test(services)],
+
 
 
 ];
