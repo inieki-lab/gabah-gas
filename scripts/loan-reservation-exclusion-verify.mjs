@@ -14,11 +14,12 @@ const checks = [
   ['migration 045 adds an atomic PostgreSQL EXCLUDE constraint', /EXCLUDE USING gist/i.test(migration)],
   ['asset identity and finite timestamp range are the collision keys', /asset_id WITH =/i.test(migration) && /tstzrange\(start_date, due_date, '\[\)'\) WITH &&/i.test(migration)],
   ['only approved and borrowed schedules use the EXCLUDE constraint', /WHERE \(status IN \('approved', 'borrowed'\)\)/i.test(migration)],
-  ['overdue status is recorded without deleting or rewriting future reservations', /NEW\.status <> 'overdue'/i.test(migration) && /future reservation remains visible/i.test(migration)],
+  ['overdue status is recorded without deleting or rewriting future reservations', /NEW\.status <> 'overdue'/i.test(migration) && /that reservation remains visible/i.test(migration)],
   ['overdue checks serialize on the parent asset row', /PERFORM 1 FROM assets WHERE id = NEW\.asset_id FOR UPDATE/i.test(migration)],
   ['new requests are blocked by overdue or past-due borrowed loans', /status = 'overdue'[\s\S]*OR \(status = 'borrowed' AND due_date < NOW\(\)\)/i.test(migration)],
   ['legacy approved/borrowed conflicts are preflighted without rewriting loans', /overlapping approved\/borrowed asset loans exist/i.test(migration) && !/DELETE FROM loans|UPDATE loans/i.test(migration)],
   ['constraint creation is idempotent', /IF NOT EXISTS \([\s\S]*pg_constraint[\s\S]*loans_no_double_booking/i.test(migration)],
+  ['only one overdue physical loan is allowed per asset', /CREATE UNIQUE INDEX IF NOT EXISTS loans_one_overdue_per_asset[\s\S]*WHERE status = 'overdue'/i.test(migration)],
   ['the race-prone trigger is retained with serialized checks', /CREATE TRIGGER trg_check_loan_schedule_collision/i.test(migration)],
   ['migration runner discovers and orders numbered SQL migrations', /readdirSync\(migrationsDir\)[\s\S]*filter\(f => f\.endsWith\('\.sql'\)\)\.sort\(\)/i.test(persistence)],
 ];
