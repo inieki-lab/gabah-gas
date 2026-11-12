@@ -2328,6 +2328,33 @@ async function startServer() {
       });
     }
 
+    // Location, condition, and lifecycle status must use their dedicated
+    // mutation APIs so movement history, lifecycle permissions, and loan locks
+    // are enforced. Generic metadata PATCH must not bypass those workflows.
+    const controlledFields: Array<keyof typeof asset> = ['location', 'asset_location_id', 'condition', 'status'];
+    const controlledChange = controlledFields.find(key =>
+      req.body[key] !== undefined && String(req.body[key] ?? '') !== String((asset as any)[key] ?? '')
+    );
+    if (controlledChange) {
+      return res.status(400).json({
+        success: false,
+        message: `Field "${String(controlledChange)}" harus diubah melalui alur mutasi khusus (move/lifecycle/assignment), bukan PATCH metadata aset.`,
+      });
+    }
+
+    const hasActiveLoan = db.loans.some(loan =>
+      loan.asset_id === asset.id && ['pending_approval', 'pending', 'approved', 'borrowed', 'overdue'].includes(loan.status)
+    );
+    if (hasActiveLoan && (
+      (req.body.is_loanable !== undefined && Boolean(req.body.is_loanable) !== Boolean(asset.is_loanable))
+      || (req.body.managing_unit_id !== undefined && String(req.body.managing_unit_id ?? '') !== String(asset.managing_unit_id ?? ''))
+    )) {
+      return res.status(409).json({
+        success: false,
+        message: 'Atribut kelayakan pinjam atau unit pengelola tidak dapat diubah selama aset memiliki permohonan/peminjaman aktif.',
+      });
+    }
+
     // Check duplicate serial number
     if (req.body.serial_number && typeof req.body.serial_number === 'string' && req.body.serial_number.trim()) {
       const sn = req.body.serial_number.trim();
@@ -2357,21 +2384,9 @@ async function startServer() {
       asset.managing_unit_id = uid;
     }
 
-    // T2B-2: lokasi fisik aset (relasi ke asset_locations.id) — divalidasi
-    // terhadap master; lokasi nonaktif hanya dipertahankan bila sama dengan
-    // nilai yang sudah melekat (data historis), tidak dapat dipilih sebagai
-    // perubahan baru. owner_division, managing_unit_id, asset_number, dan
-    // teks `location` legacy TIDAK berubah oleh field ini.
-    if (req.body.asset_location_id !== undefined) {
-      try {
-        asset.asset_location_id = validateAssetLocation(req.body.asset_location_id, undefined, asset.asset_location_id);
-      } catch (e: any) {
-        return res.status(400).json({ success: false, message: e.message });
-      }
-    }
-
-    // Update mutable fields (not asset_number or owner_division)
-    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
+    // Update metadata only. Physical location and lifecycle fields are
+    // deliberately excluded; they have dedicated, audited mutation endpoints.
+    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'notes', 'is_loanable', 'corporate_asset_number'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         (asset as any)[key] = req.body[key];
