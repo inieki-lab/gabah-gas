@@ -2363,7 +2363,8 @@ async function startServer() {
       const asset = db.assets.find(item => item.id === assetId);
       if (!asset || !isAssetEligibleForLoan(asset)) return true;
       return db.loans.some(loan => {
-        if (loan.asset_id !== assetId || !['approved', 'borrowed'].includes(loan.status)) return false;
+        if (loan.asset_id !== assetId || !['approved', 'borrowed', 'overdue'].includes(loan.status)) return false;
+        if (loan.status === 'overdue') return true;
         const existingStart = new Date(loan.start_date).getTime();
         const existingDue = new Date(loan.due_date).getTime();
         return Number.isFinite(existingStart) && Number.isFinite(existingDue)
@@ -3137,7 +3138,7 @@ async function startServer() {
           || canReadOwnerScope(ticket.category, 'tickets')
         );
 
-    const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;
+    const activeLoans = visibleLoans.filter(l => l.status === 'borrowed' || l.status === 'overdue').length;
     const pendingLoans = visibleLoans.filter(l => l.status === 'pending_approval').length;
     const openTickets = visibleTickets.filter(t => ['open', 'assigned', 'in_progress'].includes(t.status)).length;
 
