@@ -4,6 +4,7 @@ import { db, ServerUser, ServerSession } from './db';
 import { hashPassword, verifyPassword, generateToken, needsPasswordRehash } from './crypto';
 import { getSecurityEpoch } from './persistence';
 import { extractClientIp } from './requestContext';
+import { isSuperadminActor } from './rbac-policy';
 
 export { hashPassword, verifyPassword, generateToken, needsPasswordRehash };
 
@@ -306,7 +307,7 @@ export function authenticateRequest(req: Request): {
       if (activeUser) {
         // Anti-spoofing verification:
         // If client sends x-user-id that doesn't match the authenticated session and is not superadmin
-        if (headerUserId && headerUserId !== activeUser.id && activeUser.role !== 'Admin GABAH') {
+        if (headerUserId && headerUserId !== activeUser.id && !isSuperadminActor(activeUser)) {
           return {
             user: null,
             spoofAttempt: true,
