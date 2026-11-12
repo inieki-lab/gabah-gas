@@ -14,7 +14,7 @@ import {
   Check
 } from 'lucide-react';
 import { Asset, Loan, UserProfile } from '../../types';
-import { GabahService, formatDateTime } from '../../services/gabahService';
+import { gabahApi } from '../../services/gabahApi';
 
 interface CreateLoanModalProps {
   isOpen: boolean;
@@ -98,26 +98,59 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     });
   };
 
-  // Real-time Schedule Conflict Check for EACH selected asset
-  // Note: An asset collision only applies to the EXACT SAME asset_id.
-  // Borrowing Laptop IT + Mobil GA at the exact same time is 100% allowed!
-  const assetConflictMap = useMemo(() => {
-    const map: Record<string, { hasConflict: boolean; message?: string; conflictingLoan?: Loan }> = {};
-    if (!startDate || !dueDate) return map;
+  // Ask the server to check ALL reservations without disclosing borrower details.
+  const [serverConflicts, setServerConflicts] = useState<Set<string>>(new Set());
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (!isOpen || selectedAssetIds.length === 0 || !startDate || !dueDate) {
+      setServerConflicts(new Set());
+      setIsCheckingAvailability(false);
+      setAvailabilityError(null);
+      return;
+    }
+    let cancelled = false;
+    setIsCheckingAvailability(true);
+    setAvailabilityError(null);
+    gabahApi.checkLoanAvailability({
+      asset_ids: selectedAssetIds,
+      start_date: startDate,
+      due_date: dueDate,
+    }).then(result => {
+      if (!cancelled) setServerConflicts(new Set(result.conflicting_asset_ids || []));
+    }).catch(error => {
+      if (!cancelled) {
+        setServerConflicts(new Set(selectedAssetIds));
+        setAvailabilityError(error?.message || 'Ketersediaan aset belum dapat diverifikasi.');
+      }
+    }).finally(() => {
+      if (!cancelled) setIsCheckingAvailability(false);
+    });
+    return () => { cancelled = true; };
+  }, [isOpen, selectedAssetIds, startDate, dueDate]);
+
+  const assetConflictMap = useMemo(() => {
+    const map: Record<string, { hasConflict: boolean; message?: string }> = {};
     selectedAssetIds.forEach(id => {
-      map[id] = GabahService.checkLoanConflict(id, startDate, dueDate, existingLoans || []);
+      const hasConflict = serverConflicts.has(id);
+      map[id] = {
+        hasConflict,
+        message: hasConflict ? 'Tidak tersedia pada rentang tanggal yang dipilih.' : undefined,
+      };
     });
     return map;
-  }, [selectedAssetIds, startDate, dueDate, existingLoans]);
+  }, [selectedAssetIds, serverConflicts]);
 
-  const hasAnyConflict = useMemo(() => {
-    return Object.values(assetConflictMap).some((res: { hasConflict: boolean }) => res.hasConflict);
-  }, [assetConflictMap]);
+  const hasAnyConflict = useMemo(
+    () => Object.values(assetConflictMap).some(result => result.hasConflict),
+    [assetConflictMap],
+  );
 
-  const conflictedAssets = useMemo(() => {
-    return availablePool.filter(a => selectedAssetIds.includes(a.id) && assetConflictMap[a.id]?.hasConflict);
-  }, [availablePool, selectedAssetIds, assetConflictMap]);
+  const conflictedAssets = useMemo(
+    () => availablePool.filter(asset => selectedAssetIds.includes(asset.id) && assetConflictMap[asset.id]?.hasConflict),
+    [availablePool, selectedAssetIds, assetConflictMap],
+  );
 
   // Assets filtered by division tab
   const displayedPool = useMemo(() => {
@@ -136,7 +169,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor || hasAnyConflict) return;
+    if (isAuditor || hasAnyConflict || isCheckingAvailability || availabilityError) return;
     if (selectedAssetIds.length === 0 || !purpose.trim()) return;
 
     onRequestLoan({
@@ -363,7 +396,15 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
           </div>
 
           {/* SCHEDULE CONFLICT REAL-TIME STATUS BANNER */}
-          {hasAnyConflict ? (
+          {availabilityError ? (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+              Ketersediaan belum dapat diverifikasi. {availabilityError} Silakan coba lagi sebelum mengajukan.
+            </div>
+          ) : isCheckingAvailability ? (
+            <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700">
+              Memeriksa ketersediaan aset ke server...
+            </div>
+          ) : hasAnyConflict ? (
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1 animate-in fade-in">
               <div className="flex items-center gap-2 font-bold text-rose-700">
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -413,7 +454,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isAuditor || hasAnyConflict || selectedAssetIds.length === 0}
+              disabled={isAuditor || hasAnyConflict || isCheckingAvailability || Boolean(availabilityError) || selectedAssetIds.length === 0}
               className={`px-5 py-2 rounded-xl font-bold transition-all ${
                 hasAnyConflict || selectedAssetIds.length === 0
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
