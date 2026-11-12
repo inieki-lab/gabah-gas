@@ -2639,6 +2639,9 @@ async function startServer() {
       const actor = getActor(req);
       const ticket = db.tickets.find(item => item.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+      if (['resolved', 'closed'].includes(ticket.status)) {
+        return res.status(409).json({ success: false, message: 'Tiket sudah selesai. Buka kembali tiket sebelum mengubah penugasannya.' });
+      }
 
       const ticketScopeAllowed = ticket.assigned_unit_id
         ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
@@ -2724,11 +2727,14 @@ async function startServer() {
       // Object-level authorization already enforced by middleware for scoped
       // roles; Admin GABAH handles everything.
       ticket.status = nextStatus as any;
-      if (resolutionNotes) ticket.resolution_notes = resolutionNotes;
-      if (nextStatus === 'resolved' || nextStatus === 'closed') {
-        ticket.resolved_at = new Date().toISOString();
+      if (resolutionNotes !== undefined) {
+        if (typeof resolutionNotes !== 'string') return res.status(400).json({ success: false, message: 'Catatan penyelesaian harus berupa teks.' });
+        ticket.resolution_notes = resolutionNotes.trim();
       }
-      if (nextStatus !== 'closed') {
+      if (nextStatus === 'resolved' || nextStatus === 'closed') {
+        ticket.resolved_at = ticket.resolved_at || new Date().toISOString();
+      } else {
+        // Reopened/in-progress work is no longer in a resolved state.
         ticket.resolved_at = undefined as any;
       }
       ticket.updated_at = new Date().toISOString();
