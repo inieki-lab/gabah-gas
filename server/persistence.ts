@@ -847,7 +847,8 @@ export function persistDataStore(): Promise<void> {
     }
     try {
       await persistPostgresState();
-      await hydrateAuditLogsFromPostgres();
+      // New audit records are inserted append-only in the same transaction;
+      // no extra read is needed on every request after the startup hydration.
       saveStateToFile(createPayload());
       markPersistenceCommitted();
     } catch (error: any) {
