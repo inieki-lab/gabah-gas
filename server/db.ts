@@ -1,5 +1,6 @@
 import { CANONICAL_TAXONOMY, normalizeCategoryMaster } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
+import { formatJakartaDate } from './time';
 
 export interface ServerUser {
   id: string;
@@ -1652,8 +1653,8 @@ export function seedInitialData() {
   ];
 
   // Seed Authoritative Room Reservations
-  const todayStr = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const todayStr = formatJakartaDate();
+  const tomorrow = formatJakartaDate(new Date(Date.now() + 86400000));
 
   db.roomReservations = [
     {
