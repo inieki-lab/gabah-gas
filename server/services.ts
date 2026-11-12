@@ -654,7 +654,7 @@ export class GabahDomainService {
   /**
    * Asset Lifecycle Mutation (Repair, Damaged, Cannibalize, Disposal, Auction)
    */
-  static mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser): ServerAsset {
+  static mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction' | 'restore', notes: string, actor: ServerUser): ServerAsset {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -665,6 +665,9 @@ export class GabahDomainService {
 
     switch (action) {
       case 'repair':
+        if (['disposed', 'auctioned', 'cannibalized', 'lost', 'inactive'].includes(asset.status)) {
+          throw Object.assign(new Error(`Aset berstatus ${asset.status} tidak dapat masuk proses perbaikan.`), { statusCode: 409 });
+        }
         asset.status = 'in_repair';
         break;
       case 'damaged':
@@ -680,12 +683,25 @@ export class GabahDomainService {
         break;
       case 'approve_disposal':
         if (!isSuperadminActor(actor)) {
-          throw new Error('Hanya Admin GABAH yang berwenang menyetujui penghapusan aset.');
+          throw Object.assign(new Error('Hanya Admin GABAH yang berwenang menyetujui penghapusan aset.'), { statusCode: 403 });
+        }
+        if (asset.status !== 'pending_disposal') {
+          throw Object.assign(new Error('Penghapusan hanya dapat disetujui setelah usulan disposal.'), { statusCode: 409 });
         }
         asset.status = 'disposed';
         break;
       case 'auction':
+        if (!['pending_disposal', 'damaged', 'in_repair'].includes(asset.status)) {
+          throw Object.assign(new Error('Lelang hanya dapat diajukan untuk aset yang rusak, diperbaiki, atau sudah diusulkan disposal.'), { statusCode: 409 });
+        }
         asset.status = 'pending_auction';
+        break;
+      case 'restore':
+        if (!['in_repair', 'damaged', 'maintenance'].includes(asset.status)) {
+          throw Object.assign(new Error('Pemulihan hanya dapat dilakukan dari status perbaikan atau rusak.'), { statusCode: 409 });
+        }
+        asset.status = 'available';
+        asset.condition = 'good';
         break;
     }
 
