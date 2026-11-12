@@ -27,6 +27,7 @@ import {
   extractToken,
   hashPassword,
   verifyPassword,
+  needsPasswordRehash,
   isLoginLocked,
   recordFailedLogin,
   clearFailedLogins,
@@ -1281,6 +1282,12 @@ async function startServer() {
 
       if (user.password_hash && user.password_salt && verifyPassword(password, user.password_hash, user.password_salt)) {
         isValidPassword = true;
+        if (needsPasswordRehash(user.password_hash)) {
+          const upgradedHash = hashPassword(password);
+          user.password_hash = upgradedHash.hash;
+          user.password_salt = upgradedHash.salt;
+          await persistDataStore();
+        }
       } else if (user.temp_password && user.temp_password === password) {
         // Legacy field only; hashed + consumed immediately and never returned.
         const { hash, salt } = hashPassword(password);
