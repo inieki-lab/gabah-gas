@@ -1,4 +1,5 @@
 import { isExactIdentityNameMatch } from '../utils/identityMatching';
+import { formatJakartaDate } from '../utils/datetime';
 
 import { Asset, AssetStatus, AssetCondition, Loan, Ticket, UserProfile, UserRole, RoomReservation, MeetingFacilityItem } from '../types';
 
@@ -171,7 +172,7 @@ export function parseCsvText(text: string): string[][] {
 
 export function exportAssetsToCsv(assets: Asset[]) {
   downloadCsv(
-    `gabah_assets_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_assets_${formatJakartaDate()}.csv`,
     ['Nomor Aset', 'Nomor Accurate', 'Nama Aset', 'Divisi Pemilik', 'Kategori', 'Kondisi', 'Status', 'Lokasi', 'Penanggung Jawab', 'Harga Beli'],
     assets.map(a => [
       a.asset_number,
@@ -190,7 +191,7 @@ export function exportAssetsToCsv(assets: Asset[]) {
 
 export function exportLoansToCsv(loans: Loan[]) {
   downloadCsv(
-    `gabah_loans_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_loans_${formatJakartaDate()}.csv`,
     ['Nomor Peminjaman', 'Nomor Aset', 'Nama Aset', 'Peminjam', 'Divisi/Dept', 'Mulai', 'Batas Waktu', 'Status'],
     loans.map(l => [
       l.loan_number,
@@ -207,7 +208,7 @@ export function exportLoansToCsv(loans: Loan[]) {
 
 export function exportTicketsToCsv(tickets: Ticket[]) {
   downloadCsv(
-    `gabah_tickets_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_tickets_${formatJakartaDate()}.csv`,
     ['Nomor Tiket', 'Judul', 'Kategori (Divisi)', 'Prioritas', 'Status', 'Pelapor', 'Departemen', 'Target SLA (Jam)'],
     tickets.map(t => [
       t.ticket_number,
@@ -224,7 +225,7 @@ export function exportTicketsToCsv(tickets: Ticket[]) {
 
 export function exportMaintenanceToCsv(schedules: any[]) {
   downloadCsv(
-    `gabah_maintenance_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_maintenance_${formatJakartaDate()}.csv`,
     ['Kode Jadwal', 'Aset', 'Nomor Aset', 'Divisi', 'Frekuensi', 'Tgl Pelaksanaan', 'Status', 'Teknisi / Rekanan', 'Estimasi Biaya'],
     schedules.map(s => [
       s.schedule_code,
@@ -246,7 +247,7 @@ export function exportMaintenanceToCsv(schedules: any[]) {
  */
 export function exportUsersToCsv(users: any[]) {
   downloadCsv(
-    `gabah_pegawai_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_pegawai_${formatJakartaDate()}.csv`,
     ['Nama', 'Email', 'Peran (Role)', 'Divisi', 'Departemen', 'Telepon', 'Status'],
     users.map(u => [
       u.name,
@@ -448,7 +449,7 @@ export function exportDivisionSummaryToCsv(assets: Asset[]) {
     rows.push([div, list.length, totalValue, accDep, nbv]);
   }
   downloadCsv(
-    `gabah_rekap_divisi_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_rekap_divisi_${formatJakartaDate()}.csv`,
     ['Divisi', 'Jumlah Aset', 'Nilai Perolehan (Rp)', 'Akumulasi Depresiasi (Rp)', 'Nilai Buku Bersih (Rp)'],
     rows
   );
