@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+
+const getLocalDateString = (date = new Date()): string => {
+  const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localTime.toISOString().slice(0, 10);
+};
 import { 
   Asset, 
   Loan, 
@@ -454,7 +459,7 @@ export default function App() {
         borrower_name: ast.assigned_to?.name || currentUser.name,
         borrower_department: ast.assigned_to?.department || currentUser.department,
         borrower_phone: '021-5000-888',
-        start_date: ast.purchase_date || formatLocalDate(),
+        start_date: ast.purchase_date || getLocalDateString(),
         due_date: ast.warranty_until || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
         purpose: `Penyerahan & Inventarisasi Resmi Aktiva Tetap (Devisi ${ast.owner_division || 'GA'})`,
         status: 'approved',
