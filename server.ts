@@ -2369,9 +2369,7 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
-    const isReporter = (ticket: any) =>
-      ticket.reporter_id === actor.id
-      || (Boolean(ticket.reporter_name) && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+    const isReporter = (ticket: any) => ticket.reporter_id === actor.id;
 
     if (isSuperadminActor(actor) || isAuditorActor(actor)) {
       return res.json({ success: true, data: db.tickets });
@@ -2913,7 +2911,6 @@ async function startServer() {
         : actor.role === owner;
     const visibleItems = filterDashboardAttentionItems(items, {
       actorId: String(actor.id),
-      actorName: String(actor.name || ''),
       isGlobalReader,
       visibleAssetIds: new Set(visibleAssets.map(asset => asset.id)),
       loans: db.loans,
