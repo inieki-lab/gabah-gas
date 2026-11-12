@@ -1,3 +1,11 @@
+## Security — Telegram chat ID response redaction (2026-11-12)
+
+- `sanitizeUser()` now omits `telegram_chat_id` by default, alongside password material.
+- The authenticated-user payload and user directory include the chat ID only for Superadmin; admin-managed create/import/edit responses explicitly opt in.
+- Role-switch and ordinary user payloads keep the routing identifier redacted.
+- Added `npm run test:telegram-chat-id-redaction` source regression checks.
+- Runtime response verification with Superadmin, IT/GA, and ordinary employee sessions remains pending.
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
