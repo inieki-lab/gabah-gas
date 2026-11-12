@@ -97,6 +97,10 @@ async function startServer() {
         return send(body);
       }
 
+      // Avoid a second full-state write when the route already awaited a
+      // successful persistence operation immediately before responding.
+      if (consumePersistenceCommit()) return send(body);
+
       persistenceStarted = true;
       void persistDataStore()
         .then(() => send(body))
