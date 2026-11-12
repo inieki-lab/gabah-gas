@@ -1,3 +1,12 @@
+## Security — ticket ownership by immutable user ID (2026-11-12)
+
+- Removed display-name matching as a ticket ownership fallback from the API list, dashboard attention filter, and client-side visibility helper.
+- Ticket ownership now requires `reporter_id === actor.id`; assignment and explicit module-owner scope remain independent visibility grants.
+- The PostgreSQL schema already requires `tickets.reporter_id` with a foreign key to `users.id`. Name-only legacy records in file-store mode now fail closed instead of being attributed to a same-name employee.
+- Expanded dashboard scope regression data for name-only legacy tickets and a different user with the same display name.
+- Added `npm run test:ticket-owner-id-only` source regression checks.
+- Runtime UAT with legacy file-store snapshots and duplicate employee names remains pending.
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
