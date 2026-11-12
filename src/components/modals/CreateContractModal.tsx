@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, FileText, ShieldAlert } from 'lucide-react';
 import { UserProfile } from '../../types';
+import { gabahApi } from '../../services/gabahApi';
+import { hasPermission } from '../../utils/access';
+import { formatLocalDate } from '../../utils/datetime';
 
 interface CreateContractModalProps {
   isOpen: boolean;
@@ -26,21 +29,33 @@ interface CreateContractModalProps {
   }) => Promise<void>;
 }
 
-/** Divisi pemilik kontrak — bebas per departemen, tidak terbatas GA/IT/SC/PIBC saja. */
-const OWNER_DIVISION_OPTIONS = ['GA', 'IT', 'SC', 'PIBC', 'Sekretariat Direksi', 'Humas', 'Komersial', 'Keuangan', 'SDM'];
-
 const CONTRACT_TYPE_PRESETS = ['Security', 'Maintenance', 'Supplier Barang', 'Layanan Pasar', 'Sewa', 'Konsultansi', 'Langganan Layanan', 'Umum'];
 
 export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen, onClose, users, currentUser, onCreate }) => {
-  const isAdmin = currentUser.role === 'Admin GABAH';
-  const ownDivision = (currentUser.division || 'GA').toUpperCase();
-
+  const canCreateContract = hasPermission(currentUser, 'contracts.create', ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC']);
+  const [ownerDivisions, setOwnerDivisions] = useState<Array<{ code: string; name: string }>>([]);
   const [contractType, setContractType] = useState('Umum');
   const [title, setTitle] = useState('');
   const [vendorName, setVendorName] = useState('');
-  const [ownerDivision, setOwnerDivision] = useState(ownDivision);
+  const [ownerDivision, setOwnerDivision] = useState('');
   const [picUserId, setPicUserId] = useState(currentUser.id);
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(formatLocalDate());
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    gabahApi.getDivisions()
+      .then(rows => {
+        if (!active || !Array.isArray(rows)) return;
+        const options = rows
+          .filter(row => row && row.is_active !== false && row.code)
+          .map(row => ({ code: String(row.code).trim().toUpperCase(), name: String(row.name || row.code) }))
+          .filter((row, index, all) => all.findIndex(item => item.code === row.code) === index);
+        setOwnerDivisions(options);
+      })
+      .catch(() => { if (active) setOwnerDivisions([]); });
+    return () => { active = false; };
+  }, [isOpen]);
   const [endDate, setEndDate] = useState('');
   const [noticeDays, setNoticeDays] = useState(60);
   const [contractValue, setContractValue] = useState('');
@@ -151,13 +166,13 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Divisi Pemilik *</label>
               <select value={ownerDivision} onChange={e => setOwnerDivision(e.target.value)}
-                disabled={!isAdmin}
+                disabled={!canCreateContract || ownerDivisions.length === 0}
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-emerald-500 disabled:bg-slate-100">
-                {Array.from(new Set([ownDivision, ...OWNER_DIVISION_OPTIONS])).map(d => (
-                  <option key={d} value={d}>{d}{d === ownDivision ? ' (divisi Anda)' : ''}</option>
+                {ownerDivisions.map(d => (
+                  <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
                 ))}
               </select>
-              {!isAdmin && <p className="text-[10px] text-slate-400">Non-admin hanya dapat mendaftarkan kontrak untuk divisinya sendiri.</p>}
+              <p className="text-[10px] text-slate-400">Pilih owner kontrak dari master domain aktif. Server akan memvalidasi scope owner sesuai permission Anda.</p>
             </div>
             <div className="space-y-1">
               <label className="font-bold text-slate-700">PIC Kontrak *</label>
