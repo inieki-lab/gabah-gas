@@ -454,7 +454,7 @@ export default function App() {
         borrower_name: ast.assigned_to?.name || currentUser.name,
         borrower_department: ast.assigned_to?.department || currentUser.department,
         borrower_phone: '021-5000-888',
-        start_date: ast.purchase_date || new Date().toISOString().split('T')[0],
+        start_date: ast.purchase_date || formatLocalDate(),
         due_date: ast.warranty_until || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
         purpose: `Penyerahan & Inventarisasi Resmi Aktiva Tetap (Devisi ${ast.owner_division || 'GA'})`,
         status: 'approved',
