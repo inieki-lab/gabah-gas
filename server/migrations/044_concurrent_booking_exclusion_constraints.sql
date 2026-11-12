@@ -95,6 +95,10 @@ BEGIN
 END
 $migration$;
 
+-- The exclusion constraint owns the equivalent GiST index; remove the old
+-- non-enforcing index to avoid duplicate storage and write amplification.
+DROP INDEX IF EXISTS idx_room_reservations_no_double_booking;
+
 -- Serialize writes per room before the friendly overlap check. The exclusion
 -- constraint remains authoritative even if another writer bypasses this trigger.
 CREATE OR REPLACE FUNCTION prevent_double_booking()
