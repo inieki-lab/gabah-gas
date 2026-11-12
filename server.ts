@@ -788,9 +788,13 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
-      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
+      const requestedRole = role === undefined ? undefined : String(role).trim();
+      if (requestedRole !== undefined && !isKnownProfileRole(requestedRole)) {
+        return res.status(400).json({ success: false, message: 'Peran profil tidak dikenal. Gunakan role aplikasi tambahan melalui pengaturan assignment RBAC.' });
+      }
+      const primaryRole = requestedRole === undefined ? undefined : normalizePrimaryProfileRole(requestedRole);
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
-      const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
+      const wouldDemoteSuperadmin = requestedRole !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
       const wouldDeactivateSuperadmin = is_active === false;
       if (targetIsSuperadmin && (wouldDemoteSuperadmin || wouldDeactivateSuperadmin)
         && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
@@ -833,10 +837,10 @@ async function startServer() {
         }
         targetUser.email = trimmedEmail;
       }
-      const privilegeChanged = role !== undefined && primaryRole !== targetUser.role;
+      const privilegeChanged = requestedRole !== undefined && primaryRole !== targetUser.role;
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
 
-      if (role !== undefined) {
+      if (requestedRole !== undefined) {
         targetUser.role = primaryRole;
         const roleLabels: Record<string, string> = {
           'Admin GABAH': 'Admin GABAH (Super Admin)',
@@ -850,7 +854,7 @@ async function startServer() {
           'Auditor': 'Satuan Pengawas Internal (SPI)',
           'Karyawan': 'Karyawan / Pemohon',
         };
-        (targetUser as any).role_label = roleLabels[role] || roleLabels[primaryRole] || primaryRole;
+        (targetUser as any).role_label = roleLabels[requestedRole] || roleLabels[primaryRole] || primaryRole;
       }
       if (division !== undefined) targetUser.division = division;
       if (department !== undefined) targetUser.department = department.trim();
@@ -860,8 +864,8 @@ async function startServer() {
       if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
       if (orgUnit !== undefined) targetUser.unit_id = orgUnit;
       if (orgOffice !== undefined) targetUser.office_location_id = orgOffice;
-      if (role === 'Supply Chain' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-RPC';
-      if (role === 'PIBC' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-PIBC';
+      if (requestedRole === 'Supply Chain' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-RPC';
+      if (requestedRole === 'PIBC' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-PIBC';
 
       if (password) {
         const plain = String(password).trim();
@@ -888,7 +892,7 @@ async function startServer() {
       );
 
       await persistDataStore();
-      if (role !== undefined) await syncPrimaryRbacRole(targetUser.id, targetUser.role);
+      if (requestedRole !== undefined) await syncPrimaryRbacRole(targetUser.id, targetUser.role, secondaryCapabilityRoleKey(requestedRole));
       await refreshRbacPolicy();
 
       res.json({ success: true, data: sanitizeUser(targetUser) });
