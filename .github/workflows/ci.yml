@@ -47,6 +47,9 @@ jobs:
       - name: Typecheck (lint)
         run: npm run lint
 
+      - name: Dependency security baseline
+        run: npm run test:dependency-security
+
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
