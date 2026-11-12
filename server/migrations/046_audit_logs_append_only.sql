@@ -3,7 +3,10 @@
 -- Application persistence only inserts audit rows (ON CONFLICT DO NOTHING).
 -- Updates, deletes, and truncation would destroy accountability history and
 -- are not valid business operations. Retention must use an approved archive
--- process, not mutate the live audit trail.
+-- process, not mutate the live audit trail. Actor IDs are historical identifiers,
+-- not live foreign keys: deleting/deactivating a user must not rewrite history.
+
+ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_user_id_fkey;
 
 CREATE OR REPLACE FUNCTION reject_audit_log_mutation()
 RETURNS TRIGGER AS $$
