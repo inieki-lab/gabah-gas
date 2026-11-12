@@ -4,6 +4,7 @@
  * deferred until the migration runner and runtime authorization switch are implemented.
  */
 import fs from 'node:fs';
+import { isSuperAdmin } from '../src/utils/access.ts';
 
 const migration = fs.readFileSync('server/migrations/010_dynamic_rbac_foundation.sql', 'utf8');
 const backfill = fs.readFileSync('server/migrations/011_dynamic_rbac_legacy_backfill.sql', 'utf8');
@@ -48,7 +49,12 @@ const dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
 const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
+const administrationModal = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
+
 const checks = [
+  ['PostgreSQL Superadmin UI cannot be bypassed by a legacy Admin GABAH profile label', !isSuperAdmin({ role: 'Admin GABAH', is_superadmin: false, permission_keys: [] }) && isSuperAdmin({ role: 'Karyawan', is_superadmin: false, permission_keys: ['*'] }) && isSuperAdmin({ role: 'Admin GABAH' })],
+  ['Administration modal follows authoritative Superadmin helper when Dynamic RBAC is present', /const isCurrentUserAdmin = isSuperAdmin\(currentUser\) \|\| \(!Array\.isArray\(currentUser\?\.permission_keys\) && activeRole === 'Admin GABAH'\)/.test(administrationModal)],
+
   ['custom role creation accepts selected permissions atomically and validates the permission catalogue', createRoleRoute.includes('req.body?.permission_keys') && createRoleRoute.includes('withRbacTransaction') && createRoleRoute.includes('INSERT INTO gabah_role_permissions')],
   ['custom role creation rejects an empty permission selection at the API boundary', createRoleRoute.includes('permissionKeys.length === 0') && createRoleRoute.includes('minimal satu permission aktif')],
   ['custom roles cannot receive protected system authentication, audit, or superadmin permissions', createRoleRoute.includes('system.authentication') && createRoleRoute.includes('system.audit') && createRoleRoute.includes('system.super_admin') && server.includes("permission_key NOT IN ('system.authentication', 'system.audit', 'system.super_admin')")],
