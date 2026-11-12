@@ -516,8 +516,12 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body;
-      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : (role || 'Karyawan');
-      const inferredOfficeLocation = role === 'Supply Chain' ? 'OFF-RPC' : role === 'PIBC' ? 'OFF-PIBC' : undefined;
+      const requestedRole = String(role || 'Karyawan').trim();
+      if (!isKnownProfileRole(requestedRole)) {
+        return res.status(400).json({ success: false, message: 'Peran profil tidak dikenal. Gunakan role aplikasi tambahan melalui pengaturan assignment RBAC.' });
+      }
+      const primaryRole = normalizePrimaryProfileRole(requestedRole);
+      const inferredOfficeLocation = requestedRole === 'Supply Chain' ? 'OFF-RPC' : requestedRole === 'PIBC' ? 'OFF-PIBC' : undefined;
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
@@ -576,7 +580,7 @@ async function startServer() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         role: primaryRole,
-        role_label: (role === 'Supply Chain' || role === 'PIBC') ? 'Karyawan — Lokasi ' + role : (roleLabels[role] || roleLabels[primaryRole] || 'Pegawai Operasional'),
+        role_label: (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') ? 'Karyawan — Lokasi ' + requestedRole : (roleLabels[requestedRole] || roleLabels[primaryRole] || 'Pegawai Operasional'),
         division: division || 'Umum',
         department: department || 'Operasional',
         job_level_code: newJobLevel,
@@ -600,7 +604,7 @@ async function startServer() {
       );
 
       await persistDataStore();
-      await syncPrimaryRbacRole(newUser.id, newUser.role);
+      await syncPrimaryRbacRole(newUser.id, newUser.role, secondaryCapabilityRoleKey(requestedRole));
       await refreshRbacPolicy();
 
       res.status(201).json({
