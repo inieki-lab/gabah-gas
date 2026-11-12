@@ -230,6 +230,7 @@ const checks = [
 
   ['notification role recipients honor primary and additional RBAC role assignments across list/read/read-all and Humas filtering', server.includes('getEffectiveRoleKeys(String(actor.id)).includes(notificationRoleKey(recipientRole))') && server.includes('hasNotificationRole(actor, notification.recipient_role)') && server.includes('if (!notif || !isNotificationRecipient(notif, actor))') && server.includes('if (isNotificationRecipient(n, actor)) n.is_read = true') && server.includes("if (isPhotoNotification && !hasNotificationRole(actor, 'Humas'))") && !server.includes('notification.recipient_role === actor.role')],
 
+  ['meeting facility create/update/delete honor effective meeting_facilities.manage permission for custom and additional roles', ['createMeetingFacility', 'updateMeetingFacility', 'deleteMeetingFacility'].every(method => { const start = domainServices.indexOf('static ' + method + '('); const end = domainServices.indexOf('\n  }', start); const body = domainServices.slice(start, end); return start >= 0 && body.includes("hasRoomPermission(actor, 'meeting_facilities.manage', 'GA')") && body.includes("hasRoomPermission(actor, 'meeting_facilities.manage', 'IT')") && !/actor\.role\s*!==?\s*'(GA|IT)'/.test(body); })],
 
 ];
 
