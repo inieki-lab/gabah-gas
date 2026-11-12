@@ -970,31 +970,55 @@ async function startServer() {
         return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh dihapus.' });
       }
 
-      // Auto unassign any assets assigned to this user back to available pool
-      let releasedAssetsCount = 0;
-      for (const a of db.assets) {
-        if (a.assigned_to?.id === targetId) {
-          a.status = 'available';
-          a.assigned_to = null;
-          releasedAssetsCount++;
-        }
+      // Never mark physical assets as available merely because their PIC/account
+      // is deleted. Require explicit asset handover and physical loan return first.
+      const assignedAssets = db.assets.filter(asset => asset.assigned_to?.id === targetId);
+      const physicallyOutstandingLoans = db.loans.filter(loan =>
+        loan.borrower_id === targetId && ['borrowed', 'overdue'].includes(loan.status)
+      );
+      const runningReservations = db.roomReservations.filter(reservation =>
+        reservation.organizer_id === targetId && reservation.status === 'in_use'
+      );
+      if (assignedAssets.length || physicallyOutstandingLoans.length || runningReservations.length) {
+        return res.status(409).json({
+          success: false,
+          message: 'Akun belum dapat dihapus. Alihkan PIC aset, selesaikan pengembalian pinjaman fisik, dan selesaikan reservasi yang sedang berlangsung terlebih dahulu.',
+          blockers: {
+            assigned_assets: assignedAssets.length,
+            outstanding_loans: physicallyOutstandingLoans.length,
+            running_reservations: runningReservations.length,
+          },
+        });
       }
 
-      // Auto close/return active loans
+      // Pending/approved loans can be administratively closed because the
+      // physical handover has not occurred. Do not fabricate a return timestamp.
       let closedLoansCount = 0;
-      for (const l of db.loans) {
-        if (l.borrower_id === targetId && ['pending_approval', 'approved', 'borrowed'].includes(l.status)) {
-          l.status = 'closed';
-          l.actual_returned_at = new Date().toISOString();
-          l.return_condition = 'Dikembalikan otomatis karena penutupan akun pengguna';
+      for (const loan of db.loans) {
+        if (loan.borrower_id === targetId && ['pending_approval', 'approved'].includes(loan.status)) {
+          loan.status = 'closed';
+          loan.return_condition = 'Pengajuan ditutup karena akun pengguna dihapus sebelum serah terima.';
           closedLoansCount++;
         }
       }
 
-      // Cancel any pending reservations organized by this user
-      for (const r of db.roomReservations) {
-        if (r.organizer_id === targetId && ['pending_approval', 'approved', 'in_use'].includes(r.status)) {
-          r.status = 'cancelled';
+      // Cancel future/pending room reservations; a running meeting is a blocker above.
+      for (const reservation of db.roomReservations) {
+        if (reservation.organizer_id === targetId && ['pending_approval', 'approved'].includes(reservation.status)) {
+          reservation.status = 'cancelled';
+          reservation.updated_at = new Date().toISOString();
+        }
+      }
+
+      // Preserve ticket history but return work assigned to this user to its queue.
+      let unassignedTicketsCount = 0;
+      for (const ticket of db.tickets) {
+        if (ticket.assigned_agent_id === targetId) {
+          ticket.assigned_agent_id = undefined;
+          ticket.assigned_agent_name = undefined;
+          if (ticket.status === 'assigned') ticket.status = 'open';
+          ticket.updated_at = new Date().toISOString();
+          unassignedTicketsCount++;
         }
       }
 
@@ -1007,7 +1031,7 @@ async function startServer() {
       GabahDomainService.recordAudit(
         'USER_DELETED',
         'Users',
-        `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - ${releasedAssetsCount} aset dilepaskan, ${closedLoansCount} pinjaman ditutup`,
+        `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - ${closedLoansCount} pengajuan pinjaman ditutup, ${unassignedTicketsCount} tiket dikembalikan ke antrean`,
         actor,
         targetId
       );
@@ -1017,7 +1041,7 @@ async function startServer() {
 
       res.json({
         success: true,
-        message: `Pengguna ${targetUser.name} berhasil dihapus.${releasedAssetsCount > 0 ? ` ${releasedAssetsCount} aset berhasil dikembalikan ke status Tersedia.` : ''}`
+        message: `Pengguna ${targetUser.name} berhasil dihapus. Pengajuan pinjaman yang belum diserahterimakan ditutup dan tiket aktif dikembalikan ke antrean.`
       });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
