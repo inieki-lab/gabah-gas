@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const persistence = fs.readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
 const requestContext = fs.readFileSync(new URL('../server/requestContext.ts', import.meta.url), 'utf8');
-const persistence = fs.readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
 const start = source.indexOf('Commit every successful state-changing API response BEFORE sending it.');
 const end = source.indexOf('// Helper to extract authenticated user', start);
 const middleware = start >= 0 && end > start ? source.slice(start, end) : '';
