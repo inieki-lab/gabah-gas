@@ -73,6 +73,17 @@ async function main() {
       legacyImport.status === 200 && scAfterImport?.role === 'Karyawan'
         && scAfterImport?.unit_id === scUnitBefore && scAfterImport?.office_location_id === scOfficeBefore);
 
+    const partialImport = await req(b, 'POST', '/api/users/bulk-import', {
+      token: admin,
+      body: { users: [{ name: scUser?.name, email: scUser?.email }] },
+    });
+    const scAfterPartial = ((await req(b, 'GET', '/api/users', { token: admin })).json?.data || []).find(u => u.email === scUser?.email);
+    rec('12c: partial bulk import preserves omitted role/division/department',
+      `Karyawan + ${scUser?.division} + ${scUser?.department}`,
+      `${scAfterPartial?.role} + ${scAfterPartial?.division} + ${scAfterPartial?.department}`,
+      partialImport.status === 200 && scAfterPartial?.role === scUser?.role
+        && scAfterPartial?.division === scUser?.division && scAfterPartial?.department === scUser?.department);
+
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
     const units = (await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data || [];
