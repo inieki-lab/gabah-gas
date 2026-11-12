@@ -106,7 +106,12 @@ export function wouldRemoveLastActiveSuperadmin(
 
 /** Auditor is a deny-write capability: assigning it as an additional role must not bypass read-only enforcement. */
 export function isAuditorActor(actor: { id: string; role?: string }): boolean {
-  if (isPostgresPersistenceActive()) return getEffectiveRoleKeys(actor.id).includes('auditor');
+  // Inspect every assigned role directly. getEffectiveRoleKeys() intentionally
+  // collapses Superadmin assignments to ['superadmin']; using it here would
+  // silently hide an additional Auditor role and bypass the deny-write policy.
+  if (isPostgresPersistenceActive()) {
+    return getUserRbacPolicies(String(actor.id)).some(policy => policy.roleKey === 'auditor');
+  }
   return actor.role === 'Auditor';
 }
 
