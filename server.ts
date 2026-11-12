@@ -2803,6 +2803,24 @@ async function startServer() {
   });
 
   // Notifications
+  const hasNotificationRole = (actor: ServerUser, roleLabel: string): boolean => {
+    const roleKeys: Record<string, string> = {
+      'admin gabah': 'superadmin',
+      superadmin: 'superadmin',
+      it: 'it',
+      ga: 'ga',
+      humas: 'humas',
+      'sekretaris direksi': 'sekretaris_direksi',
+      karyawan: 'karyawan',
+      auditor: 'auditor',
+      'supply chain': 'supply_chain',
+      pibc: 'pibc',
+    };
+    const normalized = String(roleLabel || '').trim().toLowerCase();
+    const roleKey = roleKeys[normalized];
+    return roleKey ? hasApplicationRole(actor, roleKey) : roleLabel === actor.role;
+  };
+
   app.get('/api/notifications', (req, res) => {
     
     if (!requireRbacPermission(req, res, 'notifications.read')) return;
@@ -2811,7 +2829,7 @@ async function startServer() {
       if (isSuperadminActor(actor)) return true;
       // Explicit user recipient takes precedence over role/division fallbacks.
       if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
-      if (notification.recipient_role) return notification.recipient_role === actor.role;
+      if (notification.recipient_role) return hasNotificationRole(actor, notification.recipient_role);
       if (notification.recipient_division) return notification.recipient_division === actor.division;
       return false;
     };
@@ -2819,7 +2837,7 @@ async function startServer() {
       const isPhotoNotification = n.recipient_role === 'Humas' ||
         (n.title && (n.title.toLowerCase().includes('foto') || n.title.toLowerCase().includes('dokumentasi humas') || n.title.toLowerCase().includes('liputan foto'))) ||
         (n.message && (n.message.toLowerCase().includes('peliputan foto') || n.message.toLowerCase().includes('dokumentasi foto')));
-      if (isPhotoNotification && actor.role !== 'Humas' && !isSuperadminActor(actor)) return false;
+      if (isPhotoNotification && !hasNotificationRole(actor, 'Humas') && !isSuperadminActor(actor)) return false;
       return isRecipient(n);
     });
     res.json({ success: true, data: filtered });
@@ -2832,7 +2850,7 @@ async function startServer() {
     const notif = db.notifications.find(n => n.id === req.params.id);
     const isRecipient = isSuperadminActor(actor)
       || (notif?.recipient_user_id ? notif.recipient_user_id === actor.id
-        : notif?.recipient_role ? notif.recipient_role === actor.role
+        : notif?.recipient_role ? hasNotificationRole(actor, notif.recipient_role)
           : notif?.recipient_division ? notif.recipient_division === actor.division : false);
     if (!notif || !isRecipient) {
       return res.status(404).json({ success: false, message: 'Notifikasi tidak ditemukan.' });
@@ -2848,7 +2866,7 @@ async function startServer() {
     for (const n of db.notifications) {
       const isRecipient = isSuperadminActor(actor)
         || (n.recipient_user_id ? n.recipient_user_id === actor.id
-          : n.recipient_role ? n.recipient_role === actor.role
+          : n.recipient_role ? hasNotificationRole(actor, n.recipient_role)
             : n.recipient_division ? n.recipient_division === actor.division : false);
       if (isRecipient) n.is_read = true;
     }
