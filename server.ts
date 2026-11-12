@@ -135,6 +135,8 @@ async function startServer() {
     }
     return actor;
   };
+  const generateUserId = (): string => `USR-${crypto.randomUUID().toUpperCase()}`;
+
   const normalizePrimaryProfileRole = (label: string): string => {
     const normalized = String(label || 'Karyawan').trim();
     // Humas/Sekretariat are employee capabilities; Supply Chain/PIBC are
@@ -576,7 +578,7 @@ async function startServer() {
       const { hash, salt } = hashPassword(generatedTempPassword);
 
       const newUser: ServerUser = {
-        id: `USR-${Date.now().toString().slice(-6)}`,
+        id: generateUserId(),
         name: name.trim(),
         email: email.trim().toLowerCase(),
         role: primaryRole as ServerUser['role'],
@@ -728,7 +730,7 @@ async function startServer() {
           const generatedTempPassword = crypto.randomBytes(12).toString('base64url');
           const { hash, salt } = hashPassword(generatedTempPassword);
           const newUser: ServerUser = {
-            id: `USR-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`,
+            id: generateUserId(),
             name,
             email,
             role: role as ServerUser['role'],
