@@ -88,7 +88,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
   const filteredLoans = baseLoans.filter((loan) => {
     if (statusFilter === 'ALL') return true;
-    if (statusFilter === 'pending') return loan.status === 'pending_approval' || (loan.status === 'pending_approval' || loan.status === 'pending');
+    if (statusFilter === 'pending') return loan.status === 'pending_approval' || loan.status === 'pending';
     if (statusFilter === 'active') return ['borrowed', 'active', 'overdue'].includes(loan.status);
     return loan.status === statusFilter;
   });
