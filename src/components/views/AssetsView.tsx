@@ -75,7 +75,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
       if (selectedDivision !== 'ALL') {
         const div = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : '');
         if (selectedDivision === 'RPC') {
-          if (div !== 'RPC' && div !== 'RPC') return false;
+          if (div !== 'RPC' && div !== 'SC') return false;
         } else if (selectedDivision === 'PIBC') {
           if (div !== 'PIBC') return false;
         } else if (selectedDivision === 'IT') {
