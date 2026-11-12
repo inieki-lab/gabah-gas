@@ -12,7 +12,6 @@ import {
   Info 
 } from 'lucide-react';
 import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
-import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface CreateTicketModalProps {
   isOpen: boolean;
@@ -112,20 +111,15 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const reporterAssignedAssets = safeAssets.filter((asset) => {
     if (!asset.assigned_to) return false;
     const assignedId = asset.assigned_to.id;
-    const assignedEmail = asset.assigned_to.email?.toLowerCase();
-    const currentEmail = currentUser?.email?.toLowerCase();
 
     return (
-      (assignedId && assignedId === currentUser?.id) ||
-      (assignedEmail && currentEmail && assignedEmail === currentEmail) ||
-      isExactIdentityNameMatch(asset.assigned_to.name, currentUser?.name)
+      (assignedId && assignedId === currentUser?.id)
     );
   });
 
   const reporterActiveLoans = safeLoans.filter((loan) => {
     const isBorrower =
-      loan.borrower_id === currentUser?.id ||
-      isExactIdentityNameMatch(loan.borrower_name, currentUser?.name);
+      loan.borrower_id === currentUser?.id;
     const isActive = ['approved', 'active', 'overdue'].includes(loan.status);
     return isBorrower && isActive;
   });
