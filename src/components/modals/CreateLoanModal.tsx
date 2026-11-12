@@ -63,7 +63,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     return source.filter(asset =>
       asset.is_loanable === true
       && asset.status === 'available'
-      && !['broken', 'damaged'].includes(String(asset.condition))
+      && !['broken', 'damaged', 'poor'].includes(String(asset.condition))
     );
   }, [loanableAssets, assets]);
 
