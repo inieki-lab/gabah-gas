@@ -29,6 +29,7 @@ import {
   LifeBuoy
 } from 'lucide-react';
 import { Asset, AssetCategoryType, AssetStatus, UserProfile } from '../../types';
+import { isAuditor } from '../../utils/access';
 import { matchesAssetCategoryFilter } from '../../utils/assetCategoryFilter';
 import { GabahService, formatRupiah, formatDate, exportAssetsToCsv } from '../../services/gabahService';
 import { BatchQRPrintModal } from '../modals/BatchQRPrintModal';
@@ -447,7 +448,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
-                        {onReportAsset && currentUser?.role !== 'Auditor' && !currentUser?.role_keys?.includes('auditor') && (
+                        {onReportAsset && !isAuditor(currentUser) && (
                           <button
                             onClick={() => onReportAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
