@@ -11,9 +11,13 @@ export interface RequestAuditContext {
 
 export const requestContext = new AsyncLocalStorage<RequestAuditContext>();
 
-/** Extract the best-effort client IP from an Express request. */
-export function extractClientIp(req: { headers?: Record<string, unknown>; socket?: { remoteAddress?: string } }): string | undefined {
-  const xff = typeof req.headers?.['x-forwarded-for'] === 'string' ? (req.headers['x-forwarded-for'] as string) : '';
-  const ip = (xff || req.socket?.remoteAddress || '').split(',')[0].trim();
+/**
+ * Extract the client IP resolved by Express. `req.ip` only honors
+ * X-Forwarded-For when the application explicitly configures trusted proxies.
+ * Never parse the raw header here: clients can forge it to evade rate limits
+ * and falsify audit attribution when no trusted reverse proxy is configured.
+ */
+export function extractClientIp(req: { ip?: string; socket?: { remoteAddress?: string } }): string | undefined {
+  const ip = String(req.ip || req.socket?.remoteAddress || '').trim();
   return ip || undefined;
 }
