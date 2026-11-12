@@ -28,6 +28,18 @@ export function isLegacyScopedRole(role: string): boolean {
 
 interface AssetScopeSpec { type: string; value: string | null }
 
+const LOAN_UNAVAILABLE_ASSET_STATUSES = new Set([
+  'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
+  'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive',
+]);
+
+/** Shared eligibility rule for both availability preview and authoritative mutations. */
+export function isAssetEligibleForLoan(asset: Pick<ServerAsset, 'is_loanable' | 'status' | 'condition'>): boolean {
+  return Boolean(asset.is_loanable)
+    && !LOAN_UNAVAILABLE_ASSET_STATUSES.has(asset.status)
+    && !['broken', 'damaged'].includes(String(asset.condition));
+}
+
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
@@ -669,6 +681,9 @@ export class GabahDomainService {
     const asset = db.assets.find(a => a.id === payload.asset_id);
     if (!asset) throw new Error('Aset tidak ditemukan');
     if (!asset.is_loanable) throw new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).');
+    if (!isAssetEligibleForLoan(asset)) {
+      throw Object.assign(new Error('Aset sedang tidak layak dipinjam karena status atau kondisi fisiknya.'), { statusCode: 409 });
+    }
 
     const start = new Date(payload.start_date).getTime();
     const due = new Date(payload.due_date).getTime();
@@ -743,6 +758,10 @@ export class GabahDomainService {
 
     if (!this.canOperateLoan(loan, actor, 'loans.approve')) {
       throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission approve dan scope owner aset yang sesuai atau Super Admin yang dapat menyetujui pinjaman.'), { statusCode: 403 });
+    }
+    const requestedAsset = db.assets.find(asset => asset.id === loan.asset_id);
+    if (!requestedAsset || !isAssetEligibleForLoan(requestedAsset)) {
+      throw Object.assign(new Error('Persetujuan ditolak: aset sudah tidak layak dipinjam berdasarkan status atau kondisi terkininya.'), { statusCode: 409 });
     }
 
     // Re-verify no collision with other ALREADY APPROVED / BORROWED loans for THIS specific asset
