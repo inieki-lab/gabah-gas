@@ -223,12 +223,13 @@ export class GabahDomainService {
   /**
    * Log action to immutable audit trail
    */
-  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string, persist = true) {
+  static recordAudit(action: string, entity: string, details: string, user: { id?: string; name: string; role: string }, entityId?: string, persist = true) {
     const log: ServerAuditLog = {
       id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       action,
       entity,
       entity_id: entityId,
+      user_id: user.id,
       user_name: user.name || 'System',
       user_role: user.role || 'System',
       details,
