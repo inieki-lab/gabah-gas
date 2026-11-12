@@ -1,3 +1,17 @@
+## Fix — employee profile and capability role normalization (2026-11-12)
+
+- User creation and bulk import now use cryptographically generated UUID-based user IDs instead of millisecond timestamps and a two-digit random suffix, avoiding predictable collisions in large imports.
+- Persistence now normalizes legacy Humas/Sekretariat/SC/PIBC values in the authoritative JSON state before PostgreSQL backfill, restores Humas/Sekretariat as secondary capabilities, and keeps Karyawan as the primary role across restarts.
+- PostgreSQL uses the normalized Karyawan + secondary capability model. File-store compatibility mode keeps legacy primary labels intact because it has no Dynamic RBAC assignment table; newly created/edited function-role profiles retain the admin-managed role-label fallback.
+
+- Server-side create, update, and bulk-import flows now normalize Humas, Sekretaris Direksi, Supply Chain, and PIBC to the Karyawan primary profile, consistent with the employee baseline model.
+- Humas and Sekretariat Direksi are added as secondary Dynamic RBAC capability assignments; existing additional role assignments are preserved.
+- Humas/Sekretariat capabilities created automatically by profile normalization are removed when a later profile import/update no longer requests them; explicitly Superadmin-assigned role grants are preserved.
+- Profile role input is validated server-side. Unknown labels are rejected instead of being persisted before a failed RBAC synchronization.
+- Bulk import retains the requested function label and emits a row warning when a function capability is mapped to the employee baseline.
+- Added `npm run test:employee-role-normalization` source regression checks.
+- Runtime UAT, PostgreSQL transaction behavior, and real import rollback/recovery remain to be verified.
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.

@@ -1,0 +1,48 @@
+import fs from 'node:fs';
+
+const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const persistence = fs.readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
+const standaloneStart = persistence.indexOf('if (!dbConfig.isConfigured)');
+const standaloneEnd = persistence.indexOf('const maxAttempts', standaloneStart);
+const standaloneBlock = persistence.slice(standaloneStart, standaloneEnd);
+const fallbackStart = persistence.indexOf('// Hydrate from persistent file store if it exists');
+const fallbackEnd = persistence.indexOf('export function persistDataStore()', fallbackStart);
+const fallbackBlock = persistence.slice(fallbackStart, fallbackEnd);
+const helperStart = source.indexOf('const normalizePrimaryProfileRole =');
+const helperEnd = source.indexOf('const rbacFailure =', helperStart);
+const helpers = helperStart >= 0 && helperEnd > helperStart ? source.slice(helperStart, helperEnd) : '';
+const createStart = source.indexOf("app.post('/api/users'");
+const importStart = source.indexOf("app.post('/api/users/bulk-import'");
+const patchStart = source.indexOf("app.patch('/api/users/:id'");
+const deleteStart = source.indexOf("app.delete('/api/users/:id'");
+const createRoute = source.slice(createStart, importStart);
+const importRoute = source.slice(importStart, patchStart);
+const patchRoute = source.slice(patchStart, deleteStart);
+const hasCollisionResistantIds = /const generateUserId = \(\): string => `USR-\$\{crypto\.randomUUID\(\)\.toUpperCase\(\)\}`/.test(source)
+  && createRoute.includes('id: generateUserId()')
+  && importRoute.includes('id: generateUserId()')
+  && !source.includes('USR-${Date.now().toString().slice(-6)}');
+
+const checks = [
+  ['Humas, Sekretaris Direksi, Supply Chain, and PIBC normalize to Karyawan primary profile', /\['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'\]\.includes\(normalized\)\) return 'Karyawan'/.test(helpers)],
+  ['Humas and Sekretariat resolve to secondary capability role keys', /label === 'Humas'\) return 'humas'/.test(helpers) && /label === 'Sekretaris Direksi'\) return 'sekretaris_direksi'/.test(helpers)],
+  ['Secondary capabilities are stored as non-primary RBAC assignments', /INSERT INTO gabah_user_roles \(user_id, role_id, is_primary, assigned_by_user_id\)[\s\S]*FALSE, NULL/.test(helpers)],
+  ['Role changes remove only stale auto-assigned capabilities and preserve explicit grants', /DELETE FROM gabah_user_roles ur[\s\S]*ur\.assigned_by_user_id IS NULL[\s\S]*r\.role_key <> \$3/.test(helpers)],
+  ['Create-user API validates profile role and syncs secondary capability', createRoute.includes('isKnownProfileRole(requestedRole)') && createRoute.includes('secondaryCapabilityRoleKey(requestedRole)')],
+  ['Edit-user API validates profile role and syncs secondary capability', patchRoute.includes('isKnownProfileRole(requestedRole)') && patchRoute.includes('secondaryCapabilityRoleKey(requestedRole)')],
+  ['Bulk import normalizes role and preserves Humas/Sekretariat as capability', importRoute.includes('normalizePrimaryProfileRole(requestedRole)') && importRoute.includes('secondaryRoleByUserId.set') && importRoute.includes('capabilityRoleKey: secondaryRoleByUserId.get(user.id)')],
+  ['Bulk import keeps employee capability label for file-store compatibility', importRoute.includes('roleLabels[requestedRole] || roleLabels[role]')],
+  ['User create and bulk import use collision-resistant generated IDs', hasCollisionResistantIds],
+  ['PostgreSQL persistence validates and assigns legacy capabilities before normalizing profiles', /const employeeCapabilities = collectLegacyEmployeeCapabilityAssignments\(\)/.test(persistence) && /await ensureEmployeeCapabilityAssignments\(employeeCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/.test(persistence) && /await backfillNormalizedTables\(\);[\s\S]*await backfillDynamicRbacUserRoles\(\)/.test(persistence)],
+  ['Persistence retains Humas/Sekretariat as secondary roles and maps all legacy profiles to Karyawan primary', /legacyRole === 'Humas'[\s\S]*roleKey: 'humas'/.test(persistence) && /legacyRole === 'Sekretaris Direksi'[\s\S]*roleKey: 'sekretaris_direksi'/.test(persistence) && /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/.test(persistence)],
+  ['File-store and development fallback preserve legacy primary role labels', !standaloneBlock.includes('normalizeLegacyEmployeeProfileRoles()') && !fallbackBlock.includes('normalizeLegacyEmployeeProfileRoles()') && /normalizeLegacyEmployeeProfileRoles\(\)/.test(persistence.slice(persistence.indexOf('async function persistPostgresState'), persistence.indexOf('async function backfillDynamicRbacUserRoles')))],
+  ['File-store mode preserves Humas/Sekretariat capabilities without weakening PostgreSQL authorization', /if \(!isPostgresPersistenceActive\(\)\)[\s\S]*roleKey === 'humas'[\s\S]*roleLabel\.includes\('humas'\)[\s\S]*roleKey === 'sekretaris_direksi'/.test(source) && /if \(isPostgresPersistenceActive\(\)\) return hasRbacPermission[\s\S]*roleLabel\.includes\('sekretariat direksi'\)/.test(fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8'))],
+];
+
+let failed = 0;
+for (const [name, pass] of checks) {
+  console.log((pass ? 'PASS' : 'FAIL') + ' | ' + name);
+  if (!pass) failed += 1;
+}
+console.log('TOTAL: ' + checks.length + ' | PASS: ' + (checks.length - failed) + ' | FAIL: ' + failed);
+process.exit(failed === 0 ? 0 : 1);
