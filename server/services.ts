@@ -778,15 +778,22 @@ export class GabahDomainService {
       if (l.id === loan.id) return false;
       if (l.asset_id !== loan.asset_id) return false;
       if (!['approved', 'borrowed', 'overdue'].includes(l.status)) return false;
-      if (l.status === 'overdue') return true;
-
       const existingStart = new Date(l.start_date).getTime();
       const existingDue = new Date(l.due_date).getTime();
-      return start < existingDue && due > existingStart;
+      // GET /api/loans exposes an effective "overdue" status without mutating
+      // the stored row. Approval must therefore also detect a physically
+      // outstanding borrowed loan whose due date has already passed.
+      if (l.status === 'overdue'
+        || (l.status === 'borrowed' && Number.isFinite(existingDue) && existingDue < Date.now())) return true;
+      return Number.isFinite(existingStart) && Number.isFinite(existingDue)
+        && start < existingDue && due > existingStart;
     });
 
     if (conflicting) {
-      throw new Error(`Tidak dapat disetujui: Tabrakan jadwal dengan peminjaman ${conflicting.loan_number} (${conflicting.borrower_name}) yang telah disetujui untuk aset ini.`);
+      throw Object.assign(
+        new Error(`Tidak dapat disetujui: Aset masih dipinjam atau memiliki reservasi aktif yang bertabrakan (${conflicting.loan_number}).`),
+        { statusCode: 409 },
+      );
     }
 
     loan.status = 'approved';
