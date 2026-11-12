@@ -14,7 +14,9 @@ BEGIN
         AND status IN ('approved', 'borrowed', 'overdue')
         AND (
           status = 'overdue'
+          OR (status = 'borrowed' AND due_date < NOW())
           OR NEW.status = 'overdue'
+          OR (NEW.status = 'borrowed' AND NEW.due_date < NOW())
           OR (NEW.start_date < due_date AND NEW.due_date > start_date)
         )
     ) THEN
