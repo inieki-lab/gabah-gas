@@ -247,15 +247,23 @@ export class GabahDomainService {
    * Log action to immutable audit trail
    */
   static recordAudit(action: string, entity: string, details: string, user: { id?: string; name: string; role: string }, entityId?: string, persist = true) {
+    const impersonatorId = requestContext.getStore()?.originalAdminId;
+    const impersonator = impersonatorId && impersonatorId !== user.id
+      ? db.users.find(candidate => candidate.id === impersonatorId)
+      : undefined;
+    const auditActor = impersonator || user;
+    const auditDetails = impersonator
+      ? `${details} [Admin asli: ${impersonator.name} (${impersonator.id}); persona aktif: ${user.name} (${user.id})]`
+      : details;
     const log: ServerAuditLog = {
       id: `LOG-${randomUUID()}`,
       action,
       entity,
       entity_id: entityId,
-      user_id: user.id,
-      user_name: user.name || 'System',
-      user_role: user.role || 'System',
-      details,
+      user_id: auditActor.id,
+      user_name: auditActor.name || 'System',
+      user_role: auditActor.role || 'System',
+      details: auditDetails,
       // P2#9: stamp the originating client IP from the request context when the
       // write happens inside an HTTP request (undefined for boot-time writers).
       ip_address: requestContext.getStore()?.ip,
