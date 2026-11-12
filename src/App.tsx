@@ -339,19 +339,22 @@ export default function App() {
   // 2. Update Asset (Authoritative Backend)
   const handleUpdateAsset = async (updatedAsset: Asset) => {
     try {
-      const saved = await gabahApi.updateAsset(updatedAsset.id, {
-        corporate_asset_number: updatedAsset.corporate_asset_number,
-        location: updatedAsset.location,
-        // T2B-2: relasi lokasi fisik aset ikut diperbarui bila ada.
-        asset_location_id: updatedAsset.asset_location_id,
-        condition: updatedAsset.condition,
-        status: updatedAsset.status,
-        notes: updatedAsset.notes,
-      });
-
-      if (selectedAssetForDetail?.id === saved.id) {
-        setSelectedAssetForDetail(saved);
+      const existing = assets.find(asset => asset.id === updatedAsset.id);
+      const metadataUpdates: Record<string, unknown> = {};
+      if (existing?.corporate_asset_number !== updatedAsset.corporate_asset_number) {
+        metadataUpdates.corporate_asset_number = updatedAsset.corporate_asset_number;
       }
+      if (existing?.notes !== updatedAsset.notes) {
+        metadataUpdates.notes = updatedAsset.notes;
+      }
+
+      // Move and lifecycle operations are already committed through their
+      // dedicated APIs. This callback only persists actual metadata changes.
+      const saved = Object.keys(metadataUpdates).length > 0
+        ? await gabahApi.updateAsset(updatedAsset.id, metadataUpdates)
+        : updatedAsset;
+
+      if (selectedAssetForDetail?.id === saved.id) setSelectedAssetForDetail(saved);
       showToast(`Aset ${saved.asset_number} diperbarui (Accurate: ${saved.corporate_asset_number || '-'}).`);
       await refreshData();
     } catch (err: any) {
