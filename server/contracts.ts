@@ -149,8 +149,25 @@ export const ContractDomainService = {
       throw new Error('Akses ditolak: permission contracts.create tidak diberikan.');
     }
     const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
-    const pic = db.users.find(u => u.id === payload.pic_user_id) || actor;
+    const startDate = String(payload.start_date || '').trim();
+    const endDate = String(payload.end_date || '').trim();
+    const validDate = (value: string) => /^\\d{4}-\\d{2}-\\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+    if (!validDate(startDate) || !validDate(endDate) || endDate < startDate) {
+      throw new Error('Tanggal mulai dan berakhir kontrak tidak valid; tanggal berakhir harus sama atau setelah tanggal mulai.');
+    }
+    const pic = db.users.find(u => u.id === String(payload.pic_user_id || '').trim());
+    if (!pic || !pic.is_active) {
+      throw new Error('PIC kontrak wajib dipilih dari pegawai yang terdaftar dan aktif.');
+    }
     const ownerExists = (db.divisions || []).some(d => String(d.code).trim().toUpperCase() === ownerDivision);
+    const parentContractId = String(payload.parent_contract_id || '').trim() || null;
+    const parentContract = parentContractId ? db.contracts.find(c => c.id === parentContractId) : null;
+    if (parentContractId && !parentContract) {
+      throw new Error('Kontrak induk tidak ditemukan.');
+    }
+    if (parentContract && String(parentContract.owner_division || '').trim().toUpperCase() !== ownerDivision) {
+      throw new Error('Kontrak induk harus berasal dari divisi pemilik yang sama.');
+    }
     const ownerScopeAllowed = ownerExists
       && (isSuperadminActor(actor) || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
@@ -176,8 +193,8 @@ export const ContractDomainService = {
       owner_division_label: payload.owner_division_label,
       pic_user_id: pic.id,
       pic_name: pic.name,
-      start_date: payload.start_date,
-      end_date: payload.end_date,
+      start_date: startDate,
+      end_date: endDate,
       notice_period_days: payload.notice_period_days ?? 0,
       notice_date: (payload.notice_period_days ?? 0) > 0 ? addDays(payload.end_date, -(payload.notice_period_days ?? 0)) : payload.end_date,
       contract_value: payload.contract_value || 0,
@@ -186,7 +203,7 @@ export const ContractDomainService = {
       renewal_outcome: 'pending_decision',
       renewal_notes: payload.renewal_notes || null,
       replaced_by_contract_id: null,
-      parent_contract_id: payload.parent_contract_id || null,
+      parent_contract_id: parentContractId,
       documents: Array.isArray(payload.documents) ? payload.documents : [],
       milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
       reminder_config: reminderConfig,
