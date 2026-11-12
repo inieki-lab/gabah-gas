@@ -21,6 +21,7 @@ import {
   Check
 } from 'lucide-react';
 import { Asset, Ticket, AssetCategoryType, TicketPriority, TicketStatus, UserProfile } from '../../types';
+import { hasRole, isAuditor } from '../../utils/access';
 import { formatDateTime, GabahService, exportTicketsToCsv } from '../../services/gabahService';
 import { SlaTimer } from '../common/SlaTimer';
 
@@ -67,8 +68,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   ];
 
   const isSuperAdmin = Boolean(currentUser?.is_superadmin) || currentUser?.role === 'Admin GABAH';
-  const isGA = currentUser?.role === 'GA';
-  const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
+  const isGA = hasRole(currentUser, 'ga', ['GA']);
+  const isAuditorUser = isAuditor(currentUser);
   const hasPermission = (key: string, legacyRoles: string[] = []) => {
     if (isSuperAdmin) return true;
     if (Array.isArray(currentUser?.permission_keys)) {
@@ -78,7 +79,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   };
   // Show the create action when the user can submit at least one category.
   // IT remains the universal channel; GA and ME are explicit opt-in capabilities.
-  const canCreateTicket = !isAuditor && (
+  const canCreateTicket = !isAuditorUser && (
     hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'])
     || hasPermission('tickets.create.ga')
     || hasPermission('tickets.create.me')
@@ -92,7 +93,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   );
   const isSelfTicketsOnly = Array.isArray(currentUser?.permission_keys)
     ? !hasScopedQueueTickets
-    : !isSuperAdmin && !isAuditor && !['IT', 'GA'].includes(currentUser?.role || '');
+    : !isSuperAdmin && !isAuditorUser && !['IT', 'GA'].includes(currentUser?.role || '');
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
   const defaultCategories = isSelfTicketsOnly
@@ -132,7 +133,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Tiket Helpdesk Saya'
               : isGA
               ? 'Helpdesk & Tiket Layanan GA'
-              : isAuditor
+              : isAuditorUser
               ? 'Pemantauan Tiket Helpdesk (Read-Only)'
               : 'Helpdesk & Tiket Layanan Internal'}
           </h2>
@@ -141,7 +142,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Daftar pengajuan kendala teknis, kerusakan fasilitas, dan permohonan bantuan Anda.'
               : isGA
               ? 'Daftar tiket kendala fasilitas gedung & sarana GA, serta tiket kendala yang Anda ajukan.'
-              : isAuditor
+              : isAuditorUser
               ? 'Pemantauan read-only tiket helpdesk lintas divisi untuk kebutuhan audit.'
               : 'Laporan insiden, kerusakan perangkat IT, pemeliharaan fasilitas GA, dan permintaan lisensi software.'}
           </p>
