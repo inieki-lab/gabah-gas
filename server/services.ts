@@ -671,14 +671,23 @@ export class GabahDomainService {
         asset.status = 'in_repair';
         break;
       case 'damaged':
+        if (['disposed', 'auctioned', 'cannibalized', 'lost', 'inactive'].includes(asset.status)) {
+          throw Object.assign(new Error(`Aset berstatus ${asset.status} tidak dapat ditandai rusak kembali.`), { statusCode: 409 });
+        }
         asset.status = 'damaged';
         asset.condition = 'broken';
         break;
       case 'cannibalize':
+        if (!['damaged', 'in_repair', 'maintenance'].includes(asset.status)) {
+          throw Object.assign(new Error('Kanibalisasi hanya dapat dilakukan pada aset rusak atau dalam perbaikan.'), { statusCode: 409 });
+        }
         asset.status = 'cannibalized';
         asset.condition = 'broken';
         break;
       case 'propose_disposal':
+        if (['disposed', 'auctioned', 'cannibalized', 'lost', 'inactive'].includes(asset.status)) {
+          throw Object.assign(new Error(`Aset berstatus ${asset.status} tidak dapat diusulkan untuk disposal ulang.`), { statusCode: 409 });
+        }
         asset.status = 'pending_disposal';
         break;
       case 'approve_disposal':
