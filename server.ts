@@ -50,6 +50,16 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
 
+  // Trust forwarded client addresses only from explicitly configured reverse
+  // proxy IPs/CIDRs. Never use trust-proxy=true or a blind hop count.
+  const trustedProxyCidrs = String(process.env.GABAH_TRUST_PROXY_CIDRS || '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean);
+  if (trustedProxyCidrs.length > 0) {
+    app.set('trust proxy', trustedProxyCidrs);
+  }
+
   app.use(express.json());
 
   // Baseline browser security headers. A restrictive CSP is intentionally
