@@ -114,7 +114,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
       return;
     }
     const startDateIso = toJakartaIsoDateTime(startDate);
-    const dueDateIso = toIsoDateTime(dueDate);
+    const dueDateIso = toJakartaIsoDateTime(dueDate);
     if (!startDateIso || !dueDateIso || new Date(startDateIso).getTime() >= new Date(dueDateIso).getTime()) {
       setServerConflicts(new Set(selectedAssetIds));
       setIsCheckingAvailability(false);
@@ -182,8 +182,8 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     e.preventDefault();
     if (isAuditorUser || hasAnyConflict || isCheckingAvailability || availabilityError) return;
     if (selectedAssetIds.length === 0 || !purpose.trim()) return;
-    const startDateIso = toIsoDateTime(startDate);
-    const dueDateIso = toIsoDateTime(dueDate);
+    const startDateIso = toJakartaIsoDateTime(startDate);
+    const dueDateIso = toJakartaIsoDateTime(dueDate);
     if (!startDateIso || !dueDateIso || new Date(startDateIso).getTime() >= new Date(dueDateIso).getTime()) return;
 
     onRequestLoan({
