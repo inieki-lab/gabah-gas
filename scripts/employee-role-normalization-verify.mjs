@@ -27,7 +27,7 @@ const checks = [
   ['Bulk import normalizes role and preserves Humas/Sekretariat as capability', importRoute.includes('normalizePrimaryProfileRole(requestedRole)') && importRoute.includes('secondaryRoleByUserId.set') && importRoute.includes('capabilityRoleKey: secondaryRoleByUserId.get(user.id)')],
   ['Bulk import keeps employee capability label for file-store compatibility', importRoute.includes('roleLabels[requestedRole] || roleLabels[role]')],
   ['User create and bulk import use collision-resistant generated IDs', hasCollisionResistantIds],
-  ['PostgreSQL persistence normalizes legacy profiles before writing the authoritative state', /const employeeCapabilities = normalizeLegacyEmployeeProfileRoles\(\)/.test(persistence) && /await backfillNormalizedTables\(\);[\s\S]*await ensureEmployeeCapabilityAssignments\(employeeCapabilities\);[\s\S]*await backfillDynamicRbacUserRoles\(\)/.test(persistence)],
+  ['PostgreSQL persistence validates and assigns legacy capabilities before normalizing profiles', /const employeeCapabilities = collectLegacyEmployeeCapabilityAssignments\(\)/.test(persistence) && /await ensureEmployeeCapabilityAssignments\(employeeCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/.test(persistence) && /await backfillNormalizedTables\(\);[\s\S]*await backfillDynamicRbacUserRoles\(\)/.test(persistence)],
   ['Persistence retains Humas/Sekretariat as secondary roles and maps all legacy profiles to Karyawan primary', /legacyRole === 'Humas'[\s\S]*roleKey: 'humas'/.test(persistence) && /legacyRole === 'Sekretaris Direksi'[\s\S]*roleKey: 'sekretaris_direksi'/.test(persistence) && /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/.test(persistence)],
 ];
 
