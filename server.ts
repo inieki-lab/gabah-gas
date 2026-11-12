@@ -824,7 +824,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Kata sandi admin minimal 8 karakter.' });
       }
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
-      const wouldDemoteSuperadmin = role !== undefined && targetUser.role === 'Admin GABAH' && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
+      const wouldDemoteSuperadmin = role !== undefined && targetUser.role === 'Admin GABAH' && primaryRole !== 'Admin GABAH';
       const wouldDeactivateSuperadmin = is_active === false;
       const activeSuperadminCount = countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id));
       const otherActiveSuperadmins = activeSuperadminCount - (targetIsSuperadmin ? 1 : 0);
