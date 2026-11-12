@@ -12,7 +12,7 @@ const checks = [
   ['Login lockout uses the shared transport-peer resolver', /const ip = extractClientIp\(req\)/.test(server)],
   ['No application source trusts X-Forwarded-For for client identity', !auth.includes('x-forwarded-for') && !middleware.includes('x-forwarded-for') && !server.includes("req.headers['x-forwarded-for']")],
   ['Expired API rate-limit buckets are reclaimed', /apiRateLimits\.delete\(key\)/.test(auth) && /entry\.resetAt <= now/.test(auth)],
-  ['Expired login lockout records are reclaimed', /loginAttempts\.delete\(key\)/.test(auth) && /entry\.lockedUntil <= now/.test(auth),
+  ['Expired login lockout records are reclaimed', /loginAttempts\.delete\(key\)/.test(auth) && /entry\.lockedUntil <= now/.test(auth)],
 ];
 
 let failed = 0;
