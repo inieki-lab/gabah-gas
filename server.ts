@@ -2372,19 +2372,38 @@ async function startServer() {
       const { asset_ids, asset_id } = req.body;
 
       if (Array.isArray(asset_ids) && asset_ids.length > 0) {
-        const createdLoans = [];
-        for (const id of asset_ids) {
-          const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
-          createdLoans.push(newLoan);
+        const requestedIds = asset_ids.map((id: unknown) => String(id || '').trim());
+        if (requestedIds.length > 20 || requestedIds.some((id: string) => !id)
+          || new Set(requestedIds).size !== requestedIds.length) {
+          return res.status(400).json({ success: false, message: 'Daftar aset pinjaman tidak valid atau memuat aset duplikat.' });
         }
-        await persistDataStore();
-        return res.status(201).json({
-          success: true,
-          data: createdLoans[0],
-          loans: createdLoans,
-          count: createdLoans.length,
-          message: `${createdLoans.length} aset pinjaman berhasil diajukan.`
-        });
+
+        // Batch submission is all-or-nothing. requestLoan writes to in-memory
+        // loans, notifications and audit logs; restore all three collections
+        // if any selected asset fails validation to prevent phantom requests.
+        const originalLoans = db.loans.slice();
+        const originalNotifications = db.notifications.slice();
+        const originalAuditLogs = db.auditLogs.slice();
+        try {
+          const createdLoans = [];
+          for (const id of requestedIds) {
+            const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
+            createdLoans.push(newLoan);
+          }
+          await persistDataStore();
+          return res.status(201).json({
+            success: true,
+            data: createdLoans[0],
+            loans: createdLoans,
+            count: createdLoans.length,
+            message: `${createdLoans.length} aset pinjaman berhasil diajukan.`
+          });
+        } catch (error) {
+          db.loans.splice(0, db.loans.length, ...originalLoans);
+          db.notifications.splice(0, db.notifications.length, ...originalNotifications);
+          db.auditLogs.splice(0, db.auditLogs.length, ...originalAuditLogs);
+          throw error;
+        }
       }
 
       const newLoan = GabahDomainService.requestLoan(req.body, actor);
