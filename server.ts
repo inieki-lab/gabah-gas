@@ -52,6 +52,16 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Baseline browser security headers. A restrictive CSP is intentionally
+  // deferred until the frontend's external image/font and inline-style needs
+  // are inventoried, rather than deploying a policy that silently breaks UI.
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
+
   // Per-request audit context: carry the client IP through the async chain so
   // recordAudit writers can stamp ip_address (P2#9).
   app.use((req, res, next) => {
