@@ -48,6 +48,31 @@ async function main() {
       `${presentRoles.length}/7; branchProfiles=${branchProfilesValid}; legacyBranchRoles=${noBranchRole}`,
       presentRoles.length === 7 && noBranchRole && branchProfilesValid);
 
+    // Legacy role labels must not silently assign an office or overwrite
+    // existing unit/location data. Those attributes are managed independently.
+    const legacyCreate = await req(b, 'POST', '/api/users', {
+      token: admin,
+      body: { name: 'Uji Legacy RPC', email: 'uji.legacy.rpc@foodstation.co.id', role: 'Supply Chain', division: 'SC', department: 'RPC' },
+    });
+    const legacyCreated = legacyCreate.json?.data || {};
+    rec('13: legacy Supply Chain label creates Karyawan without inferred office location',
+      'Karyawan + office_location_id null',
+      `${legacyCreate.status} + ${legacyCreated.role} + ${legacyCreated.office_location_id}`,
+      legacyCreate.status === 201 && legacyCreated.role === 'Karyawan' && legacyCreated.office_location_id == null);
+
+    const scUnitBefore = scUser?.unit_id;
+    const scOfficeBefore = scUser?.office_location_id;
+    const legacyImport = await req(b, 'POST', '/api/users/bulk-import', {
+      token: admin,
+      body: { users: [{ name: scUser?.name, email: scUser?.email, role: 'Supply Chain', division: 'SC', department: scUser?.department }] },
+    });
+    const scAfterImport = ((await req(b, 'GET', '/api/users', { token: admin })).json?.data || []).find(u => u.email === scUser?.email);
+    rec('14: bulk import preserves existing unit and office when columns are omitted',
+      `${scUnitBefore} + ${scOfficeBefore}`,
+      `${scAfterImport?.unit_id} + ${scAfterImport?.office_location_id}`,
+      legacyImport.status === 200 && scAfterImport?.role === 'Karyawan'
+        && scAfterImport?.unit_id === scUnitBefore && scAfterImport?.office_location_id === scOfficeBefore);
+
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
     const units = (await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data || [];
