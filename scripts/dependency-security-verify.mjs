@@ -8,6 +8,8 @@ const checks = [
   ['multer runtime', packages['node_modules/multer']?.version, '2.5.0'],
   ['body-parser runtime', packages['node_modules/body-parser']?.version, '1.20.9'],
   ['multer TypeScript definitions', packages['node_modules/@types/multer']?.version, '2.3.0'],
+  ['vite build/dev server', packages['node_modules/vite']?.version, '6.4.6'],
+  ['qs query parser', packages['node_modules/qs']?.version, '6.16.1'],
 ];
 
 let failed = 0;
