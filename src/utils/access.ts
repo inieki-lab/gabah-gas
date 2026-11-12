@@ -42,6 +42,9 @@ export function hasRole(
 ): boolean {
   if (!user) return false;
   if (Array.isArray(user.role_keys)) return user.role_keys.includes(roleKey);
+  // Presence of effective permissions signals PostgreSQL RBAC mode. Missing
+  // role assignments must deny rather than fall back to a profile label.
+  if (Array.isArray(user.permission_keys)) return false;
   return legacyLabels.includes(String(user.role || ''));
 }
 
