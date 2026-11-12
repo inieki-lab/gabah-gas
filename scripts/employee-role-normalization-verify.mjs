@@ -20,6 +20,7 @@ const checks = [
   ['Edit-user API validates profile role and syncs secondary capability', patchRoute.includes('isKnownProfileRole(requestedRole)') && patchRoute.includes('secondaryCapabilityRoleKey(requestedRole)')],
   ['Bulk import normalizes role and preserves Humas/Sekretariat as capability', importRoute.includes('normalizePrimaryProfileRole(requestedRole)') && importRoute.includes('secondaryRoleByUserId.set') && importRoute.includes('capabilityRoleKey: secondaryRoleByUserId.get(user.id)')],
   ['Bulk import keeps employee capability label for file-store compatibility', importRoute.includes('roleLabels[requestedRole] || roleLabels[role]')],
+  ['User create and bulk import use collision-resistant generated IDs', /const generateUserId = \(\): string => `USR-\$\{crypto\.randomUUID\(\)\.toUpperCase\(\)\}`/.test(source) && (createRoute.includes('id: generateUserId()') || source.slice(source.indexOf("app.post('/api/users'"), source.indexOf("app.post('/api/users/bulk-import'")).includes('id: generateUserId()')) && importRoute.includes('id: generateUserId()') && !source.includes('USR-${Date.now().toString().slice(-6)}'))],
 ];
 
 let failed = 0;
