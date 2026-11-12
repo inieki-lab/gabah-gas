@@ -120,7 +120,7 @@ async function startServer() {
       'Supply Chain': 'supply_chain',
     };
     return aliases[normalized] || normalized.toLowerCase().normalize('NFKD')
-      .replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   };
 
   const hasNotificationRole = (actor: ServerUser, recipientRole: string): boolean => {
