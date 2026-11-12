@@ -2,6 +2,12 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const persistence = fs.readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
+const standaloneStart = persistence.indexOf('if (!dbConfig.isConfigured)');
+const standaloneEnd = persistence.indexOf('const maxAttempts', standaloneStart);
+const standaloneBlock = persistence.slice(standaloneStart, standaloneEnd);
+const fallbackStart = persistence.indexOf('// Hydrate from persistent file store if it exists');
+const fallbackEnd = persistence.indexOf('export function persistDataStore()', fallbackStart);
+const fallbackBlock = persistence.slice(fallbackStart, fallbackEnd);
 const helperStart = source.indexOf('const normalizePrimaryProfileRole =');
 const helperEnd = source.indexOf('const rbacFailure =', helperStart);
 const helpers = helperStart >= 0 && helperEnd > helperStart ? source.slice(helperStart, helperEnd) : '';
@@ -29,6 +35,7 @@ const checks = [
   ['User create and bulk import use collision-resistant generated IDs', hasCollisionResistantIds],
   ['PostgreSQL persistence validates and assigns legacy capabilities before normalizing profiles', /const employeeCapabilities = collectLegacyEmployeeCapabilityAssignments\(\)/.test(persistence) && /await ensureEmployeeCapabilityAssignments\(employeeCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/.test(persistence) && /await backfillNormalizedTables\(\);[\s\S]*await backfillDynamicRbacUserRoles\(\)/.test(persistence)],
   ['Persistence retains Humas/Sekretariat as secondary roles and maps all legacy profiles to Karyawan primary', /legacyRole === 'Humas'[\s\S]*roleKey: 'humas'/.test(persistence) && /legacyRole === 'Sekretaris Direksi'[\s\S]*roleKey: 'sekretaris_direksi'/.test(persistence) && /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/.test(persistence)],
+  ['File-store and development fallback preserve legacy primary role labels', !standaloneBlock.includes('normalizeLegacyEmployeeProfileRoles()') && !fallbackBlock.includes('normalizeLegacyEmployeeProfileRoles()') && /normalizeLegacyEmployeeProfileRoles\(\)/.test(persistence.slice(persistence.indexOf('async function persistPostgresState'), persistence.indexOf('async function backfillDynamicRbacUserRoles')))],
   ['File-store mode preserves Humas/Sekretariat capabilities without weakening PostgreSQL authorization', /if \(!isPostgresPersistenceActive\(\)\)[\s\S]*roleKey === 'humas'[\s\S]*roleLabel\.includes\('humas'\)[\s\S]*roleKey === 'sekretaris_direksi'/.test(source) && /if \(isPostgresPersistenceActive\(\)\) return hasRbacPermission[\s\S]*roleLabel\.includes\('sekretariat direksi'\)/.test(fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8'))],
 ];
 
