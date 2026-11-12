@@ -80,6 +80,9 @@ jobs:
       - name: Append-only audit log protection
         run: npm run test:audit-append-only
 
+      - name: Stable audit actor identity
+        run: npm run test:audit-identity
+
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
