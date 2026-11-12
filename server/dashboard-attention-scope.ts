@@ -19,7 +19,6 @@ interface ScopedTicket {
 
 export interface DashboardAttentionScope {
   actorId: string;
-  actorName: string;
   isGlobalReader: boolean;
   visibleAssetIds: ReadonlySet<string>;
   loans: readonly ScopedLoan[];
@@ -56,7 +55,6 @@ export function filterDashboardAttentionItems<T extends DashboardAttentionItem>(
         const ticket = ticketsById.get(item.link_id);
         return Boolean(ticket && (
           ticket.reporter_id === scope.actorId
-          || (Boolean(ticket.reporter_name) && String(ticket.reporter_name).trim().toLowerCase() === scope.actorName.trim().toLowerCase())
           || ticket.assigned_agent_id === scope.actorId
           || scope.canReadOwnerScope('tickets', ticket.category)
         ));
