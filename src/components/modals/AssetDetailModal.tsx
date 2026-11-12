@@ -26,6 +26,7 @@ import {
   Info
 } from 'lucide-react';
 import { Asset, UserProfile, Loan, Ticket, AssetMovement } from '../../types';
+import { hasPermission } from '../../utils/access';
 import { formatRupiah, formatDate, formatDateTime, calculateDepreciation, GabahService } from '../../services/gabahService';
 
 interface AssetDetailModalProps {
@@ -99,7 +100,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const isIT = ownerDivision === 'IT' || asset.category_type === 'IT';
   const isGA = ownerDivision === 'GA' || (!isSC && !isPIBC && !isIT);
   const isLicense = asset.category_type === 'License' || asset.category_code === 'SLIC' || asset.asset_number?.includes('-SLIC-');
-  const canEdit = currentUser ? GabahService.canEditAsset(currentUser, asset) : false;
+  const canEdit = currentUser ? (Array.isArray(currentUser.permission_keys)
+    ? hasPermission(currentUser, 'assets.update')
+    : GabahService.canEditAsset(currentUser, asset)) : false;
 
   let ownershipRuleText = '';
   if (asset.category_code === 'INV-F' || asset.asset_number?.includes('-INV-F-')) {
