@@ -3,7 +3,7 @@ import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
 import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
-import { GabahDomainService } from './services';
+import { GabahDomainService, getTicketOwnerDivision } from './services';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
 const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor);
@@ -71,7 +71,7 @@ function scopedAttention(actor: ServerUser, items: any[]) {
         return Boolean(
           (ticket.assigned_unit_id
             && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'))
-          || hasRbacScope(String(actor.id), 'division', String(ticket.category || '').trim(), 'tickets')
+          || hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets')
         );
       }
       return canManageTicket(actor, item.link_id);
