@@ -29,6 +29,7 @@ const checks = [
   ['User create and bulk import use collision-resistant generated IDs', hasCollisionResistantIds],
   ['PostgreSQL persistence validates and assigns legacy capabilities before normalizing profiles', /const employeeCapabilities = collectLegacyEmployeeCapabilityAssignments\(\)/.test(persistence) && /await ensureEmployeeCapabilityAssignments\(employeeCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/.test(persistence) && /await backfillNormalizedTables\(\);[\s\S]*await backfillDynamicRbacUserRoles\(\)/.test(persistence)],
   ['Persistence retains Humas/Sekretariat as secondary roles and maps all legacy profiles to Karyawan primary', /legacyRole === 'Humas'[\s\S]*roleKey: 'humas'/.test(persistence) && /legacyRole === 'Sekretaris Direksi'[\s\S]*roleKey: 'sekretaris_direksi'/.test(persistence) && /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/.test(persistence)],
+  ['File-store mode preserves Humas/Sekretariat capabilities without weakening PostgreSQL authorization', /if \(!isPostgresPersistenceActive\(\)\)[\s\S]*roleKey === 'humas'[\s\S]*roleLabel\.includes\('humas'\)[\s\S]*roleKey === 'sekretaris_direksi'/.test(source) && /if \(isPostgresPersistenceActive\(\)\) return hasRbacPermission[\s\S]*roleLabel\.includes\('sekretariat direksi'\)/.test(fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8'))],
 ];
 
 let failed = 0;
