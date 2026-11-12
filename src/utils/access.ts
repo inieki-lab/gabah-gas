@@ -3,7 +3,14 @@ import type { UserProfile } from '../types';
 type AccessUser = Partial<UserProfile> | null | undefined;
 
 export function isSuperAdmin(user: AccessUser): boolean {
-  return user?.is_superadmin === true || user?.role === 'Admin GABAH';
+  if (!user) return false;
+  // PostgreSQL-backed identities are authoritative: a legacy profile label
+  // must never override an explicit false/absent Superadmin assignment.
+  if (Array.isArray(user.permission_keys)) {
+    return user.is_superadmin === true || user.permission_keys.includes('*');
+  }
+  // Preserve role-label compatibility only for legacy file-store sessions.
+  return user.is_superadmin === true || user.role === 'Admin GABAH';
 }
 
 /**
