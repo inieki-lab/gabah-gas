@@ -71,14 +71,39 @@ async function startServer() {
   // Production API security and session/role hardening
   app.use(gabahSecurityMiddleware);
 
-  // Persist every successful state-changing API request after the response is sent
+  // Commit every successful state-changing API response BEFORE sending it.
+  // The previous finish-event approach replied 2xx first and only then attempted
+  // PostgreSQL persistence, allowing the UI to report success for a failed write.
+  // Intercept res.send (res.json delegates to it) so every successful API
+  // mutation waits for the authoritative store. Explicit route-level awaits are
+  // still valid; this final commit is a safety net for legacy handlers.
   app.use((req, res, next) => {
     if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
-    res.on('finish', () => {
-      if (res.statusCode >= 200 && res.statusCode < 400) {
-        void persistDataStore();
+
+    const send = res.send.bind(res);
+    let persistenceStarted = false;
+    res.send = ((body?: any) => {
+      if (persistenceStarted || res.statusCode < 200 || res.statusCode >= 400) {
+        return send(body);
       }
-    });
+
+      persistenceStarted = true;
+      void persistDataStore()
+        .then(() => send(body))
+        .catch((err: any) => {
+          console.error('[GABAH Persistence] API response blocked because commit failed:', err?.message || err);
+          if (!res.headersSent) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          }
+          return send(JSON.stringify({
+            success: false,
+            message: 'Perubahan gagal disimpan ke database. Operasi tidak dapat dikonfirmasi.',
+          }));
+        });
+      return res;
+    }) as typeof res.send;
+
     next();
   });
 
