@@ -8,6 +8,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 export interface RequestAuditContext {
   ip?: string;
   persistenceCommitted?: boolean;
+  originalAdminId?: string;
 }
 
 /** Mark the current request's last persistence attempt as pending. */
