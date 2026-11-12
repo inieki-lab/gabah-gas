@@ -62,6 +62,16 @@ function isoDatePlus(days) {
 }
 
 async function main() {
+  const loanModalSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/modals/CreateLoanModal.tsx'), 'utf8');
+  record(
+    'Loan request modal lists only explicitly loanable, available, non-damaged assets',
+    'is_loanable=true + status=available + condition not broken/damaged',
+    'frontend pool eligibility policy',
+    /asset\.is_loanable === true/.test(loanModalSource)
+      && /asset\.status === 'available'/.test(loanModalSource)
+      && /!\['broken', 'damaged'\]\.includes\(String\(asset\.condition\)\)/.test(loanModalSource),
+  );
+
   const serverPath = path.resolve(process.cwd(), 'dist/server.cjs');
   if (!fs.existsSync(serverPath)) {
     console.error('dist/server.cjs not found — run `npm run build` first.');
