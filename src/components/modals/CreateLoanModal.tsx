@@ -105,7 +105,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
   React.useEffect(() => {
     if (!isOpen || selectedAssetIds.length === 0 || !startDate || !dueDate) {
-      setServerConflicts(new Set());
+      setServerConflicts(new Set<string>());
       setIsCheckingAvailability(false);
       setAvailabilityError(null);
       return;
