@@ -1,5 +1,13 @@
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
+## 2026-11-12 — Navigation dan filter aset RPC
+
+- Filter owner RPC tetap menampilkan record legacy ber-owner `SC` selama migrasi data belum dijalankan.
+- Menu Aset pada mode PostgreSQL hanya tampil bila pengguna memiliki permission baca `assets.read`; permission mutasi saja tidak lagi membuka halaman yang API bacanya akan menolak.
+- Regression check navigasi diperbarui untuk memastikan `assets.update` atau `assets.audit.read` saja tidak cukup membuka menu Aset.
+- Perubahan dibuat pada branch `fix/nov12-rpc-filter-and-nav-read`; build, lint, dan UAT belum dijalankan dari lingkungan ini.
+
+
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
 - Employee baseline visibility remains limited to maintenance records for assets assigned to that employee.
 - GA's optional read-only IT workstation inventory exception does not grant IT maintenance-record visibility; explicit dynamic asset scopes remain independently evaluated.
