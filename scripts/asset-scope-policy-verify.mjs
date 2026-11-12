@@ -19,6 +19,7 @@ const assetUi = read('src/components/views/AssetsView.tsx');
 const assetEditUi = read('src/components/modals/EditAssetModal.tsx');
 const assetDetailUi = read('src/components/modals/AssetDetailModal.tsx');
 const loansUi = read('src/components/views/LoansView.tsx');
+const loanCreateUi = read('src/components/modals/CreateLoanModal.tsx');
 const contractsUi = read('src/components/views/ContractsView.tsx');
 const maintenanceUi = read('src/components/views/MaintenanceView.tsx');
 const dashboardUi = read('src/components/views/DashboardView.tsx');
@@ -137,7 +138,10 @@ const checks = [
     /static handoverLoan[\s\S]*isAssetEligibleForLoan\(asset\)[\s\S]*physicalConflict[\s\S]*loan\.status = 'borrowed'/.test(services)],
   ['Loanable pool excludes assets already assigned to a person and legacy maintenance/retired states',
     /asset\.status !== 'assigned'/.test(services)
-      && /'maintenance', 'retired', 'in_use'/.test(services) && /'broken', 'damaged', 'poor'/.test(services)],
+      && /!asset\.assigned_to\?\.id/.test(services)
+      && /'maintenance', 'retired', 'in_use'/.test(services)
+      && /'broken', 'damaged', 'poor'/.test(services)
+      && /!asset\.assigned_to\?\.id/.test(loanCreateUi)],
   ['Asset edit form no longer sends location, condition, or lifecycle status through generic metadata update',
     /is_loanable: formData\.is_loanable/.test(assetEditUi)
       && !/location: \(formData\.asset_location_id/.test(assetEditUi)
