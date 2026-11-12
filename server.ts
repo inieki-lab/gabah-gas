@@ -656,7 +656,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Maksimal 500 baris per impor. Pisahkan menjadi beberapa berkas.' });
       }
 
-      const validRoles = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'];
+      const validRoles = ['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'];
       const roleLabels: Record<string, string> = {
         'Admin GABAH': 'Super Admin',
         'IT': 'IT Technical Support',
@@ -681,9 +681,10 @@ async function startServer() {
         const rowNo = i + 1;
         const name = String(row.name || '').trim();
         const email = String(row.email || '').trim().toLowerCase();
+        const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
         const roleRaw = String(row.role || '').trim();
-        const division = String(row.division || '').trim() || 'Umum';
-        const department = String(row.department || '').trim() || 'Operasional';
+        const division = String(row.division || '').trim() || existing?.division || 'Umum';
+        const department = String(row.department || '').trim() || existing?.department || 'Operasional';
         if (!(db.divisions || []).some(item => item.code === division)) {
           errors.push(`Baris ${rowNo}: Divisi "${division}" tidak terdaftar pada master organisasi.`); continue;
         }
@@ -707,15 +708,17 @@ async function startServer() {
           errors.push(`Baris ${rowNo}: Lokasi kantor "${officeLocationId}" tidak terdaftar/aktif.`); continue;
         }
 
-        const requestedRole = roleRaw && validRoles.includes(roleRaw) ? roleRaw : 'Karyawan';
-        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
         if (roleRaw && !validRoles.includes(roleRaw)) {
-          warnings.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenali (memakai Karyawan).`);
-        } else if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
+          errors.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenal; baris dilewati agar role lama tidak berubah tanpa sengaja.`);
+          continue;
+        }
+        const requestedRole = roleRaw || existing?.role || 'Karyawan';
+        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC'
+          ? 'Karyawan'
+          : requestedRole === 'Superadmin' ? 'Admin GABAH' : requestedRole;
+        if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
           warnings.push(`Baris ${rowNo}: "${requestedRole}" adalah label legacy; role aplikasi menjadi Karyawan. Lokasi kantor harus diisi terpisah melalui kolom office_location_id.`);
         }
-
-        const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
         if (existing) {
           // Revoke sessions whenever access-bearing identity fields change.
           const accessContextChanged = existing.role !== role
