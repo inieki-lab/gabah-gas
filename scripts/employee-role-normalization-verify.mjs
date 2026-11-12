@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const persistence = fs.readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
 const helperStart = source.indexOf('const normalizePrimaryProfileRole =');
 const helperEnd = source.indexOf('const rbacFailure =', helperStart);
 const helpers = helperStart >= 0 && helperEnd > helperStart ? source.slice(helperStart, helperEnd) : '';
@@ -26,6 +27,8 @@ const checks = [
   ['Bulk import normalizes role and preserves Humas/Sekretariat as capability', importRoute.includes('normalizePrimaryProfileRole(requestedRole)') && importRoute.includes('secondaryRoleByUserId.set') && importRoute.includes('capabilityRoleKey: secondaryRoleByUserId.get(user.id)')],
   ['Bulk import keeps employee capability label for file-store compatibility', importRoute.includes('roleLabels[requestedRole] || roleLabels[role]')],
   ['User create and bulk import use collision-resistant generated IDs', hasCollisionResistantIds],
+  ['PostgreSQL persistence normalizes legacy profiles before writing the authoritative state', /const employeeCapabilities = normalizeLegacyEmployeeProfileRoles\(\)/.test(persistence) && /await backfillNormalizedTables\(\);[\s\S]*await ensureEmployeeCapabilityAssignments\(employeeCapabilities\);[\s\S]*await backfillDynamicRbacUserRoles\(\)/.test(persistence)],
+  ['Persistence retains Humas/Sekretariat as secondary roles and maps all legacy profiles to Karyawan primary', /legacyRole === 'Humas'[\s\S]*roleKey: 'humas'/.test(persistence) && /legacyRole === 'Sekretaris Direksi'[\s\S]*roleKey: 'sekretaris_direksi'/.test(persistence) && /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/.test(persistence)],
 ];
 
 let failed = 0;
