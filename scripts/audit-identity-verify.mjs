@@ -8,8 +8,8 @@ const persistence = fs.readFileSync(new URL('../server/persistence.ts', import.m
 const checks = [
   ['audit model stores stable user_id', /export interface ServerAuditLog \{[\s\S]*user_id\?: string/.test(db)],
   ['recordAudit accepts and records actor ID', /recordAudit\([\s\S]*user: \{ id\?: string; name: string; role: string \}/.test(services) && /user_id: user\.id/.test(services)],
-  ['PostgreSQL audit persistence prefers stable user_id', /const userId = log\.user_id \|\| db\.users\.find\(u => u\.name === log\.user_name\)\?\.id/.test(persistence)],
-  ['legacy name fallback cannot override explicit actor ID', /log\.user_id \|\| db\.users\.find/.test(persistence)],
+  ['PostgreSQL audit persistence never infers identity from display name', /const userId = log\.user_id \|\| null/.test(persistence) && !/db\.users\.find\(u => u\.name === log\.user_name\)/.test(persistence)],
+  ['audit actor ID is a historical identifier, not a cascading user foreign key', /DROP CONSTRAINT IF EXISTS audit_logs_user_id_fkey/.test(fs.readFileSync(new URL('../server/migrations/046_audit_logs_append_only.sql', import.meta.url), 'utf8'))],
 ];
 
 let failed = 0;
