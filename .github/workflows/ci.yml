@@ -62,6 +62,9 @@ jobs:
       - name: Branch migration non-destructive safety check
         run: npm run test:branch-migration-safety
 
+      - name: Room reservation concurrent collision guard
+        run: npm run test:room-reservation-exclusion
+
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
