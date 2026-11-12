@@ -1774,6 +1774,20 @@ export class GabahDomainService {
 
     const room = (db.rooms || []).find(r => r.id === roomId);
     if (!room) throw new Error('Ruangan tidak ditemukan.');
+    if (updates.name !== undefined && !String(updates.name).trim()) {
+      throw Object.assign(new Error('Nama ruangan tidak boleh kosong.'), { statusCode: 400 });
+    }
+    if (updates.status !== undefined && !['available', 'in_use', 'maintenance'].includes(String(updates.status))) {
+      throw Object.assign(new Error('Status ruangan tidak valid.'), { statusCode: 400 });
+    }
+    if (updates.capacity !== undefined
+      && (!Number.isInteger(Number(updates.capacity)) || Number(updates.capacity) < 1)) {
+      throw Object.assign(new Error('Kapasitas ruangan harus berupa bilangan bulat minimal 1.'), { statusCode: 400 });
+    }
+    if (updates.facilities !== undefined
+      && (!Array.isArray(updates.facilities) || updates.facilities.some(item => typeof item !== 'string'))) {
+      throw Object.assign(new Error('Daftar fasilitas ruangan tidak valid.'), { statusCode: 400 });
+    }
 
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, code, building, floor (identity &
@@ -1783,7 +1797,7 @@ export class GabahDomainService {
     ];
     for (const key of allowedRoomFields) {
       if (updates[key] !== undefined) {
-        (room as any)[key] = updates[key];
+        (room as any)[key] = key === 'capacity' ? Number(updates[key]) : updates[key];
       }
     }
     this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
@@ -1801,12 +1815,24 @@ export class GabahDomainService {
       throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menambah tipe rapat.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama tipe rapat wajib diisi.');
+    const code = payload.code ? payload.code.trim().toLowerCase() : payload.name.trim().toLowerCase().replace(/\s+/g, '_');
+    const priority = payload.priority_level || 'medium';
+    if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(code)) {
+      throw Object.assign(new Error('Kode tipe rapat tidak valid.'), { statusCode: 400 });
+    }
+    if (!['high', 'medium', 'low'].includes(String(priority))) {
+      throw Object.assign(new Error('Prioritas tipe rapat tidak valid.'), { statusCode: 400 });
+    }
+    if ((db.meetingTypes || []).some(item => item.code.toLowerCase() === code
+      || item.name.trim().toLowerCase() === payload.name!.trim().toLowerCase())) {
+      throw Object.assign(new Error('Kode atau nama tipe rapat sudah digunakan.'), { statusCode: 409 });
+    }
     const newItem: ServerMeetingType = {
       id: `MT-${Date.now()}`,
       name: payload.name.trim(),
-      code: payload.code ? payload.code.trim().toLowerCase() : payload.name.trim().toLowerCase().replace(/\s+/g, '_'),
+      code,
       description: payload.description?.trim() || '',
-      priority_level: payload.priority_level || 'medium',
+      priority_level: priority as 'high' | 'medium' | 'low',
       color: payload.color || 'blue',
       is_system: false,
     };
@@ -1823,11 +1849,24 @@ export class GabahDomainService {
     }
     const item = (db.meetingTypes || []).find(m => m.id === id);
     if (!item) throw new Error('Tipe rapat tidak ditemukan.');
-    if (payload.name) item.name = payload.name.trim();
-    if (payload.code) item.code = payload.code.trim().toLowerCase();
-    if (payload.description !== undefined) item.description = payload.description.trim();
-    if (payload.priority_level) item.priority_level = payload.priority_level;
-    if (payload.color) item.color = payload.color;
+    const nextName = payload.name === undefined ? item.name : String(payload.name).trim();
+    const nextCode = payload.code === undefined ? item.code : String(payload.code).trim().toLowerCase();
+    if (!nextName) throw Object.assign(new Error('Nama tipe rapat tidak boleh kosong.'), { statusCode: 400 });
+    if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(nextCode)) {
+      throw Object.assign(new Error('Kode tipe rapat tidak valid.'), { statusCode: 400 });
+    }
+    if ((db.meetingTypes || []).some(other => other.id !== id
+      && (other.code.toLowerCase() === nextCode || other.name.trim().toLowerCase() === nextName.toLowerCase()))) {
+      throw Object.assign(new Error('Kode atau nama tipe rapat sudah digunakan.'), { statusCode: 409 });
+    }
+    if (payload.priority_level !== undefined && !['high', 'medium', 'low'].includes(String(payload.priority_level))) {
+      throw Object.assign(new Error('Prioritas tipe rapat tidak valid.'), { statusCode: 400 });
+    }
+    item.name = nextName;
+    item.code = nextCode;
+    if (payload.description !== undefined) item.description = String(payload.description).trim();
+    if (payload.priority_level !== undefined) item.priority_level = payload.priority_level;
+    if (payload.color !== undefined) item.color = String(payload.color).trim() || item.color;
     this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id);
     persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
     return item;
@@ -1857,10 +1896,21 @@ export class GabahDomainService {
       throw new Error('Akses ditolak: permission meeting_facilities.manage diperlukan.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
+    const category = payload.category || 'GA';
+    if (!['GA', 'IT'].includes(String(category))) {
+      throw Object.assign(new Error('Kategori fasilitas harus GA atau IT.'), { statusCode: 400 });
+    }
+    if (payload.is_active !== undefined && typeof payload.is_active !== 'boolean') {
+      throw Object.assign(new Error('Status fasilitas harus berupa boolean.'), { statusCode: 400 });
+    }
+    if ((db.meetingFacilities || []).some(item => item.category === category
+      && item.name.trim().toLowerCase() === payload.name!.trim().toLowerCase())) {
+      throw Object.assign(new Error('Nama fasilitas sudah terdaftar pada kategori tersebut.'), { statusCode: 409 });
+    }
     const newFac: ServerMeetingFacility = {
-      id: `FAC-${payload.category || 'GA'}-${Date.now()}`,
+      id: `FAC-${category}-${Date.now()}`,
       name: payload.name.trim(),
-      category: payload.category === 'IT' ? 'IT' : 'GA',
+      category: category as 'GA' | 'IT',
       description: payload.description?.trim() || '',
       is_active: payload.is_active !== undefined ? payload.is_active : true,
       is_system: false,
@@ -1879,9 +1929,22 @@ export class GabahDomainService {
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
     if (!item) throw new Error('Fasilitas tidak ditemukan.');
-    if (payload.name) item.name = payload.name.trim();
-    if (payload.category) item.category = payload.category;
-    if (payload.description !== undefined) item.description = payload.description.trim();
+    const nextName = payload.name === undefined ? item.name : String(payload.name).trim();
+    const nextCategory = payload.category === undefined ? item.category : String(payload.category);
+    if (!nextName) throw Object.assign(new Error('Nama fasilitas tidak boleh kosong.'), { statusCode: 400 });
+    if (!['GA', 'IT'].includes(nextCategory)) {
+      throw Object.assign(new Error('Kategori fasilitas harus GA atau IT.'), { statusCode: 400 });
+    }
+    if (payload.is_active !== undefined && typeof payload.is_active !== 'boolean') {
+      throw Object.assign(new Error('Status fasilitas harus berupa boolean.'), { statusCode: 400 });
+    }
+    if ((db.meetingFacilities || []).some(other => other.id !== id && other.category === nextCategory
+      && other.name.trim().toLowerCase() === nextName.toLowerCase())) {
+      throw Object.assign(new Error('Nama fasilitas sudah terdaftar pada kategori tersebut.'), { statusCode: 409 });
+    }
+    item.name = nextName;
+    item.category = nextCategory as 'GA' | 'IT';
+    if (payload.description !== undefined) item.description = String(payload.description).trim();
     if (payload.is_active !== undefined) item.is_active = payload.is_active;
     this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id);
     persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
