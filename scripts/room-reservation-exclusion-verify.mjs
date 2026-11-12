@@ -11,13 +11,31 @@ const persistence = fs.readFileSync(
 );
 
 const checks = [
-  ['migration 044 adds a PostgreSQL EXCLUDE constraint', /EXCLUDE USING gist/i.test(migration)],
-  ['constraint compares room identity and overlapping half-open time ranges', /room_id WITH =/i.test(migration) && /tstzrange\(start_datetime, end_datetime, '\[\)'\) WITH &&/i.test(migration)],
-  ['pending_approval and legacy active states participate in collision prevention', /status IN \('pending_approval', 'pending', 'approved', 'in_use', 'checked_in'\)/i.test(migration)],
-  ['legacy conflicts are detected without deleting or rewriting reservations', /pasangan reservasi ruangan aktif yang bertabrakan/i.test(migration) && !/DELETE FROM room_reservations|UPDATE room_reservations/i.test(migration)],
-  ['constraint creation is idempotent', /IF NOT EXISTS \([['pending_approval', 'pending', 'approved', 'in_use', 'checked_in']\S]*pg_constraint[['pending_approval', 'pending', 'approved', 'in_use', 'checked_in']\S]*room_reservations_no_time_overlap/i.test(migration)],
-  ['old non-enforcing GiST index is removed after constraint creation', /DROP INDEX IF EXISTS idx_room_reservations_no_time_overlap/i.test(migration)],
-  ['migration runner discovers and orders numbered SQL migrations', /readdirSync\(migrationsDir\)[['pending_approval', 'pending', 'approved', 'in_use', 'checked_in']\S]*filter\(f => f\.endsWith\('\.sql'\)\)\.sort\(\)/i.test(persistence)],
+  ['migration 044 adds PostgreSQL EXCLUDE constraints for rooms and loans',
+    migration.includes('EXCLUDE USING gist')
+      && migration.includes('room_reservations_no_time_overlap')
+      && migration.includes('loans_no_confirmed_asset_overlap')],
+  ['room collision constraint compares room identity and half-open time ranges',
+    migration.includes('room_id WITH =')
+      && migration.includes("(tstzrange(start_datetime, end_datetime, '[)')) WITH &&")],
+  ['pending_approval and legacy active room states participate in collision prevention',
+    migration.includes("status IN ('pending_approval', 'pending', 'approved', 'in_use', 'checked_in')")],
+  ['loan collision constraint covers approved, borrowed, and overdue states',
+    migration.includes("status IN ('approved', 'borrowed', 'overdue')")
+      && migration.includes("tstzrange(start_date, 'infinity'::timestamptz, '[)')")],
+  ['legacy room and loan conflicts are detected before constraints are added',
+    migration.includes('pasangan reservasi ruangan aktif yang bertabrakan')
+      && migration.includes('pasangan pinjaman aset aktif yang bertabrakan')],
+  ['migration never silently deletes or rewrites existing reservations or loans',
+    !/DELETE FROM (room_reservations|loans)|UPDATE (room_reservations|loans)/i.test(migration)],
+  ['room and loan constraint creation is idempotent',
+    (migration.match(/FROM pg_constraint/g) || []).length >= 2
+      && migration.includes('room_reservations_no_time_overlap')
+      && migration.includes('loans_no_confirmed_asset_overlap')],
+  ['old non-enforcing room GiST index is removed after constraint creation',
+    migration.includes('DROP INDEX IF EXISTS idx_room_reservations_no_double_booking')],
+  ['migration runner discovers and orders numbered SQL migrations',
+    /readdirSync\(migrationsDir\)[\s\S]*filter\(f => f\.endsWith\('\.sql'\)\)\.sort\(\)/i.test(persistence)],
 ];
 
 let failed = 0;
@@ -26,4 +44,4 @@ for (const [name, pass] of checks) {
   if (!pass) failed++;
 }
 console.log(`TOTAL: ${checks.length} | PASS: ${checks.length - failed} | FAIL: ${failed}`);
-assert.equal(failed, 0, 'Room reservation exclusion migration contract failed.');
+assert.equal(failed, 0, 'Concurrent booking exclusion migration contract failed.');
