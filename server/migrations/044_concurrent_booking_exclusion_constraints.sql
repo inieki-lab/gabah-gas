@@ -138,10 +138,33 @@ CREATE TRIGGER trg_prevent_double_booking
 -- recorded even when a future reservation already exists; operators can then
 -- resolve that booking, while every NEW request is blocked until physical return.
 CREATE OR REPLACE FUNCTION check_loan_schedule_collision()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
+DECLARE
+  asset_is_loanable BOOLEAN;
+  asset_status TEXT;
+  asset_condition TEXT;
 BEGIN
-  IF NEW.status IN ('approved', 'borrowed', 'overdue') THEN
-    PERFORM 1 FROM assets WHERE id = NEW.asset_id FOR UPDATE;
+  IF NEW.status IN ('pending_approval', 'approved', 'borrowed', 'overdue') THEN
+    SELECT is_loanable, status, condition
+      INTO asset_is_loanable, asset_status, asset_condition
+      FROM assets
+      WHERE id = NEW.asset_id
+      FOR UPDATE;
+
+    -- Requests and approvals must target an eligible, unassigned asset.
+    -- The handover transition to borrowed is exempt because the custody
+    -- assignment is created as part of the same business operation.
+    IF NEW.status IN ('pending_approval', 'approved') AND (
+      NOT COALESCE(asset_is_loanable, FALSE)
+      OR LOWER(BTRIM(COALESCE(asset_status, ''))) NOT IN ('active', 'available')
+      OR LOWER(BTRIM(COALESCE(asset_condition, ''))) IN ('poor', 'broken', 'damaged')
+      OR EXISTS (
+        SELECT 1 FROM asset_assignments
+        WHERE asset_id = NEW.asset_id AND returned_date IS NULL
+      )
+    ) THEN
+      RAISE EXCEPTION 'Aset tidak memenuhi syarat peminjaman atau sudah ditugaskan kepada pegawai.';
+    END IF;
 
     IF NEW.status <> 'overdue' AND EXISTS (
       SELECT 1 FROM loans
@@ -159,7 +182,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_check_loan_schedule_collision ON loans;
 CREATE TRIGGER trg_check_loan_schedule_collision
