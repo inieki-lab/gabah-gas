@@ -18,6 +18,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { Asset, AssetCategoryType, OwnerDivision, UserProfile } from '../../types';
+import { formatLocalDate } from '../../utils/datetime';
 import { hasPermission, isSuperAdmin as isSuperAdminAccess } from '../../utils/access';
 import { gabahApi } from '../../services/gabahApi';
 
@@ -360,7 +361,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   const [model, setModel] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [specifications, setSpecifications] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [purchaseDate, setPurchaseDate] = useState(formatLocalDate());
   const [purchasePrice, setPurchasePrice] = useState<number>(15000000);
   const [warrantyUntil, setWarrantyUntil] = useState('');
   const [location, setLocation] = useState('Head Office Food Station');
