@@ -99,18 +99,18 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
     return legacyRoles.includes(currentUser.role);
   };
   const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
-  const canManageRoomMaster = hasPermission('meeting_types.manage', ['Admin GABAH', 'GA'])
-    || hasPermission('meeting_facilities.manage', ['Admin GABAH', 'GA']);
-  const canManageRoomStatus = hasPermission('meeting_rooms.update', ['Admin GABAH', 'GA']);
+  const canManageRoomMaster = !isAuditor && (hasPermission('meeting_types.manage', ['Admin GABAH', 'GA'])
+    || hasPermission('meeting_facilities.manage', ['Admin GABAH', 'GA']));
+  const canManageRoomStatus = !isAuditor && hasPermission('meeting_rooms.update', ['Admin GABAH', 'GA']);
   const canCreateReservation = !isAuditor && hasPermission('room_reservations.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
-  const canApproveReservation = hasPermission('room_reservations.approve', ['Admin GABAH', 'GA']);
-  const canRejectReservation = hasPermission('room_reservations.reject', ['Admin GABAH', 'GA']);
+  const canApproveReservation = !isAuditor && hasPermission('room_reservations.approve', ['Admin GABAH', 'GA']);
+  const canRejectReservation = !isAuditor && hasPermission('room_reservations.reject', ['Admin GABAH', 'GA']);
   const canOperateReservations = canApproveReservation || canRejectReservation;
   const canReadDocumentation = hasPermission('room_reservations.documentation.read', ['Humas']);
-  const canOverridePriority = hasPermission('room_reservations.override_priority', ['Sekretaris Direksi']);
-  const canCancelReservation = hasPermission('room_reservations.cancel', ['Admin GABAH', 'GA']);
-  const canCheckinReservation = hasPermission('room_reservations.checkin', ['Admin GABAH', 'GA']);
-  const canCheckoutReservation = hasPermission('room_reservations.checkout', ['Admin GABAH', 'GA']);
+  const canOverridePriority = !isAuditor && hasPermission('room_reservations.override_priority', ['Sekretaris Direksi']);
+  const canCancelReservation = !isAuditor && hasPermission('room_reservations.cancel', ['Admin GABAH', 'GA']);
+  const canCheckinReservation = !isAuditor && hasPermission('room_reservations.checkin', ['Admin GABAH', 'GA']);
+  const canCheckoutReservation = !isAuditor && hasPermission('room_reservations.checkout', ['Admin GABAH', 'GA']);
 
   // Stats
   const stats = useMemo(() => {
