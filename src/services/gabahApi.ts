@@ -432,6 +432,17 @@ class GabahApiClient {
     return this.request<Loan[]>('/api/loans');
   }
 
+  async checkLoanAvailability(payload: {
+    asset_ids: string[];
+    start_date: string;
+    due_date: string;
+  }): Promise<{ conflicting_asset_ids: string[] }> {
+    return this.request<{ conflicting_asset_ids: string[] }>('/api/loans/availability', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async requestLoan(payload: {
     asset_id?: string;
     asset_ids?: string[];
