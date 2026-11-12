@@ -59,6 +59,9 @@ jobs:
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
+      - name: Asset category filter regression checks
+        run: npm run test:asset-category-filter
+
       - name: Asset movement history scope consistency
         run: npm run test:movement-scope
 
