@@ -2338,6 +2338,32 @@ async function startServer() {
     return res.json({ success: true, data });
   });
 
+  // Privacy-safe availability check across all reservations.
+  app.post('/api/loans/availability', (req, res) => {
+    if (!requireRbacPermission(req, res, 'loans.create')) return;
+    const assetIds = Array.isArray(req.body?.asset_ids)
+      ? [...new Set(req.body.asset_ids.map((id: unknown) => String(id)))]
+      : [];
+    const start = new Date(String(req.body?.start_date || '')).getTime();
+    const due = new Date(String(req.body?.due_date || '')).getTime();
+    if (assetIds.length === 0 || assetIds.length > 50 || assetIds.some(id => !id)
+      || !Number.isFinite(start) || !Number.isFinite(due) || start >= due) {
+      return res.status(400).json({ success: false, message: 'Daftar aset atau rentang tanggal peminjaman tidak valid.' });
+    }
+    const conflicts = assetIds.filter(assetId => {
+      const asset = db.assets.find(item => item.id === assetId);
+      if (!asset || !asset.is_loanable) return true;
+      return db.loans.some(loan => {
+        if (loan.asset_id !== assetId || !['approved', 'borrowed'].includes(loan.status)) return false;
+        const existingStart = new Date(loan.start_date).getTime();
+        const existingDue = new Date(loan.due_date).getTime();
+        return Number.isFinite(existingStart) && Number.isFinite(existingDue)
+          && start < existingDue && due > existingStart;
+      });
+    });
+    return res.json({ success: true, data: { conflicting_asset_ids: conflicts } });
+  });
+
   app.post('/api/loans', async (req, res) => {
     try {
       
