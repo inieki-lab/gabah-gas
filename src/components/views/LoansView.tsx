@@ -88,8 +88,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
   const filteredLoans = baseLoans.filter((loan) => {
     if (statusFilter === 'ALL') return true;
-    if (statusFilter === 'pending') return loan.status === 'pending';
-    if (statusFilter === 'active') return loan.status === 'active' || loan.status === 'overdue';
+    if (statusFilter === 'pending') return loan.status === 'pending_approval' || (loan.status === 'pending_approval' || loan.status === 'pending');
+    if (statusFilter === 'active') return ['borrowed', 'active', 'overdue'].includes(loan.status);
     return loan.status === statusFilter;
   });
 
@@ -167,9 +167,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
             }`}
           >
             {status === 'ALL' ? (isSelfLoansOnly ? 'Semua Peminjaman Saya' : 'Semua Reservasi') :
-             status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => l.status === 'pending').length})` :
+             status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => l.status === 'pending_approval' || l.status === 'pending').length})` :
              status === 'approved' ? `Disetujui (${baseLoans.filter(l => l.status === 'approved').length})` :
-             status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => l.status === 'active' || l.status === 'overdue').length})` :
+             status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => ['borrowed', 'active', 'overdue'].includes(l.status)).length})` :
              'Selesai Dikembalikan'}
           </button>
         ))}
@@ -213,18 +213,18 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 <div>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                     loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                    (loan.status === 'pending') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                    (loan.status === 'active' || loan.status === 'overdue') ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
+                    ((loan.status === 'pending_approval' || loan.status === 'pending')) ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                    (['borrowed', 'active', 'overdue'].includes(loan.status)) ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
                     loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                     'bg-rose-100 text-rose-800 border border-rose-300'
                   }`}>
                     {loan.status === 'approved' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    {(loan.status === 'pending') && <Clock className="w-3.5 h-3.5" />}
-                    {(loan.status === 'active' || loan.status === 'overdue') && <UserCheck className="w-3.5 h-3.5" />}
+                    {((loan.status === 'pending_approval' || loan.status === 'pending')) && <Clock className="w-3.5 h-3.5" />}
+                    {(['borrowed', 'active', 'overdue'].includes(loan.status)) && <UserCheck className="w-3.5 h-3.5" />}
                     {loan.status === 'returned' && <CheckSquare className="w-3.5 h-3.5" />}
                     {loan.status === 'approved' ? 'Disetujui' :
-                     (loan.status === 'pending') ? 'Menunggu Approval' :
-                     (loan.status === 'active' || loan.status === 'overdue') ? 'Sedang Dipinjam' :
+                     ((loan.status === 'pending_approval' || loan.status === 'pending')) ? 'Menunggu Approval' :
+                     (['borrowed', 'active', 'overdue'].includes(loan.status)) ? 'Sedang Dipinjam' :
                      loan.status === 'returned' ? 'Dikembalikan' :
                      loan.status}
                   </span>
@@ -284,7 +284,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 <div className="flex items-center gap-2">
                   
                   {/* Status: Pending -> Approve or Reject */}
-                  {loan.status === 'pending' && userCanApprove && (
+                  {(loan.status === 'pending_approval' || loan.status === 'pending') && userCanApprove && (
                     <button
                       onClick={() => onApproveLoan(loan.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
@@ -293,7 +293,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                       Setujui Reservasi
                     </button>
                   )}
-                  {loan.status === 'pending' && canRejectLoan && (
+                  {(loan.status === 'pending_approval' || loan.status === 'pending') && canRejectLoan && (
                     <button
                       onClick={() => setRejectingLoanId(loan.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
@@ -315,7 +315,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Status: Active -> Return inspection */}
-                  {canReturnLoan && (loan.status === 'active' || loan.status === 'overdue') &&
+                  {canReturnLoan && (['borrowed', 'active', 'overdue'].includes(loan.status)) &&
                     (userCanApprove || loan.borrower_id === currentUser.id || isExactIdentityNameMatch(loan.borrower_name, currentUser.name)) && (
                     <button
                       onClick={() => setReturningLoan(loan)}
