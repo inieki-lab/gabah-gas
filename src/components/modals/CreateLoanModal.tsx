@@ -16,6 +16,20 @@ import {
 import { Asset, Loan, UserProfile } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
 
+// datetime-local inputs are interpreted in the user's browser timezone.
+// Send an explicit UTC instant to the API so server/DB timezone cannot shift it.
+const toIsoDateTime = (value: string): string | null => {
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null;
+};
+
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 interface CreateLoanModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -79,7 +93,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   // Default tomorrow 09:00 to 17:00
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const tomorrowStr = formatLocalDate(tomorrow);
 
   const [startDate, setStartDate] = useState<string>(`${tomorrowStr}T09:00`);
   const [dueDate, setDueDate] = useState<string>(`${tomorrowStr}T17:00`);
@@ -110,13 +124,21 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
       setAvailabilityError(null);
       return;
     }
+    const startDateIso = toIsoDateTime(startDate);
+    const dueDateIso = toIsoDateTime(dueDate);
+    if (!startDateIso || !dueDateIso || new Date(startDateIso).getTime() >= new Date(dueDateIso).getTime()) {
+      setServerConflicts(new Set(selectedAssetIds));
+      setIsCheckingAvailability(false);
+      setAvailabilityError('Rentang tanggal dan waktu tidak valid. Waktu mulai harus sebelum batas pengembalian.');
+      return;
+    }
     let cancelled = false;
     setIsCheckingAvailability(true);
     setAvailabilityError(null);
     gabahApi.checkLoanAvailability({
       asset_ids: selectedAssetIds,
-      start_date: startDate,
-      due_date: dueDate,
+      start_date: startDateIso,
+      due_date: dueDateIso,
     }).then(result => {
       if (!cancelled) setServerConflicts(new Set(result.conflicting_asset_ids || []));
     }).catch(error => {
@@ -171,13 +193,16 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     e.preventDefault();
     if (isAuditor || hasAnyConflict || isCheckingAvailability || availabilityError) return;
     if (selectedAssetIds.length === 0 || !purpose.trim()) return;
+    const startDateIso = toIsoDateTime(startDate);
+    const dueDateIso = toIsoDateTime(dueDate);
+    if (!startDateIso || !dueDateIso || new Date(startDateIso).getTime() >= new Date(dueDateIso).getTime()) return;
 
     onRequestLoan({
       asset_id: selectedAssetIds[0],
       asset_ids: selectedAssetIds,
       purpose: purpose.trim(),
-      start_date: startDate,
-      due_date: dueDate,
+      start_date: startDateIso,
+      due_date: dueDateIso,
       borrower_phone: borrowerPhone.trim(),
     });
     onClose();
