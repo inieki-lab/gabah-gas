@@ -60,7 +60,7 @@ const checks = [
   ['role scope mapping exists', /CREATE TABLE IF NOT EXISTS gabah_role_division_scopes/i.test(migration)],
   ['user-role assignment mapping exists', /CREATE TABLE IF NOT EXISTS gabah_user_roles/i.test(migration)],
   ['Superadmin capability is a stable field', /is_superadmin BOOLEAN NOT NULL DEFAULT FALSE/i.test(migration)],
-  ['Auditor read-only is derived from effective assigned roles, including additional roles', /export function isAuditorActor\([\s\S]*getEffectiveRoleKeys\(actor\.id\)\.includes\('auditor'\)/.test(policy) && /isAuditorActor\(actor\)/.test(runtimeHardening) && /isAuditorActor\(user\)/.test(domainServices)],
+  ['Auditor read-only is derived from every assigned role, including alongside Superadmin', /export function isAuditorActor\([\s\S]*getUserRbacPolicies\(String\(actor\.id\)\)\.some\(policy => policy\.roleKey === 'auditor'\)/.test(policy) && /isAuditorActor\(actor\) && req\.method !== 'GET'/.test(runtimeHardening) && /isAuditorActor\(user\)/.test(domainServices)],
   ['Auditor base template has no write permissions for loans, tickets, knowledge voting, or room reservations', /DELETE FROM gabah_role_permissions[\s\S]*r\.role_key = 'auditor'[\s\S]*'loans\.create'[\s\S]*'loans\.return'[\s\S]*'tickets\.create'[\s\S]*'knowledge\.vote'[\s\S]*'room_reservations\.create'[\s\S]*'room_reservations\.cancel'/.test(auditorReadOnlyPermissionSeed) && /isAuditorActor\(actor\) && req\.method !== 'GET'/.test(runtimeHardening)],
   ['Superadmin seed is keyed independently from display name', /\('superadmin',\s*'Admin GABAH'.*TRUE\)/i.test(migration)],
   ['role deletion is restricted while assigned', /gabah_user_roles[\s\S]*?REFERENCES gabah_roles\(id\) ON DELETE RESTRICT/i.test(migration)],
