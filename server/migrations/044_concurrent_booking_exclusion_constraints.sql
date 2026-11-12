@@ -166,6 +166,19 @@ BEGIN
       RAISE EXCEPTION 'Aset tidak memenuhi syarat peminjaman atau sudah ditugaskan kepada pegawai.';
     END IF;
 
+    -- Handover may create an active assignment for this loan's own
+    -- borrower, but must never transfer an already-assigned asset from another
+    -- employee while changing the loan state.
+    IF NEW.status = 'borrowed' AND EXISTS (
+      SELECT 1 FROM asset_assignments
+      WHERE asset_id = NEW.asset_id
+        AND returned_date IS NULL
+        AND assigned_to_user_id IS NOT NULL
+        AND assigned_to_user_id <> NEW.borrower_id
+    ) THEN
+      RAISE EXCEPTION 'Aset sudah ditugaskan kepada pegawai lain; serah-terima pinjaman ditolak.';
+    END IF;
+
     IF NEW.status <> 'overdue' AND EXISTS (
       SELECT 1 FROM loans
       WHERE asset_id = NEW.asset_id
