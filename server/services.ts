@@ -31,6 +31,8 @@ export function isLegacyScopedRole(role: string): boolean {
 
 interface AssetScopeSpec { type: string; value: string | null }
 
+const LOAN_ELIGIBLE_ASSET_STATUSES = new Set(['active', 'available']);
+
 const LOAN_UNAVAILABLE_ASSET_STATUSES = new Set([
   'maintenance', 'retired', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
   'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive',
@@ -64,6 +66,7 @@ export function isAssetEligibleForLoan(asset: Pick<ServerAsset, 'is_loanable' | 
   const status = String(asset.status || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
   const condition = String(asset.condition || '').trim().toLowerCase();
   return Boolean(asset.is_loanable)
+    && LOAN_ELIGIBLE_ASSET_STATUSES.has(status)
     && status !== 'assigned'
     && !asset.assigned_to?.id
     && !LOAN_UNAVAILABLE_ASSET_STATUSES.has(status)
