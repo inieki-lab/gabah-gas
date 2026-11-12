@@ -12,7 +12,6 @@ interface ScopedLoan {
 interface ScopedTicket {
   id: string;
   reporter_id?: string;
-  reporter_name?: string;
   assigned_agent_id?: string;
   category: string;
 }
