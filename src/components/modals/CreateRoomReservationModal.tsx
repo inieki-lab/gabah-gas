@@ -140,10 +140,10 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
       setPriority('high');
     }
     const matchedType = meetingTypes.find(t => t.code === meetingType);
-    if (matchedType && matchedType.priority_level && currentUser.role !== 'Sekretaris Direksi') {
+    if (matchedType && matchedType.priority_level && !isSekdir) {
       setPriority(matchedType.priority_level);
     }
-  }, [meetingType, meetingTypes, currentUser.role]);
+  }, [meetingType, meetingTypes, isSekdir]);
 
   // Sync attendees pax with consumption pax
   useEffect(() => {
