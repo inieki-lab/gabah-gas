@@ -529,8 +529,11 @@ export class GabahDomainService {
       return asset;
     }
 
-    const targetUser = db.users.find(u => u.id === targetUserId);
-    if (!targetUser) throw new Error('User penerima tidak ditemukan');
+    const normalizedTargetUserId = String(targetUserId || '').trim();
+    const targetUser = db.users.find(u => u.id === normalizedTargetUserId && u.is_active);
+    if (!targetUser) {
+      throw Object.assign(new Error('User penerima tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
+    }
 
     asset.assigned_to = {
       id: targetUser.id,
