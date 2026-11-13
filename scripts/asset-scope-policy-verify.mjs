@@ -137,7 +137,7 @@ const checks = [
   ['Loan handover revalidates current asset eligibility and competing confirmed loans before mutating state',
     /static handoverLoan[\s\S]*isAssetEligibleForLoan\(asset\)[\s\S]*physicalConflict[\s\S]*loan\.status = 'borrowed'/.test(services)],
   ['Loanable pool excludes assets already assigned to a person and legacy maintenance/retired states',
-    /asset\.status !== 'assigned'/.test(services)
+    /status !== 'assigned'/.test(services)
       && /!asset\.assigned_to\?\.id/.test(services)
       && /LOAN_ELIGIBLE_ASSET_STATUSES = new Set\(\['active', 'available'\]\)/.test(services)
       && /'maintenance', 'retired', 'in_use'/.test(services)
