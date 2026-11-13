@@ -374,6 +374,60 @@ async function main() {
     record('Audit: LOAN_RETURN_DENIED recorded', 'logged', has('LOAN_RETURN_DENIED', L5.id) ? 'logged' : 'missing', has('LOAN_RETURN_DENIED', L5.id));
     record('Audit: LOAN_RETURN_INVALID_STATE recorded', 'logged', has('LOAN_RETURN_INVALID_STATE', L4.id) ? 'logged' : 'missing', has('LOAN_RETURN_INVALID_STATE', L4.id));
 
+    // ===================== Borrower deletion integrity =====================
+    const deletionTarget = await req(base, 'POST', '/api/users', {
+      token: admin.token,
+      body: {
+        name: 'Loan Deletion Integrity Fixture',
+        email: `loan-delete-${Date.now()}@example.test`,
+        role: 'Karyawan',
+        division: 'Umum',
+        department: 'QA Fixture',
+      },
+    });
+    const deletionTargetId = deletionTarget.json?.data?.id;
+    record('Setup: temporary borrower for deletion test', '201 + user ID',
+      `HTTP ${deletionTarget.status} + ${Boolean(deletionTargetId)}`,
+      deletionTarget.status === 201 && Boolean(deletionTargetId));
+
+    const deletionLoan = deletionTargetId
+      ? await req(base, 'POST', '/api/loans', {
+          token: admin.token,
+          body: {
+            asset_id: gaAsset2.id,
+            borrower_id: deletionTargetId,
+            purpose: 'Deletion must not fabricate a physical return',
+            start_date: isoDatePlus(1),
+            due_date: isoDatePlus(7),
+          },
+        })
+      : { status: 0, json: {} };
+    const deletionLoanId = deletionLoan.json?.data?.id;
+    const deletionApproved = deletionLoanId
+      ? await req(base, 'POST', `/api/loans/${deletionLoanId}/approve`, { token: ga.token, body: {} })
+      : { status: 0 };
+    const deletionHandedOver = deletionLoanId
+      ? await req(base, 'POST', `/api/loans/${deletionLoanId}/handover`, { token: ga.token, body: { handoverNotes: 'Physical handover fixture' } })
+      : { status: 0 };
+    record('Setup: deletion fixture loan reaches borrowed state', '201/200/200',
+      `request ${deletionLoan.status}, approve ${deletionApproved.status}, handover ${deletionHandedOver.status}`,
+      deletionLoan.status === 201 && deletionApproved.status === 200 && deletionHandedOver.status === 200);
+
+    const deletionAttempt = deletionTargetId
+      ? await req(base, 'DELETE', `/api/users/${deletionTargetId}`, { token: admin.token })
+      : { status: 0 };
+    const userAfterDeleteAttempt = (await req(base, 'GET', '/api/users', { token: admin.token })).json?.data || [];
+    const loansAfterDeleteAttempt = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    const assetsAfterDeleteAttempt = (await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || [];
+    const preservedLoan = loansAfterDeleteAttempt.find(l => l.id === deletionLoanId);
+    const preservedAsset = assetsAfterDeleteAttempt.find(a => a.id === gaAsset2.id);
+    record('Delete user with borrowed loan is blocked without mutating loan or asset', '409 + user retained + borrowed + assigned',
+      `HTTP ${deletionAttempt.status}, user ${userAfterDeleteAttempt.some(u => u.id === deletionTargetId)}, loan ${preservedLoan?.status}, asset ${preservedAsset?.status}`,
+      deletionAttempt.status === 409
+        && userAfterDeleteAttempt.some(u => u.id === deletionTargetId)
+        && preservedLoan?.status === 'borrowed'
+        && preservedAsset?.status === 'assigned');
+
     // ---------- Summary ----------
     const total = results.length;
     const passed = results.filter(r => r.pass).length;
