@@ -123,3 +123,6 @@ jobs:
 
       - name: Maintenance dynamic-scope consistency
         run: npm run test:maintenance-dynamic-scope
+
+      - name: Maintenance input and vendor relation integrity
+        run: npm run test:maintenance-input-integrity
