@@ -2146,6 +2146,36 @@ async function startServer() {
       }
     }
 
+    // Validate mutable asset fields before any mutation.
+    const validAssetStatuses = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive'];
+    const validAssetConditions = ['new', 'good', 'fair', 'poor', 'broken', 'excellent', 'damaged'];
+    if (req.body.status !== undefined && !validAssetStatuses.includes(String(req.body.status))) {
+      return res.status(400).json({ success: false, message: 'Status aset tidak valid.' });
+    }
+    if (req.body.condition !== undefined && !validAssetConditions.includes(String(req.body.condition))) {
+      return res.status(400).json({ success: false, message: 'Kondisi aset tidak valid.' });
+    }
+    if (req.body.is_loanable !== undefined && typeof req.body.is_loanable !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'is_loanable harus berupa boolean.' });
+    }
+
+    // Loan workflow owns status and loanability while a reservation is approved
+    // or a unit is physically borrowed. Manual edits here could desynchronize
+    // the asset and its active loan, so require the loan workflow to finish first.
+    const activeLoan = db.loans.find(loan =>
+      loan.asset_id === asset.id && ['approved', 'borrowed'].includes(loan.status)
+    );
+    if (activeLoan) {
+      const changesStatus = req.body.status !== undefined && String(req.body.status) !== asset.status;
+      const changesLoanability = req.body.is_loanable !== undefined && req.body.is_loanable !== asset.is_loanable;
+      if (changesStatus || changesLoanability) {
+        return res.status(409).json({
+          success: false,
+          message: `Status dan konfigurasi pinjam aset dikunci selama pinjaman ${activeLoan.loan_number} berstatus ${activeLoan.status}.`,
+        });
+      }
+    }
+
     // T2B-1: managing unit operasional (relasi ke org_units.id) — divalidasi
     // terhadap master aktif; nullable untuk kasus ambigu. owner_division &
     // asset_number tetap server-owned (tidak berubah), RBAC tetap owner_division.
