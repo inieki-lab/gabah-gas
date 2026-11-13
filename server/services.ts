@@ -963,12 +963,23 @@ export class GabahDomainService {
 
     let relatedAssetName = '';
     let relatedAssetNumber = '';
-    if (payload.related_asset_id) {
-      const ast = db.assets.find(a => a.id === payload.related_asset_id);
-      if (ast) {
-        relatedAssetName = ast.name;
-        relatedAssetNumber = ast.asset_number;
+    let relatedAssetId: string | undefined;
+    if (payload.related_asset_id !== undefined && payload.related_asset_id !== null) {
+      relatedAssetId = String(payload.related_asset_id).trim();
+      if (!relatedAssetId) {
+        throw Object.assign(new Error('ID aset terkait tidak valid.'), { statusCode: 400 });
       }
+
+      // Resolve the relationship against the authoritative asset catalogue,
+      // then enforce the same visibility policy used by GET /api/assets.
+      // Never accept dangling IDs or copy metadata from another division.
+      const ast = db.assets.find(asset => String(asset.id) === relatedAssetId);
+      const visibleAsset = ast && this.getScopedAssets(actor).some(asset => String(asset.id) === relatedAssetId);
+      if (!ast || !visibleAsset) {
+        throw Object.assign(new Error('Aset terkait tidak ditemukan atau tidak dapat diakses.'), { statusCode: 404 });
+      }
+      relatedAssetName = ast.name;
+      relatedAssetNumber = ast.asset_number;
     }
 
     const newTicket: ServerTicket = {
@@ -983,7 +994,7 @@ export class GabahDomainService {
       reporter_id: actor.id,
       reporter_name: actor.name,
       reporter_department: actor.department,
-      related_asset_id: payload.related_asset_id,
+      related_asset_id: relatedAssetId,
       related_asset_name: relatedAssetName,
       related_asset_number: relatedAssetNumber,
       sla_hours: slaHours,
