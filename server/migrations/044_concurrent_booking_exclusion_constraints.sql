@@ -138,7 +138,7 @@ CREATE TRIGGER trg_prevent_double_booking
 -- recorded even when a future reservation already exists; operators can then
 -- resolve that booking, while every NEW request is blocked until physical return.
 CREATE OR REPLACE FUNCTION check_loan_schedule_collision()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 DECLARE
   asset_is_loanable BOOLEAN;
   asset_status TEXT;
@@ -195,7 +195,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_check_loan_schedule_collision ON loans;
 CREATE TRIGGER trg_check_loan_schedule_collision
