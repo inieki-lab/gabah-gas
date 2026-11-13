@@ -961,14 +961,37 @@ export class GabahDomainService {
     const deadline = new Date(Date.now() + slaHours * 3600 * 1000).toISOString();
     const ticketNumber = AssetNumberingEngine.generateTicketNumber();
 
+    let linkedContractId: string | undefined;
+    if (payload.contract_id !== undefined && payload.contract_id !== null) {
+      linkedContractId = String(payload.contract_id).trim();
+      if (!linkedContractId) {
+        throw Object.assign(new Error('ID kontrak terkait tidak valid.'), { statusCode: 400 });
+      }
+      const linkedContract = db.contracts.find(contract => contract.id === linkedContractId);
+      if (!linkedContract || !canSeeContract(actor, linkedContract)) {
+        throw Object.assign(new Error('Kontrak terkait tidak ditemukan atau tidak dapat diakses.'), { statusCode: 404 });
+      }
+    }
+
     let relatedAssetName = '';
     let relatedAssetNumber = '';
-    if (payload.related_asset_id) {
-      const ast = db.assets.find(a => a.id === payload.related_asset_id);
-      if (ast) {
-        relatedAssetName = ast.name;
-        relatedAssetNumber = ast.asset_number;
+    let relatedAssetId: string | undefined;
+    if (payload.related_asset_id !== undefined && payload.related_asset_id !== null) {
+      relatedAssetId = String(payload.related_asset_id).trim();
+      if (!relatedAssetId) {
+        throw Object.assign(new Error('ID aset terkait tidak valid.'), { statusCode: 400 });
       }
+
+      // Resolve the relationship against the authoritative asset catalogue,
+      // then enforce the same visibility policy used by GET /api/assets.
+      // Never accept dangling IDs or copy metadata from another division.
+      const ast = db.assets.find(asset => String(asset.id) === relatedAssetId);
+      const visibleAsset = ast && this.getScopedAssets(actor).some(asset => String(asset.id) === relatedAssetId);
+      if (!ast || !visibleAsset) {
+        throw Object.assign(new Error('Aset terkait tidak ditemukan atau tidak dapat diakses.'), { statusCode: 404 });
+      }
+      relatedAssetName = ast.name;
+      relatedAssetNumber = ast.asset_number;
     }
 
     const newTicket: ServerTicket = {
@@ -983,9 +1006,10 @@ export class GabahDomainService {
       reporter_id: actor.id,
       reporter_name: actor.name,
       reporter_department: actor.department,
-      related_asset_id: payload.related_asset_id,
+      related_asset_id: relatedAssetId,
       related_asset_name: relatedAssetName,
       related_asset_number: relatedAssetNumber,
+      contract_id: linkedContractId,
       sla_hours: slaHours,
       sla_resolution_deadline: deadline,
       created_at: new Date().toISOString(),
@@ -994,15 +1018,10 @@ export class GabahDomainService {
 
     db.tickets.unshift(newTicket);
 
-    // Linked contract (optional): Ticket = pekerjaan atas suatu Contract, bukan kategori
-    // SECURITY: linkage is only honored when the actor may see the contract —
-    // client input cannot probe restricted contracts through ticket creation.
-    if (payload.contract_id) {
-      const contract = db.contracts.find(c => c.id === payload.contract_id);
-      if (contract && canSeeContract(actor, contract)) {
-        newTicket.contract_id = contract.id;
-        this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id);
-      }
+    // Contract linkage was resolved and authorized before ticket creation.
+    if (linkedContractId) {
+      const contract = db.contracts.find(item => item.id === linkedContractId)!;
+      this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id);
     }
 
     // Notify respective division (IT covers software/license/SaaS)
