@@ -56,6 +56,9 @@ jobs:
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
+      - name: Asset assignment active-user integrity
+        run: npm run test:asset-assignment-active-user
+
       - name: Asset movement history scope consistency
         run: npm run test:movement-scope
 
