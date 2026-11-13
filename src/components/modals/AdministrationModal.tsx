@@ -201,20 +201,6 @@ const PERMISSION_TEMPLATE_FIELDS: Record<keyof Omit<RolePermissionRow, 'role' | 
   admin: ['Full Control', 'No'],
 };
 
-const DEFAULT_DIVISIONS: OrgDivision[] = [
-  { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
-  { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
-  { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
-  { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
-];
-
-const DEFAULT_LOCATIONS: MasterLocation[] = [
-  { id: 'loc-1', name: 'Kantor Pusat Food Station Cipinang', address: 'Jl. Pisangan Lama No. 1, Jakarta Timur', capacity: '120 Pegawai' },
-  { id: 'loc-2', name: 'Gudang Beras Induk Blok A-D', address: 'Kawasan PIBC, Jakarta Timur', capacity: '48.000 Ton Beras' },
-  { id: 'loc-3', name: 'Depo Armada & Transportasi', address: 'Pintu 3 Pasar Induk Cipinang', capacity: '35 Truk Fuso' },
-  { id: 'loc-4', name: 'Data Center & Server Room', address: 'Gedung Utama Lt. 2, Cipinang', capacity: 'Tier 2 Redundant' }
-];
-
 const DEFAULT_NOTIFICATION_RULES: NotificationRule[] = [
   { id: 'rule-warranty', title: 'Peringatan Masa Garansi & Lisensi Expired', trigger: '30 hari & 7 hari sebelum tanggal kedaluwarsa', target: 'Admin GABAH & Divisi IT', status: 'Aktif', severity: 'warning', daysBefore: 30 },
   { id: 'rule-loan', title: 'Eskalasi Keterlambatan Peminjaman (Overdue Loan)', trigger: 'Melewati batas due date jam 17:00 WIB', target: 'Peminjam, Atasan, dan Admin Penanggung Jawab', status: 'Aktif', severity: 'critical', cutoffTime: '17:00' },
@@ -259,7 +245,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   // Import pegawai massal (CSV/Excel) state
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<{
-    valid: { name: string; email: string; role: string; division: string; department: string; phone: string }[];
+    valid: {
+      name: string; email: string; role: string; division: string; department: string; phone: string;
+      job_level_code?: string; unit_id?: string; office_location_id?: string;
+    }[];
     errors: string[];
   } | null>(null);
   const [isSubmittingImport, setIsSubmittingImport] = useState(false);
@@ -281,7 +270,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     name: '',
     email: '',
     role: 'Karyawan',
-    division: 'SC',
+    division: 'Umum',
     department: '',
     job_level_code: '',
     unit_id: '',
@@ -311,13 +300,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   }, [users]);
 
   // Master Data State
-  const [categories, setCategories] = useState<any[]>([
-    { code: 'IT-HLT', name: 'Hardware Laptop & PC', type: 'IT', loanable: true, total: 42, is_active: true },
-    { code: 'IT-SRV', name: 'Server & Infrastructure', type: 'IT', loanable: false, total: 18, is_active: true },
-    { code: 'SC-FLT', name: 'Armada Truk Beras Cipinang', type: 'SC', loanable: true, total: 24, is_active: true },
-    { code: 'GA-BLD', name: 'Gedung & Fasilitas Pasar', type: 'GA', loanable: false, total: 31, is_active: true },
-    { code: 'LIC-ENT', name: 'Lisensi ERP SAP & OS', type: 'License', loanable: false, total: 15, is_active: true },
-  ]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const [newCategoryData, setNewCategoryData] = useState({
@@ -343,7 +326,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           gabahApi.getOfficeLocations(),
           gabahApi.getAssetLocations(),
         ]);
-        if (Array.isArray(liveCats) && liveCats.length > 0) {
+        if (Array.isArray(liveCats)) {
           const mapped = liveCats.map((c: any) => ({
             code: c.code,
             name: c.name,
@@ -359,16 +342,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           }));
           setCategories(mapped);
         }
-        if (Array.isArray(liveLocs) && liveLocs.length > 0) {
+        if (Array.isArray(liveLocs)) {
           setLocations(liveLocs);
         }
-        if (Array.isArray(liveDivs) && liveDivs.length > 0) {
+        if (Array.isArray(liveDivs)) {
           setDivisions(liveDivs);
         }
         // ORG-MODEL: masters terpisah jabatan/unit/lokasi kantor
-        if (Array.isArray(liveJobLevels) && liveJobLevels.length > 0) setJobLevels(liveJobLevels);
-        if (Array.isArray(liveOrgUnits) && liveOrgUnits.length > 0) setOrgUnits(liveOrgUnits);
-        if (Array.isArray(liveOffices) && liveOffices.length > 0) setOfficeLocations(liveOffices);
+        if (Array.isArray(liveJobLevels)) setJobLevels(liveJobLevels);
+        if (Array.isArray(liveOrgUnits)) setOrgUnits(liveOrgUnits);
+        if (Array.isArray(liveOffices)) setOfficeLocations(liveOffices);
         if (Array.isArray(liveAssetLocs)) setAssetLocations(liveAssetLocs);
       } catch (e) {
         console.error('Failed loading administration master data:', e);
@@ -431,13 +414,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  const [locations, setLocations] = useState<MasterLocation[]>(() => {
-    const saved = localStorage.getItem('gabah_master_locations');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return DEFAULT_LOCATIONS;
-  });
+  const [locations, setLocations] = useState<MasterLocation[]>([]);
   const [isAddLocationOpen, setIsAddLocationOpen] = useState(false);
   const [locationToEdit, setLocationToEdit] = useState<MasterLocation | null>(null);
   const [isEditLocationOpen, setIsEditLocationOpen] = useState(false);
@@ -484,7 +461,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
   const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null }>>([]);
   const [rbacScopeModule, setRbacScopeModule] = useState('assets');
-  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'unit' | 'location'>('division');
+  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'>('division');
   const [rbacScopeValue, setRbacScopeValue] = useState('');
 
   const refreshRbac = async () => {
@@ -514,8 +491,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   useEffect(() => {
-    if (activeSection === 'roles' && isCurrentUserAdmin) void refreshRbac();
-  }, [activeSection, isCurrentUserAdmin]);
+    if (isOpen && activeSection === 'roles' && isCurrentUserAdmin) void refreshRbac();
+  }, [isOpen, activeSection, isCurrentUserAdmin]);
 
   const selectedRbacRole = rbacRoles.find(role => role.id === rbacSelectedRoleId) || null;
   const rbacPermissionGroups: Record<string, any[]> = rbacPermissions.reduce<Record<string, any[]>>((groups, permission) => {
@@ -610,7 +587,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Isi nilai owner/divisi, unit, atau lokasi untuk scope ini.', 'warning');
       return;
     }
-    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
+    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null };
     if (!rbacScopes.some(item => (item.module || '*') === scope.module && item.type === scope.type && (item.value || null) === (scope.value || null))) {
       setRbacScopes(current => [...current, scope]);
     }
@@ -704,11 +681,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   useEffect(() => {
-    if (activeSection === 'users' && isCurrentUserAdmin) {
+    if (isOpen && activeSection === 'users' && isCurrentUserAdmin) {
       void refreshRbac();
       void refreshUserAssignments();
     }
-  }, [activeSection, isCurrentUserAdmin]);
+  }, [isOpen, activeSection, isCurrentUserAdmin]);
 
   // Organization State
   // ORG-MODEL: master Jabatan/Level, Unit, dan Kantor/Lokasi (terpisah).
@@ -723,13 +700,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [newAssetLocationData, setNewAssetLocationData] = useState({ name: '', parent_id: '' });
   const [isSubmittingOrgMaster, setIsSubmittingOrgMaster] = useState(false);
 
-  const [divisions, setDivisions] = useState<OrgDivision[]>(() => {
-    const saved = localStorage.getItem('gabah_org_divisions');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return DEFAULT_DIVISIONS;
-  });
+  const [divisions, setDivisions] = useState<OrgDivision[]>([]);
   const [divisionToEdit, setDivisionToEdit] = useState<OrgDivision | null>(null);
   const [isEditDivisionOpen, setIsEditDivisionOpen] = useState(false);
   const [isAddDivisionOpen, setIsAddDivisionOpen] = useState(false);
@@ -759,7 +730,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [tempNumberingConfig, setTempNumberingConfig] = useState(numberingConfig);
   const [testDiv, setTestDiv] = useState<OwnerDivision>('IT');
   const [testCode, setTestCode] = useState('HLT');
-  const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0005');
+  const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0001');
 
   // Notification Rules State
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => {
@@ -779,12 +750,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   // P2#10: live numbering sequences (server snapshot) — no more hardcoded samples.
   const [liveSequences, setLiveSequences] = useState<Array<{ key: string; division: string; code: string; year: number; current: number }> | null>(null);
   useEffect(() => {
+    if (!isOpen) return;
     let cancelled = false;
     gabahApi.getNumberingSequences()
       .then(seq => { if (!cancelled) setLiveSequences(seq); })
       .catch(() => { /* keep null → UI shows honest "unavailable" state */ });
     return () => { cancelled = true; };
-  }, []);
+  }, [isOpen]);
 
   // P2#11: CR-05 reminder subsystem overview (admin-only endpoint).
   const [reminderOverview, setReminderOverview] = useState<any>(null);
@@ -796,8 +768,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       .catch((err: any) => setReminderOverviewError(err.message || 'Gagal memuat overview reminder'));
   };
   useEffect(() => {
-    refreshReminderOverview();
-  }, []);
+    if (isOpen) refreshReminderOverview();
+  }, [isOpen]);
 
   // System Settings State
   const [settingsForm, setSettingsForm] = useState(() => {
@@ -845,24 +817,25 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Nama lokasi fasilitas wajib diisi', 'warning');
       return;
     }
-    const newLoc: MasterLocation = {
-      id: `loc-${Date.now()}`,
+    const locationPayload = {
       name: newLocationData.name.trim(),
       address: newLocationData.address.trim() || 'Kawasan PIBC, Jakarta Timur',
       capacity: newLocationData.capacity.trim() || 'Fasilitas Operasional'
     };
+    let createdLocation: MasterLocation;
     try {
-      await gabahApi.createLocation({ name: newLoc.name, address: newLoc.address, capacity: newLoc.capacity });
+      const created = await gabahApi.createLocation(locationPayload);
+      if (!created?.id) throw new Error('Server tidak mengembalikan ID lokasi yang tersimpan.');
+      createdLocation = created as MasterLocation;
     } catch (err: any) {
       showToast(err.message || 'Gagal menyimpan lokasi fasilitas ke server.', 'warning');
       return;
     }
-    const updated = [...locations, newLoc];
+    const updated = [...locations, createdLocation];
     setLocations(updated);
-    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
     setIsAddLocationOpen(false);
     setNewLocationData({ name: '', address: '', capacity: '' });
-    showToast(`Lokasi fasilitas "${newLoc.name}" berhasil ditambahkan!`, 'success');
+    showToast(`Lokasi fasilitas "${createdLocation.name}" berhasil ditambahkan!`, 'success');
   };
 
   const handleEditLocationSubmit = async (e: React.FormEvent) => {
@@ -871,15 +844,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Nama lokasi fasilitas wajib diisi', 'warning');
       return;
     }
+    let savedLocation: MasterLocation;
     try {
-      await gabahApi.updateLocation(editLocationData.id, editLocationData);
+      const saved = await gabahApi.updateLocation(editLocationData.id, editLocationData);
+      if (!saved?.id) throw new Error('Server tidak mengembalikan data lokasi yang diperbarui.');
+      savedLocation = saved as MasterLocation;
     } catch (err: any) {
       showToast(err.message || 'Gagal memperbarui lokasi fasilitas di server.', 'warning');
       return;
     }
-    const updated = locations.map(l => l.id === editLocationData.id ? { ...l, ...editLocationData } : l);
+    const updated = locations.map(l => l.id === savedLocation.id ? savedLocation : l);
     setLocations(updated);
-    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
     setIsEditLocationOpen(false);
     setLocationToEdit(null);
     showToast(`Lokasi fasilitas "${editLocationData.name}" berhasil diperbarui!`, 'success');
@@ -894,7 +869,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = locations.filter(l => l.id !== id);
     setLocations(updated);
-    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
     showToast(`Lokasi fasilitas "${name}" berhasil dihapus.`, 'info');
   };
 
@@ -1008,7 +982,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = [...divisions, newDiv];
     setDivisions(updated);
-    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
     setIsAddDivisionOpen(false);
     setNewDivisionData({ code: '', name: '', leader: '', initialDept: '' });
     showToast(`Divisi baru ${newDiv.code} - ${newDiv.name} berhasil ditambahkan!`, 'success');
@@ -1032,7 +1005,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = divisions.filter(d => d.code !== code);
     setDivisions(updated);
-    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
     showToast(`Divisi "${code} - ${name}" berhasil dihapus.`, 'info');
   };
 
@@ -1178,16 +1150,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = divisions.map(d => d.code === divisionToEdit.code ? divisionToEdit : d);
     setDivisions(updated);
-    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
     setIsEditDivisionOpen(false);
     setDivisionToEdit(null);
     showToast(`Struktur divisi ${divisionToEdit.code} - ${divisionToEdit.name} berhasil disimpan!`, 'success');
   };
 
-  const handleResetDivisions = () => {
-    setDivisions(DEFAULT_DIVISIONS);
-    localStorage.removeItem('gabah_org_divisions');
-    showToast('Struktur divisi dikembalikan ke standar organisasi BUMD.', 'info');
+  const handleReloadDivisions = async () => {
+    try {
+      const liveDivisions = await gabahApi.getDivisions();
+      setDivisions(Array.isArray(liveDivisions) ? liveDivisions : []);
+      showToast('Master divisi berhasil dimuat ulang dari database.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Gagal memuat ulang master divisi dari database.', 'warning');
+    }
   };
 
   // Numbering Config Handlers
@@ -1196,9 +1171,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     localStorage.setItem('gabah_numbering_config', JSON.stringify(tempNumberingConfig));
     setIsEditingNumbering(false);
     // Update live simulated number
-    const seqPadded = String(5).padStart(tempNumberingConfig.paddingDigits, '0');
+    const seqPadded = String(1).padStart(tempNumberingConfig.paddingDigits, '0');
     setSimulatedNumber(`${testDiv}${tempNumberingConfig.separator}${testCode}${tempNumberingConfig.separator}2026${tempNumberingConfig.separator}${seqPadded}`);
-    showToast('Format dan parameter sequence penomoran aset berhasil disimpan!', 'success');
+    showToast('Pratinjau format tersimpan pada browser ini. Pengaturan ini tidak mengubah format atau sequence nomor yang diterbitkan server.', 'info');
   };
 
   // Notification Rules Handlers
@@ -1223,11 +1198,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast('Parameter tampilan panel administrasi tersimpan (local browser).', 'success');
   };
 
-  // P1#1: Rekonsiliasi INTEGRITAS DATA NYATA (bukan toast palsu).
+  // Pemeriksaan integritas referensi pada data GABAH yang sedang dimuat di panel (bukan rekonsiliasi SAP).
   // Memeriksa konsistensi referensi lintas data pada datastore aktif:
   // aset tanpa kategori valid, tiket tanpa reporter valid, pinjaman
   // tanpa aset/peminjam valid, dan nomor aset yang melanggar format kanonikal.
-  const handleSapReconciliation = () => {
+  const handleInternalIntegrityCheck = () => {
     const validCodes = new Set(categories.map(c => c.code));
     const orphanAssets = assets.filter(a => a.category_code && !validCodes.has(a.category_code));
     const invalidNumberAssets = assets.filter(a => {
@@ -1250,11 +1225,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     const totalIssues = issues.reduce((s, g) => s + g.items.length, 0);
 
     if (totalIssues === 0) {
-      showToast(`Integritas data 100% konsisten: ${assets.length} aset, ${loans.length} peminjaman, ${tickets.length} tiket diperiksa — 0 anomali.`, 'success');
+      showToast(`Pemeriksaan internal selesai: ${assets.length} aset, ${loans.length} peminjaman, ${tickets.length} tiket diperiksa — 0 anomali referensial ditemukan. Ini bukan rekonsiliasi SAP.`, 'success');
     } else {
       const detail = issues.filter(g => g.items.length > 0).map(g => `${g.items.length} ${g.label.toLowerCase()}`).join('; ');
-      showToast(`Rekonsiliasi menemukan ${totalIssues} anomali: ${detail}. Ekspor JSON aset untuk analisis lanjutan.`, 'warning');
-      exportDataJson('gabah_reconciliation_anomalies', {
+      showToast(`Pemeriksaan internal menemukan ${totalIssues} anomali referensial: ${detail}. Ringkasan anomali diekspor untuk analisis lanjutan.`, 'warning');
+      exportDataJson('gabah_internal_integrity_findings', {
         generated_at: new Date().toISOString(),
         summary: issues.map(g => ({ check: g.label, count: g.items.length, samples: g.items.slice(0, 20) })),
       });
@@ -1286,12 +1261,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast('Audit Log format CSV berhasil diunduh untuk kebutuhan audit eksternal!', 'success');
   };
 
-  // Full Database Backup Export
-  const handleFullSystemBackup = () => {
-    const backupBundle = {
-      app: 'GABAH Enterprise Engine',
+  // Export snapshot data yang tersedia di panel ini; bukan backup database PostgreSQL.
+  const handleDownloadDataSnapshot = () => {
+    const snapshotBundle = {
+      app: 'GABAH',
+      export_type: 'client_data_snapshot',
+      backup_warning: 'Snapshot data yang tersedia pada panel administrasi; bukan backup database PostgreSQL dan tidak mencakup seluruh tabel, file upload, atau audit trail lengkap.', 
       company: settingsForm.companyName,
-      backup_timestamp: new Date().toISOString(),
+      exported_at: new Date().toISOString(),
       version: '2026.1.0-ENTERPRISE',
       data: {
         users: userList,
@@ -1301,31 +1278,31 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         categories,
         locations,
         divisions,
-        permissions,
-        numbering_config: numberingConfig,
-        notification_rules: notificationRules,
-        settings: settingsForm,
         audit_logs_count: auditLogs.length
+      },
+      local_browser_state: {
+        numbering_preview_config: numberingConfig,
+        notification_rule_examples: notificationRules,
+        display_settings: settingsForm
       }
     };
-    exportDataJson('gabah_full_system_backup', backupBundle);
+    exportDataJson('gabah_admin_data_snapshot', snapshotBundle);
   };
 
-  if (!isOpen) return null;
 
   // Menu administrasi diberi keterangan sumber data agar Super Admin tahu mana
   // yang tersimpan di database dan mana yang masih lokal pada browser.
   const adminMenuCards = [
     { id: 'users' as AdminSection, label: 'Pengguna', description: 'Akun pegawai, status aktif, unit/lokasi kerja, dan assignment role.', dataSource: 'Database', icon: Users, badge: `${userList.length} pengguna` },
     { id: 'roles' as AdminSection, label: 'Role & Hak Akses', description: 'Paket permission dan batas data (scope) yang boleh diakses tiap role.', dataSource: 'Database RBAC', icon: LockKeyhole, badge: `${rbacRoles.length} role` },
-    { id: 'organization' as AdminSection, label: 'Owner Domain', description: 'Daftar fungsi pemilik aset dan struktur divisi/departemen terkait.', dataSource: 'Perlu konsolidasi dengan master unit', icon: Building2, badge: `${divisions.length} divisi` },
+    { id: 'organization' as AdminSection, label: 'Owner Domain', description: 'Kode owner aset dan struktur divisi/departemen. Master divisi masih dipakai bersama sebagai referensi owner; belum sepenuhnya dipisah dari master unit.', dataSource: 'Database API; master divisi/owner masih satu referensi', icon: Building2, badge: `${divisions.length} divisi` },
     { id: 'org_masters' as AdminSection, label: 'Struktur Pegawai', description: 'Master jabatan/level, unit organisasi, dan lokasi kantor pegawai.', dataSource: 'Database master', icon: Network, badge: `${jobLevels.length} jabatan` },
-    { id: 'master_data' as AdminSection, label: 'Referensi Aset & Layanan', description: 'Kategori aset, lokasi fasilitas, dan parameter layanan yang dipakai form operasional.', dataSource: 'Campuran: database dan lokal', icon: Database, badge: `${categories.length} kategori` },
+    { id: 'master_data' as AdminSection, label: 'Referensi Aset & Layanan', description: 'Kategori aset dan lokasi fasilitas dari API; tipe utama aset mengikuti taxonomy baku aplikasi.', dataSource: 'Database API + taxonomy aplikasi', icon: Database, badge: `${categories.length} kategori` },
     { id: 'numbering' as AdminSection, label: 'Penomoran Aset', description: 'Format nomor aset dan pemantauan sequence nomor yang diterbitkan server.', dataSource: 'Format masih lokal; sequence dari API', icon: Hash, badge: liveSequences === null ? 'Sequence belum tersedia' : `${liveSequences.length} sequence` },
-    { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'Konfigurasi masih lokal', icon: Bell, badge: 'Perlu sentralisasi' },
+    { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Contoh aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket; belum mengendalikan scheduler.', dataSource: 'LocalStorage browser saja', icon: Bell, badge: 'Perlu sentralisasi' },
     { id: 'audit_log' as AdminSection, label: 'Riwayat Aktivitas', description: 'Catatan perubahan dan aktivitas yang direkam sistem.', dataSource: 'Database / API', icon: ScrollText, badge: `${auditLogs.length} catatan` },
-    { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Identitas perusahaan, parameter PSAK, SLA, dan retensi data.', dataSource: 'Konfigurasi masih lokal', icon: Settings2, badge: 'Perlu sentralisasi' },
-    { id: 'data_admin' as AdminSection, label: 'Ekspor & Rekonsiliasi', description: 'Fungsi ekspor dan pemeriksaan konsistensi data; bukan pengganti backup terjadwal.', dataSource: 'Operasi administratif', icon: FileSpreadsheet, badge: 'Alat data' },
+    { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Preferensi identitas dan tampilan panel. Tidak mengubah parameter PSAK, SLA, atau retensi server.', dataSource: 'LocalStorage browser saja', icon: Settings2, badge: 'Perlu sentralisasi' },
+    { id: 'data_admin' as AdminSection, label: 'Ekspor & Rekonsiliasi', description: 'Fungsi ekspor dan pemeriksaan konsistensi data; bukan pengganti backup terjadwal.', dataSource: 'Snapshot JSON dan pemeriksaan internal; bukan backup database/SAP', icon: FileSpreadsheet, badge: 'Alat data' },
     { id: 'health' as AdminSection, label: 'Kesehatan Sistem', description: 'Pemeriksaan langsung API dan informasi runtime yang benar-benar tersedia.', dataSource: 'Live check', icon: HeartPulse, badge: healthStatus.status },
   ];
 
@@ -1380,7 +1357,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       name: user.name || '',
       email: user.email || '',
       role: user.role,
-      division: (user.division as OwnerDivision) || 'SC',
+      division: (user.division as OwnerDivision) || 'Umum',
       department: user.department || '',
       job_level_code: (user as any).job_level_code || '',
       unit_id: (user as any).unit_id || '',
@@ -1394,13 +1371,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // ============ IMPORT MASSAL PEGAWAI (CSV/Excel) ============
-  const validImportRoles = SYSTEM_ROLES.map(r => r.value as string);
+  const validImportRoles = PRIMARY_PROFILE_ROLES.map(r => r.value as string);
   const validImportDivisions = divisions.map(d => String(d.code));
 
   const handleImportFilePicked = async (file: File) => {
     try {
       const text = await file.text();
-      const parsed = parseUsersImportCsv(text, validImportRoles, validImportDivisions);
+      const parsed = parseUsersImportCsv(
+        text,
+        validImportRoles,
+        validImportDivisions,
+        jobLevels.filter(item => item.is_active).map(item => item.code),
+        orgUnits.filter(item => item.is_active).map(item => item.id),
+        officeLocations.filter(item => item.is_active).map(item => item.id)
+      );
       setImportPreview(parsed);
       if (parsed.valid.length === 0 && parsed.errors.length > 0) {
         showToast(`Tidak ada baris valid. Periksa: ${parsed.errors[0]}`, 'warning');
@@ -1542,6 +1526,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   // Health snapshot awal sekali per render modal (sekali fetch, tanpa toast).
   useEffect(() => {
+    if (!isOpen) return;
     let cancelled = false;
     (async () => {
       const start = performance.now();
@@ -1564,7 +1549,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [isOpen]);
 
   // P1#2: Reset sandi NYATA — minta server menerbitkan sandi sementara CSPRNG
   // (server meng-hash & menyimpannya), lalu tampilkan SEKALI untuk disampaikan
@@ -1611,6 +1596,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast(`File ${filename} berhasil diekspor!`);
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/45 backdrop-blur-[3px] flex items-start justify-center p-3 sm:p-5 lg:p-8 overflow-y-auto">
       <section className="w-full max-w-7xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[90vh]">
@@ -1627,7 +1614,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   <span>SUPER ADMIN (FULL ACCESS)</span>
                   <span className="text-emerald-400">•</span>
-                  <span className="text-emerald-950 font-extrabold">{currentUser?.name || 'Budi Santoso'}</span>
+                  <span className="text-emerald-950 font-extrabold">{currentUser?.name || 'Pengguna aktif'}</span>
                 </span>
               </div>
               <p className="text-xs text-slate-500">
@@ -1668,7 +1655,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     Otoritas Penuh Super Administrator (Admin GABAH)
                   </div>
                   <div className="text-[11px] text-emerald-700 mt-0.5">
-                    Anda berwenang mengedit pengguna, master kategori &amp; lokasi, struktur divisi, penomoran aset, aturan notifikasi, dan parameter sistem. <b>Audit Trail</b> tetap dipertahankan permanen (WORM immutable) untuk kepatuhan regulasi.
+                    Anda dapat mengelola akun, role, permission, scope, serta master data yang sudah terhubung ke database. Beberapa menu konfigurasi lama masih tersimpan di browser ini dan belum menjadi pengaturan bersama; sumber data ditampilkan pada setiap menu.
                   </div>
                 </div>
               </div>
@@ -1689,7 +1676,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     Mode Verifikasi &amp; Pemeriksaan (Hanya-Baca / Read-Only)
                   </div>
                   <div className="text-[11px] text-purple-700 mt-0.5">
-                    Anda masuk sebagai <b>{activeRole || currentUser?.role || 'Auditor'}</b>. Anda dapat memverifikasi seluruh konfigurasi, struktur organisasi, SLA, dan mengunduh data audit. Perubahan data hanya dapat dieksekusi oleh <b>Admin GABAH</b>.
+                    Anda masuk sebagai <b>{activeRole || currentUser?.role || 'Auditor'}</b>. Anda dapat melihat data sesuai hak akses. Sebagian pengaturan lama masih tersimpan di browser lokal dan bukan konfigurasi bersama; periksa keterangan sumber data pada setiap menu.
                   </div>
                 </div>
               </div>
@@ -1759,10 +1746,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                           {item.description}
                         </p>
+                        <p className="mt-2 text-[10px] font-semibold text-slate-500">
+                          Sumber data: {item.dataSource}
+                        </p>
                       </div>
 
                       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-[#4ABDAC] group-hover:text-[#206f65]">
-                        <span>Buka Konfigurasi</span>
+                        <span>Buka Menu</span>
                         <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                       </div>
                     </button>
@@ -2037,17 +2027,18 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
+                      <label className="block text-slate-600 mb-1 font-medium">Divisi referensi (opsional)</label>
                       <select
                         value={newUserData.division || ''}
                         onChange={e => setNewUserData({ ...newUserData, division: e.target.value as OwnerDivision })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
-                        <option value="">— Pilih divisi —</option>
+                        <option value="">Umum / belum ditetapkan</option>
                         {divisions.map(d => (
                           <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                         ))}
                       </select>
+                      <p className="mt-1 text-[11px] text-slate-500">Atribut kompatibilitas data lama; tidak memberikan hak akses. Unit organisasi dan lokasi kantor diatur terpisah.</p>
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Departemen</label>
@@ -2306,23 +2297,28 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
-                            {SYSTEM_ROLES.map(r => (
+                            {!PRIMARY_PROFILE_ROLES.some(r => r.value === editUserData.role) && (
+                              <option value={editUserData.role} disabled>{editUserData.role} (legacy — pilih role utama yang valid)</option>
+                            )}
+                            {PRIMARY_PROFILE_ROLES.map(r => (
                               <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Divisi Utama *</label>
+                          <label className="text-xs font-bold text-slate-700">Divisi referensi (opsional)</label>
                           <select
                             value={editUserData.division}
                             onChange={e => setEditUserData(prev => ({ ...prev, division: e.target.value as OwnerDivision }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
+                            <option value="Umum">Umum / belum ditetapkan</option>
                             {divisions.map(d => (
                               <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                             ))}
                           </select>
+                          <p className="text-[11px] text-slate-500">Atribut kompatibilitas data lama; tidak memberikan hak akses. Unit organisasi dan lokasi kantor diatur terpisah.</p>
                         </div>
 
                         <div className="space-y-1.5">
@@ -2914,7 +2910,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                       <option key={module} value={module}>{module}</option>
                                     ))}
                                   </select>
-                                  <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as any)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                                  <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location')} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
                                     <option value="division">Owner / divisi tertentu</option>
                                     <option value="division_except">Semua owner kecuali</option>
                                     <option value="unit">Unit</option>
@@ -2925,6 +2921,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   <input value={rbacScopeValue} onChange={e => setRbacScopeValue(e.target.value)} disabled={['all', 'own'].includes(rbacScopeType)} placeholder={rbacScopeType === 'division_except' ? 'Kode owner yang dikecualikan' : 'Kode owner / unit / lokasi'} className="px-3 py-2 rounded-xl border border-slate-200 text-xs disabled:bg-slate-50" />
                                   <button type="button" onClick={handleAddRbacScope} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold hover:bg-slate-50">Tambah Scope</button>
                                 </div>
+                                {rbacScopeType === 'division_except' && (
+                                  <p className="text-[11px] text-slate-500">Contoh: modul Assets + kode owner IT berarti role ini mendapat scope semua owner selain IT. Scope hanya membatasi data; permission tindakan (read/update/approve, dan lainnya) tetap harus diberikan terpisah.</p>
+                                )}
                                 {rbacScopes.length === 0 ? <p className="text-xs text-slate-400">Belum ada scope yang dikonfigurasi.</p> : (
                                   <div className="flex flex-wrap gap-2">
                                     {rbacScopes.map((scope, index) => (
@@ -3166,11 +3165,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={handleResetDivisions}
+                      onClick={() => void handleReloadDivisions()}
                       className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Reset Default</span>
+                      <span>Muat Ulang Database</span>
                     </button>
                   </div>
                 )}
@@ -4304,10 +4303,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </p>
               </div>
 
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <strong>Format pratinjau masih lokal.</strong> Pengaturan format pada panel ini hanya disimpan di browser dan belum mengubah generator nomor server. Counter di bawah berasal dari API server dan merupakan sequence aktual.
+              </div>
+
               {/* Simulator Card */}
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-200">
                 <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-3">
-                  Live Sequence Generator & Simulator
+                  Simulasi Format Nomor (Tidak Menerbitkan Nomor)
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -4317,7 +4320,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       onChange={e => {
                         const d = e.target.value as OwnerDivision;
                         setTestDiv(d);
-                        setSimulatedNumber(`${d}-${testCode}-2026-000${Math.floor(Math.random() * 5) + 1}`);
+                        setSimulatedNumber(`${d}-${testCode}-2026-0001`);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold"
                     >
@@ -4349,10 +4352,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 text-[11px] text-emerald-800 leading-relaxed">
-                  ✓ Sequence direset otomatis setiap awal tahun per kombinasi (Divisi, Kode Aset, Tahun).
-                  <br />
-                  ✓ Thread-safe & concurrency-safe dengan pemulihan sequence otomatis dari database.
+                <div className="mt-3 text-[11px] text-emerald-900 leading-relaxed">
+                  Ini hanya pratinjau format berdasarkan pilihan divisi dan kode aset. Angka contoh tidak dipesan, tidak disimpan, dan tidak menambah sequence database. Nomor aktual diterbitkan server saat aset didaftarkan; lihat counter live di bawah.
                 </div>
               </div>
 
@@ -4410,6 +4411,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 )}
               </div>
 
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <strong>Konfigurasi lokal / belum terhubung ke server.</strong> Tombol Aktif/Nonaktif di bawah hanya mengubah contoh aturan pada browser ini. Perubahan tidak mengubah scheduler, SLA, email, Telegram, atau notifikasi operasional GABAH.
+              </div>
+
               <div className="space-y-3">
                 {notificationRules.map((rule, idx) => (
                   <div key={rule.id || idx} className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-4 flex-wrap">
@@ -4434,7 +4439,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleToggleNotificationRule(rule.id)}
-                          title="Aktifkan/nonaktifkan aturan — tersimpan di panel administrasi ini"
+                          title="Ubah contoh lokal browser ini saja; tidak mengubah scheduler atau pengiriman notifikasi server"
                           className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                             rule.status === 'Aktif'
                               ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -4843,15 +4848,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <h3 className="text-base font-black text-slate-900">Data Administration &amp; Reconciliation</h3>
-                  <p className="text-xs text-slate-500">Ekspor data komprehensif, backup database, dan rekonsiliasi SAP</p>
+                  <p className="text-xs text-slate-500">Ekspor snapshot data yang sedang tersedia di panel dan pemeriksaan integritas referensi internal. Bukan backup database atau koneksi SAP.</p>
                 </div>
                 {isCurrentUserAdmin && (
                   <button
-                    onClick={handleFullSystemBackup}
+                    onClick={handleDownloadDataSnapshot}
                     className="px-3.5 py-1.5 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold hover:bg-[#3ba393] shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
                     <Database className="w-3.5 h-3.5" />
-                    <span>Download Full Backup System</span>
+                    <span>Download Snapshot Data (JSON)</span>
                   </button>
                 )}
               </div>
@@ -4900,17 +4905,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
                       <RefreshCw className="w-5 h-5" />
                     </div>
-                    <h4 className="text-sm font-extrabold text-slate-800">Audit Rekonsiliasi SAP</h4>
+                    <h4 className="text-sm font-extrabold text-slate-800">Pemeriksaan Integritas Data GABAH</h4>
                     <p className="text-xs text-slate-500 mt-1">
-                      Cocokkan kode aset fisik ASTICK dengan catatan akuntansi buku besar SAP BUMD.
+                      Memeriksa referensi kategori aset, format nomor aset, reporter tiket, serta relasi peminjam dan aset di data GABAH yang sedang dimuat. Tidak membaca data SAP.
                     </p>
                   </div>
                   <button
-                    onClick={handleSapReconciliation}
+                    onClick={handleInternalIntegrityCheck}
                     className="mt-4 w-full py-2 rounded-xl bg-amber-50 text-amber-800 text-xs font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Jalankan Rekonsiliasi</span>
+                    <span>Periksa Integritas Data</span>
                   </button>
                 </div>
               </div>

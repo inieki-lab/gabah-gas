@@ -87,6 +87,7 @@ async function main() {
   const cleanup = () => {
     try { child.kill('SIGKILL'); } catch { /* already dead */ }
     if (backupState !== null) fs.writeFileSync(stateFile, backupState);
+    else fs.rmSync(stateFile, { force: true });
   };
   process.on('exit', cleanup);
   process.on('SIGINT', () => { cleanup(); process.exit(130); });

@@ -1,3 +1,30 @@
+## [2026-11-09] — Clarify Administration data sources and remove misleading local actions
+
+### Perubahan
+- Administration modal menjaga urutan React Hooks dan hanya menjalankan pemuatan RBAC, assignment pengguna, numbering, reminder, dan health snapshot saat modal terbuka.
+- Master kategori, lokasi fasilitas, divisi, jabatan, unit, dan lokasi kantor menggunakan hasil API sebagai sumber kebenaran; respons array kosong kini menggantikan data contoh/cache lama, bukan mempertahankannya.
+- Tombol struktur divisi yang sebelumnya mengembalikan state lokal ke default kini memuat ulang master dari database.
+- CRUD lokasi fasilitas memakai ID dan record yang dikembalikan server setelah create/update; UI tidak lagi membangun ID lokal yang berpotensi berbeda dari ID tersimpan.
+- Editor scope Dynamic RBAC menampilkan dan mengetikkan `division_except` secara eksplisit, dengan penjelasan bahwa pengecualian owner membatasi data tetapi tidak memberikan permission tindakan.
+- Form edit pegawai dan impor CSV kini hanya menerima role profil utama kanonikal; Humas/Sekretaris Direksi serta Supply Chain/PIBC tetap ditempatkan sebagai capability tambahan atau atribut unit/lokasi, bukan role utama baru.
+- Endpoint create/update pegawai kini menolak role fungsi/cabang sebagai role utama; bulk import mempertahankan kompatibilitas label Supply Chain/PIBC dengan memetakannya ke Karyawan + unit/lokasi, serta menolak Humas/Sekretaris Direksi sebagai role utama.
+- Seed/mock pegawai Humas dan Sekretariat Direksi kini memakai primary role Karyawan; label pekerjaan dipertahankan terpisah dan capability fungsi diberikan melalui Dynamic RBAC. Sync primary role legacy juga dinormalisasi ke Karyawan.
+- Kontrol simulasi role/persona `SIM-*` di header dihapus. Alih akun hanya menampilkan akun nyata dan hanya terlihat oleh Superadmin; user lain tetap mendapat aksi akun sendiri.
+- Bulk import menolak role utama yang tidak dikenal, alih-alih diam-diam mengubahnya menjadi Karyawan; pemetaan legacy Supply Chain/PIBC tetap diberi warning dan unit/lokasi eksplisit.
+- Regression test HTTP bulk import ditambahkan ke pipeline CI untuk memeriksa validasi role utama, pemetaan unit/lokasi cabang, dan larangan role fungsi sebagai role utama.
+- Semua harness verifikasi yang mengisolasi file-store kini mengembalikan snapshot sebelumnya atau menghapus file state jika sebelumnya belum ada, sehingga password acak test tidak mencemari test berikutnya.
+- Template/impor CSV pegawai mendukung kode jabatan, ID unit, dan ID lokasi kantor; parser memvalidasi semuanya terhadap master aktif dan tidak lagi mengubah role tidak dikenal diam-diam menjadi Karyawan.
+- Aturan notifikasi dan format nomor yang masih lokal diberi keterangan eksplisit bahwa perubahan tidak mengubah scheduler atau generator sequence server.
+- Ekspor JSON panel dinamai sebagai snapshot data, bukan backup PostgreSQL. Pemeriksaan integritas diberi label sebagai pemeriksaan internal GABAH, bukan rekonsiliasi SAP.
+- Keterangan sumber data ditampilkan pada kartu menu Administration.
+
+### Validasi
+- `npm audit` lokal: 0 vulnerabilities setelah pembaruan dependency.
+- `npm run lint` dan `npm run build` lokal: PASS pada working tree pengguna.
+- CI branch untuk perubahan Administration terbaru sedang berjalan; UAT browser/PostgreSQL tetap diperlukan.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.

@@ -117,7 +117,7 @@ class GabahApiClient {
    * Upsert per email: akun baru dibuat, akun yang sudah ada di-update profilnya
    * (tanpa menyentuh password/sesi). Response: { created, updated, failed, errors[] }.
    */
-  async bulkImportUsers(users: Array<{ name: string; email: string; role?: string; division?: string; department?: string; phone?: string }>): Promise<{
+  async bulkImportUsers(users: Array<{ name: string; email: string; role?: string; division?: string; department?: string; phone?: string; job_level_code?: string; unit_id?: string; office_location_id?: string }>): Promise<{
     created: number;
     updated: number;
     failed: number;

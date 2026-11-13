@@ -83,7 +83,9 @@ Dokumen ini memetakan baseline arsitektur lengkap sistem **GABAH** (General Asse
 
 ---
 
-## 4. Matriks Akses Peran Final (7 Application Login Roles)
+> **Catatan status:** Matriks di bawah adalah baseline historis, bukan daftar role primer/permission produksi yang berlaku saat ini. Acuan terbaru adalah `PRD.md` Bagian 2.1–2.5 dan `docs/architecture/RBAC.md`. Model saat ini memisahkan role primer kanonikal (Admin GABAH, IT, GA, Karyawan, Auditor) dari role tambahan (misalnya Humas/Sekretaris Direksi); Supply Chain/PIBC adalah atribut unit/lokasi, bukan role primer. Hak akses aktual berasal dari Dynamic RBAC dan scope per modul.
+
+## 4. Matriks Akses Peran Historis (7 Application Login Roles)
 
 | Peran (Role) | Lingkup Akses (Scope) | Hak Akses Aset | Hak Akses Pinjam | Hak Akses Tiket | Akses Audit Log |
 | :--- | :--- | :--- | :--- | :--- | :--- |

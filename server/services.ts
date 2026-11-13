@@ -8,6 +8,7 @@ import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
+import { hasRoleCapability } from './role-capabilities';
 
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
 const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
@@ -22,6 +23,8 @@ interface AssetScopeSpec { type: string; value: string | null }
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
+  if (legacyRole === 'Sekretaris Direksi') return hasRoleCapability(actor, 'sekretaris_direksi');
+  if (legacyRole === 'Humas') return hasRoleCapability(actor, 'humas');
   return Boolean(legacyRole && actor.role === legacyRole);
 }
 
@@ -1333,7 +1336,7 @@ export class GabahDomainService {
     const year = new Date().getFullYear();
     const existingCount = (db.roomReservations || []).length + 1;
     const reservationNumber = `RSV-${year}-${String(existingCount).padStart(4, '0')}`;
-    const isAutoApproved = isSuperadminActor(actor) || actor.role === 'Sekretaris Direksi';
+    const isAutoApproved = isSuperadminActor(actor) || hasRoleCapability(actor, 'sekretaris_direksi');
 
     const reservation: ServerRoomReservation = {
       id: `rsv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,

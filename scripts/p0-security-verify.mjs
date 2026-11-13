@@ -117,6 +117,7 @@ async function main() {
     try { child.kill('SIGKILL'); } catch { /* already dead */ }
     // Restore repo snapshot file (it is gitignored; nothing to untrack).
     if (backupState !== null) fs.writeFileSync(stateFile, backupState);
+    else fs.rmSync(stateFile, { force: true });
   };
   process.on('exit', cleanup);
   process.on('SIGINT', () => { cleanup(); process.exit(130); });

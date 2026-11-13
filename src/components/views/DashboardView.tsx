@@ -49,10 +49,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewTicketModal,
   onOpenNewAssetModal,
 }) => {
-  const isStaff = currentUser?.role === 'Karyawan' || currentUser?.role === 'Sekretaris Direksi' || currentUser?.role === 'Humas';
+  const isHumas = currentUser?.role === 'Humas' || currentUser?.role_keys?.includes('humas') === true;
+  const isSekdir = currentUser?.role === 'Sekretaris Direksi' || currentUser?.role_keys?.includes('sekretaris_direksi') === true;
+  const isStaff = currentUser?.role === 'Karyawan' || isHumas || isSekdir;
   const isEmployee = isStaff;
-  const isHumas = currentUser?.role === 'Humas';
-  const isSekdir = currentUser?.role === 'Sekretaris Direksi';
   const roleDescriptions: Record<UserRole, string> = {
     'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',

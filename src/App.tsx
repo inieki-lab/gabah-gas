@@ -14,7 +14,6 @@ import {
   MaintenanceStatus,
   MeetingRoom,
   RoomReservation,
-  UserRole,
   Contract,
   AssetMovement
 } from './types';
@@ -245,36 +244,6 @@ export default function App() {
       setIsGlobalSearchOpen(false);
       setIsAdministrationModalOpen(false);
       showToast(`Berpindah akun aktif: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
-      await refreshData();
-    } catch (err: any) {
-      showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
-    }
-  };
-
-  const handleSwitchRoleSimulation = async (role: UserRole) => {
-    try {
-      const res = await gabahApi.switchRole({ role });
-      const targetUser = res?.user || res?.data?.user;
-      if (!targetUser) {
-        showToast('Alih peran ditolak oleh server.', 'warning');
-        return;
-      }
-      setCurrentUser(targetUser);
-      setCurrentTab('dashboard');
-      setMeetingCategoryFilter('all');
-      setSelectedAssetForDetail(null);
-      setSelectedAssetForEdit(null);
-      setSelectedAssetForQr(null);
-      setSelectedLoanForBast(null);
-      setPreselectedTicketAssetId(undefined);
-      setContractForLinkedTicket(null);
-      setLinkedTicketContractId(undefined);
-      setIsCreateAssetModalOpen(false);
-      setIsCreateLoanModalOpen(false);
-      setIsCreateTicketModalOpen(false);
-      setIsGlobalSearchOpen(false);
-      setIsAdministrationModalOpen(false);
-      showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
       showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
@@ -716,7 +685,6 @@ export default function App() {
         currentUser={currentUser}
         allUsers={allUsers}
         onSelectUser={handleSelectUser}
-        onSwitchRoleSimulation={handleSwitchRoleSimulation}
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
         onChangePassword={() => setIsChangePasswordOpen(true)}
@@ -768,6 +736,7 @@ export default function App() {
           )).length}
           currentUserRole={currentUser.role}
           currentUserPermissions={currentUser.permission_keys}
+          currentUserRoleKeys={currentUser.role_keys}
           currentUserIsSuperAdmin={currentUser.is_superadmin}
           onOpenAdministration={() => {
             if (currentUser.is_superadmin || currentUser.role === 'Admin GABAH') {

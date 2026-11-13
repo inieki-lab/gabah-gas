@@ -16,6 +16,7 @@ Status: temuan awal terverifikasi dari source code; belum merupakan pernyataan b
 - Auditor read-only kini ditentukan dari role efektif yang terpasang, termasuk ketika Auditor menjadi role tambahan. Enforcement berada di middleware dan domain/API, bukan hanya UI.
 - CI PostgreSQL 17 fresh database dan persistence integration telah lulus pada head sebelumnya. CI head terbaru tetap harus diperiksa; ini belum menggantikan UAT browser, pengujian upgrade dari snapshot legacy, atau rehearsal backup/restore.
 - **Belum selesai:** audit menyeluruh seluruh endpoint, rekonsiliasi data historis per user/aset, UAT tiap persona, deployment staging, backup/restore, dan persetujuan pemilik proses.
+- **Konfirmasi master lokasi diperlukan:** seed `server/db.ts` dan migration office-location masih menandai `OFF-PERAWATAN` aktif, sedangkan daftar operasional terbaru yang disebutkan mencakup HO, PIBC, RPC/SC, dan Pangsub. Jangan menonaktifkan atau mengubah `OFF-PERAWATAN` di database produksi sebelum pemilik proses memastikan apakah lokasi tersebut masih aktif atau hanya bagian dari HO.
 
 
 ### Temuan lanjutan — Riwayat perpindahan aset

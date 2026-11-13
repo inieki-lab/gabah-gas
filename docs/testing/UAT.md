@@ -197,8 +197,15 @@
   2. Verifikasi tombol *Administration Control Panel* **tidak tampil**.
   3. Login sebagai `Admin GABAH`.
   4. Verifikasi tombol *Administration Control Panel* tampil di bagian bawah sidebar.
-  5. Buka panel $\to$ uji tab *User Management*, *Organisasi*, *Master Data*, dan *Audit Trail*.
-- **Kriteria Lulus**: Tombol dan modal administrasi terkunci eksklusif untuk peran `Admin GABAH`.
+  5. Buka panel, tutup, lalu buka kembali. Pastikan tidak ada error React Rules of Hooks di Console.
+  6. Buka *Role & Hak Akses*. Pastikan katalog permission berasal dari PostgreSQL, checkbox tampil per modul, role baru wajib memiliki minimal satu permission, dan scope data dapat diatur terpisah.
+  7. Buka *Struktur Pegawai*. Pastikan role utama hanya profil kanonikal (Admin GABAH, IT, GA, Karyawan, Auditor); Supply Chain/PIBC adalah unit/lokasi, sedangkan Humas/Sekretaris Direksi adalah capability tambahan. Uji form edit dan impor CSV agar tidak menerima role cabang/fungsi sebagai role utama; panggilan langsung API create/update dengan Humas, Sekretaris Direksi, Supply Chain, atau PIBC sebagai role utama harus mendapat HTTP 400. Template CSV harus dapat mengisi kode jabatan, ID unit, dan ID lokasi kantor secara terpisah; nilai yang tidak aktif/tidak ditemukan di master harus ditolak. Jabatan, unit, dan lokasi kerja tetap atribut terpisah.
+  8. Buka menu *Referensi Aset & Layanan*. Pastikan data kosong dari API tidak diganti diam-diam oleh contoh/localStorage browser. Buat satu lokasi fasilitas uji, edit, refresh panel, lalu hapus; ID yang dipakai harus ID dari respons server dan perubahan harus tetap ada setelah refresh.
+  9. Periksa label sumber data pada setiap kartu Administration. Menu lokal harus menyatakan bahwa perubahan hanya tersimpan di browser.
+  10. Pastikan *Download Snapshot Data (JSON)* menyatakan bukan backup PostgreSQL; pemeriksaan integritas internal tidak mengklaim terhubung ke SAP; simulasi nomor tidak mengklaim menerbitkan sequence.
+  11. Pastikan daftar akun untuk alih akun hanya terlihat oleh Superadmin; non-Superadmin hanya melihat aksi akun sendiri. Tidak boleh ada tombol/persona simulasi `SIM-*`; Superadmin hanya dapat beralih ke akun pegawai yang benar-benar terdaftar dan aktivitasnya tercatat di audit.
+  12. Buat/siapkan pegawai dengan role primer Karyawan, lalu tetapkan capability tambahan Humas atau Sekretaris Direksi melalui Dynamic RBAC. Pastikan Humas melihat antrean dokumentasi yang sudah disamarkan; Sekretaris Direksi mendapat prioritas/override sesuai permission. Hapus capability uji setelah verifikasi.
+- **Kriteria Lulus**: Tombol dan modal administrasi terkunci eksklusif untuk peran `Admin GABAH`; katalog permission dan master data berasal dari server; fungsi lokal diberi batasan yang jelas.
 
 ---
 
@@ -248,8 +255,9 @@ Dijalankan fresh terhadap DB PostgreSQL test terisolasi (dibuat & di-drop otomat
 
 ### 4.5 Verifikasi Panel Administrasi (audit superadmin, 1 Oktober 2026)
 Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan berikut (commits `e2441eb`, `129a22b`, dan berikutnya), semua diverifikasi live:
-- **Fake-success dihapus**: Reset Sandi kini endpoint nyata `POST /api/users/:id/reset-password` (CSPRNG, hash PBKDF2, revokasi sesi CR-03, tampil sekali); Rekonsiliasi = audit integritas data nyata + ekspor anomali; Notification Center pakai state tersimpan tanpa tombol uji palsu.
-- **Tampilan mengikuti server**: System Health membaca `/api/health` riil (latency, persistence CR-04, scheduler CR-05); Asset Numbering menampilkan sequence live dari `/api/numbering/sequences`; Notification Center menampilkan overview CR-05 dari `/api/contracts/reminders/overview` (admin-only, live-tested 200 admin / 403 non-admin).
+- **Reset sandi** memakai endpoint nyata `POST /api/users/:id/reset-password` (CSPRNG, hash PBKDF2, revokasi sesi CR-03, tampil sekali).
+- **Tampilan live**: System Health membaca `/api/health`; Asset Numbering menampilkan counter aktual dari `/api/numbering/sequences`; Notification Center menampilkan overview CR-05 dari `/api/contracts/reminders/overview` (admin-only). Pratinjau format nomor bukan penerbitan nomor.
+- **Batasan yang harus dinyatakan UI**: toggle aturan notifikasi dan parameter tampilan masih localStorage browser, bukan konfigurasi server; pemeriksaan integritas di panel hanya memeriksa referensi internal GABAH, bukan rekonsiliasi SAP; ekspor JSON panel adalah snapshot data yang tersedia, bukan backup PostgreSQL, tidak mencakup seluruh tabel, file upload, atau audit trail lengkap.
 - **Data lengkap**: audit log kini membawa `ip_address` (request context ALS, live-tested terisi) + search/filter/pagination; seed divisi 6 kode (SC, PIBC, IT, GA, Audit, Umum); badge dinamis; field `telegram_chat_id` + badge Nonaktif di user management.
 
 ### 4.6 Data Contoh UAT Multi-Modul & Perbaikan Sesi (1 Oktober 2026)

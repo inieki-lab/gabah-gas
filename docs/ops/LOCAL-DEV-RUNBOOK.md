@@ -80,10 +80,10 @@ Login (password = isi `GABAH_TEST_PASSWORD`, default di atas: `GABAH2026`):
 | admin@ | Admin GABAH (semua menu + Administrasi) |
 | it.support@ | IT |
 | ga@ | GA |
-| sc.warehouse@ | Supply Chain |
-| pibc.admin@ | PIBC |
-| sekretariat.direksi@ | Sekretaris Direksi |
-| humas@ | Humas |
+| sc.warehouse@ | Karyawan + unit/lokasi RPC/SC |
+| pibc.admin@ | Karyawan + unit/lokasi PIBC |
+| sekretariat.direksi@ | Karyawan + capability Sekretaris Direksi |
+| humas@ | Karyawan + capability Humas |
 | auditor@ | Auditor (read-only) |
 | karyawan@ | Karyawan |
 

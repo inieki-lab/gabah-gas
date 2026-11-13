@@ -33,15 +33,15 @@ Sebelum adanya GABAH, pencatatan aset inventaris, penjadwalan pemeliharaan armad
 
 ## 2. Persona & Pengguna Sasaran (Role Existing — Model Transisi)
 
-Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun dan data lama. Daftar ini bukan batas jumlah role dan bukan model organisasi target. Model target mengikuti keputusan pada Bagian 2.1–2.2; role legacy akan dipetakan bertahap tanpa menghapus akun atau histori:
+Sistem masih menyimpan **9 label role legacy** untuk kompatibilitas akun dan data lama. Tabel berikut adalah inventaris label historis, bukan daftar role primer yang boleh dipilih untuk pegawai baru. Model target mengikuti Bagian 2.1–2.3; label legacy dipetakan bertahap tanpa menghapus akun atau histori:
 
-| No | Peran (Role) | Persona Uji | Divisi Utama | Lingkup Tanggung Jawab & Hak Akses |
+| No | Label Role Legacy | Persona Uji | Atribut Referensi Historis (bukan scope) | Catatan Migrasi / Fungsi |
 |:---|:---|:---|:---|:---|
 | 1 | **Admin GABAH** | Budi Santoso | IT (MIS & TI) | Super Administrator. Kontrol penuh seluruh modul, Master Data, Manajemen Pengguna, Persetujuan Penghapusan Aset (*Disposal*), Override Reservasi, dan Akses Administration Control Panel. |
 | 2 | **IT** | Dani Setiawan | IT (MIS & TI) | Pengelola seluruh aset komputasi, hardware jaringan, server, lisensi software, penanganan tiket kategori IT/License, persetujuan pinjaman laptop/proyektor, serta penyiapan fasilitas IT ruang rapat. |
 | 3 | **GA** | Siti Rahmawati | General Affairs | Pengelola aset umum (furniture, peralatan kantor, kendaraan dinas, gedung), persetujuan pinjaman kendaraan kantor, pengelolaan tiket GA, persetujuan reservasi ruang rapat, dan koordinasi konsumsi pantry. |
-| 4 | **Sekretaris Direksi** | Dewi Anggraini, S.Sos | GA (Sekretariat Direksi) | Pemesanan ruang rapat prioritas tinggi untuk jajaran Direksi & Dewan Komisaris (otomatis disetujui / auto-approved), peminjaman perlengkapan rapat, dan pelaporan kendala eksekutif. |
-| 5 | **Humas** | Rina Kartika, M.I.Kom | GA (Humas & Protokoler) | Menerima notifikasi khusus permintaan peliputan dan dokumentasi acara/rapat VIP (foto, video, press release). Akses menu aset disembunyikan sesuai SOP protokoler. |
+| 4 | **Sekretaris Direksi (legacy capability)** | Dewi Anggraini, S.Sos | Sekretariat Direksi | Role primer pegawai adalah Karyawan; capability Sekretaris Direksi ditetapkan sebagai role tambahan melalui Dynamic RBAC. |
+| 5 | **Humas (legacy capability)** | Rina Kartika, M.I.Kom | Humas & Protokoler | Role primer pegawai adalah Karyawan; capability Humas ditetapkan sebagai role tambahan melalui Dynamic RBAC. |
 | 6 | **Supply Chain (legacy)** | Agus Pratama | Lokasi Supply Chain | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
 | 7 | **PIBC (legacy)** | Bambang Hermawan | Lokasi PIBC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
 | 8 | **Karyawan** | Hendra Wijaya | Komersial / Operasional | Staf umum perusahaan. Melihat aset kerja yang ditugaskan (*Aset Saya*), mengajukan peminjaman barang dinas, membuat tiket bantuan IT/GA, dan mereservasi ruang rapat. |
@@ -110,7 +110,7 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 
 ### 2.3 Role Primer, Role Tambahan, dan Scope per Modul
 
-- Setiap pegawai memiliki satu role primer yang selaras dengan role aplikasi dasarnya (misalnya Karyawan, IT, GA, Humas, Sekretaris Direksi, Auditor). Role primer tersimpan selaras dengan profil pengguna.
+- Setiap pegawai memiliki satu role primer profil kanonikal: **Admin GABAH, IT, GA, Karyawan, atau Auditor**. Humas dan Sekretaris Direksi bukan role primer; keduanya adalah capability yang ditetapkan sebagai role tambahan Dynamic RBAC.
 - Super Admin dapat menetapkan role tambahan kepada pegawai untuk fungsi/jabatan tertentu. Role tambahan menambah permission dan scope tanpa mengganti identitas pegawai, jabatan, unit, atau lokasi kerja.
 - Penggantian role primer tidak boleh menghapus role tambahan yang masih sah; role primer lama harus dilepas agar permission lama tidak tertinggal.
 - Permission dan scope adalah dua hal berbeda. Permission menjawab tindakan apa yang boleh dilakukan; scope menjawab data mana yang boleh dijangkau.

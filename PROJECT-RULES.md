@@ -85,7 +85,7 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 ## 5. Alur Pemesanan Ruang Rapat & Notifikasi Terpadu
 
 1. **Prioritas Pemesanan**:
-   - Reservasi yang diajukan oleh `Sekretaris Direksi` berstatus prioritas VIP dan otomatis disetujui (*auto-approved*).
+   - Reservasi yang diajukan oleh pegawai dengan capability tambahan Dynamic RBAC `sekretaris_direksi` berstatus prioritas VIP dan otomatis disetujui (*auto-approved*); role primer pegawai tetap Karyawan.
    - Reservasi oleh karyawan/divisi lain berstatus `pending_approval` dan menunggu persetujuan Divisi GA.
 2. **Multi-Divisi Notification Dispatch**:
    - Fasilitas IT (Polycom, Smart TV, Proyektor, HDMI, WiFi) memicu notifikasi otomatis ke Divisi IT Support.

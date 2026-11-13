@@ -14,6 +14,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
+import { hasRoleCapability } from './server/role-capabilities';
 import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
@@ -79,6 +80,21 @@ async function startServer() {
     throw new Error('Pengguna tidak terautentikasi.');
   };
 
+  const isNotificationRecipient = (actor: ServerUser, notification: any): boolean => {
+    if (isSuperadminActor(actor)) return true;
+    if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
+    if (notification.recipient_role) {
+      if (notification.recipient_role === actor.role) return true;
+      if (notification.recipient_role === 'Humas') return hasRoleCapability(actor, 'humas');
+      if (notification.recipient_role === 'Sekretaris Direksi') return hasRoleCapability(actor, 'sekretaris_direksi');
+      if (notification.recipient_role === 'Supply Chain') return actor.unit_id === 'UNIT-SC';
+      if (notification.recipient_role === 'PIBC') return actor.unit_id === 'UNIT-PIBC';
+      return false;
+    }
+    if (notification.recipient_division) return notification.recipient_division === actor.division;
+    return false;
+  };
+
   // Effective permissions are returned only to the authenticated principal.
   // This drives the UI menu; backend route guards remain authoritative.
   const serializeAuthenticatedUser = (user: ServerUser): any => {
@@ -89,21 +105,25 @@ async function startServer() {
       safe.role_keys = getEffectiveRoleKeys(String(user.id));
     } else {
       safe.is_superadmin = user.role === 'Admin GABAH';
+      safe.role_keys = [
+        ...(hasRoleCapability(user, 'humas') ? ['humas'] : []),
+        ...(hasRoleCapability(user, 'sekretaris_direksi') ? ['sekretaris_direksi'] : []),
+      ];
     }
     return safe;
   };
 
   const hasApplicationRole = (actor: ServerUser, roleKey: string): boolean => {
+    if (roleKey === 'humas') return hasRoleCapability(actor, 'humas');
+    if (roleKey === 'sekretaris_direksi') return hasRoleCapability(actor, 'sekretaris_direksi');
+    if (roleKey === 'supply_chain') return actor.role === 'Supply Chain' || actor.unit_id === 'UNIT-SC';
+    if (roleKey === 'pibc') return actor.role === 'PIBC' || actor.unit_id === 'UNIT-PIBC';
     const legacyLabels: Record<string, string> = {
       superadmin: 'Admin GABAH',
       it: 'IT',
       ga: 'GA',
       karyawan: 'Karyawan',
       auditor: 'Auditor',
-      humas: 'Humas',
-      sekretaris_direksi: 'Sekretaris Direksi',
-      supply_chain: 'Supply Chain',
-      pibc: 'PIBC',
     };
     if (actor.role === legacyLabels[roleKey]) return true;
     return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
@@ -144,8 +164,8 @@ async function startServer() {
       'GA': 'ga',
       'Karyawan': 'karyawan',
       'Auditor': 'auditor',
-      'Humas': 'humas',
-      'Sekretaris Direksi': 'sekretaris_direksi',
+      'Humas': 'karyawan',
+      'Sekretaris Direksi': 'karyawan',
       'Supply Chain': 'karyawan',
       'PIBC': 'karyawan',
     };
@@ -491,8 +511,11 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body;
-      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : (role || 'Karyawan');
-      const inferredOfficeLocation = role === 'Supply Chain' ? 'OFF-RPC' : role === 'PIBC' ? 'OFF-PIBC' : undefined;
+      const primaryRole = role === 'Superadmin' ? 'Admin GABAH' : String(role || 'Karyawan').trim();
+      const allowedPrimaryRoles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor'];
+      if (!allowedPrimaryRoles.includes(primaryRole)) {
+        return res.status(400).json({ success: false, message: 'Role utama tidak valid. Supply Chain/PIBC adalah atribut unit/lokasi; Humas/Sekretaris Direksi ditetapkan sebagai role tambahan.' });
+      }
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
@@ -550,13 +573,13 @@ async function startServer() {
         id: `USR-${Date.now().toString().slice(-6)}`,
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        role: primaryRole,
-        role_label: (role === 'Supply Chain' || role === 'PIBC') ? 'Karyawan — Lokasi ' + role : (roleLabels[role] || roleLabels[primaryRole] || 'Pegawai Operasional'),
+        role: primaryRole as ServerUser['role'],
+        role_label: roleLabels[primaryRole] || 'Pegawai Operasional',
         division: division || 'Umum',
         department: department || 'Operasional',
         job_level_code: newJobLevel,
         unit_id: newUnitId || null,
-        office_location_id: newOfficeId || inferredOfficeLocation || null,
+        office_location_id: newOfficeId || null,
         phone: phone || '',
         avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
         is_active: true,
@@ -608,7 +631,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Maksimal 500 baris per impor. Pisahkan menjadi beberapa berkas.' });
       }
 
-      const validRoles = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'];
+      const validRoles = ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor'];
       const roleLabels: Record<string, string> = {
         'Admin GABAH': 'Super Admin',
         'IT': 'IT Technical Support',
@@ -638,12 +661,18 @@ async function startServer() {
         const department = String(row.department || '').trim() || 'Operasional';
         const phone = String(row.phone || '').trim();
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
-        const unitId = String(row.unit_id || '').trim();
+        const inferredUnitId = roleRaw === 'Supply Chain' ? 'UNIT-SC' : roleRaw === 'PIBC' ? 'UNIT-PIBC' : '';
+        const unitId = String(row.unit_id || '').trim() || inferredUnitId;
         const requestedOfficeLocation = String(row.office_location_id || '').trim();
-        const officeLocationId = requestedOfficeLocation || (roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '');
+        const inferredOfficeLocation = roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '';
+        const officeLocationId = requestedOfficeLocation || inferredOfficeLocation;
 
         if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
         if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
+        if (['Humas', 'Sekretaris Direksi'].includes(roleRaw)) {
+          errors.push(`Baris ${rowNo}: "${roleRaw}" adalah role tambahan, bukan role utama. Impor sebagai Karyawan lalu tetapkan capability melalui Role & Hak Akses.`);
+          continue;
+        }
         if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di dalam berkas (${email}).`); continue; }
         seenEmails.add(email);
         if (jobLevelCode && !(db.jobLevels || []).some(item => item.code === jobLevelCode && item.is_active)) {
@@ -656,12 +685,14 @@ async function startServer() {
           errors.push(`Baris ${rowNo}: Lokasi kantor "${officeLocationId}" tidak terdaftar/aktif.`); continue;
         }
 
-        const requestedRole = roleRaw && validRoles.includes(roleRaw) ? roleRaw : 'Karyawan';
-        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
         if (roleRaw && !validRoles.includes(roleRaw)) {
-          warnings.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenali (memakai Karyawan).`);
-        } else if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
-          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai lokasi kerja, bukan role; role aplikasi menjadi Karyawan.`);
+          errors.push(`Baris ${rowNo}: Role utama "${roleRaw}" tidak dikenali. Gunakan salah satu role profil utama yang valid.`);
+          continue;
+        }
+        const requestedRole = roleRaw || 'Karyawan';
+        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
+        if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
+          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai Karyawan dengan unit/lokasi kerja; bukan role aplikasi.`);
         }
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
@@ -670,14 +701,10 @@ async function startServer() {
           existing.name = name;
           existing.role = role as ServerUser['role'];
           (existing as any).role_label = roleLabels[role] || role;
-          if (requestedRole === 'Supply Chain' && !existing.office_location_id) existing.office_location_id = 'OFF-RPC';
-          if (requestedRole === 'PIBC' && !existing.office_location_id) existing.office_location_id = 'OFF-PIBC';
           existing.division = division as ServerUser['division'];
           existing.department = department;
           if (jobLevelCode) existing.job_level_code = jobLevelCode;
           if (unitId) existing.unit_id = unitId;
-          else if (requestedRole === 'Supply Chain' && existing.unit_id === 'UNIT-SC') existing.unit_id = null;
-          else if (requestedRole === 'PIBC' && existing.unit_id === 'UNIT-PIBC') existing.unit_id = null;
           if (officeLocationId) existing.office_location_id = officeLocationId;
           if (phone) existing.phone = phone;
           importedUsers.push(existing);
@@ -759,9 +786,13 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
-      const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
+      const primaryRole = role === 'Superadmin' ? 'Admin GABAH' : role;
+      const allowedPrimaryRoles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor'];
+      if (role !== undefined && !allowedPrimaryRoles.includes(String(primaryRole))) {
+        return res.status(400).json({ success: false, message: 'Role utama tidak valid. Supply Chain/PIBC adalah atribut unit/lokasi; Humas/Sekretaris Direksi ditetapkan sebagai role tambahan.' });
+      }
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
-      const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
+      const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH';
       const wouldDeactivateSuperadmin = is_active === false;
       if (targetIsSuperadmin && (wouldDemoteSuperadmin || wouldDeactivateSuperadmin)
         && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
@@ -821,7 +852,7 @@ async function startServer() {
           'Auditor': 'Satuan Pengawas Internal (SPI)',
           'Karyawan': 'Karyawan / Pemohon',
         };
-        (targetUser as any).role_label = roleLabels[role] || roleLabels[primaryRole] || primaryRole;
+        (targetUser as any).role_label = roleLabels[primaryRole] || primaryRole;
       }
       if (division !== undefined) targetUser.division = division;
       if (department !== undefined) targetUser.department = department.trim();
@@ -831,8 +862,6 @@ async function startServer() {
       if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
       if (orgUnit !== undefined) targetUser.unit_id = orgUnit;
       if (orgOffice !== undefined) targetUser.office_location_id = orgOffice;
-      if (role === 'Supply Chain' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-RPC';
-      if (role === 'PIBC' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-PIBC';
 
       if (password) {
         const plain = String(password).trim();
@@ -2807,20 +2836,12 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'notifications.read')) return;
     const actor = getActor(req);
-    const isRecipient = (notification: any): boolean => {
-      if (isSuperadminActor(actor)) return true;
-      // Explicit user recipient takes precedence over role/division fallbacks.
-      if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
-      if (notification.recipient_role) return notification.recipient_role === actor.role;
-      if (notification.recipient_division) return notification.recipient_division === actor.division;
-      return false;
-    };
     const filtered = db.notifications.filter(n => {
       const isPhotoNotification = n.recipient_role === 'Humas' ||
         (n.title && (n.title.toLowerCase().includes('foto') || n.title.toLowerCase().includes('dokumentasi humas') || n.title.toLowerCase().includes('liputan foto'))) ||
         (n.message && (n.message.toLowerCase().includes('peliputan foto') || n.message.toLowerCase().includes('dokumentasi foto')));
-      if (isPhotoNotification && actor.role !== 'Humas' && !isSuperadminActor(actor)) return false;
-      return isRecipient(n);
+      if (isPhotoNotification && !hasRoleCapability(actor, 'humas') && !isSuperadminActor(actor)) return false;
+      return isNotificationRecipient(actor, n);
     });
     res.json({ success: true, data: filtered });
   });
@@ -2830,10 +2851,7 @@ async function startServer() {
     
     const actor = getActor(req);
     const notif = db.notifications.find(n => n.id === req.params.id);
-    const isRecipient = isSuperadminActor(actor)
-      || (notif?.recipient_user_id ? notif.recipient_user_id === actor.id
-        : notif?.recipient_role ? notif.recipient_role === actor.role
-          : notif?.recipient_division ? notif.recipient_division === actor.division : false);
+    const isRecipient = Boolean(notif && isNotificationRecipient(actor, notif));
     if (!notif || !isRecipient) {
       return res.status(404).json({ success: false, message: 'Notifikasi tidak ditemukan.' });
     }
@@ -2846,11 +2864,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
     const actor = getActor(req);
     for (const n of db.notifications) {
-      const isRecipient = isSuperadminActor(actor)
-        || (n.recipient_user_id ? n.recipient_user_id === actor.id
-          : n.recipient_role ? n.recipient_role === actor.role
-            : n.recipient_division ? n.recipient_division === actor.division : false);
-      if (isRecipient) n.is_read = true;
+      if (isNotificationRecipient(actor, n)) n.is_read = true;
     }
     res.json({ success: true, message: 'Semua notifikasi ditandai telah dibaca' });
   });
