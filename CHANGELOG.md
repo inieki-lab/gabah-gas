@@ -1,3 +1,11 @@
+## [2026-11-13] — Require strict booleans in master-data APIs
+
+- Master category, job-level, organizational-unit, office-location, and physical asset-location APIs now reject string values for boolean flags instead of coercing values such as `"false"` to true.
+- Category loanability and active flags are validated on both create and update.
+- Added isolated live HTTP regression checks using disposable master-data fixtures.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
