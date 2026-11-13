@@ -49,10 +49,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewTicketModal,
   onOpenNewAssetModal,
 }) => {
-  const isStaff = currentUser?.role === 'Karyawan' || currentUser?.role === 'Sekretaris Direksi' || currentUser?.role === 'Humas';
-  const isEmployee = isStaff;
-  const isHumas = currentUser?.role === 'Humas';
-  const isSekdir = currentUser?.role === 'Sekretaris Direksi';
+  const hasPermission = (key: string, legacyRoles: string[] = []) => {
+    if (Array.isArray(currentUser?.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
+    }
+    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
+    return legacyRoles.includes(currentUser?.role || '');
+  };
+  const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
+  const isEmployee = !isAuditor
+    && !hasPermission('assets.create', ['Admin GABAH', 'IT', 'GA'])
+    && !hasPermission('loans.approve', ['Admin GABAH', 'IT', 'GA'])
+    && !hasPermission('tickets.update', ['Admin GABAH', 'IT', 'GA']);
+  const isHumas = hasPermission('room_reservations.documentation.read', ['Humas']);
+  const canCreateLoan = !isAuditor && hasPermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Sekretaris Direksi', 'Humas']);
+  const canCreateTicket = !isAuditor && hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Sekretaris Direksi', 'Humas']);
+  const canCreateAsset = !isAuditor && hasPermission('assets.create', ['Admin GABAH', 'IT', 'GA']);
   const roleDescriptions: Record<UserRole, string> = {
     'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
@@ -73,18 +85,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || currentUser.role === 'Auditor';
-  const isDivisionDashboard = currentUser.role === 'IT' || currentUser.role === 'GA';
+  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || (currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH') || isAuditor;
+  const isDivisionDashboard = currentUser.permission_keys === undefined && (currentUser.role === 'IT' || currentUser.role === 'GA');
   const divisionLabel = isDivisionDashboard ? currentUser.role : 'Unit kerja';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
-  const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
+  // License dashboard cards are derived from the scoped asset collection, not a separate licenses API.
+  const isLicenseDashboard = isGlobalDashboard || (currentUser.permission_keys === undefined && currentUser.role === 'IT') || Boolean(currentUser.permission_keys?.includes('*') || currentUser.permission_keys?.includes('assets.catalog.read'));
   const roleDescription = currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
     ? roleDescriptions.Humas
     : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
       ? roleDescriptions['Sekretaris Direksi']
-      : roleDescriptions[currentUser.role];
+      : roleDescriptions[currentUser.role] || 'Akses dan ringkasan operasional sesuai permission serta scope yang ditetapkan.';
   const expiringLicenses = dashboardAssets.filter(asset => {
     const expiry = asset.license_detail?.expiration_date;
     if (!expiry) return false;
@@ -109,8 +122,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
-  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending');
-  const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
+  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending_approval' || l.status === 'pending');
+  const activeLoans = dashboardLoans.filter(l => ['borrowed', 'active', 'overdue'].includes(l.status));
 
   const openTickets = dashboardTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
   const urgentTickets = dashboardTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
@@ -124,7 +137,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       isExactIdentityNameMatch(l.borrower_name, currentUser.name)
     );
   });
-  const myActiveLoans = myLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
+  const myActiveLoans = myLoans.filter(l => ['borrowed', 'active', 'overdue'].includes(l.status));
   const myPendingLoans = myLoans.filter(l => l.status === 'pending_approval');
 
   const myTickets = safeTickets.filter(t => {
@@ -167,7 +180,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {currentUser.role !== 'Auditor' && (
+            {canCreateLoan && (
               <button
                 id="btn-quick-loan"
                 onClick={onOpenNewLoanModal}
@@ -177,7 +190,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Pinjam Aset
               </button>
             )}
-            {currentUser?.role !== 'Auditor' ? (
+            {canCreateTicket ? (
               <button
                 id="btn-quick-ticket"
                 onClick={onOpenNewTicketModal}
@@ -192,7 +205,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span>Tiket (Read-Only)</span>
               </div>
             )}
-            {!isEmployee && currentUser?.role !== 'Auditor' && (
+            {canCreateAsset && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
@@ -593,7 +606,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
                         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                           loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                          loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                          (loan.status === 'pending_approval' || loan.status === 'pending') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                          ['borrowed', 'active', 'overdue'].includes(loan.status) ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
+
                           loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                           'bg-slate-200 text-slate-700'
                         }`}>
@@ -618,7 +633,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Tiket Kendala Saya
               </h3>
               <div className="flex items-center gap-2">
-                {currentUser?.role !== 'Auditor' && (
+                {canCreateTicket && (
                   <button
                     onClick={onOpenNewTicketModal}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -688,9 +703,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <CalendarClock className="w-4 h-4 text-emerald-600" />
-                  {isDivisionDashboard ? `Jadwal Peminjaman ${divisionLabel}` : currentUser.role === 'Auditor' ? 'Pemantauan Peminjaman Lintas Divisi' : 'Jadwal Peminjaman Aset Terintegrasi'}
+                  {isDivisionDashboard ? `Jadwal Peminjaman ${divisionLabel}` : isAuditor ? 'Pemantauan Peminjaman Lintas Divisi' : 'Jadwal Peminjaman Aset Terintegrasi'}
                 </h3>
-                <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : currentUser.role === 'Auditor' ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
+                <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : isAuditor ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
               </div>
               <button
                 onClick={() => onNavigate('loans')}
@@ -732,7 +747,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                         loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                        loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                        (loan.status === 'pending_approval' || loan.status === 'pending') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                        ['borrowed', 'active', 'overdue'].includes(loan.status) ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
+
                         loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                         'bg-slate-200 text-slate-700'
                       }`}>
@@ -756,10 +773,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <LifeBuoy className="w-4 h-4 text-rose-600" />
-                  {currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : currentUser.role === 'Auditor' ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
+                  {currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : isAuditor ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
-                  {currentUser?.role !== 'Auditor' && (
+                  {canCreateTicket && (
                     <button
                       onClick={onOpenNewTicketModal}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -806,7 +823,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
               <h3 className="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                {currentUser.role === 'Auditor' ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
+                {isAuditor ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
               </h3>
               <div className="space-y-2.5 text-xs">
                 {auditLogs.slice(0, 4).map((log) => (

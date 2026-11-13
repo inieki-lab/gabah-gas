@@ -56,7 +56,7 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
+  return { status: res.status, json, rateLimitRemaining: res.headers.get('x-ratelimit-remaining'), headers: { nosniff: res.headers.get('x-content-type-options'), frame: res.headers.get('x-frame-options'), referrer: res.headers.get('referrer-policy') } };
 }
 
 async function waitForServer(base, tries = 60) {
@@ -128,6 +128,30 @@ async function main() {
       process.exit(1);
     }
     record('Server boots on isolated port', 'health 200', 'health 200', true);
+
+    const headerCheck = await req(base, 'GET', '/api/health');
+    const headersOk = headerCheck.headers?.nosniff === 'nosniff'
+      && headerCheck.headers?.frame === 'DENY'
+      && headerCheck.headers?.referrer === 'strict-origin-when-cross-origin';
+    record(
+      'Baseline browser security headers are present',
+      'nosniff + DENY + strict-origin-when-cross-origin',
+      JSON.stringify(headerCheck.headers),
+      headersOk,
+    );
+
+    // Raw X-Forwarded-For is untrusted unless Express has an explicit
+    // trusted-proxy configuration. Changing it must not reset the IP bucket.
+    const spoofIpA = await req(base, 'GET', '/api/health', { headers: { 'x-forwarded-for': '198.51.100.10' } });
+    const spoofIpB = await req(base, 'GET', '/api/health', { headers: { 'x-forwarded-for': '203.0.113.20' } });
+    const remainingA = Number(spoofIpA.rateLimitRemaining);
+    const remainingB = Number(spoofIpB.rateLimitRemaining);
+    record(
+      'Raw X-Forwarded-For cannot rotate API rate-limit identity',
+      'same client bucket; remaining decreases by 1',
+      `remaining ${remainingA} → ${remainingB}`,
+      Number.isFinite(remainingA) && Number.isFinite(remainingB) && remainingB === remainingA - 1,
+    );
 
     // Resolve admin credentials (env or dev-generated file).
     let adminEmail = 'admin@foodstation.co.id';

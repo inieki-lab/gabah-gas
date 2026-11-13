@@ -21,6 +21,7 @@ import {
   Check
 } from 'lucide-react';
 import { Asset, Ticket, AssetCategoryType, TicketPriority, TicketStatus, UserProfile } from '../../types';
+import { hasRole, isAuditor as isAuditorRole } from '../../utils/access';
 import { formatDateTime, GabahService, exportTicketsToCsv } from '../../services/gabahService';
 import { SlaTimer } from '../common/SlaTimer';
 
@@ -31,6 +32,8 @@ interface TicketsViewProps {
   onOpenCreateModal?: () => void;
   onOpenNewTicketModal?: () => void;
   onUpdateTicketStatus: (ticketId: string, status: TicketStatus, notes?: string) => void;
+  onLoadTicketAssignees?: (ticketId: string) => Promise<Array<{ id: string; name: string; department: string }>>;
+  onAssignTicket?: (ticketId: string, assignedAgentId: string) => void;
 }
 
 export const TicketsView: React.FC<TicketsViewProps> = ({
@@ -40,6 +43,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   onOpenCreateModal,
   onOpenNewTicketModal,
   onUpdateTicketStatus,
+  onLoadTicketAssignees,
+  onAssignTicket,
 }) => {
   const handleOpenCreate = onOpenCreateModal || onOpenNewTicketModal || (() => {});
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -49,6 +54,9 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
   const [resolvingTicketId, setResolvingTicketId] = useState<string | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState<string>('');
+  const [assigneesByTicket, setAssigneesByTicket] = useState<Record<string, Array<{ id: string; name: string; department: string }>>>({});
+  const [selectedAssignees, setSelectedAssignees] = useState<Record<string, string>>({});
+  const [loadingAssigneesFor, setLoadingAssigneesFor] = useState<string | null>(null);
 
   // Freshservice Canned Responses
   const cannedSolutions = [
@@ -59,34 +67,38 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     'Dokumen BAST serah terima perangkat pengganti telah diterbitkan secara resmi melalui GABAH.',
   ];
 
-  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
-  const isIT = currentUser?.role === 'IT';
-  const isGA = currentUser?.role === 'GA';
-  const isSC = currentUser?.role === 'Supply Chain';
-  const isPIBC = currentUser?.role === 'PIBC';
-  const isAuditor = currentUser?.role === 'Auditor';
-  // Self-service roles see their own submissions; operating divisions see the
-  // tickets already authorized for their division by GabahService.
+  const isSuperAdmin = Boolean(currentUser?.is_superadmin) || currentUser?.role === 'Admin GABAH';
+  const isGA = hasRole(currentUser, 'ga', ['GA']);
+  const isAuditor = isAuditorRole(currentUser);
+  const hasPermission = (key: string, legacyRoles: string[] = []) => {
+    if (isSuperAdmin) return true;
+    if (Array.isArray(currentUser?.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
+    }
+    return legacyRoles.includes(currentUser?.role || '');
+  };
+  // Show the create action when the user can submit at least one category.
+  // IT remains the universal channel; GA and ME are explicit opt-in capabilities.
+  const canCreateTicket = !isAuditor && (
+    hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'])
+    || hasPermission('tickets.create.ga')
+    || hasPermission('tickets.create.me')
+  );
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const baseTickets = safeTickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
-  // In Dynamic RBAC mode the API has already scoped this list. A Karyawan
-  // baseline may also hold an explicitly assigned operational queue role.
+  // The API has already applied effective ticket scope in PostgreSQL mode.
+  // Location labels (SC/PIBC) never create ticket queues or extra visibility.
   const hasScopedQueueTickets = Array.isArray(currentUser?.permission_keys) && baseTickets.some(t =>
-    t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
+    t.reporter_id !== currentUser?.id
   );
-  const isSelfTicketsOnly = !hasScopedQueueTickets
-    && ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
+  const isSelfTicketsOnly = Array.isArray(currentUser?.permission_keys)
+    ? !hasScopedQueueTickets
+    : !isSuperAdmin && !isAuditor && !['IT', 'GA'].includes(currentUser?.role || '');
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
   const defaultCategories = isSelfTicketsOnly
     ? ['ALL', ...Array.from(baseCategorySet)]
-    : isGA
-    ? ['ALL', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'GA')]
-    : isSC
-    ? ['ALL', 'SC', ...Array.from(baseCategorySet).filter(c => c !== 'SC')]
-    : isPIBC
-    ? ['ALL', 'PIBC', ...Array.from(baseCategorySet).filter(c => c !== 'PIBC')]
-    : ['ALL', 'IT', 'GA', 'SC', 'PIBC'];
+    : ['ALL', 'IT', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'IT' && c !== 'GA')];
   const availableCategories = Array.from(new Set(defaultCategories));
 
   const filteredTickets = baseTickets.filter((t) => {
@@ -105,6 +117,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   });
 
   const canManage = GabahService.canManageTickets(currentUser);
+  const canAssignTickets = hasPermission('tickets.assign', ['GA']);
 
   // SLA logic moved to reusable <SlaTimer /> component (live countdown, 30s refresh)
 
@@ -120,10 +133,6 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Tiket Helpdesk Saya'
               : isGA
               ? 'Helpdesk & Tiket Layanan GA'
-              : isSC
-              ? 'Helpdesk & Tiket Supply Chain'
-              : isPIBC
-              ? 'Helpdesk & Tiket PIBC'
               : isAuditor
               ? 'Pemantauan Tiket Helpdesk (Read-Only)'
               : 'Helpdesk & Tiket Layanan Internal'}
@@ -133,10 +142,6 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Daftar pengajuan kendala teknis, kerusakan fasilitas, dan permohonan bantuan Anda.'
               : isGA
               ? 'Daftar tiket kendala fasilitas gedung & sarana GA, serta tiket kendala yang Anda ajukan.'
-              : isSC
-              ? 'Daftar kendala operasional Supply Chain dan tiket yang Anda ajukan.'
-              : isPIBC
-              ? 'Daftar kendala operasional PIBC dan tiket yang Anda ajukan.'
               : isAuditor
               ? 'Pemantauan read-only tiket helpdesk lintas divisi untuk kebutuhan audit.'
               : 'Laporan insiden, kerusakan perangkat IT, pemeliharaan fasilitas GA, dan permintaan lisensi software.'}
@@ -153,7 +158,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateTicket && (
             <button
               id="btn-create-ticket"
               onClick={handleOpenCreate}
@@ -437,6 +442,50 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   )}
                 </div>
 
+                {canAssignTickets && onLoadTicketAssignees && onAssignTicket && (
+                  <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                    {!assigneesByTicket[ticket.id] ? (
+                      <button
+                        onClick={async () => {
+                          setLoadingAssigneesFor(ticket.id);
+                          try {
+                            const options = await onLoadTicketAssignees(ticket.id);
+                            setAssigneesByTicket(previous => ({ ...previous, [ticket.id]: options }));
+                            if (options.length === 1) setSelectedAssignees(previous => ({ ...previous, [ticket.id]: options[0].id }));
+                          } finally {
+                            setLoadingAssigneesFor(null);
+                          }
+                        }}
+                        disabled={loadingAssigneesFor === ticket.id}
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 font-semibold text-xs disabled:opacity-50"
+                      >
+                        {loadingAssigneesFor === ticket.id ? 'Memuat petugas...' : 'Delegasikan'}
+                      </button>
+                    ) : (
+                      <>
+                        <select
+                          value={selectedAssignees[ticket.id] || ''}
+                          onChange={event => setSelectedAssignees(previous => ({ ...previous, [ticket.id]: event.target.value }))}
+                          className="min-w-48 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700"
+                        >
+                          <option value="">Pilih petugas berwenang</option>
+                          {assigneesByTicket[ticket.id].map(person => (
+                            <option key={person.id} value={person.id}>{person.name} — {person.department}</option>
+                          ))}
+                        </select>
+                        <button
+                          disabled={!selectedAssignees[ticket.id]}
+                          onClick={() => onAssignTicket(ticket.id, selectedAssignees[ticket.id])}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs disabled:opacity-50"
+                        >
+                          Tugaskan
+                        </button>
+                        {assigneesByTicket[ticket.id].length === 0 && <span className="text-xs text-amber-700">Belum ada petugas aktif dengan akses sesuai.</span>}
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {/* Resolution Notes preview if resolved */}
                 {ticket.resolution_notes && (
                   <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
@@ -460,7 +509,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               </h4>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {isSelfTicketsOnly 
-                  ? 'Anda belum memiliki riwayat pengajuan tiket kendala. Klik "Buat Tiket Baru" jika Anda mengalami gangguan IT atau fasilitas kantor.'
+                  ? 'Anda belum memiliki riwayat pengajuan tiket kendala. Klik "Buat Tiket Baru" jika Anda mengalami gangguan IT, fasilitas umum, atau mesin/kelistrikan yang ditangani Tim Perawatan.'
                   : isGA
                   ? 'Tidak ada tiket kendala fasilitas GA yang menunggu penanganan.'
                   : 'Tidak ada tiket yang cocok dengan pencarian atau filter status yang dipilih.'}

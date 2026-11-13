@@ -4,14 +4,15 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus.  
-**Terakhir Diperbarui:** 8 November 2026
+**Terakhir Diperbarui:** 11 November 2026
 
 ---
 
 ## 1. Lingkungan Pengujian (Test Environment)
 
 - **Development Port**: `http://localhost:3000` (dijalankan via `npm run dev`)
-- **Docker Production Port**: `http://localhost:80` (dijalankan via `docker compose up -d`)
+- **Docker local test default**: `http://localhost:8080` (host port configurable via `GABAH_WEB_PORT`)
+- **Office VM default**: `http://localhost:80` (set `GABAH_WEB_PORT=80` in the VM `.env`)
 - **Database Engine**: PostgreSQL 17 (driver `pg`)
 - **Token Format**: Bearer Token pada header `Authorization`
 - **Metode Pengujian**: Manual UI end-to-end melalui browser dan verifikasi otomatis via API client.
@@ -28,12 +29,12 @@
 
 | Peran (Role) | Nama Persona | Email Login | Password | Peran Operasional |
 |:---|:---|:---|:---|:---|
-| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | Super Administrator (Full Control) |
+| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | Super Administrator; PostgreSQL access requires explicit active `superadmin` assignment |
 | **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT Support & Aset Komputasi |
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | General Affairs & Sarana Prasarana |
 | **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `<INITIAL_USER_PASSWORD>`| Pegawai; fungsi sekretariat Direksi dan VIP Booking melalui role tambahan |
 | **Karyawan + capability Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai; fungsi dokumentasi dan publikasi melalui role tambahan |
-| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
+| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit kerja legacy / lokasi RPC |
 | **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai Biasa / Pemohon Layanan |
 | **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Satuan Pengawas Internal (Read-Only) |
@@ -42,7 +43,7 @@
 
 ## 3. Skenario Pengujian UAT
 
-> **Prinsip model organisasi:** Supply Chain dan PIBC adalah unit/lokasi, bukan role aplikasi permanen. Lokasi kantor aktif saat ini: HO, PIBC, RPC/SC, Pangsub, dan Kantor Perawatan. Subang tidak aktif. Owner aset berbeda dari lokasi fisik dan lokasi kerja pegawai. Pengujian akses dilakukan terhadap permission dan scope efektif di PostgreSQL.
+> **Prinsip model organisasi:** Supply Chain dan PIBC adalah unit/lokasi, bukan role aplikasi permanen. Lokasi kantor aktif saat ini: HO, PIBC, RPC, Pangsub, dan Kantor Perawatan. Subang tidak aktif. Owner aset berbeda dari lokasi fisik dan lokasi kerja pegawai. Pengujian akses dilakukan terhadap permission dan scope efektif di PostgreSQL.
 
 ### Skenario 1: Autentikasi, Token Sesi & Logout
 - **Tujuan**: Memastikan sesi diterbitkan dengan aman dan dibersihkan saat logout.
@@ -149,6 +150,23 @@
 
 ---
 
+### Skenario 6A: Hak Pemohon Tiket IT, GA, dan ME
+- **Tujuan**: Memastikan semua pegawai non-Auditor dapat mengajukan tiket IT, sedangkan tiket GA dan ME hanya dapat diajukan oleh pegawai yang mendapat role tambahan secara eksplisit.
+- **Persiapan**:
+  1. Pastikan migration 040 dan 041 sudah diterapkan pada database UAT.
+  2. Siapkan tiga akun pegawai non-Auditor: akun tanpa role tambahan GA/ME, akun dengan role `Pemohon Tiket GA`, dan akun dengan role `Pemohon Tiket ME`.
+  3. Siapkan satu akun Auditor untuk uji penolakan.
+- **Langkah Pengujian**:
+  1. Login sebagai pegawai tanpa role tambahan GA/ME. Form tiket harus menampilkan IT saja.
+  2. Ajukan tiket kategori IT. Hasil yang diharapkan: HTTP 201 dan tiket masuk antrean IT.
+  3. Coba kirim langsung `POST /api/tickets` dengan kategori GA dan ME tanpa role tambahan. Hasil yang diharapkan: HTTP 403 untuk keduanya.
+  4. Sebagai Superadmin, buka Administration → User Management → Assignment Role. Tambahkan role `Pemohon Tiket GA` kepada akun uji GA dan `Pemohon Tiket ME` kepada akun uji ME sebagai role tambahan; jangan mengganti primary role pegawai.
+  5. Login ulang/refresh sesi akun uji. Akun GA hanya menampilkan IT dan GA; akun ME hanya menampilkan IT dan ME.
+  6. Uji submit GA/ME sesuai role. Hasil yang diharapkan: HTTP 201 dan tiket masuk kategori/antrean yang benar.
+  7. Cabut role tambahan GA/ME, lalu ulangi request langsung ke API. Hasil yang diharapkan: HTTP 403; tiket historis tetap tersimpan dan tidak dihapus.
+  8. Login sebagai Auditor. Form tidak boleh memberi opsi membuat tiket dan seluruh percobaan POST tiket harus ditolak HTTP 403.
+- **Kriteria Lulus**: IT tersedia untuk seluruh pegawai non-Auditor; GA/ME hanya tersedia bagi user dengan role tambahan aktif; API menerapkan aturan yang sama dengan UI; pencabutan role tidak menghapus histori tiket; Auditor tetap read-only.
+
 ### Skenario 7: Preventive Maintenance & Uji Tera
 - **Tujuan**: Memvalidasi pencatatan pemeliharaan berkala dan tera resmi PIBC.
 - **Langkah Pengujian**:
@@ -180,7 +198,7 @@
 ---
 
 ### Skenario 10: Contract Management (Domain Tersendiri) & Kategori Tiket
-1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware → `IT`; fasilitas → `GA`; SC → `SC`; PIBC → `PIBC`. Tidak ada opsi License/General/Contract di form.
+1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware/software → `IT`; fasilitas umum → `GA`; mesin/kelistrikan/perawatan → `ME` dan antrean `UNIT-PIBC-ME`. PIBC/RPC hanya lokasi. Tidak ada opsi License/General/Contract di form.
 2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
 3. **Dokumen kontrak**: unggah PDF/DOC/JPG yang sah, unduh kembali sebagai PIC/owner yang berwenang, dan pastikan user di luar scope menerima 404. Restart aplikasi; file harus tetap dapat diunduh. Backup database dan volume uploads harus diuji bersama.
 3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
@@ -195,10 +213,11 @@
 - **Langkah Pengujian**:
   1. Login sebagai `IT` atau `GA` atau `Karyawan`. Periksa sidebar menu.
   2. Verifikasi tombol *Administration Control Panel* **tidak tampil**.
-  3. Login sebagai `Admin GABAH`.
-  4. Verifikasi tombol *Administration Control Panel* tampil di bagian bawah sidebar.
+  3. Login sebagai akun yang memiliki assignment RBAC aktif dengan `is_superadmin = TRUE` (akun kanonik Admin GABAH pada seed UAT).
+  4. Pastikan hak akses berasal dari assignment Superadmin di PostgreSQL, bukan semata-mata label profil `Admin GABAH`; label legacy hanya menjadi fallback pada mode file-store.
+  5. Verifikasi tombol *Administration Control Panel* tampil di bagian bawah sidebar.
   5. Buka panel $\to$ uji tab *User Management*, *Organisasi*, *Master Data*, dan *Audit Trail*.
-- **Kriteria Lulus**: Tombol dan modal administrasi terkunci eksklusif untuk peran `Admin GABAH`.
+- **Kriteria Lulus**: Tombol, route, dan API administrasi hanya dapat diakses oleh user dengan assignment Superadmin aktif; mengganti label profil menjadi `Admin GABAH` tanpa assignment tidak boleh memberi akses.
 
 ---
 

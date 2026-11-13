@@ -27,10 +27,10 @@ Do not infer effective access from a job title, unit name, office location, or m
 | Auditor | Auditor as primary role and, in a separate test, as an additional role | Authorized reads work; all create/update/delete/approve/assign operations are denied by API, not merely hidden in UI |
 | Sekretariat Direksi capability | Employee identity with explicitly approved secretariat capability | Only approved executive reservation/meeting actions appear and succeed; no implicit global asset or contract access |
 | Humas capability | Employee identity with explicitly approved Humas capability | Sees only documentation-request queue items; other people's private contacts, attendee lists, IT facilities, consumption details, and internal notes are redacted |
-| Supply Chain employee | Primary Karyawan; unit/location attributes identify Supply Chain / RPC-SC | Supply Chain is not required as an application role; location alone grants no owner scope or module permission |
+| Supply Chain employee | Primary Karyawan; unit/location attributes identify RPC | Supply Chain is not required as an application role; location alone grants no owner scope or module permission |
 | PIBC employee | Primary Karyawan; unit/location attributes identify PIBC | PIBC is not required as an application role; location alone grants no owner scope or module permission |
 
-Use the currently approved office-location master: HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is inactive and must remain historical; do not provision it as an active office location.
+Use the currently approved office-location master: HO, PIBC, RPC, Pangsub, and Kantor Perawatan. Subang is inactive and must remain historical; do not provision it as an active office location.
 
 ## 3. Cross-module authorization matrix
 
@@ -68,7 +68,7 @@ For every mutation workflow, test valid input, invalid input, wrong owner, missi
 Create synthetic assets with distinct owner domains and locations. Include at least:
 - IT-owned laptop at PIBC;
 - IT-owned network device at HO;
-- GA-owned furniture at RPC/SC;
+- GA-owned furniture at RPC;
 - GA-owned facility asset at Pangsub;
 - a legacy/uncertain owner record reserved for Super Admin review.
 
@@ -89,3 +89,51 @@ A persona is PASS only when all applicable positive and negative UI/API scenario
 Record defects with exact route, user persona, record scope, expected/actual status, sanitized request/response, and reproduction steps. Never attach bearer tokens, passwords, personal contact details, or production records.
 
 **Release rule:** A green CI run is necessary but does not replace this browser/API UAT, legacy-database upgrade rehearsal, backup-and-restore rehearsal, staging deployment, or business-owner approval. Production remains NO-GO until all release gates are signed off.
+
+## 7. Helpdesk queue routing — IT / GA / ME
+- Submit IT, GA, and ME tickets from employee accounts at HO, PIBC, RPC, Pangsub, and Kantor Perawatan. Confirm each ticket's category is the service team, not the submitter's location.
+- For ME, confirm `assigned_unit_id=UNIT-PIBC-ME`; only users whose `unit_id=UNIT-PIBC-ME` can see the unit queue and receive unit-targeted notifications. A user at PIBC without that unit assignment must not see ME queue tickets.
+- Confirm a user in Tim Perawatan can see ME queue tickets regardless of their office location, but cannot see IT/GA queue tickets without their own permission/scope.
+- Confirm legacy ticket categories SC/PIBC remain visible as historical data and cannot be newly submitted.
+- Confirm notification read/read-all authorization follows the same recipient unit rule.
+
+
+## 8. Explicit GA helpdesk operator handover
+
+Migration 039 creates the role template `ga_helpdesk_operator` and its `tickets.read`, `tickets.update`, and `tickets.assign` permissions, scoped to division `GA`. It deliberately does **not** assign the role to any employee. The migration also removes `tickets.update` and `tickets.assign` from the generic `ga` role so ticket dispatch authority is held by a designated operator rather than every GA user.
+
+Before applying this migration to a database used by real GA staff, the process owner must identify the actual employee(s) who handle GA helpdesk intake and delegation. Do not infer the operator from the job title Kasi, department, or sample seed identity.
+
+Acceptance checks in an isolated UAT database:
+1. Record the designated GA operator's user ID and approval from the GA process owner.
+2. Assign `ga_helpdesk_operator` explicitly to that test user through the Super Admin administration workflow; verify the assignment and GA division scope persist after restart.
+3. Verify the designated operator can read, update, and assign GA tickets within GA scope, but cannot dispatch IT or ME tickets without separate permissions/scopes.
+4. Verify a generic GA user without the operator assignment cannot update/assign GA tickets, while their other approved GA permissions (assets, facilities, vendors, contracts, reports) remain unchanged.
+5. Verify removing the operator assignment removes only the ticket-handling capability and is reflected in the audit trail.
+6. Do not perform production assignment or migration until the actual operator is named, the change is approved, a database backup is verified, and the production change window is authorized.
+
+**Release blocker:** If no GA operator has been formally designated, mark GA ticket dispatch as **BLOCKED — operator assignment pending**. Do not mark the GA helpdesk workflow PASS and do not silently grant the role to all GA users.
+
+## UAT — Dummy Admin Tiket ME
+
+Akun uji ME bersifat opt-in dan tidak dibuat secara default. Aktifkan hanya pada environment development/staging dengan:
+
+- `GABAH_ENABLE_ME_DUMMY_USER=true` pada `.env` environment development/staging (Docker Compose meneruskan flag ini ke container).
+- Atur `GABAH_ME_DUMMY_PASSWORD` sebagai secret khusus akun dummy. Docker Compose meneruskannya ke container; aplikasi hanya menggunakannya jika `GABAH_ENABLE_ME_DUMMY_USER=true` dan akun belum memiliki password hash.
+- Jika password khusus tidak diisi, mekanisme credential canonical yang ada menggunakan `GABAH_INITIAL_USER_PASSWORD` atau password acak dev. Password akun yang sudah pernah dibuat tidak ditimpa otomatis.
+
+Identitas akun uji:
+- Nama: Dimas Pratama (Dummy Admin ME)
+- Email/login: `admin.me.dummy@foodstation.co.id`
+- User ID: `USR-ME-ADMIN-001`
+- Primary role: Karyawan
+- Additional role: Admin Tiket ME
+- Unit: Tim Perawatan (ME) — `UNIT-PIBC-ME`
+- Lokasi penempatan: Kantor Perawatan — `OFF-PERAWATAN`
+
+Acceptance checks:
+1. Akun muncul pada direktori pegawai saat opt-in aktif.
+2. Akun menerima antrean tiket yang memiliki `assigned_unit_id=UNIT-PIBC-ME`.
+3. Akun dapat membaca notifikasi antrean ME dan memperbarui status/catatan tiket ME sesuai permission.
+4. Akun tidak dapat mengelola tiket IT/GA, data aset PIBC secara umum, atau modul Maintenance.
+5. Saat `GABAH_ENABLE_ME_DUMMY_USER` tidak aktif, akun dummy tidak dibuat. Jangan aktifkan flag ini pada production.

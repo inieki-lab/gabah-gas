@@ -20,6 +20,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { Asset, UserProfile, AssetCondition, AssetStatus } from '../../types';
+import { hasPermission, isSuperAdmin as isSuperAdminAccess } from '../../utils/access';
 import { GabahService } from '../../services/gabahService';
 import { gabahApi } from '../../services/gabahApi';
 
@@ -114,43 +115,23 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
   if (!isOpen || !asset) return null;
 
-  // Role authority check
-  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
-  const isITUser = currentUser?.role === 'IT';
-  const isGAUser = currentUser?.role === 'GA';
-  const isSCUser = currentUser?.role === 'Supply Chain';
-
+  // PostgreSQL sessions use effective permissions; the legacy domain check
+  // remains only for file-store compatibility. The backend always revalidates
+  // the actual owner scope before accepting an update.
   const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
   const isGAAsset = asset.owner_division === 'GA' || asset.category_type === 'General';
   const isSCAsset = asset.owner_division === 'SC';
+  const legacyScopeAllows = isSuperAdminAccess(currentUser)
+    || (currentUser?.role === 'IT' && isITAsset)
+    || (currentUser?.role === 'GA' && isGAAsset && !isITAsset)
+    || (currentUser?.role === 'Supply Chain' && isSCAsset);
+  const canEditThisAsset = Array.isArray(currentUser?.permission_keys)
+    ? hasPermission(currentUser, 'assets.update')
+    : legacyScopeAllows;
+  const authorityWarning = canEditThisAsset
+    ? ''
+    : 'Anda tidak memiliki permission assets.update atau scope owner aset ini.';
 
-  let canEditThisAsset = false;
-  let authorityWarning = '';
-
-  if (isSuperAdmin) {
-    canEditThisAsset = true;
-  } else if (isITUser) {
-    if (isITAsset) {
-      canEditThisAsset = true;
-    } else {
-      canEditThisAsset = false;
-      authorityWarning = 'Personel IT hanya berwenang mengedit aset IT (Hardware/Software). Aset GA dan Supply Chain berstatus Read-Only.';
-    }
-  } else if (isGAUser) {
-    if (isGAAsset && !isITAsset) {
-      canEditThisAsset = true;
-    } else {
-      canEditThisAsset = false;
-      authorityWarning = 'Semua perangkat IT & Lisensi adalah milik IT. Divisi GA hanya memiliki izin lihat (read-only).';
-    }
-  } else if (isSCUser) {
-    if (isSCAsset) {
-      canEditThisAsset = true;
-    } else {
-      canEditThisAsset = false;
-      authorityWarning = 'Personel Supply Chain hanya berwenang mengedit aset Supply Chain (Logistik & Pabrik Cipinang).';
-    }
-  }
 
   const handleAutoGenerateFst = () => {
     const auto = GabahService.generateCorporateAssetNumber(allAssets);
@@ -174,14 +155,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         model: formData.model.trim(),
         serial_number: formData.serial_number.trim(),
         corporate_asset_number: formData.corporate_asset_number.trim() ? formData.corporate_asset_number.trim() : null,
-        // T2B-2: relasi lokasi fisik + teks legacy (sinkron bila master dipilih).
-        asset_location_id: formData.asset_location_id || null,
-        location: (formData.asset_location_id ? assetLocationPath(formData.asset_location_id) : formData.location.trim()) || formData.location.trim(),
-        condition: formData.condition,
+        // Physical location, condition, and lifecycle status use dedicated
+        // mutation workflows so movement history and lifecycle authorization
+        // cannot be bypassed through generic metadata PATCH.
         is_loanable: formData.is_loanable,
         specifications: formData.specifications.trim(),
         notes: formData.notes.trim(),
-        status: selectedUserId ? 'assigned' : formData.status,
       };
 
       if (onSaveAsset) {
@@ -392,7 +371,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   Status Operasional
                 </label>
                 <select
-                  disabled={!canEditThisAsset || isSubmitting || Boolean(selectedUserId)}
+                  disabled
                   value={formData.status}
                   onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as AssetStatus }))}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
@@ -403,7 +382,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   <option value="retired">Afkir / Hapus Buku (Retired)</option>
                 </select>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  {selectedUserId ? 'Otomatis diatur ke Assigned karena ada PIC.' : 'Pilih status ketersediaan barang di gudang.'}
+                  {selectedUserId ? 'Otomatis diatur ke Assigned karena ada PIC.' : 'Status hanya dapat diubah melalui alur Lifecycle atau Penugasan.'}
                 </p>
               </div>
 
@@ -496,7 +475,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     Lokasi Penempatan
                   </label>
                   <select
-                    disabled={!canEditThisAsset || isSubmitting}
+                    disabled
                     value={formData.asset_location_id}
                     onChange={(e) => {
                       const id = e.target.value;
@@ -516,7 +495,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   {!formData.asset_location_id && (
                     <input
                       type="text"
-                      disabled={!canEditThisAsset || isSubmitting}
+                      disabled
                       value={formData.location}
                       onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                       className="w-full px-3 py-2 mt-1.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
@@ -525,14 +504,15 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   {asset.asset_location_id && !formData.asset_location_id && (
                     <p className="text-[10px] text-amber-600 mt-1">Aset ini sebelumnya terpetakan ke master — pilihan "Di luar master" akan melepas relasinya.</p>
                   )}
-                </div>
+                <p className="text-[10px] text-slate-500 mt-1">Perubahan lokasi harus melalui mutasi fisik agar riwayat perpindahan tercatat.</p>
+                  </div>
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
                     Kondisi Fisik
                   </label>
                   <select
-                    disabled={!canEditThisAsset || isSubmitting}
+                    disabled
                     value={formData.condition}
                     onChange={(e) => setFormData(prev => ({ ...prev, condition: e.target.value as AssetCondition }))}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
@@ -542,7 +522,8 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     <option value="poor">Perlu Perhatian (Poor)</option>
                     <option value="damaged">Rusak / Tidak Dapat Digunakan (Damaged)</option>
                   </select>
-                </div>
+                <p className="text-[10px] text-slate-500 mt-1">Kondisi diubah melalui inspeksi pengembalian atau alur Lifecycle.</p>
+                  </div>
               </div>
 
               <div>

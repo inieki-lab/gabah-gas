@@ -26,6 +26,8 @@ import {
   Info
 } from 'lucide-react';
 import { Asset, UserProfile, Loan, Ticket, AssetMovement } from '../../types';
+import { hasPermission, isSuperAdmin as isSuperAdminAccess } from '../../utils/access';
+import { gabahApi } from '../../services/gabahApi';
 import { formatRupiah, formatDate, formatDateTime, calculateDepreciation, GabahService } from '../../services/gabahService';
 
 interface AssetDetailModalProps {
@@ -62,6 +64,14 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const [editedCorpNumber, setEditedCorpNumber] = useState('');
   const [copiedAssetNumber, setCopiedAssetNumber] = useState(false);
   const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'financials' | 'maintenance' | 'history'>('overview');
+  const [assetLocations, setAssetLocations] = useState<any[]>([]);
+  const [moveLocationId, setMoveLocationId] = useState('');
+  const [moveReason, setMoveReason] = useState('');
+  const [lifecycleAction, setLifecycleAction] = useState('repair');
+  const [lifecycleNotes, setLifecycleNotes] = useState('');
+  const [isMutatingAsset, setIsMutatingAsset] = useState(false);
+  const [mutationError, setMutationError] = useState('');
+  const [mutationSuccess, setMutationSuccess] = useState('');
 
   const handleCopyAssetNumber = (num: string) => {
     navigator.clipboard.writeText(num);
@@ -73,24 +83,34 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
     if (asset) {
       setEditedCorpNumber(asset.corporate_asset_number || '');
       setIsEditingCorpNumber(false);
+      setMoveLocationId(asset.asset_location_id || '');
+      setMutationError('');
+      setMutationSuccess('');
+      if (hasPermission(currentUser, 'assets.move', ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'])) {
+        gabahApi.getAssetLocations()
+          .then(rows => setAssetLocations(Array.isArray(rows) ? rows.filter(row => row && row.is_active !== false) : []))
+          .catch(() => setAssetLocations([]));
+      }
     }
-  }, [asset]);
+  }, [asset?.id, currentUser?.permission_keys, currentUser?.role, currentUser?.is_superadmin]);
 
   if (!asset) return null;
 
-  // Freshservice Asset Lifecycle State Machine
-  const currentStep = 
-    asset.status === 'retired' ? 5 :
-    asset.status === 'maintenance' ? 4 :
-    asset.status === 'in_use' ? 3 :
-    asset.status === 'available' ? 2 : 1;
+  // Normalize legacy and current lifecycle states into the five visual stages.
+  const lifecycleStatus = String(asset.status || '').toLowerCase();
+  const terminalStatuses = ['retired', 'disposed', 'auctioned', 'cannibalized', 'lost', 'inactive'];
+  const serviceStatuses = ['maintenance', 'in_repair', 'damaged', 'pending_disposal', 'pending_auction'];
+  const currentStep = terminalStatuses.includes(lifecycleStatus) ? 5
+    : serviceStatuses.includes(lifecycleStatus) ? 4
+    : ['assigned', 'in_use'].includes(lifecycleStatus) ? 3
+    : ['available', 'reserved'].includes(lifecycleStatus) ? 2 : 1;
 
   const lifecycleSteps = [
     { step: 1, label: 'Pengadaan', desc: formatDate(asset.purchase_date) },
-    { step: 2, label: 'Tersedia', desc: asset.status === 'available' ? 'Stok Aktif' : 'Tersedia' },
-    { step: 3, label: 'Digunakan', desc: asset.assigned_to ? asset.assigned_to.name : (asset.status === 'in_use' ? 'In Use' : '-') },
-    { step: 4, label: 'Servis', desc: asset.status === 'maintenance' ? 'Dalam Perbaikan' : 'Pemeliharaan' },
-    { step: 5, label: 'Afkir', desc: asset.status === 'retired' ? 'Hapus Buku' : 'Aktif' },
+    { step: 2, label: 'Tersedia', desc: ['available', 'reserved'].includes(lifecycleStatus) ? 'Stok aktif / terreservasi' : 'Menunggu pemulihan' },
+    { step: 3, label: 'Digunakan', desc: asset.assigned_to ? asset.assigned_to.name : (['in_use', 'assigned'].includes(lifecycleStatus) ? 'Dalam penggunaan' : '-') },
+    { step: 4, label: 'Servis', desc: serviceStatuses.includes(lifecycleStatus) ? `Status: ${asset.status}` : 'Pemeliharaan' },
+    { step: 5, label: 'Afkir', desc: terminalStatuses.includes(lifecycleStatus) ? `Status: ${asset.status}` : 'Aktif' },
   ];
 
   const ownerDivision = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : 'GA');
@@ -99,7 +119,64 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const isIT = ownerDivision === 'IT' || asset.category_type === 'IT';
   const isGA = ownerDivision === 'GA' || (!isSC && !isPIBC && !isIT);
   const isLicense = asset.category_type === 'License' || asset.category_code === 'SLIC' || asset.asset_number?.includes('-SLIC-');
-  const canEdit = currentUser ? GabahService.canEditAsset(currentUser, asset) : false;
+  const canEdit = currentUser ? (Array.isArray(currentUser.permission_keys)
+    ? hasPermission(currentUser, 'assets.update')
+    : GabahService.canEditAsset(currentUser, asset)) : false;
+  const canMoveAsset = hasPermission(currentUser, 'assets.move', ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC']);
+  const canMutateLifecycle = hasPermission(currentUser, 'assets.lifecycle', ['Admin GABAH', 'IT', 'GA']);
+  const isSuperAdmin = isSuperAdminAccess(currentUser);
+
+  const getLocationPath = (locationId: string): string => {
+    const byId = new Map<string, any>(assetLocations.map(location => [String(location.id), location]));
+    const parts: string[] = [];
+    const visited = new Set<string>();
+    let cursor = byId.get(locationId);
+    while (cursor && !visited.has(String(cursor.id))) {
+      visited.add(String(cursor.id));
+      parts.push(String(cursor.name || ''));
+      cursor = cursor.parent_id ? byId.get(String(cursor.parent_id)) : undefined;
+    }
+    return parts.filter(Boolean).reverse().join(' - ');
+  };
+
+  const handleMoveAsset = async () => {
+    if (!asset || !moveLocationId || !moveReason.trim()) return;
+    const targetLocation = getLocationPath(moveLocationId);
+    if (!targetLocation) {
+      setMutationError('Lokasi tujuan tidak valid atau tidak aktif.');
+      return;
+    }
+    setIsMutatingAsset(true);
+    setMutationError('');
+    setMutationSuccess('');
+    try {
+      const updated = await gabahApi.moveAsset(asset.id, targetLocation, moveReason.trim());
+      onUpdateAsset?.(updated);
+      setMoveReason('');
+      setMutationSuccess(`Mutasi lokasi tercatat: ${targetLocation}`);
+    } catch (error: any) {
+      setMutationError(error?.message || 'Gagal mencatat mutasi lokasi.');
+    } finally {
+      setIsMutatingAsset(false);
+    }
+  };
+
+  const handleLifecycleMutation = async () => {
+    if (!asset || !lifecycleAction || !lifecycleNotes.trim()) return;
+    setIsMutatingAsset(true);
+    setMutationError('');
+    setMutationSuccess('');
+    try {
+      const updated = await gabahApi.mutateLifecycle(asset.id, lifecycleAction, lifecycleNotes.trim());
+      onUpdateAsset?.(updated);
+      setMutationSuccess(`Lifecycle aset berhasil diperbarui ke status ${updated.status}.`);
+      setLifecycleNotes('');
+    } catch (error: any) {
+      setMutationError(error?.message || 'Gagal memperbarui lifecycle aset.');
+    } finally {
+      setIsMutatingAsset(false);
+    }
+  };
 
   let ownershipRuleText = '';
   if (asset.category_code === 'INV-F' || asset.asset_number?.includes('-INV-F-')) {
@@ -465,6 +542,93 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           )}
 
           {/* Tab 2: Finansial & PSAK 16 */}
+          {(canMoveAsset || canMutateLifecycle) && activeDetailTab === 'overview' && (
+            <section className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900">Mutasi Lokasi & Lifecycle</h4>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Perubahan lokasi dicatat sebagai riwayat mutasi. Status dan kondisi hanya berubah melalui aksi lifecycle yang tervalidasi server.
+                </p>
+              </div>
+
+              {canMoveAsset && (
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600">Lokasi tujuan</label>
+                    <select
+                      value={moveLocationId}
+                      onChange={event => setMoveLocationId(event.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs"
+                    >
+                      <option value="">Pilih lokasi aktif</option>
+                      {assetLocations.map(location => (
+                        <option key={location.id} value={location.id}>{getLocationPath(String(location.id))}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600">Alasan mutasi</label>
+                    <input
+                      value={moveReason}
+                      onChange={event => setMoveReason(event.target.value)}
+                      placeholder="Contoh: relokasi ruang kerja"
+                      className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-xs"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleMoveAsset}
+                    disabled={isMutatingAsset || !moveLocationId || !moveReason.trim()}
+                    className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    Mutasikan
+                  </button>
+                </div>
+              )}
+
+              {canMutateLifecycle && (
+                <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr_auto] gap-2 items-end">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600">Aksi lifecycle</label>
+                    <select
+                      value={lifecycleAction}
+                      onChange={event => setLifecycleAction(event.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs"
+                    >
+                      <option value="repair">Masuk perbaikan</option>
+                      <option value="damaged">Tandai rusak</option>
+                      <option value="restore">Pulihkan ke tersedia</option>
+                      <option value="propose_disposal">Usulkan penghapusan</option>
+                      {isSuperAdmin && <option value="approve_disposal">Setujui penghapusan</option>}
+                      <option value="auction">Usulkan lelang</option>
+                      <option value="cannibalize">Kanibalisasi</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-600">Catatan / dasar tindakan</label>
+                    <input
+                      value={lifecycleNotes}
+                      onChange={event => setLifecycleNotes(event.target.value)}
+                      placeholder="Wajib diisi untuk audit trail"
+                      className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-xs"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLifecycleMutation}
+                    disabled={isMutatingAsset || !lifecycleNotes.trim()}
+                    className="rounded-lg bg-amber-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    Terapkan
+                  </button>
+                </div>
+              )}
+
+              {mutationError && <p className="text-xs text-rose-700">{mutationError}</p>}
+              {mutationSuccess && <p className="text-xs text-emerald-700">{mutationSuccess}</p>}
+            </section>
+          )}
+
           {activeDetailTab === 'financials' && (
             <div className="space-y-4">
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">

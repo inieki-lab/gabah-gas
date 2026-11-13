@@ -48,13 +48,49 @@ async function main() {
       `${presentRoles.length}/7; branchProfiles=${branchProfilesValid}; legacyBranchRoles=${noBranchRole}`,
       presentRoles.length === 7 && noBranchRole && branchProfilesValid);
 
+    // Legacy role labels must not silently assign an office or overwrite
+    // existing unit/location data. Those attributes are managed independently.
+    const legacyCreate = await req(b, 'POST', '/api/users', {
+      token: admin,
+      body: { name: 'Uji Legacy RPC', email: 'uji.legacy.rpc@foodstation.co.id', role: 'Supply Chain', division: 'SC', department: 'RPC' },
+    });
+    const legacyCreated = legacyCreate.json?.data || {};
+    rec('12a: legacy Supply Chain label creates Karyawan without inferred office location',
+      'Karyawan + office_location_id null',
+      `${legacyCreate.status} + ${legacyCreated.role} + ${legacyCreated.office_location_id}`,
+      legacyCreate.status === 201 && legacyCreated.role === 'Karyawan' && legacyCreated.office_location_id == null);
+
+    const scUnitBefore = scUser?.unit_id;
+    const scOfficeBefore = scUser?.office_location_id;
+    const legacyImport = await req(b, 'POST', '/api/users/bulk-import', {
+      token: admin,
+      body: { users: [{ name: scUser?.name, email: scUser?.email, role: 'Supply Chain', division: 'SC', department: scUser?.department }] },
+    });
+    const scAfterImport = ((await req(b, 'GET', '/api/users', { token: admin })).json?.data || []).find(u => u.email === scUser?.email);
+    rec('12b: bulk import preserves existing unit and office when columns are omitted',
+      `${scUnitBefore} + ${scOfficeBefore}`,
+      `${scAfterImport?.unit_id} + ${scAfterImport?.office_location_id}`,
+      legacyImport.status === 200 && scAfterImport?.role === 'Karyawan'
+        && scAfterImport?.unit_id === scUnitBefore && scAfterImport?.office_location_id === scOfficeBefore);
+
+    const partialImport = await req(b, 'POST', '/api/users/bulk-import', {
+      token: admin,
+      body: { users: [{ name: scUser?.name, email: scUser?.email }] },
+    });
+    const scAfterPartial = ((await req(b, 'GET', '/api/users', { token: admin })).json?.data || []).find(u => u.email === scUser?.email);
+    rec('12c: partial bulk import preserves omitted role/division/department',
+      `Karyawan + ${scUser?.division} + ${scUser?.department}`,
+      `${scAfterPartial?.role} + ${scAfterPartial?.division} + ${scAfterPartial?.department}`,
+      partialImport.status === 200 && scAfterPartial?.role === scUser?.role
+        && scAfterPartial?.division === scUser?.division && scAfterPartial?.department === scUser?.department);
+
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
     const units = (await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data || [];
     const offices = (await req(b, 'GET', '/api/master/office-locations', { token: admin })).json?.data || [];
     const levels = (await req(b, 'GET', '/api/master/job-levels', { token: admin })).json?.data || [];
     const activeOfficeNames = offices.filter(l => l.is_active !== false).map(l => l.name).sort();
-    const expectedActiveOfficeNames = ['HO', 'Kantor Perawatan', 'PIBC', 'Pangsub', 'RPC/SC'].sort();
+    const expectedActiveOfficeNames = ['HO', 'Kantor Perawatan', 'PIBC', 'Pangsub', 'RPC'].sort();
     rec('13: lima lokasi kantor aktif sesuai keputusan bisnis; Subang tidak aktif', expectedActiveOfficeNames.join('|') + ' (+future sites allowed)', activeOfficeNames.join('|'), expectedActiveOfficeNames.every(name => activeOfficeNames.includes(name)) && !activeOfficeNames.includes('Subang'));
     const unitPIBC = units.find(u => u.name === 'PIBC');
     const unitSC = units.find(u => u.name === 'Supply Chain');

@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Spesifikasi target Dynamic RBAC; implementasi masih dalam audit dan UAT. Matriks role lama di bawah bukan sumber otorisasi aktif.  
-**Terakhir Diperbarui:** 8 November 2026  
+**Terakhir Diperbarui:** 11 November 2026  
 
 ---
 
@@ -42,13 +42,13 @@ GABAH tidak menggunakan sembilan label role lama sebagai daftar role permanen. R
 
 ### 1.3 Model lokasi dan owner
 
-Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC/SC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
+Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
 
-Owner domain adalah master fleksibel (misalnya IT, GA, RPC/SC, dan domain lain yang disahkan), bukan enum tetap. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
+Owner domain adalah master fleksibel (misalnya IT, GA, owner operasional legacy berkode SC, dan domain lain yang disahkan), bukan enum tetap. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
 
 ### 1.4 Legacy role labels
 
-Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. Supply Chain dan PIBC adalah lokasi/unit/fungsi operasional, bukan role aplikasi permanen. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
+Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. RPC dan PIBC adalah lokasi kerja; akun lama berlabel Supply Chain/PIBC adalah data transisi, bukan role aplikasi permanen. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
 
 Contract Management tetap domain tersendiri; scope kontrak menggunakan owner domain dan PIC. Vendor category tidak boleh dipakai sebagai pengganti owner domain.
 
@@ -65,7 +65,7 @@ Contract Management tetap domain tersendiri; scope kontrak menggunakan owner dom
 | Sekretaris Direksi | Fungsi dasar karyawan + agenda/permintaan dukungan Direksi | Prioritas/override harus permission khusus dan audit |
 | Humas | Fungsi dasar karyawan + antrean pekerjaan dokumentasi yang ditugaskan | Detail agenda disamarkan untuk pihak tanpa kewenangan |
 | Auditor | Read-only sesuai grant audit | Tidak boleh create/update/delete/approve |
-| RPC/SC dan owner operasional lain | Kapabilitas sesuai owner domain dan scope yang diberikan | Nama unit/lokasi tidak otomatis menjadi role atau scope |
+| RPC dan owner operasional lain | Kapabilitas sesuai owner domain dan scope yang diberikan | Nama unit/lokasi tidak otomatis menjadi role atau scope |
 
 Matriks di atas adalah baseline kebijakan. Permission dan scope aktual harus dibaca dari database RBAC, bukan dari nama role atau tabel statis di frontend.
 
@@ -102,7 +102,7 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / General Affairs & Sarpras |
 | **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Sekretariat Direksi |
 | **Karyawan + capability Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Humas & Protokoler |
-| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
+| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit operasional legacy / lokasi RPC |
 | **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Komersial / Staf Komersial |
 | **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Audit / Auditor Internal (SPI) |
@@ -174,3 +174,31 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 - Role Karyawan, Auditor, Humas, dan Sekretaris Direksi sengaja tidak menerima
   grant tulis di migration `016`, mengikuti guard legacy yang menolak mereka.
 
+
+
+## Helpdesk service queues and dispatch (keputusan 10 November 2026)
+
+### Hak pemohon tiket (keputusan 11 November 2026)
+
+- **IT:** kanal helpdesk umum perusahaan. Semua user aktif non-Auditor yang terautentikasi dapat mengajukan tiket IT tanpa assignment permission khusus. Auditor tetap read-only dan ditolak di backend, termasuk bila memiliki role tambahan lain.
+- **GA:** pengajuan tiket memerlukan permission `tickets.create.ga`, yang diberikan melalui role tambahan `Pemohon Tiket GA`. Role template dibuat oleh migration `041` dan tidak ditetapkan otomatis ke user.
+- **ME:** pengajuan tiket memerlukan permission `tickets.create.me`, yang diberikan melalui role tambahan `Pemohon Tiket ME`. Role template dibuat oleh migration `041` dan tidak ditetapkan otomatis ke user.
+- Superadmin menetapkan atau mencabut role Pemohon GA/ME per user melalui Administration → User Management → Assignment Role. Role tersebut bersifat tambahan; primary role dan jabatan organisasi tidak perlu diubah.
+- Hak pemohon (`tickets.create.*`) tidak memberikan hak membaca antrean tim, mengubah status, atau mendelegasikan tiket. Hak operator tetap terpisah melalui `tickets.read`, `tickets.update`, `tickets.assign` dan scope antrean yang sesuai.
+- Pencabutan role hanya memengaruhi pengajuan tiket berikutnya; tiket historis tidak dihapus. Semua assignment role mengikuti audit log Dynamic RBAC.
+
+- Kategori/tujuan tiket adalah **IT, GA, dan ME**. Kategori tidak diturunkan dari lokasi kantor.
+- **IT:** tiket diarahkan langsung kepada satu petugas IT aktif apabila hanya ada satu user dengan permission `tickets.update` dan scope Tickets untuk divisi IT. Bila tidak ada atau kandidat lebih dari satu, tiket tetap berada di antrean IT; sistem tidak memilih petugas secara acak.
+- **GA:** Kasi GA dan Admin/Staf GA tetap dapat menjalankan pekerjaan umum GA—misalnya input/perubahan aset, laporan, vendor, kontrak, dan fasilitas—sesuai permission serta scope GA yang diberikan. Hak umum tersebut tidak otomatis menjadikan keduanya petugas antrean tiket. Tiket GA merupakan pekerjaan operasional Admin/Staf GA atau pegawai lain yang secara khusus ditunjuk, bukan otomatis pekerjaan Kasi GA. Gunakan template `ga_helpdesk_operator` untuk petugas helpdesk yang ditunjuk; template ini memberi `tickets.update` dan `tickets.assign` dengan scope divisi GA. Role GA umum tidak otomatis mendapat hak update/delegasi tiket. Dengan satu kandidat helpdesk aktif, tiket langsung masuk ke petugas tersebut; jika kandidat tidak ada atau lebih dari satu, tiket tetap di antrean GA. Kasi GA tetap dapat diberi hak helpdesk/delegasi jika memang ditugaskan, tanpa kehilangan hak umum GA. Messenger tidak otomatis menjadi petugas teknis. Jika staf teknis ditambahkan, petugas GA yang ditunjuk dapat mendelegasikan kepada petugas yang memiliki `tickets.update` dan scope GA.
+- **ME:** ME adalah unit Tim Perawatan (Mechanical & Electrical) di bawah PIBC, direpresentasikan oleh `UNIT-PIBC-ME`. Tiket ME disimpan dengan `assigned_unit_id=UNIT-PIBC-ME`; dispatcher dengan permission `tickets.assign` dan scope unit tersebut dapat mendelegasikan kepada petugas aktif yang menjadi anggota unit dan memiliki permission `tickets.update`.
+- Lokasi RPC/PIBC tidak otomatis memberi akses antrean ME. Unit ME juga bukan lokasi kantor atau role aplikasi.
+- Endpoint penugasan memvalidasi permission dispatcher, scope tiket, status aktif target, permission target, serta kecocokan unit/divisi. Daftar petugas yang ditampilkan ke dispatcher hanya berisi target yang lolos validasi tersebut.
+
+### Role, jabatan, dan assignment pegawai
+
+- Role aplikasi adalah **paket permission dan scope**, bukan nama jabatan. Super Admin dapat membuat role kustom, memilih permission, mengatur scope, dan menetapkan satu atau lebih role kepada pegawai mana pun.
+- Jabatan/posisi (mis. Admin IT, Staf IT Support, Admin GA, Admin ME, Teknisi ME) tetap menjadi atribut organisasi/pekerjaan; jabatan tidak otomatis memberikan permission.
+- `tickets.assign` adalah permission terpisah dari `tickets.update`. Dispatcher dapat mendelegasikan, sedangkan teknisi/petugas pelaksana cukup diberi `tickets.update` dan scope yang sesuai. Aksi perubahan status tiket di UI dan API mensyaratkan `tickets.update`; hak delegasi saja tidak memberi hak mengubah status.
+- Scope yang dapat dikonfigurasi per modul meliputi `all`, `own`, `division`, `division_except`, `unit`, dan `location`. `division_except` mendukung pembatasan owner luas seperti semua owner kecuali IT; pengecualian harus diuji bersama scope positif agar tidak berubah menjadi akses global tanpa sengaja.
+- Migration `037_admin_tiket_me_role_template.sql` dan `038_ticket_dispatch_permission.sql` menyediakan preset Admin Tiket ME. Preset bukan role jabatan permanen dan tidak otomatis ditetapkan kepada akun mana pun.
+- Penambahan atau perubahan personel dilakukan melalui assignment role, scope, unit, dan konfigurasi routing; tidak perlu mengubah kode hanya karena nama jabatan atau struktur staf berubah.

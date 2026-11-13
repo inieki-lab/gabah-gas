@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { formatJakartaDate } from './time';
 import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility, ServerMaintenance } from './db';
 import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
@@ -7,7 +9,17 @@ import { persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
+import { hasRoleCapability } from './role-capabilities';
 import { isPostgresPersistenceActive } from './persistence';
+
+/** Resolve ticket service categories to their authoritative owner division.
+ * ME is the Maintenance Engineering queue under PIBC, not a standalone division.
+ * Legacy SC/PIBC ticket categories retain their own owner-domain values.
+ */
+export function getTicketOwnerDivision(category: string | null | undefined): string {
+  const normalized = String(category || '').trim().toUpperCase();
+  return normalized === 'ME' ? 'PIBC' : normalized;
+}
 
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
 const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
@@ -18,6 +30,48 @@ export function isLegacyScopedRole(role: string): boolean {
 }
 
 interface AssetScopeSpec { type: string; value: string | null }
+
+const LOAN_ELIGIBLE_ASSET_STATUSES = new Set(['active', 'available']);
+
+const LOAN_UNAVAILABLE_ASSET_STATUSES = new Set([
+  'maintenance', 'retired', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal',
+  'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive',
+  // Legacy/ERP lifecycle values may still exist in imported records.
+  'maintenance', 'retired', 'in_use', 'reserved', 'under_maintenance', 'decommissioned',
+]);
+const ASSET_MUTATION_BLOCKING_LOAN_STATUSES = new Set([
+  'pending_approval', 'pending', 'approved', 'borrowed', 'overdue',
+]);
+
+function findBlockingAssetLoan(assetId: string, excludeLoanId?: string): ServerLoan | undefined {
+  return db.loans.find(loan =>
+    loan.asset_id === assetId
+    && loan.id !== excludeLoanId
+    && ASSET_MUTATION_BLOCKING_LOAN_STATUSES.has(String(loan.status)),
+  );
+}
+
+function assertNoBlockingAssetLoan(assetId: string, action: string, excludeLoanId?: string): void {
+  const loan = findBlockingAssetLoan(assetId, excludeLoanId);
+  if (loan) {
+    throw Object.assign(
+      new Error(`Aset tidak dapat ${action} selama permohonan/peminjaman ${loan.loan_number} masih berstatus ${loan.status}. Selesaikan atau batalkan proses peminjaman terlebih dahulu.`),
+      { statusCode: 409 },
+    );
+  }
+}
+
+/** Shared eligibility rule for both availability preview and authoritative mutations. */
+export function isAssetEligibleForLoan(asset: Pick<ServerAsset, 'is_loanable' | 'status' | 'condition' | 'assigned_to'>): boolean {
+  const status = String(asset.status || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const condition = String(asset.condition || '').trim().toLowerCase();
+  return Boolean(asset.is_loanable)
+    && LOAN_ELIGIBLE_ASSET_STATUSES.has(status)
+    && status !== 'assigned'
+    && !asset.assigned_to?.id
+    && !LOAN_UNAVAILABLE_ASSET_STATUSES.has(status)
+    && !['broken', 'damaged', 'poor'].includes(condition);
+}
 
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
   if (isSuperadminActor(actor)) return true;
@@ -201,22 +255,31 @@ export class GabahDomainService {
   /**
    * Log action to immutable audit trail
    */
-  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string) {
+  static recordAudit(action: string, entity: string, details: string, user: { id?: string; name: string; role: string }, entityId?: string, persist = true) {
+    const impersonatorId = requestContext.getStore()?.originalAdminId;
+    const impersonator = impersonatorId && impersonatorId !== user.id
+      ? db.users.find(candidate => candidate.id === impersonatorId)
+      : undefined;
+    const auditActor = impersonator || user;
+    const auditDetails = impersonator
+      ? `${details} [Admin asli: ${impersonator.name} (${impersonator.id}); persona aktif: ${user.name} (${user.id})]`
+      : details;
     const log: ServerAuditLog = {
-      id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `LOG-${randomUUID()}`,
       action,
       entity,
       entity_id: entityId,
-      user_name: user.name || 'System',
-      user_role: user.role || 'System',
-      details,
+      user_id: auditActor.id,
+      user_name: auditActor.name || 'System',
+      user_role: auditActor.role || 'System',
+      details: auditDetails,
       // P2#9: stamp the originating client IP from the request context when the
       // write happens inside an HTTP request (undefined for boot-time writers).
       ip_address: requestContext.getStore()?.ip,
       timestamp: new Date().toISOString(),
     };
     db.auditLogs.unshift(log);
-    persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
+    if (persist) persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
     return log;
   }
 
@@ -227,6 +290,7 @@ export class GabahDomainService {
     recipient_role?: string;
     recipient_division?: string;
     recipient_user_id?: string;
+    recipient_unit_id?: string;
     title: string;
     message: string;
     severity: 'critical' | 'action_required' | 'warning' | 'info' | 'success';
@@ -239,6 +303,7 @@ export class GabahDomainService {
       recipient_role: data.recipient_role,
       recipient_division: data.recipient_division,
       recipient_user_id: data.recipient_user_id,
+      recipient_unit_id: data.recipient_unit_id,
       title: data.title,
       message: data.message,
       severity: data.severity,
@@ -256,7 +321,10 @@ export class GabahDomainService {
    * Filter assets based on user's role and division scope
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
-    if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
+    if (isSuperadminActor(user)) return db.assets;
+    // PostgreSQL Auditor access is read-only but still scope-bound. Only the
+    // legacy file-store compatibility mode retains its historical broad view.
+    if (isAuditorActor(user) && !isPostgresPersistenceActive()) return db.assets;
 
     const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
     const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
@@ -285,29 +353,23 @@ export class GabahDomainService {
     // assigned dynamic role scope. A Karyawan can receive extra job-function
     // roles without changing employee identity or office location.
     const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
-    if (user.role === 'GA') {
-      const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
-      const isItWorkstation = (asset: ServerAsset) =>
-        ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
-      // GA's writable inventory follows its explicit dynamic owner scope.
-      // The optional IT workstation exception is strictly read-only and limited
-      // to laptop/desktop categories, independent of the GA owner scope.
-      // Keep every explicitly scoped owner domain, including additional
-      // operational capabilities assigned to a GA employee. The IT workstation
-      // exception remains a separate read-only addition.
-      const readOnlyItWorkstations = canReadItWorkstations
-        ? db.assets.filter(asset =>
-          String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
-        )
-        : [];
-      const visibleIds = new Set([...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
-      return db.assets.filter(asset => visibleIds.has(asset.id));
-    }
-
     const personalAssets = isEmployeeBaseline
       ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
       : [];
-    const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
+
+    // The workstation exception is a permission capability, not a primary-role
+    // shortcut. It therefore works for GA as a secondary role or any approved
+    // custom role, while remaining read-only (mutation still needs owner scope).
+    const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
+    const isItWorkstation = (asset: ServerAsset) =>
+      ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+    const readOnlyItWorkstations = canReadItWorkstations
+      ? db.assets.filter(asset =>
+        String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
+      )
+      : [];
+
+    const visibleIds = new Set([...personalAssets, ...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
     return db.assets.filter(asset => visibleIds.has(asset.id));
   }
 
@@ -449,7 +511,7 @@ export class GabahDomainService {
           name: assignedUser.name,
           email: assignedUser.email,
           department: assignedUser.department,
-          assigned_date: new Date().toISOString().split('T')[0],
+          assigned_date: formatJakartaDate(),
         };
         initialStatus = 'assigned';
       }
@@ -469,9 +531,9 @@ export class GabahDomainService {
       model: payload.model?.trim() || '',
       serial_number: payload.serial_number?.trim() || `SN-${Date.now().toString().slice(-6)}`,
       specifications: payload.specifications?.trim() || '',
-      purchase_date: payload.purchase_date || new Date().toISOString().split('T')[0],
+      purchase_date: payload.purchase_date || formatJakartaDate(),
       purchase_price: Number(payload.purchase_price) || 0,
-      warranty_until: payload.warranty_until || new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split('T')[0],
+      warranty_until: payload.warranty_until || formatJakartaDate(new Date(Date.now() + 365 * 24 * 3600 * 1000)),
       status: initialStatus,
       condition: payload.condition || 'new',
       location: payload.location?.trim() || 'Head Office - Gudang Utama',
@@ -501,13 +563,14 @@ export class GabahDomainService {
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.assign')) {
       throw new Error('Akses ditolak: Anda tidak memiliki permission assign pada domain pemilik aset ini.');
     }
+    assertNoBlockingAssetLoan(assetId, 'diubah penugasannya');
 
     const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
 
     // Support Unassign (Return to Pool/Warehouse as available/idle)
     if (!targetUserId) {
       asset.assigned_to = undefined;
-      asset.status = 'available';
+      if (asset.status === 'assigned') asset.status = 'available';
       asset.updated_at = new Date().toISOString();
 
       const movement: ServerAssetMovement = {
@@ -531,13 +594,19 @@ export class GabahDomainService {
 
     const targetUser = db.users.find(u => u.id === targetUserId);
     if (!targetUser) throw new Error('User penerima tidak ditemukan');
+    if (targetUser.is_active === false) {
+      throw Object.assign(new Error('Tidak dapat menugaskan aset kepada pengguna yang nonaktif.'), { statusCode: 409 });
+    }
+    if (LOAN_UNAVAILABLE_ASSET_STATUSES.has(asset.status)) {
+      throw Object.assign(new Error(`Aset berstatus ${asset.status} tidak dapat ditugaskan sebelum dipulihkan melalui proses lifecycle.`), { statusCode: 409 });
+    }
 
     asset.assigned_to = {
       id: targetUser.id,
       name: targetUser.name,
       email: targetUser.email,
       department: targetUser.department,
-      assigned_date: new Date().toISOString().split('T')[0],
+      assigned_date: formatJakartaDate(),
     };
     asset.status = 'assigned';
     asset.updated_at = new Date().toISOString();
@@ -573,6 +642,7 @@ export class GabahDomainService {
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.move')) {
       throw new Error('Akses ditolak: Anda tidak memiliki permission move pada domain pemilik aset ini.');
     }
+    assertNoBlockingAssetLoan(assetId, 'dipindahkan lokasinya');
 
     const oldLocation = asset.location;
     asset.location = newLocation;
@@ -602,37 +672,69 @@ export class GabahDomainService {
   /**
    * Asset Lifecycle Mutation (Repair, Damaged, Cannibalize, Disposal, Auction)
    */
-  static mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser): ServerAsset {
+  static mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction' | 'restore', notes: string, actor: ServerUser): ServerAsset {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.lifecycle')) {
       throw new Error('Akses ditolak: Anda tidak memiliki permission lifecycle pada domain pemilik aset ini.');
     }
+    assertNoBlockingAssetLoan(assetId, 'diubah status lifecycle-nya');
+    if (asset.assigned_to?.id) {
+      throw Object.assign(
+        new Error('Aset masih ditugaskan kepada pegawai. Lepaskan penugasan terlebih dahulu sebelum menjalankan aksi lifecycle.'),
+        { statusCode: 409 },
+      );
+    }
 
     switch (action) {
       case 'repair':
+        if (['disposed', 'auctioned', 'cannibalized', 'lost', 'inactive'].includes(asset.status)) {
+          throw Object.assign(new Error(`Aset berstatus ${asset.status} tidak dapat masuk proses perbaikan.`), { statusCode: 409 });
+        }
         asset.status = 'in_repair';
         break;
       case 'damaged':
+        if (['disposed', 'auctioned', 'cannibalized', 'lost', 'inactive'].includes(asset.status)) {
+          throw Object.assign(new Error(`Aset berstatus ${asset.status} tidak dapat ditandai rusak kembali.`), { statusCode: 409 });
+        }
         asset.status = 'damaged';
         asset.condition = 'broken';
         break;
       case 'cannibalize':
+        if (!['damaged', 'in_repair', 'maintenance'].includes(asset.status)) {
+          throw Object.assign(new Error('Kanibalisasi hanya dapat dilakukan pada aset rusak atau dalam perbaikan.'), { statusCode: 409 });
+        }
         asset.status = 'cannibalized';
         asset.condition = 'broken';
         break;
       case 'propose_disposal':
+        if (['disposed', 'auctioned', 'cannibalized', 'lost', 'inactive'].includes(asset.status)) {
+          throw Object.assign(new Error(`Aset berstatus ${asset.status} tidak dapat diusulkan untuk disposal ulang.`), { statusCode: 409 });
+        }
         asset.status = 'pending_disposal';
         break;
       case 'approve_disposal':
         if (!isSuperadminActor(actor)) {
-          throw new Error('Hanya Admin GABAH yang berwenang menyetujui penghapusan aset.');
+          throw Object.assign(new Error('Hanya Admin GABAH yang berwenang menyetujui penghapusan aset.'), { statusCode: 403 });
+        }
+        if (asset.status !== 'pending_disposal') {
+          throw Object.assign(new Error('Penghapusan hanya dapat disetujui setelah usulan disposal.'), { statusCode: 409 });
         }
         asset.status = 'disposed';
         break;
       case 'auction':
+        if (!['pending_disposal', 'damaged', 'in_repair'].includes(asset.status)) {
+          throw Object.assign(new Error('Lelang hanya dapat diajukan untuk aset yang rusak, diperbaiki, atau sudah diusulkan disposal.'), { statusCode: 409 });
+        }
         asset.status = 'pending_auction';
+        break;
+      case 'restore':
+        if (!['in_repair', 'damaged', 'maintenance'].includes(asset.status)) {
+          throw Object.assign(new Error('Pemulihan hanya dapat dilakukan dari status perbaikan atau rusak.'), { statusCode: 409 });
+        }
+        asset.status = 'available';
+        asset.condition = 'good';
         break;
     }
 
@@ -660,7 +762,13 @@ export class GabahDomainService {
     }
     const asset = db.assets.find(a => a.id === payload.asset_id);
     if (!asset) throw new Error('Aset tidak ditemukan');
+    if (!this.getScopedAssets(actor).some(visibleAsset => visibleAsset.id === asset.id)) {
+      throw Object.assign(new Error('Akses ditolak: aset berada di luar cakupan akses peminjam.'), { statusCode: 403 });
+    }
     if (!asset.is_loanable) throw new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).');
+    if (!isAssetEligibleForLoan(asset)) {
+      throw Object.assign(new Error('Aset sedang tidak layak dipinjam karena status atau kondisi fisiknya.'), { statusCode: 409 });
+    }
 
     const start = new Date(payload.start_date).getTime();
     const due = new Date(payload.due_date).getTime();
@@ -673,12 +781,13 @@ export class GabahDomainService {
     // Different assets (e.g. laptop IT + vehicle GA) can be borrowed concurrently by the same user with zero conflict.
     const conflicting = db.loans.find(l => {
       if (l.asset_id !== asset.id) return false;
-      if (!['approved', 'borrowed'].includes(l.status)) return false;
-
+      if (!['approved', 'borrowed', 'overdue'].includes(l.status)) return false;
+      // An overdue loan means the asset has not physically returned. It blocks
+      // every new reservation until the return transaction is completed.
       const existingStart = new Date(l.start_date).getTime();
       const existingDue = new Date(l.due_date).getTime();
-
-      return start < existingDue && due > existingStart;
+      if (l.status === 'overdue' || (l.status === 'borrowed' && Number.isFinite(existingDue) && existingDue < Date.now())) return true;
+      return Number.isFinite(existingStart) && Number.isFinite(existingDue) && start < existingDue && due > existingStart;
     });
 
     if (conflicting) {
@@ -721,7 +830,9 @@ export class GabahDomainService {
       link_id: newLoan.id,
     });
 
-    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id);
+    // The API route persists the completed request (or whole batch) once.
+    // Avoid fire-and-forget snapshots while a multi-asset request is still being built.
+    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id, false);
 
     return newLoan;
   }
@@ -736,6 +847,10 @@ export class GabahDomainService {
     if (!this.canOperateLoan(loan, actor, 'loans.approve')) {
       throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission approve dan scope owner aset yang sesuai atau Super Admin yang dapat menyetujui pinjaman.'), { statusCode: 403 });
     }
+    const requestedAsset = db.assets.find(asset => asset.id === loan.asset_id);
+    if (!requestedAsset || !isAssetEligibleForLoan(requestedAsset)) {
+      throw Object.assign(new Error('Persetujuan ditolak: aset sudah tidak layak dipinjam berdasarkan status atau kondisi terkininya.'), { statusCode: 409 });
+    }
 
     // Re-verify no collision with other ALREADY APPROVED / BORROWED loans for THIS specific asset
     const start = new Date(loan.start_date).getTime();
@@ -743,16 +858,23 @@ export class GabahDomainService {
     const conflicting = db.loans.find(l => {
       if (l.id === loan.id) return false;
       if (l.asset_id !== loan.asset_id) return false;
-      if (!['approved', 'borrowed'].includes(l.status)) return false;
-
+      if (!['approved', 'borrowed', 'overdue'].includes(l.status)) return false;
       const existingStart = new Date(l.start_date).getTime();
       const existingDue = new Date(l.due_date).getTime();
-
-      return start < existingDue && due > existingStart;
+      // GET /api/loans exposes an effective "overdue" status without mutating
+      // the stored row. Approval must therefore also detect a physically
+      // outstanding borrowed loan whose due date has already passed.
+      if (l.status === 'overdue'
+        || (l.status === 'borrowed' && Number.isFinite(existingDue) && existingDue < Date.now())) return true;
+      return Number.isFinite(existingStart) && Number.isFinite(existingDue)
+        && start < existingDue && due > existingStart;
     });
 
     if (conflicting) {
-      throw new Error(`Tidak dapat disetujui: Tabrakan jadwal dengan peminjaman ${conflicting.loan_number} (${conflicting.borrower_name}) yang telah disetujui untuk aset ini.`);
+      throw Object.assign(
+        new Error(`Tidak dapat disetujui: Aset masih dipinjam atau memiliki reservasi aktif yang bertabrakan (${conflicting.loan_number}).`),
+        { statusCode: 409 },
+      );
     }
 
     loan.status = 'approved';
@@ -860,16 +982,35 @@ export class GabahDomainService {
       throw Object.assign(new Error(`Serah terima hanya dapat dilakukan pada pinjaman berstatus "approved" (status saat ini: "${loan.status}"). Pinjaman yang sudah diserahkan tidak dapat diserahkan ulang.`), { statusCode: 409 });
     }
 
+    const asset = db.assets.find(a => a.id === loan.asset_id);
+    if (!asset || !isAssetEligibleForLoan(asset)) {
+      throw Object.assign(new Error('Aset tidak lagi memenuhi syarat serah terima (misalnya sudah rusak, nonaktif, atau masuk proses disposal).'), { statusCode: 409 });
+    }
+    const loanStart = new Date(loan.start_date).getTime();
+    const loanDue = new Date(loan.due_date).getTime();
+    if (!Number.isFinite(loanStart) || !Number.isFinite(loanDue) || loanStart >= loanDue) {
+      throw Object.assign(new Error('Rentang tanggal pinjaman tidak valid; serah terima ditolak.'), { statusCode: 409 });
+    }
+    const physicalConflict = db.loans.find(other => {
+      if (other.id === loan.id || other.asset_id !== loan.asset_id) return false;
+      if (!['approved', 'borrowed', 'overdue'].includes(other.status)) return false;
+      const otherDue = new Date(other.due_date).getTime();
+      if (other.status === 'overdue' || (other.status === 'borrowed' && Number.isFinite(otherDue) && otherDue < Date.now())) return true;
+      const otherStart = new Date(other.start_date).getTime();
+      return Number.isFinite(otherStart) && Number.isFinite(otherDue)
+        && loanStart < otherDue && loanDue > otherStart;
+    });
+    if (physicalConflict) {
+      throw Object.assign(new Error('Serah terima ditolak karena aset masih dipinjam atau sudah memiliki reservasi aktif yang bertabrakan.'), { statusCode: 409 });
+    }
+
+    // Mutate only after every authorization, asset-state, and collision check passes.
     loan.status = 'borrowed';
     loan.handover_by_id = actor.id;
     loan.handover_at = new Date().toISOString();
     loan.handover_notes = handoverNotes || 'Unit diserahkan dalam kondisi baik.';
     loan.updated_at = new Date().toISOString();
-
-    const asset = db.assets.find(a => a.id === loan.asset_id);
-    if (asset) {
-      asset.status = 'assigned';
-    }
+    asset.status = 'assigned';
 
     this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id);
 
@@ -896,11 +1037,12 @@ export class GabahDomainService {
       throw Object.assign(new Error('Akses ditolak: Hanya peminjam, penanggung jawab divisi pemilik aset, atau Admin GABAH yang berwenang mengembalikan pinjaman ini.'), { statusCode: 403 });
     }
 
-    // State transition: only a physically handed-over (borrowed) unit can be
-    // returned. Blocks return of approved/pending loans and double return.
-    if (loan.status !== 'borrowed') {
+    // Return is valid for a handed-over loan whether it is still on time or
+    // already marked overdue. Pending/approved loans and double returns remain
+    // invalid transitions.
+    if (!['borrowed', 'overdue'].includes(loan.status)) {
       this.recordAudit('LOAN_RETURN_INVALID_STATE', 'Loans', `Ditolak: pengembalian pinjaman ${loan.loan_number} dari status "${loan.status}" bukan transisi valid`, actor, loan.id);
-      throw Object.assign(new Error(`Pengembalian hanya dapat dilakukan pada pinjaman berstatus "borrowed" (status saat ini: "${loan.status}"). Pinjaman yang sudah dikembalikan tidak dapat dikembalikan ulang.`), { statusCode: 409 });
+      throw Object.assign(new Error(`Pengembalian hanya dapat dilakukan pada pinjaman berstatus "borrowed" atau "overdue" (status saat ini: "${loan.status}"). Pinjaman yang sudah dikembalikan tidak dapat dikembalikan ulang.`), { statusCode: 409 });
     }
 
     const allowedConditions = ['good', 'fair', 'poor', 'broken', 'excellent', 'damaged'] as const;
@@ -916,7 +1058,10 @@ export class GabahDomainService {
 
     const asset = db.assets.find(a => a.id === loan.asset_id);
     if (asset) {
-      asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
+      const nonOperationalStatuses = new Set(['maintenance', 'retired', 'in_use', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive']);
+      if (!nonOperationalStatuses.has(asset.status)) {
+        asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
+      }
       asset.condition = condition;
       // Preserve the recorded physical location. Returning a loan changes custody/status,
       // not the asset's site; a real relocation must use the asset-mutation workflow.
@@ -933,7 +1078,7 @@ export class GabahDomainService {
   static createTicket(payload: {
     title: string;
     description: string;
-    category: 'IT' | 'GA' | 'SC' | 'PIBC';
+    category: 'IT' | 'GA' | 'ME';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
     contract_id?: string;
@@ -943,7 +1088,7 @@ export class GabahDomainService {
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
     // ticket: notification goes to a role that does not exist and nobody ever
     // picks it up.
-    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'SC', 'PIBC'] as const;
+    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'ME'] as const;
     if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
       throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
     }
@@ -965,10 +1110,14 @@ export class GabahDomainService {
     let relatedAssetNumber = '';
     if (payload.related_asset_id) {
       const ast = db.assets.find(a => a.id === payload.related_asset_id);
-      if (ast) {
-        relatedAssetName = ast.name;
-        relatedAssetNumber = ast.asset_number;
+      if (!ast) {
+        throw Object.assign(new Error('Aset terkait tidak ditemukan.'), { statusCode: 404 });
       }
+      if (!this.getScopedAssets(actor).some(visibleAsset => visibleAsset.id === ast.id)) {
+        throw Object.assign(new Error('Akses ditolak: aset terkait berada di luar cakupan akses Anda.'), { statusCode: 403 });
+      }
+      relatedAssetName = ast.name;
+      relatedAssetNumber = ast.asset_number;
     }
 
     const newTicket: ServerTicket = {
@@ -983,6 +1132,7 @@ export class GabahDomainService {
       reporter_id: actor.id,
       reporter_name: actor.name,
       reporter_department: actor.department,
+      assigned_unit_id: payload.category === 'ME' ? 'UNIT-PIBC-ME' : undefined,
       related_asset_id: payload.related_asset_id,
       related_asset_name: relatedAssetName,
       related_asset_number: relatedAssetNumber,
@@ -991,6 +1141,26 @@ export class GabahDomainService {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    // IT and GA may use direct self-assignment while each has one eligible
+    // frontline operator. Only users with explicit update permission and
+    // matching division scope qualify; dispatchers and messengers are not
+    // treated as technicians merely because of their job title or division.
+    // If staffing is empty or ambiguous, leave the ticket in its division queue.
+    if (['IT', 'GA'].includes(payload.category) && isPostgresPersistenceActive()) {
+      const targetDivision = payload.category;
+      const eligibleAgents = db.users.filter(user =>
+        user.is_active !== false
+        && String(user.division || '').toUpperCase() === targetDivision
+        && hasRbacPermission(String(user.id), 'tickets.update')
+        && hasRbacScope(String(user.id), 'division', targetDivision, 'tickets')
+      );
+      if (eligibleAgents.length === 1) {
+        newTicket.assigned_agent_id = eligibleAgents[0].id;
+        newTicket.assigned_agent_name = eligibleAgents[0].name;
+        newTicket.status = 'assigned';
+      }
+    }
 
     db.tickets.unshift(newTicket);
 
@@ -1006,10 +1176,12 @@ export class GabahDomainService {
     }
 
     // Notify respective division (IT covers software/license/SaaS)
-    const targetDivision = payload.category;
+    const targetDivision = payload.category === 'ME' ? 'PIBC' : payload.category;
     this.notify({
-      recipient_role: targetDivision,
-      recipient_division: targetDivision,
+      recipient_user_id: newTicket.assigned_agent_id || undefined,
+      recipient_role: payload.category === 'ME' ? undefined : (newTicket.assigned_agent_id ? undefined : targetDivision),
+      recipient_division: payload.category === 'ME' || newTicket.assigned_agent_id ? undefined : targetDivision,
+      recipient_unit_id: payload.category === 'ME' ? 'UNIT-PIBC-ME' : undefined,
       title: `Tiket Baru: [${payload.priority.toUpperCase()}] ${ticketNumber}`,
       message: `${actor.name} (${actor.department}) melaporkan: ${payload.title}`,
       severity: payload.priority === 'urgent' ? 'critical' : payload.priority === 'high' ? 'action_required' : 'info',
@@ -1209,16 +1381,57 @@ export class GabahDomainService {
       throw new Error('Judul / Agenda rapat wajib diisi.');
     }
 
-    if (!payload.date || !payload.start_time || !payload.end_time) {
-      throw new Error('Tanggal, jam mulai, dan jam selesai wajib diisi.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(payload.date || ''))
+      || Number.isNaN(new Date(`${payload.date}T00:00:00`).getTime())
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(payload.start_time || ''))
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(payload.end_time || ''))) {
+      throw Object.assign(new Error('Tanggal dan jam rapat harus menggunakan format tanggal valid dan HH:mm.'), { statusCode: 400 });
     }
 
     if (payload.start_time >= payload.end_time) {
       throw new Error('Jam mulai harus lebih awal dari jam selesai rapat.');
     }
 
-    if (Number(payload.attendees_count) > room.capacity) {
-      throw new Error(`Jumlah peserta (${payload.attendees_count}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`);
+    const attendeeCount = Number(payload.attendees_count);
+    if (!Number.isInteger(attendeeCount) || attendeeCount < 1) {
+      throw Object.assign(new Error('Jumlah peserta harus berupa bilangan bulat minimal 1.'), { statusCode: 400 });
+    }
+    if (attendeeCount > room.capacity) {
+      throw new Error(`Jumlah peserta (${attendeeCount}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`);
+    }
+
+    const validPriorities = ['high', 'medium', 'low'];
+    if (payload.priority !== undefined && !validPriorities.includes(String(payload.priority))) {
+      throw Object.assign(new Error('Prioritas reservasi tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.meeting_type && !(db.meetingTypes || []).some(type => type.code === payload.meeting_type)) {
+      throw Object.assign(new Error('Jenis rapat tidak ditemukan pada master.'), { statusCode: 400 });
+    }
+    if (payload.facilities_requested !== undefined && (!Array.isArray(payload.facilities_requested)
+      || payload.facilities_requested.some(name => typeof name !== 'string'
+        || !(db.meetingFacilities || []).some(facility => facility.is_active && facility.name === name)))) {
+      throw Object.assign(new Error('Daftar fasilitas rapat tidak valid atau memuat fasilitas nonaktif.'), { statusCode: 400 });
+    }
+    if (payload.consumption_requested !== undefined && typeof payload.consumption_requested !== 'boolean') {
+      throw Object.assign(new Error('Status permintaan konsumsi harus berupa boolean.'), { statusCode: 400 });
+    }
+    if (payload.documentation_requested !== undefined && typeof payload.documentation_requested !== 'boolean') {
+      throw Object.assign(new Error('Status permintaan dokumentasi harus berupa boolean.'), { statusCode: 400 });
+    }
+    if (payload.consumption_type !== undefined
+      && !['snack_box', 'lunch_box', 'coffee_tea', 'vip_buffet', 'custom'].includes(String(payload.consumption_type))) {
+      throw Object.assign(new Error('Jenis konsumsi tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.documentation_type !== undefined
+      && !['foto', 'video', 'press_release', 'notulensi', 'lengkap'].includes(String(payload.documentation_type))) {
+      throw Object.assign(new Error('Jenis dokumentasi tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.consumption_requested && payload.consumption_pax !== undefined
+      && (!Number.isInteger(Number(payload.consumption_pax)) || Number(payload.consumption_pax) < 1)) {
+      throw Object.assign(new Error('Jumlah pax konsumsi harus berupa bilangan bulat minimal 1.'), { statusCode: 400 });
+    }
+    if (payload.override_conflict !== undefined && typeof payload.override_conflict !== 'boolean') {
+      throw Object.assign(new Error('Flag override konflik harus berupa boolean.'), { statusCode: 400 });
     }
 
     // Anti-Collision Check: StartA < EndB && EndA > StartB on the same date for this room
@@ -1242,7 +1455,11 @@ export class GabahDomainService {
 
     if (conflicting) {
       if (conflicting.status === 'in_use') {
-        const err: any = new Error(`Tabrakan Jadwal! Ruangan "${room.name}" sedang digunakan untuk rapat "${conflicting.title}".`);
+        const canSeeConflictDetails = isSuperadminActor(actor) || conflicting.organizer_id === actor.id;
+        const message = canSeeConflictDetails
+          ? `Tabrakan Jadwal! Ruangan "${room.name}" sedang digunakan untuk rapat "${conflicting.title}".`
+          : `Ruangan "${room.name}" sedang digunakan pada rentang waktu yang dipilih.`;
+        const err: any = new Error(message);
         err.statusCode = 409;
         throw err;
       }
@@ -1303,10 +1520,14 @@ export class GabahDomainService {
           conflicting.id
         );
       } else {
-        const err: any = new Error(
-          `Tabrakan Jadwal! Ruangan "${room.name}" sudah dipesan pada ${payload.date} pukul ${conflicting.start_time} - ${conflicting.end_time} untuk agenda "${conflicting.title}" oleh ${conflicting.organizer_name} (${conflicting.organizer_department}).`
-        );
-        err.conflict = {
+        const canSeeConflictDetails = isSuperadminActor(actor) || conflicting.organizer_id === actor.id;
+        const err: any = new Error(canSeeConflictDetails
+          ? `Tabrakan Jadwal! Ruangan "${room.name}" sudah dipesan pada ${payload.date} pukul ${conflicting.start_time} - ${conflicting.end_time} untuk agenda "${conflicting.title}" oleh ${conflicting.organizer_name} (${conflicting.organizer_department}).`
+          : `Tabrakan Jadwal! Ruangan "${room.name}" sudah dipesan pada ${payload.date} pukul ${conflicting.start_time} - ${conflicting.end_time}.`);
+        // Match GET /api/room-reservations privacy: non-owners receive only
+        // the minimum schedule data needed to choose another time, never the
+        // other meeting's title, organizer, department, priority, or notes.
+        err.conflict = canSeeConflictDetails ? {
           reservation_number: conflicting.reservation_number,
           title: conflicting.title,
           organizer_name: conflicting.organizer_name,
@@ -1317,6 +1538,12 @@ export class GabahDomainService {
           room_name: room.name,
           room_id: room.id,
           priority: conflicting.priority,
+        } : {
+          date: conflicting.date,
+          start_time: conflicting.start_time,
+          end_time: conflicting.end_time,
+          room_name: room.name,
+          room_id: room.id,
         };
         err.can_override = canInterrupt;
         if (payload.override_conflict && !canInterrupt) {
@@ -1333,7 +1560,7 @@ export class GabahDomainService {
     const year = new Date().getFullYear();
     const existingCount = (db.roomReservations || []).length + 1;
     const reservationNumber = `RSV-${year}-${String(existingCount).padStart(4, '0')}`;
-    const isAutoApproved = isSuperadminActor(actor) || actor.role === 'Sekretaris Direksi';
+    const isAutoApproved = isSuperadminActor(actor) || hasRoleCapability(actor, 'sekretaris_direksi');
 
     const reservation: ServerRoomReservation = {
       id: `rsv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1349,7 +1576,7 @@ export class GabahDomainService {
       organizer_department: actor.department,
       organizer_phone: actor.phone || '-',
       organizer_role: actor.role,
-      attendees_count: Number(payload.attendees_count) || 1,
+      attendees_count: attendeeCount,
       attendees_list: payload.attendees_list?.trim() || '',
       meeting_type: payload.meeting_type || 'internal',
       priority: requestedPriority,
@@ -1660,6 +1887,20 @@ export class GabahDomainService {
 
     const room = (db.rooms || []).find(r => r.id === roomId);
     if (!room) throw new Error('Ruangan tidak ditemukan.');
+    if (updates.name !== undefined && !String(updates.name).trim()) {
+      throw Object.assign(new Error('Nama ruangan tidak boleh kosong.'), { statusCode: 400 });
+    }
+    if (updates.status !== undefined && !['available', 'in_use', 'maintenance'].includes(String(updates.status))) {
+      throw Object.assign(new Error('Status ruangan tidak valid.'), { statusCode: 400 });
+    }
+    if (updates.capacity !== undefined
+      && (!Number.isInteger(Number(updates.capacity)) || Number(updates.capacity) < 1)) {
+      throw Object.assign(new Error('Kapasitas ruangan harus berupa bilangan bulat minimal 1.'), { statusCode: 400 });
+    }
+    if (updates.facilities !== undefined
+      && (!Array.isArray(updates.facilities) || updates.facilities.some(item => typeof item !== 'string'))) {
+      throw Object.assign(new Error('Daftar fasilitas ruangan tidak valid.'), { statusCode: 400 });
+    }
 
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, code, building, floor (identity &
@@ -1669,7 +1910,7 @@ export class GabahDomainService {
     ];
     for (const key of allowedRoomFields) {
       if (updates[key] !== undefined) {
-        (room as any)[key] = updates[key];
+        (room as any)[key] = key === 'capacity' ? Number(updates[key]) : updates[key];
       }
     }
     this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
@@ -1687,12 +1928,24 @@ export class GabahDomainService {
       throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menambah tipe rapat.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama tipe rapat wajib diisi.');
+    const code = payload.code ? payload.code.trim().toLowerCase() : payload.name.trim().toLowerCase().replace(/\s+/g, '_');
+    const priority = payload.priority_level || 'medium';
+    if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(code)) {
+      throw Object.assign(new Error('Kode tipe rapat tidak valid.'), { statusCode: 400 });
+    }
+    if (!['high', 'medium', 'low'].includes(String(priority))) {
+      throw Object.assign(new Error('Prioritas tipe rapat tidak valid.'), { statusCode: 400 });
+    }
+    if ((db.meetingTypes || []).some(item => item.code.toLowerCase() === code
+      || item.name.trim().toLowerCase() === payload.name!.trim().toLowerCase())) {
+      throw Object.assign(new Error('Kode atau nama tipe rapat sudah digunakan.'), { statusCode: 409 });
+    }
     const newItem: ServerMeetingType = {
       id: `MT-${Date.now()}`,
       name: payload.name.trim(),
-      code: payload.code ? payload.code.trim().toLowerCase() : payload.name.trim().toLowerCase().replace(/\s+/g, '_'),
+      code,
       description: payload.description?.trim() || '',
-      priority_level: payload.priority_level || 'medium',
+      priority_level: priority as 'high' | 'medium' | 'low',
       color: payload.color || 'blue',
       is_system: false,
     };
@@ -1709,11 +1962,24 @@ export class GabahDomainService {
     }
     const item = (db.meetingTypes || []).find(m => m.id === id);
     if (!item) throw new Error('Tipe rapat tidak ditemukan.');
-    if (payload.name) item.name = payload.name.trim();
-    if (payload.code) item.code = payload.code.trim().toLowerCase();
-    if (payload.description !== undefined) item.description = payload.description.trim();
-    if (payload.priority_level) item.priority_level = payload.priority_level;
-    if (payload.color) item.color = payload.color;
+    const nextName = payload.name === undefined ? item.name : String(payload.name).trim();
+    const nextCode = payload.code === undefined ? item.code : String(payload.code).trim().toLowerCase();
+    if (!nextName) throw Object.assign(new Error('Nama tipe rapat tidak boleh kosong.'), { statusCode: 400 });
+    if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(nextCode)) {
+      throw Object.assign(new Error('Kode tipe rapat tidak valid.'), { statusCode: 400 });
+    }
+    if ((db.meetingTypes || []).some(other => other.id !== id
+      && (other.code.toLowerCase() === nextCode || other.name.trim().toLowerCase() === nextName.toLowerCase()))) {
+      throw Object.assign(new Error('Kode atau nama tipe rapat sudah digunakan.'), { statusCode: 409 });
+    }
+    if (payload.priority_level !== undefined && !['high', 'medium', 'low'].includes(String(payload.priority_level))) {
+      throw Object.assign(new Error('Prioritas tipe rapat tidak valid.'), { statusCode: 400 });
+    }
+    item.name = nextName;
+    item.code = nextCode;
+    if (payload.description !== undefined) item.description = String(payload.description).trim();
+    if (payload.priority_level !== undefined) item.priority_level = payload.priority_level;
+    if (payload.color !== undefined) item.color = String(payload.color).trim() || item.color;
     this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id);
     persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
     return item;
@@ -1738,14 +2004,26 @@ export class GabahDomainService {
   }
 
   static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
-      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menambah fasilitas.');
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', 'GA')
+      && !hasRoomPermission(actor, 'meeting_facilities.manage', 'IT')) {
+      throw new Error('Akses ditolak: permission meeting_facilities.manage diperlukan.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
+    const category = payload.category || 'GA';
+    if (!['GA', 'IT'].includes(String(category))) {
+      throw Object.assign(new Error('Kategori fasilitas harus GA atau IT.'), { statusCode: 400 });
+    }
+    if (payload.is_active !== undefined && typeof payload.is_active !== 'boolean') {
+      throw Object.assign(new Error('Status fasilitas harus berupa boolean.'), { statusCode: 400 });
+    }
+    if ((db.meetingFacilities || []).some(item => item.category === category
+      && item.name.trim().toLowerCase() === payload.name!.trim().toLowerCase())) {
+      throw Object.assign(new Error('Nama fasilitas sudah terdaftar pada kategori tersebut.'), { statusCode: 409 });
+    }
     const newFac: ServerMeetingFacility = {
-      id: `FAC-${payload.category || 'GA'}-${Date.now()}`,
+      id: `FAC-${category}-${Date.now()}`,
       name: payload.name.trim(),
-      category: payload.category === 'IT' ? 'IT' : 'GA',
+      category: category as 'GA' | 'IT',
       description: payload.description?.trim() || '',
       is_active: payload.is_active !== undefined ? payload.is_active : true,
       is_system: false,
@@ -1758,14 +2036,28 @@ export class GabahDomainService {
   }
 
   static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
-      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang mengubah fasilitas.');
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', 'GA')
+      && !hasRoomPermission(actor, 'meeting_facilities.manage', 'IT')) {
+      throw new Error('Akses ditolak: permission meeting_facilities.manage diperlukan.');
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
     if (!item) throw new Error('Fasilitas tidak ditemukan.');
-    if (payload.name) item.name = payload.name.trim();
-    if (payload.category) item.category = payload.category;
-    if (payload.description !== undefined) item.description = payload.description.trim();
+    const nextName = payload.name === undefined ? item.name : String(payload.name).trim();
+    const nextCategory = payload.category === undefined ? item.category : String(payload.category);
+    if (!nextName) throw Object.assign(new Error('Nama fasilitas tidak boleh kosong.'), { statusCode: 400 });
+    if (!['GA', 'IT'].includes(nextCategory)) {
+      throw Object.assign(new Error('Kategori fasilitas harus GA atau IT.'), { statusCode: 400 });
+    }
+    if (payload.is_active !== undefined && typeof payload.is_active !== 'boolean') {
+      throw Object.assign(new Error('Status fasilitas harus berupa boolean.'), { statusCode: 400 });
+    }
+    if ((db.meetingFacilities || []).some(other => other.id !== id && other.category === nextCategory
+      && other.name.trim().toLowerCase() === nextName.toLowerCase())) {
+      throw Object.assign(new Error('Nama fasilitas sudah terdaftar pada kategori tersebut.'), { statusCode: 409 });
+    }
+    item.name = nextName;
+    item.category = nextCategory as 'GA' | 'IT';
+    if (payload.description !== undefined) item.description = String(payload.description).trim();
     if (payload.is_active !== undefined) item.is_active = payload.is_active;
     this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id);
     persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
@@ -1773,8 +2065,9 @@ export class GabahDomainService {
   }
 
   static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
-      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menghapus fasilitas.');
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', 'GA')
+      && !hasRoomPermission(actor, 'meeting_facilities.manage', 'IT')) {
+      throw new Error('Akses ditolak: permission meeting_facilities.manage diperlukan.');
     }
     const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);
     if (idx === -1) throw new Error('Fasilitas tidak ditemukan.');

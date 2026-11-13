@@ -84,10 +84,14 @@
 
 ---
 
-## 5. Aturan Kategori Helpdesk Ticket (BR-04b)
-- Kategori tiket **terbatas pada**: `IT`, `GA`, `SC`, `PIBC`. Tidak ada kategori `License`, `General`, atau `Contract`.
-- Software/License/SaaS (Accurate, M365, VPN) adalah domain IT → seluruh tiket terkait menggunakan kategori `IT`.
-- Hardware/jaringan/server/akun → `IT`; fasilitas gedung → `GA`; permintaan SC → `SC`; PIBC → `PIBC`.
+## 5. Aturan Tujuan Layanan Helpdesk Ticket (BR-04b)
+- Tujuan layanan tiket adalah `IT`, `GA`, atau `ME`. `RPC` dan `PIBC` adalah lokasi kerja/kejadian, bukan kategori tiket maupun role.
+- Software/License/SaaS (Accurate, M365, VPN), hardware, jaringan, server, dan akun → `IT`.
+- Fasilitas umum, gedung, kendaraan dinas, kebersihan, dan sarana umum → `GA`.
+- Mesin produksi, conveyor, forklift, genset, pompa, instalasi listrik, pekerjaan mekanikal/elektrikal, serta perawatan teknis dalam lingkup Tim Perawatan → `ME`.
+- Tim Perawatan (ME) adalah unit `UNIT-PIBC-ME` di bawah departemen/divisi PIBC. Tiket ME diarahkan ke unit tersebut, bukan ke seluruh pegawai PIBC. Anggota tim harus ditetapkan melalui `unit_id`; lokasi kantor tidak memberikan akses antrean ME.
+- Lokasi pelapor dan lokasi aset dicatat terpisah dari kategori tujuan tiket. Lokasi tidak boleh menentukan kategori secara otomatis.
+- Data tiket historis kategori `SC`/`PIBC` tetap disimpan dan ditampilkan sebagai histori; tidak dimigrasikan massal ke ME/GA/IT tanpa review tiket.
 - **Contract Management adalah domain tersendiri. Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti.
 - Data tiket lama berkategori `License`/`General` dinormalisasi otomatis saat server boot (License→IT, General→GA).
 
@@ -140,3 +144,10 @@
 ### BR-08.1: Rekam Jejak Audit yang Tidak Dapat Dihapus (*Immutable*)
 - **Aturan**: Setiap aksi yang mengubah keadaan sistem (*state-changing action*) wajib dicatat ke tabel `audit_logs` dengan informasi: aksi, nama entitas, ID entitas, nama aktor, peran aktor, rincian perubahan, serta timestamp presisi.
 - **Enforcement Kode**: `server/services.ts` (`GabahDomainService.recordAudit()`), `server.ts` (baris 40-49).
+
+
+### BR-04c: Administrasi Tiket ME
+- GABAH menyediakan role template **Admin Tiket ME** untuk staf administrasi yang kelak ditunjuk mengurus tiket Mechanical & Electrical.
+- Hak minimum: melihat tiket pada antrean `UNIT-PIBC-ME`, memperbarui status/catatan tindak lanjut, dan membaca notifikasi antrean unit. Role ini tidak otomatis menjadi teknisi, tidak mengelola jadwal Maintenance, dan tidak memperoleh akses ke seluruh data PIBC.
+- Super Admin harus menetapkan role kepada akun staf yang benar dan mengisi `unit_id=UNIT-PIBC-ME`. Tidak ada penetapan akun otomatis atau berdasarkan lokasi kerja.
+- Tim Perawatan menangani pemeriksaan/perbaikan teknis; Admin Tiket ME menangani administrasi, kelengkapan informasi, koordinasi, dan pemantauan progres.

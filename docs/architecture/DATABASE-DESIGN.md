@@ -173,10 +173,11 @@ Mencatat permohonan bantuan teknis dan pemenuhan SLA layanan.
 - `ticket_code` (VARCHAR(100), NOT NULL)
 - `title` (VARCHAR(255), NOT NULL)
 - `description` (TEXT, NOT NULL)
-- `category` (VARCHAR(40), NOT NULL) — `'IT'`, `'GA'`, `'SC'`, `'PIBC'`, `'License'`, `'General'`
+- `category` (VARCHAR(40), NOT NULL) — `'IT'`, `'GA'`, `'ME'` (legacy rows may retain `'SC'`/`'PIBC'`)
 - `priority` (VARCHAR(20), NOT NULL) — `'urgent'`, `'high'`, `'medium'`, `'low'`
 - `status` (VARCHAR(30), NOT NULL) — `'open'`, `'assigned'`, `'in_progress'`, `'pending_user'`, `'resolved'`, `'closed'`
 - `reporter_id` (VARCHAR(64), NOT NULL, REFERENCES users(id))
+- `assigned_unit_id` (VARCHAR(64), NULL, REFERENCES org_units(id)) — antrean unit, misalnya `UNIT-PIBC-ME`; terpisah dari lokasi kerja pelapor dan assignee individu.
 - `assigned_agent_id` (VARCHAR(64), REFERENCES users(id))
 - `related_asset_id` (VARCHAR(64), REFERENCES assets(id))
 - `sla_hours` (INTEGER, NOT NULL) — 4, 8, 24, 48

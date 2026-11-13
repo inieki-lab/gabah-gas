@@ -28,6 +28,7 @@ import {
   Laptop
 } from 'lucide-react';
 import { MeetingRoom, RoomReservation, UserProfile } from '../../types';
+import { formatJakartaDate, formatLocalDate } from '../../utils/datetime';
 import { CreateRoomReservationModal } from '../modals/CreateRoomReservationModal';
 import { RoomReservationSlipModal } from '../modals/RoomReservationSlipModal';
 import { MeetingMasterSettingsModal } from '../modals/MeetingMasterSettingsModal';
@@ -68,7 +69,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<SubTab>(initialCategoryFilter ? 'reservations' : 'calendar');
   const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    formatJakartaDate()
   );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<string | undefined>();
@@ -91,12 +92,30 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
     }
   }, [initialCategoryFilter]);
 
-  const isGAOrAdmin = currentUser.role === 'Admin GABAH' || currentUser.role === 'GA';
-  const isAuditor = currentUser.role === 'Auditor';
+  const hasPermission = (key: string, legacyRoles: string[] = []) => {
+    if (currentUser.is_superadmin || currentUser.role === 'Admin GABAH') return true;
+    if (Array.isArray(currentUser.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
+    }
+    return legacyRoles.includes(currentUser.role);
+  };
+  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+  const canManageRoomMaster = !isAuditor && (hasPermission('meeting_types.manage', ['Admin GABAH', 'GA'])
+    || hasPermission('meeting_facilities.manage', ['Admin GABAH', 'GA']));
+  const canManageRoomStatus = !isAuditor && hasPermission('meeting_rooms.update', ['Admin GABAH', 'GA']);
+  const canCreateReservation = !isAuditor && hasPermission('room_reservations.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canApproveReservation = !isAuditor && hasPermission('room_reservations.approve', ['Admin GABAH', 'GA']);
+  const canRejectReservation = !isAuditor && hasPermission('room_reservations.reject', ['Admin GABAH', 'GA']);
+  const canOperateReservations = canApproveReservation || canRejectReservation;
+  const canReadDocumentation = hasPermission('room_reservations.documentation.read', ['Humas']);
+  const canOverridePriority = !isAuditor && hasPermission('room_reservations.override_priority', ['Sekretaris Direksi']);
+  const canCancelReservation = !isAuditor && hasPermission('room_reservations.cancel', ['Admin GABAH', 'GA']);
+  const canCheckinReservation = !isAuditor && hasPermission('room_reservations.checkin', ['Admin GABAH', 'GA']);
+  const canCheckoutReservation = !isAuditor && hasPermission('room_reservations.checkout', ['Admin GABAH', 'GA']);
 
   // Stats
   const stats = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = formatJakartaDate();
     const todayReservations = reservations.filter(r => r.date === todayStr && !['cancelled', 'rejected'].includes(r.status));
     const pendingCount = reservations.filter(r => r.status === 'pending_approval').length;
     const inUseCount = reservations.filter(r => r.status === 'in_use').length;
@@ -167,7 +186,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   const handleShiftDate = (days: number) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + days);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate(formatLocalDate(d));
   };
 
   const handleApprove = async (id: string) => {
@@ -265,7 +284,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          {isGAOrAdmin && (
+          {canManageRoomMaster && (
             <button
               onClick={() => setIsMasterSettingsModalOpen(true)}
               className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center gap-2"
@@ -276,7 +295,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             </button>
           )}
 
-          {!isAuditor && (
+          {canCreateReservation && (
             <button
               onClick={() => {
                 setSelectedRoomForBooking(undefined);
@@ -300,19 +319,19 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700">
             {currentUser.role}
           </span>
-          {currentUser.role === 'Sekretaris Direksi' && (
+          {canOverridePriority && (
             <span className="text-amber-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               Hak Interupsi Direksi Aktif: Berwenang menggeser jadwal Ruang Setra Wangi untuk agenda Direksi & Komisaris.
             </span>
           )}
-          {currentUser.role === 'Humas' && (
+          {canReadDocumentation && (
             <span className="text-sky-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Camera className="w-3.5 h-3.5 text-sky-400" />
               Akses Humas: Memantau & menangani order dokumentasi liputan foto/video rapat perusahaan.
             </span>
           )}
-          {currentUser.role === 'GA' && (
+          {canManageRoomStatus && (
             <span className="text-emerald-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Building2 className="w-3.5 h-3.5 text-emerald-400" />
               Akses GA Sarpras: Verifikasi ruangan, sarana IT/audio-visual, dan layanan pantry konsumsi.
@@ -320,7 +339,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {currentUser.role === 'Humas' && (
+          {canReadDocumentation && (
             <button
               onClick={() => { setActiveTab('reservations'); setCategoryFilter('documentation'); }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1.5 ${
@@ -333,7 +352,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               <span>Permintaan Dokumentasi ({stats.documentationCount})</span>
             </button>
           )}
-          {isGAOrAdmin && (
+          {canOperateReservations && (
             <button
               onClick={() => { setActiveTab('reservations'); setCategoryFilter('consumption'); }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1.5 ${
@@ -430,7 +449,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             )}
           </button>
 
-          {currentUser.role === 'Humas' && (
+          {canReadDocumentation && (
             <button
               onClick={() => {
                 setActiveTab('reservations');
@@ -482,7 +501,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                onClick={() => setSelectedDate(formatJakartaDate())}
                 className="px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100"
               >
                 Hari Ini
@@ -611,7 +630,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                         })}
 
                         {/* Empty Click-to-book hint */}
-                        {roomReservationsToday.length === 0 && room.status !== 'maintenance' && !isAuditor && (
+                        {roomReservationsToday.length === 0 && room.status !== 'maintenance' && canCreateReservation && (
                           <div 
                             onClick={() => {
                               setSelectedRoomForBooking(room.id);
@@ -710,7 +729,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                 {/* Footer Actions */}
                 <div className="p-5 pt-0 flex items-center justify-between gap-2 border-t border-slate-100 mt-4">
-                  {isGAOrAdmin && onUpdateRoomStatus && (
+                  {canManageRoomStatus && onUpdateRoomStatus && (
                     <button
                       onClick={() => onUpdateRoomStatus(room.id, isMnt ? 'available' : 'maintenance')}
                       className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${
@@ -723,7 +742,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                     </button>
                   )}
 
-                  {!isAuditor && (
+                  {canCreateReservation && (
                     <button
                       disabled={isMnt}
                       onClick={() => {
@@ -1008,12 +1027,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                           {/* Status */}
                           <td className="py-3.5 px-4">
-                            {r.status === 'approved' && (
+                            {r.status === 'approved' && canCheckinReservation && (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                 Disetujui GA
                               </span>
                             )}
-                            {r.status === 'in_use' && (
+                            {r.status === 'in_use' && canCheckoutReservation && (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1 w-fit">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping" />
                                 Sedang Dipakai
@@ -1055,27 +1074,27 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             </button>
 
                             {/* GA / Admin Approve / Reject */}
-                            {isGAOrAdmin && r.status === 'pending_approval' && (
-                              <>
-                                <button
-                                  disabled={isLoading}
-                                  onClick={() => handleApprove(r.id)}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
-                                >
-                                  Setujui
-                                </button>
-                                <button
-                                  disabled={isLoading}
-                                  onClick={() => setRejectReasonPromptId(r.id)}
-                                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
-                                >
-                                  Tolak
-                                </button>
-                              </>
+                            {canApproveReservation && r.status === 'pending_approval' && (
+                              <button
+                                disabled={isLoading}
+                                onClick={() => handleApprove(r.id)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
+                              >
+                                Setujui
+                              </button>
+                            )}
+                            {canRejectReservation && r.status === 'pending_approval' && (
+                              <button
+                                disabled={isLoading}
+                                onClick={() => setRejectReasonPromptId(r.id)}
+                                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
+                              >
+                                Tolak
+                              </button>
                             )}
 
                             {/* Check-In / Check-Out */}
-                            {r.status === 'approved' && (
+                            {r.status === 'approved' && canCheckinReservation && (
                               <button
                                 disabled={isLoading}
                                 onClick={() => handleCheckin(r.id)}
@@ -1086,7 +1105,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                               </button>
                             )}
 
-                            {r.status === 'in_use' && (
+                            {r.status === 'in_use' && canCheckoutReservation && (
                               <button
                                 disabled={isLoading}
                                 onClick={() => handleCheckout(r.id)}
@@ -1098,7 +1117,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             )}
 
                             {/* Cancel Reservation */}
-                            {['pending_approval', 'approved'].includes(r.status) && (isGAOrAdmin || isOwner) && (
+                            {['pending_approval', 'approved'].includes(r.status) && (canCancelReservation || isOwner) && (
                               <button
                                 disabled={isLoading}
                                 onClick={() => setCancelConfirmId(r.id)}

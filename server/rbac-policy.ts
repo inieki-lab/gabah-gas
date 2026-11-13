@@ -15,6 +15,9 @@ export interface UserRbacPolicy {
 }
 
 const policiesByUser = new Map<string, UserRbacPolicy[]>();
+
+/** Mutable policy-cache seam for isolated regression tests; never used by runtime routes. */
+export const testablePoliciesByUser = policiesByUser;
 let lastLoadedAt: string | null = null;
 
 /**
@@ -75,14 +78,40 @@ export function isRbacSuperadmin(userId: string): boolean {
   return (policiesByUser.get(String(userId)) || []).some(policy => policy.isSuperadmin);
 }
 
-/** Preserve local file-store development while making PostgreSQL role identity authoritative. */
+/** Resolve the legacy profile-role fallback only in file-store mode.
+ * PostgreSQL mode uses the explicit role assignment as the sole authority. */
+export function isSuperadminActorForMode(
+  actor: { id: string; role?: string },
+  postgresActive: boolean,
+  hasSuperadminAssignment: boolean,
+): boolean {
+  return postgresActive
+    ? hasSuperadminAssignment
+    : actor.role === 'Admin GABAH';
+}
+
 export function isSuperadminActor(actor: { id: string; role?: string }): boolean {
-  return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : actor.role === 'Admin GABAH';
+  return isSuperadminActorForMode(actor, isPostgresPersistenceActive(), isRbacSuperadmin(actor.id));
+}
+
+/** Shared guard used by profile changes, account deletion, and Dynamic RBAC assignment.
+ * otherActiveSuperadmins excludes the target user. */
+export function wouldRemoveLastActiveSuperadmin(
+  targetHasSuperadmin: boolean,
+  replacementHasSuperadmin: boolean,
+  otherActiveSuperadmins: number,
+): boolean {
+  return targetHasSuperadmin && !replacementHasSuperadmin && otherActiveSuperadmins <= 0;
 }
 
 /** Auditor is a deny-write capability: assigning it as an additional role must not bypass read-only enforcement. */
 export function isAuditorActor(actor: { id: string; role?: string }): boolean {
-  if (isPostgresPersistenceActive()) return getEffectiveRoleKeys(actor.id).includes('auditor');
+  // Inspect every assigned role directly. getEffectiveRoleKeys() intentionally
+  // collapses Superadmin assignments to ['superadmin']; using it here would
+  // silently hide an additional Auditor role and bypass the deny-write policy.
+  if (isPostgresPersistenceActive()) {
+    return getUserRbacPolicies(String(actor.id)).some(policy => policy.roleKey === 'auditor');
+  }
   return actor.role === 'Auditor';
 }
 

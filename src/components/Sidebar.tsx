@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   LayoutDashboard, 
   Package, 
@@ -28,7 +28,6 @@ import {
   X
 } from 'lucide-react';
 import { UserRole } from '../types';
-import { AdministrationModal } from './modals/AdministrationModal';
 import { AppNavTab, isNavTabAllowedForRole } from '../navigation/roleNavigation';
 
 export type NavTab = AppNavTab;
@@ -82,8 +81,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
-  const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
-  const [showAdministration, setShowAdministration] = useState(false);
+  // In PostgreSQL/Dynamic RBAC mode, the effective superadmin capability is authoritative.
+  // Keep the role-label fallback only for legacy file-store sessions without permission keys.
+  const isSuperAdmin = currentUserPermissions !== undefined
+    ? currentUserIsSuperAdmin || currentUserPermissions.includes('*')
+    : currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
 
   const sections: NavSectionConfig[] = [
     {
@@ -283,13 +285,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <button
                 id="nav-item-administration"
-                onClick={() => {
-                  if (onOpenAdministration) {
-                    onOpenAdministration();
-                  } else {
-                    setShowAdministration(true);
-                  }
-                }}
+                type="button"
+                onClick={() => onOpenAdministration?.()}
                 className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all group text-slate-700 hover:text-[#206f65] hover:bg-[#4ABDAC]/10 font-bold border border-slate-200"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -310,18 +307,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </aside>
 
-      {showAdministration && (
-        <AdministrationModal
-          isOpen={showAdministration}
-          onClose={() => setShowAdministration(false)}
-          users={[]}
-          auditLogs={[]}
-          assets={[]}
-          loans={[]}
-          tickets={[]}
-          showToast={(msg) => console.log(msg)}
-        />
-      )}
     </>
   );
 };

@@ -1,5 +1,6 @@
 import { CANONICAL_TAXONOMY, normalizeCategoryMaster } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
+import { formatJakartaDate } from './time';
 
 export interface ServerUser {
   id: string;
@@ -192,13 +193,14 @@ export interface ServerTicket {
   ticket_code: string;
   title: string;
   description: string;
-  category: 'IT' | 'GA' | 'SC' | 'PIBC';
+  category: 'IT' | 'GA' | 'ME' | 'SC' | 'PIBC';
   contract_id?: string | null; // Linked Contract (optional action linkage, Contract ≠ Ticket)
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
   reporter_id: string;
   reporter_name: string;
   reporter_department: string;
+  assigned_unit_id?: string;
   assigned_agent_id?: string;
   assigned_agent_name?: string;
   related_asset_id?: string;
@@ -296,6 +298,7 @@ export interface ServerContract {
 
 export interface ServerNotification {
   id: string;
+  recipient_unit_id?: string;
   recipient_role?: string;
   recipient_division?: string;
   recipient_user_id?: string;
@@ -311,6 +314,7 @@ export interface ServerNotification {
 
 export interface ServerAuditLog {
   id: string;
+  user_id?: string;
   action: string;
   entity: string;
   entity_id?: string;
@@ -518,6 +522,7 @@ export const db = {
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
     { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
     { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
+    { id: 'UNIT-PIBC-ME', name: 'Tim Perawatan (ME)', division_code: 'PIBC', is_active: true },
     { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
   ] as OrgUnit[],
@@ -529,7 +534,7 @@ export const db = {
     // Lokasi kantor aktif saat ini. IDs dipertahankan agar relasi user historis aman.
     { id: 'OFF-KP', name: 'HO', is_active: true },
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
-    { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC', is_active: true },
     { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
     { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
   ] as OrgOfficeLocation[],
@@ -569,7 +574,7 @@ export const db = {
 // SECURITY (CR-02): no initial/default password is hardcoded here.
 // Password provisioning is performed at boot by persistence.provisionCanonicalUserPasswords()
 // from environment secrets (GABAH_INITIAL_ADMIN_PASSWORD / GABAH_INITIAL_USER_PASSWORD).
-export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password_salt' | 'temp_password'>> = [
+const canonicalUsers = [
   {
     id: 'USR-01',
     name: 'Budi Santoso',
@@ -683,6 +688,20 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     is_active: true,
   },
   {
+    id: 'USR-ME-ADMIN-001',
+    name: 'Dimas Pratama (Dummy Admin ME)',
+    email: 'admin.me.dummy@foodstation.co.id',
+    role: 'Karyawan',
+    role_label: 'Admin Tiket ME (Akun Uji)',
+    division: 'PIBC',
+    department: 'Tim Perawatan (ME)',
+    job_level_code: 'STAF',
+    unit_id: 'UNIT-PIBC-ME',
+    office_location_id: 'OFF-PERAWATAN',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    is_active: true,
+  },
+  {
     id: 'USR-05',
     name: 'Anisa Putri, S.Ak',
     email: 'anisa.putri@foodstation.co.id',
@@ -694,7 +713,10 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
     is_active: true,
   },
-];
+] satisfies Array<Omit<ServerUser, 'password_hash' | 'password_salt' | 'temp_password'>>;
+
+export const CANONICAL_USERS = canonicalUsers.filter(user => user.id !== 'USR-ME-ADMIN-001' || process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true');
+
 
 export function seedInitialData() {
   const defaultUsers = CANONICAL_USERS;
@@ -1631,8 +1653,8 @@ export function seedInitialData() {
   ];
 
   // Seed Authoritative Room Reservations
-  const todayStr = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const todayStr = formatJakartaDate();
+  const tomorrow = formatJakartaDate(new Date(Date.now() + 86400000));
 
   db.roomReservations = [
     {

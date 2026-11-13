@@ -59,12 +59,14 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
 const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   dashboard: ['dashboard.read'],
   my_assets: ['assets.read'],
-  meeting_rooms: ['meeting_rooms.read', 'room_reservations.read', 'room_reservations.create'],
-  assets: ['assets.catalog.read', 'assets.audit.read', 'assets.create', 'assets.update', 'assets.delete', 'assets.assign', 'assets.move', 'assets.lifecycle'],
+  meeting_rooms: ['meeting_rooms.read', 'room_reservations.read'],
+  // The full inventory is distinct from the employee's personal asset workspace.
+  assets: ['assets.catalog.read', 'assets.audit.read'],
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
   tickets: ['tickets.read'],
-  licenses: ['licenses.read'],
+  // License inventory is a view over the scoped corporate asset catalogue.
+  licenses: ['assets.catalog.read'],
   contracts: ['contracts.read'],
   vendors: ['vendors.read'],
   knowledge: ['knowledge.read'],

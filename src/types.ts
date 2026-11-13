@@ -156,7 +156,8 @@ export type TicketStatus = 'open' | 'in_progress' | 'pending_vendor' | 'resolved
  * Contract Management is a separate domain and is NOT a ticket category.
  * Software/License/SaaS tickets belong to 'IT' (License is an asset domain, not a helpdesk category).
  */
-export type TicketCategory = 'IT' | 'GA' | 'SC' | 'PIBC';
+// SC/PIBC remain in the read model for legacy ticket history; new submissions accept IT/GA/ME only.
+export type TicketCategory = 'IT' | 'GA' | 'ME' | 'SC' | 'PIBC';
 
 export interface Ticket {
   id: string;
@@ -177,6 +178,8 @@ export interface Ticket {
   related_asset_number?: string;
   assigned_agent_id?: string;
   assigned_agent_name?: string;
+  /** Unit-targeted queue assignment, e.g. UNIT-PIBC-ME. */
+  assigned_unit_id?: string;
   sla_hours: number; // e.g. Urgent: 4h, High: 8h, Medium: 24h, Low: 48h
   sla_response_deadline?: string;
   sla_resolution_deadline?: string;

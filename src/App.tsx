@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+
+const getLocalDateString = (date = new Date()): string => formatJakartaDate(date);
 import { 
   Asset, 
   Loan, 
@@ -18,8 +20,9 @@ import {
   Contract,
   AssetMovement
 } from './types';
-import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_USERS, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
+import { INITIAL_USERS } from './data/mockData'; // Demo account picker only; never used as authenticated directory data.
 import { gabahApi } from './services/gabahApi';
+import { formatJakartaDate } from './utils/datetime';
 import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
@@ -62,10 +65,10 @@ export default function App() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [allUsers, setAllUsers] = useState<UserProfile[]>(INITIAL_USERS);
-  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
-  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>(INITIAL_KNOWLEDGE_BASE);
-  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>(INITIAL_MAINTENANCE_SCHEDULES);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>([]);
+  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
   const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
   const [roomReservations, setRoomReservations] = useState<RoomReservation[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -134,45 +137,48 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Fetch all authoritative data from Backend API
+  // Fetch each authoritative collection independently. A denied or failed
+  // endpoint must never fall back to demo data or retain another user's data.
   const refreshData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge, fetchedMovements] = await Promise.all([
-        gabahApi.getAssets().catch(() => []),
-        gabahApi.getLoans().catch(() => []),
-        gabahApi.getTickets().catch(() => []),
-        gabahApi.getAuditLogs().catch(() => []),
-        gabahApi.getUsers().catch(() => INITIAL_USERS),
-        gabahApi.getMeetingRooms().catch(() => []),
-        gabahApi.getRoomReservations().catch(() => []),
-        gabahApi.getContracts().catch(() => []),
-        gabahApi.getMaintenances().catch(() => []),
-        gabahApi.getVendors().catch(() => []),
-        gabahApi.getKnowledgeArticles().catch(() => []),
-        gabahApi.getMovements().catch(() => []),
-      ]);
+    setIsLoading(true);
+    const results = await Promise.allSettled([
+      gabahApi.getAssets(),
+      gabahApi.getLoans(),
+      gabahApi.getTickets(),
+      gabahApi.getAuditLogs(),
+      gabahApi.getUsers(),
+      gabahApi.getMeetingRooms(),
+      gabahApi.getRoomReservations(),
+      gabahApi.getContracts(),
+      gabahApi.getMaintenances(),
+      gabahApi.getVendors(),
+      gabahApi.getKnowledgeArticles(),
+      gabahApi.getMovements(),
+    ]);
 
-      if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
-      if (Array.isArray(fetchedLoans)) setLoans(fetchedLoans);
-      if (Array.isArray(fetchedTickets)) setTickets(fetchedTickets);
-      if (Array.isArray(fetchedLogs)) setAuditLogs(fetchedLogs);
-      if (Array.isArray(fetchedUsers) && fetchedUsers.length > 0) setAllUsers(fetchedUsers);
-      if (Array.isArray(fetchedRooms)) setMeetingRooms(fetchedRooms);
-      if (Array.isArray(fetchedReservations)) setRoomReservations(fetchedReservations);
-      if (Array.isArray(fetchedContracts)) setContracts(fetchedContracts);
-      if (Array.isArray(fetchedMaintenances)) {
-        if (fetchedMaintenances.length > 0) setMaintenanceSchedules(fetchedMaintenances);
-        else console.warn('Backend returned an empty maintenance list; keeping seeded schedules for offline dev.');
+    const applyCollection = <T,>(result: PromiseSettledResult<T[]>, setter: React.Dispatch<React.SetStateAction<T[]>>, label: string) => {
+      if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+        // Empty is an authoritative result too; clear stale rows.
+        setter(result.value);
+      } else {
+        setter([]);
+        console.warn(`GABAH: failed to load ${label}; cleared client data to prevent stale or demo data exposure.`, result.status === 'rejected' ? result.reason : 'Invalid API response');
       }
-      if (Array.isArray(fetchedVendors) && fetchedVendors.length > 0) setVendors(fetchedVendors);
-      if (Array.isArray(fetchedKnowledge) && fetchedKnowledge.length > 0) setKnowledgeBase(fetchedKnowledge);
-      if (Array.isArray(fetchedMovements)) setMovements(fetchedMovements);
-    } catch (err: any) {
-      console.error('Failed to fetch from backend:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    applyCollection(results[0], setAssets, 'assets');
+    applyCollection(results[1], setLoans, 'loans');
+    applyCollection(results[2], setTickets, 'tickets');
+    applyCollection(results[3], setAuditLogs, 'audit logs');
+    applyCollection(results[4], setAllUsers, 'users');
+    applyCollection(results[5], setMeetingRooms, 'meeting rooms');
+    applyCollection(results[6], setRoomReservations, 'room reservations');
+    applyCollection(results[7], setContracts, 'contracts');
+    applyCollection(results[8], setMaintenanceSchedules, 'maintenance schedules');
+    applyCollection(results[9], setVendors, 'vendors');
+    applyCollection(results[10], setKnowledgeBase, 'knowledge articles');
+    applyCollection(results[11], setMovements, 'asset movements');
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -331,19 +337,22 @@ export default function App() {
   // 2. Update Asset (Authoritative Backend)
   const handleUpdateAsset = async (updatedAsset: Asset) => {
     try {
-      const saved = await gabahApi.updateAsset(updatedAsset.id, {
-        corporate_asset_number: updatedAsset.corporate_asset_number,
-        location: updatedAsset.location,
-        // T2B-2: relasi lokasi fisik aset ikut diperbarui bila ada.
-        asset_location_id: updatedAsset.asset_location_id,
-        condition: updatedAsset.condition,
-        status: updatedAsset.status,
-        notes: updatedAsset.notes,
-      });
-
-      if (selectedAssetForDetail?.id === saved.id) {
-        setSelectedAssetForDetail(saved);
+      const existing = assets.find(asset => asset.id === updatedAsset.id);
+      const metadataUpdates: Record<string, unknown> = {};
+      if (existing?.corporate_asset_number !== updatedAsset.corporate_asset_number) {
+        metadataUpdates.corporate_asset_number = updatedAsset.corporate_asset_number;
       }
+      if (existing?.notes !== updatedAsset.notes) {
+        metadataUpdates.notes = updatedAsset.notes;
+      }
+
+      // Move and lifecycle operations are already committed through their
+      // dedicated APIs. This callback only persists actual metadata changes.
+      const saved = Object.keys(metadataUpdates).length > 0
+        ? await gabahApi.updateAsset(updatedAsset.id, metadataUpdates)
+        : updatedAsset;
+
+      if (selectedAssetForDetail?.id === saved.id) setSelectedAssetForDetail(saved);
       showToast(`Aset ${saved.asset_number} diperbarui (Accurate: ${saved.corporate_asset_number || '-'}).`);
       await refreshData();
     } catch (err: any) {
@@ -451,8 +460,8 @@ export default function App() {
         borrower_name: ast.assigned_to?.name || currentUser.name,
         borrower_department: ast.assigned_to?.department || currentUser.department,
         borrower_phone: '021-5000-888',
-        start_date: ast.purchase_date || new Date().toISOString().split('T')[0],
-        due_date: ast.warranty_until || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
+        start_date: ast.purchase_date || getLocalDateString(),
+        due_date: ast.warranty_until || formatJakartaDate(new Date(Date.now() + 365*24*60*60*1000)),
         purpose: `Penyerahan & Inventarisasi Resmi Aktiva Tetap (Devisi ${ast.owner_division || 'GA'})`,
         status: 'approved',
         category_type: ast.category_type,
@@ -497,6 +506,20 @@ export default function App() {
       await refreshData();
     } catch (err: any) {
       showToast(err.message || 'Gagal memperbarui status tiket', 'warning');
+    }
+  };
+
+  const handleLoadTicketAssignees = async (ticketId: string) => {
+    return gabahApi.getTicketAssignees(ticketId);
+  };
+
+  const handleAssignTicket = async (ticketId: string, assignedAgentId: string) => {
+    try {
+      const updated = await gabahApi.assignTicket(ticketId, assignedAgentId);
+      showToast(`Tiket ${updated.ticket_number} berhasil didelegasikan kepada ${updated.assigned_agent_name}.`);
+      await refreshData();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mendelegasikan tiket', 'warning');
     }
   };
 
@@ -603,7 +626,8 @@ export default function App() {
   // These API collections are already filtered by the backend's effective
   // permission + module-specific data scope. Do not apply a second, stale
   // role-name filter in the browser: a Karyawan may hold additional job roles.
-  const pendingLoans = loans.filter(l => l.status === 'pending');
+  // Current loan workflow uses pending_approval; retain legacy pending rows for compatibility.
+  const pendingLoans = loans.filter(l => l.status === 'pending_approval' || l.status === 'pending');
   const visibleTickets = currentUser ? tickets : [];
   const visibleAssets = currentUser ? assets : [];
   const visibleLoans = currentUser ? loans : [];
@@ -638,7 +662,7 @@ export default function App() {
             setLoginEmail(u.email || '');
             setViewMode('login');
           }}
-          demoUsers={allUsers}
+          demoUsers={INITIAL_USERS}
         />
       </div>
     );
@@ -768,9 +792,9 @@ export default function App() {
           )).length}
           currentUserRole={currentUser.role}
           currentUserPermissions={currentUser.permission_keys}
-          currentUserIsSuperAdmin={currentUser.is_superadmin}
+          currentUserIsSuperAdmin={Boolean(currentUser.is_superadmin || currentUser.permission_keys?.includes('*'))}
           onOpenAdministration={() => {
-            if (currentUser.is_superadmin || currentUser.role === 'Admin GABAH') {
+            if (currentUser.is_superadmin || currentUser.permission_keys?.includes('*') || currentUser.role === 'Admin GABAH') {
               setIsAdministrationModalOpen(true);
             }
           }}
@@ -901,6 +925,8 @@ export default function App() {
               currentUser={currentUser}
               onOpenNewTicketModal={handleOpenNewTicketModal}
               onUpdateTicketStatus={handleUpdateTicketStatus}
+              onLoadTicketAssignees={handleLoadTicketAssignees}
+              onAssignTicket={handleAssignTicket}
             />
           )}
 
@@ -1092,7 +1118,7 @@ export default function App() {
       />
 
       <AdministrationModal
-        isOpen={isAdministrationModalOpen && Boolean(currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH')}
+        isOpen={isAdministrationModalOpen && Boolean(currentUser?.is_superadmin || currentUser?.permission_keys?.includes('*') || currentUser?.role === 'Admin GABAH')}
         onClose={() => setIsAdministrationModalOpen(false)}
         users={allUsers}
         auditLogs={auditLogs}

@@ -17,6 +17,30 @@ const DEFAULT_REMINDER_CONFIG: ContractReminderConfig = {
   reminder3_days: 7,
 };
 
+function isValidIsoDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function normalizeReminderConfig(
+  input: Partial<ContractReminderConfig> | undefined,
+  base: ContractReminderConfig = DEFAULT_REMINDER_CONFIG,
+): ContractReminderConfig {
+  const config = {
+    reminder1_days: input?.reminder1_days === undefined ? base.reminder1_days : Number(input.reminder1_days),
+    reminder2_days: input?.reminder2_days === undefined ? base.reminder2_days : Number(input.reminder2_days),
+    reminder3_days: input?.reminder3_days === undefined ? base.reminder3_days : Number(input.reminder3_days),
+  };
+  const values = Object.values(config);
+  if (values.some(value => !Number.isInteger(value) || value < 0 || value > 3650)
+    || config.reminder1_days < config.reminder2_days
+    || config.reminder2_days < config.reminder3_days) {
+    throw new Error('Konfigurasi reminder harus bilangan bulat 0–3650 hari dengan urutan 1 ≥ 2 ≥ 3.');
+  }
+  return config;
+}
+
 function daysUntil(dateIso: string): number {
   const target = new Date(dateIso).getTime();
   if (isNaN(target)) return Number.POSITIVE_INFINITY;
@@ -64,14 +88,20 @@ export function getReminderLevel(contract: ServerContract): { level: 'normal' | 
 }
 
 export function canSeeContract(user: ServerUser, contract: ServerContract): boolean {
-  if (isSuperadminActor(user) || isAuditorActor(user)) return true;
+  if (isSuperadminActor(user)) return true;
+  if (isAuditorActor(user) && !isPostgresPersistenceActive()) return true;
   if (contract.pic_user_id === user.id) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
   if (!owner) return false;
 
   if (isPostgresPersistenceActive()) {
-    return hasRbacPermission(String(user.id), 'contracts.read')
-      && hasRbacScope(String(user.id), 'division', owner, 'contracts');
+    // Auditor is an explicit read-only exception for the contract domain:
+    // audit authority includes restricted contracts and their documents.
+    // This exception is intentionally local to contracts; other modules remain
+    // bound to their own dynamic scopes. canEditContract never grants Auditor writes.
+    if (!hasRbacPermission(String(user.id), 'contracts.read')) return false;
+    if (isAuditorActor(user)) return true;
+    return hasRbacScope(String(user.id), 'division', owner, 'contracts');
   }
 
   return user.role === owner;
@@ -80,8 +110,7 @@ export function canSeeContract(user: ServerUser, contract: ServerContract): bool
 export function canManageContracts(user: ServerUser): boolean {
   if (isSuperadminActor(user)) return true;
   if (isPostgresPersistenceActive()) {
-    return hasRbacPermission(String(user.id), 'contracts.create')
-      || hasRbacPermission(String(user.id), 'contracts.update');
+    return hasRbacPermission(String(user.id), 'contracts.create');
   }
   return user.role === 'IT' || user.role === 'GA';
 }
@@ -142,9 +171,51 @@ export const ContractDomainService = {
     if (!canManageContracts(actor)) {
       throw new Error('Akses ditolak: permission contracts.create tidak diberikan.');
     }
-    const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
-    const pic = db.users.find(u => u.id === payload.pic_user_id) || actor;
+
+    const ownerDivision = String(payload.owner_division || actor.division).trim().toUpperCase();
+    const startDate = String(payload.start_date || '').trim();
+    const endDate = String(payload.end_date || '').trim();
+    const title = String(payload.title || '').trim();
+    const vendorName = String(payload.vendor_name || '').trim();
+    const contractType = String(payload.contract_type || 'Umum').trim();
+    if (!isValidIsoDate(startDate) || !isValidIsoDate(endDate) || endDate < startDate) {
+      throw new Error('Tanggal mulai dan berakhir kontrak tidak valid; tanggal berakhir harus sama atau setelah tanggal mulai.');
+    }
+    if (!title || !vendorName || !contractType) {
+      throw new Error('Nama kontrak, vendor, dan jenis kontrak wajib diisi.');
+    }
+
+    const contractValue = payload.contract_value === undefined ? 0 : Number(payload.contract_value);
+    const noticePeriod = payload.notice_period_days === undefined ? 0 : Number(payload.notice_period_days);
+    if (!Number.isFinite(contractValue) || contractValue < 0) {
+      throw new Error('Nilai kontrak harus berupa angka nol atau lebih.');
+    }
+    if (!Number.isInteger(noticePeriod) || noticePeriod < 0 || noticePeriod > 3650) {
+      throw new Error('Masa pemberitahuan kontrak harus berupa bilangan bulat 0–3650 hari.');
+    }
+    if (payload.auto_renewal !== undefined && typeof payload.auto_renewal !== 'boolean') {
+      throw new Error('Flag perpanjangan otomatis harus berupa boolean.');
+    }
+    if (payload.restricted !== undefined && typeof payload.restricted !== 'boolean') {
+      throw new Error('Flag kontrak terbatas harus berupa boolean.');
+    }
+    if (payload.status !== undefined && !['draft', 'active'].includes(String(payload.status))) {
+      throw new Error('Status awal kontrak hanya boleh draft atau active.');
+    }
+    const reminderConfig = normalizeReminderConfig(payload.reminder_config);
+    const pic = db.users.find(u => u.id === String(payload.pic_user_id || '').trim());
+    if (!pic || !pic.is_active) {
+      throw new Error('PIC kontrak wajib dipilih dari pegawai yang terdaftar dan aktif.');
+    }
     const ownerExists = (db.divisions || []).some(d => String(d.code).trim().toUpperCase() === ownerDivision);
+    const parentContractId = String(payload.parent_contract_id || '').trim() || null;
+    const parentContract = parentContractId ? db.contracts.find(contract => contract.id === parentContractId) : null;
+    if (parentContractId && !parentContract) {
+      throw new Error('Kontrak induk tidak ditemukan.');
+    }
+    if (parentContract && String(parentContract.owner_division || '').trim().toUpperCase() !== ownerDivision) {
+      throw new Error('Kontrak induk harus berasal dari divisi pemilik yang sama.');
+    }
     const ownerScopeAllowed = ownerExists
       && (isSuperadminActor(actor) || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
@@ -153,39 +224,45 @@ export const ContractDomainService = {
       throw new Error(`Akses ditolak: scope pengguna tidak mencakup owner kontrak ${ownerDivision}.`);
     }
 
-    const reminderConfig: ContractReminderConfig = {
-      reminder1_days: payload.reminder_config?.reminder1_days ?? DEFAULT_REMINDER_CONFIG.reminder1_days,
-      reminder2_days: payload.reminder_config?.reminder2_days ?? DEFAULT_REMINDER_CONFIG.reminder2_days,
-      reminder3_days: payload.reminder_config?.reminder3_days ?? DEFAULT_REMINDER_CONFIG.reminder3_days,
-    };
+    const escalationUserId = payload.escalation_user_id ? String(payload.escalation_user_id).trim() : null;
+    if (escalationUserId && !db.users.some(user => user.id === escalationUserId && user.is_active)) {
+      throw new Error('Penerima eskalasi harus merupakan pegawai aktif.');
+    }
+    if (payload.notes !== undefined && payload.notes !== null && typeof payload.notes !== 'string') {
+      throw new Error('Catatan kontrak harus berupa teks.');
+    }
+    if (payload.renewal_notes !== undefined && payload.renewal_notes !== null && typeof payload.renewal_notes !== 'string') {
+      throw new Error('Catatan renewal harus berupa teks.');
+    }
 
     const nowIso = new Date().toISOString();
     const contract: ServerContract = {
       id: `CTR-${Date.now()}`,
       contract_number: AssetNumberingEngine.generateContractNumber(),
-      contract_type: (payload.contract_type || 'Umum').trim(),
-      title: payload.title.trim(),
-      vendor_name: payload.vendor_name.trim(),
+      contract_type: contractType,
+      title,
+      vendor_name: vendorName,
       owner_division: ownerDivision,
-      owner_division_label: payload.owner_division_label,
+      owner_division_label: typeof payload.owner_division_label === 'string' ? payload.owner_division_label.trim() : undefined,
       pic_user_id: pic.id,
       pic_name: pic.name,
-      start_date: payload.start_date,
-      end_date: payload.end_date,
-      notice_period_days: payload.notice_period_days ?? 0,
-      notice_date: (payload.notice_period_days ?? 0) > 0 ? addDays(payload.end_date, -(payload.notice_period_days ?? 0)) : payload.end_date,
-      contract_value: payload.contract_value || 0,
-      auto_renewal: Boolean(payload.auto_renewal),
+      start_date: startDate,
+      end_date: endDate,
+      notice_period_days: noticePeriod,
+      notice_date: noticePeriod > 0 ? addDays(endDate, -noticePeriod) : endDate,
+      contract_value: contractValue,
+      auto_renewal: payload.auto_renewal ?? false,
       status: payload.status === 'draft' ? 'draft' : 'active',
       renewal_outcome: 'pending_decision',
       renewal_notes: payload.renewal_notes || null,
       replaced_by_contract_id: null,
-      parent_contract_id: payload.parent_contract_id || null,
-      documents: Array.isArray(payload.documents) ? payload.documents : [],
-      milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
+      parent_contract_id: parentContractId,
+      // Child relations are created only through their dedicated validated APIs.
+      documents: [],
+      milestones: [],
       reminder_config: reminderConfig,
-      escalation_user_id: payload.escalation_user_id || null,
-      restricted: Boolean(payload.restricted),
+      escalation_user_id: escalationUserId,
+      restricted: payload.restricted ?? false,
       notes: payload.notes || null,
       created_by: actor.id,
       created_by_name: actor.name,
@@ -393,7 +470,7 @@ export const ContractDomainService = {
 
   getNotificationLogs(user: ServerUser, contractId?: string): ServerContractNotificationLog[] {
     const logs = contractId ? db.contractNotificationLogs.filter(l => l.contract_id === contractId) : db.contractNotificationLogs;
-    if (user.role === 'Admin GABAH' || isAuditorActor(user)) return logs;
+    if (isSuperadminActor(user) || (isAuditorActor(user) && !isPostgresPersistenceActive())) return logs;
     const visibleContracts = new Set(this.listContracts(user).map(c => c.id));
     return logs.filter(l => visibleContracts.has(l.contract_id));
   },

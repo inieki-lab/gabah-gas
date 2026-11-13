@@ -62,6 +62,27 @@ function isoDatePlus(days) {
 }
 
 async function main() {
+  const loanModalSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/modals/CreateLoanModal.tsx'), 'utf8');
+  const dateUtilsSource = fs.readFileSync(path.resolve(process.cwd(), 'src/utils/datetime.ts'), 'utf8');
+  record(
+    'datetime-local loan values are sent as explicit ISO instants and local date defaults do not shift at UTC midnight',
+    'browser-local parsing + ISO API payload + local calendar formatter',
+    'timezone-safe loan date handling',
+    /const toIsoDateTime = \(value: string\)/.test(loanModalSource)
+      && /start_date: startDateIso/.test(loanModalSource)
+      && /due_date: dueDateIso/.test(loanModalSource)
+      && /formatLocalDate\(tomorrow\)/.test(loanModalSource)
+      && /date\.getFullYear\(\)/.test(dateUtilsSource),
+  );
+  record(
+    'Loan request modal lists only explicitly loanable, available, non-damaged assets',
+    'is_loanable=true + status=available + condition not broken/damaged',
+    'frontend pool eligibility policy',
+    /asset\.is_loanable === true/.test(loanModalSource)
+      && /asset\.status === 'available'/.test(loanModalSource)
+      && /!\['broken', 'damaged', 'poor'\]\.includes\(String\(asset\.condition\)\)/.test(loanModalSource),
+  );
+
   const serverPath = path.resolve(process.cwd(), 'dist/server.cjs');
   if (!fs.existsSync(serverPath)) {
     console.error('dist/server.cjs not found — run `npm run build` first.');
@@ -151,11 +172,13 @@ async function main() {
     const itAsset2 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 2');
     const itAsset3 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 3');
     const itAsset4 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 4');
+    const itAsset5 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 5 Overdue');
+    const itAsset6 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 6 Batch Atomic');
     const gaAsset1 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 1');
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
-    record('Setup: 5 loanable fixtures created (4 IT + 2 GA)', 'ids issued',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].every(a => a.id));
+    record('Setup: 8 loanable fixtures created (6 IT + 2 GA)', '8 ids issued',
+      [itAsset1, itAsset2, itAsset3, itAsset4, itAsset5, itAsset6, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
+      [itAsset1, itAsset2, itAsset3, itAsset4, itAsset5, itAsset6, gaAsset1, gaAsset2].every(a => a.id));
 
     const mkLoan = async (token, assetId, borrowerId) => {
       const r = await req(base, 'POST', '/api/loans', {
@@ -197,6 +220,111 @@ async function main() {
     const aL5 = await appr(L5.id, it.token);
     record('Setup: loans approved by owner-division custodians', '200', [aL1, aL2, aL4, aL5].map(r => r.status).join(','), [aL1, aL2, aL4, aL5].every(r => r.status === 200));
 
+    // Availability preview checks every reservation but returns no borrower data.
+    const availability = await req(base, 'POST', '/api/loans/availability', {
+      token: karyawan.token,
+      body: { asset_ids: [itAsset1.id], start_date: isoDatePlus(2), due_date: isoDatePlus(3) },
+    });
+    const availabilityData = availability.json?.data || {};
+    record('Availability API detects another borrower reservation without disclosure', 'conflicting asset ID only',
+      `HTTP ${availability.status}; ids=${(availabilityData.conflicting_asset_ids || []).join(',')}; borrowerField=${Object.hasOwn(availabilityData, 'borrower_name')}`,
+      availability.status === 200 && availabilityData.conflicting_asset_ids?.includes(itAsset1.id) && !Object.hasOwn(availabilityData, 'borrower_name'));
+
+    // Multi-asset requests must roll back all writes if one selected asset is invalid.
+    const batchFailure = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: {
+        asset_ids: [itAsset6.id, 'ASSET-ID-NOT-FOUND'],
+        borrower_id: karyawanId,
+        purpose: 'Atomic batch regression',
+        start_date: isoDatePlus(1),
+        due_date: isoDatePlus(2),
+      },
+    });
+    const afterBatchLoans = await req(base, 'GET', '/api/loans', { token: admin.token });
+    const partialBatchLoan = (afterBatchLoans.json?.data || []).some(loan => loan.asset_id === itAsset6.id && loan.purpose === 'Atomic batch regression');
+    record('Failed multi-asset request leaves no partial loan record', 'HTTP 400 and no partial row',
+      `HTTP ${batchFailure.status}; partial=${partialBatchLoan}`, batchFailure.status === 400 && !partialBatchLoan);
+
+    const mutationLockLoan = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: { asset_id: itAsset6.id, purpose: 'Block asset mutation while loan pending', start_date: isoDatePlus(2), due_date: isoDatePlus(3) },
+    });
+    const blockedAssignDuringLoan = await req(base, 'POST', `/api/assets/${itAsset6.id}/assign`, {
+      token: it.token, body: { targetUserId: gaId, reason: 'Regression: assignment must respect loan lock' },
+    });
+    const blockedMoveDuringLoan = await req(base, 'POST', `/api/assets/${itAsset6.id}/move`, {
+      token: it.token, body: { newLocation: 'Head Office - Gudang IT Pool (Lt. 2)', reason: 'Regression: move must respect loan lock' },
+    });
+    const blockedLifecycleDuringLoan = await req(base, 'POST', `/api/assets/${itAsset6.id}/lifecycle`, {
+      token: it.token, body: { action: 'damaged', notes: 'Regression: lifecycle must respect loan lock' },
+    });
+    record('Pending loan prevents assignment, physical move, and lifecycle mutation of the same asset', '409 / 409 / 409',
+      `${blockedAssignDuringLoan.status} / ${blockedMoveDuringLoan.status} / ${blockedLifecycleDuringLoan.status}`,
+      mutationLockLoan.status === 201 && blockedAssignDuringLoan.status === 409
+        && blockedMoveDuringLoan.status === 409 && blockedLifecycleDuringLoan.status === 409);
+    if (mutationLockLoan.json?.data?.id) {
+      await req(base, 'POST', `/api/loans/${mutationLockLoan.json.data.id}/reject`, {
+        token: it.token, body: { reason: 'Regression fixture cleanup' },
+      });
+    }
+
+    // Overdue physical possession must continue blocking new reservations.
+    const overdueCreate = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: {
+        asset_id: itAsset5.id,
+        purpose: 'Regression test overdue lock',
+        start_date: isoDatePlus(-3),
+        due_date: isoDatePlus(-1),
+      },
+    });
+    const overdueLoanId = overdueCreate.json?.data?.id;
+    // Create a second pending request before the first physical loan is handed
+    // over. It must not be approved after the first borrower becomes overdue.
+    const stalePendingCreate = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: {
+        asset_id: itAsset5.id,
+        purpose: 'Pending request must be blocked after prior loan overdue',
+        start_date: isoDatePlus(1),
+        due_date: isoDatePlus(7),
+      },
+    });
+    const stalePendingLoanId = stalePendingCreate.json?.data?.id;
+    const overdueApprove = overdueLoanId ? await appr(overdueLoanId, it.token) : { status: 0 };
+    const overdueHandover = overdueLoanId
+      ? await req(base, 'POST', `/api/loans/${overdueLoanId}/handover`, { token: it.token, body: { handoverNotes: 'Overdue test handover' } })
+      : { status: 0 };
+    const overdueList = await req(base, 'GET', '/api/loans', { token: admin.token });
+    const overdueStatus = (overdueList.json?.data || []).find(item => item.id === overdueLoanId)?.status || '(missing)';
+    record('Overdue loan is exposed as overdue after due date', 'overdue', overdueStatus, overdueCreate.status === 201 && overdueApprove.status === 200 && overdueHandover.status === 200 && overdueStatus === 'overdue');
+    const stalePendingApproval = stalePendingLoanId
+      ? await appr(stalePendingLoanId, it.token)
+      : { status: 0 };
+    record('Pending request cannot be approved while an earlier borrowed asset is overdue', '409',
+      `HTTP ${stalePendingApproval.status}`, stalePendingCreate.status === 201 && stalePendingApproval.status === 409);
+    if (stalePendingLoanId) {
+      await req(base, 'POST', `/api/loans/${stalePendingLoanId}/reject`, {
+        token: it.token, body: { reason: 'Regression fixture cleanup' },
+      });
+    }
+    const blockedRebooking = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: { asset_id: itAsset5.id, purpose: 'Must be blocked', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    record('Overdue asset cannot be rebooked before physical return', '400', `HTTP ${blockedRebooking.status}`, blockedRebooking.status === 400);
+    const overdueReturn = await req(base, 'POST', `/api/loans/${overdueLoanId}/return`, {
+      token: karyawan.token,
+      body: { condition: 'good', returnNotes: 'Returned after due date' },
+    });
+    record('Borrower can return an overdue loan', '200 + returned', `HTTP ${overdueReturn.status} + ${overdueReturn.json?.data?.status}`, overdueReturn.status === 200 && overdueReturn.json?.data?.status === 'returned');
+    const rebookAfterReturn = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: { asset_id: itAsset5.id, purpose: 'Rebook after return', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    record('Asset becomes requestable again after recorded return', '201', `HTTP ${rebookAfterReturn.status}`, rebookAfterReturn.status === 201);
+
     // ===================== 5. Invalid transitions (before any handover) =====================
     // Handover from pending_approval is not a valid transition.
     const hPending = await req(base, 'POST', `/api/loans/${L3.id}/handover`, { token: it.token, body: { handoverNotes: 'x' } });
@@ -224,6 +352,13 @@ async function main() {
     const hOk = await req(base, 'POST', `/api/loans/${L1.id}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan' } });
     record('Authorized handover: IT custodian on approved IT loan', '200 + borrowed',
       `HTTP ${hOk.status} + ${hOk.json?.data?.status}`, hOk.status === 200 && hOk.json?.data?.status === 'borrowed');
+    const adminSessionAfterHandover = await req(base, 'GET', '/api/auth/me', { token: admin });
+    record('Admin session remains valid after custodian handover', 'HTTP 200', `HTTP ${adminSessionAfterHandover.status}`, adminSessionAfterHandover.status === 200);
+    const deleteBorrower = await req(base, 'DELETE', `/api/users/${karyawanId}`, { token: admin });
+    const borrowerStillExists = (await req(base, 'GET', '/api/users', { token: admin })).json?.data?.some(user => user.id === karyawanId);
+    record('User with physically outstanding loan cannot be deleted', '409 and user preserved',
+      `HTTP ${deleteBorrower.status}; blockers=${deleteBorrower.json?.blockers?.outstanding_loans}; exists=${borrowerStillExists}`,
+      deleteBorrower.status === 409 && Number(deleteBorrower.json?.blockers?.outstanding_loans) > 0 && borrowerStillExists);
 
     // ===================== 5b. Double handover =====================
     const hDouble = await req(base, 'POST', `/api/loans/${L1.id}/handover`, { token: it.token, body: { handoverNotes: 'again' } });

@@ -432,6 +432,17 @@ class GabahApiClient {
     return this.request<Loan[]>('/api/loans');
   }
 
+  async checkLoanAvailability(payload: {
+    asset_ids: string[];
+    start_date: string;
+    due_date: string;
+  }): Promise<{ conflicting_asset_ids: string[] }> {
+    return this.request<{ conflicting_asset_ids: string[] }>('/api/loans/availability', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async requestLoan(payload: {
     asset_id?: string;
     asset_ids?: string[];
@@ -509,6 +520,17 @@ class GabahApiClient {
     return this.request<Ticket>(`/api/tickets/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status, resolutionNotes }),
+    });
+  }
+
+  async getTicketAssignees(id: string): Promise<Array<{ id: string; name: string; department: string }>> {
+    return this.request<Array<{ id: string; name: string; department: string }>>(`/api/tickets/${id}/assignees`);
+  }
+
+  async assignTicket(id: string, assignedAgentId: string): Promise<Ticket> {
+    return this.request<Ticket>(`/api/tickets/${id}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ assigned_agent_id: assignedAgentId }),
     });
   }
 

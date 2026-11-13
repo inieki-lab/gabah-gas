@@ -9,6 +9,10 @@ const checks = [
   ['Replacement contract must also be visible to the acting user', /canSeeContract\(actor, replacement\)/.test(source)],
   ['Replacement contract must have the same normalized owner division', /sourceOwner[\s\S]*replacementOwner[\s\S]*replacementOwner !== sourceOwner/.test(source)],
   ['Replacement ID is rejected for other renewal outcomes', /\} else if \(replacementContractId\) \{[\s\S]*ID kontrak pengganti hanya boleh diisi/.test(source)],
+  ['Contract creation validates strict calendar dates and date order', source.includes('validDate(startDate)') && source.includes('validDate(endDate)') && source.includes('endDate < startDate')],
+  ['Contract creation rejects missing or inactive PIC instead of silently substituting actor', source.includes('if (!pic || !pic.is_active)')],
+  ['Contract creation rejects orphan parent contract references', source.includes('if (parentContractId && !parentContract)')],
+  ['Contract parent must belong to the same owner division', source.includes('parentContract.owner_division') && source.includes('!== ownerDivision')],
 ];
 let failed = 0;
 for (const [name, pass] of checks) {

@@ -226,6 +226,20 @@ async function main() {
       record('CR-04 legacy contracts aligned (owner_division column exists)', 'character varying', ownerDivCol.rows[0]?.data_type || 'missing', ownerDivCol.rows[0]?.data_type === 'character varying');
       uqIdx = await mig.query(`SELECT indexname FROM pg_indexes WHERE tablename='contract_notification_logs' AND indexdef ILIKE '%UNIQUE%'`);
       record('CR-05 idempotency UNIQUE index present', '>=1 unique index', `${uqIdx.rows.length}`, uqIdx.rows.length >= 1);
+
+      const collisionConstraints = await mig.query(
+        `SELECT conname FROM pg_constraint
+         WHERE contype = 'x'
+           AND conname IN ('room_reservations_no_time_overlap', 'loans_no_confirmed_asset_overlap')
+         ORDER BY conname`
+      );
+      const collisionNames = collisionConstraints.rows.map(row => row.conname);
+      record(
+        'Migration 044 installs concurrency-safe booking constraints',
+        'room + loan exclusion constraints',
+        collisionNames.join(', ') || 'missing',
+        collisionNames.length === 2
+      );
     } catch (err) {
       record('CR-04 schema introspection', 'columns/indexes present', `query error: ${err.message}`, false);
     }

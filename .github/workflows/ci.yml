@@ -47,14 +47,53 @@ jobs:
       - name: Typecheck (lint)
         run: npm run lint
 
-      - name: Dynamic RBAC foundation contract checks
+      - name: Jakarta business-date and timezone contract
+        run: npm run test:business-date
+
+      - name: Dependency security baseline
+        run: npm run test:dependency-security
+
+      - name: Production dependency vulnerability audit
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: API persistence response contract
+        run: npm run test:persistence-response
+
+      - name: Upload and document access security
+        run: npm run test:upload-security
+
+      - name: Trusted client IP and reverse proxy security
+        run: npm run test:client-ip-security
+
+      - name: Password hash strength and legacy upgrade
+        run: npm run test:password-hash-security
+
+      - name: Dynamic RBAC and frontend default-deny contract checks
         run: npm run test:dynamic-rbac-foundation
+
+      - name: P0 Dynamic RBAC unit regression
+        run: npm run test:p0-rbac
 
       - name: Branch migration non-destructive safety check
         run: npm run test:branch-migration-safety
 
+      - name: Room reservation concurrent collision guard
+        run: npm run test:room-reservation-exclusion
+
+      - name: Asset loan concurrent collision guard
+        run: npm run test:loan-reservation-exclusion
+
+      - name: Append-only audit log protection
+        run: npm run test:audit-append-only
+
+      - name: Stable audit actor identity
+        run: npm run test:audit-identity
+
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
+
+      - name: Asset category filter regression checks
+        run: npm run test:asset-category-filter
 
       - name: Asset movement history scope consistency
         run: npm run test:movement-scope

@@ -14,6 +14,7 @@ interface ScopedTicket {
   reporter_id?: string;
   reporter_name?: string;
   assigned_agent_id?: string;
+  assigned_unit_id?: string | null;
   category: string;
 }
 
@@ -25,6 +26,8 @@ export interface DashboardAttentionScope {
   loans: readonly ScopedLoan[];
   tickets: readonly ScopedTicket[];
   canReadOwnerScope: (module: 'loans' | 'tickets', owner: string) => boolean;
+  isAuditor?: boolean;
+  canReadUnitScope?: (unitId: string) => boolean;
 }
 
 /**
@@ -54,12 +57,21 @@ export function filterDashboardAttentionItems<T extends DashboardAttentionItem>(
       }
       case 'ticket': {
         const ticket = ticketsById.get(item.link_id);
-        return Boolean(ticket && (
+        if (!ticket) return false;
+        // Auditor cards follow the same explicit unit/division scope as the
+        // ticket API. Reporter/assignee identity is not an implicit scope grant.
+        if (scope.isAuditor) {
+          return Boolean(
+            (ticket.assigned_unit_id && scope.canReadUnitScope?.(ticket.assigned_unit_id))
+            || scope.canReadOwnerScope('tickets', ticket.category)
+          );
+        }
+        return (
           ticket.reporter_id === scope.actorId
           || (Boolean(ticket.reporter_name) && String(ticket.reporter_name).trim().toLowerCase() === scope.actorName.trim().toLowerCase())
           || ticket.assigned_agent_id === scope.actorId
           || scope.canReadOwnerScope('tickets', ticket.category)
-        ));
+        );
       }
       default:
         return false;

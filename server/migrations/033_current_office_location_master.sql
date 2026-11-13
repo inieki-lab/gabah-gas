@@ -5,7 +5,7 @@
 UPDATE org_office_locations
 SET name = CASE id
   WHEN 'OFF-KP' THEN 'HO'
-  WHEN 'OFF-RPC' THEN 'RPC/SC'
+  WHEN 'OFF-RPC' THEN 'RPC'
   ELSE name
 END
 WHERE id IN ('OFF-KP', 'OFF-RPC');

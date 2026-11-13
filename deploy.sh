@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_URL="${GABAH_HEALTH_URL:-http://127.0.0.1/api/health}"
+APP_URL="${GABAH_HEALTH_URL:-http://127.0.0.1:${GABAH_WEB_PORT:-8080}/api/health}"
 MAX_ATTEMPTS="${GABAH_HEALTH_ATTEMPTS:-30}"
 WAIT_SECONDS="${GABAH_HEALTH_WAIT_SECONDS:-5}"
 

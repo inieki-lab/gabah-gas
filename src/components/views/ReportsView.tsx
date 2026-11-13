@@ -48,38 +48,57 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
-  const divisionOptions = useMemo(
-    () => Array.from(new Set(safeAssets.map(a => a.owner_division || 'Umum'))).sort(),
-    [safeAssets]
-  );
+  const divisionOptions = useMemo(() => {
+    const legacyCodes = new Set(['SC', 'PIBC', 'Supply Chain']);
+    const activeOwners = new Set<string>();
+    const allOwners = [
+      ...safeAssets.map(a => a.owner_division),
+      ...safeLoans.map(l => l.owner_division),
+      ...safeMaintenances.map(m => m.owner_division),
+      ...safeTickets.map(t => t.category),
+    ].filter((value): value is string => Boolean(value));
+    allOwners.forEach(owner => { if (!legacyCodes.has(owner)) activeOwners.add(owner); });
+    const hasLegacy = allOwners.some(owner => legacyCodes.has(owner));
+    return [...Array.from(activeOwners).sort(), ...(hasLegacy ? ['LEGACY'] : [])];
+  }, [safeAssets, safeLoans, safeMaintenances, safeTickets]);
   const departmentOptions = useMemo(
     () => Array.from(new Set(safeAssets.map(a => a.assigned_to?.department).filter(Boolean) as string[])).sort(),
     [safeAssets]
   );
 
+  const isLegacyOwner = (owner?: string | null) => ['SC', 'PIBC', 'Supply Chain'].includes(String(owner || ''));
+  const matchesOwnerFilter = (owner?: string | null) =>
+    divisionFilter === 'all'
+      || (divisionFilter === 'LEGACY' ? isLegacyOwner(owner) : (owner || 'Umum') === divisionFilter);
+
   const filteredAssets = useMemo(() => safeAssets.filter(a =>
-    (divisionFilter === 'all' || (a.owner_division || 'Umum') === divisionFilter) &&
+    matchesOwnerFilter(a.owner_division) &&
     (departmentFilter === 'all' || (a.assigned_to?.department || '') === departmentFilter)
   ), [safeAssets, divisionFilter, departmentFilter]);
 
   const filteredLoans = useMemo(() => safeLoans.filter(l =>
-    (divisionFilter === 'all' || (l.owner_division || l.asset_number?.split('-')[0]) === divisionFilter) &&
+    matchesOwnerFilter(l.owner_division || l.asset_number?.split('-')[0]) &&
     (departmentFilter === 'all' || (l.borrower_department || '') === departmentFilter)
   ), [safeLoans, divisionFilter, departmentFilter]);
 
   const filteredTickets = useMemo(() => safeTickets.filter(t =>
-    (divisionFilter === 'all' || t.category === divisionFilter) &&
+    (divisionFilter === 'all' || (divisionFilter === 'LEGACY' ? isLegacyOwner(t.category) : t.category === divisionFilter)) &&
     (departmentFilter === 'all' || (t.reporter_department || '') === departmentFilter)
   ), [safeTickets, divisionFilter, departmentFilter]);
 
   const filteredMaintenances = useMemo(() => safeMaintenances.filter(m =>
-    divisionFilter === 'all' || (m.owner_division || 'Umum') === divisionFilter
+    matchesOwnerFilter(m.owner_division)
   ), [safeMaintenances, divisionFilter]);
 
   const isFilterActive = divisionFilter !== 'all' || departmentFilter !== 'all';
 
   const resolvedTickets = filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed');
-  const slaOnTimePct = 96.8;
+  // Report only SLA outcomes explicitly calculated by the backend. Never
+  // substitute a sample percentage when the source data is incomplete.
+  const slaMeasuredTickets = resolvedTickets.filter(ticket => typeof ticket.is_over_sla === 'boolean');
+  const slaOnTimePct = slaMeasuredTickets.length > 0
+    ? Math.round((slaMeasuredTickets.filter(ticket => ticket.is_over_sla === false).length / slaMeasuredTickets.length) * 1000) / 10
+    : null;
 
   const totalAssetValue = filteredAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
@@ -88,16 +107,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
   const totalAssetCount = filteredAssets.length || 1;
 
-  // Breakdown per Division (IT, GA, SC, PIBC) — mengikuti filter aktif
+  // Breakdown per owner aktif (IT/GA), record owner legacy, dan lokasi fisik — mengikuti filter aktif
   const itAssets = filteredAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
   const gaAssets = filteredAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
-  const scAssets = filteredAssets.filter(a => a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('SC-'));
-  const pibcAssets = filteredAssets.filter(a => a.owner_division === 'PIBC' || a.asset_number?.startsWith('PIBC-'));
+  const legacyOwnerAssets = filteredAssets.filter(a => ['SC', 'PIBC', 'Supply Chain'].includes(String(a.owner_division || '')));
 
   const itValue = itAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
   const gaValue = gaAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
-  const scValue = scAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
-  const pibcValue = pibcAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
+  const legacyOwnerValue = legacyOwnerAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
+  const locationBreakdown = Array.from(filteredAssets.reduce((map, asset) => {
+    const location = String(asset.location || '').trim() || 'Lokasi belum diisi';
+    map.set(location, (map.get(location) || 0) + 1);
+    return map;
+  }, new Map<string, number>()).entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
   // Breakdown per 9 Jenis Aset Tetap
   const taxonomyGroups = [
@@ -209,11 +231,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
             value={divisionFilter}
             onChange={e => setDivisionFilter(e.target.value)}
             className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-semibold focus:outline-none focus:border-emerald-500"
-            title="Filter semua laporan berdasarkan divisi pemilik aset / kategori tiket"
+            title="Filter berdasarkan owner aset atau kategori layanan; nilai legacy ditampilkan terpisah"
           >
-            <option value="all">Semua Divisi ({divisionOptions.length})</option>
+            <option value="all">Semua Owner/Layanan ({divisionOptions.length})</option>
             {divisionOptions.map(d => (
-              <option key={d} value={d}>{d}</option>
+              <option key={d} value={d}>{d === 'LEGACY' ? 'Legacy SC/PIBC (review)' : d}</option>
             ))}
           </select>
           <select
@@ -251,16 +273,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Tingkat Kepatuhan SLA</div>
-          <div className="text-3xl font-black text-emerald-700 mt-2">{slaOnTimePct}%</div>
+          <div className="text-3xl font-black text-emerald-700 mt-2">
+            {slaOnTimePct === null ? '—' : `${slaOnTimePct}%`}
+          </div>
           <div className="text-xs text-slate-600 mt-1 flex items-center gap-1 font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Target KPI ≥ 95% Terpenuhi
+            {slaOnTimePct === null
+              ? 'Belum ada data SLA penyelesaian yang terukur'
+              : slaOnTimePct >= 95
+                ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Target KPI ≥ 95% terpenuhi</>
+                : <><AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Di bawah target KPI ≥ 95%</>}
           </div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Rata-Rata Respon Helpdesk</div>
-          <div className="text-3xl font-black text-slate-900 mt-2">18 Menit</div>
-          <div className="text-xs text-emerald-700 font-medium mt-1">First Response Time</div>
+          <div className="text-3xl font-black text-slate-900 mt-2">—</div>
+          <div className="text-xs text-slate-600 font-medium mt-1">Belum tersedia: timestamp respons pertama belum tercatat</div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
@@ -351,7 +379,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Total Jadwal Pemeliharaan</div>
             <div className="text-2xl font-black text-slate-900">{safeMaintenances.length} Jadwal</div>
-            <div className="text-[10px] text-slate-500">Mencakup IT, GA, Supply Chain, &amp; PIBC</div>
+            <div className="text-[10px] text-slate-500">Jadwal dikelompokkan berdasarkan owner aset dan lokasi fisik</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
@@ -373,17 +401,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       {/* Visual Chart Breakdown Simulation */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Division Distribution */}
+        {/* Owner and physical-location distribution */}
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
           <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
             <PieChart className="w-4 h-4 text-emerald-600" />
-            Distribusi Aset Berdasarkan Devisi Korporat
+            Distribusi Owner Aset dan Lokasi Fisik
           </h3>
 
           <div className="space-y-3 text-xs">
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi IT (Hardware &amp; Software)</span>
+                <span>Owner IT</span>
                 <span className="font-bold text-slate-900">{itAssets.length} Unit ({Math.round((itAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -394,7 +422,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi GA (General Affair &amp; Fasilitas)</span>
+                <span>Owner GA</span>
                 <span className="font-bold text-slate-900">{gaAssets.length} Unit ({Math.round((gaAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -403,30 +431,32 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
               <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(gaValue)}</div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi SC (Supply Chain &amp; Gudang Beras)</span>
-                <span className="font-bold text-slate-900">{scAssets.length} Unit ({Math.round((scAssets.length / totalAssetCount) * 100)}%)</span>
+            {legacyOwnerAssets.length > 0 && (
+              <div>
+                <div className="flex justify-between text-slate-700 mb-1 font-medium">
+                  <span>Record owner legacy (perlu review)</span>
+                  <span className="font-bold text-slate-900">{legacyOwnerAssets.length} Unit ({Math.round((legacyOwnerAssets.length / totalAssetCount) * 100)}%)</span>
+                </div>
+                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                  <div className="bg-slate-500 h-2.5 rounded-full" style={{ width: `${(legacyOwnerAssets.length / totalAssetCount) * 100}%` }} />
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(legacyOwnerValue)}. Nilai historis dipertahankan; bukan owner/lokasi aktif.</div>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-600 h-2.5 rounded-full" style={{ width: `${(scAssets.length / totalAssetCount) * 100}%` }} />
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(scValue)}</div>
-            </div>
+            )}
+          </div>
 
-            <div>
-              <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi PIBC (Pasar Induk Beras Cipinang)</span>
-                <span className="font-bold text-slate-900">{pibcAssets.length} Unit ({Math.round((pibcAssets.length / totalAssetCount) * 100)}%)</span>
+          <div className="border-t border-slate-200 pt-3 space-y-2">
+            <div className="text-xs font-bold text-slate-700">Distribusi berdasarkan lokasi fisik aset</div>
+            {locationBreakdown.length === 0 ? (
+              <p className="text-[11px] text-slate-500">Belum ada data lokasi fisik aset.</p>
+            ) : locationBreakdown.map(([location, count]) => (
+              <div key={location} className="flex items-center justify-between gap-3 text-xs">
+                <span className="text-slate-600 truncate">{location}</span>
+                <span className="font-bold text-slate-900 shrink-0">{count} unit</span>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${(pibcAssets.length / totalAssetCount) * 100}%` }} />
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(pibcValue)}</div>
-            </div>
+            ))}
           </div>
         </div>
-
         {/* SLA Breakdown by Priority */}
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
           <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
@@ -522,7 +552,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
                       </span>
                     ) : group.code === 'MSN' ? (
                       <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200 text-[10px]">
-                        SC / PIBC (Pabrik &amp; Timbangan)
+                        Owner legacy — perlu review per aset; lokasi tidak menentukan owner
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold border border-slate-200 text-[10px]">

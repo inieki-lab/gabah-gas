@@ -54,11 +54,11 @@ Aplikasi tidak dinyatakan production-ready sebelum:
 | PREV-003 | Karyawan PIBC | Ulangi skenario Karyawan dari lokasi PIBC | Lokasi kerja PIBC tidak otomatis memberi role/owner aset PIBC atau akses kelola lintas domain | NOT RUN |
 | PREV-004 | GA | Buka aset GA di HO dan lokasi cabang; coba aset IT | GA dapat mengelola sesuai permission + owner scope; aset IT tidak bisa diubah tanpa otorisasi | NOT RUN |
 | PREV-005 | IT | Buka aset IT di semua lokasi; coba aset GA | IT tetap mengelola domain aset IT lintas lokasi; tidak otomatis mengelola aset GA | NOT RUN |
-| PREV-006 | Supply Chain / RPC-SC | Buka data sesuai scope; coba akses kelola aset IT/GA | Nama unit/lokasi tidak otomatis menjadi role aplikasi atau owner domain | NOT RUN |
+| PREV-006 | RPC | Buka data sesuai scope; coba akses kelola aset IT/GA | Nama unit/lokasi tidak otomatis menjadi role aplikasi atau owner domain | NOT RUN |
 | PREV-007 | Auditor | Buka dashboard, aset, kontrak, tiket, audit log; coba aksi tulis | Data hanya sesuai scope Auditor; semua aksi tulis ditolak | NOT RUN |
 | PREV-008 | Role custom create-only Knowledge | Buka Knowledge Base dan coba buat/edit artikel | Tombol buat tampil; tombol edit tidak tampil; API tetap menolak update tanpa permission | NOT RUN |
 | PREV-009 | Role custom update-only Knowledge | Buka artikel yang dapat diakses | Tombol edit tampil; tombol buat tidak tampil; API tetap menolak create tanpa permission | NOT RUN |
-| PREV-010 | Perpindahan aset | Pindahkan aset uji dari lokasi yang dinonaktifkan ke RPC/SC | Riwayat perpindahan tercatat; owner/pengelola aset tidak berubah hanya karena lokasi berubah | NOT RUN |
+| PREV-010 | Perpindahan aset | Pindahkan aset uji dari lokasi yang dinonaktifkan ke RPC | Riwayat perpindahan tercatat; owner/pengelola aset tidak berubah hanya karena lokasi berubah | NOT RUN |
 | PREV-011 | Helpdesk | Buat tiket sebagai Karyawan; proses sebagai petugas yang diberi permission | Pelapor melihat tiketnya; petugas melihat antrean sesuai scope; status dan audit trail konsisten | NOT RUN |
 | PREV-012 | Sesi & refresh | Cabut permission/role dari akun uji, logout-login kembali, ulangi akses UI dan API | Akses lama tidak bertahan; menu, tombol, dan API mengikuti assignment terbaru | NOT RUN |
 

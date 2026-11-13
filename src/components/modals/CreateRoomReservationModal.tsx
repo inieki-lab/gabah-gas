@@ -34,6 +34,8 @@ import {
 } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
 import { GabahService } from '../../services/gabahService';
+import { hasPermission, hasRole } from '../../utils/access';
+import { formatJakartaDate } from '../../utils/datetime';
 
 interface CreateRoomReservationModalProps {
   isOpen: boolean;
@@ -70,7 +72,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   onSuccess,
   onSubmit,
 }) => {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = formatJakartaDate();
 
   // Dynamic Master Data
   const [meetingTypes, setMeetingTypes] = useState<MeetingTypeItem[]>(DEFAULT_TYPES);
@@ -112,14 +114,12 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [serverConflictData, setServerConflictData] = useState<any | null>(null);
 
-  // Privileged Role Check
-  const canOverride = useMemo(() => {
-    return (
-      currentUser.role === 'Sekretaris Direksi' ||
-      currentUser.role === 'GA' ||
-      currentUser.role === 'Admin GABAH'
-    );
-  }, [currentUser.role]);
+  // Override is a distinct capability, not an automatic GA/Sekdir role grant.
+  const canOverride = useMemo(
+    () => hasPermission(currentUser, 'room_reservations.override_priority', ['Admin GABAH', 'Sekretaris Direksi']),
+    [currentUser.permission_keys, currentUser.role, currentUser.is_superadmin],
+  );
+  const isSekdir = hasRole(currentUser, 'sekretaris_direksi', ['Sekretaris Direksi']);
 
   // Load master types and facilities
   useEffect(() => {
@@ -136,14 +136,14 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
 
   // Auto set priority based on meeting type & user role
   useEffect(() => {
-    if (currentUser.role === 'Sekretaris Direksi' || meetingType === 'direksi') {
+    if (isSekdir || meetingType === 'direksi') {
       setPriority('high');
     }
     const matchedType = meetingTypes.find(t => t.code === meetingType);
-    if (matchedType && matchedType.priority_level && currentUser.role !== 'Sekretaris Direksi') {
+    if (matchedType && matchedType.priority_level && !isSekdir) {
       setPriority(matchedType.priority_level);
     }
-  }, [meetingType, meetingTypes, currentUser.role]);
+  }, [meetingType, meetingTypes, isSekdir]);
 
   // Sync attendees pax with consumption pax
   useEffect(() => {

@@ -9,6 +9,8 @@ import { AssetNumberingEngine } from './numbering';
 import { normalizeAssetManagingUnits } from './managing-unit';
 import { normalizeAssetAssetLocations } from './asset-location';
 import { normalizeCategoryMaster } from './taxonomy';
+import { clearOrphanedTicketAssetLinks } from './persistence-integrity';
+import { markPersistencePending, markPersistenceCommitted } from './requestContext';
 
 /**
  * SECURITY (CR-02): initial canonical-account passwords are provisioned from
@@ -30,6 +32,8 @@ export function provisionCanonicalUserPasswords(): void {
   // roles without managing credentials. Sessions are not revoked here; users
   // simply re-login with the test password.
   const testPassword = process.env.NODE_ENV === 'production' ? undefined : process.env.GABAH_TEST_PASSWORD;
+  // Optional per-account credential for the ME dummy UAT user; honored only when the dummy account is explicitly enabled.
+  const meDummyPassword = process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true' ? process.env.GABAH_ME_DUMMY_PASSWORD : undefined;
 
   let devNote: string[] | null = devFallback ? [] : null;
   let devFile: string | null = devFallback ? path.join(DATA_DIR, 'initial_credentials_dev.txt') : null;
@@ -39,7 +43,9 @@ export function provisionCanonicalUserPasswords(): void {
     if (!user) continue;
 
     let plain: string;
-    if (testPassword) {
+    if (cu.id === 'USR-ME-ADMIN-001' && meDummyPassword) {
+      plain = meDummyPassword;
+    } else if (testPassword) {
       plain = testPassword;
     } else {
       // Never clobber an existing credential (e.g. an operator already changed it)
@@ -173,7 +179,7 @@ function hydrateDbFromState(state: any): void {
   const existingUsers: any[] = Array.isArray(state.users) ? state.users : [];
   const mergedUsers: any[] = [...existingUsers];
 
-  // Guarantee all 9 canonical enterprise users are always present in the datastore.
+  // Guarantee all canonical enterprise users are always present in the datastore.
   // SECURITY (CR-02): canonical users are merged WITHOUT password material —
   // provisioning happens in provisionCanonicalUserPasswords() from env secrets.
   for (const cu of CANONICAL_USERS) {
@@ -187,8 +193,17 @@ function hydrateDbFromState(state: any): void {
       // Sync canonical role and label if needed
       mergedUsers[foundIndex].role = cu.role;
       mergedUsers[foundIndex].role_label = cu.role_label || mergedUsers[foundIndex].role_label;
+      if (cu.job_level_code) mergedUsers[foundIndex].job_level_code = cu.job_level_code;
+      if (cu.unit_id) mergedUsers[foundIndex].unit_id = cu.unit_id;
+      if (cu.office_location_id) mergedUsers[foundIndex].office_location_id = cu.office_location_id;
       if (typeof mergedUsers[foundIndex].authVersion !== 'number') mergedUsers[foundIndex].authVersion = 1;
     }
+  }
+
+  // Remove any stale persisted copy when the explicit dummy-account opt-in is off.
+  if (process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') {
+    const dummyIndex = mergedUsers.findIndex(u => u.id === 'USR-ME-ADMIN-001');
+    if (dummyIndex !== -1) mergedUsers.splice(dummyIndex, 1);
   }
 
   // SECURITY (CR-02): never backfill missing password hashes from hardcoded
@@ -254,6 +269,7 @@ function hydrateDbFromState(state: any): void {
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
     { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
     { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
+    { id: 'UNIT-PIBC-ME', name: 'Tim Perawatan (ME)', division_code: 'PIBC', is_active: true },
     { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
   ];
@@ -266,7 +282,7 @@ function hydrateDbFromState(state: any): void {
   const DEFAULT_OFFICE_LOCATIONS = [
     { id: 'OFF-KP', name: 'HO', is_active: true },
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
-    { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC', is_active: true },
     { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
     { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
   ];
@@ -431,10 +447,11 @@ function ensureCanonicalAdministrator(): void {
   }
 }
 
-async function backfillNormalizedTables(): Promise<void> {
-  const client = await pool.connect();
+async function backfillNormalizedTables(sharedClient?: PoolClient): Promise<void> {
+  const ownsClient = !sharedClient;
+  const client = sharedClient || await pool.connect();
   try {
-    await client.query('BEGIN');
+    if (ownsClient) await client.query('BEGIN');
     // Division codes are the extensible owner-domain master used by assets,
     // categories, loans, and module data scopes. Sync them before any FK-backed
     // user/category/asset rows so a newly configured owner works in PostgreSQL.
@@ -448,15 +465,21 @@ async function backfillNormalizedTables(): Promise<void> {
     }
     for (const u of db.users) {
       await client.query(
-        `INSERT INTO users (id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,updated_at)
-         VALUES ($1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),$6,$7,$8,$9,$10,NOW())
+        `INSERT INTO users (id,name,email,role,division_id,department_id,job_level_code,unit_id,office_location_id,phone,avatar,is_active,password_hash,password_salt,updated_at)
+         VALUES ($1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),
+           (SELECT id FROM departments WHERE code=$6),$7,$8,$9,$10,$11,$12,$13,$14,NOW())
          ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,email=EXCLUDED.email,role=EXCLUDED.role,
-           division_id=EXCLUDED.division_id,phone=EXCLUDED.phone,avatar=EXCLUDED.avatar,is_active=EXCLUDED.is_active,
+           division_id=EXCLUDED.division_id,department_id=EXCLUDED.department_id,
+           job_level_code=EXCLUDED.job_level_code,unit_id=EXCLUDED.unit_id,office_location_id=EXCLUDED.office_location_id,
+           phone=EXCLUDED.phone,avatar=EXCLUDED.avatar,is_active=EXCLUDED.is_active,
            password_hash=COALESCE(EXCLUDED.password_hash, users.password_hash),
            password_salt=COALESCE(EXCLUDED.password_salt, users.password_salt),
            updated_at=NOW()`,
-        [u.id,u.name,u.email,u.role,u.division,u.phone || null,u.avatar || null,u.is_active,u.password_hash || null,u.password_salt || null],
+        [u.id,u.name,u.email,u.role,u.division,u.department || null,u.job_level_code || null,u.unit_id || null,u.office_location_id || null,u.phone || null,u.avatar || null,u.is_active,u.password_hash || null,u.password_salt || null],
       );
+    }
+    if (process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') {
+      await client.query(`UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = 'USR-ME-ADMIN-001'`);
     }
     // SECURITY (CR-03): db.sessions are deliberately NOT backfilled into
     // user_sessions — bearer tokens must never be restored to a durable store
@@ -532,13 +555,13 @@ async function backfillNormalizedTables(): Promise<void> {
       if (!reporterExists) continue;
       const agentId = (t.assigned_agent_id && db.users.some(u => u.id === t.assigned_agent_id)) ? t.assigned_agent_id : null;
       await client.query(
-        `INSERT INTO tickets (id,ticket_number,ticket_code,title,description,category,priority,status,reporter_id,assigned_agent_id,related_asset_id,sla_hours,sla_resolution_deadline,resolved_at,resolution_notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,assigned_agent_id=EXCLUDED.assigned_agent_id,resolved_at=EXCLUDED.resolved_at,resolution_notes=EXCLUDED.resolution_notes,updated_at=EXCLUDED.updated_at`,
-        [t.id,t.ticket_number,t.ticket_code,t.title,t.description,t.category,t.priority,t.status,t.reporter_id,agentId,t.related_asset_id || null,t.sla_hours,t.sla_resolution_deadline,t.resolved_at || null,t.resolution_notes || null,t.created_at,t.updated_at],
+        `INSERT INTO tickets (id,ticket_number,ticket_code,title,description,category,priority,status,reporter_id,assigned_unit_id,assigned_agent_id,related_asset_id,sla_hours,sla_resolution_deadline,resolved_at,resolution_notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,assigned_unit_id=EXCLUDED.assigned_unit_id,assigned_agent_id=EXCLUDED.assigned_agent_id,resolved_at=EXCLUDED.resolved_at,resolution_notes=EXCLUDED.resolution_notes,updated_at=EXCLUDED.updated_at`,
+        [t.id,t.ticket_number,t.ticket_code,t.title,t.description,t.category,t.priority,t.status,t.reporter_id,t.assigned_unit_id || null,agentId,t.related_asset_id || null,t.sla_hours,t.sla_resolution_deadline,t.resolved_at || null,t.resolution_notes || null,t.created_at,t.updated_at],
       );
     }
     for (const n of db.notifications) await client.query(
-      `INSERT INTO notifications (id,recipient_user_id,recipient_role,recipient_division_id,title,message,severity,category,link_type,link_id,is_read,created_at) VALUES ($1,$2,$3,(SELECT id FROM divisions WHERE code=$4),$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO UPDATE SET is_read=EXCLUDED.is_read`,
-      [n.id,n.recipient_user_id || null,n.recipient_role || null,n.recipient_division || null,n.title,n.message,n.severity,n.category,n.link_type || null,n.link_id || null,n.is_read,n.created_at],
+      `INSERT INTO notifications (id,recipient_user_id,recipient_role,recipient_division_id,recipient_unit_id,title,message,severity,category,link_type,link_id,is_read,created_at) VALUES ($1,$2,$3,(SELECT id FROM divisions WHERE code=$4),$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT (id) DO UPDATE SET is_read=EXCLUDED.is_read`,
+      [n.id,n.recipient_user_id || null,n.recipient_role || null,n.recipient_division || null,n.recipient_unit_id || null,n.title,n.message,n.severity,n.category,n.link_type || null,n.link_id || null,n.is_read,n.created_at],
     );
     // Contract Management (separate domain) — authoritative sync into PostgreSQL
     for (const c of (db as any).contracts || []) {
@@ -573,42 +596,60 @@ async function backfillNormalizedTables(): Promise<void> {
       }
     }
     for (const log of db.auditLogs) {
-      const user = db.users.find(u => u.name === log.user_name);
+      // Never infer an actor ID from a display name: duplicate names are valid.
+      // Legacy rows without a stable ID keep their actor-name snapshot and NULL user_id.
+      const userId = log.user_id || null;
       await client.query(
-        `INSERT INTO audit_logs (id,action,entity,entity_id,user_id,user_name,user_role,details,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`,
-        [log.id,log.action,log.entity,log.entity_id || null,user?.id || null,log.user_name,log.user_role,log.details,log.timestamp],
+        `INSERT INTO audit_logs (id,action,entity,entity_id,user_id,user_name,user_role,details,ip_address,timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO NOTHING`,
+        [log.id,log.action,log.entity,log.entity_id || null,userId || null,log.user_name,log.user_role,log.details,log.ip_address || null,log.timestamp],
       );
     }
-    await client.query('COMMIT');
-  } catch (error) { await client.query('ROLLBACK'); throw error; }
-  finally { client.release(); }
+    if (ownsClient) await client.query('COMMIT');
+  } catch (error) {
+    if (ownsClient) await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    if (ownsClient) client.release();
+  }
 }
 
 async function persistPostgresState(): Promise<void> {
-  const payload = createPayload();
-  await pool.query(
-    `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
-    [JSON.stringify(payload)],
-  );
-  await backfillNormalizedTables();
-  await backfillDynamicRbacUserRoles();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const payload = createPayload();
+    await client.query(
+      `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
+      [JSON.stringify(payload)],
+    );
+    await backfillNormalizedTables(client);
+    await backfillDynamicRbacUserRoles(client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
-async function backfillDynamicRbacUserRoles(): Promise<void> {
+async function backfillDynamicRbacUserRoles(sharedClient?: PoolClient): Promise<void> {
+  const execute = (sql: string, params: unknown[] = []) =>
+    sharedClient ? sharedClient.query(sql, params as any[]) : pool.query(sql, params as any[]);
   // Do not wipe assignments if the in-memory user store is unexpectedly empty.
   const userIds = db.users.map(user => String(user.id));
   if (userIds.length === 0) return;
 
   // Remove assignments for deleted application users. This prevents a deleted
   // Superadmin's role assignment from being inherited if an ID is reused later.
-  await pool.query(
+  await execute(
     'DELETE FROM gabah_user_roles WHERE NOT (user_id = ANY($1::text[]))',
     [userIds],
   );
 
   // Reconcile only the primary role mirror from users.role. Additional dynamic
   // role assignments are preserved and remain additive.
-  await pool.query(
+  await execute(
     "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
     "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
     "AND ur.is_primary = TRUE " +
@@ -621,11 +662,11 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
   );
   // The users.role field is the primary application role; additional roles
   // remain assigned but are never marked primary by this compatibility bridge.
-  await pool.query(
+  await execute(
     'UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = ANY($1::text[])',
     [userIds],
   );
-  await pool.query(
+  await execute(
     "INSERT INTO gabah_user_roles (user_id, role_id, is_primary) " +
     "SELECT u.id::text, r.id, TRUE FROM users u " +
     "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
@@ -637,6 +678,47 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
     "ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE",
     [userIds],
   );
+
+  // This canonical dummy account is provisioned only for ME queue UAT.
+  // Its base employee role remains primary; Admin Tiket ME is an additive,
+  // least-privilege role scoped to UNIT-PIBC-ME.
+  await execute(
+    `INSERT INTO gabah_user_roles (user_id, role_id, is_primary)
+     SELECT u.id::text, r.id, FALSE
+     FROM users u
+     JOIN gabah_roles r ON r.role_key = 'admin_tiket_me' AND r.is_active = TRUE
+     WHERE u.id = 'USR-ME-ADMIN-001'
+     ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = FALSE`,
+  );
+}
+
+/**
+ * The normalized audit_logs table is authoritative in PostgreSQL mode.
+ * A non-empty table wins over the legacy JSON snapshot so edits to the
+ * gabah_state payload cannot rewrite historical audit records. On a fresh
+ * database, legacy snapshot rows are retained for one-time backfill.
+ */
+async function hydrateAuditLogsFromPostgres(): Promise<boolean> {
+  const result = await pool.query(
+    'SELECT id,action,entity,entity_id,user_id,user_name,user_role,details,ip_address,timestamp FROM audit_logs ORDER BY timestamp DESC, id DESC'
+  );
+  if (result.rows.length === 0) return false;
+
+  db.auditLogs = result.rows.map((row: any) => ({
+    id: String(row.id),
+    action: String(row.action),
+    entity: String(row.entity),
+    entity_id: row.entity_id == null ? undefined : String(row.entity_id),
+    user_id: row.user_id == null ? undefined : String(row.user_id),
+    user_name: String(row.user_name),
+    user_role: String(row.user_role),
+    details: String(row.details),
+    ip_address: row.ip_address == null ? undefined : String(row.ip_address),
+    timestamp: row.timestamp instanceof Date
+      ? row.timestamp.toISOString()
+      : new Date(row.timestamp).toISOString(),
+  }));
+  return true;
 }
 
 export async function initializePersistence(): Promise<void> {
@@ -677,9 +759,23 @@ export async function initializePersistence(): Promise<void> {
           hydrateDbFromState(state);
         }
       }
+      // Prefer immutable normalized audit rows whenever they already exist.
+      // Empty audit tables retain legacy snapshot rows for one-time backfill.
+      await hydrateAuditLogsFromPostgres();
       if (!db.assets || db.assets.length === 0) {
         seedInitialData();
       }
+
+      // Legacy snapshots can retain ticket -> asset identifiers that no longer
+      // exist in the canonical asset collection. Clear only the FK field;
+      // preserve the ticket and its descriptive related_asset_* snapshot.
+      const detachedTicketAssetLinks = clearOrphanedTicketAssetLinks(db.tickets, db.assets);
+      for (const link of detachedTicketAssetLinks) {
+        console.warn(
+          `[GABAH Persistence] Ticket ${link.ticketId} references missing asset ${link.assetId}; relational link cleared, ticket description preserved.`,
+        );
+      }
+
       // T2B-1: backfill managing_unit_id sebelum state di-persist (baik dari
       // blob hasil hydrate maupun seed baru); idempoten & ownership-based.
       backfillManagingUnits('postgresql');
@@ -688,7 +784,7 @@ export async function initializePersistence(): Promise<void> {
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
       await persistPostgresState();
-      await backfillNormalizedTables();
+      await hydrateAuditLogsFromPostgres();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
@@ -733,14 +829,17 @@ export async function initializePersistence(): Promise<void> {
 }
 
 export function persistDataStore(): Promise<void> {
+  markPersistencePending();
   const payload = createPayload();
-  // Always persist immediately to local storage file
-  saveStateToFile(payload);
 
-  // PostgreSQL is authoritative whenever it is active. Do not swallow a
-  // failed database write: callers must not return a success response when
-  // the authoritative store did not persist the change.
-  if (!isPostgresAvailable) return persistQueue;
+  // File-store mode writes directly. When PostgreSQL is active, do NOT write
+  // the JSON mirror until the authoritative PostgreSQL transaction commits;
+  // otherwise a failed database write could leave an uncommitted snapshot on disk.
+  if (!isPostgresAvailable) {
+    saveStateToFile(payload);
+    markPersistenceCommitted();
+    return persistQueue;
+  }
 
   const write = persistQueue.then(async () => {
     if (!isPostgresAvailable) {
@@ -748,6 +847,10 @@ export function persistDataStore(): Promise<void> {
     }
     try {
       await persistPostgresState();
+      // New audit records are inserted append-only in the same transaction;
+      // no extra read is needed on every request after the startup hydration.
+      saveStateToFile(createPayload());
+      markPersistenceCommitted();
     } catch (error: any) {
       // In development, preserve the historical file-store fallback, but
       // reject THIS write so the API caller can report the persistence failure.

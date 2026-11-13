@@ -1,9 +1,9 @@
 # GABAH — Production Readiness Gates
 
 **Owner:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Working integration branch:** fix/role-based-navigation (PR #18)  
+**Working integration branch:** `fix/user-menu-location-rbac-audit` (PR #36)  
 **Status:** NO-GO / stabilization in progress  
-**Last reviewed:** 8 November 2026
+**Last reviewed:** 10 November 2026
 
 This checklist is the release control record. A green build is necessary but is not proof of production readiness. Every gate needs a timestamp, commit SHA, actual result, evidence, and reviewer.
 
@@ -48,7 +48,7 @@ This checklist is the release control record. A green build is necessary but is 
 - [x] Permission and scope are evaluated independently per module (Dynamic RBAC and asset scope suites, CI #589).
 - [x] Unknown/inactive roles and missing/invalid scopes fail closed (CI #589).
 - [x] Jabatan, unit, office location, asset location, owner domain, and custodian remain separate (org-model CI #589).
-- [x] Current active office locations are exactly HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan; Subang is inactive (org-model CI #589).
+- [x] Current active office locations are exactly HO, PIBC, RPC, Pangsub, and Kantor Perawatan; Subang is inactive (org-model CI #589).
 - [x] Future locations and owner domains can be added from master data without code changes (org/owner-scope CI #589).
 - [ ] GA's broad owner scope (all except IT) remains an administrator-configurable policy, not an automatic grant.
 - [x] GA's IT Laptop/PC visibility is read-only and controlled by assets.read.it_workstations (CI #589).
@@ -89,7 +89,8 @@ Run docs/testing/UAT.md in a browser against PostgreSQL using disposable test da
 | G2 | a1cd3d4ce082c547736f67a863d2981abb6dfcaa | PARTIAL PASS | CI #589: Dynamic RBAC 63/63, asset scope 37/37, P0 37/37, maintenance 33/33, Auditor additional-role denial/read, primary/additional role UI, org model PASS; live HR mapping and full endpoint review remain | — | 8 Nov 2026 |
 | G3 | — | NOT VERIFIED | Manual browser UAT required | Business owners | — |
 | G4 | — | NOT STARTED | Staging and production controls | Infrastructure owner | — |
+| PR #36 current head | `479c9ad1bf714e1e4b1171036388959c3f76c65e` | CI PASS | [GitHub Actions run 42822409555](https://github.com/inieki-lab/gabah-gas/actions/runs/42822409555): verify SUCCESS — lint, Dynamic RBAC foundation (including active-user/active-role Superadmin guard), P0 RBAC regression, migration safety, navigation/dashboard scope, production Docker runtime smoke, PostgreSQL 17 fresh-database/persistence integration, live HTTP security, and module authorization suites | — | 10 Nov 2026 |
 
 ## Current release decision
 
-**NO-GO.** PostgreSQL fresh-boot and persistence integration has been exercised in CI, but the complete current-head CI must pass. Manual browser UAT, production backup/restore rehearsal, staging deployment, TLS, monitoring, and business-owner sign-off remain outstanding.
+**NO-GO.** PR #36 current-head CI passed at commit `479c9ad1bf714e1e4b1171036388959c3f76c65e` (verify job success, including the active-user/active-role Superadmin assignment guard, Docker runtime smoke, and PostgreSQL 17 fresh-database/persistence integration). This is not production approval. Manual browser/API UAT, formal GA helpdesk operator assignment, legacy production-database upgrade rehearsal, production backup/restore rehearsal, staging deployment, TLS, monitoring, and business-owner sign-off remain outstanding.

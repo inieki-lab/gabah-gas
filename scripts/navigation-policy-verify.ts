@@ -48,10 +48,12 @@ assert.ok(isNavTabAllowedForRole('Supply Chain', 'dashboard', ['dashboard.read']
 assert.ok(isNavTabAllowedForRole('Supply Chain', 'my_assets', ['assets.read']));
 assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets', ['assets.read']), false);
 assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance', ['dashboard.read', 'assets.read']), false);
-assert.ok(isNavTabAllowedForRole('IT', 'assets', ['assets.update']));
-assert.ok(isNavTabAllowedForRole('GA', 'assets', ['assets.update']));
+assert.ok(isNavTabAllowedForRole('IT', 'assets', ['assets.catalog.read']));
+assert.ok(isNavTabAllowedForRole('GA', 'assets', ['assets.catalog.read']));
+assert.equal(isNavTabAllowedForRole('IT', 'assets', ['assets.update']), false);
 assert.equal(isNavTabAllowedForRole('GA', 'licenses', ['dashboard.read', 'assets.update']), false);
 assert.ok(isNavTabAllowedForRole('Auditor', 'assets', ['assets.audit.read']));
+assert.equal(isNavTabAllowedForRole('Karyawan', 'meeting_rooms', ['room_reservations.create']), false);
 assert.ok(isNavTabAllowedForRole('Humas', 'meeting_rooms', ['room_reservations.read']));
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'reports', ['reports.read']));
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));

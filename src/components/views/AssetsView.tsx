@@ -29,6 +29,8 @@ import {
   LifeBuoy
 } from 'lucide-react';
 import { Asset, AssetCategoryType, AssetStatus, UserProfile } from '../../types';
+import { isAuditor } from '../../utils/access';
+import { matchesAssetCategoryFilter } from '../../utils/assetCategoryFilter';
 import { GabahService, formatRupiah, formatDate, exportAssetsToCsv } from '../../services/gabahService';
 import { BatchQRPrintModal } from '../modals/BatchQRPrintModal';
 
@@ -73,52 +75,16 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
       // Division filter
       if (selectedDivision !== 'ALL') {
         const div = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : '');
-        if (selectedDivision === 'SC') {
-          if (div !== 'SC' && div !== 'Supply Chain') return false;
-        } else if (selectedDivision === 'PIBC') {
-          if (div !== 'PIBC') return false;
-        } else if (selectedDivision === 'IT') {
-          if (div !== 'IT') return false;
-        } else if (selectedDivision === 'GA') {
-          if (div !== 'GA') return false;
+        if (selectedDivision === 'LEGACY') {
+          if (!['SC', 'PIBC', 'Supply Chain'].includes(String(div))) return false;
+        } else if (selectedDivision === 'IT' || selectedDivision === 'GA') {
+          if (div !== selectedDivision) return false;
         }
       }
 
-      // Taxonomy / Category filter
-      if (selectedCategory !== 'ALL') {
-        const code = asset.category_code || '';
-        const num = asset.asset_number || '';
-        const name = (asset.name || '').toLowerCase();
-        
-        if (selectedCategory === 'IT-H') {
-          const isITH = code === 'IT-H' || ['HLT','HPC','HSV','HWS','HMON','HPRN','HSCN','HNET','HFW','HSTG','HUPS','HRCK'].includes(code) || num.includes('-HLT-') || num.includes('-HPC-') || num.includes('-HSV-') || num.includes('-HMON-') || num.includes('-HNET-') || num.includes('-IT-H-');
-          if (!isITH) return false;
-        } else if (selectedCategory === 'IT-S') {
-          const isITS = code === 'IT-S' || code === 'SLIC' || asset.category_type === 'License' || num.includes('-SLIC-') || num.includes('-IT-S-');
-          if (!isITS) return false;
-        } else if (selectedCategory === 'INV-F') {
-          const isInvF = code === 'INV-F' || num.includes('-INV-F-') || name.includes('meja') || name.includes('kursi') || name.includes('lemari');
-          if (!isInvF) return false;
-        } else if (selectedCategory === 'INV-P') {
-          const isInvP = code === 'INV-P' || num.includes('-INV-P-') || name.includes('kompor') || name.includes('dispenser') || name.includes('ac') || name.includes('apar');
-          if (!isInvP) return false;
-        } else if (selectedCategory === 'KDR') {
-          const isKdr = code.startsWith('KDR') || num.includes('-KDR-') || name.includes('avanza') || name.includes('truk') || name.includes('motor') || name.includes('mobil');
-          if (!isKdr) return false;
-        } else if (selectedCategory === 'MSN') {
-          const isMsn = code.startsWith('MSN') || num.includes('-MSN-') || name.includes('mesin') || name.includes('forklift') || name.includes('timbang');
-          if (!isMsn) return false;
-        } else if (selectedCategory === 'BGN') {
-          const isBgn = code.startsWith('BGN') || num.includes('-BGN-') || name.includes('gedung') || name.includes('gudang') || name.includes('bangunan');
-          if (!isBgn) return false;
-        } else if (selectedCategory === 'TNH') {
-          const isTnh = code.startsWith('TNH') || num.includes('-TNH-') || name.includes('tanah') || name.includes('lahan');
-          if (!isTnh) return false;
-        } else if (selectedCategory === 'LNY') {
-          const isLny = code === 'LNY' || num.includes('-LNY-');
-          if (!isLny) return false;
-        }
-      }
+      // Canonical taxonomy and asset numbers take precedence; names are a
+      // word-boundary fallback only for legacy rows without reliable codes.
+      if (!matchesAssetCategoryFilter(asset, selectedCategory)) return false;
 
       // Status filter
       if (selectedStatus !== 'ALL') {
@@ -239,15 +205,14 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
             />
           </div>
 
-          {/* Division Tabs */}
+          {/* Owner Domain Tabs — lokasi fisik dicari melalui kolom lokasi aset */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto">
-            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Devisi:</span>
+            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Owner Aset:</span>
             {[
-              { id: 'ALL', label: 'Semua Devisi' },
+              { id: 'ALL', label: 'Semua Owner' },
               { id: 'IT', label: 'IT' },
               { id: 'GA', label: 'GA' },
-              { id: 'SC', label: 'SC' },
-              { id: 'PIBC', label: 'PIBC' },
+              { id: 'LEGACY', label: 'Legacy (Review)' },
             ].map(d => (
               <button
                 key={d.id}
@@ -483,7 +448,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
-                        {onReportAsset && currentUser?.role !== 'Auditor' && (
+                        {onReportAsset && !isAuditor(currentUser) && (
                           <button
                             onClick={() => onReportAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"

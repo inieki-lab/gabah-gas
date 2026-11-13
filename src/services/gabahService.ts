@@ -1,4 +1,5 @@
 import { isExactIdentityNameMatch } from '../utils/identityMatching';
+import { formatJakartaDate } from '../utils/datetime';
 
 import { Asset, AssetStatus, AssetCondition, Loan, Ticket, UserProfile, UserRole, RoomReservation, MeetingFacilityItem } from '../types';
 
@@ -171,7 +172,7 @@ export function parseCsvText(text: string): string[][] {
 
 export function exportAssetsToCsv(assets: Asset[]) {
   downloadCsv(
-    `gabah_assets_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_assets_${formatJakartaDate()}.csv`,
     ['Nomor Aset', 'Nomor Accurate', 'Nama Aset', 'Divisi Pemilik', 'Kategori', 'Kondisi', 'Status', 'Lokasi', 'Penanggung Jawab', 'Harga Beli'],
     assets.map(a => [
       a.asset_number,
@@ -190,7 +191,7 @@ export function exportAssetsToCsv(assets: Asset[]) {
 
 export function exportLoansToCsv(loans: Loan[]) {
   downloadCsv(
-    `gabah_loans_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_loans_${formatJakartaDate()}.csv`,
     ['Nomor Peminjaman', 'Nomor Aset', 'Nama Aset', 'Peminjam', 'Divisi/Dept', 'Mulai', 'Batas Waktu', 'Status'],
     loans.map(l => [
       l.loan_number,
@@ -207,7 +208,7 @@ export function exportLoansToCsv(loans: Loan[]) {
 
 export function exportTicketsToCsv(tickets: Ticket[]) {
   downloadCsv(
-    `gabah_tickets_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_tickets_${formatJakartaDate()}.csv`,
     ['Nomor Tiket', 'Judul', 'Kategori (Divisi)', 'Prioritas', 'Status', 'Pelapor', 'Departemen', 'Target SLA (Jam)'],
     tickets.map(t => [
       t.ticket_number,
@@ -224,7 +225,7 @@ export function exportTicketsToCsv(tickets: Ticket[]) {
 
 export function exportMaintenanceToCsv(schedules: any[]) {
   downloadCsv(
-    `gabah_maintenance_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_maintenance_${formatJakartaDate()}.csv`,
     ['Kode Jadwal', 'Aset', 'Nomor Aset', 'Divisi', 'Frekuensi', 'Tgl Pelaksanaan', 'Status', 'Teknisi / Rekanan', 'Estimasi Biaya'],
     schedules.map(s => [
       s.schedule_code,
@@ -246,7 +247,7 @@ export function exportMaintenanceToCsv(schedules: any[]) {
  */
 export function exportUsersToCsv(users: any[]) {
   downloadCsv(
-    `gabah_pegawai_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_pegawai_${formatJakartaDate()}.csv`,
     ['Nama', 'Email', 'Peran (Role)', 'Divisi', 'Departemen', 'Telepon', 'Status'],
     users.map(u => [
       u.name,
@@ -448,7 +449,7 @@ export function exportDivisionSummaryToCsv(assets: Asset[]) {
     rows.push([div, list.length, totalValue, accDep, nbv]);
   }
   downloadCsv(
-    `gabah_rekap_divisi_${new Date().toISOString().split('T')[0]}.csv`,
+    `gabah_rekap_divisi_${formatJakartaDate()}.csv`,
     ['Divisi', 'Jumlah Aset', 'Nilai Perolehan (Rp)', 'Akumulasi Depresiasi (Rp)', 'Nilai Buku Bersih (Rp)'],
     rows
   );
@@ -637,7 +638,7 @@ export class GabahService {
   static canManageTickets(user?: UserProfile): boolean {
     if (!user) return false;
     if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+      return user.permission_keys.includes('tickets.update');
     }
     return ['Admin GABAH', 'IT', 'GA'].includes(user.role);
   }
@@ -688,12 +689,24 @@ export class GabahService {
 
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
+    const canMutate = Array.isArray(user.permission_keys)
+      ? user.permission_keys.includes('tickets.update')
+      : ['Admin GABAH', 'IT', 'GA'].includes(user.role);
+    if (!canMutate) return false;
+    if (user.is_superadmin || user.role === 'Admin GABAH') return true;
+    // In Dynamic RBAC mode the API has already applied the ticket's owner/unit
+    // scope. Do not re-impose legacy role labels here: custom roles such as
+    // "IT Support", "Admin GA", or "Admin Tiket ME" are permission bundles.
     if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+      if (ticket.assigned_unit_id) return Boolean(user.unit_id && ticket.assigned_unit_id === user.unit_id);
+      return true;
     }
-    if (user.role === 'Admin GABAH' || user.role === 'IT') return true;
-    if (user.role === 'GA' && ticket.category === 'GA') return true;
-    return false;
+    // File-store compatibility only; production PostgreSQL authorization is
+    // enforced by the API using explicit permission and scope assignments.
+    if (ticket.assigned_unit_id) return Boolean(user.unit_id && ticket.assigned_unit_id === user.unit_id);
+    if (ticket.category === 'IT') return user.role === 'IT';
+    if (ticket.category === 'GA') return user.role === 'GA';
+    return ticket.assigned_agent_id === user.id;
   }
 
   static generateCorporateAssetNumber(categoryCodeOrAssets?: any, year: number = new Date().getFullYear()): string {

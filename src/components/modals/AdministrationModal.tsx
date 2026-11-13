@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
+import { isSuperAdmin } from '../../utils/access';
 import { exportUsersToCsv, downloadUsersImportTemplate, parseUsersImportCsv } from '../../services/gabahService';
 
 export type AdminSection =
@@ -239,7 +240,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   onRefreshData
 }) => {
   // Hak akses administrasi dibatasi HANYA untuk Super Admin ('Admin GABAH')
-  const isCurrentUserAdmin = (activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH');
+  const isCurrentUserAdmin = isSuperAdmin(currentUser) || (!Array.isArray(currentUser?.permission_keys) && activeRole === 'Admin GABAH');
   const currentRoleName = activeRole || currentUser?.role || 'Admin GABAH';
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 
@@ -256,6 +257,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isSubmittingEditUser, setIsSubmittingEditUser] = useState(false);
+
+  // Password reset dialog state — keep all hooks before the closed-modal return.
+  const [passwordResetTarget, setPasswordResetTarget] = useState<UserProfile | null>(null);
+  const [tempIssuedPassword, setTempIssuedPassword] = useState<string | null>(null);
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
   // Import pegawai massal (CSV/Excel) state
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<{
@@ -484,30 +490,49 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
   const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null }>>([]);
   const [rbacScopeModule, setRbacScopeModule] = useState('assets');
-  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'unit' | 'location'>('division');
+  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'>('division');
   const [rbacScopeValue, setRbacScopeValue] = useState('');
 
   const refreshRbac = async () => {
     setRbacLoading(true);
     try {
-      const [roles, permissionRows] = await Promise.all([gabahApi.getRbacRoles(), gabahApi.getRbacPermissions()]);
-      setRbacRoles(Array.isArray(roles) ? roles : []);
-      setRbacPermissions(Array.isArray(permissionRows) ? permissionRows : []);
-      setRbacLoadError('');
-      const selected = Array.isArray(roles) ? roles.find((role: any) => role.id === rbacSelectedRoleId) : null;
+      // Load role definitions and permission catalogue independently. A failure
+      // in the permission catalogue must not erase valid roles from the user
+      // assignment dialog (and vice versa).
+      const [rolesResult, permissionsResult] = await Promise.allSettled([
+        gabahApi.getRbacRoles(),
+        gabahApi.getRbacPermissions(),
+      ]);
+      const roles = rolesResult.status === 'fulfilled' && Array.isArray(rolesResult.value)
+        ? rolesResult.value
+        : [];
+      const permissionRows = permissionsResult.status === 'fulfilled' && Array.isArray(permissionsResult.value)
+        ? permissionsResult.value
+        : [];
+      setRbacRoles(roles);
+      setRbacPermissions(permissionRows);
+
+      const errors: string[] = [];
+      if (rolesResult.status === 'rejected') {
+        errors.push('Daftar role gagal dimuat: ' + (rolesResult.reason?.message || 'API role tidak tersedia.'));
+      }
+      if (permissionsResult.status === 'rejected') {
+        errors.push('Katalog permission gagal dimuat: ' + (permissionsResult.reason?.message || 'API permission tidak tersedia.'));
+      } else if (permissionRows.filter((permission: any) => permission.is_active).length === 0) {
+        errors.push('Katalog permission aktif kosong. Periksa migration Dynamic RBAC.');
+      }
+      setRbacLoadError(errors.join(' '));
+
+      const selected = roles.find((role: any) => role.id === rbacSelectedRoleId) || null;
       if (selected) {
         setRbacName(selected.name);
         setRbacDescription(selected.description || '');
         setRbacSelectedPermissionKeys(selected.permissions || []);
         setRbacScopes(selected.scopes || []);
-      } else if (rbacSelectedRoleId !== null) {
+      } else if (rbacSelectedRoleId !== null && rolesResult.status === 'fulfilled') {
         setRbacSelectedRoleId(null);
       }
-    } catch (error: any) {
-      setRbacRoles([]);
-      setRbacPermissions([]);
-      setRbacLoadError(error?.message || 'Gagal memuat katalog permission. Periksa koneksi PostgreSQL dan migration Dynamic RBAC.');
-      showToast(error?.message || 'Gagal memuat konfigurasi Dynamic RBAC. Pastikan PostgreSQL aktif dan akun memiliki akses Superadmin.', 'warning');
+      if (errors.length > 0) showToast(errors.join(' '), 'warning');
     } finally {
       setRbacLoading(false);
     }
@@ -610,7 +635,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Isi nilai owner/divisi, unit, atau lokasi untuk scope ini.', 'warning');
       return;
     }
-    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
+    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null };
     if (!rbacScopes.some(item => (item.module || '*') === scope.module && item.type === scope.type && (item.value || null) === (scope.value || null))) {
       setRbacScopes(current => [...current, scope]);
     }
@@ -1311,6 +1336,33 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     exportDataJson('gabah_full_system_backup', backupBundle);
   };
 
+  // Health snapshot awal sekali per render modal (sekali fetch, tanpa toast).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const start = performance.now();
+      try {
+        const res = await fetch('/api/health');
+        const latency = Math.round(performance.now() - start);
+        const body = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok) {
+          setHealthStatus({
+            status: 'Operational (200 OK)',
+            latency,
+            timestamp: new Date().toLocaleTimeString(),
+            isChecking: false,
+            persistence: typeof body.persistence === 'string' ? body.persistence : undefined,
+            scheduler: body.scheduler && typeof body.scheduler === 'object' ? body.scheduler : undefined,
+          });
+        }
+      } catch {
+        /* biarkan state default: belum diperiksa — jangan mengarang status */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+
   if (!isOpen) return null;
 
   // Menu administrasi diberi keterangan sumber data agar Super Admin tahu mana
@@ -1366,6 +1418,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         unit_id: null
       });
       if (onRefreshData) await onRefreshData();
+      await refreshUserAssignments();
     } catch (err: any) {
       showToast(`Gagal menambahkan pengguna: ${err.message}`, 'warning');
     } finally {
@@ -1445,6 +1498,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         showToast(serverErrors.slice(0, 3).join(' | '), 'warning');
       }
       if (onRefreshData) await onRefreshData();
+      await refreshUserAssignments();
     } catch (err: any) {
       showToast(`Gagal impor: ${err.message}`, 'warning');
     } finally {
@@ -1483,10 +1537,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       if (onUpdateUser) {
         onUpdateUser(updatedUser);
       }
-      showToast(`Data pengguna ${updatedUser.name} berhasil diperbarui!`, 'success');
       setIsEditUserOpen(false);
       setUserToEdit(null);
       if (onRefreshData) await onRefreshData();
+      // The profile's primary role may have changed; reload the role IDs and
+      // primary-role lock before the next assignment dialog is opened.
+      await refreshUserAssignments();
+      showToast(`Data pengguna ${updatedUser.name} berhasil diperbarui!`, 'success');
     } catch (err: any) {
       showToast(`Gagal memperbarui pengguna: ${err.message}`, 'warning');
     } finally {
@@ -1540,39 +1597,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  // Health snapshot awal sekali per render modal (sekali fetch, tanpa toast).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const start = performance.now();
-      try {
-        const res = await fetch('/api/health');
-        const latency = Math.round(performance.now() - start);
-        const body = await res.json().catch(() => ({}));
-        if (!cancelled && res.ok) {
-          setHealthStatus({
-            status: 'Operational (200 OK)',
-            latency,
-            timestamp: new Date().toLocaleTimeString(),
-            isChecking: false,
-            persistence: typeof body.persistence === 'string' ? body.persistence : undefined,
-            scheduler: body.scheduler && typeof body.scheduler === 'object' ? body.scheduler : undefined,
-          });
-        }
-      } catch {
-        /* biarkan state default: belum diperiksa — jangan mengarang status */
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
   // P1#2: Reset sandi NYATA — minta server menerbitkan sandi sementara CSPRNG
   // (server meng-hash & menyimpannya), lalu tampilkan SEKALI untuk disampaikan
   // out-of-band. Tanpa provider email yang terkonfigurasi, klaim "link email
   // terkirim" adalah palsu — sehingga UI menampilkan sandinya secara eksplisit.
-  const [passwordResetTarget, setPasswordResetTarget] = useState<UserProfile | null>(null);
-  const [tempIssuedPassword, setTempIssuedPassword] = useState<string | null>(null);
-  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
   const handleRealPasswordReset = async () => {
     if (!passwordResetTarget) return;
     try {
@@ -2694,7 +2722,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         );
                       })}
                       {!assignmentsLoading && rbacRoles.filter((role: any) => role.is_active).length === 0 && (
-                        <p className="text-sm text-slate-500 text-center py-6">Belum ada role aktif. Muat ulang konfigurasi RBAC.</p>
+                        <div className="text-center py-6 space-y-2">
+                          <p className="text-sm text-rose-700">{rbacLoadError || 'Belum ada role aktif yang tersedia.'}</p>
+                          <button type="button" onClick={() => void refreshRbac()} disabled={rbacLoading} className="text-xs font-bold text-emerald-700 underline disabled:opacity-50">
+                            {rbacLoading ? 'Memuat ulang...' : 'Muat ulang daftar role'}
+                          </button>
+                        </div>
                       )}
                     </div>
                     <div className="p-4 border-t border-slate-100 flex justify-end gap-2">

@@ -2,13 +2,24 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
-import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
-import { GabahDomainService } from './services';
+import { isSuperadminActor, isAuditorActor, hasRbacPermission, hasRbacScope } from './rbac-policy';
+import { GabahDomainService, getTicketOwnerDivision } from './services';
+import { extractClientIp, requestContext } from './requestContext';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
-const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || isAuditorActor(actor);
+const canReadAuditTrail = (actor: ServerUser) =>
+  isSuperadmin(actor)
+  || (isPostgresPersistenceActive() && isAuditorActor(actor)
+    && hasRbacPermission(String(actor.id), 'audit.read'));
+const canReadReconciliation = (actor: ServerUser) =>
+  isSuperadmin(actor)
+  || (isPostgresPersistenceActive() && isAuditorActor(actor)
+    && hasRbacPermission(String(actor.id), 'reconciliation.read'));
 
 export function actorFor(req: Request): ServerUser | null {
+  const session = (req as any).session as ServerSession | undefined;
+  const context = requestContext.getStore();
+  if (context && session?.original_admin_id) context.originalAdminId = String(session.original_admin_id);
   if ((req as any).user) return (req as any).user as ServerUser;
   const result = authenticateRequest(req);
   return result.user;
@@ -27,6 +38,11 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   if (isSuperadmin(actor)) return true;
   if (isAuditorActor(actor)) return false;
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+  // Unit queue visibility is independent of the employee's office location.
+  if (ticket.assigned_unit_id && ticket.assigned_unit_id === actor.unit_id) {
+    return !isPostgresPersistenceActive()
+      || hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets');
+  }
   if (isPostgresPersistenceActive()) {
     // PostgreSQL RBAC is owner-code agnostic: custom operational functions
     // (e.g. RPC/SC) need the same explicit Tickets scope as IT/GA.
@@ -41,7 +57,7 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
 }
 
 function scopedAttention(actor: ServerUser, items: any[]) {
-  if (isGlobalObserver(actor)) return items;
+  if (isSuperadmin(actor)) return items;
   return items.filter(item => {
     if (item.link_type === 'asset') return canSeeAsset(actor, item.link_id);
     if (item.link_type === 'loan') {
@@ -56,7 +72,21 @@ function scopedAttention(actor: ServerUser, items: any[]) {
       // module scope, never a primary-role label, for owner-division visibility.
       return (actor.role === 'IT' || actor.role === 'GA') && loan.owner_division === actor.role;
     }
-    if (item.link_type === 'ticket') return canManageTicket(actor, item.link_id);
+    if (item.link_type === 'ticket') {
+      const ticket = db.tickets.find(t => t.id === item.link_id);
+      if (!ticket) return false;
+      // Auditor may read ticket attention cards only through explicit module
+      // scopes. This is read visibility, not ticket-management authority.
+      if (isAuditorActor(actor)) {
+        if (!isPostgresPersistenceActive()) return false;
+        return Boolean(
+          (ticket.assigned_unit_id
+            && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'))
+          || hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets')
+        );
+      }
+      return canManageTicket(actor, item.link_id);
+    }
     return false;
   });
 }
@@ -74,7 +104,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   if (!req.path.startsWith('/api/')) return next();
 
   // General API rate limiter across all endpoints (mitigates brute-force, scraping, and enumeration)
-  const clientIp = (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
+  const clientIp = extractClientIp(req) || 'unknown';
   const rateLimit = checkApiRateLimit(clientIp);
   res.setHeader('X-RateLimit-Limit', '200');
   res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
@@ -131,10 +161,13 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     }
   }
 
-  if (req.path === '/api/audit-logs' && !isGlobalObserver(actor)) {
+  // Migration 025 explicitly grants Auditor read-only audit and reconciliation
+  // capabilities. Preserve the Superadmin-only default while allowing Auditor
+  // through only when PostgreSQL RBAC confirms the matching module permission.
+  if (req.path === '/api/audit-logs' && !canReadAuditTrail(actor)) {
     return res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });
   }
-  if (req.path === '/api/reconciliation' && !isGlobalObserver(actor)) {
+  if (req.path === '/api/reconciliation' && !canReadReconciliation(actor)) {
     return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
   }
 
