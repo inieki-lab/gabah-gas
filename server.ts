@@ -2510,7 +2510,7 @@ async function startServer() {
     if (!body || typeof body !== 'object' || Array.isArray(body)) return 'Data pemeliharaan tidak valid.';
     if (body.title !== undefined && (typeof body.title !== 'string' || !body.title.trim() || body.title.trim().length > 200)) return 'Judul jadwal wajib diisi dan maksimal 200 karakter.';
     if (body.scheduled_date !== undefined) {
-      if (typeof body.scheduled_date !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(body.scheduled_date)) return 'Tanggal jadwal harus menggunakan format YYYY-MM-DD.';
+      if (typeof body.scheduled_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.scheduled_date)) return 'Tanggal jadwal harus menggunakan format YYYY-MM-DD.';
       const parsed = new Date(body.scheduled_date + 'T00:00:00.000Z');
       if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== body.scheduled_date) return 'Tanggal jadwal tidak valid.';
     }
