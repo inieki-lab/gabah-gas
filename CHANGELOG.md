@@ -1,3 +1,12 @@
+## [2026-11-13] — Validate room reservation date, time, and attendee count
+
+- Room reservation creation now validates real calendar dates, strict 24-hour HH:mm values, and a positive integer attendee count within room capacity.
+- Validation occurs before collision handling and any priority-interruption side effects.
+- The persisted attendee count uses the validated integer rather than silently coercing invalid values.
+- Added regression cases for negative/fractional attendees, malformed time, and impossible calendar dates.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
