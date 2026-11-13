@@ -16,7 +16,7 @@ function records(block, prefix) {
   return result;
 }
 function field(body, name) {
-  const match = body.match(new RegExp('(?:^|\\n)\\s*' + name + ": '([^']*)'"));
+  const match = body.match(new RegExp('(?:^|[,\\n])\\s*' + name + ": '([^']*)'"));
   return match?.[1];
 }
 
