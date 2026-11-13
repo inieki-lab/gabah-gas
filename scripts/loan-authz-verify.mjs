@@ -153,9 +153,32 @@ async function main() {
     const itAsset4 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 4');
     const gaAsset1 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 1');
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
-    record('Setup: 6 loanable fixtures created (4 IT + 2 GA)', 'ids issued',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].every(a => a.id));
+    const itAsset5 = await mkAsset('HLT', 'IT', 'LoanAuthz unavailable request fixture');
+    const itAsset6 = await mkAsset('HLT', 'IT', 'LoanAuthz approval recheck fixture');
+    record('Setup: 8 loanable fixtures created (6 IT + 2 GA)', 'ids issued',
+      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].filter(a => a.id).length + ' ids',
+      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].every(a => a.id));
+
+    const setAssetStatus = (assetId, status) => req(base, 'PATCH', `/api/assets/${assetId}`, { token: admin.token, body: { status } });
+    await setAssetStatus(itAsset5.id, 'damaged');
+    const unavailableRequest = await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
+      asset_id: itAsset5.id, purpose: 'Unavailable asset must be rejected', start_date: isoDatePlus(1), due_date: isoDatePlus(7),
+    } });
+    record('Request rejects loanable asset that is not available', '409', `HTTP ${unavailableRequest.status}`, unavailableRequest.status === 409);
+
+    const approvalRecheck = await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
+      asset_id: itAsset6.id, purpose: 'Asset status recheck at approval', start_date: isoDatePlus(1), due_date: isoDatePlus(7),
+    } });
+    const approvalLoanId = approvalRecheck.json?.data?.id;
+    await setAssetStatus(itAsset6.id, 'damaged');
+    const unavailableApproval = approvalLoanId
+      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/approve`, { token: it.token, body: {} })
+      : { status: 0 };
+    const approvalLoanStatus = approvalLoanId ? await loanStatus(approvalLoanId) : '(missing)';
+    record('Approval rechecks asset availability and preserves pending loan', '409 + pending_approval',
+      `HTTP ${unavailableApproval.status} + ${approvalLoanStatus}`,
+      unavailableApproval.status === 409 && approvalLoanStatus === 'pending_approval');
+    await setAssetStatus(itAsset6.id, 'available');
 
     const initialLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
     const invalidBorrower = await req(base, 'POST', '/api/loans', {
@@ -259,6 +282,13 @@ async function main() {
     record('Unauthorized handover: GA on second IT loan (L2)', '403', `HTTP ${h2Wrong.status}`, h2Wrong.status === 403);
     const h2Ok = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan' } });
     record('Authorized handover: IT custodian on L2', '200 + borrowed', `HTTP ${h2Ok.status} + ${h2Ok.json?.data?.status}`, h2Ok.status === 200 && h2Ok.json?.data?.status === 'borrowed');
+    await setAssetStatus(itAsset2.id, 'damaged');
+    const returnWithBrokenRelation = await req(base, 'POST', `/api/loans/${L2.id}/return`, { token: karyawan.token, body: { condition: 'good', returnNotes: 'Must not resurrect damaged asset' } });
+    const loanAfterBrokenReturn = await loanStatus(L2.id);
+    record('Return rejects asset not in assigned state and preserves borrowed loan', '409 + borrowed',
+      `HTTP ${returnWithBrokenRelation.status} + ${loanAfterBrokenReturn}`,
+      returnWithBrokenRelation.status === 409 && loanAfterBrokenReturn === 'borrowed');
+    await setAssetStatus(itAsset2.id, 'assigned');
     const h2Double = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: {} });
     record('Invalid transition: double handover on L2', '409', `HTTP ${h2Double.status}`, h2Double.status === 409);
 
