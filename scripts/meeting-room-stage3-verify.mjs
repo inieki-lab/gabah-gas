@@ -21,6 +21,14 @@ async function main(){
   const types=(await req(b,'GET','/api/meeting-types',{token:admin})).json?.data||[],high=types.find(x=>x.priority_level==='high')||{code:'direksi'};
   rec('room fixtures','ROOM-01 + alt',`${room?.id}+${alt?.id}`,Boolean(room&&alt));
   const make=(token,title,x={})=>req(b,'POST','/api/room-reservations',{token,body:{room_id:room.id,title,attendees_count:5,meeting_type:'internal',date:day(),start_time:'10:00',end_time:'11:00',facilities_requested:[],consumption_requested:false,documentation_requested:false,...x}});
+  const invalidAttendees=await make(karyawan,'Invalid negative attendees',{attendees_count:-2});
+  rec('negative attendee count rejected','400',invalidAttendees.status,invalidAttendees.status===400);
+  const fractionalAttendees=await make(karyawan,'Invalid fractional attendees',{attendees_count:1.5});
+  rec('fractional attendee count rejected','400',fractionalAttendees.status,fractionalAttendees.status===400);
+  const invalidClock=await make(karyawan,'Invalid time format',{start_time:'9:00',end_time:'10:00'});
+  rec('non-canonical time rejected','400',invalidClock.status,invalidClock.status===400);
+  const invalidCalendarDate=await make(karyawan,'Invalid calendar date',{date:'2026-02-31'});
+  rec('impossible calendar date rejected','400',invalidCalendarDate.status,invalidCalendarDate.status===400);
   const base=await make(karyawan,'Stage3 existing');rec('ordinary booking','201 pending',`${base.status} ${base.json?.data?.status}`,base.status===201&&base.json?.data?.status==='pending_approval');
   const docBooking=await make(karyawan,'Stage3 documentation brief',{start_time:'15:00',end_time:'16:00',documentation_requested:true,documentation_type:'foto',documentation_notes:'Public documentation brief',attendees_list:'PRIVATE attendee list',consumption_requested:true,consumption_type:'lunch_box',consumption_pax:10,consumption_notes:'PRIVATE consumption note',notes:'PRIVATE internal note'});
   const humasQueue=(await req(b,'GET','/api/room-reservations',{token:humas})).json?.data||[];
