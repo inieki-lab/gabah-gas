@@ -759,6 +759,46 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
+      const validPrimaryRoles = [
+        'Admin GABAH', 'Superadmin', 'IT', 'GA', 'Supply Chain', 'PIBC',
+        'Sekretaris Direksi', 'Humas', 'Management', 'Auditor', 'Karyawan',
+      ];
+      if (role !== undefined && (typeof role !== 'string' || !validPrimaryRoles.includes(role))) {
+        return res.status(400).json({ success: false, message: 'Peran utama pengguna tidak valid.' });
+      }
+      if (is_active !== undefined && typeof is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean.' });
+      }
+      if (name !== undefined && (typeof name !== 'string' || !name.trim() || name.trim().length > 120)) {
+        return res.status(400).json({ success: false, message: 'Nama wajib berupa teks 1–120 karakter.' });
+      }
+      if (email !== undefined && (typeof email !== 'string' || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim()) || email.trim().length > 254)) {
+        return res.status(400).json({ success: false, message: 'Format email tidak valid.' });
+      }
+      if (division !== undefined && (typeof division !== 'string' || division.trim().length > 120)) {
+        return res.status(400).json({ success: false, message: 'Divisi tidak valid (maksimal 120 karakter).' });
+      }
+      if (department !== undefined && (typeof department !== 'string' || department.trim().length > 120)) {
+        return res.status(400).json({ success: false, message: 'Departemen tidak valid (maksimal 120 karakter).' });
+      }
+      if (phone !== undefined && (typeof phone !== 'string' || phone.trim().length > 40)) {
+        return res.status(400).json({ success: false, message: 'Nomor telepon tidak valid (maksimal 40 karakter).' });
+      }
+      if (telegram_chat_id !== undefined && (typeof telegram_chat_id !== 'string' || telegram_chat_id.trim().length > 80)) {
+        return res.status(400).json({ success: false, message: 'Telegram Chat ID tidak valid.' });
+      }
+      if (password !== undefined && (typeof password !== 'string' || password.trim().length < 8 || password.trim().length > 128)) {
+        return res.status(400).json({ success: false, message: 'Kata sandi harus berupa teks 8–128 karakter.' });
+      }
+
+      // Validate uniqueness before mutating any part of the target profile.
+      if (email !== undefined && email.trim()) {
+        const normalizedEmail = email.trim().toLowerCase();
+        if (db.users.some(u => u.id !== targetUser.id && u.email.toLowerCase().trim() === normalizedEmail)) {
+          return res.status(400).json({ success: false, message: 'Email sudah digunakan oleh akun lain.' });
+        }
+      }
+
       const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
       const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
@@ -798,11 +838,7 @@ async function startServer() {
       // it is NEVER accepted from non-admin input and never echoed in login flows.
       if (telegram_chat_id !== undefined) targetUser.telegram_chat_id = String(telegram_chat_id).trim() || undefined;
       if (email !== undefined && email.trim()) {
-        const trimmedEmail = email.trim().toLowerCase();
-        if (db.users.some(u => u.id !== targetUser.id && u.email.toLowerCase().trim() === trimmedEmail)) {
-          return res.status(400).json({ success: false, message: 'Email sudah digunakan oleh akun lain.' });
-        }
-        targetUser.email = trimmedEmail;
+        targetUser.email = email.trim().toLowerCase();
       }
       const privilegeChanged = role !== undefined && primaryRole !== targetUser.role;
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
