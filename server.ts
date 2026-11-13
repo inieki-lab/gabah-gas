@@ -1395,6 +1395,13 @@ async function startServer() {
         });
       }
 
+      if (is_active !== undefined && typeof is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean.' });
+      }
+      if (is_loanable_by_default !== undefined && typeof is_loanable_by_default !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_loanable_by_default harus berupa boolean.' });
+      }
+
       const newCategory = {
         code: normalizedCode,
         name: name.trim(),
@@ -1453,6 +1460,13 @@ async function startServer() {
         if (dup) {
           return res.status(400).json({ success: false, message: `Kategori dengan nama "${String(name).trim()}" sudah terdaftar (${dup.code}).` });
         }
+      }
+
+      if (is_active !== undefined && typeof is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean.' });
+      }
+      if (is_loanable_by_default !== undefined && typeof is_loanable_by_default !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_loanable_by_default harus berupa boolean.' });
       }
 
       if (name) target.name = String(name).trim();
@@ -1724,6 +1738,9 @@ async function startServer() {
       if (!db.jobLevels) db.jobLevels = [];
       const level = db.jobLevels.find(j => j.code === req.params.code.trim().toUpperCase());
       if (!level) return res.status(404).json({ success: false, message: 'Jabatan tidak ditemukan.' });
+      if (req.body.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean.' });
+      }
       if (req.body.label !== undefined) level.label = String(req.body.label).trim() || level.label;
       if (req.body.order !== undefined) level.order = Number(req.body.order);
       if (req.body.is_active !== undefined) level.is_active = Boolean(req.body.is_active);
@@ -1771,6 +1788,9 @@ async function startServer() {
       if (!db.orgUnits) db.orgUnits = [];
       const unit = db.orgUnits.find(u => u.id === req.params.id);
       if (!unit) return res.status(404).json({ success: false, message: 'Unit tidak ditemukan.' });
+      if (req.body.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean.' });
+      }
       if (req.body.name !== undefined) unit.name = String(req.body.name).trim() || unit.name;
       if (req.body.division_code !== undefined) unit.division_code = String(req.body.division_code).trim().toUpperCase() as any;
       if (req.body.is_active !== undefined) unit.is_active = Boolean(req.body.is_active);
@@ -1817,6 +1837,9 @@ async function startServer() {
       if (!db.officeLocations) db.officeLocations = [];
       const loc = db.officeLocations.find(l => l.id === req.params.id);
       if (!loc) return res.status(404).json({ success: false, message: 'Lokasi kantor tidak ditemukan.' });
+      if (req.body.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean.' });
+      }
       if (req.body.name !== undefined) loc.name = String(req.body.name).trim() || loc.name;
       if (req.body.is_active !== undefined) loc.is_active = Boolean(req.body.is_active);
       GabahDomainService.recordAudit('OFFICE_LOCATION_UPDATED', 'Organization', `Memperbarui master lokasi kantor ${loc.name} — aktif: ${loc.is_active}`, actor);
@@ -1874,6 +1897,9 @@ async function startServer() {
       if (!db.assetLocations) db.assetLocations = [];
       const loc = db.assetLocations.find(l => l.id === req.params.id);
       if (!loc) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
+      if (req.body.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean.' });
+      }
       if (req.body.name !== undefined) {
         const newName = String(req.body.name).trim() || loc.name;
         const newParent = req.body.parent_id !== undefined ? (req.body.parent_id ? String(req.body.parent_id).trim() : null) : (loc.parent_id || null);
