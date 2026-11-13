@@ -1009,6 +1009,7 @@ export class GabahDomainService {
       related_asset_id: relatedAssetId,
       related_asset_name: relatedAssetName,
       related_asset_number: relatedAssetNumber,
+      contract_id: linkedContractId,
       sla_hours: slaHours,
       sla_resolution_deadline: deadline,
       created_at: new Date().toISOString(),
