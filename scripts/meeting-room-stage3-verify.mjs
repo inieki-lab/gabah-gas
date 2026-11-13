@@ -25,6 +25,10 @@ async function main(){
   rec('string consumption flag rejected','400',stringConsumptionFlag.status,stringConsumptionFlag.status===400);
   const stringDocumentationFlag=await make(karyawan,'Invalid string documentation flag',{documentation_requested:'false'});
   rec('string documentation flag rejected','400',stringDocumentationFlag.status,stringDocumentationFlag.status===400);
+  const countBeforeMalformedFacilities=((await req(b,'GET','/api/room-reservations',{token:admin})).json?.data||[]).length;
+  const malformedFacilities=await make(karyawan,'Malformed facility list',{facilities_requested:[42]});
+  const countAfterMalformedFacilities=((await req(b,'GET','/api/room-reservations',{token:admin})).json?.data||[]).length;
+  rec('malformed facilities rejected without creating reservation','400 + unchanged count',`HTTP ${malformedFacilities.status}, ${countBeforeMalformedFacilities}->${countAfterMalformedFacilities}`,malformedFacilities.status===400&&countBeforeMalformedFacilities===countAfterMalformedFacilities);
   const invalidAttendees=await make(karyawan,'Invalid negative attendees',{attendees_count:-2});
   rec('negative attendee count rejected','400',invalidAttendees.status,invalidAttendees.status===400);
   const fractionalAttendees=await make(karyawan,'Invalid fractional attendees',{attendees_count:1.5});
