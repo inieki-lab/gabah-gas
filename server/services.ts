@@ -529,8 +529,11 @@ export class GabahDomainService {
       return asset;
     }
 
-    const targetUser = db.users.find(u => u.id === targetUserId);
-    if (!targetUser) throw new Error('User penerima tidak ditemukan');
+    const normalizedTargetUserId = String(targetUserId || '').trim();
+    const targetUser = db.users.find(u => u.id === normalizedTargetUserId && u.is_active);
+    if (!targetUser) {
+      throw Object.assign(new Error('User penerima tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
+    }
 
     asset.assigned_to = {
       id: targetUser.id,
@@ -574,11 +577,19 @@ export class GabahDomainService {
       throw new Error('Akses ditolak: Anda tidak memiliki permission move pada domain pemilik aset ini.');
     }
 
+    const normalizedLocation = typeof newLocation === 'string' ? newLocation.trim() : '';
+    if (!normalizedLocation || normalizedLocation.length > 300) {
+      throw Object.assign(new Error('Lokasi baru wajib diisi dan maksimal 300 karakter.'), { statusCode: 400 });
+    }
+    if (reason !== undefined && (typeof reason !== 'string' || reason.length > 1000)) {
+      throw Object.assign(new Error('Alasan perpindahan maksimal 1.000 karakter.'), { statusCode: 400 });
+    }
+
     const oldLocation = asset.location;
-    asset.location = newLocation;
+    asset.location = normalizedLocation;
     // T2B-2: reolusi deterministik relasi lokasi fisik dari teks baru
     // (exact-match unik → set; selain itu null — tidak menebak).
-    asset.asset_location_id = resolveAssetLocationIdByText(newLocation);
+    asset.asset_location_id = resolveAssetLocationIdByText(normalizedLocation);
     asset.updated_at = new Date().toISOString();
 
     const movement: ServerAssetMovement = {
@@ -608,6 +619,14 @@ export class GabahDomainService {
 
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.lifecycle')) {
       throw new Error('Akses ditolak: Anda tidak memiliki permission lifecycle pada domain pemilik aset ini.');
+    }
+
+    const allowedActions = ['repair', 'damaged', 'cannibalize', 'propose_disposal', 'approve_disposal', 'auction'] as const;
+    if (!allowedActions.includes(action as any)) {
+      throw Object.assign(new Error('Aksi lifecycle aset tidak valid.'), { statusCode: 400 });
+    }
+    if (notes !== undefined && (typeof notes !== 'string' || notes.length > 2000)) {
+      throw Object.assign(new Error('Catatan lifecycle maksimal 2.000 karakter.'), { statusCode: 400 });
     }
 
     switch (action) {
