@@ -1213,12 +1213,31 @@ export class GabahDomainService {
       throw new Error('Tanggal, jam mulai, dan jam selesai wajib diisi.');
     }
 
-    if (payload.start_time >= payload.end_time) {
+    // Validate canonical date/time formats before collision checks or any
+    // interruption side effects. Lexical time comparison is safe only for HH:mm.
+    const dateText = String(payload.date).trim();
+    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateText)
+      ? new Date(`${dateText}T00:00:00.000Z`)
+      : new Date(Number.NaN);
+    if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dateText) {
+      throw new Error('Tanggal reservasi tidak valid. Gunakan format YYYY-MM-DD.');
+    }
+    const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+    const startTime = String(payload.start_time).trim();
+    const endTime = String(payload.end_time).trim();
+    if (!timePattern.test(startTime) || !timePattern.test(endTime)) {
+      throw new Error('Format jam tidak valid. Gunakan format HH:mm (00:00–23:59).');
+    }
+    if (startTime >= endTime) {
       throw new Error('Jam mulai harus lebih awal dari jam selesai rapat.');
     }
 
-    if (Number(payload.attendees_count) > room.capacity) {
-      throw new Error(`Jumlah peserta (${payload.attendees_count}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`);
+    const attendeesCount = Number(payload.attendees_count);
+    if (!Number.isSafeInteger(attendeesCount) || attendeesCount < 1) {
+      throw new Error('Jumlah peserta harus berupa bilangan bulat minimal 1 orang.');
+    }
+    if (attendeesCount > room.capacity) {
+      throw new Error(`Jumlah peserta (${attendeesCount}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`);
     }
 
     // Anti-Collision Check: StartA < EndB && EndA > StartB on the same date for this room
@@ -1349,7 +1368,7 @@ export class GabahDomainService {
       organizer_department: actor.department,
       organizer_phone: actor.phone || '-',
       organizer_role: actor.role,
-      attendees_count: Number(payload.attendees_count) || 1,
+      attendees_count: attendeesCount,
       attendees_list: payload.attendees_list?.trim() || '',
       meeting_type: payload.meeting_type || 'internal',
       priority: requestedPriority,
