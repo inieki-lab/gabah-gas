@@ -19,7 +19,7 @@ const checks = [
   ['asset identity and finite timestamp range are the collision keys', /asset_id WITH =/i.test(migration) && /tstzrange\(start_date, due_date, '\[\)'\)\) WITH &&/i.test(migration)],
   ['only approved and borrowed schedules use the EXCLUDE constraint', /WHERE \(status IN \('approved', 'borrowed'\)\)/i.test(migration)],
   ['overdue status is recorded without deleting or rewriting future reservations', /NEW\.status <> 'overdue'/i.test(migration) && /operators can then[\s\S]*resolve that booking/i.test(migration)],
-  ['overdue checks serialize on the parent asset row', /FROM assets WHERE id = NEW\.asset_id FOR UPDATE/i.test(migration)],
+  ['overdue checks serialize on the parent asset row', /FROM\s+assets\s+WHERE\s+id\s*=\s*NEW\.asset_id\s+FOR\s+UPDATE/i.test(migration)],
   ['new requests are blocked by overdue or past-due borrowed loans', /status = 'overdue'[\s\S]*OR \(status = 'borrowed' AND due_date < NOW\(\)\)/i.test(migration)],
   ['database trigger enforces loanable status, condition, and no active assignment before request/approval', /asset_is_loanable[\s\S]*NOT IN \('active', 'available'\)[\s\S]*IN \('poor', 'broken', 'damaged'\)[\s\S]*FROM asset_assignments[\s\S]*returned_date IS NULL/i.test(migration)],
   ['handover cannot transfer an asset already assigned to another employee', /NEW\.status = 'borrowed'[\s\S]*assigned_to_user_id <> NEW\.borrower_id/i.test(migration)],
