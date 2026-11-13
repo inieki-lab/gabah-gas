@@ -186,6 +186,30 @@ async function main() {
     record('POST IT on IT asset allowed', '201', `HTTP ${itOnIt.status}`, itOnIt.status === 201);
     const createdId = itOnIt.json?.data?.id;
 
+    const vendorCreate = await req(base, 'POST', '/api/vendors', { token: tokens.admin, body: {
+      name: 'CI Maintenance Vendor', category: 'IT Support', owner_division: 'IT', rating: 4,
+    } });
+    const vendorId = vendorCreate.json?.data?.id;
+    record('Create vendor fixture', '201 + vendor ID', `HTTP ${vendorCreate.status}`, vendorCreate.status === 201 && !!vendorId);
+
+    const maintCountBeforeInvalidVendor = (await req(base, 'GET', '/api/maintenances', { token: tokens.admin })).json?.data?.length || 0;
+    const invalidVendorCreate = await req(base, 'POST', '/api/maintenances', { token: tokens.it, body: {
+      asset_id: 'AST-HSV-001', title: 'Invalid vendor relation', vendor_id: 'VND-NOT-FOUND', vendor_name: 'Forged Vendor',
+    } });
+    const maintCountAfterInvalidVendor = (await req(base, 'GET', '/api/maintenances', { token: tokens.admin })).json?.data?.length || 0;
+    record('POST rejects unknown vendor without creating schedule', '404 + unchanged count',
+      `HTTP ${invalidVendorCreate.status}, count ${maintCountBeforeInvalidVendor}->${maintCountAfterInvalidVendor}`,
+      invalidVendorCreate.status === 404 && maintCountBeforeInvalidVendor === maintCountAfterInvalidVendor);
+
+    const linkedMaintenance = await req(base, 'POST', '/api/maintenances', { token: tokens.it, body: {
+      asset_id: 'AST-HSV-001', title: 'Valid vendor relation', vendor_id: vendorId, vendor_name: 'Forged Vendor Name',
+    } });
+    const linkedMaintenanceId = linkedMaintenance.json?.data?.id;
+    record('POST persists canonical vendor ID and name', '201 + canonical vendor name',
+      `HTTP ${linkedMaintenance.status}, ${linkedMaintenance.json?.data?.vendor_id}, ${linkedMaintenance.json?.data?.vendor_name}`,
+      linkedMaintenance.status === 201 && linkedMaintenance.json?.data?.vendor_id === vendorId
+        && linkedMaintenance.json?.data?.vendor_name === 'CI Maintenance Vendor');
+
     const adminOnGa = await req(base, 'POST', '/api/maintenances', { token: tokens.admin, body: { asset_id: 'AST-KDR-001', title: 'Admin jadwal verify' } });
     record('POST admin (superadmin) on GA asset allowed', '201', `HTTP ${adminOnGa.status}`, adminOnGa.status === 201);
 
@@ -209,6 +233,23 @@ async function main() {
       ? await req(base, 'PATCH', `/api/maintenances/${createdId}`, { token: tokens.it, body: { notes: 'IT perbarui jadwalnya' } })
       : { status: 0 };
     record('PATCH IT on IT schedule allowed', '200', `HTTP ${itPatchOwn.status}`, itPatchOwn.status === 200);
+
+    const invalidVendorPatch = linkedMaintenanceId
+      ? await req(base, 'PATCH', `/api/maintenances/${linkedMaintenanceId}`, { token: tokens.it, body: { vendor_id: 'VND-NOT-FOUND', notes: 'must not persist' } })
+      : { status: 0 };
+    const afterInvalidVendorPatch = linkedMaintenanceId
+      ? (await req(base, 'GET', '/api/maintenances', { token: tokens.admin })).json?.data?.find(x => x.id === linkedMaintenanceId)
+      : null;
+    record('PATCH rejects unknown vendor and preserves prior relation', '404 + original vendor retained',
+      `HTTP ${invalidVendorPatch.status}, vendor ${afterInvalidVendorPatch?.vendor_id}`,
+      invalidVendorPatch.status === 404 && afterInvalidVendorPatch?.vendor_id === vendorId);
+
+    const canonicalVendorPatch = linkedMaintenanceId
+      ? await req(base, 'PATCH', `/api/maintenances/${linkedMaintenanceId}`, { token: tokens.it, body: { vendor_name: 'Forged Vendor Name' } })
+      : { status: 0 };
+    record('PATCH cannot desynchronize linked vendor name', '200 + canonical vendor name',
+      `HTTP ${canonicalVendorPatch.status}, ${canonicalVendorPatch.json?.data?.vendor_name}`,
+      canonicalVendorPatch.status === 200 && canonicalVendorPatch.json?.data?.vendor_name === 'CI Maintenance Vendor');
 
     const adminPatch = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.admin, body: { notes: 'admin patch verify' } });
     record('PATCH admin (superadmin) on IT schedule allowed', '200', `HTTP ${adminPatch.status}`, adminPatch.status === 200);
