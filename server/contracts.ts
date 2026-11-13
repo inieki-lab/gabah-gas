@@ -142,9 +142,22 @@ export const ContractDomainService = {
     if (!canManageContracts(actor)) {
       throw new Error('Akses ditolak: permission contracts.create tidak diberikan.');
     }
-    const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
-    const pic = db.users.find(u => u.id === payload.pic_user_id) || actor;
-    const ownerExists = (db.divisions || []).some(d => String(d.code).trim().toUpperCase() === ownerDivision);
+    if (typeof payload.title !== 'string' || !payload.title.trim()
+      || typeof payload.vendor_name !== 'string' || !payload.vendor_name.trim()) {
+      throw new Error('Judul kontrak dan nama vendor wajib diisi.');
+    }
+    const startDate = new Date(payload.start_date);
+    const endDate = new Date(payload.end_date);
+    if (!payload.start_date || !payload.end_date
+      || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())
+      || startDate > endDate) {
+      throw new Error('Periode kontrak tidak valid: tanggal mulai harus valid dan tidak melewati tanggal berakhir.');
+    }
+
+    const ownerDivision = (payload.owner_division || actor.division || '').toString().trim().toUpperCase();
+    const ownerExists = (db.divisions || []).some(d =>
+      String(d.code).trim().toUpperCase() === ownerDivision && d.is_active !== false
+    );
     const ownerScopeAllowed = ownerExists
       && (isSuperadminActor(actor) || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
@@ -153,11 +166,46 @@ export const ContractDomainService = {
       throw new Error(`Akses ditolak: scope pengguna tidak mencakup owner kontrak ${ownerDivision}.`);
     }
 
+    // PIC is an explicit business relationship. Never silently replace an
+    // invalid/inactive requested user with the actor creating the contract.
+    const pic = db.users.find(u => u.id === payload.pic_user_id && u.is_active);
+    if (!pic) throw new Error('PIC kontrak tidak ditemukan atau akun sudah nonaktif.');
+
+    const escalationUserId = payload.escalation_user_id ? String(payload.escalation_user_id).trim() : '';
+    if (escalationUserId && !db.users.some(u => u.id === escalationUserId && u.is_active)) {
+      throw new Error('Pengguna eskalasi tidak ditemukan atau akun sudah nonaktif.');
+    }
+
+    const parentContractId = payload.parent_contract_id ? String(payload.parent_contract_id).trim() : '';
+    if (parentContractId) {
+      const parent = db.contracts.find(item => item.id === parentContractId);
+      if (!parent) throw new Error('Kontrak induk tidak ditemukan.');
+      if (String(parent.owner_division || '').trim().toUpperCase() !== ownerDivision) {
+        throw new Error('Kontrak induk harus berasal dari divisi pemilik yang sama.');
+      }
+      if (!canSeeContract(actor, parent)) {
+        throw new Error('Akses ditolak: kontrak induk berada di luar scope pengguna.');
+      }
+    }
+
     const reminderConfig: ContractReminderConfig = {
       reminder1_days: payload.reminder_config?.reminder1_days ?? DEFAULT_REMINDER_CONFIG.reminder1_days,
       reminder2_days: payload.reminder_config?.reminder2_days ?? DEFAULT_REMINDER_CONFIG.reminder2_days,
       reminder3_days: payload.reminder_config?.reminder3_days ?? DEFAULT_REMINDER_CONFIG.reminder3_days,
     };
+    const reminderValues = [reminderConfig.reminder1_days, reminderConfig.reminder2_days, reminderConfig.reminder3_days];
+    if (reminderValues.some(value => !Number.isInteger(value) || value < 0)
+      || reminderConfig.reminder1_days < reminderConfig.reminder2_days
+      || reminderConfig.reminder2_days < reminderConfig.reminder3_days) {
+      throw new Error('Konfigurasi reminder harus berupa bilangan bulat non-negatif dengan urutan 1 ≥ 2 ≥ 3.');
+    }
+
+    const noticePeriodDays = Number(payload.notice_period_days ?? 0);
+    const contractValue = Number(payload.contract_value ?? 0);
+    if (!Number.isInteger(noticePeriodDays) || noticePeriodDays < 0
+      || !Number.isFinite(contractValue) || contractValue < 0) {
+      throw new Error('Notice period dan nilai kontrak harus berupa angka non-negatif yang valid.');
+    }
 
     const nowIso = new Date().toISOString();
     const contract: ServerContract = {
@@ -172,19 +220,19 @@ export const ContractDomainService = {
       pic_name: pic.name,
       start_date: payload.start_date,
       end_date: payload.end_date,
-      notice_period_days: payload.notice_period_days ?? 0,
+      notice_period_days: noticePeriodDays,
       notice_date: (payload.notice_period_days ?? 0) > 0 ? addDays(payload.end_date, -(payload.notice_period_days ?? 0)) : payload.end_date,
-      contract_value: payload.contract_value || 0,
+      contract_value: contractValue,
       auto_renewal: Boolean(payload.auto_renewal),
       status: payload.status === 'draft' ? 'draft' : 'active',
       renewal_outcome: 'pending_decision',
       renewal_notes: payload.renewal_notes || null,
       replaced_by_contract_id: null,
-      parent_contract_id: payload.parent_contract_id || null,
-      documents: Array.isArray(payload.documents) ? payload.documents : [],
-      milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
+      parent_contract_id: parentContractId || null,
+      documents: [],
+      milestones: [],
       reminder_config: reminderConfig,
-      escalation_user_id: payload.escalation_user_id || null,
+      escalation_user_id: escalationUserId || null,
       restricted: Boolean(payload.restricted),
       notes: payload.notes || null,
       created_by: actor.id,
