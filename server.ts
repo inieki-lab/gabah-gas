@@ -2504,6 +2504,46 @@ async function startServer() {
     return res.json({ success: true, data: filtered });
   });
 
+  const MAINTENANCE_FREQUENCIES = new Set(['weekly', 'monthly', 'quarterly', 'biannual', 'annual', 'one_time']);
+  const MAINTENANCE_STATUSES = new Set(['scheduled', 'in_progress', 'completed', 'overdue', 'cancelled']);
+  const validateMaintenanceInput = (body: any): string | null => {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return 'Data pemeliharaan tidak valid.';
+    if (body.title !== undefined && (typeof body.title !== 'string' || !body.title.trim() || body.title.trim().length > 200)) return 'Judul jadwal wajib diisi dan maksimal 200 karakter.';
+    if (body.scheduled_date !== undefined) {
+      if (typeof body.scheduled_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.scheduled_date)) return 'Tanggal jadwal harus menggunakan format YYYY-MM-DD.';
+      const parsed = new Date(body.scheduled_date + 'T00:00:00.000Z');
+      if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== body.scheduled_date) return 'Tanggal jadwal tidak valid.';
+    }
+    if (body.frequency !== undefined && !MAINTENANCE_FREQUENCIES.has(body.frequency)) return 'Frekuensi pemeliharaan tidak valid.';
+    if (body.status !== undefined && !MAINTENANCE_STATUSES.has(body.status)) return 'Status pemeliharaan tidak valid.';
+    if (body.technician_name !== undefined && (typeof body.technician_name !== 'string' || body.technician_name.length > 180)) return 'Nama teknisi maksimal 180 karakter.';
+    for (const field of ['estimated_cost', 'actual_cost']) {
+      if (body[field] !== undefined && body[field] !== null && (typeof body[field] !== 'number' || !Number.isFinite(body[field]) || body[field] < 0)) return 'Biaya pemeliharaan harus berupa angka nol atau lebih.';
+    }
+    if (body.notes !== undefined && (typeof body.notes !== 'string' || body.notes.length > 5000)) return 'Catatan pemeliharaan maksimal 5.000 karakter.';
+    if (body.checklist !== undefined && (!Array.isArray(body.checklist) || body.checklist.length > 50 || body.checklist.some((item: unknown) => typeof item !== 'string' || item.length > 250))) return 'Checklist harus berupa maksimal 50 teks, masing-masing maksimal 250 karakter.';
+    if (body.vendor_id !== undefined && body.vendor_id !== null && body.vendor_id !== '' && typeof body.vendor_id !== 'string') return 'ID vendor tidak valid.';
+    if (body.vendor_name !== undefined && (typeof body.vendor_name !== 'string' || body.vendor_name.length > 180)) return 'Nama vendor maksimal 180 karakter.';
+    return null;
+  };
+  const resolveMaintenanceVendor = (vendorId: unknown): { id?: string; name?: string } | null => {
+    if (vendorId === undefined || vendorId === null || vendorId === '') return {};
+    if (typeof vendorId !== 'string') return null;
+    const vendor = db.vendors.find(item => item.id === vendorId);
+    return vendor ? { id: vendor.id, name: vendor.name } : null;
+  };
+  const canReferenceMaintenanceVendor = (actor: ReturnType<typeof getActor>, vendorId?: string): boolean => {
+    if (!vendorId) return true;
+    const vendor = db.vendors.find(item => item.id === vendorId);
+    if (!vendor) return false;
+    if (isSuperadminActor(actor)) return true;
+    const owner = String(vendor.owner_division || '').trim().toUpperCase();
+    if (!owner) return false;
+    return isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', owner, 'vendors')
+      : actor.role === owner;
+  };
+
   app.post('/api/maintenances', (req, res) => {
     const actor = getActor(req);
     // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
@@ -2514,8 +2554,15 @@ async function startServer() {
     } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengelola jadwal servis.' });
     }
-    if (!req.body.asset_id) {
+    const inputError = validateMaintenanceInput(req.body);
+    if (inputError) return res.status(400).json({ success: false, message: inputError });
+    if (!req.body.asset_id || typeof req.body.asset_id !== 'string') {
       return res.status(400).json({ success: false, message: 'Aset wajib dipilih untuk jadwal pemeliharaan.' });
+    }
+    const vendor = resolveMaintenanceVendor(req.body.vendor_id);
+    if (!vendor) return res.status(400).json({ success: false, message: 'Vendor yang dipilih tidak ditemukan.' });
+    if (vendor.id && !canReferenceMaintenanceVendor(actor, vendor.id)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: vendor tidak termasuk scope divisi pengguna.' });
     }
     const asset = db.assets.find(a => a.id === req.body.asset_id);
     if (!asset) {
@@ -2543,8 +2590,8 @@ async function startServer() {
       frequency: req.body.frequency || 'one_time',
       status: req.body.status || 'scheduled',
       technician_name: req.body.technician_name || 'Tim Internal',
-      vendor_id: req.body.vendor_id,
-      vendor_name: req.body.vendor_name,
+      vendor_id: vendor.id,
+      vendor_name: vendor.name || req.body.vendor_name || '',
       estimated_cost: req.body.estimated_cost || 0,
       actual_cost: req.body.actual_cost || 0,
       notes: req.body.notes || '',
@@ -2575,6 +2622,17 @@ async function startServer() {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.update dan scope owner "${schedule.owner_division}" wajib dimiliki.` });
     }
 
+    const inputError = validateMaintenanceInput(req.body);
+    if (inputError) return res.status(400).json({ success: false, message: inputError });
+    const vendor = resolveMaintenanceVendor(req.body.vendor_id);
+    if (!vendor) return res.status(400).json({ success: false, message: 'Vendor yang dipilih tidak ditemukan.' });
+    if (vendor.id && !canReferenceMaintenanceVendor(actor, vendor.id)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: vendor tidak termasuk scope divisi pengguna.' });
+    }
+    if (req.body.vendor_id === undefined && req.body.vendor_name !== undefined && schedule.vendor_id) {
+      return res.status(400).json({ success: false, message: 'Nama vendor terhubung dikelola dari master vendor. Pilih ulang vendor atau kosongkan relasinya terlebih dahulu.' });
+    }
+
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, schedule_code, asset_id, asset_name,
     // asset_number, category_type, owner_division, created_at.
@@ -2583,8 +2641,19 @@ async function startServer() {
       'vendor_id', 'vendor_name', 'estimated_cost', 'actual_cost', 'notes', 'checklist',
     ];
     for (const key of allowedMaintenanceFields) {
+      if (key === 'vendor_id') {
+        if (req.body.vendor_id !== undefined) {
+          schedule.vendor_id = vendor.id;
+          schedule.vendor_name = vendor.name || (req.body.vendor_name !== undefined ? req.body.vendor_name : '');
+        } else if (req.body.vendor_name !== undefined) {
+          schedule.vendor_name = req.body.vendor_name;
+        }
+        continue;
+      }
       if (req.body[key] !== undefined) {
-        (schedule as any)[key] = req.body[key];
+        (schedule as any)[key] = key === 'estimated_cost' || key === 'actual_cost'
+          ? Number(req.body[key])
+          : req.body[key];
       }
     }
     if (req.body.status === 'completed') {
