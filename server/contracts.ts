@@ -251,30 +251,69 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
-    // SECURITY (CR-06): protected fields — these govern identity, ownership,
-    // governance flags, and the authoritative lifecycle of the contract and can
-    // only change through their dedicated, authorized endpoints (create with
-    // division check, addDocument, addMilestone, decideRenewal, reminder sweep).
-    const protectedFields: Array<keyof ServerContract> = [
-      'id',
-      'contract_number',
-      'created_by',
-      'created_by_name',
-      'created_at',
-      'owner_division',
-      'owner_division_label',
-      'pic_user_id',
-      'pic_name',
-      'restricted',
-      'status',
-      'renewal_outcome',
-      'replaced_by_contract_id',
-      'parent_contract_id',
-      'documents',
-      'milestones',
+    // SECURITY (CR-06): allowlist editable business fields. A denylist can
+    // accidentally admit newly-added identity or workflow fields in the future.
+    const editableFields: Array<keyof ServerContract> = [
+      'contract_type',
+      'title',
+      'vendor_name',
+      'start_date',
+      'end_date',
+      'notice_period_days',
+      'contract_value',
+      'auto_renewal',
+      'renewal_notes',
+      'reminder_config',
+      'escalation_user_id',
+      'notes',
     ];
-    for (const key of Object.keys(updates) as Array<keyof ServerContract>) {
-      if (protectedFields.includes(key)) continue;
+    const unknownFields = Object.keys(updates).filter(key => !editableFields.includes(key as keyof ServerContract));
+    if (unknownFields.length) throw new Error(`Field kontrak tidak dapat diubah melalui endpoint ini: ${unknownFields.join(', ')}.`);
+
+    const nextStartDate = updates.start_date ?? contract.start_date;
+    const nextEndDate = updates.end_date ?? contract.end_date;
+    const parsedStartDate = new Date(nextStartDate);
+    const parsedEndDate = new Date(nextEndDate);
+    if (Number.isNaN(parsedStartDate.getTime()) || Number.isNaN(parsedEndDate.getTime()) || parsedStartDate > parsedEndDate) {
+      throw new Error('Periode kontrak tidak valid: tanggal mulai harus valid dan tidak melewati tanggal berakhir.');
+    }
+    if (updates.title !== undefined && (typeof updates.title !== 'string' || !updates.title.trim())) {
+      throw new Error('Judul kontrak wajib diisi.');
+    }
+    if (updates.vendor_name !== undefined && (typeof updates.vendor_name !== 'string' || !updates.vendor_name.trim())) {
+      throw new Error('Nama vendor wajib diisi.');
+    }
+    if (updates.contract_type !== undefined && (typeof updates.contract_type !== 'string' || !updates.contract_type.trim())) {
+      throw new Error('Tipe kontrak wajib diisi.');
+    }
+    if (updates.notice_period_days !== undefined
+      && (!Number.isInteger(updates.notice_period_days) || updates.notice_period_days < 0)) {
+      throw new Error('Notice period harus berupa bilangan bulat non-negatif.');
+    }
+    if (updates.contract_value !== undefined
+      && (!Number.isFinite(updates.contract_value) || updates.contract_value < 0)) {
+      throw new Error('Nilai kontrak harus berupa angka non-negatif yang valid.');
+    }
+    if (updates.reminder_config !== undefined) {
+      const reminder = updates.reminder_config;
+      const values = [reminder?.reminder1_days, reminder?.reminder2_days, reminder?.reminder3_days];
+      if (values.some(value => !Number.isInteger(value) || Number(value) < 0)
+        || reminder.reminder1_days < reminder.reminder2_days
+        || reminder.reminder2_days < reminder.reminder3_days) {
+        throw new Error('Konfigurasi reminder harus berupa bilangan bulat non-negatif dengan urutan 1 ≥ 2 ≥ 3.');
+      }
+    }
+    if (updates.escalation_user_id) {
+      const escalationId = String(updates.escalation_user_id).trim();
+      if (!db.users.some(user => user.id === escalationId && user.is_active)) {
+        throw new Error('Pengguna eskalasi tidak ditemukan atau akun sudah nonaktif.');
+      }
+      updates = { ...updates, escalation_user_id: escalationId };
+    } else if (updates.escalation_user_id === '') {
+      updates = { ...updates, escalation_user_id: null };
+    }
+
+    for (const key of editableFields) {
       if (updates[key] !== undefined) (contract as any)[key] = updates[key];
     }
 
