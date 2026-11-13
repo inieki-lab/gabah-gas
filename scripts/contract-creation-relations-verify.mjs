@@ -54,9 +54,30 @@ assert.deepEqual(created.documents, [], 'Client-supplied document metadata must 
 assert.deepEqual(created.milestones, [], 'Client-supplied milestone state must not be trusted on creation');
 assert.equal(db.contracts.length, 6, 'Only the valid fixture contract should be added');
 
+assert.throws(
+  () => ContractDomainService.updateContract(created.id, { owner_division: 'SC' }, actor),
+  /Field kontrak tidak dapat diubah/,
+);
+assert.throws(
+  () => ContractDomainService.updateContract(created.id, { contract_value: -10 }, actor),
+  /Nilai kontrak harus/,
+);
+assert.throws(
+  () => ContractDomainService.updateContract(created.id, { start_date: '2028-01-01' }, actor),
+  /Periode kontrak tidak valid/,
+);
+assert.throws(
+  () => ContractDomainService.updateContract(created.id, { escalation_user_id: 'USR-NOT-FOUND' }, actor),
+  /Pengguna eskalasi tidak ditemukan/,
+);
+const updated = ContractDomainService.updateContract(created.id, { title: 'Updated fixture title', contract_value: 2000000 }, actor);
+assert.equal(updated.title, 'Updated fixture title');
+assert.equal(updated.contract_value, 2000000);
+
 console.log('PASS | invalid/missing/inactive PIC rejected');
 console.log('PASS | unknown escalation user rejected; supported cross-division escalation retained');
 console.log('PASS | missing and cross-division parent contract rejected');
 console.log('PASS | invalid date, reminder thresholds, and negative contract value rejected');
 console.log('PASS | forged document/milestone metadata ignored');
-console.log('TOTAL: 5 | PASS: 5 | FAIL: 0');
+console.log('PASS | update allowlist blocks protected fields and validates editable values');
+console.log('TOTAL: 6 | PASS: 6 | FAIL: 0');
