@@ -701,8 +701,6 @@ export class GabahDomainService {
       throw new Error(`Tabrakan Jadwal! Aset "${asset.name}" (${asset.asset_number}) sudah dipinjam / disetujui pada periode tersebut (${conflicting.start_date.split('T')[0]} s/d ${conflicting.due_date.split('T')[0]}).`);
     }
 
-    const borrower = db.users.find(u => u.id === payload.borrower_id) || actor;
-
     const loanNumber = AssetNumberingEngine.generateLoanNumber();
     const newLoan: ServerLoan = {
       id: `LOAN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
