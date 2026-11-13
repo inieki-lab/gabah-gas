@@ -159,7 +159,12 @@ async function main() {
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].filter(a => a.id).length + ' ids',
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].every(a => a.id));
 
-    const setAssetStatus = (assetId, status) => req(base, 'PATCH', `/api/assets/${assetId}`, { token: admin.token, body: { status } });
+    const patchAsset = (assetId, body) => req(base, 'PATCH', `/api/assets/${assetId}`, { token: admin.token, body });
+    const setAssetStatus = (assetId, status) => patchAsset(assetId, { status });
+    const invalidAssetStatus = await setAssetStatus(itAsset5.id, 'not-a-real-status');
+    record('Asset update rejects unknown status values', '400', `HTTP ${invalidAssetStatus.status}`, invalidAssetStatus.status === 400);
+    const invalidLoanableType = await patchAsset(itAsset5.id, { is_loanable: 'false' });
+    record('Asset update requires boolean is_loanable', '400', `HTTP ${invalidLoanableType.status}`, invalidLoanableType.status === 400);
     await setAssetStatus(itAsset5.id, 'damaged');
     const unavailableRequest = await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
       asset_id: itAsset5.id, purpose: 'Unavailable asset must be rejected', start_date: isoDatePlus(1), due_date: isoDatePlus(7),
