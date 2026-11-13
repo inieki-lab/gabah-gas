@@ -492,7 +492,6 @@ async function startServer() {
       }
       const { name, email, role, division, department, password, phone } = req.body;
       const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : (role || 'Karyawan');
-      const inferredOfficeLocation = role === 'Supply Chain' ? 'OFF-RPC' : role === 'PIBC' ? 'OFF-PIBC' : undefined;
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
@@ -551,12 +550,12 @@ async function startServer() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         role: primaryRole,
-        role_label: (role === 'Supply Chain' || role === 'PIBC') ? 'Karyawan — Lokasi ' + role : (roleLabels[role] || roleLabels[primaryRole] || 'Pegawai Operasional'),
+        role_label: roleLabels[primaryRole] || roleLabels[role] || 'Pegawai Operasional',
         division: division || 'Umum',
         department: department || 'Operasional',
         job_level_code: newJobLevel,
         unit_id: newUnitId || null,
-        office_location_id: newOfficeId || inferredOfficeLocation || null,
+        office_location_id: newOfficeId || null,
         phone: phone || '',
         avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
         is_active: true,
@@ -640,7 +639,7 @@ async function startServer() {
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
         const unitId = String(row.unit_id || '').trim();
         const requestedOfficeLocation = String(row.office_location_id || '').trim();
-        const officeLocationId = requestedOfficeLocation || (roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '');
+        const officeLocationId = requestedOfficeLocation;
 
         if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
         if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
@@ -661,7 +660,7 @@ async function startServer() {
         if (roleRaw && !validRoles.includes(roleRaw)) {
           warnings.push(`Baris ${rowNo}: Peran "${roleRaw}" tidak dikenali (memakai Karyawan).`);
         } else if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
-          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai lokasi kerja, bukan role; role aplikasi menjadi Karyawan.`);
+          warnings.push(`Baris ${rowNo}: "${requestedRole}" adalah label legacy dan dipetakan menjadi role Karyawan. Unit dan lokasi kerja tidak ditebak dari label role; isi kolom unit_id dan office_location_id bila diperlukan.`);
         }
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
@@ -670,14 +669,10 @@ async function startServer() {
           existing.name = name;
           existing.role = role as ServerUser['role'];
           (existing as any).role_label = roleLabels[role] || role;
-          if (requestedRole === 'Supply Chain' && !existing.office_location_id) existing.office_location_id = 'OFF-RPC';
-          if (requestedRole === 'PIBC' && !existing.office_location_id) existing.office_location_id = 'OFF-PIBC';
           existing.division = division as ServerUser['division'];
           existing.department = department;
           if (jobLevelCode) existing.job_level_code = jobLevelCode;
           if (unitId) existing.unit_id = unitId;
-          else if (requestedRole === 'Supply Chain' && existing.unit_id === 'UNIT-SC') existing.unit_id = null;
-          else if (requestedRole === 'PIBC' && existing.unit_id === 'UNIT-PIBC') existing.unit_id = null;
           if (officeLocationId) existing.office_location_id = officeLocationId;
           if (phone) existing.phone = phone;
           importedUsers.push(existing);
@@ -813,8 +808,8 @@ async function startServer() {
           'Admin GABAH': 'Admin GABAH (Super Admin)',
           'IT': 'Staff Divisi IT',
           'GA': 'Staff Divisi General Affairs',
-          'Supply Chain': 'Karyawan — Lokasi Supply Chain',
-          'PIBC': 'Karyawan — Lokasi PIBC',
+          'Supply Chain': 'Karyawan / Pemohon',
+          'PIBC': 'Karyawan / Pemohon',
           'Sekretaris Direksi': 'Sekretariat Direksi',
           'Humas': 'Humas & Protokoler',
           'Management': 'Direksi / Management',
@@ -831,8 +826,6 @@ async function startServer() {
       if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
       if (orgUnit !== undefined) targetUser.unit_id = orgUnit;
       if (orgOffice !== undefined) targetUser.office_location_id = orgOffice;
-      if (role === 'Supply Chain' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-RPC';
-      if (role === 'PIBC' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-PIBC';
 
       if (password) {
         const plain = String(password).trim();
