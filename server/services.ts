@@ -1213,12 +1213,56 @@ export class GabahDomainService {
       throw new Error('Tanggal, jam mulai, dan jam selesai wajib diisi.');
     }
 
-    if (payload.start_time >= payload.end_time) {
+    // Validate canonical date/time formats before collision checks or any
+    // interruption side effects. Lexical time comparison is safe only for HH:mm.
+    const dateText = String(payload.date).trim();
+    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateText)
+      ? new Date(`${dateText}T00:00:00.000Z`)
+      : new Date(Number.NaN);
+    if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dateText) {
+      throw new Error('Tanggal reservasi tidak valid. Gunakan format YYYY-MM-DD.');
+    }
+    const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+    const startTime = String(payload.start_time).trim();
+    const endTime = String(payload.end_time).trim();
+    if (!timePattern.test(startTime) || !timePattern.test(endTime)) {
+      throw new Error('Format jam tidak valid. Gunakan format HH:mm (00:00–23:59).');
+    }
+    if (startTime >= endTime) {
       throw new Error('Jam mulai harus lebih awal dari jam selesai rapat.');
     }
 
-    if (Number(payload.attendees_count) > room.capacity) {
-      throw new Error(`Jumlah peserta (${payload.attendees_count}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`);
+    if (payload.consumption_requested !== undefined && typeof payload.consumption_requested !== 'boolean') {
+      throw Object.assign(new Error('consumption_requested harus berupa boolean.'), { statusCode: 400 });
+    }
+    if (payload.documentation_requested !== undefined && typeof payload.documentation_requested !== 'boolean') {
+      throw Object.assign(new Error('documentation_requested harus berupa boolean.'), { statusCode: 400 });
+    }
+    if (payload.override_conflict !== undefined && typeof payload.override_conflict !== 'boolean') {
+      throw Object.assign(new Error('override_conflict harus berupa boolean.'), { statusCode: 400 });
+    }
+    if (payload.priority !== undefined && !['high', 'medium', 'low'].includes(payload.priority)) {
+      throw Object.assign(new Error('Prioritas rapat tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.consumption_type !== undefined && !['snack_box', 'lunch_box', 'coffee_tea', 'vip_buffet', 'custom'].includes(payload.consumption_type)) {
+      throw Object.assign(new Error('Jenis konsumsi tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.documentation_type !== undefined && !['foto', 'video', 'press_release', 'notulensi', 'lengkap'].includes(payload.documentation_type)) {
+      throw Object.assign(new Error('Jenis dokumentasi tidak valid.'), { statusCode: 400 });
+    }
+    const rawFacilities = payload.facilities_requested === undefined ? [] : payload.facilities_requested;
+    if (!Array.isArray(rawFacilities) || rawFacilities.length > 30
+      || rawFacilities.some(item => typeof item !== 'string' || !item.trim() || item.trim().length > 120)) {
+      throw Object.assign(new Error('Daftar fasilitas harus berupa array maksimal 30 item teks (1–120 karakter per item).'), { statusCode: 400 });
+    }
+    const requestedFacilities = rawFacilities.map(item => item.trim());
+
+    const attendeesCount = Number(payload.attendees_count);
+    if (!Number.isSafeInteger(attendeesCount) || attendeesCount < 1) {
+      throw new Error('Jumlah peserta harus berupa bilangan bulat minimal 1 orang.');
+    }
+    if (attendeesCount > room.capacity) {
+      throw new Error(`Jumlah peserta (${attendeesCount}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`);
     }
 
     // Anti-Collision Check: StartA < EndB && EndA > StartB on the same date for this room
@@ -1349,7 +1393,7 @@ export class GabahDomainService {
       organizer_department: actor.department,
       organizer_phone: actor.phone || '-',
       organizer_role: actor.role,
-      attendees_count: Number(payload.attendees_count) || 1,
+      attendees_count: attendeesCount,
       attendees_list: payload.attendees_list?.trim() || '',
       meeting_type: payload.meeting_type || 'internal',
       priority: requestedPriority,
@@ -1358,7 +1402,7 @@ export class GabahDomainService {
       end_time: payload.end_time,
       start_datetime: `${payload.date}T${payload.start_time}:00`,
       end_datetime: `${payload.date}T${payload.end_time}:00`,
-      facilities_requested: Array.isArray(payload.facilities_requested) ? payload.facilities_requested : [],
+      facilities_requested: requestedFacilities,
       consumption_requested: Boolean(payload.consumption_requested),
       consumption_type: payload.consumption_type || 'snack_box',
       consumption_pax: payload.consumption_pax ? Number(payload.consumption_pax) : Number(payload.attendees_count) || 1,
