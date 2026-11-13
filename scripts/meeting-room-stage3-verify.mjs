@@ -25,6 +25,12 @@ async function main(){
   rec('string consumption flag rejected','400',stringConsumptionFlag.status,stringConsumptionFlag.status===400);
   const stringDocumentationFlag=await make(karyawan,'Invalid string documentation flag',{documentation_requested:'false'});
   rec('string documentation flag rejected','400',stringDocumentationFlag.status,stringDocumentationFlag.status===400);
+  const stringOverrideFlag=await make(sek,'Invalid string override flag',{priority:'high',override_conflict:'false'});
+  rec('string override flag rejected','400',stringOverrideFlag.status,stringOverrideFlag.status===400);
+  const invalidPriority=await make(karyawan,'Invalid priority enum',{priority:'urgent'});
+  rec('invalid priority rejected','400',invalidPriority.status,invalidPriority.status===400);
+  const invalidConsumptionType=await make(karyawan,'Invalid consumption enum',{consumption_type:'unlisted'});
+  rec('invalid consumption type rejected','400',invalidConsumptionType.status,invalidConsumptionType.status===400);
   const countBeforeMalformedFacilities=((await req(b,'GET','/api/room-reservations',{token:admin})).json?.data||[]).length;
   const malformedFacilities=await make(karyawan,'Malformed facility list',{facilities_requested:[42]});
   const countAfterMalformedFacilities=((await req(b,'GET','/api/room-reservations',{token:admin})).json?.data||[]).length;
