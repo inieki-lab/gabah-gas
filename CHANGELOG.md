@@ -1,3 +1,12 @@
+## [2026-11-13] — Validate maintenance vendor relations
+
+- Maintenance creation and updates now reject unknown vendor IDs before mutating data.
+- When a maintenance schedule references a vendor ID, the vendor name is resolved from the authoritative vendor record instead of trusting client-supplied text.
+- Clearing a vendor link remains supported; legacy free-text vendor names remain compatible when no vendor ID is linked.
+- Added live HTTP regression checks for unknown vendor rejection, no partial create/update, and canonical vendor-name consistency.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
