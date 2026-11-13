@@ -103,6 +103,9 @@ jobs:
       - name: Contract renewal linkage integrity
         run: npm run test:contract-renewal-integrity
 
+      - name: Contract creation and update relation integrity
+        run: npm run test:contract-creation-relations
+
       - name: Organization model regression
         run: npm run test:org-model
 
