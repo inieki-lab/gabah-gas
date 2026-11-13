@@ -961,6 +961,18 @@ export class GabahDomainService {
     const deadline = new Date(Date.now() + slaHours * 3600 * 1000).toISOString();
     const ticketNumber = AssetNumberingEngine.generateTicketNumber();
 
+    let linkedContractId: string | undefined;
+    if (payload.contract_id !== undefined && payload.contract_id !== null) {
+      linkedContractId = String(payload.contract_id).trim();
+      if (!linkedContractId) {
+        throw Object.assign(new Error('ID kontrak terkait tidak valid.'), { statusCode: 400 });
+      }
+      const linkedContract = db.contracts.find(contract => contract.id === linkedContractId);
+      if (!linkedContract || !canSeeContract(actor, linkedContract)) {
+        throw Object.assign(new Error('Kontrak terkait tidak ditemukan atau tidak dapat diakses.'), { statusCode: 404 });
+      }
+    }
+
     let relatedAssetName = '';
     let relatedAssetNumber = '';
     let relatedAssetId: string | undefined;
@@ -1005,15 +1017,10 @@ export class GabahDomainService {
 
     db.tickets.unshift(newTicket);
 
-    // Linked contract (optional): Ticket = pekerjaan atas suatu Contract, bukan kategori
-    // SECURITY: linkage is only honored when the actor may see the contract —
-    // client input cannot probe restricted contracts through ticket creation.
-    if (payload.contract_id) {
-      const contract = db.contracts.find(c => c.id === payload.contract_id);
-      if (contract && canSeeContract(actor, contract)) {
-        newTicket.contract_id = contract.id;
-        this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id);
-      }
+    // Contract linkage was resolved and authorized before ticket creation.
+    if (linkedContractId) {
+      const contract = db.contracts.find(item => item.id === linkedContractId)!;
+      this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id);
     }
 
     // Notify respective division (IT covers software/license/SaaS)
