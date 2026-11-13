@@ -23,7 +23,7 @@ function field(body, name) {
 const assetRows = records(section('db.assets = [', 'db.maintenances = ['), 'AST-');
 const maintenanceRows = records(section('db.maintenances = [', 'db.vendors = ['), 'mnt-');
 const vendorBlock = section('db.vendors = [', 'db.knowledgeArticles = [');
-const vendorRows = [...vendorBlock.matchAll(/\\{\\s*id: '([^']+)'([\\s\\S]*?)\\},/g)]
+const vendorRows = [...vendorBlock.matchAll(/\{\s*id: '([^']+)'([\s\S]*?)\},/g)]
   .filter(match => match[1].startsWith('VND-'))
   .map(match => ({ id: match[1], body: match[2] }));
 const assets = new Map(assetRows.map(row => [row.id, row]));
