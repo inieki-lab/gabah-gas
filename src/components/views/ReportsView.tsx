@@ -88,15 +88,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
   const totalAssetCount = filteredAssets.length || 1;
 
-  // Breakdown per Division (IT, GA, SC, PIBC) — mengikuti filter aktif
+  // Breakdown per Division (IT, GA, RPC, PIBC) — mengikuti filter aktif
   const itAssets = filteredAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
   const gaAssets = filteredAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
-  const scAssets = filteredAssets.filter(a => a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('SC-'));
+  const rpcAssets = filteredAssets.filter(a => a.owner_division === 'RPC' || a.asset_number?.startsWith('RPC-'));
   const pibcAssets = filteredAssets.filter(a => a.owner_division === 'PIBC' || a.asset_number?.startsWith('PIBC-'));
 
   const itValue = itAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
   const gaValue = gaAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
-  const scValue = scAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
+  const rpcValue = rpcAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
   const pibcValue = pibcAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
   // Breakdown per 9 Jenis Aset Tetap
@@ -351,7 +351,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Total Jadwal Pemeliharaan</div>
             <div className="text-2xl font-black text-slate-900">{safeMaintenances.length} Jadwal</div>
-            <div className="text-[10px] text-slate-500">Mencakup IT, GA, Supply Chain, &amp; PIBC</div>
+            <div className="text-[10px] text-slate-500">Mencakup IT, GA, RPC, &amp; PIBC</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
@@ -405,13 +405,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi SC (Supply Chain &amp; Gudang Beras)</span>
-                <span className="font-bold text-slate-900">{scAssets.length} Unit ({Math.round((scAssets.length / totalAssetCount) * 100)}%)</span>
+                <span>Divisi RPC (RPC &amp; Gudang Beras)</span>
+                <span className="font-bold text-slate-900">{rpcAssets.length} Unit ({Math.round((rpcAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-600 h-2.5 rounded-full" style={{ width: `${(scAssets.length / totalAssetCount) * 100}%` }} />
+                <div className="bg-emerald-600 h-2.5 rounded-full" style={{ width: `${(rpcAssets.length / totalAssetCount) * 100}%` }} />
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(scValue)}</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Valuasi: {formatRupiah(rpcValue)}</div>
             </div>
 
             <div>

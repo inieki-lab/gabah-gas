@@ -57,7 +57,7 @@ JOIN gabah_roles r ON r.role_key = CASE u.role
   WHEN 'GA' THEN 'ga'
   WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi'
   WHEN 'Humas' THEN 'humas'
-  WHEN 'Supply Chain' THEN 'supply_chain'
+  WHEN 'RPC' THEN 'rpc'
   WHEN 'PIBC' THEN 'pibc'
   WHEN 'Karyawan' THEN 'karyawan'
   WHEN 'Auditor' THEN 'auditor'
@@ -71,4 +71,4 @@ UPDATE gabah_roles
 SET is_superadmin = (role_key = 'superadmin'),
     updated_at = NOW()
 WHERE role_key IN ('superadmin', 'it', 'ga', 'sekretaris_direksi', 'humas',
-                   'supply_chain', 'pibc', 'karyawan', 'auditor');
+                   'rpc', 'pibc', 'karyawan', 'auditor');

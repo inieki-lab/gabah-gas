@@ -59,7 +59,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     GA: 'Pantau fasilitas kantor, kendaraan dinas, ruang rapat, peminjaman, dan layanan umum.',
     'Sekretaris Direksi': 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan fasilitas kegiatan Direksi.',
     Humas: 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat sesuai penugasan.',
-    'Supply Chain': 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
+    'RPC': 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
     PIBC: 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
     Karyawan: 'Akses layanan mandiri untuk aset yang ditugaskan, peminjaman, tiket bantuan, dan reservasi ruang.',
     Auditor: 'Pemantauan read-only atas aset, peminjaman, tiket, laporan, dan jejak audit.',
@@ -103,7 +103,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const itAssets = dashboardAssets.filter(a => a.owner_division === 'IT');
   const gaAssets = dashboardAssets.filter(a => a.owner_division === 'GA');
-  const scAssets = dashboardAssets.filter(a => a.owner_division === 'SC');
+  const scAssets = dashboardAssets.filter(a => a.owner_division === 'RPC');
   const pibcAssets = dashboardAssets.filter(a => a.owner_division === 'PIBC');
   const licenseAssets = dashboardAssets.filter(a => a.category_type === 'License');
 

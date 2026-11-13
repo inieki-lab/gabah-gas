@@ -42,13 +42,13 @@ GABAH tidak menggunakan sembilan label role lama sebagai daftar role permanen. R
 
 ### 1.3 Model lokasi dan owner
 
-Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC/SC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
+Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
 
-Owner domain adalah master fleksibel (misalnya IT, GA, RPC/SC, dan domain lain yang disahkan), bukan enum tetap. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
+Owner domain adalah master fleksibel (misalnya IT, GA, RPC, dan domain lain yang disahkan), bukan enum tetap. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
 
 ### 1.4 Legacy role labels
 
-Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. Supply Chain dan PIBC adalah lokasi/unit/fungsi operasional, bukan role aplikasi permanen. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
+Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. RPC dan PIBC adalah lokasi/unit/fungsi operasional, bukan role aplikasi permanen. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
 
 Contract Management tetap domain tersendiri; scope kontrak menggunakan owner domain dan PIC. Vendor category tidak boleh dipakai sebagai pengganti owner domain.
 
@@ -65,7 +65,7 @@ Contract Management tetap domain tersendiri; scope kontrak menggunakan owner dom
 | Sekretaris Direksi | Fungsi dasar karyawan + agenda/permintaan dukungan Direksi | Prioritas/override harus permission khusus dan audit |
 | Humas | Fungsi dasar karyawan + antrean pekerjaan dokumentasi yang ditugaskan | Detail agenda disamarkan untuk pihak tanpa kewenangan |
 | Auditor | Read-only sesuai grant audit | Tidak boleh create/update/delete/approve |
-| RPC/SC dan owner operasional lain | Kapabilitas sesuai owner domain dan scope yang diberikan | Nama unit/lokasi tidak otomatis menjadi role atau scope |
+| RPC dan owner operasional lain | Kapabilitas sesuai owner domain dan scope yang diberikan | Nama unit/lokasi tidak otomatis menjadi role atau scope |
 
 Matriks di atas adalah baseline kebijakan. Permission dan scope aktual harus dibaca dari database RBAC, bukan dari nama role atau tabel statis di frontend.
 
@@ -102,7 +102,7 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / General Affairs & Sarpras |
 | **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Sekretariat Direksi |
 | **Karyawan + capability Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Humas & Protokoler |
-| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
+| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit RPC / lokasi RPC |
 | **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Komersial / Staf Komersial |
 | **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Audit / Auditor Internal (SPI) |
@@ -122,7 +122,7 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 |:---|:---|:---|:---|
 | `dashboard.read` | `GET /api/dashboard/stats` + `/api/dashboard/attention` | `013` (legacy compatibility seed; review before production mapping) | aktif di PostgreSQL |
 | `assets.read` | `GET /api/assets` + `GET /api/assets/:id` | `014` (legacy compatibility seed; review before production mapping) | aktif di PostgreSQL |
-| `assets.create` | `POST /api/assets` | `016` (superadmin/it/ga/supply_chain/pibc) | aktif |
+| `assets.create` | `POST /api/assets` | `016` (superadmin/it/ga/rpc/pibc) | aktif |
 | `assets.update` | `PATCH /api/assets/:id` | `016` | aktif |
 | `assets.bulk_import` | `POST /api/assets/bulk-import` | `016` | aktif |
 | `assets.assign` | `POST /api/assets/:id/assign` | `016` | aktif |
@@ -135,7 +135,7 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 1. **Owner-domain authority di domain service** (`server/services.ts`):
    `createAsset`, `assignAsset`, `moveAsset`, dan `mutateLifecycle` memakai
    permission serta scope owner dinamis (termasuk pengecualian owner). Owner
-   tidak dibatasi enum IT/GA/SC/PIBC; scope eksplisit menentukan kewenangan.
+   tidak dibatasi enum IT/GA/RPC/PIBC; scope eksplisit menentukan kewenangan.
    `approve_disposal` tetap memerlukan kapabilitas Super Admin yang sesuai.
 2. **Jalur UPDATE bulk-import** kini meniru authority divisi `PATCH /api/assets/:id`
    (perbaikan SEC-10) — impor massal tidak lagi melewati pembatasan

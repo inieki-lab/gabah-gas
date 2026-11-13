@@ -58,7 +58,7 @@ export const BatchQRPrintModal: React.FC<BatchQRPrintModalProps> = ({
               <option value="ALL">Semua Divisi ({assets.length})</option>
               <option value="IT">Divisi IT</option>
               <option value="GA">Divisi GA</option>
-              <option value="Supply Chain">Supply Chain</option>
+              <option value="RPC">RPC</option>
               <option value="PIBC">Pasar Induk PIBC</option>
             </select>
 

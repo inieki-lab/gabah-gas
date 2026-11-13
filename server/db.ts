@@ -5,9 +5,9 @@ export interface ServerUser {
   id: string;
   name: string;
   email: string;
-  role: 'Admin GABAH' | 'IT' | 'GA' | 'Supply Chain' | 'PIBC' | 'Karyawan' | 'Auditor' | 'Sekretaris Direksi' | 'Humas';
+  role: 'Admin GABAH' | 'IT' | 'GA' | 'RPC' | 'PIBC' | 'Karyawan' | 'Auditor' | 'Sekretaris Direksi' | 'Humas';
   role_label?: string;
-  division: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
+  division: 'IT' | 'GA' | 'RPC' | 'PIBC' | 'Audit' | 'Umum';
   department: string;
   /** ORG-MODEL: Jabatan/Level organisasi — atribut independen, BUKAN permission.
    *  Merujuk kode pada db.jobLevels (master configurable; direksi/kadiv/kadep/kasi/staf = seed default). */
@@ -44,8 +44,8 @@ export interface OrgJobLevel {
 export interface OrgUnit {
   id: string;
   name: string;
-  /** Divisi pemilik unit (IT/GA/SC/PIBC/Audit/Umum) — unit milik divisi, jabatan tidak. */
-  division_code: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
+  /** Divisi pemilik unit (IT/GA/RPC/PIBC/Audit/Umum) — unit milik divisi, jabatan tidak. */
+  division_code: 'IT' | 'GA' | 'RPC' | 'PIBC' | 'Audit' | 'Umum';
   is_active: boolean;
 }
 
@@ -192,7 +192,7 @@ export interface ServerTicket {
   ticket_code: string;
   title: string;
   description: string;
-  category: 'IT' | 'GA' | 'SC' | 'PIBC';
+  category: 'IT' | 'GA' | 'RPC' | 'PIBC';
   contract_id?: string | null; // Linked Contract (optional action linkage, Contract ≠ Ticket)
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
@@ -267,7 +267,7 @@ export interface ServerContract {
   contract_type: string; // e.g. 'Security', 'Maintenance', 'Supplier', 'Layanan Pasar'
   title: string;
   vendor_name: string; // counterparty
-  owner_division: string; // free department/division ownership (GA, IT, SC, PIBC, ...)
+  owner_division: string; // free department/division ownership (GA, IT, RPC, PIBC, ...)
   owner_division_label?: string;
   pic_user_id: string;
   pic_name: string;
@@ -509,16 +509,16 @@ export const db = {
   ] as OrgJobLevel[],
 
   // ORG-MODEL: Master Unit/Bagian — terpisah dari jabatan & lokasi.
-  // PIBC / Supply Chain / Pangsub adalah UNIT, bukan jabatan.
+  // PIBC / RPC / Pangsub adalah UNIT, bukan jabatan.
   orgUnits: [
     { id: 'UNIT-SEKDIR', name: 'Sekretariat Direksi', division_code: 'Umum', is_active: true },
     { id: 'UNIT-HUMAS', name: 'Humas & Protokoler', division_code: 'Umum', is_active: true },
     { id: 'UNIT-IT-MIS', name: 'IT & MIS', division_code: 'IT', is_active: true },
     { id: 'UNIT-GA-SARPRAS', name: 'GA / Sarpras', division_code: 'GA', is_active: true },
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
-    { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
+    { id: 'UNIT-RPC', name: 'RPC', division_code: 'RPC', is_active: true },
     { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
-    { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
+    { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'RPC', is_active: true },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
   ] as OrgUnit[],
 
@@ -529,7 +529,7 @@ export const db = {
     // Lokasi kantor aktif saat ini. IDs dipertahankan agar relasi user historis aman.
     { id: 'OFF-KP', name: 'HO', is_active: true },
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
-    { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC', is_active: true },
     { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
     { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
   ] as OrgOfficeLocation[],
@@ -542,7 +542,7 @@ export const db = {
   assetLocations: DEFAULT_ASSET_LOCATIONS,
 
   divisions: [
-    { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
+    { code: 'RPC', name: 'RPC & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
     { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
     { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
     { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
@@ -631,12 +631,12 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     is_active: true,
   },
   {
-    id: 'USR-SC',
+    id: 'USR-RPC',
     name: 'Agus Pratama',
     email: 'sc.warehouse@foodstation.co.id',
     role: 'Karyawan',
-    role_label: 'Karyawan — Lokasi Supply Chain',
-    division: 'SC',
+    role_label: 'Karyawan — Lokasi RPC',
+    division: 'RPC',
     department: 'Pergudangan Beras Induk & Distribusi',
     job_level_code: 'STAF',
     office_location_id: 'OFF-RPC',
@@ -664,7 +664,7 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     email: 'hendra.w@foodstation.co.id',
     role: 'Karyawan',
     role_label: 'Karyawan / Staf Komersial',
-    division: 'SC',
+    division: 'RPC',
     department: 'Divisi Perdagangan & Komersial',
     phone: '081299887766',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
@@ -706,7 +706,7 @@ export function seedInitialData() {
     authVersion: 1,
   }));
 
-  // Seed Canonical Assets (IT, GA, SC)
+  // Seed Canonical Assets (IT, GA, RPC)
   db.assets = [
     // 1. LAPTOPS ASSIGNED TO USERS
     {
@@ -847,7 +847,7 @@ export function seedInitialData() {
       location: 'Gudang Beras Cipinang - Pos Timbangan & Kontrol Distribusi',
       is_loanable: false,
       assigned_to: {
-        id: 'USR-SC',
+        id: 'USR-RPC',
         name: 'Agus Pratama',
         email: 'sc.warehouse@foodstation.co.id',
         department: 'Pergudangan Beras Induk & Distribusi',
@@ -1100,12 +1100,12 @@ export function seedInitialData() {
     },
     {
       id: 'AST-MSN-001',
-      asset_number: 'SC-MSN-2026-0001',
+      asset_number: 'RPC-MSN-2026-0001',
       corporate_asset_number: 'FST-22-0901',
       name: 'Toyota 8FBN25 Electric Forklift 2.5 Ton',
       category_code: 'MSN',
       category_type: 'General',
-      owner_division: 'SC',
+      owner_division: 'RPC',
       brand: 'Toyota Material Handling',
       model: '8FBN25 Counterbalanced Forklift',
       serial_number: 'TY-FL-8FBN-004',
@@ -1421,9 +1421,9 @@ export function seedInitialData() {
       title: 'Kalibrasi Berkala Timbangan Truk Beras 60 Ton Gudang Cipinang',
       asset_id: 'asset-010',
       asset_name: 'Toyota 8FBN25 Electric Forklift 2.5 Ton',
-      asset_number: 'SC-WGH-2026-0001',
+      asset_number: 'RPC-WGH-2026-0001',
       category_type: 'General',
-      owner_division: 'SC',
+      owner_division: 'RPC',
       scheduled_date: '2026-10-05',
       frequency: 'biannual',
       status: 'scheduled',
@@ -1450,7 +1450,7 @@ export function seedInitialData() {
   db.knowledgeArticles = [
     { id: 'kb-001', title: 'SOP Peminjaman Perangkat IT & Kendaraan Dinas Operasional', category: 'Policy', content: '## 1. Ketentuan Umum Peminjaman Aset\n1. Permohonan peminjaman diajukan minimal H-1 sebelum jadwal penggunaan melalui portal GABAH.\n2. Sistem GABAH secara otomatis memverifikasi ketersediaan jadwal untuk mencegah bentrok waktu.\n3. Persetujuan peminjaman dilakukan oleh Divisi Pemilik aset:\n   - Aset IT (Laptop, Proyektor IT): Disetujui Tim IT.\n   - Aset GA (Kendaraan, Ruang Meeting, AC): Disetujui Tim GA.\n4. Serah terima fisik wajib disertai pemeriksaan kondisi barang dan penerbitan dokumen BAST digital ber-QR Code.', tags: ['SOP', 'Peminjaman', 'BAST', 'Kebijakan'], view_count: 320, helpful_votes: 45, author: 'Admin GABAH', updated_at: '2026-01-10T10:00:00Z' },
     { id: 'kb-002', title: 'Panduan Koneksi Wi-Fi Secure & VPN Food Station Cipinang', category: 'IT', content: '## Konfigurasi Jaringan Kantor Food Station\n- **SSID Kantor Pusat**: `FST-Corp-Secure` (WPA3 Enterprise)\n- **SSID Tamu / Eksternal**: `FST-Guest` (Voucher Helpdesk)\n- **VPN Remote Work**: Gunakan FortiClient VPN dengan alamat gateway `vpn.foodstation.co.id`.', tags: ['Jaringan', 'Wi-Fi', 'VPN', 'Panduan'], view_count: 512, helpful_votes: 88, author: 'Ahmad Faisal', updated_at: '2026-02-01T14:00:00Z' },
-    { id: 'kb-003', title: 'Pedoman Standar Penomoran Aset {DIVISI}-{KODE}-{TAHUN}-0001 & Kaidah Kepemilikan', category: 'Policy', content: '## 1. Struktur Format Nomor Aset Resmi\nSistem GABAH menetapkan standar penomoran aktiva terpusat:\n`{DIVISI}-{KODE_KATEGORI}-{TAHUN}-{URUTAN_4_DIGIT}`\n\nContoh:\n- `IT-HLT-2026-0001` : Laptop Tim IT, Tahun 2026, Urutan ke-1.\n- `GA-INV-F-2026-0001` : Meja Kerja Kantor, Kepemilikan GA.\n- `SC-MSN-2026-0001` : Mesin Pengolahan Padi Gudang Sragen.\n- `PIBC-KDR-2026-0001` : Mobil Patroli Pasar Induk Beras Cipinang.\n\n## 2. Kaidah Khusus Kepemilikan Antar-Divisi\n1. **Kaidah Perabotan / Furniture (INV-F)**: Semua perabotan adalah milik **Divisi GA** di manapun lokasi fisiknya.\n2. **Kaidah Perangkat IT (IT-H & IT-S)**: Semua laptop, server, dan lisensi software adalah milik **Divisi IT**.\n3. **Kaidah Supply Chain (SC)**: Mesin penggilingan, jembatan timbang, silo gabah, dan truk distribusi.\n4. **Kaidah Pasar Induk Cipinang (PIBC)**: Timbangan komoditas, fasilitas los pasar, dan aset operasional PIBC.', tags: ['Standar', 'Penomoran', 'Taksonomi', 'Kaidah', 'Inventaris'], view_count: 640, helpful_votes: 112, author: 'Tim Regulasi Aset Food Station', updated_at: '2026-09-15T08:00:00Z' },
+    { id: 'kb-003', title: 'Pedoman Standar Penomoran Aset {DIVISI}-{KODE}-{TAHUN}-0001 & Kaidah Kepemilikan', category: 'Policy', content: '## 1. Struktur Format Nomor Aset Resmi\nSistem GABAH menetapkan standar penomoran aktiva terpusat:\n`{DIVISI}-{KODE_KATEGORI}-{TAHUN}-{URUTAN_4_DIGIT}`\n\nContoh:\n- `IT-HLT-2026-0001` : Laptop Tim IT, Tahun 2026, Urutan ke-1.\n- `GA-INV-F-2026-0001` : Meja Kerja Kantor, Kepemilikan GA.\n- `RPC-MSN-2026-0001` : Mesin Pengolahan Padi Gudang Sragen.\n- `PIBC-KDR-2026-0001` : Mobil Patroli Pasar Induk Beras Cipinang.\n\n## 2. Kaidah Khusus Kepemilikan Antar-Divisi\n1. **Kaidah Perabotan / Furniture (INV-F)**: Semua perabotan adalah milik **Divisi GA** di manapun lokasi fisiknya.\n2. **Kaidah Perangkat IT (IT-H & IT-S)**: Semua laptop, server, dan lisensi software adalah milik **Divisi IT**.\n3. **Kaidah RPC (RPC)**: Mesin penggilingan, jembatan timbang, silo gabah, dan truk distribusi.\n4. **Kaidah Pasar Induk Cipinang (PIBC)**: Timbangan komoditas, fasilitas los pasar, dan aset operasional PIBC.', tags: ['Standar', 'Penomoran', 'Taksonomi', 'Kaidah', 'Inventaris'], view_count: 640, helpful_votes: 112, author: 'Tim Regulasi Aset Food Station', updated_at: '2026-09-15T08:00:00Z' },
     { id: 'kb-004', title: 'Tata Cara Penerbitan & Validasi Dokumen BAST (Berita Acara Serah Terima)', category: 'Policy', content: '## Alur Resmi Penerbitan BAST Digital\n1. Setiap perpindahan atau peminjaman aset wajib dibuatkan dokumen BAST.\n2. Tombol **"Cetak BAST"** tersedia langsung pada detail aset dan modul peminjaman.\n3. Dokumen BAST GABAH mencantumkan:\n   - Nomor Resmi Aset ({DIVISI}-{KODE}-{TAHUN}-XXXX).\n   - Identitas Pihak Pertama (Pengelola Divisi) dan Pihak Kedua (Penerima Manfaat).\n   - Kondisi fisik saat diserahkan dan masa berlaku penggunaan.\n   - Kolom tanda tangan basah / digital untuk arsip audit BPK/Inspektorat DKI Jakarta.', tags: ['BAST', 'Dokumen', 'Audit', 'SOP'], view_count: 418, helpful_votes: 76, author: 'Admin GABAH', updated_at: '2026-09-15T09:30:00Z' },
   ];
 
@@ -1829,9 +1829,9 @@ export function seedInitialData() {
       contract_type: 'Supplier',
       title: 'Pengadaan Beras Premium untuk Operasional Distribusi Pangan',
       vendor_name: 'CV Tani Makmur Sejahtera',
-      owner_division: 'SC',
-      owner_division_label: 'Supply Chain & Pergudangan',
-      pic_user_id: 'USR-SC',
+      owner_division: 'RPC',
+      owner_division_label: 'RPC & Pergudangan',
+      pic_user_id: 'USR-RPC',
       pic_name: 'Agus Pratama',
       start_date: isoInDays(-200),
       end_date: isoInDays(28),

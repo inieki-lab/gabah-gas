@@ -9,8 +9,8 @@ Status: temuan awal terverifikasi dari source code; belum merupakan pernyataan b
 ### Koreksi status implementasi pada branch stabilisasi
 
 - `getScopedAssets()` dan resolver detail aset telah diselaraskan pada kebijakan owner domain dinamis: IT mengelola owner IT lintas lokasi; GA mengelola owner GA; akses baca tambahan GA ke Laptop/PC owner IT memerlukan `assets.read.it_workstations` dan tidak memberi hak mutasi.
-- Owner domain aset tidak lagi dimaksudkan sebagai enum tetap IT/GA/SC/PIBC. Scope owner dinamis mendukung domain operasional tambahan serta pengecualian seperti `division_except`.
-- Lokasi kerja pegawai, unit organisasi, owner aset, lokasi fisik, dan custodian diperlakukan sebagai dimensi terpisah. Supply Chain dan PIBC adalah unit/lokasi, bukan role aplikasi permanen.
+- Owner domain aset tidak lagi dimaksudkan sebagai enum tetap IT/GA/RPC/PIBC. Scope owner dinamis mendukung domain operasional tambahan serta pengecualian seperti `division_except`.
+- Lokasi kerja pegawai, unit organisasi, owner aset, lokasi fisik, dan custodian diperlakukan sebagai dimensi terpisah. RPC dan PIBC adalah unit/lokasi, bukan role aplikasi permanen.
 - Migration `026_map_branch_accounts_to_employee_location.sql` saat ini sengaja tidak melakukan perubahan data. Draft migrasi lama yang mengubah role/assignment berdasarkan label cabang tidak boleh dijalankan ulang atau dianggap sebagai pemetaan produksi yang disetujui.
 - Humas dan Sekretaris Direksi mengikuti baseline Karyawan dengan capability fungsi tambahan yang eksplisit; bukan alasan untuk menggabungkan lokasi kerja dengan role.
 - Auditor read-only kini ditentukan dari role efektif yang terpasang, termasuk ketika Auditor menjadi role tambahan. Enforcement berada di middleware dan domain/API, bukan hanya UI.
@@ -20,7 +20,7 @@ Status: temuan awal terverifikasi dari source code; belum merupakan pernyataan b
 
 ### Temuan lanjutan — Riwayat perpindahan aset
 
-- `GET /api/movements` sebelumnya memanggil `getScopedAssets(actor)`, lalu menyaring ulang hasilnya berdasarkan daftar role primer lama (`Karyawan`, `Sekretaris Direksi`, `Humas`, `Supply Chain`, `PIBC`).
+- `GET /api/movements` sebelumnya memanggil `getScopedAssets(actor)`, lalu menyaring ulang hasilnya berdasarkan daftar role primer lama (`Karyawan`, `Sekretaris Direksi`, `Humas`, `RPC`, `PIBC`).
 - Filter kedua tersebut menghapus aset yang terlihat melalui scope dinamis ketika pengguna beridentitas pegawai memiliki role tambahan yang sah. Dampaknya, katalog/detail aset dapat menampilkan aset, tetapi riwayat perpindahannya kosong atau tidak lengkap.
 - Perbaikan pada branch `ai/codex/movement-scope-consistency` menghapus filter duplikat. Resolver kanonis tetap bertanggung jawab menggabungkan aset personal dan seluruh scope eksplisit.
 - Regression contract memeriksa bahwa endpoint menggunakan hasil resolver tanpa klasifikasi ulang berdasarkan label role primer.
@@ -28,7 +28,7 @@ Status: temuan awal terverifikasi dari source code; belum merupakan pernyataan b
 
 ## 1. Keputusan bisnis yang menjadi acuan
 
-GABAH adalah aplikasi internal perusahaan untuk HO dan seluruh cabang/lokasi operasional. Lokasi Supply Chain dan PIBC bukan role aplikasi dan bukan otomatis pemilik aset.
+GABAH adalah aplikasi internal perusahaan untuk HO dan seluruh cabang/lokasi operasional. Lokasi RPC dan PIBC bukan role aplikasi dan bukan otomatis pemilik aset.
 
 Setiap pengguna harus memiliki atribut yang terpisah:
 - identitas akun;
@@ -52,7 +52,7 @@ Jabatan, unit, dan lokasi tidak boleh otomatis memberikan permission. Super Admi
 | Pegawai biasa | Aset yang ditugaskan kepadanya; katalog pinjaman hanya sesuai kebijakan | Tidak mendapat hak kelola aset hanya karena jabatan/lokasi |
 | Auditor | Semua data sesuai mandat audit | Read-only |
 
-Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset tidak menentukan owner_division atau siapa yang boleh memutasi aset.
+RPC dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset tidak menentukan owner_division atau siapa yang boleh memutasi aset.
 
 ## 2. Temuan source code terverifikasi
 
@@ -61,13 +61,13 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 1. `server/services.ts`, `GabahDomainService.getScopedAssets()`:
    - IT masih mendapat aset owner IT **dan GA**.
    - GA melihat aset GA dan sebagian workstation IT, tetapi akses workstation belum dikendalikan oleh permission khusus Super Admin.
-   - Role Supply Chain dan PIBC masih mendapat aset karena `owner_division === SC/PIBC` atau kecocokan teks lokasi/departemen. Ini mencampur lokasi dengan kepemilikan dan scope.
+   - Role RPC dan PIBC masih mendapat aset karena `owner_division === RPC/PIBC` atau kecocokan teks lokasi/departemen. Ini mencampur lokasi dengan kepemilikan dan scope.
    - Humas mendapat daftar aset kosong, bertentangan dengan fungsi dasar pegawai untuk melihat aset yang ditugaskan.
    - Karyawan/Sekretaris Direksi melihat seluruh aset loanable tanpa pembuktian bahwa katalog tersebut memang boleh terlihat untuk semua pengguna.
 2. `server/runtime-hardening.ts` memiliki resolver aset kedua yang tidak konsisten:
    - IT juga melihat owner GA.
    - GA melihat workstation IT tanpa permission toggle.
-   - Supply Chain/PIBC memperoleh akses berdasarkan owner SC/PIBC dan teks lokasi.
+   - RPC/PIBC memperoleh akses berdasarkan owner RPC/PIBC dan teks lokasi.
    - Guard detail aset ini dapat menghasilkan keputusan berbeda dari `getScopedAssets()`; policy harus dipusatkan agar list dan direct-ID tidak berbeda.
 3. Dashboard/API agregat harus diperiksa agar tidak menghitung raw seluruh pinjaman, tiket, reservasi, dan aset sebelum scope diterapkan.
 4. `GET /api/loans`, tickets, reservations, notifications, reconciliation, audit logs, serta endpoint mutasi perlu audit per endpoint. Filter frontend tidak dianggap sebagai kontrol keamanan.
@@ -75,11 +75,11 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 ### P1 — Model role dan navigasi
 
 1. `src/navigation/roleNavigation.ts` memakai daftar menu statis berdasarkan sembilan nama role. Ini membuat role, fungsi, dan menu terikat kaku.
-2. `src/components/modals/AdministrationModal.tsx` masih memiliki `SYSTEM_ROLES`, `DEFAULT_PERMISSIONS`, dan `PERMISSION_TEMPLATE_FIELDS` statis. Matriks tersebut memuat konsep lama seperti Divisi SC/PIBC sebagai pemilik aset.
+2. `src/components/modals/AdministrationModal.tsx` masih memiliki `SYSTEM_ROLES`, `DEFAULT_PERMISSIONS`, dan `PERMISSION_TEMPLATE_FIELDS` statis. Matriks tersebut memuat konsep lama seperti Divisi RPC/PIBC sebagai pemilik aset.
 3. `server/migrations/010_dynamic_rbac_foundation.sql` sudah membuat tabel role, permission, role-permission, scope, dan user-role. Namun komentar migrasi secara eksplisit menyatakan `users.role` tetap authoritative sampai tahap migrasi berikutnya.
 4. `server/rbac-policy.ts` memuat permission dan scope dari PostgreSQL, tetapi kebijakan legacy masih dipertahankan di banyak tempat. Role custom tanpa policy/scope harus tetap deny-by-default.
-5. `server/migrations/006_org_model_masters.sql` sudah memisahkan jabatan, unit, dan lokasi, tetapi seed `org_units` masih memasukkan Supply Chain dan PIBC sebagai unit dengan `division_code` SC/PIBC. Ini perlu dipetakan ulang sebagai struktur organisasi/lokasi tanpa otomatis menjadi domain kepemilikan aset.
-6. `PRD.md`, `docs/product/REQUIREMENTS.md`, `PROJECT-RULES.md`, komentar source, dan UAT masih mengandung aturan lama yang menyebut SC/PIBC sebagai owner aset. Dokumen ini harus diselaraskan setelah inventaris data dan aturan migrasi dipastikan.
+5. `server/migrations/006_org_model_masters.sql` sudah memisahkan jabatan, unit, dan lokasi, tetapi seed `org_units` masih memasukkan RPC dan PIBC sebagai unit dengan `division_code` RPC/PIBC. Ini perlu dipetakan ulang sebagai struktur organisasi/lokasi tanpa otomatis menjadi domain kepemilikan aset.
+6. `PRD.md`, `docs/product/REQUIREMENTS.md`, `PROJECT-RULES.md`, komentar source, dan UAT masih mengandung aturan lama yang menyebut RPC/PIBC sebagai owner aset. Dokumen ini harus diselaraskan setelah inventaris data dan aturan migrasi dipastikan.
 
 ## 3. Prinsip target arsitektur
 
@@ -90,21 +90,21 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 - Super Admin global ditentukan oleh capability stabil `is_superadmin`, bukan semata-mata nama tampilan role.
 - Role adalah template fungsi yang dapat dikelola. Penambahan cabang/lokasi tidak memerlukan role baru.
 - Frontend menyusun navigasi dari permission efektif pengguna, tetapi setiap endpoint tetap memeriksa permission dan scope di backend.
-- Migrasi data owner SC/PIBC tidak boleh dilakukan massal berdasarkan lokasi. Setiap aset perlu klasifikasi owner yang dapat dipertanggungjawabkan; data ambigu masuk antrean review Super Admin.
+- Migrasi data owner RPC/PIBC tidak boleh dilakukan massal berdasarkan lokasi. Setiap aset perlu klasifikasi owner yang dapat dipertanggungjawabkan; data ambigu masuk antrean review Super Admin.
 
 ## 4. Urutan pengerjaan dan acceptance criteria
 
 ### Tahap A — Inventarisasi
 - Petakan semua route API, permission gate, scope resolver, domain mutation, dashboard counter, search, export, dan menu.
 - Identifikasi semua pemeriksaan langsung `actor.role`, `actor.division`, `owner_division`, `location`, dan pencocokan teks.
-- Petakan nilai owner SC/PIBC pada data existing dan klasifikasi aset terkait tanpa mengubah data.
+- Petakan nilai owner RPC/PIBC pada data existing dan klasifikasi aset terkait tanpa mengubah data.
 
 ### Tahap B — Backend policy tunggal
 - Super Admin dapat melihat dan mengelola semua aset.
 - IT hanya melihat/mengelola owner IT.
 - GA hanya melihat/mengelola owner GA; akses IT Laptop/PC adalah permission baca terpisah yang dapat diaktifkan/nonaktifkan Super Admin.
 - GA tidak dapat memutasi aset IT meskipun aset terlihat.
-- Lokasi Supply Chain/PIBC tidak memberi hak kelola aset.
+- Lokasi RPC/PIBC tidak memberi hak kelola aset.
 - Pegawai termasuk Sekretaris Direksi dan Humas memiliki akses dasar personal yang sesuai, bukan akses aset global.
 - Auditor tetap read-only.
 - List endpoint dan direct-ID endpoint menghasilkan keputusan yang sama.
@@ -122,18 +122,18 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 
 ### Tahap E — Migrasi dan UAT
 - Tidak menghapus role/user lama sebelum pemetaan dan verifikasi.
-- Data owner SC/PIBC yang ambigu ditandai untuk review; tidak diubah hanya berdasarkan lokasi.
+- Data owner RPC/PIBC yang ambigu ditandai untuk review; tidak diubah hanya berdasarkan lokasi.
 - Uji backend untuk setiap kombinasi role-permission-scope, termasuk akses list dan detail, direct API, mutasi, export, dashboard, dan regresi.
 - PR tidak boleh di-merge sebelum CI dan UAT role kritis lulus.
 
 ## 5. Test matrix minimum
 
 1. Super Admin: seluruh owner dan lokasi terlihat; dapat melakukan administrasi aset.
-2. IT: owner IT terlihat di HO, Supply Chain, PIBC, dan lokasi lain; owner GA tidak terlihat/terkelola.
+2. IT: owner IT terlihat di HO, RPC, PIBC, dan lokasi lain; owner GA tidak terlihat/terkelola.
 3. GA: owner GA terlihat lintas lokasi; owner IT selain Laptop/PC tidak terlihat.
 4. GA dengan toggle IT workstation ON: hanya Laptop/PC IT terlihat; semua operasi mutasi atas aset itu ditolak.
 5. GA dengan toggle OFF: tidak ada aset IT yang terlihat.
-6. Pegawai Supply Chain/PIBC: lokasi kerja tersimpan sebagai atribut; lokasi tidak memberi akses owner atau mutasi aset.
+6. Pegawai RPC/PIBC: lokasi kerja tersimpan sebagai atribut; lokasi tidak memberi akses owner atau mutasi aset.
 7. Humas/Sekretaris Direksi/Karyawan: aset yang ditugaskan sendiri dan fungsi dasar sesuai permission; tidak mendapat katalog aset global.
 8. Auditor: read lintas data sesuai mandat; seluruh mutasi ditolak.
 9. Custom role: tanpa permission/scope tidak mendapat akses; grant eksplisit berlaku hanya pada modul dan scope yang ditetapkan.
@@ -142,8 +142,8 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 ## 6. Batasan perubahan aman
 
 - Jangan mengubah `owner_division`, nomor aset, nomor ERP, atau histori hanya berdasarkan nama lokasi.
-- Jangan menghapus role Supply Chain/PIBC atau akun existing sebelum mapping user ke jabatan/unit/lokasi dan role aplikasi tervalidasi.
-- Jangan menganggap seluruh aset owner SC/PIBC otomatis milik GA atau IT. Klasifikasi per aset harus direview.
+- Jangan menghapus role RPC/PIBC atau akun existing sebelum mapping user ke jabatan/unit/lokasi dan role aplikasi tervalidasi.
+- Jangan menganggap seluruh aset owner RPC/PIBC otomatis milik GA atau IT. Klasifikasi per aset harus direview.
 - Jangan mengaktifkan akses baca lintas divisi melalui frontend saja.
 - PR #18 tetap draft sampai tahap backend, UI, migrasi, CI, dan UAT lulus.
 
@@ -152,22 +152,22 @@ Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset t
 
 ### Perubahan yang sudah masuk branch (belum dianggap production/UAT selesai)
 
-1. **Supply Chain/PIBC sebagai lokasi kerja:** migration 026 memetakan akun legacy dengan role Supply Chain/PIBC menjadi Karyawan, mengisi office_location_id (Supply Chain → OFF-RPC, PIBC → OFF-PIBC bila belum terisi), membersihkan unit legacy UNIT-SC/UNIT-PIBC dari penempatan aktif, dan menonaktifkan role/unit legacy tanpa menghapus record historis. Seed akun dev juga memakai Karyawan + office_location_id. Nilai division lama dipertahankan untuk kompatibilitas notifikasi, bukan untuk otorisasi aset.
-2. **Aset:** Super Admin tetap global; IT hanya owner IT; GA owner GA dan opsional read-only Laptop/PC IT via permission assets.read.it_workstations. Aset owner SC/PIBC historis tidak dimigrasikan; mutasi hanya Super Admin sampai review per aset. Pembuatan aset baru dibatasi ke owner IT/GA.
-3. **Pegawai dan role tambahan:** resolver aset PostgreSQL menggabungkan baseline personal pegawai dengan dynamic role scopes yang ditetapkan eksplisit. Dynamic scope non-Super Admin dibatasi ke owner IT/GA; aset legacy owner SC/PIBC tidak masuk inventaris dinamis. Karyawan dapat memperoleh role fungsi tambahan tanpa mengganti atribut lokasi/jabatan.
+1. **RPC/PIBC sebagai lokasi kerja:** migration 026 memetakan akun legacy dengan role RPC/PIBC menjadi Karyawan, mengisi office_location_id (RPC → OFF-RPC, PIBC → OFF-PIBC bila belum terisi), membersihkan unit legacy UNIT-RPC/UNIT-PIBC dari penempatan aktif, dan menonaktifkan role/unit legacy tanpa menghapus record historis. Seed akun dev juga memakai Karyawan + office_location_id. Nilai division lama dipertahankan untuk kompatibilitas notifikasi, bukan untuk otorisasi aset.
+2. **Aset:** Super Admin tetap global; IT hanya owner IT; GA owner GA dan opsional read-only Laptop/PC IT via permission assets.read.it_workstations. Aset owner RPC/PIBC historis tidak dimigrasikan; mutasi hanya Super Admin sampai review per aset. Pembuatan aset baru dibatasi ke owner IT/GA.
+3. **Pegawai dan role tambahan:** resolver aset PostgreSQL menggabungkan baseline personal pegawai dengan dynamic role scopes yang ditetapkan eksplisit. Dynamic scope non-Super Admin dibatasi ke owner IT/GA; aset legacy owner RPC/PIBC tidak masuk inventaris dinamis. Karyawan dapat memperoleh role fungsi tambahan tanpa mengganti atribut lokasi/jabatan.
 4. **Data turunan aset:** riwayat mutasi dan jadwal maintenance mengikuti asset scope. Pegawai biasa hanya melihat maintenance/movement aset yang ditugaskan kepadanya; IT/GA mengikuti owner masing-masing; Auditor/Super Admin dapat membaca lintas scope.
-5. **Peminjaman:** approve/reject/handover/return oleh pengelola dibatasi owner IT/GA dengan permission dan scope; peminjam tetap dapat mengembalikan pinjaman miliknya sendiri. Pinjaman owner legacy SC/PIBC menjadi Super Admin review-only.
+5. **Peminjaman:** approve/reject/handover/return oleh pengelola dibatasi owner IT/GA dengan permission dan scope; peminjam tetap dapat mengembalikan pinjaman miliknya sendiri. Pinjaman owner legacy RPC/PIBC menjadi Super Admin review-only.
 6. **Vendor:** read/create/update mengikuti permission dan owner scope IT/GA, bukan nama lokasi/cabang. Super Admin/Auditor sesuai mandat dapat membaca lintas domain.
 7. **Navigasi:** permission assets.catalog.read dipisah dari assets.read untuk Aset Saya; menu inventaris penuh tidak muncul hanya karena pegawai memiliki akses personal. Super Admin capability mengirim wildcard menu permission agar semua menu administrasi tampil.
 8. **Data seed:** relasi maintenance IT/GA yang sebelumnya menunjuk ID aset yang tidak ada sudah disejajarkan dengan asset ID kanonikal. Jadwal timbang legacy tetap tidak terhubung ke aset aktif dan tidak dibuka untuk pengguna non-Super Admin.
 9. **Scope per modul:** migration 029 menambahkan kolom module pada role scopes. IT/GA seed scopes dipisah untuk assets, loans, tickets, vendors, dan contracts. Role manager kini mengatur scope per modul; scope satu modul tidak otomatis berlaku pada modul lain.
 10. **Role primer/tambahan:** migration 030 menandai satu role primer per user. Pembuatan/perubahan user dan bulk import menyinkronkan role primer, sementara role tambahan tetap dipertahankan. Backfill startup hanya mengganti role primer yang usang, bukan menghapus role tambahan.
-11. **Frontend dashboard:** dashboard dan workspace memakai koleksi API yang sudah di-scope backend. Filter role-name lama yang dapat menyembunyikan data role tambahan telah dilepas; helper lama juga tidak lagi memberikan scope aset/pinjaman/maintenance berdasarkan label Supply Chain/PIBC.
+11. **Frontend dashboard:** dashboard dan workspace memakai koleksi API yang sudah di-scope backend. Filter role-name lama yang dapat menyembunyikan data role tambahan telah dilepas; helper lama juga tidak lagi memberikan scope aset/pinjaman/maintenance berdasarkan label RPC/PIBC.
 
 ### Batasan yang masih harus dituntaskan
 
 - Migration 026 dan 027 **belum dijalankan pada database produksi**. Perlu backup, dry-run, pemeriksaan jumlah akun yang akan berubah, verifikasi office_location_id, lalu persetujuan sebelum eksekusi.
-- Owner SC/PIBC pada aset/kontrak/pinjaman historis tidak diubah. Super Admin perlu review satu per satu dan menetapkan owner IT atau GA berdasarkan bukti kepemilikan/pengelolaan.
+- Owner RPC/PIBC pada aset/kontrak/pinjaman historis tidak diubah. Super Admin perlu review satu per satu dan menetapkan owner IT atau GA berdasarkan bukti kepemilikan/pengelolaan.
 - Endpoint lain masih harus diaudit secara sistematis: users/master data, taxonomy, dashboard aggregates, search, export, license, contract document/milestone/renewal, room actions, notification delivery, audit/reconciliation, dan semua direct-ID paths.
 - Model role multi-assignment perlu UAT: Karyawan + role fungsi tambahan, jabatan (Direksi/Kadiv/Kadep/Kasi/Staf), unit organisasi, dan lokasi kerja harus tetap terpisah.
 - Workflow permintaan dokumentasi Humas yang terhubung agenda/reservasi masih berupa keputusan PRD; antrean Humas, PIC, status, assignment, dan audit trail belum selesai dibangun.

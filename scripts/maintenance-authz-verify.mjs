@@ -116,7 +116,7 @@ async function main() {
       admin: 'admin@foodstation.co.id',        // Admin GABAH (superadmin)
       it: 'it.support@foodstation.co.id',      // IT
       ga: 'ga@foodstation.co.id',              // GA
-      sc: 'sc.warehouse@foodstation.co.id',    // Supply Chain
+      sc: 'sc.warehouse@foodstation.co.id',    // RPC
       pibc: 'pibc.admin@foodstation.co.id',    // PIBC
       karyawan: 'hendra.w@foodstation.co.id',  // Karyawan
       auditor: 'auditor@foodstation.co.id',    // Auditor
@@ -149,7 +149,7 @@ async function main() {
       gaList.status === 200 && codes(gaList.json?.data).has('MNT-2026-001') && !codes(gaList.json?.data).has('MNT-2026-002') && !codes(gaList.json?.data).has('MNT-2026-003'));
 
     const scList = await req(base, 'GET', '/api/maintenances', { token: tokens.sc });
-    record('GET Supply Chain location sees no branch-wide maintenance schedules', 'empty list', `HTTP ${scList.status} (${[...codes(scList.json?.data)].join(',')})`,
+    record('GET RPC location sees no branch-wide maintenance schedules', 'empty list', `HTTP ${scList.status} (${[...codes(scList.json?.data)].join(',')})`,
       scList.status === 200 && codes(scList.json?.data).size === 0);
 
     const karList = await req(base, 'GET', '/api/maintenances', { token: tokens.karyawan });
@@ -171,7 +171,7 @@ async function main() {
     record('POST Auditor blocked (read-only)', '403', `HTTP ${auditorPost.status}`, auditorPost.status === 403);
 
     const scPost = await req(base, 'POST', '/api/maintenances', { token: tokens.sc, body: { asset_id: 'AST-HSV-001', title: 'Test SC' } });
-    record('POST Supply Chain blocked (legacy rule: not in allowlist)', '403', `HTTP ${scPost.status}`, scPost.status === 403);
+    record('POST RPC blocked (legacy rule: not in allowlist)', '403', `HTTP ${scPost.status}`, scPost.status === 403);
 
     const pibcPost = await req(base, 'POST', '/api/maintenances', { token: tokens.pibc, body: { asset_id: 'AST-HSV-001', title: 'Test PIBC' } });
     record('POST PIBC blocked (legacy rule: not in allowlist)', '403', `HTTP ${pibcPost.status}`, pibcPost.status === 403);
@@ -197,7 +197,7 @@ async function main() {
     record('PATCH Auditor blocked (read-only)', '403', `HTTP ${auditorPatch.status}`, auditorPatch.status === 403);
 
     const scPatch = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.sc, body: { notes: 'x' } });
-    record('PATCH Supply Chain blocked (legacy allowlist)', '403', `HTTP ${scPatch.status}`, scPatch.status === 403);
+    record('PATCH RPC blocked (legacy allowlist)', '403', `HTTP ${scPatch.status}`, scPatch.status === 403);
 
     const gaOnItPatch = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.ga, body: { notes: 'GA ubah jadwal IT' } });
     record('PATCH GA on IT schedule blocked (division authority)', '403', `HTTP ${gaOnItPatch.status}`, gaOnItPatch.status === 403);

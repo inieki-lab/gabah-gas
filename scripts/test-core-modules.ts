@@ -140,7 +140,7 @@ async function runAllTests() {
       body: JSON.stringify({ email: 'bambang.sc@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (scRes.status === 200) scToken = scRes.body?.data?.token;
-    recordTest('Auth', 'Supply Chain Login', scRes.status === 200 && scRes.body?.data?.user?.role === 'Supply Chain', scRes.status === 200 ? undefined : JSON.stringify(scRes.body));
+    recordTest('Auth', 'RPC Login', scRes.status === 200 && scRes.body?.data?.user?.role === 'RPC', scRes.status === 200 ? undefined : JSON.stringify(scRes.body));
 
     const pibcRes = await api('/api/auth/login', {
       method: 'POST',

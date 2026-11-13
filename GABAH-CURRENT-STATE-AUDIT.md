@@ -78,7 +78,7 @@ Final application roles (9, per PRD.md — verified against `server/db.ts` CANON
 3. GA
 4. Sekretaris Direksi
 5. Humas
-6. Supply Chain
+6. RPC
 7. PIBC
 8. Karyawan
 9. Auditor (read-only)

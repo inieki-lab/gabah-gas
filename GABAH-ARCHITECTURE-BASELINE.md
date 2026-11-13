@@ -65,7 +65,7 @@ Dokumen ini memetakan baseline arsitektur lengkap sistem **GABAH** (General Asse
 | **Simulasi Peran** | `Sidebar.tsx`<br>`gabahApi.switchRole()` | `POST /api/auth/switch-role` | `createSession()`<br>`GabahDomainService.recordAudit()` | `user_sessions`<br>`audit_logs` |
 | **Manajemen Pengguna** | `AdministrationModal.tsx`<br>`gabahApi.getUsers()` | `GET /api/users`<br>`POST /api/users`<br>`PATCH /api/users/:id`<br>`DELETE /api/users/:id` | `GabahDomainService.recordAudit()`<br>`hashPassword()` | `users`<br>`user_sessions` |
 | **Katalog Aset Tetap** | `AssetsView.tsx`<br>`gabahApi.getAssets()` | `GET /api/assets`<br>`GET /api/assets/:id` | `GabahDomainService.getScopedAssets()` | `assets`<br>`asset_categories`<br>`divisions` |
-| **Registrasi Aset Baru** | `CreateAssetModal.tsx`<br>`gabahApi.createAsset()` | `POST /api/assets` | `GabahDomainService.createAsset()`<br>`AssetNumberingEngine.generateAssetNumber()` | `assets`<br>`asset_number_sequences` |
+| **Registrasi Aset Baru** | `CreateAssetModal.tsx`<br>`gabahApi.createAsset()` | `POST /api/assets` | `GabahDomainService.createAsset()`<br>`asset_number_sequences` atomic upsert | `assets`<br>`asset_number_sequences` |
 | **Update Aset & ERP** | `AssetDetailModal.tsx`<br>`gabahApi.updateAsset()` | `PATCH /api/assets/:id` | `GabahDomainService.recordAudit()` | `assets` (termasuk `corporate_asset_number`) |
 | **Penugasan (Assignment)** | `AssetDetailModal.tsx`<br>`gabahApi.assignAsset()` | `POST /api/assets/:id/assign` | `GabahDomainService.assignAsset()` | `assets`<br>`asset_assignments`<br>`asset_movements` |
 | **Mutasi Lokasi Fisik** | `AssetDetailModal.tsx`<br>`gabahApi.moveAsset()` | `POST /api/assets/:id/move` | `GabahDomainService.moveAsset()` | `assets`<br>`asset_movements` |
@@ -90,7 +90,7 @@ Dokumen ini memetakan baseline arsitektur lengkap sistem **GABAH** (General Asse
 | **1. Admin GABAH** | Seluruh Sistem (Enterprise) | CRUD Semua Divisi | Approve/Handover Semua | Kelola Semua Tiket | Full View & Export |
 | **2. IT** | Divisi IT | CRUD Aset Hardware & Software | Approve/Handover Aset IT | Kelola Tiket IT & Software | View Divisi IT |
 | **3. GA** | Divisi GA (Umum) | CRUD Furniture, Bangunan, Kendaraan | Approve/Handover Aset GA | Kelola Tiket GA/Fasilitas | View Divisi GA |
-| **4. Supply Chain** | Divisi Supply Chain | CRUD Mesin Pabrik, Truk Logistik | Approve/Handover Aset SC | Kelola Tiket Pabrik/Logistik | View Divisi SC |
+| **4. RPC** | Divisi RPC | CRUD Mesin Pabrik, Truk Logistik | Approve/Handover Aset RPC | Kelola Tiket Pabrik/Logistik | View Divisi RPC |
 | **5. PIBC** | Divisi Pasar Induk Cipinang | CRUD Sarana Pasar & Timbangan | Approve/Handover Aset PIBC | Kelola Tiket Pasar Cipinang | View Divisi PIBC |
 | **6. Karyawan** | Personal / Individu | Read Aset Sendiri & Pool Peminjaman | Request Peminjaman Sendiri | Buat Tiket & Lihat Tiket Sendiri | Ditolak (403) |
 | **7. Auditor** | Seluruh Sistem (Audit Trail) | Read-Only Semua Divisi | Read-Only Semua Pinjaman | Read-Only Semua Tiket | Full View Read-Only |
@@ -112,7 +112,7 @@ Contoh Riil:
 - Server Datacenter: `IT-HSV-2026-0001`
 - Lisensi Microsoft 365: `IT-SLIC-2026-0001`
 - Furniture Kantor: `GA-INV-F-2026-0001`
-- Truk Angkutan Beras: `SC-KDR-SC-2026-0001`
+- Truk Angkutan Beras: `RPC-KDR-RPC-2026-0001`
 - Jembatan Timbang Beras PIBC: `PIBC-MSN-2026-0001`
 
 ### 5.2 Nomor ERP / Accurate

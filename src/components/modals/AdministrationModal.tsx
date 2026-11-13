@@ -137,7 +137,7 @@ export const SYSTEM_ROLES: { value: UserRole; label: string; desc: string }[] = 
   { value: 'GA', label: 'GA (General Affairs & Fasilitas)', desc: 'Pengelola Fasilitas, Gedung & Ruang Rapat' },
   { value: 'Sekretaris Direksi', label: 'Sekretaris Direksi', desc: 'Reservasi VIP Ruang Rapat & Notifikasi Agenda' },
   { value: 'Humas', label: 'Humas & Protokoler', desc: 'Dokumentasi Acara & Rapat di Semua Ruangan' },
-  { value: 'Supply Chain', label: 'Supply Chain & Pergudangan', desc: 'Pengelola Armada Truk & Pabrik Beras' },
+  { value: 'RPC', label: 'RPC & Pergudangan', desc: 'Pengelola Armada Truk & Pabrik Beras' },
   { value: 'PIBC', label: 'PIBC (Pasar Induk Cipinang)', desc: 'Operasional Kawasan Pasar & Retribusi' },
   { value: 'Karyawan', label: 'Karyawan (Pegawai Umum)', desc: 'Peminjaman Aset & Pengajuan Tiket' },
   { value: 'Auditor', label: 'Auditor (Satuan Pengawas Internal)', desc: 'Audit Trail & Rekonsiliasi PSAK 16 Read-Only' },
@@ -147,7 +147,7 @@ export const SYSTEM_ROLES: { value: UserRole; label: string; desc: string }[] = 
 // and branch work locations are assigned independently in the Role dialog
 // and Office Location master; they are not primary employee roles.
 export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES.filter(role =>
-  !['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(role.value)
+  !['Sekretaris Direksi', 'Humas', 'RPC', 'PIBC'].includes(role.value)
 );
 
 // T2B-3 — MASTER KATEGORI & ASET TETAP
@@ -179,7 +179,7 @@ const DEFAULT_PERMISSIONS: RolePermissionRow[] = [
   { role: 'GA', desc: 'General Affairs & Fasilitas', assets: 'Divisi GA', loans: 'Approve GA Aset', tickets: 'Fasilitas GA', licenses: 'Read', reports: 'Divisi GA', audit: 'View GA', admin: 'No' },
   { role: 'Sekretaris Direksi', desc: 'Sekretariat Direksi & Komisaris', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
   { role: 'Humas', desc: 'Humas & Protokoler Perusahaan', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
-  { role: 'Supply Chain', desc: 'Armada & Pergudangan Beras', assets: 'Divisi SC', loans: 'Approve Truk/SC', tickets: 'Logistik SC', licenses: 'Read', reports: 'Divisi SC', audit: 'View SC', admin: 'No' },
+  { role: 'RPC', desc: 'Armada & Pergudangan Beras', assets: 'Divisi RPC', loans: 'Approve Truk/RPC', tickets: 'Logistik RPC', licenses: 'Read', reports: 'Divisi RPC', audit: 'View RPC', admin: 'No' },
   { role: 'PIBC', desc: 'Pasar Induk Beras Cipinang', assets: 'Divisi PIBC', loans: 'Approve Pasar', tickets: 'Operasional', licenses: 'Read', reports: 'Divisi PIBC', audit: 'View', admin: 'No' },
   { role: 'Karyawan', desc: 'Pegawai Operasional BUMD', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket Sendiri', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
   { role: 'Auditor', desc: 'Satuan Pengawas Internal / BPKP', assets: 'Audit Only', loans: 'Audit History', tickets: 'Audit Trail', licenses: 'Audit', reports: 'Rekonsiliasi', audit: 'Full Read', admin: 'No' },
@@ -192,17 +192,17 @@ const DEFAULT_PERMISSIONS: RolePermissionRow[] = [
  * merusak tampilan/pemetaan hak akses.
  */
 const PERMISSION_TEMPLATE_FIELDS: Record<keyof Omit<RolePermissionRow, 'role' | 'desc'>, string[]> = {
-  assets: ['Full Access', 'Divisi IT', 'Divisi GA', 'Divisi SC', 'Divisi PIBC', 'Aset Pribadi', 'Audit Only', 'No'],
-  loans: ['Approve & Handover', 'Approve IT Aset', 'Approve GA Aset', 'Approve Truk/SC', 'Approve Pasar', 'Request Pinjam', 'Audit History', 'No'],
-  tickets: ['All Categories', 'IT & License', 'Fasilitas GA', 'Logistik SC', 'Operasional', 'Buat Tiket', 'Buat Tiket Sendiri', 'Audit Trail', 'No'],
+  assets: ['Full Access', 'Divisi IT', 'Divisi GA', 'Divisi RPC', 'Divisi PIBC', 'Aset Pribadi', 'Audit Only', 'No'],
+  loans: ['Approve & Handover', 'Approve IT Aset', 'Approve GA Aset', 'Approve Truk/RPC', 'Approve Pasar', 'Request Pinjam', 'Audit History', 'No'],
+  tickets: ['All Categories', 'IT & License', 'Fasilitas GA', 'Logistik RPC', 'Operasional', 'Buat Tiket', 'Buat Tiket Sendiri', 'Audit Trail', 'No'],
   licenses: ['Full', 'Manage', 'Read', 'Audit', 'No'],
-  reports: ['Full', 'Divisi IT', 'Divisi GA', 'Divisi SC', 'Divisi PIBC', 'Rekonsiliasi', 'No'],
-  audit: ['Full', 'Full Read', 'View IT', 'View GA', 'View SC', 'View', 'No'],
+  reports: ['Full', 'Divisi IT', 'Divisi GA', 'Divisi RPC', 'Divisi PIBC', 'Rekonsiliasi', 'No'],
+  audit: ['Full', 'Full Read', 'View IT', 'View GA', 'View RPC', 'View', 'No'],
   admin: ['Full Control', 'No'],
 };
 
 const DEFAULT_DIVISIONS: OrgDivision[] = [
-  { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
+  { code: 'RPC', name: 'RPC & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
   { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
   { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
   { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
@@ -252,6 +252,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
 
+  // Password reset state must be declared before any conditional render return.
+  const [passwordResetTarget, setPasswordResetTarget] = useState<UserProfile | null>(null);
+  const [tempIssuedPassword, setTempIssuedPassword] = useState<string | null>(null);
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+
   // Edit User State
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
@@ -281,7 +286,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     name: '',
     email: '',
     role: 'Karyawan',
-    division: 'SC',
+    division: 'RPC',
     department: '',
     job_level_code: '',
     unit_id: '',
@@ -314,7 +319,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [categories, setCategories] = useState<any[]>([
     { code: 'IT-HLT', name: 'Hardware Laptop & PC', type: 'IT', loanable: true, total: 42, is_active: true },
     { code: 'IT-SRV', name: 'Server & Infrastructure', type: 'IT', loanable: false, total: 18, is_active: true },
-    { code: 'SC-FLT', name: 'Armada Truk Beras Cipinang', type: 'SC', loanable: true, total: 24, is_active: true },
+    { code: 'RPC-FLT', name: 'Armada Truk Beras Cipinang', type: 'RPC', loanable: true, total: 24, is_active: true },
     { code: 'GA-BLD', name: 'Gedung & Fasilitas Pasar', type: 'GA', loanable: false, total: 31, is_active: true },
     { code: 'LIC-ENT', name: 'Lisensi ERP SAP & OS', type: 'License', loanable: false, total: 15, is_active: true },
   ]);
@@ -1311,6 +1316,32 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     exportDataJson('gabah_full_system_backup', backupBundle);
   };
 
+  // Health snapshot awal sekali per render modal (sekali fetch, tanpa toast).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const start = performance.now();
+      try {
+        const res = await fetch('/api/health');
+        const latency = Math.round(performance.now() - start);
+        const body = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok) {
+          setHealthStatus({
+            status: 'Operational (200 OK)',
+            latency,
+            timestamp: new Date().toLocaleTimeString(),
+            isChecking: false,
+            persistence: typeof body.persistence === 'string' ? body.persistence : undefined,
+            scheduler: body.scheduler && typeof body.scheduler === 'object' ? body.scheduler : undefined,
+          });
+        }
+      } catch {
+        /* biarkan state default: belum diperiksa — jangan mengarang status */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   if (!isOpen) return null;
 
   // Menu administrasi diberi keterangan sumber data agar Super Admin tahu mana
@@ -1380,7 +1411,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       name: user.name || '',
       email: user.email || '',
       role: user.role,
-      division: (user.division as OwnerDivision) || 'SC',
+      division: (user.division as OwnerDivision) || 'RPC',
       department: user.department || '',
       job_level_code: (user as any).job_level_code || '',
       unit_id: (user as any).unit_id || '',
@@ -1540,39 +1571,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  // Health snapshot awal sekali per render modal (sekali fetch, tanpa toast).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const start = performance.now();
-      try {
-        const res = await fetch('/api/health');
-        const latency = Math.round(performance.now() - start);
-        const body = await res.json().catch(() => ({}));
-        if (!cancelled && res.ok) {
-          setHealthStatus({
-            status: 'Operational (200 OK)',
-            latency,
-            timestamp: new Date().toLocaleTimeString(),
-            isChecking: false,
-            persistence: typeof body.persistence === 'string' ? body.persistence : undefined,
-            scheduler: body.scheduler && typeof body.scheduler === 'object' ? body.scheduler : undefined,
-          });
-        }
-      } catch {
-        /* biarkan state default: belum diperiksa — jangan mengarang status */
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
   // P1#2: Reset sandi NYATA — minta server menerbitkan sandi sementara CSPRNG
   // (server meng-hash & menyimpannya), lalu tampilkan SEKALI untuk disampaikan
   // out-of-band. Tanpa provider email yang terkonfigurasi, klaim "link email
   // terkirim" adalah palsu — sehingga UI menampilkan sandinya secara eksplisit.
-  const [passwordResetTarget, setPasswordResetTarget] = useState<UserProfile | null>(null);
-  const [tempIssuedPassword, setTempIssuedPassword] = useState<string | null>(null);
-  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
   const handleRealPasswordReset = async () => {
     if (!passwordResetTarget) return;
     try {
@@ -2034,7 +2036,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           <option key={r.value} value={r.value}>{r.label}</option>
                         ))}
                       </select>
-                      <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
+                      <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. RPC/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
@@ -2159,7 +2161,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   ? 'bg-blue-50 text-blue-700 border-blue-200'
                                   : user.role === 'GA'
                                   ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                  : user.role === 'Supply Chain'
+                                  : user.role === 'RPC'
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : user.role === 'Auditor'
                                   ? 'bg-rose-50 text-rose-700 border-rose-200'
@@ -3525,7 +3527,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <select value={newOrgUnitData.division_code}
                     onChange={e => setNewOrgUnitData(p => ({ ...p, division_code: e.target.value }))}
                     className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-emerald-500">
-                    {['IT', 'GA', 'SC', 'PIBC', 'Audit', 'Umum'].map(d => <option key={d} value={d}>{d}</option>)}
+                    {['IT', 'GA', 'RPC', 'PIBC', 'Audit', 'Umum'].map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                   <button type="submit" disabled={isSubmittingOrgMaster}
                     className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1">
@@ -3721,7 +3723,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           >
                             <option value="IT">IT (Teknologi Informasi)</option>
                             <option value="GA">GA (General Affairs / Umum)</option>
-                            <option value="SC">SC (Supply Chain &amp; Gudang)</option>
+                            <option value="RPC">RPC (RPC &amp; Gudang)</option>
                             <option value="PIBC">PIBC (Pasar Induk Cipinang)</option>
                           </select>
                         </div>
@@ -4307,7 +4309,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Simulator Card */}
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-200">
                 <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-3">
-                  Live Sequence Generator & Simulator
+                  Format Simulator
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -4317,14 +4319,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       onChange={e => {
                         const d = e.target.value as OwnerDivision;
                         setTestDiv(d);
-                        setSimulatedNumber(`${d}-${testCode}-2026-000${Math.floor(Math.random() * 5) + 1}`);
+                        setSimulatedNumber(`${d}-${testCode}-2026-0001`);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold"
                     >
                       <option value="IT">IT (Teknologi Informasi)</option>
-                      <option value="SC">SC (Supply Chain Beras)</option>
                       <option value="GA">GA (General Affairs)</option>
-                      <option value="PIBC">PIBC (Pasar Induk)</option>
                     </select>
                   </div>
                   <div>
@@ -4350,22 +4350,22 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                 </div>
                 <div className="mt-3 text-[11px] text-emerald-800 leading-relaxed">
-                  ✓ Sequence direset otomatis setiap awal tahun per kombinasi (Divisi, Kode Aset, Tahun).
+                  ✓ Format IT/GA menggunakan kombinasi owner, kode aset, tahun, dan nomor urut.
                   <br />
-                  ✓ Thread-safe & concurrency-safe dengan pemulihan sequence otomatis dari database.
+                  ✓ Ini simulasi format, bukan penerbitan nomor aset aktual.
                 </div>
               </div>
 
               {/* Status Sequence Terkini — live dari server (P2#10) */}
               <div className="bg-white rounded-2xl border border-slate-200 p-4">
                 <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
-                  Sequence Counter Terdaftar (Live dari Server)
+                  Snapshot Sequence (Proses Aplikasi)
                 </h4>
                 {liveSequences === null ? (
                   <div className="text-xs text-slate-400 py-3 text-center">Memuat snapshot sequence dari server…</div>
                 ) : liveSequences.length === 0 ? (
                   <div className="text-xs text-slate-500 py-3 text-center">
-                    Belum ada sequence terdaftar — counter terisi otomatis saat aset pertama didaftarkan per kombinasi (Divisi, Kode, Tahun).
+                    Belum ada snapshot counter pada proses aplikasi ini.
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -4386,6 +4386,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 {liveSequences !== null && liveSequences.length > 12 && (
                   <div className="mt-2 text-[10px] text-slate-400">Menampilkan 12 dari {liveSequences.length} kombinasi sequence terdaftar.</div>
                 )}
+                <p className="mt-3 text-[10px] text-amber-700">Catatan: counter saat ini disimpan di memori proses aplikasi, bukan counter database atomik. Jangan jadikan snapshot ini sebagai jaminan nomor unik lintas restart atau multi-instance.</p>
               </div>
             </div>
           )}
@@ -5012,7 +5013,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 <div>[GABAH Health] persistence: {healthStatus.persistence || 'belum diperiksa'}</div>
                 <div>[GABAH Scheduler] enabled: {healthStatus.scheduler?.enabled ?? 'belum diperiksa'} · timezone: {healthStatus.scheduler?.timezone || '-'} · intervalMs: {healthStatus.scheduler?.intervalMs ?? '-'}</div>
                 <div>[GABAH Data] {assets.length} aset · {loans.length} peminjaman · {tickets.length} tiket · {userList.length} pengguna · {auditLogs.length} log audit</div>
-                <div>[GABAH RBAC] 9 peran resmi ditegakkan server-side (Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Supply Chain, PIBC, Karyawan, Auditor)</div>
+                <div>[GABAH RBAC] 9 peran resmi ditegakkan server-side (Admin GABAH, IT, GA, Sekretaris Direksi, Humas, RPC, PIBC, Karyawan, Auditor)</div>
               </div>
             </div>
           )}

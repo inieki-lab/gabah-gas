@@ -48,7 +48,7 @@ This checklist is the release control record. A green build is necessary but is 
 - [x] Permission and scope are evaluated independently per module (Dynamic RBAC and asset scope suites, CI #589).
 - [x] Unknown/inactive roles and missing/invalid scopes fail closed (CI #589).
 - [x] Jabatan, unit, office location, asset location, owner domain, and custodian remain separate (org-model CI #589).
-- [x] Current active office locations are exactly HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan; Subang is inactive (org-model CI #589).
+- [x] Current active office locations are exactly HO, PIBC, RPC, Pangsub, and Kantor Perawatan; Subang is inactive (org-model CI #589).
 - [x] Future locations and owner domains can be added from master data without code changes (org/owner-scope CI #589).
 - [ ] GA's broad owner scope (all except IT) remains an administrator-configurable policy, not an automatic grant.
 - [x] GA's IT Laptop/PC visibility is read-only and controlled by assets.read.it_workstations (CI #589).

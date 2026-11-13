@@ -20,7 +20,7 @@ export type AssetStatus =
 
 export type AssetCondition = 'new' | 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged';
 
-export type OwnerDivision = 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum' | string;
+export type OwnerDivision = 'IT' | 'GA' | 'RPC' | 'PIBC' | 'Audit' | 'Umum' | string;
 
 export interface LicenseDetail {
   license_key?: string;
@@ -156,7 +156,7 @@ export type TicketStatus = 'open' | 'in_progress' | 'pending_vendor' | 'resolved
  * Contract Management is a separate domain and is NOT a ticket category.
  * Software/License/SaaS tickets belong to 'IT' (License is an asset domain, not a helpdesk category).
  */
-export type TicketCategory = 'IT' | 'GA' | 'SC' | 'PIBC';
+export type TicketCategory = 'IT' | 'GA' | 'RPC' | 'PIBC';
 
 export interface Ticket {
   id: string;
@@ -250,7 +250,7 @@ export type UserRole =
   | 'GA'
   | 'Sekretaris Direksi'
   | 'Humas'
-  | 'Supply Chain'
+  | 'RPC'
   | 'PIBC'
   | 'Karyawan'
   | 'Auditor';

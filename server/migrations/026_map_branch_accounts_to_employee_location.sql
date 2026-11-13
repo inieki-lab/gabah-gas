@@ -1,9 +1,9 @@
 -- Stage 19 (REVISED): DO NOT infer employee roles or ownership from branch names.
 --
 -- Business rule (2026-11-08):
---   * Current active sites: HO, PIBC, RPC/SC and Pangsub. New sites are configurable; closed sites are deactivated, not deleted.
+--   * Current active sites: HO, PIBC, RPC and Pangsub. New sites are configurable; closed sites are deactivated, not deleted.
 --     work/physical locations. Location is not an application role.
---   * RPC/SC may also be an operational asset-owning function. Ownership and
+--   * RPC may also be an operational asset-owning function. Ownership and
 --     physical location are independent dimensions.
 --   * Employees at any site retain their actual job level, unit, primary role,
 --     additional capabilities, permissions and history until an authorized

@@ -152,7 +152,7 @@ Content-Type: application/json
 - `GET /api/contracts/reminders/scheduler-status` — status scheduler internal (enabled/running/interval/timezone/lastRun; Admin only)
 - `GET /api/contracts/:id/notification-logs` — log pengiriman per channel (in_app/email/telegram) dengan status JUJUR `sent`/`failed`/`skipped` (+ alasan); tanpa konfigurasi provider → `skipped`, bukan sukses palsu
 - `POST /api/tickets` menerima `contract_id` opsional — hanya di-honor bila aktor boleh melihat kontrak (`canSeeContract`); input klien tidak dapat mem probing kontrak restricted. Ticket = pekerjaan atas Contract; Contract bukan kategori tiket
-- Kategori tiket helpdesk resmi: `IT` | `GA` | `SC` | `PIBC` (license/software → IT)
+- Kategori tiket helpdesk resmi: `IT` | `GA` | `RPC` | `PIBC` (license/software → IT)
 
 ### 2.9 Tiket Helpdesk & Gangguan (Tickets)
 | Endpoint | Method | Autentikasi | Hak Akses | Deskripsi |

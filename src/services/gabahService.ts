@@ -268,7 +268,7 @@ export function downloadUsersImportTemplate() {
   downloadCsv(
     'template_import_pegawai_gabah.csv',
     ['Nama', 'Email', 'Peran (Role)', 'Divisi', 'Departemen', 'Telepon'],
-    [['Budi Karyawan', 'budi.karyawan@foodstation.co.id', 'Karyawan', 'SC', 'Pergudangan & Distribusi', '08123456789']]
+    [['Budi Karyawan', 'budi.karyawan@foodstation.co.id', 'Karyawan', 'RPC', 'Pergudangan & Distribusi', '08123456789']]
   );
 }
 
@@ -555,8 +555,8 @@ export class GabahService {
         return { label: 'Divisi IT', color: 'bg-blue-50 text-blue-700 border-blue-200' };
       case 'GA':
         return { label: 'Divisi GA', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-      case 'SC':
-        return { label: 'Divisi Supply Chain', color: 'bg-amber-50 text-amber-700 border-amber-200' };
+      case 'RPC':
+        return { label: 'Divisi RPC', color: 'bg-amber-50 text-amber-700 border-amber-200' };
       case 'PIBC':
         return { label: 'Divisi Pasar PIBC', color: 'bg-purple-50 text-purple-700 border-purple-200' };
       default:
@@ -678,7 +678,7 @@ export class GabahService {
     }
 
     // 2b. Employee baseline and other non-operational profiles see only
-    // their own submissions in file-store compatibility mode. Supply Chain
+    // their own submissions in file-store compatibility mode. RPC
     // and PIBC are organizational units/locations, never implicit queue roles.
 
     // 3. All other users (Karyawan, Humas, Sekretaris Direksi, Auditor, etc.):

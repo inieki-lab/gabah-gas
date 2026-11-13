@@ -43,7 +43,7 @@ export const INITIAL_USERS: UserProfile[] = [
     email: 'hendra.w@foodstation.co.id',
     role: 'Karyawan',
     role_label: 'Karyawan / Staf Komersial',
-    division: 'SC',
+    division: 'RPC',
     department: 'Divisi Perdagangan & Komersial',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     phone: '081299887766',
@@ -74,12 +74,12 @@ export const INITIAL_USERS: UserProfile[] = [
     is_active: true,
   },
   {
-    id: 'USR-SC',
+    id: 'USR-RPC',
     name: 'Agus Pratama',
     email: 'sc.warehouse@foodstation.co.id',
-    role: 'Supply Chain',
+    role: 'RPC',
     role_label: 'Staf Logistik & Pergudangan Beras',
-    division: 'SC',
+    division: 'RPC',
     department: 'Pergudangan Beras Induk & Distribusi',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
     phone: '081288776655',
@@ -293,7 +293,7 @@ export const INITIAL_ASSETS: Asset[] = [
       email: 'bambang.sc@foodstation.co.id',
     },
     is_loanable: false,
-    notes: 'PC stasiun timbangan jembatan pabrik Sragen (Milik IT, digunakan SC di Sragen).',
+    notes: 'PC stasiun timbangan jembatan pabrik Sragen (Milik IT, digunakan RPC di Sragen).',
     created_at: '2024-03-20T10:00:00Z',
     updated_at: '2026-01-15T08:00:00Z',
   },
@@ -360,7 +360,7 @@ export const INITIAL_ASSETS: Asset[] = [
     brand: 'Lenovo',
     model: 'ThinkPad E14 Gen 5',
     serial_number: 'PF-3M8821',
-    hostname: 'FST-SC-LT05',
+    hostname: 'FST-RPC-LT05',
     ip_address: '192.168.10.62',
     specifications: 'Intel Core i5-1335U, 16GB DDR4, 512GB NVMe SSD, 14" FHD IPS Anti-Glare',
     purchase_date: '2024-03-01',
@@ -499,12 +499,12 @@ export const INITIAL_ASSETS: Asset[] = [
     updated_at: '2026-01-10T00:00:00Z',
   },
 
-  // SC Assets - Owned by Supply Chain
+  // RPC Assets - Owned by RPC
   {
     id: 'asset-012',
-    asset_number: 'SC-MSN-2026-0001',
+    asset_number: 'RPC-MSN-2026-0001',
     corporate_asset_number: 'FST-23-0050',
-    owner_division: 'SC',
+    owner_division: 'RPC',
     name: 'Toyota Electric Forklift 3-Ton 8FBN30',
     category_type: 'General',
     subcategory: 'Mesin',
@@ -695,7 +695,7 @@ Sistem GABAH menetapkan standar penomoran aktiva terpusat:
 Contoh:
 - \`IT-HLT-2026-0001\` : Laptop Tim IT, Tahun 2026, Urutan ke-1.
 - \`GA-INV-F-2026-0001\` : Meja Kerja Kantor, Kepemilikan GA.
-- \`SC-MSN-2026-0001\` : Mesin Pengolahan Padi Gudang Sragen.
+- \`RPC-MSN-2026-0001\` : Mesin Pengolahan Padi Gudang Sragen.
 - \`PIBC-KDR-2026-0001\` : Mobil Patroli Pasar Induk Beras Cipinang.
 
 ## 2. Kaidah Khusus Kepemilikan Antar-Divisi
@@ -703,7 +703,7 @@ Contoh:
    Semua perabotan, meja, kursi kantor adalah milik **Divisi GA**, di manapun lokasi fisik penempatannya (kantor pusat, gudang beras, maupun pasar PIBC).
 2. **Kaidah Perangkat IT (IT-H & IT-S)**:
    Semua laptop, PC desktop, server, switch jaringan, dan lisensi software adalah milik **Divisi IT**. Staf GA hanya berwenang melihat (read-only) dan tidak dapat memindahtangankan tanpa persetujuan IT.
-3. **Kaidah Supply Chain (SC)**:
+3. **Kaidah RPC (RPC)**:
    Meliputi mesin penggilingan (Rice Milling Plant), jembatan timbang truk, silo penyimpanan gabah, dan truk distribusi logistik.
 4. **Kaidah Pasar Induk Cipinang (PIBC)**:
    Meliputi timbangan komoditas, fasilitas los pasar, pos pengamanan, dan aset operasional kawasan PIBC.`,
@@ -805,9 +805,9 @@ export const INITIAL_MAINTENANCE_SCHEDULES: MaintenanceSchedule[] = [
     title: 'Kalibrasi Berkala Timbangan Truk Beras 60 Ton Gudang Cipinang',
     asset_id: 'asset-010',
     asset_name: 'Jembatan Timbang Truk Tronton Avery Weigh-Tronix 60 Ton',
-    asset_number: 'SC-WGH-2026-0001',
+    asset_number: 'RPC-WGH-2026-0001',
     category_type: 'General',
-    owner_division: 'SC',
+    owner_division: 'RPC',
     scheduled_date: '2026-10-05',
     frequency: 'biannual',
     status: 'scheduled',
@@ -825,9 +825,9 @@ export const INITIAL_MAINTENANCE_SCHEDULES: MaintenanceSchedule[] = [
     title: 'Servis Ringan & Penggantian Filter Solar Truk Isuzu Giga (B 9912 PDI)',
     asset_id: 'asset-009',
     asset_name: 'Truk Box Isuzu Giga FVR 240 PS 10 Roda',
-    asset_number: 'SC-TRK-2026-0001',
+    asset_number: 'RPC-TRK-2026-0001',
     category_type: 'General',
-    owner_division: 'SC',
+    owner_division: 'RPC',
     scheduled_date: '2026-09-12',
     frequency: 'monthly',
     status: 'completed',

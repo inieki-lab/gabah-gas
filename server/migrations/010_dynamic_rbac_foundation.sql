@@ -69,7 +69,7 @@ VALUES
   ('superadmin', 'Admin GABAH', 'Pemegang kendali tertinggi konfigurasi dan akses sistem.', TRUE),
   ('it', 'IT', 'Data awal role IT; permission akan dimigrasikan pada tahap berikutnya.', FALSE),
   ('ga', 'GA', 'Data awal role GA; permission akan dimigrasikan pada tahap berikutnya.', FALSE),
-  ('supply_chain', 'Supply Chain', 'Data awal role Supply Chain; permission akan dimigrasikan pada tahap berikutnya.', FALSE),
+  ('rpc', 'RPC', 'Data awal role RPC; permission akan dimigrasikan pada tahap berikutnya.', FALSE),
   ('pibc', 'PIBC', 'Data awal role PIBC; permission akan dimigrasikan pada tahap berikutnya.', FALSE),
   ('karyawan', 'Karyawan', 'Data awal role Karyawan; permission akan dimigrasikan pada tahap berikutnya.', FALSE),
   ('auditor', 'Auditor', 'Data awal role Auditor; permission akan dimigrasikan pada tahap berikutnya.', FALSE),

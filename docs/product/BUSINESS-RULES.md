@@ -20,9 +20,9 @@
 - **Enforcement Kode**: `server/services.ts` (baris 120-123 & 135-137), `server/taxonomy.ts` (baris 51-53).
 - **Konsekuensi**: Pendaftaran kategori furniture secara otomatis dialokasikan ke divisi pemilik `GA`.
 
-### BR-01.3: Kepemilikan Armada & Mesin Pabrik (SC & PIBC)
+### BR-01.3: Kepemilikan Armada & Mesin Pabrik (RPC & PIBC)
 - **Aturan**:
-  - Truk muatan beras (`KDR-SC`) dan mesin pabrik/forklift (`MSN`) adalah hak milik Divisi Supply Chain.
+  - Truk muatan beras (`KDR-RPC`) dan mesin pabrik/forklift (`MSN`) adalah hak milik Divisi RPC.
   - Mesin jembatan timbang truk 60 ton (`MSN-PIBC`) dan sarana pasar induk adalah hak milik Divisi PIBC.
   - Kendaraan dinas operasional kantor (`KDR`) adalah hak milik Divisi GA.
 - **Enforcement Kode**: `server/services.ts` (baris 138-144), `server/taxonomy.ts` (baris 57-64).
@@ -32,11 +32,10 @@
 ## 2. Aturan Penomoran Aset & Rekonsiliasi ERP Accurate (BR-02)
 
 ### BR-02.1: Format Nomor Kanonikal
-- **Aturan**: Format nomor aset resmi sistem adalah:
-  `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}`
-  - Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`, `SC-KDR-SC-2026-0001`, `PIBC-MSN-2026-0001`.
-- **Enforcement Kode**: `server/numbering.ts` (`AssetNumberingEngine.generateAssetNumber()`).
-- **Ketentuan Sequence**: Nomor urut (*sequence*) dimulai dari `0001` dan mereset setiap pergantian tahun takwim per kombinasi unik `owner_division` dan `asset_code`.
+- **Aturan IT dan GA**: format `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}`. Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`.
+- **PIBC dan RPC**: domain owner terpisah. Format usulan `PIBC-XXXX-XXXX` dan `RPC-XXXX-XXX` belum aktif pada generator; keduanya perlu rule tersendiri setelah arti setiap segmen dikonfirmasi.
+- **Enforcement Kode**: `server/services.ts` mengalokasikan sequence PostgreSQL secara atomik melalui `asset_number_sequences`; `server/numbering.ts` hanya fallback file-store.
+- **Ketentuan Sequence IT/GA**: nomor urut dimulai dari `0001` dan berlanjut per kombinasi owner, kode aset, dan tahun.
 
 ### BR-02.2: Integritas Nomor Seri & Accurate ERP
 - **Aturan**:
@@ -62,7 +61,7 @@
 - **Aturan**:
   - Peminjaman aset IT wajib disetujui oleh personel `IT` atau `Admin GABAH`.
   - Peminjaman aset GA (mobil dinas) wajib disetujui oleh personel `GA` atau `Admin GABAH`.
-  - Peminjaman aset SC wajib disetujui oleh personel `Supply Chain` atau `Admin GABAH`.
+  - Peminjaman aset RPC wajib disetujui oleh personel `RPC` atau `Admin GABAH`.
 - **Transisi Status Aset**:
   1. Pinjaman disetujui (`approved`) $\to$ status aset menjadi `reserved`.
   2. Serah terima fisik (`handoverLoan`) $\to$ status aset menjadi `assigned` (borrowed).
@@ -85,14 +84,14 @@
 ---
 
 ## 5. Aturan Kategori Helpdesk Ticket (BR-04b)
-- Kategori tiket **terbatas pada**: `IT`, `GA`, `SC`, `PIBC`. Tidak ada kategori `License`, `General`, atau `Contract`.
+- Kategori tiket **terbatas pada**: `IT`, `GA`, `RPC`, `PIBC`. Tidak ada kategori `License`, `General`, atau `Contract`.
 - Software/License/SaaS (Accurate, M365, VPN) adalah domain IT → seluruh tiket terkait menggunakan kategori `IT`.
-- Hardware/jaringan/server/akun → `IT`; fasilitas gedung → `GA`; permintaan SC → `SC`; PIBC → `PIBC`.
+- Hardware/jaringan/server/akun → `IT`; fasilitas gedung → `GA`; permintaan RPC → `RPC`; PIBC → `PIBC`.
 - **Contract Management adalah domain tersendiri. Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti.
 - Data tiket lama berkategori `License`/`General` dinormalisasi otomatis saat server boot (License→IT, General→GA).
 
 ## 6. Aturan Contract Management (BR-06)
-- Contract = record bisnis: nomor `CTR-YYYY-NNNN`, tipe, vendor, divisi pemilik (tidak terbatas GA/IT/SC/PIBC), PIC, periode, notice period, nilai, auto-renewal, status, dokumen append-only, notes.
+- Contract = record bisnis: nomor `CTR-YYYY-NNNN`, tipe, vendor, divisi pemilik (tidak terbatas GA/IT/RPC/PIBC), PIC, periode, notice period, nilai, auto-renewal, status, dokumen append-only, notes.
 - Reminder kedaluwarsa menggunakan threshold **configurable** (default 60/35/7 hari): >60 normal; ≤60 warning; ≤35 urgent; ≤7 critical; kedaluwarsa = expired. Tampilan selalu menyertakan teks status + sisa hari (bukan warna saja).
 - Reminder dikirim ke PIC + divisi pemilik (bukan broadcast), dengan eskalasi opsional pada threshold 35/7 hari; seluruh penerima di-resolve **server-side** dari data kontrak/user (input klien tidak pernah menentukan penerima/kanal).
 - Channel notifikasi: in-app, email, telegram — semuanya melalui satu engine reminder dengan log `contract_notification_logs` (notification_type, channel, recipient, status, error_message, attempts). Idempoten per (kontrak, tipe, kanal, penerima, due-day) — UNIQUE index di PostgreSQL + guard in-memory. Status jujur: `sent` (terkirim nyata), `failed` (provider gagal + alasan), `skipped` (provider belum dikonfigurasi / penerima tanpa alamat) — tidak pernah ada sukses palsu.

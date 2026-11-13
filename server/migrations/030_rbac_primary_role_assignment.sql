@@ -18,7 +18,7 @@ WHERE ur.user_id = u.id::text
     WHEN u.role = 'Auditor' THEN 'auditor'
     WHEN u.role = 'Humas' THEN 'humas'
     WHEN u.role = 'Sekretaris Direksi' THEN 'sekretaris_direksi'
-    WHEN u.role IN ('Supply Chain', 'PIBC', 'Karyawan') THEN 'karyawan'
+    WHEN u.role IN ('RPC', 'PIBC', 'Karyawan') THEN 'karyawan'
     ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g'))
   END;
 

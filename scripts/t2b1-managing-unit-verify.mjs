@@ -31,7 +31,7 @@ const req = async (b, m, p, o = {}) => {
 
 // Aturan mapping deterministik (harus identik dengan server/managing-unit.ts
 // dan backfill SQL di server/migrations/007_asset_managing_unit.sql).
-const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: 'UNIT-SC', PIBC: 'UNIT-PIBC', GA: null };
+const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', RPC: 'UNIT-RPC', PIBC: 'UNIT-PIBC', GA: null };
 
 async function boot(sp, port, env) {
   const c = spawn(process.execPath, [sp], {
@@ -92,10 +92,10 @@ async function main() {
       if (exp === 'ANY' && a.managing_unit_id !== null) cOk = false;
     }
     rec('C1: seed aset per divisi punya managing_unit_id (ownership mapping)',
-      `IT→UNIT-IT-MIS, SC→UNIT-SC, PIBC→UNIT-PIBC, GA→null`,
+      `IT→UNIT-IT-MIS, RPC→UNIT-RPC, PIBC→UNIT-PIBC, GA→null`,
       JSON.stringify(divCounts) + (cUndefined ? ` (${cUndefined} undefined!)` : ''),
       cOk && cUndefined === 0);
-    rec('C2: seed memuat divisi IT & GA untuk bukti mapping', 'ada', `IT=${divCounts.IT || 0}, GA=${divCounts.GA || 0}, SC=${divCounts.SC || 0}, PIBC=${divCounts.PIBC || 0}`,
+    rec('C2: seed memuat divisi IT & GA untuk bukti mapping', 'ada', `IT=${divCounts.IT || 0}, GA=${divCounts.GA || 0}, RPC=${divCounts.RPC || 0}, PIBC=${divCounts.PIBC || 0}`,
       (divCounts.IT || 0) > 0 && (divCounts.GA || 0) > 0);
     const gaSeed = assets0.find(a => a.owner_division === 'GA');
     rec('C3: aset GA TIDAK ditebak ke unit manapun (2 kandidat → null)', 'null', `${gaSeed?.managing_unit_id}`, gaSeed && gaSeed.managing_unit_id === null);
@@ -121,11 +121,11 @@ async function main() {
 
     // A3: update (PATCH) mengganti managing_unit_id tanpa mengubah asset_number
     const numBeforePatch = created1?.asset_number;
-    const a3 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-SC' } });
+    const a3 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-RPC' } });
     rec('A3: PATCH managing_unit_id → 200 + nilai berubah + asset_number tetap',
-      '200 + UNIT-SC + number sama',
+      '200 + UNIT-RPC + number sama',
       `${a3.status} + ${a3.json?.data?.managing_unit_id} + ${a3.json?.data?.asset_number === numBeforePatch ? 'sama' : 'BERUBAH'}`,
-      a3.status === 200 && a3.json?.data?.managing_unit_id === 'UNIT-SC' && a3.json?.data?.asset_number === numBeforePatch);
+      a3.status === 200 && a3.json?.data?.managing_unit_id === 'UNIT-RPC' && a3.json?.data?.asset_number === numBeforePatch);
 
     // A4: PATCH null eksplisit → diterima (nullable)
     const a4 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: null } });

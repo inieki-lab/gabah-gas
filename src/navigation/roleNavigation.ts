@@ -41,7 +41,7 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
   ],
   // Legacy labels retained for account compatibility only. These are
   // locations, not application roles or asset-owner domains.
-  'Supply Chain': [
+  'RPC': [
     'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
   ],
   PIBC: [

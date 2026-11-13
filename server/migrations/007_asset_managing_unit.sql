@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_assets_managing_unit ON assets(managing_unit_id);
 -- BACKFILL berbasis OWNERSHIP (owner_division), BUKAN lokasi.
 -- Aturan deterministik (identik dengan server/managing-unit.ts):
 --   1. Unit dengan id persis 'UNIT-' || division_code DAN division_code sama
---      (SC → UNIT-SC, PIBC → UNIT-PIBC).
+--      (RPC → UNIT-RPC, PIBC → UNIT-PIBC).
 --   2. Jika tidak ada, tepat SATU unit dengan division_code tersebut
 --      (IT → UNIT-IT-MIS).
 --   3. Selain itu TIDAK diisi (NULL) — jangan menebak. GA memiliki dua

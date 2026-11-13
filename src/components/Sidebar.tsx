@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
+  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'RPC', 'PIBC'].includes(activeRole) : false;
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
   const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH';

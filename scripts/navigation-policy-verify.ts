@@ -3,7 +3,7 @@ import { ROLE_NAVIGATION, isNavTabAllowedForRole } from '../src/navigation/roleN
 
 const expectedRoles = [
   'Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas',
-  'Supply Chain', 'PIBC', 'Karyawan', 'Auditor',
+  'RPC', 'PIBC', 'Karyawan', 'Auditor',
 ];
 assert.deepEqual(Object.keys(ROLE_NAVIGATION).sort(), [...expectedRoles].sort());
 
@@ -30,9 +30,9 @@ for (const [role, tabs] of Object.entries(mustNotSee)) {
 
 assert.ok(isNavTabAllowedForRole('IT', 'licenses'));
 assert.ok(isNavTabAllowedForRole('GA', 'meeting_rooms'));
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'my_assets'));
+assert.ok(isNavTabAllowedForRole('RPC', 'my_assets'));
 assert.ok(isNavTabAllowedForRole('PIBC', 'my_assets'));
-assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets'), false);
+assert.equal(isNavTabAllowedForRole('RPC', 'assets'), false);
 assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance'), false);
 assert.ok(isNavTabAllowedForRole('Karyawan', 'tickets'));
 assert.ok(isNavTabAllowedForRole('Sekretaris Direksi', 'my_assets'));
@@ -44,9 +44,9 @@ assert.equal(isNavTabAllowedForRole(undefined, 'dashboard'), false);
 
 // PostgreSQL mode must derive navigation from effective permission keys,
 // not from a fixed role name or branch/location label.
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'dashboard', ['dashboard.read']));
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'my_assets', ['assets.read']));
-assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets', ['assets.read']), false);
+assert.ok(isNavTabAllowedForRole('RPC', 'dashboard', ['dashboard.read']));
+assert.ok(isNavTabAllowedForRole('RPC', 'my_assets', ['assets.read']));
+assert.equal(isNavTabAllowedForRole('RPC', 'assets', ['assets.read']), false);
 assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance', ['dashboard.read', 'assets.read']), false);
 assert.ok(isNavTabAllowedForRole('IT', 'assets', ['assets.update']));
 assert.ok(isNavTabAllowedForRole('GA', 'assets', ['assets.update']));

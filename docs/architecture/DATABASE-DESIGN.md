@@ -22,8 +22,8 @@ Sistem juga mengimplementasikan mekanisme **Dual-Persistence Bridge** (`server/p
 ### 2.1 Tabel `divisions` (Divisi Korporat)
 Menyimpan struktur divisi resmi BUMD PT Food Station Tjipinang Jaya.
 - `id` (BIGSERIAL, PRIMARY KEY)
-- `code` (VARCHAR(20), NOT NULL, UNIQUE) — Contoh: `'SC'`, `'PIBC'`, `'IT'`, `'GA'`
-- `name` (VARCHAR(100), NOT NULL) — Contoh: `'Supply Chain'`, `'Pasar'`, `'IT'`, `'General Affairs'`
+- `code` (VARCHAR(20), NOT NULL, UNIQUE) — Contoh: `'RPC'`, `'PIBC'`, `'IT'`, `'GA'`
+- `name` (VARCHAR(100), NOT NULL) — Contoh: `'RPC'`, `'Pasar'`, `'IT'`, `'General Affairs'`
 - `is_active` (BOOLEAN, NOT NULL, DEFAULT TRUE)
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 
@@ -41,7 +41,7 @@ Menyimpan identitas pegawai, peran RBAC, kredensial hash, dan divisi.
 - `id` (VARCHAR(64), PRIMARY KEY) — Contoh: `'USR-01'`, `'USR-SEKDIR'`
 - `name` (VARCHAR(200), NOT NULL)
 - `email` (VARCHAR(255), NOT NULL, UNIQUE)
-- `role` (VARCHAR(50), NOT NULL) — `'Admin GABAH'`, `'IT'`, `'GA'`, `'Sekretaris Direksi'`, `'Humas'`, `'Supply Chain'`, `'PIBC'`, `'Karyawan'`, `'Auditor'`
+- `role` (VARCHAR(50), NOT NULL) — `'Admin GABAH'`, `'IT'`, `'GA'`, `'Sekretaris Direksi'`, `'Humas'`, `'RPC'`, `'PIBC'`, `'Karyawan'`, `'Auditor'`
 - `division_id` (BIGINT, REFERENCES divisions(id))
 - `department_id` (BIGINT, REFERENCES departments(id))
 - `phone` (VARCHAR(50))
@@ -173,7 +173,7 @@ Mencatat permohonan bantuan teknis dan pemenuhan SLA layanan.
 - `ticket_code` (VARCHAR(100), NOT NULL)
 - `title` (VARCHAR(255), NOT NULL)
 - `description` (TEXT, NOT NULL)
-- `category` (VARCHAR(40), NOT NULL) — `'IT'`, `'GA'`, `'SC'`, `'PIBC'`, `'License'`, `'General'`
+- `category` (VARCHAR(40), NOT NULL) — `'IT'`, `'GA'`, `'RPC'`, `'PIBC'`, `'License'`, `'General'`
 - `priority` (VARCHAR(20), NOT NULL) — `'urgent'`, `'high'`, `'medium'`, `'low'`
 - `status` (VARCHAR(30), NOT NULL) — `'open'`, `'assigned'`, `'in_progress'`, `'pending_user'`, `'resolved'`, `'closed'`
 - `reporter_id` (VARCHAR(64), NOT NULL, REFERENCES users(id))

@@ -3,14 +3,13 @@ import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByH
 import { AssetNumberingEngine } from './numbering';
 import { resolveManagingUnitForOwnerDivision, validateManagingUnit } from './managing-unit';
 import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-location';
-import { persistDataStore } from './persistence';
+import { persistDataStore, getDbPool, isPostgresPersistenceActive } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
-import { isPostgresPersistenceActive } from './persistence';
 
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
-const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
+const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'RPC', 'PIBC']);
 
 /** Dibagikan agar guard rute (mis. Maintenance Stage 13F) memakai satu definisi. */
 export function isLegacyScopedRole(role: string): boolean {
@@ -72,7 +71,7 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
 export function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
   if (isSuperadminActor(actor)) return true;
   const owner = String(ownerDivision || '').trim().toUpperCase();
-  // Owner codes are configurable business domains (IT, GA, RPC/SC, PIBC,
+  // Owner codes are configurable business domains (IT, GA, RPC, PIBC,
   // and future operational owners). A non-empty owner is never sufficient:
   // PostgreSQL mode still requires operation permission + matching owner scope.
   // File-store fallback remains IT/GA-only.
@@ -258,7 +257,7 @@ export class GabahDomainService {
   static getScopedAssets(user: ServerUser): ServerAsset[] {
     if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
 
-    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'RPC', 'PIBC'];
     const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
 
     if (!isPostgresPersistenceActive()) {
@@ -314,7 +313,7 @@ export class GabahDomainService {
   /**
    * Authoritative Asset Creation
    */
-  static createAsset(payload: {
+  static async createAsset(payload: {
     category_name_or_code?: string;
     category_code?: string;
     category_name?: string;
@@ -341,7 +340,7 @@ export class GabahDomainService {
     assigned_to_user_id?: string;
     license_detail?: any;
     notes?: string;
-  }, actor: ServerUser): ServerAsset {
+  }, actor: ServerUser): Promise<ServerAsset> {
     // 1. Resolve taxonomy strictly from server master.
     // T2B-3: master kategori (`db.categories`, hasil CRUD Admin GABAH) adalah
     // satu-satunya sumber kebenaran — kode/name kategori kustom, edit nama,
@@ -409,8 +408,39 @@ export class GabahDomainService {
       }
     }
 
-    // 3. Atomically generate official asset number
-    const assetNumber = AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code);
+    // 3. Allocate the official number from PostgreSQL atomically when available.
+    // The upsert serializes concurrent requests on the owner/category/year key.
+    const targetYear = new Date().getFullYear();
+    let assetNumber: string;
+    if (isPostgresPersistenceActive()) {
+      const sequenceResult = await getDbPool().query(
+        `INSERT INTO asset_number_sequences
+          (owner_division_id, asset_code, sequence_year, last_sequence)
+         SELECT d.id, UPPER($2), $3,
+          COALESCE((
+            SELECT MAX((regexp_match(a.asset_number, '^([^-]+)-(.+)-([0-9]{4})-([0-9]+)$'))[4]::INTEGER)
+            FROM assets a
+            WHERE a.owner_division_id = d.id
+              AND (regexp_match(a.asset_number, '^([^-]+)-(.+)-([0-9]{4})-([0-9]+)$'))[1] = UPPER(d.code)
+              AND (regexp_match(a.asset_number, '^([^-]+)-(.+)-([0-9]{4})-([0-9]+)$'))[2] = UPPER($2)
+              AND (regexp_match(a.asset_number, '^([^-]+)-(.+)-([0-9]{4})-([0-9]+)$'))[3] = $3::TEXT
+          ), 0) + 1
+         FROM divisions d
+         WHERE UPPER(d.code) = UPPER($1) AND d.is_active = TRUE
+         ON CONFLICT (owner_division_id, asset_code, sequence_year)
+         DO UPDATE SET last_sequence =
+           GREATEST(asset_number_sequences.last_sequence, EXCLUDED.last_sequence - 1) + 1
+         RETURNING last_sequence`,
+        [resolvedOwnerDivision, taxonomy.code, targetYear]
+      );
+      if (!sequenceResult.rows.length) {
+        throw new Error(`Owner aset "${resolvedOwnerDivision}" tidak ditemukan atau nonaktif pada database.`);
+      }
+      assetNumber = `${resolvedOwnerDivision.toUpperCase()}-${taxonomy.code.toUpperCase()}-${targetYear}-${String(sequenceResult.rows[0].last_sequence).padStart(4, '0')}`;
+    } else {
+      // Local file-store fallback only; production uses the PostgreSQL counter above.
+      assetNumber = AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code, targetYear);
+    }
 
     // T2B-1: managing unit operasional — divalidasi terhadap master org_units
     // (harus ada & aktif). Jika tidak dispesifikasikan, diisi hasil resolusi
@@ -933,7 +963,7 @@ export class GabahDomainService {
   static createTicket(payload: {
     title: string;
     description: string;
-    category: 'IT' | 'GA' | 'SC' | 'PIBC';
+    category: 'IT' | 'GA' | 'RPC' | 'PIBC';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
     contract_id?: string;
@@ -943,7 +973,7 @@ export class GabahDomainService {
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
     // ticket: notification goes to a role that does not exist and nobody ever
     // picks it up.
-    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'SC', 'PIBC'] as const;
+    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'RPC', 'PIBC'] as const;
     if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
       throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
     }

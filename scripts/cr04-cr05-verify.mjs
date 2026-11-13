@@ -390,13 +390,13 @@ async function main() {
 
     const newOwner = await req(base, 'POST', '/api/master/divisions', {
       token: adminToken,
-      body: { code: 'RPCSC', name: 'RPC/SC Operations', leader: 'Kepala Operasional RPC/SC', depts: ['Gudang', 'Produksi'] },
+      body: { code: 'FUTURECI', name: 'Future Owner CI', leader: 'Kepala Future Owner CI', depts: ['Gudang', 'Produksi'] },
     });
     record('Super Admin can add future owner domain without code change', '201', `HTTP ${newOwner.status}`, newOwner.status === 201);
 
     const vendorRole = await req(base, 'POST', '/api/admin/rbac/roles', {
       token: adminToken,
-      body: { role_key: 'vendor_rpcsc_test', name: 'Vendor RPC/SC Test', description: 'CI-only custom owner role', permission_keys: ['vendors.read', 'vendors.create', 'vendors.update'] },
+      body: { role_key: 'vendor_rpcsc_test', name: 'Vendor RPC Test', description: 'CI-only custom owner role', permission_keys: ['vendors.read', 'vendors.create', 'vendors.update'] },
     });
     const vendorRoleId = Number(vendorRole.json?.data?.id || 0);
     record('Super Admin can create custom role with selected permissions atomically', '201 + role id + 3 permissions', `HTTP ${vendorRole.status} permissions=${(vendorRole.json?.data?.permissions || []).length}`,
@@ -416,7 +416,7 @@ async function main() {
 
     const vendorRoleScopes = await req(base, 'PUT', `/api/admin/rbac/roles/${vendorRoleId}/scopes`, {
       token: adminToken,
-      body: { scopes: [{ module: 'vendors', type: 'division', value: 'RPCSC' }] },
+      body: { scopes: [{ module: 'vendors', type: 'division', value: 'RPC' }] },
     });
     record('Custom role can receive future owner domain scope', '200', `HTTP ${vendorRoleScopes.status}`, vendorRoleScopes.status === 200);
 
@@ -426,20 +426,20 @@ async function main() {
     });
     record('Karyawan can receive a separate vendor owner capability without changing primary role', '200', `HTTP ${assignVendorRole.status}`, assignVendorRole.status === 200);
 
-    const rpcscVendor = await req(base, 'POST', '/api/vendors', {
+    const rpcVendor = await req(base, 'POST', '/api/vendors', {
       token: karyawanToken,
-      body: { name: 'VERIFY Vendor RPCSC', category: 'IT Hardware', owner_division: 'RPCSC', rating: 4.1 },
+      body: { name: 'VERIFY Vendor RPC', category: 'IT Hardware', owner_division: 'RPC', rating: 4.1 },
     });
-    const rpcscVendorId = rpcscVendor.json?.data?.id || '';
-    record('Custom RPC/SC owner can manage vendor; category does not determine owner', '201 + owner RPCSC',
-      `HTTP ${rpcscVendor.status} owner=${rpcscVendor.json?.data?.owner_division || '-'}`,
-      rpcscVendor.status === 201 && rpcscVendor.json?.data?.owner_division === 'RPCSC');
+    const rpcVendorId = rpcVendor.json?.data?.id || '';
+    record('Custom RPC owner can manage vendor; category does not determine owner', '201 + owner RPC',
+      `HTTP ${rpcVendor.status} owner=${rpcVendor.json?.data?.owner_division || '-'}`,
+      rpcVendor.status === 201 && rpcVendor.json?.data?.owner_division === 'RPC');
 
     const karyawanVendors = await req(base, 'GET', '/api/vendors', { token: karyawanToken });
-    record('Combined GA + custom RPCSC roles see only their combined owner scopes', 'GA and RPCSC; no IT',
+    record('Combined GA + custom RPC roles see only their combined owner scopes', 'GA and RPC; no IT',
       (karyawanVendors.json?.data || []).map(v => v.owner_division).join(','),
       karyawanVendors.status === 200 && (karyawanVendors.json?.data || []).length >= 2
-        && (karyawanVendors.json.data || []).some(v => v.owner_division === 'RPCSC')
+        && (karyawanVendors.json.data || []).some(v => v.owner_division === 'RPC')
         && (karyawanVendors.json.data || []).some(v => v.owner_division === 'GA')
         && !(karyawanVendors.json.data || []).some(v => v.owner_division === 'IT'));
 
@@ -469,7 +469,7 @@ async function main() {
       `HTTP ${auditorDocumentDownload?.status ?? 'skipped'}`,
       auditorDocumentDownload?.status === 200 && auditorDocumentBody === contractFileContent);
 
-    const deleteReferencedOwner = await req(base, 'DELETE', '/api/master/divisions/RPCSC', { token: adminToken });
+    const deleteReferencedOwner = await req(base, 'DELETE', '/api/master/divisions/RPC', { token: adminToken });
     record('Owner domain referenced by vendor cannot be deleted', '400', `HTTP ${deleteReferencedOwner.status}`, deleteReferencedOwner.status === 400);
 
     const linkedTicket = await req(base, 'POST', '/api/tickets', {

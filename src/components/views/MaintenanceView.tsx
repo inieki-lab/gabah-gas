@@ -62,7 +62,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   });
 
   const canManage = ['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
-  const isRequestRole = ['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan'].includes(currentUser?.role || '');
+  const isRequestRole = ['Sekretaris Direksi', 'Humas', 'RPC', 'PIBC', 'Karyawan'].includes(currentUser?.role || '');
 
   // Filtered schedules
   const filteredSchedules = schedules.filter((sch) => {
@@ -249,7 +249,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
             <option value="ALL">Semua Divisi Pemilik</option>
             <option value="IT">IT (Server &amp; Network)</option>
             <option value="GA">GA (Kendaraan &amp; Gedung)</option>
-            <option value="SC">Supply Chain (Truk &amp; Timbangan)</option>
+            <option value="RPC">RPC (Truk &amp; Timbangan)</option>
             <option value="PIBC">Kawasan PIBC</option>
           </select>
         </div>

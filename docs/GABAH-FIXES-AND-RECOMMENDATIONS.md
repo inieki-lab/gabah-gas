@@ -19,9 +19,9 @@ Audit dilakukan terhadap 9 peran resmi, 11 menu navigasi, seluruh modals, servic
 | 1 | Tombol **Tolak** pinjaman tidak memanggil API — hanya toast + refresh, data tidak tersimpan | `src/App.tsx` `handleRejectLoan` | Alur persetujuan pinjaman tidak lengkap |
 | 2 | Backend **tidak memiliki endpoint reject** pinjaman sama sekali | `server.ts`, `server/services.ts` | Frontend tidak punya cara menolak pinjaman secara otoritatif |
 | 3 | **PIBC tidak berwenang** approve/handle aset PIBC di helper frontend | `gabahService.ts` `canApproveLoan` | Aset PIBC (jembatan timbang, los/kios) tidak bisa dikelola pemiliknya |
-| 4 | **Supply Chain & PIBC tidak bisa mengelola tiket divisinya** | `gabahService.ts` `canManageTickets`/`canManageTicket` | Matriks RBAC "SC Tiket, PIBC Tiket" tidak terpenuhi |
+| 4 | **RPC & PIBC tidak bisa mengelola tiket divisinya** | `gabahService.ts` `canManageTickets`/`canManageTicket` | Matriks RBAC "RPC Tiket, PIBC Tiket" tidak terpenuhi |
 | 5 | **Auditor tidak melihat semua tiket** (hanya tiket sendiri) | `gabahService.ts` `isTicketVisibleToUser` + `server.ts` GET /api/tickets | Spec RBAC: Auditor = Read All |
-| 6 | Pengguna tidak bisa **mengajukan tiket ke divisi SC/PIBC** | `CreateTicketModal.tsx`, `types.ts` | Tiket kategori SC/PIBC mustahil tercipta |
+| 6 | Pengguna tidak bisa **mengajukan tiket ke divisi RPC/PIBC** | `CreateTicketModal.tsx`, `types.ts` | Tiket kategori RPC/PIBC mustahil tercipta |
 
 ### Temuan Non-Kritis (belum diperbaiki, lihat §4)
 
@@ -40,7 +40,7 @@ Audit dilakukan terhadap 9 peran resmi, 11 menu navigasi, seluruh modals, servic
 - Menambahkan `GabahDomainService.rejectLoan(loanId, reason, actor)`:
   - Hanya pinjaman berstatus `pending_approval` yang dapat ditolak
   - Otoritas identik dengan `approveLoan`: IT untuk aset IT, GA untuk aset GA,
-    Supply Chain untuk aset SC, PIBC untuk aset PIBC, Admin GABAH untuk semua
+    RPC untuk aset RPC, PIBC untuk aset PIBC, Admin GABAH untuk semua
   - Auditor ditolak (read-only)
   - Mencatat audit log `LOAN_REJECTED` dan mengirim notifikasi ke peminjam
 
@@ -56,24 +56,24 @@ Audit dilakukan terhadap 9 peran resmi, 11 menu navigasi, seluruh modals, servic
 ### 2.2 RBAC Frontend (`src/services/gabahService.ts`)
 
 - `canApproveLoan()`: + `PIBC` (aset PIBC)
-- `canManageTickets()`: + `Supply Chain`, `PIBC`
-- `canManageTicket()`: + SC (kategori SC), PIBC (kategori PIBC)
+- `canManageTickets()`: + `RPC`, `PIBC`
+- `canManageTicket()`: + RPC (kategori RPC), PIBC (kategori PIBC)
 - `isTicketVisibleToUser()`:
   - Auditor → lihat semua tiket (read-only tetap ditegakkan oleh `canManageTicket`)
-  - Supply Chain → tiket kategori SC + tiket sendiri
+  - RPC → tiket kategori RPC + tiket sendiri
   - PIBC → tiket kategori PIBC + tiket sendiri
 
 ### 2.3 RBAC Server (sinkronisasi penuh dengan frontend)
 
 - `server.ts` GET `/api/tickets`: cabang khusus untuk Auditor (all read),
-  Supply Chain (kategori SC + milik sendiri), PIBC (kategori PIBC + milik sendiri)
+  RPC (kategori RPC + milik sendiri), PIBC (kategori PIBC + milik sendiri)
 - `server/runtime-hardening.ts` `canManageTicket()`: + PIBC (kategori PIBC);
-  Supply Chain sudah ada sebelumnya
+  RPC sudah ada sebelumnya
 
 ### 2.4 Tipe & Formulir Tiket
 
-- `src/types.ts`: tipe baru `TicketCategory = AssetCategoryType | 'SC' | 'PIBC'`
-- `CreateTicketModal.tsx`: tombol kategori baru **Supply Chain** dan **PIBC**
+- `src/types.ts`: tipe baru `TicketCategory = AssetCategoryType | 'RPC' | 'PIBC'`
+- `CreateTicketModal.tsx`: tombol kategori baru **RPC** dan **PIBC**
   (grid diperluas menjadi 3/5 kolom responsif)
 
 ---

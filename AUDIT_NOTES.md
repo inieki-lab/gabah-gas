@@ -73,7 +73,7 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
 ### 2.5 Kebijakan Akses Administration Control Panel (Khusus Super Admin)
 * **Sidebar (`src/components/Sidebar.tsx`):**
   * Tombol dan section **"Administration Control Panel"** kini dibatasi secara eksklusif dan **hanya tampil untuk Super Admin (`Admin GABAH`)**.
-  * Untuk 8 peran lainnya (IT, GA, Sekretaris Direksi, Humas, Supply Chain, PIBC, Karyawan, Auditor), tombol ini tidak ditampilkan di menu sidebar agar antarmuka bersih dan tidak membingungkan pengguna.
+  * Untuk 8 peran lainnya (IT, GA, Sekretaris Direksi, Humas, RPC, PIBC, Karyawan, Auditor), tombol ini tidak ditampilkan di menu sidebar agar antarmuka bersih dan tidak membingungkan pengguna.
 * **Modal Administrasi (`src/components/modals/AdministrationModal.tsx` & `src/App.tsx`):**
   * Flag `isCurrentUserAdmin` di-set spesifik mengecek peran `Admin GABAH`.
   * Pembukaan modal (`isOpen`) di-guard di level `App.tsx` dan `Sidebar.tsx` sehingga hanya dapat dibuka saat akun aktif adalah Super Admin (`Admin GABAH`).
@@ -82,7 +82,7 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
 ### 2.6 Perbaikan Masalah Login Multi-User (Semua 9 Akun & Alias Aktif)
 * **Penyebab Masalah Sebelumnya (REDACTED — CR-02):**
   1. **Mismatch Password Database vs Halaman Login:** Password peran `IT`/`GA` di hash database berbeda dari yang dikirim tombol "1-Click Login", sehingga ditolak server (401). Nilai password lama tidak ditampilkan lagi (redacted).
-  2. **Akun Belum Lengkap di Persistent Store:** Tiga peran baru (`Supply Chain`, `PIBC`, dan `Auditor`) belum terdaftar secara permanen pada `gabah_state.json` dan `server/persistence.ts`.
+  2. **Akun Belum Lengkap di Persistent Store:** Tiga peran baru (`RPC`, `PIBC`, dan `Auditor`) belum terdaftar secara permanen pada `gabah_state.json` dan `server/persistence.ts`.
   3. **Strict Lockout IP:** Mekanisme rate limiting memblokir IP selama 300 detik (5 menit) setelah 5 kali gagal percobaan saat pengguna mencoba-coba akun lain.
   4. **Pencocokan Email Kaku:** Pengguna yang memasukkan alias email (seperti `sekdir@`, `it@`, `karyawan@`, `sc@`, `pibc@`, atau `spi@`) gagal karena server hanya menerima string email eksak tertentu.
 * **Solusi yang Diterapkan:**
@@ -101,7 +101,7 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
   1. **Buka Akses Switch Role untuk Semua Sesi Pengguna (`server.ts`):** Endpoint `/api/auth/switch-role` kini mengizinkan alih peran untuk seluruh pengguna terautentikasi dan mengenali target berdasarkan `userId`, email, nama, maupun `role`.
   2. **Whitelist `/api/auth/switch-role` pada Middleware (`server/runtime-hardening.ts`):** Dimasukkan ke dalam `PUBLIC_API_PATHS` dan `allowedAuditorActions` agar akun Auditor tetap leluasa berpindah peran.
   3. **Normalisasi State Client (`src/App.tsx` & `src/services/gabahApi.ts`):** `handleSelectUser` dan `handleSwitchRoleSimulation` kini menangani objek user secara robust (`res?.user || res?.data?.user`), serta menyertakan fallback lokal instan.
-  4. **Verifikasi End-to-End Berhasil 100%:** Pengujian transisi lintas seluruh 9 peran terdaftar (Admin GABAH, IT, GA, Sekdir, Humas, SC, PIBC, Karyawan, Auditor) berhasil 9/9 tanpa hambatan.
+  4. **Verifikasi End-to-End Berhasil 100%:** Pengujian transisi lintas seluruh 9 peran terdaftar (Admin GABAH, IT, GA, Sekdir, Humas, RPC, PIBC, Karyawan, Auditor) berhasil 9/9 tanpa hambatan.
 
 ---
 
@@ -135,7 +135,7 @@ Repository **GABAH** (*General Asset, Business & Automated Helpdesk*) PT Food St
 | **GA** | Siti Rahmawati | `ga@foodstation.co.id` / `ga.officer@...` | `<INITIAL_USER_PASSWORD>` |
 | **Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` / `sekdir@...` | `<INITIAL_USER_PASSWORD>` |
 | **Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` |
-| **Supply Chain** | Agus Pratama | `sc.warehouse@foodstation.co.id` / `sc@...` | `<INITIAL_USER_PASSWORD>` |
+| **RPC** | Agus Pratama | `sc.warehouse@foodstation.co.id` / `sc@...` | `<INITIAL_USER_PASSWORD>` |
 | **PIBC** | Bambang Hermawan | `pibc.admin@foodstation.co.id` / `pibc@...` | `<INITIAL_USER_PASSWORD>` |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` / `karyawan@...` | `<INITIAL_USER_PASSWORD>` |
 | **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` / `spi@...` | `<INITIAL_USER_PASSWORD>` |

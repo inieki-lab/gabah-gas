@@ -2,7 +2,7 @@
 
 > **GABAH** (*General Asset, Business & Automated Helpdesk*)  
 > Portal internal enterprise terpadu PT Food Station Tjipinang Jaya (Perseroda) — BUMD Pangan DKI Jakarta.  
-> Mengelola inventaris aset multi-divisi (IT, GA, Supply Chain, PIBC), peminjaman barang dinas anti-bentrok jadwal dengan Berita Acara Serah Terima (BAST), pelaporan helpdesk kendala operasional berbasis SLA otomatis, pemeliharaan berkala (*preventive maintenance* & tera timbangan 60 ton), reservasi ruang rapat VIP dengan koordinasi fasilitas multi-divisi (IT, GA, Pantry, Humas), serta audit trail kepatuhan BUMD.
+> Mengelola inventaris aset multi-divisi (IT, GA, RPC, PIBC), peminjaman barang dinas anti-bentrok jadwal dengan Berita Acara Serah Terima (BAST), pelaporan helpdesk kendala operasional berbasis SLA otomatis, pemeliharaan berkala (*preventive maintenance* & tera timbangan 60 ton), reservasi ruang rapat VIP dengan koordinasi fasilitas multi-divisi (IT, GA, Pantry, Humas), serta audit trail kepatuhan BUMD.
 
 ---
 
@@ -24,7 +24,7 @@
 4. **Helpdesk & Tiket SLA**: Pelaporan kendala operasional dengan kalkulasi tenggat waktu SLA otomatis (Urgent 4h, High 8h, Medium 24h, Low 48h).
 5. **Preventive Maintenance**: Penjadwalan servis rutin armada logistik, AC ruang server, serta kalibrasi tera berkala jembatan timbang 60 ton PIBC.
 6. **Reservasi Ruang Rapat VIP**: Reservasi representatif dengan prioritas VIP auto-approval untuk Sekretariat Direksi, serta notifikasi otomatis ke IT Support (alat vicon/proyektor), GA Sarpras (sarana fisik), GA Pantry (konsumsi), dan Humas (dokumentasi liputan).
-7. **Dynamic Role-Based Access Control**: role aplikasi, permission, dan data scope dikelola terpisah; pegawai dapat memiliki role primer dan role tambahan. Supply Chain/PIBC adalah unit atau lokasi kerja, bukan role aplikasi permanen. Backend PostgreSQL menjadi otoritas permission dan scope.
+7. **Dynamic Role-Based Access Control**: role aplikasi, permission, dan data scope dikelola terpisah; pegawai dapat memiliki role primer dan role tambahan. RPC/PIBC adalah unit atau lokasi kerja, bukan role aplikasi permanen. Backend PostgreSQL menjadi otoritas permission dan scope.
 8. **Label & Scanner QR Code**: Pembuatan label aset untuk inventaris fisik dan pemindai kamera web terintegrasi.
 9. **Omnibox Quick Search (`Ctrl + K` / `Cmd + K`)**: Pencarian instan lintas aset, tiket kendala, peminjaman, dan nama pegawai.
 

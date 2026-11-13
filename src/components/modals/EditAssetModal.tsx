@@ -118,11 +118,11 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   const isSuperAdmin = currentUser?.role === 'Admin GABAH';
   const isITUser = currentUser?.role === 'IT';
   const isGAUser = currentUser?.role === 'GA';
-  const isSCUser = currentUser?.role === 'Supply Chain';
+  const isRPCUser = currentUser?.role === 'RPC';
 
   const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
   const isGAAsset = asset.owner_division === 'GA' || asset.category_type === 'General';
-  const isSCAsset = asset.owner_division === 'SC';
+  const isRPCAsset = asset.owner_division === 'RPC';
 
   let canEditThisAsset = false;
   let authorityWarning = '';
@@ -134,7 +134,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
       canEditThisAsset = true;
     } else {
       canEditThisAsset = false;
-      authorityWarning = 'Personel IT hanya berwenang mengedit aset IT (Hardware/Software). Aset GA dan Supply Chain berstatus Read-Only.';
+      authorityWarning = 'Personel IT hanya berwenang mengedit aset IT (Hardware/Software). Aset GA dan RPC berstatus Read-Only.';
     }
   } else if (isGAUser) {
     if (isGAAsset && !isITAsset) {
@@ -143,12 +143,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
       canEditThisAsset = false;
       authorityWarning = 'Semua perangkat IT & Lisensi adalah milik IT. Divisi GA hanya memiliki izin lihat (read-only).';
     }
-  } else if (isSCUser) {
-    if (isSCAsset) {
+  } else if (isRPCUser) {
+    if (isRPCAsset) {
       canEditThisAsset = true;
     } else {
       canEditThisAsset = false;
-      authorityWarning = 'Personel Supply Chain hanya berwenang mengedit aset Supply Chain (Logistik & Pabrik Cipinang).';
+      authorityWarning = 'Personel RPC hanya berwenang mengedit aset RPC (Logistik & Pabrik Cipinang).';
     }
   }
 

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS divisions (
 );
 
 INSERT INTO divisions (code, name) VALUES
-  ('SC', 'Supply Chain'),
+  ('RPC', 'RPC'),
   ('PIBC', 'Pasar'),
   ('IT', 'IT'),
   ('GA', 'General Affairs')
