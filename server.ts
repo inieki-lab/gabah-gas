@@ -2283,19 +2283,39 @@ async function startServer() {
       const { asset_ids, asset_id } = req.body;
 
       if (Array.isArray(asset_ids) && asset_ids.length > 0) {
-        const createdLoans = [];
-        for (const id of asset_ids) {
-          const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
-          createdLoans.push(newLoan);
+        const normalizedAssetIds = asset_ids.map((id: unknown) => String(id ?? '').trim());
+        if (normalizedAssetIds.some((id: string) => !id)
+          || new Set(normalizedAssetIds).size !== normalizedAssetIds.length) {
+          return res.status(400).json({ success: false, message: 'Daftar aset pinjaman mengandung ID kosong atau duplikat.' });
         }
-        await persistDataStore();
-        return res.status(201).json({
-          success: true,
-          data: createdLoans[0],
-          loans: createdLoans,
-          count: createdLoans.length,
-          message: `${createdLoans.length} aset pinjaman berhasil diajukan.`
-        });
+
+        // Bulk requests are one business operation: roll back every in-memory
+        // side effect if any item or persistence step fails.
+        const snapshots = {
+          loans: [...db.loans],
+          notifications: [...db.notifications],
+          auditLogs: [...db.auditLogs],
+        };
+        try {
+          const createdLoans = [];
+          for (const id of normalizedAssetIds) {
+            const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
+            createdLoans.push(newLoan);
+          }
+          await persistDataStore();
+          return res.status(201).json({
+            success: true,
+            data: createdLoans[0],
+            loans: createdLoans,
+            count: createdLoans.length,
+            message: `${createdLoans.length} aset pinjaman berhasil diajukan.`
+          });
+        } catch (bulkError) {
+          db.loans.splice(0, db.loans.length, ...snapshots.loans);
+          db.notifications.splice(0, db.notifications.length, ...snapshots.notifications);
+          db.auditLogs.splice(0, db.auditLogs.length, ...snapshots.auditLogs);
+          throw bulkError;
+        }
       }
 
       const newLoan = GabahDomainService.requestLoan(req.body, actor);
