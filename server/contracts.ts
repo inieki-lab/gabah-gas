@@ -142,9 +142,22 @@ export const ContractDomainService = {
     if (!canManageContracts(actor)) {
       throw new Error('Akses ditolak: permission contracts.create tidak diberikan.');
     }
-    const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
-    const pic = db.users.find(u => u.id === payload.pic_user_id) || actor;
-    const ownerExists = (db.divisions || []).some(d => String(d.code).trim().toUpperCase() === ownerDivision);
+    if (typeof payload.title !== 'string' || !payload.title.trim()
+      || typeof payload.vendor_name !== 'string' || !payload.vendor_name.trim()) {
+      throw new Error('Judul kontrak dan nama vendor wajib diisi.');
+    }
+    const startDate = new Date(payload.start_date);
+    const endDate = new Date(payload.end_date);
+    if (!payload.start_date || !payload.end_date
+      || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())
+      || startDate > endDate) {
+      throw new Error('Periode kontrak tidak valid: tanggal mulai harus valid dan tidak melewati tanggal berakhir.');
+    }
+
+    const ownerDivision = (payload.owner_division || actor.division || '').toString().trim().toUpperCase();
+    const ownerExists = (db.divisions || []).some(d =>
+      String(d.code).trim().toUpperCase() === ownerDivision && d.is_active !== false
+    );
     const ownerScopeAllowed = ownerExists
       && (isSuperadminActor(actor) || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
@@ -153,11 +166,46 @@ export const ContractDomainService = {
       throw new Error(`Akses ditolak: scope pengguna tidak mencakup owner kontrak ${ownerDivision}.`);
     }
 
+    // PIC is an explicit business relationship. Never silently replace an
+    // invalid/inactive requested user with the actor creating the contract.
+    const pic = db.users.find(u => u.id === payload.pic_user_id && u.is_active);
+    if (!pic) throw new Error('PIC kontrak tidak ditemukan atau akun sudah nonaktif.');
+
+    const escalationUserId = payload.escalation_user_id ? String(payload.escalation_user_id).trim() : '';
+    if (escalationUserId && !db.users.some(u => u.id === escalationUserId && u.is_active)) {
+      throw new Error('Pengguna eskalasi tidak ditemukan atau akun sudah nonaktif.');
+    }
+
+    const parentContractId = payload.parent_contract_id ? String(payload.parent_contract_id).trim() : '';
+    if (parentContractId) {
+      const parent = db.contracts.find(item => item.id === parentContractId);
+      if (!parent) throw new Error('Kontrak induk tidak ditemukan.');
+      if (String(parent.owner_division || '').trim().toUpperCase() !== ownerDivision) {
+        throw new Error('Kontrak induk harus berasal dari divisi pemilik yang sama.');
+      }
+      if (!canSeeContract(actor, parent)) {
+        throw new Error('Akses ditolak: kontrak induk berada di luar scope pengguna.');
+      }
+    }
+
     const reminderConfig: ContractReminderConfig = {
       reminder1_days: payload.reminder_config?.reminder1_days ?? DEFAULT_REMINDER_CONFIG.reminder1_days,
       reminder2_days: payload.reminder_config?.reminder2_days ?? DEFAULT_REMINDER_CONFIG.reminder2_days,
       reminder3_days: payload.reminder_config?.reminder3_days ?? DEFAULT_REMINDER_CONFIG.reminder3_days,
     };
+    const reminderValues = [reminderConfig.reminder1_days, reminderConfig.reminder2_days, reminderConfig.reminder3_days];
+    if (reminderValues.some(value => !Number.isInteger(value) || value < 0)
+      || reminderConfig.reminder1_days < reminderConfig.reminder2_days
+      || reminderConfig.reminder2_days < reminderConfig.reminder3_days) {
+      throw new Error('Konfigurasi reminder harus berupa bilangan bulat non-negatif dengan urutan 1 ≥ 2 ≥ 3.');
+    }
+
+    const noticePeriodDays = Number(payload.notice_period_days ?? 0);
+    const contractValue = Number(payload.contract_value ?? 0);
+    if (!Number.isInteger(noticePeriodDays) || noticePeriodDays < 0
+      || !Number.isFinite(contractValue) || contractValue < 0) {
+      throw new Error('Notice period dan nilai kontrak harus berupa angka non-negatif yang valid.');
+    }
 
     const nowIso = new Date().toISOString();
     const contract: ServerContract = {
@@ -172,19 +220,19 @@ export const ContractDomainService = {
       pic_name: pic.name,
       start_date: payload.start_date,
       end_date: payload.end_date,
-      notice_period_days: payload.notice_period_days ?? 0,
+      notice_period_days: noticePeriodDays,
       notice_date: (payload.notice_period_days ?? 0) > 0 ? addDays(payload.end_date, -(payload.notice_period_days ?? 0)) : payload.end_date,
-      contract_value: payload.contract_value || 0,
+      contract_value: contractValue,
       auto_renewal: Boolean(payload.auto_renewal),
       status: payload.status === 'draft' ? 'draft' : 'active',
       renewal_outcome: 'pending_decision',
       renewal_notes: payload.renewal_notes || null,
       replaced_by_contract_id: null,
-      parent_contract_id: payload.parent_contract_id || null,
-      documents: Array.isArray(payload.documents) ? payload.documents : [],
-      milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
+      parent_contract_id: parentContractId || null,
+      documents: [],
+      milestones: [],
       reminder_config: reminderConfig,
-      escalation_user_id: payload.escalation_user_id || null,
+      escalation_user_id: escalationUserId || null,
       restricted: Boolean(payload.restricted),
       notes: payload.notes || null,
       created_by: actor.id,
@@ -203,30 +251,68 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
-    // SECURITY (CR-06): protected fields — these govern identity, ownership,
-    // governance flags, and the authoritative lifecycle of the contract and can
-    // only change through their dedicated, authorized endpoints (create with
-    // division check, addDocument, addMilestone, decideRenewal, reminder sweep).
-    const protectedFields: Array<keyof ServerContract> = [
-      'id',
-      'contract_number',
-      'created_by',
-      'created_by_name',
-      'created_at',
-      'owner_division',
-      'owner_division_label',
-      'pic_user_id',
-      'pic_name',
-      'restricted',
-      'status',
-      'renewal_outcome',
-      'replaced_by_contract_id',
-      'parent_contract_id',
-      'documents',
-      'milestones',
+    // SECURITY (CR-06): allowlist editable business fields. A denylist can
+    // accidentally admit newly-added identity or workflow fields in the future.
+    const editableFields: Array<keyof ServerContract> = [
+      'contract_type',
+      'title',
+      'vendor_name',
+      'start_date',
+      'end_date',
+      'notice_period_days',
+      'contract_value',
+      'auto_renewal',
+      'renewal_notes',
+      'reminder_config',
+      'escalation_user_id',
+      'notes',
     ];
-    for (const key of Object.keys(updates) as Array<keyof ServerContract>) {
-      if (protectedFields.includes(key)) continue;
+    // Protected/unknown fields are ignored for backward compatibility with
+    // clients that submit a full record; only the explicit allowlist is applied.
+    const nextStartDate = updates.start_date ?? contract.start_date;
+    const nextEndDate = updates.end_date ?? contract.end_date;
+    const parsedStartDate = new Date(nextStartDate);
+    const parsedEndDate = new Date(nextEndDate);
+    if (Number.isNaN(parsedStartDate.getTime()) || Number.isNaN(parsedEndDate.getTime()) || parsedStartDate > parsedEndDate) {
+      throw new Error('Periode kontrak tidak valid: tanggal mulai harus valid dan tidak melewati tanggal berakhir.');
+    }
+    if (updates.title !== undefined && (typeof updates.title !== 'string' || !updates.title.trim())) {
+      throw new Error('Judul kontrak wajib diisi.');
+    }
+    if (updates.vendor_name !== undefined && (typeof updates.vendor_name !== 'string' || !updates.vendor_name.trim())) {
+      throw new Error('Nama vendor wajib diisi.');
+    }
+    if (updates.contract_type !== undefined && (typeof updates.contract_type !== 'string' || !updates.contract_type.trim())) {
+      throw new Error('Tipe kontrak wajib diisi.');
+    }
+    if (updates.notice_period_days !== undefined
+      && (!Number.isInteger(updates.notice_period_days) || updates.notice_period_days < 0)) {
+      throw new Error('Notice period harus berupa bilangan bulat non-negatif.');
+    }
+    if (updates.contract_value !== undefined
+      && (!Number.isFinite(updates.contract_value) || updates.contract_value < 0)) {
+      throw new Error('Nilai kontrak harus berupa angka non-negatif yang valid.');
+    }
+    if (updates.reminder_config !== undefined) {
+      const reminder = updates.reminder_config;
+      const values = [reminder?.reminder1_days, reminder?.reminder2_days, reminder?.reminder3_days];
+      if (values.some(value => !Number.isInteger(value) || Number(value) < 0)
+        || reminder.reminder1_days < reminder.reminder2_days
+        || reminder.reminder2_days < reminder.reminder3_days) {
+        throw new Error('Konfigurasi reminder harus berupa bilangan bulat non-negatif dengan urutan 1 ≥ 2 ≥ 3.');
+      }
+    }
+    if (updates.escalation_user_id) {
+      const escalationId = String(updates.escalation_user_id).trim();
+      if (!db.users.some(user => user.id === escalationId && user.is_active)) {
+        throw new Error('Pengguna eskalasi tidak ditemukan atau akun sudah nonaktif.');
+      }
+      updates = { ...updates, escalation_user_id: escalationId };
+    } else if (updates.escalation_user_id === '') {
+      updates = { ...updates, escalation_user_id: null };
+    }
+
+    for (const key of editableFields) {
       if (updates[key] !== undefined) (contract as any)[key] = updates[key];
     }
 
@@ -247,12 +333,20 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
-    // Versioning-ready: documents are appended, never overwritten
+    const allowedKinds: ServerContractDocument['kind'][] = ['original_contract', 'amendment', 'renewal', 'supporting_document'];
+    if (!doc || !allowedKinds.includes(doc.kind)
+      || typeof doc.file_name !== 'string' || !doc.file_name.trim() || doc.file_name.length > 180
+      || typeof doc.file_ref !== 'string' || !doc.file_ref.trim() || doc.file_ref.length > 512) {
+      throw new Error('Metadata dokumen kontrak tidak valid.');
+    }
+
+    // Versioning-ready: documents are appended, never overwritten.
+    // The caller identity is always taken from the authenticated session.
     contract.documents.push({
-      id: `CDoc-${Date.now()}`,
+      id: `CDoc-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
       kind: doc.kind,
-      file_name: doc.file_name,
-      file_ref: doc.file_ref,
+      file_name: doc.file_name.trim(),
+      file_ref: doc.file_ref.trim(),
       uploaded_by: actor.id,
       uploaded_by_name: actor.name,
       uploaded_at: new Date().toISOString(),
@@ -267,7 +361,24 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
-    contract.milestones.push({ ...milestone, id: `CMS-${Date.now()}`, status: 'pending' });
+    const allowedTypes: ServerContractMilestone['type'][] = ['payment', 'service_maintenance', 'evaluation', 'other_obligation'];
+    const dueDate = new Date(milestone?.due_date);
+    if (!milestone || !allowedTypes.includes(milestone.type)
+      || typeof milestone.title !== 'string' || !milestone.title.trim() || milestone.title.length > 180
+      || typeof milestone.due_date !== 'string' || Number.isNaN(dueDate.getTime())
+      || (milestone.amount !== undefined && (!Number.isFinite(milestone.amount) || milestone.amount < 0))
+      || (milestone.notes !== undefined && (typeof milestone.notes !== 'string' || milestone.notes.length > 2000))) {
+      throw new Error('Data milestone kontrak tidak valid.');
+    }
+    contract.milestones.push({
+      type: milestone.type,
+      title: milestone.title.trim(),
+      due_date: milestone.due_date,
+      ...(milestone.amount !== undefined ? { amount: milestone.amount } : {}),
+      ...(milestone.notes !== undefined ? { notes: milestone.notes } : {}),
+      id: `CMS-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+      status: 'pending',
+    });
     contract.updated_at = new Date().toISOString();
     recordContractAudit('CONTRACT_MILESTONE_ADDED', `Milestone '${milestone.type}' ditambahkan pada kontrak ${contract.contract_number}: ${milestone.title}`, actor, contract.id);
     return contract;
