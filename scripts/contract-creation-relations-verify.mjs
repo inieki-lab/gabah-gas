@@ -54,10 +54,17 @@ assert.deepEqual(created.documents, [], 'Client-supplied document metadata must 
 assert.deepEqual(created.milestones, [], 'Client-supplied milestone state must not be trusted on creation');
 assert.equal(db.contracts.length, 6, 'Only the valid fixture contract should be added');
 
-assert.throws(
-  () => ContractDomainService.updateContract(created.id, { owner_division: 'SC' }, actor),
-  /Field kontrak tidak dapat diubah/,
-);
+const protectedUpdate = ContractDomainService.updateContract(created.id, {
+  owner_division: 'SC',
+  pic_user_id: 'USR-SC',
+  created_by: 'USR-SC',
+  contract_number: 'FORGED-NUMBER',
+  notes: 'Protected fields must be ignored while allowed notes update.',
+}, actor);
+assert.equal(protectedUpdate.owner_division, 'IT');
+assert.equal(protectedUpdate.pic_user_id, 'USR-03');
+assert.notEqual(protectedUpdate.contract_number, 'FORGED-NUMBER');
+assert.equal(protectedUpdate.notes, 'Protected fields must be ignored while allowed notes update.');
 assert.throws(
   () => ContractDomainService.updateContract(created.id, { contract_value: -10 }, actor),
   /Nilai kontrak harus/,
@@ -103,7 +110,7 @@ console.log('PASS | unknown escalation user rejected; supported cross-division e
 console.log('PASS | missing and cross-division parent contract rejected');
 console.log('PASS | invalid date, reminder thresholds, and negative contract value rejected');
 console.log('PASS | forged document/milestone metadata ignored on creation');
-console.log('PASS | update allowlist blocks protected fields and validates editable values');
+console.log('PASS | update allowlist ignores protected fields and validates editable values');
 console.log('PASS | document metadata validated and uploader identity is server-derived');
 console.log('PASS | milestone type/date/amount validated and status/id are server-derived');
 console.log('TOTAL: 8 | PASS: 8 | FAIL: 0');
