@@ -1232,6 +1232,13 @@ export class GabahDomainService {
       throw new Error('Jam mulai harus lebih awal dari jam selesai rapat.');
     }
 
+    if (payload.consumption_requested !== undefined && typeof payload.consumption_requested !== 'boolean') {
+      throw Object.assign(new Error('consumption_requested harus berupa boolean.'), { statusCode: 400 });
+    }
+    if (payload.documentation_requested !== undefined && typeof payload.documentation_requested !== 'boolean') {
+      throw Object.assign(new Error('documentation_requested harus berupa boolean.'), { statusCode: 400 });
+    }
+
     const attendeesCount = Number(payload.attendees_count);
     if (!Number.isSafeInteger(attendeesCount) || attendeesCount < 1) {
       throw new Error('Jumlah peserta harus berupa bilangan bulat minimal 1 orang.');
