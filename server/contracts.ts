@@ -334,12 +334,20 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
-    // Versioning-ready: documents are appended, never overwritten
+    const allowedKinds: ServerContractDocument['kind'][] = ['original_contract', 'amendment', 'renewal', 'supporting_document'];
+    if (!doc || !allowedKinds.includes(doc.kind)
+      || typeof doc.file_name !== 'string' || !doc.file_name.trim() || doc.file_name.length > 180
+      || typeof doc.file_ref !== 'string' || !doc.file_ref.trim() || doc.file_ref.length > 512) {
+      throw new Error('Metadata dokumen kontrak tidak valid.');
+    }
+
+    // Versioning-ready: documents are appended, never overwritten.
+    // The caller identity is always taken from the authenticated session.
     contract.documents.push({
-      id: `CDoc-${Date.now()}`,
+      id: `CDoc-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
       kind: doc.kind,
-      file_name: doc.file_name,
-      file_ref: doc.file_ref,
+      file_name: doc.file_name.trim(),
+      file_ref: doc.file_ref.trim(),
       uploaded_by: actor.id,
       uploaded_by_name: actor.name,
       uploaded_at: new Date().toISOString(),
@@ -354,7 +362,24 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
-    contract.milestones.push({ ...milestone, id: `CMS-${Date.now()}`, status: 'pending' });
+    const allowedTypes: ServerContractMilestone['type'][] = ['payment', 'service_maintenance', 'evaluation', 'other_obligation'];
+    const dueDate = new Date(milestone?.due_date);
+    if (!milestone || !allowedTypes.includes(milestone.type)
+      || typeof milestone.title !== 'string' || !milestone.title.trim() || milestone.title.length > 180
+      || typeof milestone.due_date !== 'string' || Number.isNaN(dueDate.getTime())
+      || (milestone.amount !== undefined && (!Number.isFinite(milestone.amount) || milestone.amount < 0))
+      || (milestone.notes !== undefined && (typeof milestone.notes !== 'string' || milestone.notes.length > 2000))) {
+      throw new Error('Data milestone kontrak tidak valid.');
+    }
+    contract.milestones.push({
+      type: milestone.type,
+      title: milestone.title.trim(),
+      due_date: milestone.due_date,
+      ...(milestone.amount !== undefined ? { amount: milestone.amount } : {}),
+      ...(milestone.notes !== undefined ? { notes: milestone.notes } : {}),
+      id: `CMS-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+      status: 'pending',
+    });
     contract.updated_at = new Date().toISOString();
     recordContractAudit('CONTRACT_MILESTONE_ADDED', `Milestone '${milestone.type}' ditambahkan pada kontrak ${contract.contract_number}: ${milestone.title}`, actor, contract.id);
     return contract;
