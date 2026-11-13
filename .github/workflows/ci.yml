@@ -59,8 +59,6 @@ jobs:
       - name: Asset movement history scope consistency
         run: npm run test:movement-scope
 
-      - name: User profile update validation (live HTTP assertions)
-        run: npm run test:user-update-validation
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
 
@@ -75,6 +73,9 @@ jobs:
 
       - name: Production build (frontend + server bundle)
         run: npm run build
+
+      - name: User profile update validation (live HTTP assertions)
+        run: npm run test:user-update-validation
 
       - name: Build production Docker image
         run: docker build --tag gabah-gas:ci .
