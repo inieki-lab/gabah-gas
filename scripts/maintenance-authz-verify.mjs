@@ -186,8 +186,25 @@ async function main() {
     record('POST IT on IT asset allowed', '201', `HTTP ${itOnIt.status}`, itOnIt.status === 201);
     const createdId = itOnIt.json?.data?.id;
 
-    const adminOnGa = await req(base, 'POST', '/api/maintenances', { token: tokens.admin, body: { asset_id: 'AST-KDR-001', title: 'Admin jadwal verify' } });
-    record('POST admin (superadmin) on GA asset allowed', '201', `HTTP ${adminOnGa.status}`, adminOnGa.status === 201);
+    const unknownVendor = await req(base, 'POST', '/api/maintenances', {
+      token: tokens.it,
+      body: { asset_id: 'AST-HSV-001', title: 'Vendor ID tidak dikenal', vendor_id: 'VND-DOES-NOT-EXIST' },
+    });
+    record('POST rejects unknown vendor ID', '400', `HTTP ${unknownVendor.status}`, unknownVendor.status === 400);
+
+    const outOfScopeVendor = await req(base, 'POST', '/api/maintenances', {
+      token: tokens.it,
+      body: { asset_id: 'AST-HSV-001', title: 'Vendor legacy tanpa owner', vendor_id: 'VND-01' },
+    });
+    record('POST blocks linking vendor outside visible vendor scope', '403', `HTTP ${outOfScopeVendor.status}`, outOfScopeVendor.status === 403);
+
+    const adminOnGa = await req(base, 'POST', '/api/maintenances', {
+      token: tokens.admin,
+      body: { asset_id: 'AST-KDR-001', title: 'Admin jadwal verify', vendor_id: 'VND-01', vendor_name: 'Nama vendor palsu' },
+    });
+    record('POST admin (superadmin) can link legacy vendor', '201', `HTTP ${adminOnGa.status}`, adminOnGa.status === 201);
+    record('POST linked vendor name is canonical from master', 'PT Metrodata Electronics Tbk', adminOnGa.json?.data?.vendor_name,
+      adminOnGa.json?.data?.vendor_name === 'PT Metrodata Electronics Tbk');
 
     // ---------- UPDATE (allowlist + division authority) ----------
     const karPatch = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.karyawan, body: { notes: 'x' } });
