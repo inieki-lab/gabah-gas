@@ -17,6 +17,20 @@ assert.throws(
 );
 assert.equal(asset.assigned_to, null, 'Rejected assignment must not mutate asset custody');
 
+const originalLocation = asset.location;
+assert.throws(
+  () => GabahDomainService.moveAsset(asset.id, '   ', 'fixture', admin),
+  /Lokasi baru wajib diisi/,
+);
+assert.equal(asset.location, originalLocation, 'Invalid move must not mutate asset location');
+
+const originalStatus = asset.status;
+assert.throws(
+  () => GabahDomainService.mutateLifecycle(asset.id, 'forged-action', 'fixture', admin),
+  /Aksi lifecycle aset tidak valid/,
+);
+assert.equal(asset.status, originalStatus, 'Invalid lifecycle action must not mutate asset status');
+
 inactiveUser.is_active = true;
 const assigned = GabahDomainService.assignAsset(asset.id, activeUser.id, 'fixture valid', admin);
 assert.equal(assigned.assigned_to.id, activeUser.id);
@@ -25,4 +39,6 @@ assert.equal(assigned.status, 'assigned');
 console.log('PASS | inactive target user rejected');
 console.log('PASS | denied assignment leaves asset custody unchanged');
 console.log('PASS | active target user can still receive asset');
-console.log('TOTAL: 3 | PASS: 3 | FAIL: 0');
+console.log('PASS | invalid asset move leaves location unchanged');
+console.log('PASS | invalid lifecycle action leaves asset status unchanged');
+console.log('TOTAL: 5 | PASS: 5 | FAIL: 0');
