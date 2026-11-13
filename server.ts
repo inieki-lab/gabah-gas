@@ -2506,7 +2506,7 @@ async function startServer() {
 
   const MAINTENANCE_FREQUENCIES = new Set(['weekly', 'monthly', 'quarterly', 'biannual', 'annual', 'one_time']);
   const MAINTENANCE_STATUSES = new Set(['scheduled', 'in_progress', 'completed', 'overdue', 'cancelled']);
-  const validateMaintenanceInput = (body: any, partial = false): string | null => {
+  const validateMaintenanceInput = (body: any): string | null => {
     if (!body || typeof body !== 'object' || Array.isArray(body)) return 'Data pemeliharaan tidak valid.';
     if (body.title !== undefined && (typeof body.title !== 'string' || !body.title.trim() || body.title.trim().length > 200)) return 'Judul jadwal wajib diisi dan maksimal 200 karakter.';
     if (body.scheduled_date !== undefined) {
@@ -2608,7 +2608,7 @@ async function startServer() {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.update dan scope owner "${schedule.owner_division}" wajib dimiliki.` });
     }
 
-    const inputError = validateMaintenanceInput(req.body, true);
+    const inputError = validateMaintenanceInput(req.body);
     if (inputError) return res.status(400).json({ success: false, message: inputError });
     const vendor = resolveMaintenanceVendor(req.body.vendor_id);
     if (!vendor) return res.status(400).json({ success: false, message: 'Vendor yang dipilih tidak ditemukan.' });
