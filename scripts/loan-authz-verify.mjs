@@ -185,17 +185,22 @@ async function main() {
       ? await req(base, 'POST', `/api/loans/${approvalLoanId}/approve`, { token: it.token, body: {} })
       : { status: 0 };
     record('Approval succeeds after asset is restored to available', '200', `HTTP ${approvalAfterRestore.status}`, approvalAfterRestore.status === 200);
-    await setAssetStatus(itAsset6.id, 'damaged');
-    const handoverWithBrokenRelation = approvalLoanId
-      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/handover`, { token: it.token, body: { handoverNotes: 'Must not hand over damaged asset' } })
+    const statusEditApproved = await setAssetStatus(itAsset6.id, 'damaged');
+    record('Manual status change is blocked while loan is approved', '409', `HTTP ${statusEditApproved.status}`, statusEditApproved.status === 409);
+    const handoverRechecked = approvalLoanId
+      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan setelah approval' } })
       : { status: 0 };
-    const loanAfterBrokenHandover = approvalLoanId
-      ? (((await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || []).find(l => l.id === approvalLoanId) || {}).status
-      : '(missing)';
-    record('Handover rejects asset not in reserved state and preserves approved loan', '409 + approved',
-      `HTTP ${handoverWithBrokenRelation.status} + ${loanAfterBrokenHandover}`,
-      handoverWithBrokenRelation.status === 409 && loanAfterBrokenHandover === 'approved');
-    await setAssetStatus(itAsset6.id, 'reserved');
+    record('Handover succeeds only after valid approval and reserved asset', '200 + borrowed',
+      `HTTP ${handoverRechecked.status} + ${handoverRechecked.json?.data?.status}`,
+      handoverRechecked.status === 200 && handoverRechecked.json?.data?.status === 'borrowed');
+    const statusEditBorrowed = await setAssetStatus(itAsset6.id, 'damaged');
+    record('Manual status change is blocked while loan is borrowed', '409', `HTTP ${statusEditBorrowed.status}`, statusEditBorrowed.status === 409);
+    const returnRechecked = approvalLoanId
+      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/return`, { token: karyawan.token, body: { condition: 'good', returnNotes: 'Returned after lifecycle test' } })
+      : { status: 0 };
+    record('Borrower can return after handover; asset returns to available', '200 + returned',
+      `HTTP ${returnRechecked.status} + ${returnRechecked.json?.data?.status}`,
+      returnRechecked.status === 200 && returnRechecked.json?.data?.status === 'returned');
 
     const initialLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
     const invalidBorrower = await req(base, 'POST', '/api/loans', {
@@ -299,13 +304,11 @@ async function main() {
     record('Unauthorized handover: GA on second IT loan (L2)', '403', `HTTP ${h2Wrong.status}`, h2Wrong.status === 403);
     const h2Ok = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan' } });
     record('Authorized handover: IT custodian on L2', '200 + borrowed', `HTTP ${h2Ok.status} + ${h2Ok.json?.data?.status}`, h2Ok.status === 200 && h2Ok.json?.data?.status === 'borrowed');
-    await setAssetStatus(itAsset2.id, 'damaged');
-    const returnWithBrokenRelation = await req(base, 'POST', `/api/loans/${L2.id}/return`, { token: karyawan.token, body: { condition: 'good', returnNotes: 'Must not resurrect damaged asset' } });
-    const loanAfterBrokenReturn = await loanStatus(L2.id);
-    record('Return rejects asset not in assigned state and preserves borrowed loan', '409 + borrowed',
-      `HTTP ${returnWithBrokenRelation.status} + ${loanAfterBrokenReturn}`,
-      returnWithBrokenRelation.status === 409 && loanAfterBrokenReturn === 'borrowed');
-    await setAssetStatus(itAsset2.id, 'assigned');
+    const statusEditBorrowedL2 = await setAssetStatus(itAsset2.id, 'damaged');
+    const loanAfterStatusEditL2 = await loanStatus(L2.id);
+    record('Manual asset status edit is blocked during borrowed loan L2', '409 + borrowed',
+      `HTTP ${statusEditBorrowedL2.status} + ${loanAfterStatusEditL2}`,
+      statusEditBorrowedL2.status === 409 && loanAfterStatusEditL2 === 'borrowed');
     const h2Double = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: {} });
     record('Invalid transition: double handover on L2', '409', `HTTP ${h2Double.status}`, h2Double.status === 409);
 
