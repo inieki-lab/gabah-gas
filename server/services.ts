@@ -1238,6 +1238,12 @@ export class GabahDomainService {
     if (payload.documentation_requested !== undefined && typeof payload.documentation_requested !== 'boolean') {
       throw Object.assign(new Error('documentation_requested harus berupa boolean.'), { statusCode: 400 });
     }
+    const rawFacilities = payload.facilities_requested === undefined ? [] : payload.facilities_requested;
+    if (!Array.isArray(rawFacilities) || rawFacilities.length > 30
+      || rawFacilities.some(item => typeof item !== 'string' || !item.trim() || item.trim().length > 120)) {
+      throw Object.assign(new Error('Daftar fasilitas harus berupa array maksimal 30 item teks (1–120 karakter per item).'), { statusCode: 400 });
+    }
+    const requestedFacilities = rawFacilities.map(item => item.trim());
 
     const attendeesCount = Number(payload.attendees_count);
     if (!Number.isSafeInteger(attendeesCount) || attendeesCount < 1) {
@@ -1384,7 +1390,7 @@ export class GabahDomainService {
       end_time: payload.end_time,
       start_datetime: `${payload.date}T${payload.start_time}:00`,
       end_datetime: `${payload.date}T${payload.end_time}:00`,
-      facilities_requested: Array.isArray(payload.facilities_requested) ? payload.facilities_requested : [],
+      facilities_requested: requestedFacilities,
       consumption_requested: Boolean(payload.consumption_requested),
       consumption_type: payload.consumption_type || 'snack_box',
       consumption_pax: payload.consumption_pax ? Number(payload.consumption_pax) : Number(payload.attendees_count) || 1,
