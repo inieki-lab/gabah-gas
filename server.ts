@@ -2532,6 +2532,17 @@ async function startServer() {
     const vendor = db.vendors.find(item => item.id === vendorId);
     return vendor ? { id: vendor.id, name: vendor.name } : null;
   };
+  const canReferenceMaintenanceVendor = (actor: ReturnType<typeof getActor>, vendorId?: string): boolean => {
+    if (!vendorId) return true;
+    const vendor = db.vendors.find(item => item.id === vendorId);
+    if (!vendor) return false;
+    if (isSuperadminActor(actor)) return true;
+    const owner = String(vendor.owner_division || '').trim().toUpperCase();
+    if (!owner) return false;
+    return isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', owner, 'vendors')
+      : actor.role === owner;
+  };
 
   app.post('/api/maintenances', (req, res) => {
     const actor = getActor(req);
@@ -2550,6 +2561,9 @@ async function startServer() {
     }
     const vendor = resolveMaintenanceVendor(req.body.vendor_id);
     if (!vendor) return res.status(400).json({ success: false, message: 'Vendor yang dipilih tidak ditemukan.' });
+    if (vendor.id && !canReferenceMaintenanceVendor(actor, vendor.id)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: vendor tidak termasuk scope divisi pengguna.' });
+    }
     const asset = db.assets.find(a => a.id === req.body.asset_id);
     if (!asset) {
       return res.status(400).json({ success: false, message: 'Aset yang dipilih tidak ditemukan.' });
@@ -2576,8 +2590,8 @@ async function startServer() {
       frequency: req.body.frequency || 'one_time',
       status: req.body.status || 'scheduled',
       technician_name: req.body.technician_name || 'Tim Internal',
-      vendor_id: req.body.vendor_id,
-      vendor_name: req.body.vendor_name,
+      vendor_id: vendor.id,
+      vendor_name: vendor.name || req.body.vendor_name || '',
       estimated_cost: req.body.estimated_cost || 0,
       actual_cost: req.body.actual_cost || 0,
       notes: req.body.notes || '',
@@ -2612,6 +2626,9 @@ async function startServer() {
     if (inputError) return res.status(400).json({ success: false, message: inputError });
     const vendor = resolveMaintenanceVendor(req.body.vendor_id);
     if (!vendor) return res.status(400).json({ success: false, message: 'Vendor yang dipilih tidak ditemukan.' });
+    if (vendor.id && !canReferenceMaintenanceVendor(actor, vendor.id)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: vendor tidak termasuk scope divisi pengguna.' });
+    }
     if (req.body.vendor_id === undefined && req.body.vendor_name !== undefined && schedule.vendor_id) {
       return res.status(400).json({ success: false, message: 'Nama vendor terhubung dikelola dari master vendor. Pilih ulang vendor atau kosongkan relasinya terlebih dahulu.' });
     }
