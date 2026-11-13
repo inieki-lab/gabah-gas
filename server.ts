@@ -2528,6 +2528,20 @@ async function startServer() {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.create dan scope owner "${asset.owner_division}" wajib dimiliki.` });
     }
 
+    // A linked vendor is a server-owned relation: never persist a caller-supplied
+    // vendor name that disagrees with the selected vendor ID.
+    const requestedVendorId = String(req.body?.vendor_id ?? '').trim();
+    const linkedVendor = requestedVendorId ? db.vendors.find(v => v.id === requestedVendorId) : undefined;
+    if (requestedVendorId && !linkedVendor) {
+      return res.status(404).json({ success: false, message: 'Vendor yang dipilih tidak ditemukan.' });
+    }
+    const requestedVendorName = linkedVendor
+      ? linkedVendor.name
+      : String(req.body?.vendor_name ?? '').trim();
+    if (requestedVendorName.length > 180) {
+      return res.status(400).json({ success: false, message: 'Nama vendor maksimal 180 karakter.' });
+    }
+
     const count = db.maintenances.length + 1;
     const scheduleCode = `MNT-2026-${String(count).padStart(3, '0')}`;
     const newSchedule = {
@@ -2543,8 +2557,8 @@ async function startServer() {
       frequency: req.body.frequency || 'one_time',
       status: req.body.status || 'scheduled',
       technician_name: req.body.technician_name || 'Tim Internal',
-      vendor_id: req.body.vendor_id,
-      vendor_name: req.body.vendor_name,
+      vendor_id: linkedVendor?.id,
+      vendor_name: requestedVendorName || undefined,
       estimated_cost: req.body.estimated_cost || 0,
       actual_cost: req.body.actual_cost || 0,
       notes: req.body.notes || '',
@@ -2575,18 +2589,40 @@ async function startServer() {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.update dan scope owner "${schedule.owner_division}" wajib dimiliki.` });
     }
 
+    // Resolve the vendor relation before mutating the schedule. An unknown ID
+    // must not leave a partially updated record; a linked vendor's name is canonical.
+    const vendorIdProvided = Object.prototype.hasOwnProperty.call(req.body || {}, 'vendor_id');
+    const nextVendorId = vendorIdProvided
+      ? String(req.body.vendor_id ?? '').trim()
+      : String(schedule.vendor_id || '').trim();
+    const linkedVendor = nextVendorId ? db.vendors.find(v => v.id === nextVendorId) : undefined;
+    if (nextVendorId && !linkedVendor) {
+      return res.status(404).json({ success: false, message: 'Vendor yang dipilih tidak ditemukan.' });
+    }
+    const vendorNameProvided = Object.prototype.hasOwnProperty.call(req.body || {}, 'vendor_name');
+    const nextVendorName = linkedVendor
+      ? linkedVendor.name
+      : vendorNameProvided
+        ? String(req.body.vendor_name ?? '').trim()
+        : vendorIdProvided ? '' : String(schedule.vendor_name || '').trim();
+    if (nextVendorName.length > 180) {
+      return res.status(400).json({ success: false, message: 'Nama vendor maksimal 180 karakter.' });
+    }
+
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, schedule_code, asset_id, asset_name,
     // asset_number, category_type, owner_division, created_at.
     const allowedMaintenanceFields = [
       'title', 'scheduled_date', 'frequency', 'status', 'technician_name',
-      'vendor_id', 'vendor_name', 'estimated_cost', 'actual_cost', 'notes', 'checklist',
+      'estimated_cost', 'actual_cost', 'notes', 'checklist',
     ];
     for (const key of allowedMaintenanceFields) {
       if (req.body[key] !== undefined) {
         (schedule as any)[key] = req.body[key];
       }
     }
+    schedule.vendor_id = linkedVendor?.id;
+    schedule.vendor_name = nextVendorName || undefined;
     if (req.body.status === 'completed') {
       schedule.last_completed_at = new Date().toISOString();
     }
