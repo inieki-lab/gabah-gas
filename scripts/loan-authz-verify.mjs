@@ -153,9 +153,34 @@ async function main() {
     const itAsset4 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 4');
     const gaAsset1 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 1');
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
-    record('Setup: 5 loanable fixtures created (4 IT + 2 GA)', 'ids issued',
+    record('Setup: 6 loanable fixtures created (4 IT + 2 GA)', 'ids issued',
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].every(a => a.id));
+
+    const initialLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    const invalidBorrower = await req(base, 'POST', '/api/loans', {
+      token: admin.token,
+      body: { asset_id: itAsset1.id, borrower_id: 'USR-NOT-FOUND', purpose: 'Invalid borrower fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    const afterInvalidBorrower = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    record('Invalid borrower ID is rejected without fallback to admin', '404 + no new loan',
+      `HTTP ${invalidBorrower.status} + delta ${afterInvalidBorrower.length - initialLoans.length}`,
+      invalidBorrower.status === 404 && afterInvalidBorrower.length === initialLoans.length);
+
+    const bulkPartial = await req(base, 'POST', '/api/loans', {
+      token: admin.token,
+      body: { asset_ids: [itAsset1.id, 'AST-NOT-FOUND'], borrower_id: 'USR-01', purpose: 'Atomic bulk fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    const afterBulkFailure = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    record('Bulk request rolls back earlier valid items when a later asset is invalid', '404 + no new loans',
+      `HTTP ${bulkPartial.status} + delta ${afterBulkFailure.length - initialLoans.length}`,
+      bulkPartial.status === 404 && afterBulkFailure.length === initialLoans.length);
+
+    const duplicateBulk = await req(base, 'POST', '/api/loans', {
+      token: admin.token,
+      body: { asset_ids: [itAsset1.id, itAsset1.id], borrower_id: 'USR-01', purpose: 'Duplicate bulk fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    record('Bulk request rejects duplicate asset IDs', '400', `HTTP ${duplicateBulk.status}`, duplicateBulk.status === 400);
 
     const mkLoan = async (token, assetId, borrowerId) => {
       const r = await req(base, 'POST', '/api/loans', {
