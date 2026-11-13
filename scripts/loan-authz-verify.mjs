@@ -208,6 +208,14 @@ async function main() {
       returnRechecked.status === 200 && returnRechecked.json?.data?.status === 'returned');
 
     const initialLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    const invalidLoanDate = await req(base, 'POST', '/api/loans', {
+      token: admin.token,
+      body: { asset_id: gaAsset2.id, purpose: 'Impossible date fixture', start_date: '2026-02-31', due_date: '2026-03-07' },
+    });
+    const afterInvalidLoanDate = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    record('Impossible calendar date rejected without creating loan', '400 + no new loan',
+      `HTTP ${invalidLoanDate.status} + delta ${afterInvalidLoanDate.length - initialLoans.length}`,
+      invalidLoanDate.status === 400 && afterInvalidLoanDate.length === initialLoans.length);
     const invalidBorrower = await req(base, 'POST', '/api/loans', {
       token: admin.token,
       body: { asset_id: itAsset1.id, borrower_id: 'USR-NOT-FOUND', purpose: 'Invalid borrower fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
