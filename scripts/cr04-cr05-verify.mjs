@@ -229,6 +229,72 @@ async function main() {
     } catch (err) {
       record('CR-04 schema introspection', 'columns/indexes present', `query error: ${err.message}`, false);
     }
+
+    // ---------- Module lifecycle registry + immutable audit history ----------
+    try {
+      const moduleLedger = await mig.query(
+        "SELECT version FROM schema_migrations WHERE version = '042'",
+      );
+      record('Module lifecycle migration 042 applied on fresh PostgreSQL database',
+        'version 037 in schema_migrations', `rows=${moduleLedger.rowCount}`, moduleLedger.rowCount === 1);
+
+      const moduleRows = await mig.query(
+        'SELECT module_key, is_active FROM gabah_modules ORDER BY module_key',
+      );
+      const requiredModules = [
+        'dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans',
+        'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports',
+      ];
+      const activeKeys = new Set(moduleRows.rows.filter(row => row.is_active === true).map(row => row.module_key));
+      record('Module lifecycle registry seeds every shipped navigation module Active',
+        '12 expected modules active',
+        `total=${moduleRows.rowCount} activeExpected=${requiredModules.filter(key => activeKeys.has(key)).length}/12`,
+        requiredModules.every(key => activeKeys.has(key)));
+
+      const auditInsert = await mig.query(
+        `INSERT INTO gabah_module_status_audit
+          (module_key, previous_is_active, new_is_active, reason, changed_by_user_id)
+         VALUES ('dashboard', TRUE, FALSE, 'CI immutability verification', 'CI-VERIFY')
+         RETURNING id`,
+      );
+      const auditId = auditInsert.rows[0].id;
+
+      async function assertAuditMutationBlocked(label, sql) {
+        await mig.query('BEGIN');
+        try {
+          await mig.query(sql);
+          await mig.query('ROLLBACK');
+          record(label, 'PostgreSQL error code 55000', 'mutation unexpectedly succeeded', false);
+        } catch (err) {
+          await mig.query('ROLLBACK');
+          record(label, 'PostgreSQL error code 55000', err.code || err.message,
+            err.code === '55000');
+        }
+      }
+
+      await assertAuditMutationBlocked(
+        'Module audit history rejects UPDATE at database level',
+        `UPDATE gabah_module_status_audit SET reason = 'tampered' WHERE id = ${Number(auditId)}`,
+      );
+      await assertAuditMutationBlocked(
+        'Module audit history rejects DELETE at database level',
+        `DELETE FROM gabah_module_status_audit WHERE id = ${Number(auditId)}`,
+      );
+      await assertAuditMutationBlocked(
+        'Module audit history rejects TRUNCATE at database level',
+        'TRUNCATE TABLE gabah_module_status_audit',
+      );
+      const auditSurvived = await mig.query(
+        'SELECT COUNT(*)::int AS count FROM gabah_module_status_audit WHERE id = $1',
+        [auditId],
+      );
+      record('Module audit entry remains intact after rejected mutations',
+        '1 preserved row', `count=${auditSurvived.rows[0].count}`,
+        auditSurvived.rows[0].count === 1);
+    } catch (err) {
+      record('Module lifecycle registry + audit immutability integration',
+        'migration 037, seeded modules, immutable audit', `error: ${err.message}`, false);
+    }
     await mig.end();
 
     // ---------- 2. Logins (PBKDF2 path, env-provisioned passwords) ----------
