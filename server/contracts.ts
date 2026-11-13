@@ -267,9 +267,8 @@ export const ContractDomainService = {
       'escalation_user_id',
       'notes',
     ];
-    const unknownFields = Object.keys(updates).filter(key => !editableFields.includes(key as keyof ServerContract));
-    if (unknownFields.length) throw new Error(`Field kontrak tidak dapat diubah melalui endpoint ini: ${unknownFields.join(', ')}.`);
-
+    // Protected/unknown fields are ignored for backward compatibility with
+    // clients that submit a full record; only the explicit allowlist is applied.
     const nextStartDate = updates.start_date ?? contract.start_date;
     const nextEndDate = updates.end_date ?? contract.end_date;
     const parsedStartDate = new Date(nextStartDate);
