@@ -335,8 +335,8 @@ async function main() {
       token: karyawanToken,
       body: { title: 'probe restricted linkage', description: 'verify guard', category: 'IT', priority: 'low', contract_id: contractId },
     });
-    record('RBAC ticket linkage probe of restricted contract rejected', '201 without contract_id', `HTTP ${probeTicket.status} contract_id=${probeTicket.json?.data?.contract_id ?? 'unset'}`,
-      probeTicket.status === 201 && !probeTicket.json?.data?.contract_id);
+    record('RBAC ticket linkage probe of restricted contract rejected without disclosing visibility', '404 generic not-found', `HTTP ${probeTicket.status} contract_id=${probeTicket.json?.data?.contract_id ?? 'unset'}`,
+      probeTicket.status === 404 && !probeTicket.json?.data?.contract_id);
 
     const assignmentInventory = await req(base, 'GET', '/api/admin/rbac/user-assignments', { token: adminToken });
     const persistedAssignment = (assignmentInventory.json?.data || []).find(item => String(item.user_id) === String(karyawanUser?.id));
