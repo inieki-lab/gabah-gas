@@ -655,12 +655,28 @@ export class GabahDomainService {
     // Self-service requests may only be created for the authenticated borrower.
     // Creating on behalf of another employee is a separate delegated capability;
     // until that capability exists, only Super Admin may set another borrower.
-    if (payload.borrower_id && payload.borrower_id !== actor.id && !isSuperadminActor(actor)) {
+    const requestedBorrowerId = payload.borrower_id === undefined || payload.borrower_id === null
+      ? String(actor.id)
+      : String(payload.borrower_id).trim();
+    if (!requestedBorrowerId) {
+      throw Object.assign(new Error('ID peminjam tidak valid.'), { statusCode: 400 });
+    }
+    if (requestedBorrowerId !== actor.id && !isSuperadminActor(actor)) {
       throw Object.assign(new Error('Pengajuan pinjaman hanya dapat dibuat untuk akun sendiri.'), { statusCode: 403 });
     }
-    const asset = db.assets.find(a => a.id === payload.asset_id);
-    if (!asset) throw new Error('Aset tidak ditemukan');
+    const borrower = db.users.find(user => user.id === requestedBorrowerId && user.is_active);
+    if (!borrower) {
+      throw Object.assign(new Error('Pengguna peminjam tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
+    }
+
+    const assetId = String(payload.asset_id || '').trim();
+    if (!assetId) throw Object.assign(new Error('ID aset wajib diisi.'), { statusCode: 400 });
+    const asset = db.assets.find(a => a.id === assetId);
+    if (!asset) throw Object.assign(new Error('Aset tidak ditemukan.'), { statusCode: 404 });
     if (!asset.is_loanable) throw new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).');
+    if (typeof payload.purpose !== 'string' || !payload.purpose.trim() || payload.purpose.length > 2000) {
+      throw Object.assign(new Error('Tujuan peminjaman wajib diisi (maksimal 2.000 karakter).'), { statusCode: 400 });
+    }
 
     const start = new Date(payload.start_date).getTime();
     const due = new Date(payload.due_date).getTime();
