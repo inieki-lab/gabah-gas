@@ -174,11 +174,28 @@ async function main() {
     const unavailableApproval = approvalLoanId
       ? await req(base, 'POST', `/api/loans/${approvalLoanId}/approve`, { token: it.token, body: {} })
       : { status: 0 };
-    const approvalLoanStatus = approvalLoanId ? await loanStatus(approvalLoanId) : '(missing)';
+    const approvalLoanStatus = approvalLoanId
+      ? (((await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || []).find(l => l.id === approvalLoanId) || {}).status || '(missing)'
+      : '(missing)';
     record('Approval rechecks asset availability and preserves pending loan', '409 + pending_approval',
       `HTTP ${unavailableApproval.status} + ${approvalLoanStatus}`,
       unavailableApproval.status === 409 && approvalLoanStatus === 'pending_approval');
     await setAssetStatus(itAsset6.id, 'available');
+    const approvalAfterRestore = approvalLoanId
+      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/approve`, { token: it.token, body: {} })
+      : { status: 0 };
+    record('Approval succeeds after asset is restored to available', '200', `HTTP ${approvalAfterRestore.status}`, approvalAfterRestore.status === 200);
+    await setAssetStatus(itAsset6.id, 'damaged');
+    const handoverWithBrokenRelation = approvalLoanId
+      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/handover`, { token: it.token, body: { handoverNotes: 'Must not hand over damaged asset' } })
+      : { status: 0 };
+    const loanAfterBrokenHandover = approvalLoanId
+      ? (((await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || []).find(l => l.id === approvalLoanId) || {}).status
+      : '(missing)';
+    record('Handover rejects asset not in reserved state and preserves approved loan', '409 + approved',
+      `HTTP ${handoverWithBrokenRelation.status} + ${loanAfterBrokenHandover}`,
+      handoverWithBrokenRelation.status === 409 && loanAfterBrokenHandover === 'approved');
+    await setAssetStatus(itAsset6.id, 'reserved');
 
     const initialLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
     const invalidBorrower = await req(base, 'POST', '/api/loans', {
