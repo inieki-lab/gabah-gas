@@ -1,3 +1,13 @@
+## [2026-11-13] — Preserve asset and borrower integrity across loan lifecycle
+
+- Loan requests require an available loanable asset and a real calendar date range.
+- Approval and handover revalidate the referenced asset before changing loan state; returns require the asset to remain in assigned custody state.
+- Manual asset status/loanability edits are blocked while a loan is approved or borrowed, and status/condition payloads are strictly validated.
+- User deletion is blocked while the user has pending, approved, borrowed, or overdue loans; no automatic fake physical return is recorded.
+- Added live HTTP regression fixtures for unavailable assets, asset status locking, impossible dates, and borrower deletion.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
