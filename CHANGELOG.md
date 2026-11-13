@@ -1,3 +1,11 @@
+## [2026-11-13] — Validate user profile updates
+
+- User updates now reject unknown primary roles, non-boolean account status values, malformed email, invalid field types/lengths, and passwords outside the accepted length policy.
+- Email uniqueness is checked before profile mutation, preventing a rejected duplicate email from leaving unrelated profile fields partially changed.
+- Added isolated live HTTP regression coverage using disposable user fixtures and a dedicated CI step.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
