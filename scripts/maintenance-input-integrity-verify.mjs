@@ -16,7 +16,7 @@ const checks = [
   ['frequency is restricted to the declared maintenance enum', validation.includes("'weekly', 'monthly', 'quarterly', 'biannual', 'annual', 'one_time'")],
   ['status is restricted to the declared maintenance enum', validation.includes("'scheduled', 'in_progress', 'completed', 'overdue', 'cancelled'")],
   ['date uses strict YYYY-MM-DD syntax and rejects impossible calendar dates', validation.includes('/^\\d{4}-\\d{2}-\\d{2}$/') && validation.includes("parsed.toISOString().slice(0, 10) !== body.scheduled_date")],
-  ['cost values must be finite and non-negative', validation.includes('Number.isFinite(Number(body[field]))') && validation.includes('Number(body[field]) < 0')],
+  ['cost values must be finite and non-negative', validation.includes("typeof body[field] !== 'number'") && validation.includes('Number.isFinite(body[field])') && validation.includes('body[field] < 0')],
   ['notes and checklist have bounded type and length validation', validation.includes('body.notes.length > 5000') && validation.includes('body.checklist.length > 50') && validation.includes('item.length > 250')],
   ['vendor ID must resolve to an existing vendor', validation.includes('db.vendors.find(item => item.id === vendorId)')],
   ['create validates payload before creating schedule', post.indexOf('validateMaintenanceInput(req.body)') >= 0 && post.indexOf('validateMaintenanceInput(req.body)') < post.indexOf('db.maintenances.push(newSchedule)')],
@@ -24,6 +24,7 @@ const checks = [
   ['update validates payload and vendor reference before mutation', patch.indexOf('validateMaintenanceInput(req.body)') >= 0 && patch.indexOf('resolveMaintenanceVendor(req.body.vendor_id)') < patch.indexOf('for (const key of allowedMaintenanceFields)')],
   ['update keeps server-owned asset and owner fields outside allowlist', patch.includes("'vendor_id', 'vendor_name'") && !patch.includes("'asset_id'") && !patch.includes("'owner_division'")],
   ['update synchronizes vendor ID and canonical name', patch.includes('schedule.vendor_id = vendor.id') && patch.includes('schedule.vendor_name = vendor.name')],
+  ['update rejects manual vendor-name drift while a vendor ID is linked', patch.includes('req.body.vendor_id === undefined && req.body.vendor_name !== undefined && schedule.vendor_id')],
 ];
 
 let failed = 0;
