@@ -21,6 +21,10 @@ async function main(){
   const types=(await req(b,'GET','/api/meeting-types',{token:admin})).json?.data||[],high=types.find(x=>x.priority_level==='high')||{code:'direksi'};
   rec('room fixtures','ROOM-01 + alt',`${room?.id}+${alt?.id}`,Boolean(room&&alt));
   const make=(token,title,x={})=>req(b,'POST','/api/room-reservations',{token,body:{room_id:room.id,title,attendees_count:5,meeting_type:'internal',date:day(),start_time:'10:00',end_time:'11:00',facilities_requested:[],consumption_requested:false,documentation_requested:false,...x}});
+  const stringConsumptionFlag=await make(karyawan,'Invalid string consumption flag',{consumption_requested:'false'});
+  rec('string consumption flag rejected','400',stringConsumptionFlag.status,stringConsumptionFlag.status===400);
+  const stringDocumentationFlag=await make(karyawan,'Invalid string documentation flag',{documentation_requested:'false'});
+  rec('string documentation flag rejected','400',stringDocumentationFlag.status,stringDocumentationFlag.status===400);
   const invalidAttendees=await make(karyawan,'Invalid negative attendees',{attendees_count:-2});
   rec('negative attendee count rejected','400',invalidAttendees.status,invalidAttendees.status===400);
   const fractionalAttendees=await make(karyawan,'Invalid fractional attendees',{attendees_count:1.5});
