@@ -35,7 +35,7 @@ const userImportService = fs.readFileSync('src/services/gabahService.ts', 'utf8'
 const headerNavbar = fs.readFileSync('src/components/HeaderNavbar.tsx', 'utf8');
 const appSource = fs.readFileSync('src/App.tsx', 'utf8');
 const roleCapabilities = fs.readFileSync('server/role-capabilities.ts', 'utf8');
-const domainServices = fs.readFileSync('server/services.ts', 'utf8');
+
 const meetingRoomsView = fs.readFileSync('src/components/views/MeetingRoomsView.tsx', 'utf8');
 const reservationModal = fs.readFileSync('src/components/modals/CreateRoomReservationModal.tsx', 'utf8');
 const dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
