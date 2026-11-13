@@ -891,6 +891,23 @@ async function startServer() {
       }
 
       const targetUser = db.users[userIndex];
+      // Do not delete a borrower while any loan is operationally active.
+      // Closing a borrowed loan here would fabricate a physical return and
+      // could leave its asset incorrectly reserved/assigned.
+      const activeBorrowerLoans = (db.loans || []).filter(loan =>
+        loan.borrower_id === targetId
+        && ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(loan.status)
+      );
+      if (activeBorrowerLoans.length > 0) {
+        const summary = activeBorrowerLoans
+          .map(loan => `${loan.loan_number} (${loan.status})`)
+          .join(', ');
+        return res.status(409).json({
+          success: false,
+          message: `Akun tidak dapat dihapus karena masih memiliki pinjaman aktif: ${summary}. Selesaikan pembatalan atau pengembalian fisik terlebih dahulu.`,
+        });
+      }
+
       if (targetUser.is_active && isRbacSuperadmin(targetUser.id)
         && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
         return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh dihapus.' });
@@ -903,17 +920,6 @@ async function startServer() {
           a.status = 'available';
           a.assigned_to = null;
           releasedAssetsCount++;
-        }
-      }
-
-      // Auto close/return active loans
-      let closedLoansCount = 0;
-      for (const l of db.loans) {
-        if (l.borrower_id === targetId && ['pending_approval', 'approved', 'borrowed'].includes(l.status)) {
-          l.status = 'closed';
-          l.actual_returned_at = new Date().toISOString();
-          l.return_condition = 'Dikembalikan otomatis karena penutupan akun pengguna';
-          closedLoansCount++;
         }
       }
 
@@ -933,7 +939,7 @@ async function startServer() {
       GabahDomainService.recordAudit(
         'USER_DELETED',
         'Users',
-        `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - ${releasedAssetsCount} aset dilepaskan, ${closedLoansCount} pinjaman ditutup`,
+        `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - ${releasedAssetsCount} aset dilepaskan; tidak ada pinjaman aktif yang ditutup otomatis`,
         actor,
         targetId
       );
