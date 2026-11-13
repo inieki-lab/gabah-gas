@@ -63,7 +63,7 @@ function assertNoBlockingAssetLoan(assetId: string, action: string, excludeLoanI
 
 /** Shared eligibility rule for both availability preview and authoritative mutations. */
 export function isAssetEligibleForLoan(asset: Pick<ServerAsset, 'is_loanable' | 'status' | 'condition' | 'assigned_to'>): boolean {
-  const status = String(asset.status || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
+  const status = String(asset.status || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   const condition = String(asset.condition || '').trim().toLowerCase();
   return Boolean(asset.is_loanable)
     && LOAN_ELIGIBLE_ASSET_STATUSES.has(status)
