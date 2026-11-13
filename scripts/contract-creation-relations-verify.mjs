@@ -74,10 +74,36 @@ const updated = ContractDomainService.updateContract(created.id, { title: 'Updat
 assert.equal(updated.title, 'Updated fixture title');
 assert.equal(updated.contract_value, 2000000);
 
+assert.throws(
+  () => ContractDomainService.addDocument(created.id, { kind: 'forged', file_name: 'x.pdf', file_ref: 'memory://x' }, actor),
+  /Metadata dokumen kontrak tidak valid/,
+);
+const document = ContractDomainService.addDocument(created.id, {
+  kind: 'supporting_document', file_name: 'valid.pdf', file_ref: 'memory://fixture',
+}, actor).documents.at(-1);
+assert.equal(document.uploaded_by, actor.id, 'Document uploader must be session-derived');
+
+assert.throws(
+  () => ContractDomainService.addMilestone(created.id, { type: 'forged', title: 'x', due_date: '2027-02-01' }, actor),
+  /Data milestone kontrak tidak valid/,
+);
+assert.throws(
+  () => ContractDomainService.addMilestone(created.id, { type: 'payment', title: 'x', due_date: '2027-02-01', amount: -1 }, actor),
+  /Data milestone kontrak tidak valid/,
+);
+const milestone = ContractDomainService.addMilestone(created.id, {
+  type: 'payment', title: 'Fixture payment', due_date: '2027-02-01',
+  id: 'FORGED-ID', status: 'completed',
+}, actor).milestones.at(-1);
+assert.notEqual(milestone.id, 'FORGED-ID');
+assert.equal(milestone.status, 'pending');
+
 console.log('PASS | invalid/missing/inactive PIC rejected');
 console.log('PASS | unknown escalation user rejected; supported cross-division escalation retained');
 console.log('PASS | missing and cross-division parent contract rejected');
 console.log('PASS | invalid date, reminder thresholds, and negative contract value rejected');
-console.log('PASS | forged document/milestone metadata ignored');
+console.log('PASS | forged document/milestone metadata ignored on creation');
 console.log('PASS | update allowlist blocks protected fields and validates editable values');
-console.log('TOTAL: 6 | PASS: 6 | FAIL: 0');
+console.log('PASS | document metadata validated and uploader identity is server-derived');
+console.log('PASS | milestone type/date/amount validated and status/id are server-derived');
+console.log('TOTAL: 8 | PASS: 8 | FAIL: 0');
