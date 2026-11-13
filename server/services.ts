@@ -681,11 +681,21 @@ export class GabahDomainService {
       throw Object.assign(new Error('Tujuan peminjaman wajib diisi (maksimal 2.000 karakter).'), { statusCode: 400 });
     }
 
-    const start = new Date(payload.start_date).getTime();
-    const due = new Date(payload.due_date).getTime();
-
-    if (isNaN(start) || isNaN(due) || start >= due) {
-      throw new Error('Jadwal peminjaman tidak valid. Tanggal kembali harus setelah tanggal mulai.');
+    const parseLoanDate = (value: unknown): { text: string; timestamp: number } => {
+      const text = typeof value === 'string' ? value.trim() : '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return { text, timestamp: Number.NaN };
+      const parsed = new Date(`${text}T00:00:00.000Z`);
+      if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== text) {
+        return { text, timestamp: Number.NaN };
+      }
+      return { text, timestamp: parsed.getTime() };
+    };
+    const startDate = parseLoanDate(payload.start_date);
+    const dueDate = parseLoanDate(payload.due_date);
+    const start = startDate.timestamp;
+    const due = dueDate.timestamp;
+    if (!Number.isFinite(start) || !Number.isFinite(due) || start >= due) {
+      throw Object.assign(new Error('Jadwal peminjaman tidak valid. Gunakan tanggal YYYY-MM-DD yang benar dan tanggal kembali harus setelah tanggal mulai.'), { statusCode: 400 });
     }
 
     // Authoritative Collision Check: Strictly per-asset on confirmed reservations (approved / borrowed)
@@ -717,8 +727,8 @@ export class GabahDomainService {
       borrower_department: borrower.department,
       borrower_phone: borrower.phone || '-',
       purpose: payload.purpose.trim(),
-      start_date: payload.start_date,
-      due_date: payload.due_date,
+      start_date: startDate.text,
+      due_date: dueDate.text,
       status: 'pending_approval',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
