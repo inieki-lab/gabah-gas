@@ -1238,6 +1238,18 @@ export class GabahDomainService {
     if (payload.documentation_requested !== undefined && typeof payload.documentation_requested !== 'boolean') {
       throw Object.assign(new Error('documentation_requested harus berupa boolean.'), { statusCode: 400 });
     }
+    if (payload.override_conflict !== undefined && typeof payload.override_conflict !== 'boolean') {
+      throw Object.assign(new Error('override_conflict harus berupa boolean.'), { statusCode: 400 });
+    }
+    if (payload.priority !== undefined && !['high', 'medium', 'low'].includes(payload.priority)) {
+      throw Object.assign(new Error('Prioritas rapat tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.consumption_type !== undefined && !['snack_box', 'lunch_box', 'coffee_tea', 'vip_buffet', 'custom'].includes(payload.consumption_type)) {
+      throw Object.assign(new Error('Jenis konsumsi tidak valid.'), { statusCode: 400 });
+    }
+    if (payload.documentation_type !== undefined && !['foto', 'video', 'press_release', 'notulensi', 'lengkap'].includes(payload.documentation_type)) {
+      throw Object.assign(new Error('Jenis dokumentasi tidak valid.'), { statusCode: 400 });
+    }
     const rawFacilities = payload.facilities_requested === undefined ? [] : payload.facilities_requested;
     if (!Array.isArray(rawFacilities) || rawFacilities.length > 30
       || rawFacilities.some(item => typeof item !== 'string' || !item.trim() || item.trim().length > 120)) {
