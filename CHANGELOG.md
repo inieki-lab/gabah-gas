@@ -3,6 +3,7 @@
 - Room reservation creation now validates real calendar dates, strict 24-hour HH:mm values, and a positive integer attendee count within room capacity.
 - Validation occurs before collision handling and any priority-interruption side effects.
 - Consumption and documentation request flags must be actual booleans; string values such as `false` are rejected instead of being treated as true.
+- Facility lists are validated and normalized before any reservation is created, preventing malformed items from causing a partial write during notification routing.
 - The persisted attendee count uses the validated integer rather than silently coercing invalid values.
 - Added regression cases for negative/fractional attendees, malformed time, and impossible calendar dates.
 
