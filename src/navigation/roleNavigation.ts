@@ -59,8 +59,10 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
 const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   dashboard: ['dashboard.read'],
   my_assets: ['assets.read'],
-  meeting_rooms: ['meeting_rooms.read', 'room_reservations.read', 'room_reservations.create'],
-  assets: ['assets.catalog.read', 'assets.audit.read', 'assets.create', 'assets.update', 'assets.delete', 'assets.assign', 'assets.move', 'assets.lifecycle'],
+  // A visible page must be readable. Create/update-only grants belong to
+  // actions inside a page and must never expose a page whose GET endpoint denies access.
+  meeting_rooms: ['meeting_rooms.read', 'room_reservations.read'],
+  assets: ['assets.read'],
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
   tickets: ['tickets.read'],
