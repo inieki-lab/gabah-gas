@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
-  CheckCircle2, 
   AlertTriangle, 
   DollarSign, 
   PieChart, 
@@ -48,38 +47,103 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
+  const normalizeDivision = (value?: string) => {
+    const normalized = String(value || 'Umum').trim();
+    return ['SC', 'SUPPLY CHAIN'].includes(normalized.toUpperCase()) ? 'RPC' : normalized;
+  };
   const divisionOptions = useMemo(
-    () => Array.from(new Set(safeAssets.map(a => a.owner_division || 'Umum'))).sort(),
-    [safeAssets]
+    () => Array.from(new Set([
+      ...safeAssets.map(a => normalizeDivision(a.owner_division)),
+      ...safeLoans.map(l => normalizeDivision(l.owner_division || l.asset_number?.split('-')[0])),
+      ...safeTickets.map(t => normalizeDivision(t.category)),
+      ...safeMaintenances.map(m => normalizeDivision(m.owner_division)),
+    ])).sort(),
+    [safeAssets, safeLoans, safeTickets, safeMaintenances]
   );
   const departmentOptions = useMemo(
-    () => Array.from(new Set(safeAssets.map(a => a.assigned_to?.department).filter(Boolean) as string[])).sort(),
-    [safeAssets]
+    () => Array.from(new Set([
+      ...safeAssets.map(a => a.assigned_to?.department),
+      ...safeLoans.map(l => l.borrower_department),
+      ...safeTickets.map(t => t.reporter_department),
+    ].filter((value): value is string => Boolean(value && value.trim())))).sort(),
+    [safeAssets, safeLoans, safeTickets]
   );
 
   const filteredAssets = useMemo(() => safeAssets.filter(a =>
-    (divisionFilter === 'all' || (a.owner_division || 'Umum') === divisionFilter) &&
+    (divisionFilter === 'all' || normalizeDivision(a.owner_division) === divisionFilter) &&
     (departmentFilter === 'all' || (a.assigned_to?.department || '') === departmentFilter)
   ), [safeAssets, divisionFilter, departmentFilter]);
 
   const filteredLoans = useMemo(() => safeLoans.filter(l =>
-    (divisionFilter === 'all' || (l.owner_division || l.asset_number?.split('-')[0]) === divisionFilter) &&
+    (divisionFilter === 'all' || normalizeDivision(l.owner_division || l.asset_number?.split('-')[0]) === divisionFilter) &&
     (departmentFilter === 'all' || (l.borrower_department || '') === departmentFilter)
   ), [safeLoans, divisionFilter, departmentFilter]);
 
   const filteredTickets = useMemo(() => safeTickets.filter(t =>
-    (divisionFilter === 'all' || t.category === divisionFilter) &&
+    (divisionFilter === 'all' || normalizeDivision(t.category) === divisionFilter) &&
     (departmentFilter === 'all' || (t.reporter_department || '') === departmentFilter)
   ), [safeTickets, divisionFilter, departmentFilter]);
 
-  const filteredMaintenances = useMemo(() => safeMaintenances.filter(m =>
-    divisionFilter === 'all' || (m.owner_division || 'Umum') === divisionFilter
-  ), [safeMaintenances, divisionFilter]);
+  const filteredMaintenances = useMemo(() => safeMaintenances.filter(m => {
+    const matchesDivision = divisionFilter === 'all' || normalizeDivision(m.owner_division) === divisionFilter;
+    // Maintenance records have no department field; when a department filter is
+    // selected, attribute the schedule to the linked asset's current custodian.
+    const linkedAsset = safeAssets.find(asset => asset.id === m.asset_id);
+    const matchesDepartment = departmentFilter === 'all' ||
+      (linkedAsset?.assigned_to?.department || '') === departmentFilter;
+    return matchesDivision && matchesDepartment;
+  }), [safeMaintenances, safeAssets, divisionFilter, departmentFilter]);
 
   const isFilterActive = divisionFilter !== 'all' || departmentFilter !== 'all';
 
   const resolvedTickets = filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed');
-  const slaOnTimePct = 96.8;
+  // Measure only tickets with both an authoritative resolution timestamp and
+  // a resolution deadline. Missing timestamps are not silently counted as on-time.
+  const slaMeasuredTickets = resolvedTickets.filter(ticket => {
+    const deadline = Date.parse(ticket.sla_resolution_deadline || '');
+    const resolvedAt = Date.parse(ticket.resolved_at || '');
+    return Number.isFinite(deadline) && Number.isFinite(resolvedAt);
+  });
+  const slaOnTimeCount = slaMeasuredTickets.filter(ticket =>
+    Date.parse(ticket.resolved_at as string) <= Date.parse(ticket.sla_resolution_deadline as string)
+  ).length;
+  const slaOnTimePct = slaMeasuredTickets.length
+    ? Math.round((slaOnTimeCount / slaMeasuredTickets.length) * 100)
+    : null;
+
+  const getPrioritySlaStats = (priorities: Ticket['priority'][]) => {
+    const completed = filteredTickets.filter(ticket =>
+      priorities.includes(ticket.priority) && (ticket.status === 'resolved' || ticket.status === 'closed')
+    );
+    const measured = completed.filter(ticket => {
+      const deadline = Date.parse(ticket.sla_resolution_deadline || '');
+      const resolvedAt = Date.parse(ticket.resolved_at || '');
+      return Number.isFinite(deadline) && Number.isFinite(resolvedAt);
+    });
+    const onTime = measured.filter(ticket =>
+      Date.parse(ticket.resolved_at as string) <= Date.parse(ticket.sla_resolution_deadline as string)
+    ).length;
+    const durations = completed
+      .map(ticket => {
+        const createdAt = Date.parse(ticket.created_at || '');
+        const resolvedAt = Date.parse(ticket.resolved_at || '');
+        return Number.isFinite(createdAt) && Number.isFinite(resolvedAt) && resolvedAt >= createdAt
+          ? (resolvedAt - createdAt) / (1000 * 60 * 60)
+          : null;
+      })
+      .filter((hours): hours is number => hours !== null);
+    return {
+      completedCount: completed.length,
+      measuredCount: measured.length,
+      onTimePct: measured.length ? Math.round((onTime / measured.length) * 100) : null,
+      averageResolutionHours: durations.length
+        ? durations.reduce((sum, hours) => sum + hours, 0) / durations.length
+        : null,
+    };
+  };
+  const urgentSlaStats = getPrioritySlaStats(['urgent']);
+  const highSlaStats = getPrioritySlaStats(['high']);
+  const standardSlaStats = getPrioritySlaStats(['medium', 'low']);
 
   const totalAssetValue = filteredAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
@@ -88,10 +152,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
   const totalAssetCount = filteredAssets.length || 1;
 
-  // Breakdown per Division (IT, GA, SC, PIBC) — mengikuti filter aktif
+  // Breakdown per Division (IT, GA, RPC, PIBC) — mengikuti filter aktif
   const itAssets = filteredAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
   const gaAssets = filteredAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
-  const scAssets = filteredAssets.filter(a => a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('SC-'));
+  const scAssets = filteredAssets.filter(a => a.owner_division === 'RPC' || a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('RPC-') || a.asset_number?.startsWith('SC-'));
   const pibcAssets = filteredAssets.filter(a => a.owner_division === 'PIBC' || a.asset_number?.startsWith('PIBC-'));
 
   const itValue = itAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
@@ -251,28 +315,30 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Tingkat Kepatuhan SLA</div>
-          <div className="text-3xl font-black text-emerald-700 mt-2">{slaOnTimePct}%</div>
+          <div className="text-3xl font-black text-emerald-700 mt-2">{slaOnTimePct === null ? '—' : `${slaOnTimePct}%`}</div>
           <div className="text-xs text-slate-600 mt-1 flex items-center gap-1 font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Target KPI ≥ 95% Terpenuhi
+            {slaOnTimePct === null
+              ? 'Belum ada data penyelesaian dan deadline SLA yang lengkap'
+              : `${slaOnTimeCount} dari ${slaMeasuredTickets.length} tiket selesai tepat waktu · ${slaOnTimePct >= 95 ? 'Target ≥95% tercapai' : 'Di bawah target ≥95%'}`}
           </div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Rata-Rata Respon Helpdesk</div>
-          <div className="text-3xl font-black text-slate-900 mt-2">18 Menit</div>
-          <div className="text-xs text-emerald-700 font-medium mt-1">First Response Time</div>
+          <div className="text-3xl font-black text-slate-900 mt-2">—</div>
+          <div className="text-xs text-slate-600 font-medium mt-1">Belum tersedia · timestamp respons pertama belum dicatat</div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Total Reservasi Pinjam</div>
           <div className="text-3xl font-black text-amber-600 mt-2">{filteredLoans.length} Sesi</div>
-          <div className="text-xs text-slate-600 mt-1 font-medium">100% Jadwal Akurat &amp; Terverifikasi</div>
+          <div className="text-xs text-slate-600 mt-1 font-medium">Jumlah record pinjaman sesuai filter aktif</div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Total Nilai Perolehan Aset</div>
           <div className="text-2xl font-black text-indigo-700 mt-2">{formatRupiah(totalAssetValue)}</div>
-          <div className="text-xs text-slate-600 mt-1 font-medium">IT + GA + Lisensi Enterprise</div>
+          <div className="text-xs text-slate-600 mt-1 font-medium">Nilai perolehan seluruh aset dalam cakupan filter aktif</div>
         </div>
       </div>
 
@@ -285,15 +351,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
             </div>
             <div>
               <h3 className="font-extrabold text-base text-slate-900">
-                Valuasi Nilai Buku &amp; Depresiasi Aset (PSAK 16 - Straight Line)
+                Estimasi Nilai Buku &amp; Penyusutan Indikatif Aset
               </h3>
               <p className="text-xs text-slate-500">
-                Kalkulasi penyusutan sistematis aktiva tetap untuk audit keuangan tahunan BUMD.
+                Simulasi internal metode garis lurus berdasarkan asumsi umur manfaat sistem; bukan pembukuan atau perhitungan PSAK 16.
               </p>
             </div>
           </div>
           <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 w-fit">
-            Metode Garis Lurus (Straight Line)
+            Estimasi garis lurus (asumsi sistem)
           </span>
         </div>
 
@@ -301,27 +367,27 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Nilai Buku Bersih (Net Book Value)</div>
             <div className="text-2xl font-black text-emerald-700">{formatRupiah(totalNetBookValue)}</div>
-            <div className="text-[10px] text-slate-500">Sisa nilai aktiva berjalan saat ini</div>
+            <div className="text-[10px] text-slate-500">Estimasi nilai setelah penyusutan indikatif</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Akumulasi Beban Penyusutan</div>
             <div className="text-2xl font-black text-rose-600">{formatRupiah(totalAccumulatedDepreciation)}</div>
-            <div className="text-[10px] text-slate-500">Total depresiasi terbukukan</div>
+            <div className="text-[10px] text-slate-500">Akumulasi hasil simulasi, bukan jurnal pembukuan</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Beban Penyusutan / Bulan</div>
             <div className="text-xl font-black text-slate-900">{formatRupiah(totalMonthlyDepreciation)}</div>
-            <div className="text-[10px] text-slate-500">Beban amortisasi &amp; depresiasi bulanan</div>
+            <div className="text-[10px] text-slate-500">Estimasi penyusutan bulanan; bukan amortisasi lisensi</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Rasio Penyusutan Korporat</div>
+            <div className="text-slate-500 text-[11px] font-medium">Rasio Penyusutan Indikatif</div>
             <div className="text-2xl font-black text-amber-600">
               {totalAssetValue > 0 ? Math.round((totalAccumulatedDepreciation / totalAssetValue) * 100) : 0}%
             </div>
-            <div className="text-[10px] text-slate-500">Dari total biaya perolehan aktiva</div>
+            <div className="text-[10px] text-slate-500">Estimasi terhadap nilai perolehan aset</div>
           </div>
         </div>
       </div>
@@ -350,40 +416,40 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Total Jadwal Pemeliharaan</div>
-            <div className="text-2xl font-black text-slate-900">{safeMaintenances.length} Jadwal</div>
-            <div className="text-[10px] text-slate-500">Mencakup IT, GA, Supply Chain, &amp; PIBC</div>
+            <div className="text-2xl font-black text-slate-900">{filteredMaintenances.length} Jadwal</div>
+            <div className="text-[10px] text-slate-500">Mengikuti data dan filter divisi yang tersedia</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Realisasi Selesai / On-Track</div>
             <div className="text-2xl font-black text-emerald-700">
-              {completedMaintenanceCount} Selesai ({safeMaintenances.length > 0 ? Math.round((completedMaintenanceCount / safeMaintenances.length) * 100) : 100}%)
+              {filteredMaintenances.length === 0 ? '—' : `${completedMaintenanceCount} Selesai (${Math.round((completedMaintenanceCount / filteredMaintenances.length) * 100)}%)`}
             </div>
-            <div className="text-[10px] text-emerald-600 font-medium">Aset dalam kondisi prima siap operasi</div>
+            <div className="text-[10px] text-slate-500 font-medium">{filteredMaintenances.length === 0 ? 'Belum ada data jadwal pemeliharaan' : 'Proporsi jadwal berstatus selesai'}</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Estimasi / Realisasi Biaya Servis</div>
+            <div className="text-slate-500 text-[11px] font-medium">Biaya Pemeliharaan (Aktual / Estimasi)</div>
             <div className="text-xl font-black text-amber-700">{formatRupiah(totalMaintenanceBudget)}</div>
-            <div className="text-[10px] text-slate-500">Anggaran OPEX perawatan aktiva</div>
+            <div className="text-[10px] text-slate-500">Mengutamakan biaya aktual; jika kosong memakai estimasi</div>
           </div>
         </div>
       </div>
 
-      {/* Visual Chart Breakdown Simulation */}
+      {/* Visual chart breakdown from current records */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Division Distribution */}
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
           <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
             <PieChart className="w-4 h-4 text-emerald-600" />
-            Distribusi Aset Berdasarkan Devisi Korporat
+            Distribusi Aset Berdasarkan Divisi Pemilik
           </h3>
 
           <div className="space-y-3 text-xs">
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi IT (Hardware &amp; Software)</span>
+                <span>Divisi IT (Hardware &amp; Software)</span>
                 <span className="font-bold text-slate-900">{itAssets.length} Unit ({Math.round((itAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -394,7 +460,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi GA (General Affair &amp; Fasilitas)</span>
+                <span>Divisi GA (General Affairs &amp; Fasilitas)</span>
                 <span className="font-bold text-slate-900">{gaAssets.length} Unit ({Math.round((gaAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -405,7 +471,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi SC (Supply Chain &amp; Gudang Beras)</span>
+                <span>Divisi RPC</span>
                 <span className="font-bold text-slate-900">{scAssets.length} Unit ({Math.round((scAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -416,7 +482,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi PIBC (Pasar Induk Beras Cipinang)</span>
+                <span>Divisi PIBC (Pasar Induk Beras Cipinang)</span>
                 <span className="font-bold text-slate-900">{pibcAssets.length} Unit ({Math.round((pibcAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -427,7 +493,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           </div>
         </div>
 
-        {/* SLA Breakdown by Priority */}
+        {/* SLA Breakdown by Priority — calculated from actual ticket timestamps */}
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
           <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
             <Clock className="w-4 h-4 text-emerald-600" />
@@ -435,38 +501,31 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           </h3>
 
           <div className="space-y-3 text-xs">
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-rose-700">URGENT (Target: 4 Jam)</div>
-                <div className="text-[11px] text-slate-500">Insiden fatal fasilitas &amp; jaringan produksi</div>
+            {[
+              { label: 'URGENT', description: 'Tiket dengan prioritas tertinggi', stats: urgentSlaStats, color: 'text-rose-700' },
+              { label: 'HIGH', description: 'Tiket dengan prioritas tinggi', stats: highSlaStats, color: 'text-amber-700' },
+              { label: 'MEDIUM & LOW', description: 'Tiket dengan prioritas sedang dan rendah', stats: standardSlaStats, color: 'text-blue-700' },
+            ].map(group => (
+              <div key={group.label} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                <div>
+                  <div className={`font-bold ${group.color}`}>{group.label}</div>
+                  <div className="text-[11px] text-slate-500">{group.description} · {group.stats.completedCount} tiket selesai</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-base font-extrabold text-slate-900">
+                    {group.stats.onTimePct === null ? '—' : `${group.stats.onTimePct}%`}
+                  </div>
+                  <div className="text-[10px] text-slate-600 font-medium">
+                    {group.stats.averageResolutionHours === null
+                      ? 'Durasi penyelesaian belum tersedia'
+                      : `Rata-rata ${group.stats.averageResolutionHours.toFixed(1)} jam`}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    {group.stats.measuredCount} tiket memiliki data SLA lengkap
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-base font-extrabold text-slate-900">100%</div>
-                <div className="text-[10px] text-emerald-700 font-bold">Rata-rata 2.1 Jam</div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-amber-700">HIGH (Target: 8 Jam)</div>
-                <div className="text-[11px] text-slate-500">Kendala kerja personal &amp; VPN staf penting</div>
-              </div>
-              <div className="text-right">
-                <div className="text-base font-extrabold text-slate-900">96.5%</div>
-                <div className="text-[10px] text-emerald-700 font-bold">Rata-rata 5.4 Jam</div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-blue-700">MEDIUM &amp; LOW (Target: 24-48 Jam)</div>
-                <div className="text-[11px] text-slate-500">Request akun, perpanjangan lisensi, perifer</div>
-              </div>
-              <div className="text-right">
-                <div className="text-base font-extrabold text-slate-900">98.2%</div>
-                <div className="text-[10px] text-emerald-700 font-bold">Rata-rata 14.2 Jam</div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -478,10 +537,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           <div>
             <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
               <PackageCheck className="w-5 h-5 text-emerald-600" />
-              Rekapitulasi 9 Jenis Aktiva Tetap Standar Korporat
+              Rekapitulasi Kategori Aset Berdasarkan Kode Saat Ini
             </h3>
             <p className="text-xs text-slate-500">
-              Klasifikasi taksonomi resmi akuntansi aktiva PT Food Station Tjipinang Jaya.
+              Pengelompokan indikatif dari category_code dan nomor aset yang tersimpan; bukan standar akuntansi atau daftar kategori resmi.
             </p>
           </div>
           <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 border border-slate-200">
@@ -495,7 +554,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
               <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                 <th className="py-2.5 px-3">Kode</th>
                 <th className="py-2.5 px-3">Klasifikasi Aktiva Tetap</th>
-                <th className="py-2.5 px-3">Kewenangan / Devisi Pemilik</th>
+                <th className="py-2.5 px-3">Kategori / Divisi Pemilik</th>
                 <th className="py-2.5 px-3 text-center">Jumlah Unit</th>
                 <th className="py-2.5 px-3 text-right">Nilai Perolehan</th>
               </tr>
@@ -522,7 +581,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
                       </span>
                     ) : group.code === 'MSN' ? (
                       <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200 text-[10px]">
-                        SC / PIBC (Pabrik &amp; Timbangan)
+                        RPC / PIBC (operasional &amp; timbangan)
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold border border-slate-200 text-[10px]">
