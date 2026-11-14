@@ -1,3 +1,11 @@
+## [2026-11-14] — Canonicalize API paths before security checks
+
+- Security middleware now lowercases API paths and removes trailing slashes before public-route, Auditor read-only, audit-log, reconciliation, asset-ID, ticket-status, and dashboard-attention checks.
+- Prevents Express case-insensitive/trailing-slash route matching from reaching handlers through a path variant that bypasses middleware's exact-string checks.
+- Added live HTTP regression coverage for mixed-case and trailing-slash audit-log/reconciliation requests from a Karyawan session.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
