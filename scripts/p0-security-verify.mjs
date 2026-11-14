@@ -56,7 +56,11 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
+  return {
+    status: res.status,
+    json,
+    headers: { 'x-ratelimit-remaining': res.headers.get('x-ratelimit-remaining') },
+  };
 }
 
 async function waitForServer(base, tries = 60) {
@@ -128,6 +132,21 @@ async function main() {
       process.exit(1);
     }
     record('Server boots on isolated port', 'health 200', 'health 200', true);
+
+    // X-Forwarded-For is caller-controlled without a configured trusted proxy.
+    // Changing it must not create fresh rate-limit buckets for the same socket peer.
+    {
+      const spoof1 = await req(base, 'GET', '/api/health', { headers: { 'x-forwarded-for': '198.51.100.11' } });
+      const spoof2 = await req(base, 'GET', '/api/health', { headers: { 'x-forwarded-for': '203.0.113.22' } });
+      const spoof3 = await req(base, 'GET', '/api/health', { headers: { 'x-forwarded-for': '192.0.2.33' } });
+      const remaining = [spoof1, spoof2, spoof3].map(r => Number(r.headers?.['x-ratelimit-remaining']));
+      record('Rate limit ignores spoofed X-Forwarded-For', 'same socket bucket decrements 1 per request',
+        remaining.join(' → '),
+        spoof1.status === 200 && spoof2.status === 200 && spoof3.status === 200
+          && remaining.every(Number.isFinite)
+          && remaining[1] === remaining[0] - 1
+          && remaining[2] === remaining[1] - 1);
+    }
 
     // Resolve admin credentials (env or dev-generated file).
     let adminEmail = 'admin@foodstation.co.id';

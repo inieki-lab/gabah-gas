@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { hashPassword, verifyPassword, generateToken } from './crypto';
 import { getSecurityEpoch } from './persistence';
+import { extractClientIp } from './requestContext';
 
 export { hashPassword, verifyPassword, generateToken };
 
@@ -14,6 +15,7 @@ interface LoginAttemptRecord {
 }
 
 const loginAttempts = new Map<string, LoginAttemptRecord>();
+let loginAttemptCleanupCounter = 0;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -23,11 +25,20 @@ interface ApiRateLimitRecord {
   resetAt: number;
 }
 const apiRateLimits = new Map<string, ApiRateLimitRecord>();
+let apiRateLimitCleanupCounter = 0;
 const API_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_API_REQUESTS_PER_MINUTE = 200; // 200 requests/minute per client IP
 
 export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaining: number; resetSeconds: number } {
   const now = Date.now();
+  // Bound process memory when many distinct client IPs are observed. Expired
+  // buckets are reclaimed incrementally rather than on every request.
+  if (++apiRateLimitCleanupCounter >= 128) {
+    apiRateLimitCleanupCounter = 0;
+    for (const [key, entry] of apiRateLimits) {
+      if (entry.resetAt <= now) apiRateLimits.delete(key);
+    }
+  }
   let bucket = apiRateLimits.get(clientIp);
 
   if (!bucket || bucket.resetAt <= now) {
@@ -49,11 +60,22 @@ export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaini
 // Session duration: 7 days
 export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
+function pruneExpiredLoginAttempts(now: number): void {
+  if (++loginAttemptCleanupCounter < 128) return;
+  loginAttemptCleanupCounter = 0;
+  for (const [key, entry] of loginAttempts) {
+    if (entry.lockedUntil <= now && now - entry.lastAttempt > LOCKOUT_MS) {
+      loginAttempts.delete(key);
+    }
+  }
+}
+
 /**
  * Check and record failed login attempt for rate limiting
  */
 export function recordFailedLogin(identifier: string): { isLocked: boolean; remainingLockoutSeconds?: number } {
   const now = Date.now();
+  pruneExpiredLoginAttempts(now);
   let record = loginAttempts.get(identifier);
 
   if (!record) {
@@ -88,6 +110,7 @@ export function recordFailedLogin(identifier: string): { isLocked: boolean; rema
  * Check if identifier is currently locked out
  */
 export function isLoginLocked(identifier: string): { isLocked: boolean; remainingLockoutSeconds?: number } {
+  pruneExpiredLoginAttempts(Date.now());
   // Dalam mode pengembangan, matikan lockout IP agar tidak memblokir pengujian multi-akun
   if (process.env.NODE_ENV !== 'production') {
     return { isLocked: false };
@@ -127,7 +150,7 @@ export function createSession(
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_DURATION_MS);
 
-  const ip = req ? (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim() : '127.0.0.1';
+  const ip = req ? (extractClientIp(req) || 'unknown') : 'unknown';
   const userAgent = req ? (req.headers['user-agent'] || 'Unknown') : 'Unknown';
 
   const session: ServerSession = {
