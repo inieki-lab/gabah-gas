@@ -2474,7 +2474,7 @@ async function startServer() {
     if (body.status !== undefined && !statuses.includes(body.status)) return 'Status maintenance tidak valid.';
     if (body.scheduled_date !== undefined) {
       const date = body.scheduled_date;
-      if (typeof date !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) return 'Tanggal maintenance harus berupa tanggal kalender valid (YYYY-MM-DD).';
+      if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Tanggal maintenance harus berupa tanggal kalender valid (YYYY-MM-DD).';
       const parsedDate = new Date(`${date}T00:00:00.000Z`);
       if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) return 'Tanggal maintenance harus berupa tanggal kalender valid (YYYY-MM-DD).';
     }
