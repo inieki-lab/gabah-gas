@@ -197,6 +197,14 @@ export function filterMaintenanceSchedulesByDynamicScopes(schedules: ServerMaint
   });
 }
 
+async function persistDomainMutation(): Promise<void> {
+  try {
+    await persistDataStore();
+  } catch (error: any) {
+    throw Object.assign(new Error(error?.message || 'Gagal menyimpan perubahan.'), { statusCode: 503 });
+  }
+}
+
 export class GabahDomainService {
   /**
    * Log action to immutable audit trail
@@ -1463,7 +1471,7 @@ export class GabahDomainService {
       });
     }
 
-    await persistDataStore();
+    await persistDomainMutation();
 
     return reservation;
   }
@@ -1545,7 +1553,7 @@ export class GabahDomainService {
       });
     }
 
-    await persistDataStore();
+    await persistDomainMutation();
 
     return reservation;
   }
@@ -1575,7 +1583,7 @@ export class GabahDomainService {
       reservation.id
     );
 
-    await persistDataStore();
+    await persistDomainMutation();
 
     return reservation;
   }
@@ -1601,7 +1609,7 @@ export class GabahDomainService {
     }
 
     this.recordAudit('ROOM_CHECKIN', 'MeetingRooms', `Check-in rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return reservation;
   }
 
@@ -1626,7 +1634,7 @@ export class GabahDomainService {
     }
 
     this.recordAudit('ROOM_CHECKOUT', 'MeetingRooms', `Check-out selesai rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return reservation;
   }
 
@@ -1649,7 +1657,7 @@ export class GabahDomainService {
     }
 
     this.recordAudit('ROOM_RESERVATION_CANCELLED', 'MeetingRooms', `Pembatalan reservasi ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return reservation;
   }
 
@@ -1673,7 +1681,7 @@ export class GabahDomainService {
       }
     }
     this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return room;
   }
 
@@ -1699,7 +1707,7 @@ export class GabahDomainService {
     if (!db.meetingTypes) db.meetingTypes = [];
     db.meetingTypes.push(newItem);
     this.recordAudit('MEETING_TYPE_CREATED', 'MeetingRooms', `Menambah tipe rapat baru: ${newItem.name}`, actor, newItem.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return newItem;
   }
 
@@ -1715,7 +1723,7 @@ export class GabahDomainService {
     if (payload.priority_level) item.priority_level = payload.priority_level;
     if (payload.color) item.color = payload.color;
     this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return item;
   }
 
@@ -1728,7 +1736,7 @@ export class GabahDomainService {
     const removed = db.meetingTypes[idx];
     db.meetingTypes.splice(idx, 1);
     this.recordAudit('MEETING_TYPE_DELETED', 'MeetingRooms', `Menghapus tipe rapat: ${removed.name}`, actor, removed.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return { success: true };
   }
 
@@ -1753,7 +1761,7 @@ export class GabahDomainService {
     if (!db.meetingFacilities) db.meetingFacilities = [];
     db.meetingFacilities.push(newFac);
     this.recordAudit('MEETING_FACILITY_CREATED', 'MeetingRooms', `Menambah fasilitas rapat [${newFac.category}]: ${newFac.name}`, actor, newFac.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return newFac;
   }
 
@@ -1768,7 +1776,7 @@ export class GabahDomainService {
     if (payload.description !== undefined) item.description = payload.description.trim();
     if (payload.is_active !== undefined) item.is_active = payload.is_active;
     this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return item;
   }
 
@@ -1781,7 +1789,7 @@ export class GabahDomainService {
     const removed = db.meetingFacilities[idx];
     db.meetingFacilities.splice(idx, 1);
     this.recordAudit('MEETING_FACILITY_DELETED', 'MeetingRooms', `Menghapus fasilitas rapat [${removed.category}]: ${removed.name}`, actor, removed.id);
-    await persistDataStore();
+    await persistDomainMutation();
     return { success: true };
   }
 }
