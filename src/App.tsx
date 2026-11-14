@@ -24,7 +24,7 @@ import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
-import { getDefaultNavTabForRole, isNavTabAllowedForRole } from './navigation/roleNavigation';
+import { getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from './navigation/roleNavigation';
 // API collections are already scoped by the authoritative backend policy.
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
@@ -772,7 +772,7 @@ export default function App() {
           currentUserPermissions={currentUser.permission_keys}
           currentUserIsSuperAdmin={currentUser.is_superadmin}
           onOpenAdministration={() => {
-            if (currentUser.is_superadmin || currentUser.role === 'Admin GABAH') {
+            if (isSuperadminNavigationAllowed(currentUser.role, currentUser.is_superadmin, currentUser.permission_keys)) {
               setIsAdministrationModalOpen(true);
             }
           }}
