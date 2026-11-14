@@ -234,6 +234,25 @@ async function main() {
     record('Unauthorized handover: GA on second IT loan (L2)', '403', `HTTP ${h2Wrong.status}`, h2Wrong.status === 403);
     const h2Ok = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan' } });
     record('Authorized handover: IT custodian on L2', '200 + borrowed', `HTTP ${h2Ok.status} + ${h2Ok.json?.data?.status}`, h2Ok.status === 200 && h2Ok.json?.data?.status === 'borrowed');
+
+    // Direct asset mutation routes must not bypass the active loan state machine.
+    const reassignBorrowedAsset = await req(base, 'POST', `/api/assets/${itAsset2.id}/assign`, {
+      token: admin.token, body: { targetUserId: gaId, reason: 'Must not steal active loan custody' },
+    });
+    const unassignBorrowedAsset = await req(base, 'POST', `/api/assets/${itAsset2.id}/assign`, {
+      token: admin.token, body: { targetUserId: '', reason: 'Must not release active loan custody' },
+    });
+    const lifecycleBorrowedAsset = await req(base, 'POST', `/api/assets/${itAsset2.id}/lifecycle`, {
+      token: admin.token, body: { action: 'damaged', notes: 'Must not mutate an asset while borrowed' },
+    });
+    const assetAfterBlockedMutations = ((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || []).find(a => a.id === itAsset2.id);
+    const loanAfterBlockedMutations = await loanStatus(L2.id);
+    record('Active loan blocks direct reassignment, unassignment and lifecycle mutation', '409/409/409 + borrowed custody preserved',
+      `HTTP ${reassignBorrowedAsset.status}/${unassignBorrowedAsset.status}/${lifecycleBorrowedAsset.status}, asset ${assetAfterBlockedMutations?.status}, custodian ${assetAfterBlockedMutations?.assigned_to?.id}, loan ${loanAfterBlockedMutations}`,
+      reassignBorrowedAsset.status === 409 && unassignBorrowedAsset.status === 409 && lifecycleBorrowedAsset.status === 409
+        && assetAfterBlockedMutations?.status === 'assigned'
+        && assetAfterBlockedMutations?.assigned_to?.id === karyawanId
+        && loanAfterBlockedMutations === 'borrowed');
     const h2Double = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: {} });
     record('Invalid transition: double handover on L2', '409', `HTTP ${h2Double.status}`, h2Double.status === 409);
 
