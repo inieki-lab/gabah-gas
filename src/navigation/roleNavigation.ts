@@ -61,7 +61,7 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   my_assets: ['assets.read'],
   // A visible page must be readable. Create/update-only grants belong to
   // actions inside a page and must never expose a page whose GET endpoint denies access.
-  meeting_rooms: ['meeting_rooms.read', 'room_reservations.read'],
+  meeting_rooms: ['meeting_rooms.read'],
   assets: ['assets.read'],
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
@@ -99,6 +99,10 @@ export function isNavTabAllowedForRole(
   if (!role) return false;
   if (permissionKeys !== undefined) {
     if (permissionKeys.includes('*')) return true;
+    // The room workspace loads both the room catalogue and reservation queue.
+    // Require the room read endpoint; reservation read alone is not sufficient.
+    if (tab === 'meeting_rooms') return permissionKeys.includes('meeting_rooms.read')
+      && permissionKeys.includes('room_reservations.read');
     return NAV_TAB_PERMISSIONS[tab].some(key => permissionKeys.includes(key));
   }
   return ROLE_NAVIGATION[role]?.includes(tab) ?? false;
