@@ -92,6 +92,40 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
     ? Math.round((slaOnTimeCount / slaMeasuredTickets.length) * 100)
     : null;
 
+  const getPrioritySlaStats = (priorities: Ticket['priority'][]) => {
+    const completed = filteredTickets.filter(ticket =>
+      priorities.includes(ticket.priority) && (ticket.status === 'resolved' || ticket.status === 'closed')
+    );
+    const measured = completed.filter(ticket => {
+      const deadline = Date.parse(ticket.sla_resolution_deadline || '');
+      const resolvedAt = Date.parse(ticket.resolved_at || '');
+      return Number.isFinite(deadline) && Number.isFinite(resolvedAt);
+    });
+    const onTime = measured.filter(ticket =>
+      Date.parse(ticket.resolved_at as string) <= Date.parse(ticket.sla_resolution_deadline as string)
+    ).length;
+    const durations = completed
+      .map(ticket => {
+        const createdAt = Date.parse(ticket.created_at || '');
+        const resolvedAt = Date.parse(ticket.resolved_at || '');
+        return Number.isFinite(createdAt) && Number.isFinite(resolvedAt) && resolvedAt >= createdAt
+          ? (resolvedAt - createdAt) / (1000 * 60 * 60)
+          : null;
+      })
+      .filter((hours): hours is number => hours !== null);
+    return {
+      completedCount: completed.length,
+      measuredCount: measured.length,
+      onTimePct: measured.length ? Math.round((onTime / measured.length) * 100) : null,
+      averageResolutionHours: durations.length
+        ? durations.reduce((sum, hours) => sum + hours, 0) / durations.length
+        : null,
+    };
+  };
+  const urgentSlaStats = getPrioritySlaStats(['urgent']);
+  const highSlaStats = getPrioritySlaStats(['high']);
+  const standardSlaStats = getPrioritySlaStats(['medium', 'low']);
+
   const totalAssetValue = filteredAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
   const totalMaintenanceBudget = filteredMaintenances.reduce((acc, curr) => acc + (curr.actual_cost || curr.estimated_cost || 0), 0);
@@ -440,7 +474,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           </div>
         </div>
 
-        {/* SLA Breakdown by Priority */}
+        {/* SLA Breakdown by Priority — calculated from actual ticket timestamps */}
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
           <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
             <Clock className="w-4 h-4 text-emerald-600" />
@@ -448,38 +482,31 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           </h3>
 
           <div className="space-y-3 text-xs">
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-rose-700">URGENT (Target: 4 Jam)</div>
-                <div className="text-[11px] text-slate-500">Insiden fatal fasilitas &amp; jaringan produksi</div>
+            {[
+              { label: 'URGENT', description: 'Tiket dengan prioritas tertinggi', stats: urgentSlaStats, color: 'text-rose-700' },
+              { label: 'HIGH', description: 'Tiket dengan prioritas tinggi', stats: highSlaStats, color: 'text-amber-700' },
+              { label: 'MEDIUM & LOW', description: 'Tiket dengan prioritas sedang dan rendah', stats: standardSlaStats, color: 'text-blue-700' },
+            ].map(group => (
+              <div key={group.label} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                <div>
+                  <div className={`font-bold ${group.color}`}>{group.label}</div>
+                  <div className="text-[11px] text-slate-500">{group.description} · {group.stats.completedCount} tiket selesai</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-base font-extrabold text-slate-900">
+                    {group.stats.onTimePct === null ? '—' : `${group.stats.onTimePct}%`}
+                  </div>
+                  <div className="text-[10px] text-slate-600 font-medium">
+                    {group.stats.averageResolutionHours === null
+                      ? 'Durasi penyelesaian belum tersedia'
+                      : `Rata-rata ${group.stats.averageResolutionHours.toFixed(1)} jam`}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    {group.stats.measuredCount} tiket memiliki data SLA lengkap
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-base font-extrabold text-slate-900">100%</div>
-                <div className="text-[10px] text-emerald-700 font-bold">Rata-rata 2.1 Jam</div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-amber-700">HIGH (Target: 8 Jam)</div>
-                <div className="text-[11px] text-slate-500">Kendala kerja personal &amp; VPN staf penting</div>
-              </div>
-              <div className="text-right">
-                <div className="text-base font-extrabold text-slate-900">96.5%</div>
-                <div className="text-[10px] text-emerald-700 font-bold">Rata-rata 5.4 Jam</div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-blue-700">MEDIUM &amp; LOW (Target: 24-48 Jam)</div>
-                <div className="text-[11px] text-slate-500">Request akun, perpanjangan lisensi, perifer</div>
-              </div>
-              <div className="text-right">
-                <div className="text-base font-extrabold text-slate-900">98.2%</div>
-                <div className="text-[10px] text-emerald-700 font-bold">Rata-rata 14.2 Jam</div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
