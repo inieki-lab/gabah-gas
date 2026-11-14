@@ -322,6 +322,26 @@ async function main() {
     record('Manual asset status edit is blocked during borrowed loan L2', '409 + borrowed',
       `HTTP ${statusEditBorrowedL2.status} + ${loanAfterStatusEditL2}`,
       statusEditBorrowedL2.status === 409 && loanAfterStatusEditL2 === 'borrowed');
+    const setSerial = await patchAsset(itAsset2.id, { serial_number: 'LOAN-AUTHZ-BULK-LOCK-IT2' });
+    const bulkStatusBypass = await req(base, 'POST', '/api/assets/bulk-import', {
+      token: admin.token,
+      body: {
+        allow_update: true,
+        assets: [{ name: 'LoanAuthz IT Laptop 2', serial_number: 'LOAN-AUTHZ-BULK-LOCK-IT2', status: 'damaged' }],
+      },
+    });
+    const assetAfterBulkBypass = ((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || []).find(a => a.id === itAsset2.id);
+    record('Bulk import cannot bypass active-loan asset status lock', 'failed row + remains assigned',
+      `serial ${setSerial.status}, failed ${bulkStatusBypass.json?.data?.failed}, status ${assetAfterBulkBypass?.status}`,
+      setSerial.status === 200 && bulkStatusBypass.status === 200
+        && bulkStatusBypass.json?.data?.failed === 1 && assetAfterBulkBypass?.status === 'assigned');
+    const invalidBulkStatus = await req(base, 'POST', '/api/assets/bulk-import', {
+      token: admin.token,
+      body: { allow_update: true, assets: [{ name: 'Invalid status fixture', serial_number: 'LOAN-AUTHZ-BULK-LOCK-IT2', status: 'not-a-status' }] },
+    });
+    record('Bulk import rejects unknown asset status values', 'failed row',
+      `failed ${invalidBulkStatus.json?.data?.failed}`,
+      invalidBulkStatus.status === 200 && invalidBulkStatus.json?.data?.failed === 1);
     const h2Double = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: {} });
     record('Invalid transition: double handover on L2', '409', `HTTP ${h2Double.status}`, h2Double.status === 409);
 
