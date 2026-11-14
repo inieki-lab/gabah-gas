@@ -2456,7 +2456,7 @@ async function startServer() {
       // Object-level authorization already enforced by middleware for scoped
       // roles; Admin GABAH handles everything.
       ticket.status = nextStatus as any;
-      if (resolutionNotes) ticket.resolution_notes = resolutionNotes;
+      if (resolutionNotes !== undefined) ticket.resolution_notes = resolutionNotes.trim();
       if (nextStatus === 'resolved' || nextStatus === 'closed') {
         ticket.resolved_at = new Date().toISOString();
       }
