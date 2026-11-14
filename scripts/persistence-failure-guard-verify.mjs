@@ -27,7 +27,7 @@ const roomMutators = [
 const roomServiceStart = services.indexOf('static async requestRoomReservation');
 const roomServiceTail = services.slice(roomServiceStart);
 assert.ok(roomServiceStart >= 0, 'Room mutation service methods must be async');
-assert.equal((roomServiceTail.match(/persistDataStore\\(\\)\\.catch\\(err => console\\.warn/g) || []).length, 0,
+assert.equal((roomServiceTail.match(/persistDataStore\(\)\.catch\(err => console\.warn/g) || []).length, 0,
   'Room/facility mutation services must await persistence rather than log-and-return');
 for (const method of roomMutators) {
   assert.ok(services.includes('static async ' + method + '('), method + ' must be asynchronous');
