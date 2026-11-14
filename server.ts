@@ -2161,7 +2161,7 @@ async function startServer() {
     }
 
     // Validate mutable asset fields before any mutation.
-    const validAssetStatuses = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive'];
+    const validAssetStatuses = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive', 'in_use', 'loaned', 'maintenance'];
     const validAssetConditions = ['new', 'good', 'fair', 'poor', 'broken', 'excellent', 'damaged'];
     if (req.body.status !== undefined && !validAssetStatuses.includes(String(req.body.status))) {
       return res.status(400).json({ success: false, message: 'Status aset tidak valid.' });
