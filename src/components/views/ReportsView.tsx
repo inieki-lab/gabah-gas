@@ -79,7 +79,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const isFilterActive = divisionFilter !== 'all' || departmentFilter !== 'all';
 
   const resolvedTickets = filteredTickets.filter(t => t.status === 'resolved' || t.status === 'closed');
-  const slaOnTimePct = 96.8;
+  // Measure only tickets with both an authoritative resolution timestamp and
+  // a resolution deadline. Missing timestamps are not silently counted as on-time.
+  const slaMeasuredTickets = resolvedTickets.filter(ticket => {
+    const deadline = Date.parse(ticket.sla_resolution_deadline || '');
+    const resolvedAt = Date.parse(ticket.resolved_at || '');
+    return Number.isFinite(deadline) && Number.isFinite(resolvedAt);
+  });
+  const slaOnTimeCount = slaMeasuredTickets.filter(ticket =>
+    Date.parse(ticket.resolved_at as string) <= Date.parse(ticket.sla_resolution_deadline as string)
+  ).length;
+  const slaOnTimePct = slaMeasuredTickets.length
+    ? Math.round((slaOnTimeCount / slaMeasuredTickets.length) * 100)
+    : null;
 
   const totalAssetValue = filteredAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
@@ -251,22 +263,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Tingkat Kepatuhan SLA</div>
-          <div className="text-3xl font-black text-emerald-700 mt-2">{slaOnTimePct}%</div>
+          <div className="text-3xl font-black text-emerald-700 mt-2">{slaOnTimePct === null ? '—' : `${slaOnTimePct}%`}</div>
           <div className="text-xs text-slate-600 mt-1 flex items-center gap-1 font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Target KPI ≥ 95% Terpenuhi
+            {slaOnTimePct === null
+              ? 'Belum ada data penyelesaian dan deadline SLA yang lengkap'
+              : `${slaOnTimeCount} dari ${slaMeasuredTickets.length} tiket selesai tepat waktu · ${slaOnTimePct >= 95 ? 'Target ≥95% tercapai' : 'Di bawah target ≥95%'}`}
           </div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Rata-Rata Respon Helpdesk</div>
-          <div className="text-3xl font-black text-slate-900 mt-2">18 Menit</div>
-          <div className="text-xs text-emerald-700 font-medium mt-1">First Response Time</div>
+          <div className="text-3xl font-black text-slate-900 mt-2">—</div>
+          <div className="text-xs text-slate-600 font-medium mt-1">Belum tersedia · timestamp respons pertama belum dicatat</div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Total Reservasi Pinjam</div>
           <div className="text-3xl font-black text-amber-600 mt-2">{filteredLoans.length} Sesi</div>
-          <div className="text-xs text-slate-600 mt-1 font-medium">100% Jadwal Akurat &amp; Terverifikasi</div>
+          <div className="text-xs text-slate-600 mt-1 font-medium">Jumlah record pinjaman sesuai filter aktif</div>
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
