@@ -94,6 +94,9 @@ jobs:
       - name: User directory read scope verification
         run: node scripts/rbac-scoping-verify.mjs
 
+      - name: Ticket reporter ownership regression
+        run: npm run test:ticket-reporter-ownership
+
       - name: Loan authorization and state transitions
         run: npm run test:loan-authz
 
