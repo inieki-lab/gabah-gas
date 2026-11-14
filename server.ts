@@ -2432,6 +2432,13 @@ async function startServer() {
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
 
       const { status, resolutionNotes } = req.body || {};
+      if (resolutionNotes !== undefined
+        && (typeof resolutionNotes !== 'string' || resolutionNotes.length > 4000)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Catatan penyelesaian harus berupa teks maksimal 4000 karakter.',
+        });
+      }
       const currentStatus = String(ticket.status);
       const nextStatus = String(status || '');
 
