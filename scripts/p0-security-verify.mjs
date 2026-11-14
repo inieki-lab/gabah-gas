@@ -56,7 +56,11 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
+  return {
+    status: res.status,
+    json,
+    headers: { 'x-ratelimit-remaining': res.headers.get('x-ratelimit-remaining') },
+  };
 }
 
 async function waitForServer(base, tries = 60) {
