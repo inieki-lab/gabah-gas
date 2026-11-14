@@ -322,6 +322,26 @@ async function main() {
     record('Manual asset status edit is blocked during borrowed loan L2', '409 + borrowed',
       `HTTP ${statusEditBorrowedL2.status} + ${loanAfterStatusEditL2}`,
       statusEditBorrowedL2.status === 409 && loanAfterStatusEditL2 === 'borrowed');
+
+    // Assignment/unassignment and lifecycle endpoints must not bypass the
+    // active-loan state machine after a physical handover has occurred.
+    const reassignBorrowedAsset = await req(base, 'POST', `/api/assets/${itAsset2.id}/assign`, {
+      token: admin.token, body: { targetUserId: gaId, reason: 'Must not steal active loan custody' },
+    });
+    const unassignBorrowedAsset = await req(base, 'POST', `/api/assets/${itAsset2.id}/assign`, {
+      token: admin.token, body: { targetUserId: '', reason: 'Must not release active loan custody' },
+    });
+    const lifecycleBorrowedAsset = await req(base, 'POST', `/api/assets/${itAsset2.id}/lifecycle`, {
+      token: admin.token, body: { action: 'damaged', notes: 'Must not mutate an asset while borrowed' },
+    });
+    const assetAfterBlockedMutations = ((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || []).find(a => a.id === itAsset2.id);
+    const loanAfterBlockedMutations = await loanStatus(L2.id);
+    record('Active loan blocks direct reassignment, unassignment and lifecycle mutation', '409/409/409 + borrowed custody preserved',
+      `HTTP ${reassignBorrowedAsset.status}/${unassignBorrowedAsset.status}/${lifecycleBorrowedAsset.status}, asset ${assetAfterBlockedMutations?.status}, custodian ${assetAfterBlockedMutations?.assigned_to?.id}, loan ${loanAfterBlockedMutations}`,
+      reassignBorrowedAsset.status === 409 && unassignBorrowedAsset.status === 409 && lifecycleBorrowedAsset.status === 409
+        && assetAfterBlockedMutations?.status === 'assigned'
+        && assetAfterBlockedMutations?.assigned_to?.id === karyawanId
+        && loanAfterBlockedMutations === 'borrowed');
     const setSerial = await patchAsset(itAsset2.id, { serial_number: 'LOAN-AUTHZ-BULK-LOCK-IT2' });
     const bulkStatusBypass = await req(base, 'POST', '/api/assets/bulk-import', {
       token: admin.token,
