@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const source = fs.readFileSync('server.ts', 'utf8');
+const helperStart = source.indexOf('const validateMaintenanceInput');
+const helperEnd = source.indexOf('// Maintenance & Calibration Schedules', helperStart);
+assert.ok(helperStart >= 0 && helperEnd > helperStart);
+const helper = source.slice(helperStart, helperEnd);
+for (const value of ['weekly', 'monthly', 'quarterly', 'biannual', 'annual', 'one_time', 'scheduled', 'in_progress', 'completed', 'overdue', 'cancelled']) assert.ok(helper.includes(value), 'missing allowed value: ' + value);
+assert.match(helper, /Number\.isFinite\(parsedDate\.getTime\(\)\)/);
+assert.match(helper, /body\[field\] < 0/);
+assert.match(helper, /Array\.isArray\(body\.checklist\)/);
+assert.match(helper, /body\.checklist\.length > 100/);
+assert.match(source, /const validationError = validateMaintenanceInput\(req\.body \|\| \{\}\);[\s\S]*app\.post\('\/api\/maintenances'/);
+assert.equal((source.match(/validateMaintenanceInput\(req\.body \|\| \{\}\)/g) || []).length, 2);
+console.log('Maintenance input validation: 7 checks passed');
