@@ -77,6 +77,9 @@ async function main(){
     const catBadLoanPatch=cat?await req(base,'PATCH',`/api/taxonomy/categories/${encodeURIComponent(cat.code)}`,{token,body:{is_loanable_by_default:'false'}}):{status:0};
     record('Category update rejects string boolean flags','400 + 400',`HTTP ${catBadPatch.status} + ${catBadLoanPatch.status}`,catBadPatch.status===400&&catBadLoanPatch.status===400);
 
+    const bulkAsset=await req(base,'POST','/api/assets/bulk-import',{token,body:{assets:[{name:`QA Invalid Loanability ${stamp}`,serial_number:`QA-BOOL-${stamp}`,is_loanable:'maybe'}]}});
+    const bulkData=bulkAsset.json?.data;
+    record('Asset bulk import rejects unknown loanability text','1 failed, 0 created',`HTTP ${bulkAsset.status}, created ${bulkData?.created}, failed ${bulkData?.failed}`,bulkAsset.status===200&&bulkData?.created===0&&bulkData?.failed===1&&String(bulkData?.errors?.[0]||'').includes('is_loanable'));
     const failed=results.filter(x=>!x.pass);
     console.log('=== MASTER BOOLEAN VALIDATION ===');
     for(const x of results)console.log(`${x.pass?'PASS':'FAIL'} | ${x.name} | expected: ${x.expected} | actual: ${x.actual}`);
