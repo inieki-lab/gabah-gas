@@ -97,8 +97,11 @@ const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
 export function getDefaultNavTabForRole(
   role: UserRole | null | undefined,
   permissionKeys?: readonly string[],
-): AppNavTab {
-  return DEFAULT_NAV_TAB_ORDER.find(tab => isNavTabAllowedForRole(role, tab, permissionKeys)) || 'dashboard';
+): AppNavTab | null {
+  const allowedTab = DEFAULT_NAV_TAB_ORDER.find(tab => isNavTabAllowedForRole(role, tab, permissionKeys));
+  // In PostgreSQL mode, an empty effective permission set must not silently
+  // fall back to an unauthorized Dashboard. Legacy mode keeps its old default.
+  return allowedTab || (permissionKeys === undefined ? 'dashboard' : null);
 }
 
 export function isNavTabAllowedForRole(
