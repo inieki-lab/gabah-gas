@@ -1238,7 +1238,7 @@ async function startServer() {
         actor,
         user.id
       );
-      await persistMutationOrRespond(res);
+      if (!await persistMutationOrRespond(res)) return;
 
       res.json({
         success: true,
@@ -2198,7 +2198,7 @@ async function startServer() {
     asset.updated_at = new Date().toISOString();
 
     GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
-    await persistMutationOrRespond(res);
+    if (!await persistMutationOrRespond(res)) return;
 
     res.json({ success: true, data: asset });
   });
@@ -2477,7 +2477,7 @@ async function startServer() {
       ticket.updated_at = new Date().toISOString();
 
       GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
-      await persistMutationOrRespond(res);
+      if (!await persistMutationOrRespond(res)) return;
 
       res.json({ success: true, data: ticket });
     } catch (err: any) {
@@ -2571,7 +2571,7 @@ async function startServer() {
     };
     db.maintenances.push(newSchedule);
     GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
-    await persistMutationOrRespond(res);
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: newSchedule });
   });
 
@@ -2609,7 +2609,7 @@ async function startServer() {
       schedule.last_completed_at = new Date().toISOString();
     }
     GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
-    await persistMutationOrRespond(res);
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: schedule });
   });
 
@@ -2682,7 +2682,7 @@ async function startServer() {
     };
     db.vendors.push(vendor);
     GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
-    await persistMutationOrRespond(res);
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: vendor });
   });
 
@@ -2740,7 +2740,7 @@ async function startServer() {
     vendor.owner_division = requestedOwner;
     vendor.rating = requestedRating;
     GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
-    await persistMutationOrRespond(res);
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: vendor });
   });
 
@@ -2778,7 +2778,7 @@ async function startServer() {
     };
     db.knowledgeArticles.push(article);
     GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
-    await persistMutationOrRespond(res);
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: article });
   });
 
@@ -2798,7 +2798,7 @@ async function startServer() {
     }
     article.updated_at = new Date().toISOString();
     GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
-    await persistMutationOrRespond(res);
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
@@ -2807,7 +2807,7 @@ async function startServer() {
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.helpful_votes += 1;
-    await persistMutationOrRespond(res);
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
@@ -2816,7 +2816,7 @@ async function startServer() {
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.view_count += 1;
-    await persistMutationOrRespond(res);
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
