@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ROLE_NAVIGATION, isNavTabAllowedForRole } from '../src/navigation/roleNavigation';
+import { ROLE_NAVIGATION, getDefaultNavTabForRole, isNavTabAllowedForRole } from '../src/navigation/roleNavigation';
 
 const expectedRoles = [
   'Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas',
@@ -58,6 +58,11 @@ assert.ok(isNavTabAllowedForRole('Auditor', 'assets', ['assets.audit.read']));
 assert.ok(isNavTabAllowedForRole('Humas', 'meeting_rooms', ['room_reservations.read']));
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'reports', ['reports.read']));
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
+
+// A custom role without dashboard permission must land on its first readable module.
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'reports');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loans.read']), 'tickets');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
 
 
 console.log('Role navigation policy: PASS (9 roles, explicit allow/deny checks)');
