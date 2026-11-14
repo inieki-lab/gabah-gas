@@ -24,7 +24,7 @@ import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
-import { isNavTabAllowedForRole } from './navigation/roleNavigation';
+import { getDefaultNavTabForRole, isNavTabAllowedForRole } from './navigation/roleNavigation';
 // API collections are already scoped by the authoritative backend policy.
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
@@ -283,8 +283,10 @@ export default function App() {
 
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
-  const activeTab: NavTab = currentUser && isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)
-    ? currentTab
+  const activeTab: NavTab = currentUser
+    ? (isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)
+      ? currentTab
+      : getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys))
     : 'dashboard';
 
   const navigateToTab = (tab: NavTab) => {
