@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { db, seedInitialData } from '../server/db.ts';
 import { ContractDomainService } from '../server/contracts.ts';
 
@@ -6,6 +7,13 @@ import { ContractDomainService } from '../server/contracts.ts';
 seedInitialData();
 const actor = db.users.find(user => user.id === 'USR-03');
 assert.ok(actor, 'IT actor fixture exists');
+
+// Permission regression: update-only RBAC grants must never imply create authority.
+const contractSource = readFileSync(new URL('../server/contracts.ts', import.meta.url), 'utf8');
+const manageGuard = contractSource.match(/export function canManageContracts\\(user: ServerUser\\): boolean \\{([\\s\\S]*?)\\n\\}/)?.[1] || '';
+assert.match(manageGuard, /hasRbacPermission\\(String\\(user\\.id\\), 'contracts\\.create'\\)/);
+assert.doesNotMatch(manageGuard, /contracts\\.update/);
+
 
 const base = {
   contract_type: 'Maintenance',
@@ -39,6 +47,8 @@ mustReject({ parent_contract_id: 'CTR-SEED-002' }, /divisi pemilik yang sama/);
 mustReject({ start_date: '2027-02-01', end_date: '2027-01-01' }, /Periode kontrak tidak valid/);
 mustReject({ reminder_config: { reminder1_days: 7, reminder2_days: 35, reminder3_days: 60 } }, /Konfigurasi reminder/);
 mustReject({ contract_value: -1 }, /Notice period dan nilai kontrak/);
+mustReject({ auto_renewal: 'false' }, /auto-renewal harus berupa boolean/);
+mustReject({ restricted: 'false' }, /Flag restricted harus berupa boolean/);
 
 const created = ContractDomainService.createContract({
   ...base,
@@ -80,6 +90,22 @@ assert.throws(
 const updated = ContractDomainService.updateContract(created.id, { title: 'Updated fixture title', contract_value: 2000000 }, actor);
 assert.equal(updated.title, 'Updated fixture title');
 assert.equal(updated.contract_value, 2000000);
+assert.throws(
+  () => ContractDomainService.updateContract(created.id, { auto_renewal: 'false' }, actor),
+  /auto-renewal harus berupa boolean/,
+);
+assert.throws(
+  () => ContractDomainService.updateContract(created.id, { renewal_notes: 'x'.repeat(2001) }, actor),
+  /Catatan renewal maksimal 2000 karakter/,
+);
+assert.throws(
+  () => ContractDomainService.decideRenewal(created.id, 'not_renewed', {}, null, actor),
+  /Catatan keputusan renewal maksimal 2000 karakter/,
+);
+assert.throws(
+  () => ContractDomainService.decideRenewal(created.id, 'not_renewed', 'x'.repeat(2001), null, actor),
+  /Catatan keputusan renewal maksimal 2000 karakter/,
+);
 
 assert.throws(
   () => ContractDomainService.addDocument(created.id, { kind: 'forged', file_name: 'x.pdf', file_ref: 'memory://x' }, actor),
@@ -105,6 +131,7 @@ const milestone = ContractDomainService.addMilestone(created.id, {
 assert.notEqual(milestone.id, 'FORGED-ID');
 assert.equal(milestone.status, 'pending');
 
+console.log('PASS | update-only permission does not imply contract creation');
 console.log('PASS | invalid/missing/inactive PIC rejected');
 console.log('PASS | unknown escalation user rejected; supported cross-division escalation retained');
 console.log('PASS | missing and cross-division parent contract rejected');
@@ -113,4 +140,5 @@ console.log('PASS | forged document/milestone metadata ignored on creation');
 console.log('PASS | update allowlist ignores protected fields and validates editable values');
 console.log('PASS | document metadata validated and uploader identity is server-derived');
 console.log('PASS | milestone type/date/amount validated and status/id are server-derived');
+console.log('PASS | auto-renewal/restricted flags and renewal notes are strictly validated');
 console.log('TOTAL: 8 | PASS: 8 | FAIL: 0');
