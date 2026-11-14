@@ -65,6 +65,7 @@ assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'reports');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loans.read']), 'tickets');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), null, 'users with no readable module must not land on an unauthorized dashboard');
 
 // Legacy display labels must not override PostgreSQL effective superadmin capabilities.
 assert.equal(isSuperadminNavigationAllowed('Admin GABAH', false, ['dashboard.read']), false);
