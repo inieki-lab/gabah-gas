@@ -110,6 +110,35 @@ async function main() {
     const karyawanToken = otherLogin.json?.data?.token || '';
     record('Second user login (for revocation test)', '200 + token', `HTTP ${otherLogin.status}`, otherLogin.status === 200 && karyawanToken.length > 0);
 
+    // ---------------- User role validation / no partial persistence ----------------
+    const roleStamp = Date.now().toString().slice(-7);
+    const invalidRoleEmail = `qa-invalid-role-${roleStamp}@example.test`;
+    const invalidRoleCreate = await req(base, 'POST', '/api/users', {
+      token,
+      body: { name: 'Invalid Role Fixture', email: invalidRoleEmail, role: 'Super User' },
+    });
+    const usersAfterInvalidCreate = await req(base, 'GET', '/api/users', { token });
+    const invalidUserPersisted = (usersAfterInvalidCreate.json?.data || []).some(u => u.email === invalidRoleEmail);
+    record('Unknown role rejected before user creation', '400 + no user persisted',
+      `HTTP ${invalidRoleCreate.status}, persisted=${invalidUserPersisted}`,
+      invalidRoleCreate.status === 400 && !invalidUserPersisted);
+
+    const validRoleEmail = `qa-valid-role-${roleStamp}@example.test`;
+    const validRoleCreate = await req(base, 'POST', '/api/users', {
+      token,
+      body: { name: 'Valid Role Fixture', email: validRoleEmail, role: 'Karyawan', division: 'IT', department: 'QA' },
+    });
+    const validRoleUserId = validRoleCreate.json?.data?.id || '';
+    const invalidRoleUpdate = validRoleUserId ? await req(base, 'PATCH', `/api/users/${encodeURIComponent(validRoleUserId)}`, {
+      token,
+      body: { role: 'Super User' },
+    }) : { status: 0 };
+    const usersAfterInvalidUpdate = await req(base, 'GET', '/api/users', { token });
+    const roleAfterInvalidUpdate = (usersAfterInvalidUpdate.json?.data || []).find(u => u.id === validRoleUserId)?.role;
+    record('Unknown role rejected before changing existing account', '400 + role remains Karyawan',
+      `create=${validRoleCreate.status}, patch=${invalidRoleUpdate.status}, role=${roleAfterInvalidUpdate}`,
+      validRoleCreate.status === 201 && invalidRoleUpdate.status === 400 && roleAfterInvalidUpdate === 'Karyawan');
+
     // ---------------- P1-3: change password ----------------
     const anon = await req(base, 'POST', '/api/auth/change-password', {
       body: { currentPassword: 'x', newPassword: 'yyyyyyyy' },
