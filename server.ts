@@ -1220,16 +1220,17 @@ async function startServer() {
         return res.status(401).json({ success: false, message: 'Kata sandi lama tidak cocok.' });
       }
 
+      const previousCredentials = {
+        password_hash: user.password_hash,
+        password_salt: user.password_salt,
+        temp_password: user.temp_password,
+        authVersion: user.authVersion,
+      };
       const { hash, salt } = hashPassword(newPassword);
       user.password_hash = hash;
       user.password_salt = salt;
       delete user.temp_password;
       if (typeof user.authVersion === 'number') user.authVersion += 1;
-
-      // SECURITY (CR-03 §3.4): rotate credentials ⇒ revoke ALL sessions, then
-      // re-issue one session for the calling device so it stays signed in.
-      revokeUserSessions(user.id);
-      const session = createSession(user.id, req);
 
       GabahDomainService.recordAudit(
         'USER_PASSWORD_SELF_CHANGED',
@@ -1238,7 +1239,20 @@ async function startServer() {
         actor,
         user.id
       );
-      if (!await persistMutationOrRespond(res)) return;
+      if (!await persistMutationOrRespond(res)) {
+        user.password_hash = previousCredentials.password_hash;
+        user.password_salt = previousCredentials.password_salt;
+        if (previousCredentials.temp_password === undefined) delete user.temp_password;
+        else user.temp_password = previousCredentials.temp_password;
+        if (previousCredentials.authVersion === undefined) delete user.authVersion;
+        else user.authVersion = previousCredentials.authVersion;
+        db.auditLogs.pop();
+        return;
+      }
+
+      // Rotate sessions only after the credential change is durably persisted.
+      revokeUserSessions(user.id);
+      const session = createSession(user.id, req);
 
       res.json({
         success: true,
