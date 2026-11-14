@@ -28,10 +28,11 @@ export async function refreshRbacPolicy(): Promise<void> {
   if (!isPostgresPersistenceActive()) return;
 
   const roles = await queryRbac<any>(
-    'SELECT ur.user_id, r.role_key, r.name AS role_name, r.is_superadmin, r.is_active, rp.permission_key ' +
+    'SELECT ur.user_id, r.role_key, r.name AS role_name, r.is_superadmin, r.is_active, p.permission_key ' +
     'FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id ' +
     'LEFT JOIN gabah_role_permissions rp ON rp.role_id = r.id ' +
-    'WHERE r.is_active = TRUE ORDER BY ur.user_id, r.role_key, rp.permission_key',
+    'LEFT JOIN gabah_permissions p ON p.permission_key = rp.permission_key AND p.is_active = TRUE ' +
+    'WHERE r.is_active = TRUE ORDER BY ur.user_id, r.role_key, p.permission_key',
   );
   const scopes = await queryRbac<any>(
     'SELECT s.role_id, r.role_key, s.module, s.scope_type, s.scope_value ' +
