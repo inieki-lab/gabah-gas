@@ -342,6 +342,16 @@ export class GabahDomainService {
     license_detail?: any;
     notes?: string;
   }, actor: ServerUser): ServerAsset {
+    // Initial custody is a relational assignment, not a best-effort label.
+    // Validate it before numbering or mutating any asset data.
+    const assignedToId = payload.assigned_to_user_id == null ? '' : String(payload.assigned_to_user_id).trim();
+    const assignedUser = assignedToId
+      ? db.users.find(user => user.id === assignedToId && user.is_active)
+      : undefined;
+    if (assignedToId && !assignedUser) {
+      throw Object.assign(new Error('User penerima tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
+    }
+
     // 1. Resolve taxonomy strictly from server master.
     // T2B-3: master kategori (`db.categories`, hasil CRUD Admin GABAH) adalah
     // satu-satunya sumber kebenaran — kode/name kategori kustom, edit nama,
@@ -441,18 +451,15 @@ export class GabahDomainService {
     let assignedObj = null;
     let initialStatus: ServerAsset['status'] = payload.is_loanable ? 'available' : 'active';
 
-    if (payload.assigned_to_user_id) {
-      const assignedUser = db.users.find(u => u.id === payload.assigned_to_user_id);
-      if (assignedUser) {
-        assignedObj = {
-          id: assignedUser.id,
-          name: assignedUser.name,
-          email: assignedUser.email,
-          department: assignedUser.department,
-          assigned_date: new Date().toISOString().split('T')[0],
-        };
-        initialStatus = 'assigned';
-      }
+    if (assignedUser) {
+      assignedObj = {
+        id: assignedUser.id,
+        name: assignedUser.name,
+        email: assignedUser.email,
+        department: assignedUser.department,
+        assigned_date: new Date().toISOString().split('T')[0],
+      };
+      initialStatus = 'assigned';
     }
 
     const newAsset: ServerAsset = {
