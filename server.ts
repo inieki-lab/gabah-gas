@@ -807,6 +807,23 @@ async function startServer() {
       const privilegeChanged = role !== undefined && primaryRole !== targetUser.role;
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
 
+      // Personnel offboarding must not hide unresolved physical custody.
+      // Keep the account active until its loan requests and assigned assets
+      // have been returned/transferred through their own audited workflows.
+      if (accountDeactivated) {
+        const activeLoans = (db.loans || []).filter(loan =>
+          loan.borrower_id === targetUser.id
+          && ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(loan.status)
+        );
+        const assignedAssets = (db.assets || []).filter(asset => asset.assigned_to?.id === targetUser.id);
+        if (activeLoans.length || assignedAssets.length) {
+          return res.status(409).json({
+            success: false,
+            message: `Akun belum dapat dinonaktifkan: ${activeLoans.length} pinjaman aktif dan ${assignedAssets.length} aset masih tercatat pada pengguna. Selesaikan pengembalian atau alih penanggung jawab terlebih dahulu.`,
+          });
+        }
+      }
+
       if (role !== undefined) {
         targetUser.role = primaryRole;
         const roleLabels: Record<string, string> = {
@@ -891,30 +908,24 @@ async function startServer() {
       }
 
       const targetUser = db.users[userIndex];
+      // Do not delete a borrower while any loan is operationally active.
+      // Closing a borrowed loan here would fabricate a physical return and
+      // could leave its asset incorrectly reserved/assigned.
+      const activeBorrowerLoans = (db.loans || []).filter(loan =>
+        loan.borrower_id === targetId
+        && ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(loan.status)
+      );
+      const assignedAssets = (db.assets || []).filter(asset => asset.assigned_to?.id === targetId);
+      if (activeBorrowerLoans.length > 0 || assignedAssets.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: `Akun tidak dapat dihapus: ${activeBorrowerLoans.length} pinjaman aktif dan ${assignedAssets.length} aset masih tercatat pada pengguna. Selesaikan pengembalian atau alih penanggung jawab terlebih dahulu.`,
+        });
+      }
+
       if (targetUser.is_active && isRbacSuperadmin(targetUser.id)
         && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
         return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh dihapus.' });
-      }
-
-      // Auto unassign any assets assigned to this user back to available pool
-      let releasedAssetsCount = 0;
-      for (const a of db.assets) {
-        if (a.assigned_to?.id === targetId) {
-          a.status = 'available';
-          a.assigned_to = null;
-          releasedAssetsCount++;
-        }
-      }
-
-      // Auto close/return active loans
-      let closedLoansCount = 0;
-      for (const l of db.loans) {
-        if (l.borrower_id === targetId && ['pending_approval', 'approved', 'borrowed'].includes(l.status)) {
-          l.status = 'closed';
-          l.actual_returned_at = new Date().toISOString();
-          l.return_condition = 'Dikembalikan otomatis karena penutupan akun pengguna';
-          closedLoansCount++;
-        }
       }
 
       // Cancel any pending reservations organized by this user
@@ -933,7 +944,7 @@ async function startServer() {
       GabahDomainService.recordAudit(
         'USER_DELETED',
         'Users',
-        `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - ${releasedAssetsCount} aset dilepaskan, ${closedLoansCount} pinjaman ditutup`,
+        `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - tidak ada pinjaman aktif atau aset dalam penguasaan yang dilepas otomatis`,
         actor,
         targetId
       );
@@ -943,7 +954,7 @@ async function startServer() {
 
       res.json({
         success: true,
-        message: `Pengguna ${targetUser.name} berhasil dihapus.${releasedAssetsCount > 0 ? ` ${releasedAssetsCount} aset berhasil dikembalikan ke status Tersedia.` : ''}`
+        message: `Pengguna ${targetUser.name} berhasil dihapus.`
       });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -1965,7 +1976,8 @@ async function startServer() {
       }
       const allowUpdate = req.body?.allow_update === true;
 
-      const VALID_CONDITIONS = ['new', 'good', 'fair', 'poor', 'broken'];
+      const VALID_CONDITIONS = ['new', 'good', 'fair', 'poor', 'broken', 'excellent', 'damaged'];
+      const VALID_ASSET_STATUSES = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive', 'in_use', 'loaned', 'maintenance'];
       const VALID_DIVISIONS = (db.divisions || []).map(d => String(d.code).trim().toUpperCase());
       // CR-06: allowlist identik dengan PATCH /api/assets/:id
       const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
@@ -2012,7 +2024,19 @@ async function startServer() {
 
         let isLoanable: boolean | undefined = undefined;
         if (row.is_loanable !== undefined && String(row.is_loanable).trim() !== '') {
-          isLoanable = /^(true|1|ya|yes)$/i.test(String(row.is_loanable).trim());
+          const loanableText = String(row.is_loanable).trim().toLowerCase();
+          if (!['true', 'false', '1', '0', 'ya', 'tidak', 'yes', 'no'].includes(loanableText)) {
+            errors.push(`Baris ${rowNo}: Nilai is_loanable harus boolean (true/false).`);
+            continue;
+          }
+          isLoanable = ['true', '1', 'ya', 'yes'].includes(loanableText);
+        }
+        const requestedStatus = row.status === undefined || String(row.status).trim() === ''
+          ? undefined
+          : String(row.status).trim();
+        if (requestedStatus !== undefined && !VALID_ASSET_STATUSES.includes(requestedStatus)) {
+          errors.push(`Baris ${rowNo}: Status aset "${requestedStatus}" tidak valid.`);
+          continue;
         }
 
         const existing = (serial && db.assets.find(a => a.serial_number && a.serial_number.trim().toLowerCase() === serial.toLowerCase()))
@@ -2029,6 +2053,20 @@ async function startServer() {
             errors.push(`Baris ${rowNo}: ${existing.asset_number} ditolak. Permission assets.update dan scope owner "${existing.owner_division}" wajib dimiliki.`);
             continue;
           }
+          // The bulk-update path must enforce the same active-loan lock as
+          // PATCH /api/assets/:id; otherwise CSV import could bypass custody state.
+          const activeLoan = (db.loans || []).find(loan =>
+            loan.asset_id === existing.id && ['approved', 'borrowed'].includes(loan.status)
+          );
+          if (activeLoan) {
+            const changesStatus = requestedStatus !== undefined && requestedStatus !== existing.status;
+            const changesLoanability = isLoanable !== undefined && isLoanable !== existing.is_loanable;
+            if (changesStatus || changesLoanability) {
+              errors.push(`Baris ${rowNo}: ${existing.asset_number} tidak dapat mengubah status atau konfigurasi pinjam selama pinjaman ${activeLoan.loan_number} berstatus ${activeLoan.status}.`);
+              continue;
+            }
+          }
+
           // UPDATE path — allowlist eksplisit, asset_number & owner_division server-owned
           for (const key of UPDATE_FIELDS) {
             if (key === 'condition') {
@@ -2039,7 +2077,7 @@ async function startServer() {
               if (isLoanable !== undefined) (existing as any).is_loanable = isLoanable;
               continue;
             }
-            const value = row[key];
+            const value = key === 'status' ? requestedStatus : row[key];
             if (value !== undefined && String(value).trim() !== '') {
               (existing as any)[key] = typeof value === 'string' ? value.trim() : value;
             }
@@ -2143,6 +2181,36 @@ async function startServer() {
       const existingCorp = db.assets.find(a => a.id !== asset.id && a.corporate_asset_number && a.corporate_asset_number.trim().toLowerCase() === corpNo.toLowerCase());
       if (existingCorp) {
         return res.status(400).json({ success: false, message: `Nomor Aset Accurate/ERP "${corpNo}" sudah terdaftar pada aset ${existingCorp.asset_number} (${existingCorp.name}).` });
+      }
+    }
+
+    // Validate mutable asset fields before any mutation.
+    const validAssetStatuses = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive', 'in_use', 'loaned', 'maintenance'];
+    const validAssetConditions = ['new', 'good', 'fair', 'poor', 'broken', 'excellent', 'damaged'];
+    if (req.body.status !== undefined && !validAssetStatuses.includes(String(req.body.status))) {
+      return res.status(400).json({ success: false, message: 'Status aset tidak valid.' });
+    }
+    if (req.body.condition !== undefined && !validAssetConditions.includes(String(req.body.condition))) {
+      return res.status(400).json({ success: false, message: 'Kondisi aset tidak valid.' });
+    }
+    if (req.body.is_loanable !== undefined && typeof req.body.is_loanable !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'is_loanable harus berupa boolean.' });
+    }
+
+    // Loan workflow owns status and loanability while a reservation is approved
+    // or a unit is physically borrowed. Manual edits here could desynchronize
+    // the asset and its active loan, so require the loan workflow to finish first.
+    const activeLoan = db.loans.find(loan =>
+      loan.asset_id === asset.id && ['approved', 'borrowed'].includes(loan.status)
+    );
+    if (activeLoan) {
+      const changesStatus = req.body.status !== undefined && String(req.body.status) !== asset.status;
+      const changesLoanability = req.body.is_loanable !== undefined && req.body.is_loanable !== asset.is_loanable;
+      if (changesStatus || changesLoanability) {
+        return res.status(409).json({
+          success: false,
+          message: `Status dan konfigurasi pinjam aset dikunci selama pinjaman ${activeLoan.loan_number} berstatus ${activeLoan.status}.`,
+        });
       }
     }
 
@@ -2283,19 +2351,39 @@ async function startServer() {
       const { asset_ids, asset_id } = req.body;
 
       if (Array.isArray(asset_ids) && asset_ids.length > 0) {
-        const createdLoans = [];
-        for (const id of asset_ids) {
-          const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
-          createdLoans.push(newLoan);
+        const normalizedAssetIds = asset_ids.map((id: unknown) => String(id ?? '').trim());
+        if (normalizedAssetIds.some((id: string) => !id)
+          || new Set(normalizedAssetIds).size !== normalizedAssetIds.length) {
+          return res.status(400).json({ success: false, message: 'Daftar aset pinjaman mengandung ID kosong atau duplikat.' });
         }
-        await persistDataStore();
-        return res.status(201).json({
-          success: true,
-          data: createdLoans[0],
-          loans: createdLoans,
-          count: createdLoans.length,
-          message: `${createdLoans.length} aset pinjaman berhasil diajukan.`
-        });
+
+        // Bulk requests are one business operation: roll back every in-memory
+        // side effect if any item or persistence step fails.
+        const snapshots = {
+          loans: [...db.loans],
+          notifications: [...db.notifications],
+          auditLogs: [...db.auditLogs],
+        };
+        try {
+          const createdLoans = [];
+          for (const id of normalizedAssetIds) {
+            const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
+            createdLoans.push(newLoan);
+          }
+          await persistDataStore();
+          return res.status(201).json({
+            success: true,
+            data: createdLoans[0],
+            loans: createdLoans,
+            count: createdLoans.length,
+            message: `${createdLoans.length} aset pinjaman berhasil diajukan.`
+          });
+        } catch (bulkError) {
+          db.loans.splice(0, db.loans.length, ...snapshots.loans);
+          db.notifications.splice(0, db.notifications.length, ...snapshots.notifications);
+          db.auditLogs.splice(0, db.auditLogs.length, ...snapshots.auditLogs);
+          throw bulkError;
+        }
       }
 
       const newLoan = GabahDomainService.requestLoan(req.body, actor);

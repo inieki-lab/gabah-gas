@@ -153,9 +153,92 @@ async function main() {
     const itAsset4 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 4');
     const gaAsset1 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 1');
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
-    record('Setup: 5 loanable fixtures created (4 IT + 2 GA)', 'ids issued',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].every(a => a.id));
+    const itAsset5 = await mkAsset('HLT', 'IT', 'LoanAuthz unavailable request fixture');
+    const itAsset6 = await mkAsset('HLT', 'IT', 'LoanAuthz approval recheck fixture');
+    record('Setup: 8 loanable fixtures created (6 IT + 2 GA)', 'ids issued',
+      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].filter(a => a.id).length + ' ids',
+      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].every(a => a.id));
+
+    const patchAsset = (assetId, body) => req(base, 'PATCH', `/api/assets/${assetId}`, { token: admin.token, body });
+    const setAssetStatus = (assetId, status) => patchAsset(assetId, { status });
+    const invalidAssetStatus = await setAssetStatus(itAsset5.id, 'not-a-real-status');
+    record('Asset update rejects unknown status values', '400', `HTTP ${invalidAssetStatus.status}`, invalidAssetStatus.status === 400);
+    const invalidLoanableType = await patchAsset(itAsset5.id, { is_loanable: 'false' });
+    record('Asset update requires boolean is_loanable', '400', `HTTP ${invalidLoanableType.status}`, invalidLoanableType.status === 400);
+    await setAssetStatus(itAsset5.id, 'damaged');
+    const unavailableRequest = await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
+      asset_id: itAsset5.id, purpose: 'Unavailable asset must be rejected', start_date: isoDatePlus(1), due_date: isoDatePlus(7),
+    } });
+    record('Request rejects loanable asset that is not available', '409', `HTTP ${unavailableRequest.status}`, unavailableRequest.status === 409);
+
+    const approvalRecheck = await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
+      asset_id: itAsset6.id, purpose: 'Asset status recheck at approval', start_date: isoDatePlus(1), due_date: isoDatePlus(7),
+    } });
+    const approvalLoanId = approvalRecheck.json?.data?.id;
+    await setAssetStatus(itAsset6.id, 'damaged');
+    const unavailableApproval = approvalLoanId
+      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/approve`, { token: it.token, body: {} })
+      : { status: 0 };
+    const approvalLoanStatus = approvalLoanId
+      ? (((await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || []).find(l => l.id === approvalLoanId) || {}).status || '(missing)'
+      : '(missing)';
+    record('Approval rechecks asset availability and preserves pending loan', '409 + pending_approval',
+      `HTTP ${unavailableApproval.status} + ${approvalLoanStatus}`,
+      unavailableApproval.status === 409 && approvalLoanStatus === 'pending_approval');
+    await setAssetStatus(itAsset6.id, 'available');
+    const approvalAfterRestore = approvalLoanId
+      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/approve`, { token: it.token, body: {} })
+      : { status: 0 };
+    record('Approval succeeds after asset is restored to available', '200', `HTTP ${approvalAfterRestore.status}`, approvalAfterRestore.status === 200);
+    const statusEditApproved = await setAssetStatus(itAsset6.id, 'damaged');
+    record('Manual status change is blocked while loan is approved', '409', `HTTP ${statusEditApproved.status}`, statusEditApproved.status === 409);
+    const handoverRechecked = approvalLoanId
+      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan setelah approval' } })
+      : { status: 0 };
+    record('Handover succeeds only after valid approval and reserved asset', '200 + borrowed',
+      `HTTP ${handoverRechecked.status} + ${handoverRechecked.json?.data?.status}`,
+      handoverRechecked.status === 200 && handoverRechecked.json?.data?.status === 'borrowed');
+    const statusEditBorrowed = await setAssetStatus(itAsset6.id, 'damaged');
+    record('Manual status change is blocked while loan is borrowed', '409', `HTTP ${statusEditBorrowed.status}`, statusEditBorrowed.status === 409);
+    const returnRechecked = approvalLoanId
+      ? await req(base, 'POST', `/api/loans/${approvalLoanId}/return`, { token: karyawan.token, body: { condition: 'good', returnNotes: 'Returned after lifecycle test' } })
+      : { status: 0 };
+    record('Borrower can return after handover; asset returns to available', '200 + returned',
+      `HTTP ${returnRechecked.status} + ${returnRechecked.json?.data?.status}`,
+      returnRechecked.status === 200 && returnRechecked.json?.data?.status === 'returned');
+
+    const initialLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    const invalidLoanDate = await req(base, 'POST', '/api/loans', {
+      token: admin.token,
+      body: { asset_id: gaAsset2.id, purpose: 'Impossible date fixture', start_date: '2026-02-31', due_date: '2026-03-07' },
+    });
+    const afterInvalidLoanDate = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    record('Impossible calendar date rejected without creating loan', '400 + no new loan',
+      `HTTP ${invalidLoanDate.status} + delta ${afterInvalidLoanDate.length - initialLoans.length}`,
+      invalidLoanDate.status === 400 && afterInvalidLoanDate.length === initialLoans.length);
+    const invalidBorrower = await req(base, 'POST', '/api/loans', {
+      token: admin.token,
+      body: { asset_id: itAsset1.id, borrower_id: 'USR-NOT-FOUND', purpose: 'Invalid borrower fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    const afterInvalidBorrower = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    record('Invalid borrower ID is rejected without fallback to admin', '404 + no new loan',
+      `HTTP ${invalidBorrower.status} + delta ${afterInvalidBorrower.length - initialLoans.length}`,
+      invalidBorrower.status === 404 && afterInvalidBorrower.length === initialLoans.length);
+
+    const bulkPartial = await req(base, 'POST', '/api/loans', {
+      token: admin.token,
+      body: { asset_ids: [itAsset1.id, 'AST-NOT-FOUND'], borrower_id: 'USR-01', purpose: 'Atomic bulk fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    const afterBulkFailure = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    record('Bulk request rolls back earlier valid items when a later asset is invalid', '404 + no new loans',
+      `HTTP ${bulkPartial.status} + delta ${afterBulkFailure.length - initialLoans.length}`,
+      bulkPartial.status === 404 && afterBulkFailure.length === initialLoans.length);
+
+    const duplicateBulk = await req(base, 'POST', '/api/loans', {
+      token: admin.token,
+      body: { asset_ids: [itAsset1.id, itAsset1.id], borrower_id: 'USR-01', purpose: 'Duplicate bulk fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    record('Bulk request rejects duplicate asset IDs', '400', `HTTP ${duplicateBulk.status}`, duplicateBulk.status === 400);
 
     const mkLoan = async (token, assetId, borrowerId) => {
       const r = await req(base, 'POST', '/api/loans', {
@@ -234,6 +317,31 @@ async function main() {
     record('Unauthorized handover: GA on second IT loan (L2)', '403', `HTTP ${h2Wrong.status}`, h2Wrong.status === 403);
     const h2Ok = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan' } });
     record('Authorized handover: IT custodian on L2', '200 + borrowed', `HTTP ${h2Ok.status} + ${h2Ok.json?.data?.status}`, h2Ok.status === 200 && h2Ok.json?.data?.status === 'borrowed');
+    const statusEditBorrowedL2 = await setAssetStatus(itAsset2.id, 'damaged');
+    const loanAfterStatusEditL2 = await loanStatus(L2.id);
+    record('Manual asset status edit is blocked during borrowed loan L2', '409 + borrowed',
+      `HTTP ${statusEditBorrowedL2.status} + ${loanAfterStatusEditL2}`,
+      statusEditBorrowedL2.status === 409 && loanAfterStatusEditL2 === 'borrowed');
+    const setSerial = await patchAsset(itAsset2.id, { serial_number: 'LOAN-AUTHZ-BULK-LOCK-IT2' });
+    const bulkStatusBypass = await req(base, 'POST', '/api/assets/bulk-import', {
+      token: admin.token,
+      body: {
+        allow_update: true,
+        assets: [{ name: 'LoanAuthz IT Laptop 2', serial_number: 'LOAN-AUTHZ-BULK-LOCK-IT2', status: 'damaged' }],
+      },
+    });
+    const assetAfterBulkBypass = ((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || []).find(a => a.id === itAsset2.id);
+    record('Bulk import cannot bypass active-loan asset status lock', 'failed row + remains assigned',
+      `serial ${setSerial.status}, failed ${bulkStatusBypass.json?.data?.failed}, status ${assetAfterBulkBypass?.status}`,
+      setSerial.status === 200 && bulkStatusBypass.status === 200
+        && bulkStatusBypass.json?.data?.failed === 1 && assetAfterBulkBypass?.status === 'assigned');
+    const invalidBulkStatus = await req(base, 'POST', '/api/assets/bulk-import', {
+      token: admin.token,
+      body: { allow_update: true, assets: [{ name: 'Invalid status fixture', serial_number: 'LOAN-AUTHZ-BULK-LOCK-IT2', status: 'not-a-status' }] },
+    });
+    record('Bulk import rejects unknown asset status values', 'failed row',
+      `failed ${invalidBulkStatus.json?.data?.failed}`,
+      invalidBulkStatus.status === 200 && invalidBulkStatus.json?.data?.failed === 1);
     const h2Double = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: {} });
     record('Invalid transition: double handover on L2', '409', `HTTP ${h2Double.status}`, h2Double.status === 409);
 
@@ -293,6 +401,94 @@ async function main() {
     record('Audit: LOAN_HANDOVER_INVALID_STATE recorded', 'logged', has('LOAN_HANDOVER_INVALID_STATE', L3.id) ? 'logged' : 'missing', has('LOAN_HANDOVER_INVALID_STATE', L3.id));
     record('Audit: LOAN_RETURN_DENIED recorded', 'logged', has('LOAN_RETURN_DENIED', L5.id) ? 'logged' : 'missing', has('LOAN_RETURN_DENIED', L5.id));
     record('Audit: LOAN_RETURN_INVALID_STATE recorded', 'logged', has('LOAN_RETURN_INVALID_STATE', L4.id) ? 'logged' : 'missing', has('LOAN_RETURN_INVALID_STATE', L4.id));
+
+    // ===================== Borrower deletion integrity =====================
+    const deletionTarget = await req(base, 'POST', '/api/users', {
+      token: admin.token,
+      body: {
+        name: 'Loan Deletion Integrity Fixture',
+        email: `loan-delete-${Date.now()}@example.test`,
+        role: 'Karyawan',
+        division: 'Umum',
+        department: 'QA Fixture',
+      },
+    });
+    const deletionTargetId = deletionTarget.json?.data?.id;
+    record('Setup: temporary borrower for deletion test', '201 + user ID',
+      `HTTP ${deletionTarget.status} + ${Boolean(deletionTargetId)}`,
+      deletionTarget.status === 201 && Boolean(deletionTargetId));
+
+    const deletionLoan = deletionTargetId
+      ? await req(base, 'POST', '/api/loans', {
+          token: admin.token,
+          body: {
+            asset_id: gaAsset2.id,
+            borrower_id: deletionTargetId,
+            purpose: 'Deletion must not fabricate a physical return',
+            start_date: isoDatePlus(1),
+            due_date: isoDatePlus(7),
+          },
+        })
+      : { status: 0, json: {} };
+    const deletionLoanId = deletionLoan.json?.data?.id;
+    const deletionApproved = deletionLoanId
+      ? await req(base, 'POST', `/api/loans/${deletionLoanId}/approve`, { token: ga.token, body: {} })
+      : { status: 0 };
+    const deletionHandedOver = deletionLoanId
+      ? await req(base, 'POST', `/api/loans/${deletionLoanId}/handover`, { token: ga.token, body: { handoverNotes: 'Physical handover fixture' } })
+      : { status: 0 };
+    record('Setup: deletion fixture loan reaches borrowed state', '201/200/200',
+      `request ${deletionLoan.status}, approve ${deletionApproved.status}, handover ${deletionHandedOver.status}`,
+      deletionLoan.status === 201 && deletionApproved.status === 200 && deletionHandedOver.status === 200);
+
+    const deletionAttempt = deletionTargetId
+      ? await req(base, 'DELETE', `/api/users/${deletionTargetId}`, { token: admin.token })
+      : { status: 0 };
+    const userAfterDeleteAttempt = (await req(base, 'GET', '/api/users', { token: admin.token })).json?.data || [];
+    const loansAfterDeleteAttempt = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    const assetsAfterDeleteAttempt = (await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || [];
+    const preservedLoan = loansAfterDeleteAttempt.find(l => l.id === deletionLoanId);
+    const preservedAsset = assetsAfterDeleteAttempt.find(a => a.id === gaAsset2.id);
+    record('Delete user with borrowed loan is blocked without mutating loan or asset', '409 + user retained + borrowed + assigned',
+      `HTTP ${deletionAttempt.status}, user ${userAfterDeleteAttempt.some(u => u.id === deletionTargetId)}, loan ${preservedLoan?.status}, asset ${preservedAsset?.status}`,
+      deletionAttempt.status === 409
+        && userAfterDeleteAttempt.some(u => u.id === deletionTargetId)
+        && preservedLoan?.status === 'borrowed'
+        && preservedAsset?.status === 'assigned');
+
+    // A separate employee with assigned custody but no active loan must
+    // also complete an audited transfer before deactivation/deletion.
+    const custodyTarget = await req(base, 'POST', '/api/users', {
+      token: admin.token,
+      body: {
+        name: 'Asset Custody Deletion Fixture',
+        email: `asset-custody-delete-${Date.now()}@example.test`,
+        role: 'Karyawan',
+        division: 'Umum',
+        department: 'QA Fixture',
+      },
+    });
+    const custodyUserId = custodyTarget.json?.data?.id;
+    const custodyAssign = custodyUserId
+      ? await req(base, 'POST', `/api/assets/${itAsset4.id}/assign`, {
+          token: admin.token,
+          body: { targetUserId: custodyUserId, reason: 'Custody deletion regression fixture' },
+        })
+      : { status: 0 };
+    const deactivateCustody = custodyUserId
+      ? await req(base, 'PATCH', `/api/users/${custodyUserId}`, { token: admin.token, body: { is_active: false } })
+      : { status: 0 };
+    const deleteCustody = custodyUserId
+      ? await req(base, 'DELETE', `/api/users/${custodyUserId}`, { token: admin.token })
+      : { status: 0 };
+    const custodyUsers = (await req(base, 'GET', '/api/users', { token: admin.token })).json?.data || [];
+    const custodyAssets = (await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || [];
+    const custodyAssetAfter = custodyAssets.find(a => a.id === itAsset4.id);
+    record('Assigned asset blocks deactivation and deletion without custody transfer', '409 + assigned user retained',
+      `assign ${custodyAssign.status}, deactivate ${deactivateCustody.status}, delete ${deleteCustody.status}, custodian ${custodyAssetAfter?.assigned_to?.id}`,
+      custodyAssign.status === 200 && deactivateCustody.status === 409 && deleteCustody.status === 409
+        && custodyUsers.some(u => u.id === custodyUserId)
+        && custodyAssetAfter?.assigned_to?.id === custodyUserId);
 
     // ---------- Summary ----------
     const total = results.length;
