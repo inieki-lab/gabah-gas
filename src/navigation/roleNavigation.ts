@@ -78,6 +78,16 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
  * The role map is retained only for the file-store compatibility mode where
  * effective permission keys are intentionally not emitted by the API.
  */
+/** Superadmin navigation follows the effective RBAC capability in PostgreSQL mode. */
+export function isSuperadminNavigationAllowed(
+  role: UserRole | null | undefined,
+  isSuperadmin: boolean | undefined,
+  permissionKeys?: readonly string[],
+): boolean {
+  if (permissionKeys !== undefined) return isSuperadmin === true || permissionKeys.includes('*');
+  return isSuperadmin === true || role === 'Admin GABAH';
+}
+
 const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
   'dashboard', 'my_assets', 'tickets', 'loans', 'meeting_rooms', 'assets',
   'maintenance', 'contracts', 'vendors', 'licenses', 'knowledge', 'reports',
