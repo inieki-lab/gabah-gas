@@ -1,6 +1,6 @@
 ## [2026-11-14] — Surface authoritative persistence failures
 
-- Replaced 11 fire-and-forget datastore writes that silently ignored failures with awaited writes and explicit HTTP 503 responses.
+- Replaced 11 fire-and-forget writes in API handlers and 13 room/facility domain-service mutations with awaited writes; API handlers now return HTTP 503 rather than false success.
 - Password changes restore the previous credential fields if the authoritative write fails and revoke sessions only after persistence succeeds.
 - Added a CI contract check to prevent silent write-failure handling from returning.
 - On persistence failure, callers are told to verify the record before retrying; this avoids duplicate submissions after an uncertain write.
