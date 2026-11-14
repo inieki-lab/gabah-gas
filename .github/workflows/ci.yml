@@ -62,6 +62,9 @@ jobs:
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
 
+      - name: Persistence failure response contract
+        run: npm run test:persistence-failure-guard
+
       - name: Role dashboard scope checks
         run: npm run test:dashboard-scope
 
