@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
-  CheckCircle2, 
   AlertTriangle, 
   DollarSign, 
   PieChart, 
