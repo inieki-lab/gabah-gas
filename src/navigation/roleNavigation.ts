@@ -78,6 +78,19 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
  * The role map is retained only for the file-store compatibility mode where
  * effective permission keys are intentionally not emitted by the API.
  */
+const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
+  'dashboard', 'my_assets', 'tickets', 'loans', 'meeting_rooms', 'assets',
+  'maintenance', 'contracts', 'vendors', 'licenses', 'knowledge', 'reports',
+];
+
+/** Pick an authorized landing page when a user's current tab is no longer allowed. */
+export function getDefaultNavTabForRole(
+  role: UserRole | null | undefined,
+  permissionKeys?: readonly string[],
+): AppNavTab {
+  return DEFAULT_NAV_TAB_ORDER.find(tab => isNavTabAllowedForRole(role, tab, permissionKeys)) || 'dashboard';
+}
+
 export function isNavTabAllowedForRole(
   role: UserRole | null | undefined,
   tab: AppNavTab,
