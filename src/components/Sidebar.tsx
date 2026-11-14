@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { AdministrationModal } from './modals/AdministrationModal';
-import { AppNavTab, isNavTabAllowedForRole } from '../navigation/roleNavigation';
+import { AppNavTab, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../navigation/roleNavigation';
 
 export type NavTab = AppNavTab;
 
@@ -82,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
   const isHumas = activeRole === 'Humas';
   const isSekdir = activeRole === 'Sekretaris Direksi';
-  const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
+  const isSuperAdmin = isSuperadminNavigationAllowed(activeRole, currentUserIsSuperAdmin, currentUserPermissions);
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [

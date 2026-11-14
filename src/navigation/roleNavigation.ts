@@ -59,8 +59,10 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
 const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   dashboard: ['dashboard.read'],
   my_assets: ['assets.read'],
-  meeting_rooms: ['meeting_rooms.read', 'room_reservations.read', 'room_reservations.create'],
-  assets: ['assets.catalog.read', 'assets.audit.read', 'assets.create', 'assets.update', 'assets.delete', 'assets.assign', 'assets.move', 'assets.lifecycle'],
+  // A visible page must be readable. Create/update-only grants belong to
+  // actions inside a page and must never expose a page whose GET endpoint denies access.
+  meeting_rooms: ['meeting_rooms.read'],
+  assets: ['assets.catalog.read'],
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
   tickets: ['tickets.read'],
@@ -76,6 +78,32 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
  * The role map is retained only for the file-store compatibility mode where
  * effective permission keys are intentionally not emitted by the API.
  */
+/** Superadmin navigation follows the effective RBAC capability in PostgreSQL mode. */
+export function isSuperadminNavigationAllowed(
+  role: UserRole | null | undefined,
+  isSuperadmin: boolean | undefined,
+  permissionKeys?: readonly string[],
+): boolean {
+  if (permissionKeys !== undefined) return isSuperadmin === true || permissionKeys.includes('*');
+  return isSuperadmin === true || role === 'Admin GABAH';
+}
+
+const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
+  'dashboard', 'my_assets', 'tickets', 'loans', 'meeting_rooms', 'assets',
+  'maintenance', 'contracts', 'vendors', 'licenses', 'knowledge', 'reports',
+];
+
+/** Pick an authorized landing page when a user's current tab is no longer allowed. */
+export function getDefaultNavTabForRole(
+  role: UserRole | null | undefined,
+  permissionKeys?: readonly string[],
+): AppNavTab | null {
+  const allowedTab = DEFAULT_NAV_TAB_ORDER.find(tab => isNavTabAllowedForRole(role, tab, permissionKeys));
+  // In PostgreSQL mode, an empty effective permission set must not silently
+  // fall back to an unauthorized Dashboard. Legacy mode keeps its old default.
+  return allowedTab || (permissionKeys === undefined ? 'dashboard' : null);
+}
+
 export function isNavTabAllowedForRole(
   role: UserRole | null | undefined,
   tab: AppNavTab,
@@ -84,6 +112,14 @@ export function isNavTabAllowedForRole(
   if (!role) return false;
   if (permissionKeys !== undefined) {
     if (permissionKeys.includes('*')) return true;
+    // The room workspace loads both the room catalogue and reservation queue.
+    // Require the room read endpoint; reservation read alone is not sufficient.
+    if (tab === 'meeting_rooms') return permissionKeys.includes('meeting_rooms.read')
+      && permissionKeys.includes('room_reservations.read');
+    // The catalogue view requires its dedicated capability as well as the
+    // shared asset read endpoint used to hydrate the inventory data.
+    if (tab === 'assets') return permissionKeys.includes('assets.catalog.read')
+      && permissionKeys.includes('assets.read');
     return NAV_TAB_PERMISSIONS[tab].some(key => permissionKeys.includes(key));
   }
   return ROLE_NAVIGATION[role]?.includes(tab) ?? false;

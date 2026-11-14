@@ -24,7 +24,7 @@ import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
-import { isNavTabAllowedForRole } from './navigation/roleNavigation';
+import { getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from './navigation/roleNavigation';
 // API collections are already scoped by the authoritative backend policy.
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
@@ -283,8 +283,10 @@ export default function App() {
 
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
-  const activeTab: NavTab = currentUser && isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)
-    ? currentTab
+  const activeTab: NavTab | null = currentUser
+    ? (isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)
+      ? currentTab
+      : getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys))
     : 'dashboard';
 
   const navigateToTab = (tab: NavTab) => {
@@ -754,7 +756,7 @@ export default function App() {
         
         {/* Left Navigation Sidebar */}
         <Sidebar
-          currentTab={activeTab}
+          currentTab={activeTab || 'dashboard'}
           onTabChange={navigateToTab}
           pendingLoansCount={pendingLoans.length}
           openTicketsCount={openTickets.length}
@@ -770,7 +772,7 @@ export default function App() {
           currentUserPermissions={currentUser.permission_keys}
           currentUserIsSuperAdmin={currentUser.is_superadmin}
           onOpenAdministration={() => {
-            if (currentUser.is_superadmin || currentUser.role === 'Admin GABAH') {
+            if (isSuperadminNavigationAllowed(currentUser.role, currentUser.is_superadmin, currentUser.permission_keys)) {
               setIsAdministrationModalOpen(true);
             }
           }}
@@ -778,6 +780,13 @@ export default function App() {
 
         {/* Main Content Pane */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto">
+          {activeTab === null && (
+            <section role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
+              <h2 className="font-bold">Belum ada akses modul</h2>
+              <p className="mt-2">Akun ini belum memiliki permission baca untuk modul mana pun. Hubungi Superadmin untuk memeriksa assignment role dan hak akses.</p>
+            </section>
+          )}
+
           {isLoading && (
             <div className="mb-4 flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600" />
