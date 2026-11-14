@@ -142,14 +142,14 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
   }
 
-  const assetMatch = normalizedPath.match(/^\/api\/assets\/([^/]+)/);
+  const assetMatch = req.path.match(/^\/api\/assets\/([^/]+)/i);
   // '/bulk-import' adalah operasi collection-level (bukan asset id);
   // authority per baris ditegakkan di handler + domain service.
   if (assetMatch && assetMatch[1] !== 'bulk-import' && !canSeeAsset(actor, assetMatch[1])) {
     return res.status(403).json({ success: false, message: 'Aset berada di luar scope pengguna.' });
   }
 
-  const ticketMatch = normalizedPath.match(/^\/api\/tickets\/([^/]+)\/status$/);
+  const ticketMatch = req.path.match(/^\/api\/tickets\/([^/]+)\/status\/?$/i);
   if (ticketMatch && !canManageTicket(actor, ticketMatch[1])) {
     return res.status(403).json({ success: false, message: 'Pengguna tidak berwenang mengubah tiket ini.' });
   }
