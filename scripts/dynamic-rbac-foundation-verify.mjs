@@ -35,7 +35,9 @@ const dockerCompose = fs.readFileSync('docker-compose.yml', 'utf8');
 const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
+const effectivePermissionQuery = policy.slice(policy.indexOf('SELECT ur.user_id'), policy.indexOf('const scopes'));
 const checks = [
+  ['runtime effective permissions ignore inactive permission catalogue entries', effectivePermissionQuery.includes('p.permission_key') && effectivePermissionQuery.includes('LEFT JOIN gabah_permissions p') && effectivePermissionQuery.includes('p.is_active = TRUE') && !effectivePermissionQuery.includes('rp.permission_key FROM')],
   ['custom role creation accepts selected permissions atomically and validates the permission catalogue', createRoleRoute.includes('req.body?.permission_keys') && createRoleRoute.includes('withRbacTransaction') && createRoleRoute.includes('INSERT INTO gabah_role_permissions')],
   ['custom role creation rejects an empty permission selection at the API boundary', createRoleRoute.includes('permissionKeys.length === 0') && createRoleRoute.includes('minimal satu permission aktif')],
   ['custom roles cannot receive protected system authentication, audit, or superadmin permissions', createRoleRoute.includes('system.authentication') && createRoleRoute.includes('system.audit') && createRoleRoute.includes('system.super_admin') && server.includes("permission_key NOT IN ('system.authentication', 'system.audit', 'system.super_admin')")],
