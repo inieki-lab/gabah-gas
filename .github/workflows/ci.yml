@@ -106,6 +106,9 @@ jobs:
       - name: Organization model regression
         run: npm run test:org-model
 
+      - name: Division reference integrity regression
+        run: npm run test:division-reference-integrity
+
       - name: Asset managing-unit regression
         run: npm run test:t2b1
 

@@ -1660,11 +1660,14 @@ async function startServer() {
       const contractsCount = (db.contracts || []).filter(item => String(item.owner_division || '').toUpperCase() === code).length;
       const maintenanceCount = (db.maintenances || []).filter(item => String(item.owner_division || '').toUpperCase() === code).length;
       const loanCount = (db.loans || []).filter(item => String(item.owner_division || '').toUpperCase() === code).length;
-      const references = assetsCount + categoriesCount + usersCount + unitsCount + vendorsCount + contractsCount + maintenanceCount + loanCount;
+      // Tickets retain their routing category as a historical business reference.
+      // A division cannot be deleted while tickets still target that queue.
+      const ticketsCount = (db.tickets || []).filter(item => String(item.category || '').trim().toUpperCase() === code).length;
+      const references = assetsCount + categoriesCount + usersCount + unitsCount + vendorsCount + contractsCount + maintenanceCount + loanCount + ticketsCount;
       if (references > 0) {
         return res.status(400).json({
           success: false,
-          message: `Tidak dapat menghapus owner "${code}". Referensi: aset (${assetsCount}), kategori (${categoriesCount}), pegawai (${usersCount}), unit (${unitsCount}), vendor (${vendorsCount}), kontrak (${contractsCount}), maintenance (${maintenanceCount}), peminjaman (${loanCount}).`
+          message: `Tidak dapat menghapus owner "${code}". Referensi: aset (${assetsCount}), kategori (${categoriesCount}), pegawai (${usersCount}), unit (${unitsCount}), vendor (${vendorsCount}), kontrak (${contractsCount}), maintenance (${maintenanceCount}), peminjaman (${loanCount}), tiket (${ticketsCount}).`
         });
       }
 
