@@ -1232,13 +1232,6 @@ async function startServer() {
       delete user.temp_password;
       if (typeof user.authVersion === 'number') user.authVersion += 1;
 
-      GabahDomainService.recordAudit(
-        'USER_PASSWORD_SELF_CHANGED',
-        'Auth',
-        `Pengguna ${user.name} (${user.email}) mengganti kata sandinya sendiri; seluruh sesi lain dicabut`,
-        actor,
-        user.id
-      );
       if (!await persistMutationOrRespond(res)) {
         user.password_hash = previousCredentials.password_hash;
         user.password_salt = previousCredentials.password_salt;
@@ -1246,10 +1239,16 @@ async function startServer() {
         else user.temp_password = previousCredentials.temp_password;
         if (previousCredentials.authVersion === undefined) delete user.authVersion;
         else user.authVersion = previousCredentials.authVersion;
-        db.auditLogs.pop();
         return;
       }
 
+      GabahDomainService.recordAudit(
+        'USER_PASSWORD_SELF_CHANGED',
+        'Auth',
+        `Pengguna ${user.name} (${user.email}) mengganti kata sandinya sendiri; seluruh sesi lain dicabut`,
+        actor,
+        user.id
+      );
       // Rotate sessions only after the credential change is durably persisted.
       revokeUserSessions(user.id);
       const session = createSession(user.id, req);
