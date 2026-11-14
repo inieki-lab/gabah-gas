@@ -502,10 +502,23 @@ export class GabahDomainService {
       throw new Error('Akses ditolak: Anda tidak memiliki permission assign pada domain pemilik aset ini.');
     }
 
+    // Loan workflow is the sole authority for custody while a loan is approved
+    // or physically borrowed. Direct assignment/unassignment must not bypass it.
+    const activeLoan = (db.loans || []).find(loan =>
+      loan.asset_id === asset.id && ['approved', 'borrowed'].includes(loan.status)
+    );
+    if (activeLoan) {
+      throw Object.assign(
+        new Error(`Aset sedang terikat pinjaman ${activeLoan.loan_number} (${activeLoan.status}); selesaikan proses pinjaman terlebih dahulu.`),
+        { statusCode: 409 },
+      );
+    }
+
+    const normalizedTargetUserId = String(targetUserId ?? '').trim();
     const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
 
     // Support Unassign (Return to Pool/Warehouse as available/idle)
-    if (!targetUserId) {
+    if (!normalizedTargetUserId) {
       asset.assigned_to = undefined;
       asset.status = 'available';
       asset.updated_at = new Date().toISOString();
@@ -529,8 +542,10 @@ export class GabahDomainService {
       return asset;
     }
 
-    const targetUser = db.users.find(u => u.id === targetUserId);
-    if (!targetUser) throw new Error('User penerima tidak ditemukan');
+    const targetUser = db.users.find(u => u.id === normalizedTargetUserId && u.is_active);
+    if (!targetUser) {
+      throw Object.assign(new Error('User penerima tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
+    }
 
     asset.assigned_to = {
       id: targetUser.id,
@@ -608,6 +623,20 @@ export class GabahDomainService {
 
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.lifecycle')) {
       throw new Error('Akses ditolak: Anda tidak memiliki permission lifecycle pada domain pemilik aset ini.');
+    }
+
+    const allowedActions = ['repair', 'damaged', 'cannibalize', 'propose_disposal', 'approve_disposal', 'auction'] as const;
+    if (!allowedActions.includes(action as any)) {
+      throw Object.assign(new Error('Aksi lifecycle aset tidak valid.'), { statusCode: 400 });
+    }
+    const activeLoan = (db.loans || []).find(loan =>
+      loan.asset_id === asset.id && ['approved', 'borrowed'].includes(loan.status)
+    );
+    if (activeLoan) {
+      throw Object.assign(
+        new Error(`Lifecycle aset tidak dapat diubah selama pinjaman ${activeLoan.loan_number} berstatus ${activeLoan.status}.`),
+        { statusCode: 409 },
+      );
     }
 
     switch (action) {
