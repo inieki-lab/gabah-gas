@@ -917,9 +917,6 @@ async function startServer() {
       );
       const assignedAssets = (db.assets || []).filter(asset => asset.assigned_to?.id === targetId);
       if (activeBorrowerLoans.length > 0 || assignedAssets.length > 0) {
-        const summary = activeBorrowerLoans
-          .map(loan => `${loan.loan_number} (${loan.status})`)
-          .join(', ');
         return res.status(409).json({
           success: false,
           message: `Akun tidak dapat dihapus: ${activeBorrowerLoans.length} pinjaman aktif dan ${assignedAssets.length} aset masih tercatat pada pengguna. Selesaikan pengembalian atau alih penanggung jawab terlebih dahulu.`,
