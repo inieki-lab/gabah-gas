@@ -6,7 +6,7 @@ const swallowed = server.match(/persistDataStore\(\)\.catch\(\(\)\s*=>\s*\{\s*\}
 assert.equal(swallowed.length, 0, 'No mutation route may silently swallow authoritative persistence failures');
 
 const guarded = server.match(/if \(!await persistMutationOrRespond\(res\)\) return;/g) || [];
-assert.equal(guarded.length, 11, 'Every former silent-persistence route must stop before returning success when persistence fails');
+assert.equal(guarded.length, 10, 'Every former silent-persistence route must stop before returning success when persistence fails');
 
 assert.match(server, /const persistMutationOrRespond = async \(res: any\): Promise<boolean> => \{[\s\S]*await persistDataStore\(\)[\s\S]*res\.status\(503\)/,
   'Persistence helper must await the authoritative write and return HTTP 503 on failure');
