@@ -1,5 +1,8 @@
 ## [2026-11-13] — Require strict booleans in master-data APIs
 
+- User account updates now also reject non-boolean `is_active` values; a string such as `"false"` can no longer be coerced to `true` by JavaScript.
+- Added live HTTP regression coverage proving invalid string input leaves the account active and a real boolean `false` deactivates it.
+
 - Master category, job-level, organizational-unit, office-location, and physical asset-location APIs now reject string values for boolean flags instead of coercing values such as `"false"` to true.
 - Category loanability and active flags are validated on both create and update.
 - Added isolated live HTTP regression checks using disposable master-data fixtures.
