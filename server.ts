@@ -1976,7 +1976,8 @@ async function startServer() {
       }
       const allowUpdate = req.body?.allow_update === true;
 
-      const VALID_CONDITIONS = ['new', 'good', 'fair', 'poor', 'broken'];
+      const VALID_CONDITIONS = ['new', 'good', 'fair', 'poor', 'broken', 'excellent', 'damaged'];
+      const VALID_ASSET_STATUSES = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive', 'in_use', 'loaned', 'maintenance'];
       const VALID_DIVISIONS = (db.divisions || []).map(d => String(d.code).trim().toUpperCase());
       // CR-06: allowlist identik dengan PATCH /api/assets/:id
       const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
@@ -2023,7 +2024,19 @@ async function startServer() {
 
         let isLoanable: boolean | undefined = undefined;
         if (row.is_loanable !== undefined && String(row.is_loanable).trim() !== '') {
-          isLoanable = /^(true|1|ya|yes)$/i.test(String(row.is_loanable).trim());
+          const loanableText = String(row.is_loanable).trim().toLowerCase();
+          if (!['true', 'false', '1', '0', 'ya', 'tidak', 'yes', 'no'].includes(loanableText)) {
+            errors.push(`Baris ${rowNo}: Nilai is_loanable harus boolean (true/false).`);
+            continue;
+          }
+          isLoanable = ['true', '1', 'ya', 'yes'].includes(loanableText);
+        }
+        const requestedStatus = row.status === undefined || String(row.status).trim() === ''
+          ? undefined
+          : String(row.status).trim();
+        if (requestedStatus !== undefined && !VALID_ASSET_STATUSES.includes(requestedStatus)) {
+          errors.push(`Baris ${rowNo}: Status aset "${requestedStatus}" tidak valid.`);
+          continue;
         }
 
         const existing = (serial && db.assets.find(a => a.serial_number && a.serial_number.trim().toLowerCase() === serial.toLowerCase()))
@@ -2040,6 +2053,20 @@ async function startServer() {
             errors.push(`Baris ${rowNo}: ${existing.asset_number} ditolak. Permission assets.update dan scope owner "${existing.owner_division}" wajib dimiliki.`);
             continue;
           }
+          // The bulk-update path must enforce the same active-loan lock as
+          // PATCH /api/assets/:id; otherwise CSV import could bypass custody state.
+          const activeLoan = (db.loans || []).find(loan =>
+            loan.asset_id === existing.id && ['approved', 'borrowed'].includes(loan.status)
+          );
+          if (activeLoan) {
+            const changesStatus = requestedStatus !== undefined && requestedStatus !== existing.status;
+            const changesLoanability = isLoanable !== undefined && isLoanable !== existing.is_loanable;
+            if (changesStatus || changesLoanability) {
+              errors.push(`Baris ${rowNo}: ${existing.asset_number} tidak dapat mengubah status atau konfigurasi pinjam selama pinjaman ${activeLoan.loan_number} berstatus ${activeLoan.status}.`);
+              continue;
+            }
+          }
+
           // UPDATE path — allowlist eksplisit, asset_number & owner_division server-owned
           for (const key of UPDATE_FIELDS) {
             if (key === 'condition') {
@@ -2050,7 +2077,7 @@ async function startServer() {
               if (isLoanable !== undefined) (existing as any).is_loanable = isLoanable;
               continue;
             }
-            const value = row[key];
+            const value = key === 'status' ? requestedStatus : row[key];
             if (value !== undefined && String(value).trim() !== '') {
               (existing as any)[key] = typeof value === 'string' ? value.trim() : value;
             }
