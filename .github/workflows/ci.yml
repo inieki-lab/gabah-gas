@@ -74,6 +74,9 @@ jobs:
       - name: Production build (frontend + server bundle)
         run: npm run build
 
+      - name: Master boolean validation (live HTTP assertions)
+        run: npm run test:master-boolean-validation
+
       - name: Build production Docker image
         run: docker build --tag gabah-gas:ci .
 
