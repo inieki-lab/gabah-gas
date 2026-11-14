@@ -436,6 +436,40 @@ async function main() {
         && preservedLoan?.status === 'borrowed'
         && preservedAsset?.status === 'assigned');
 
+    // A separate employee with assigned custody but no active loan must
+    // also complete an audited transfer before deactivation/deletion.
+    const custodyTarget = await req(base, 'POST', '/api/users', {
+      token: admin.token,
+      body: {
+        name: 'Asset Custody Deletion Fixture',
+        email: `asset-custody-delete-${Date.now()}@example.test`,
+        role: 'Karyawan',
+        division: 'Umum',
+        department: 'QA Fixture',
+      },
+    });
+    const custodyUserId = custodyTarget.json?.data?.id;
+    const custodyAssign = custodyUserId
+      ? await req(base, 'POST', `/api/assets/${itAsset4.id}/assign`, {
+          token: admin.token,
+          body: { targetUserId: custodyUserId, reason: 'Custody deletion regression fixture' },
+        })
+      : { status: 0 };
+    const deactivateCustody = custodyUserId
+      ? await req(base, 'PATCH', `/api/users/${custodyUserId}`, { token: admin.token, body: { is_active: false } })
+      : { status: 0 };
+    const deleteCustody = custodyUserId
+      ? await req(base, 'DELETE', `/api/users/${custodyUserId}`, { token: admin.token })
+      : { status: 0 };
+    const custodyUsers = (await req(base, 'GET', '/api/users', { token: admin.token })).json?.data || [];
+    const custodyAssets = (await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || [];
+    const custodyAssetAfter = custodyAssets.find(a => a.id === itAsset4.id);
+    record('Assigned asset blocks deactivation and deletion without custody transfer', '409 + assigned user retained',
+      `assign ${custodyAssign.status}, deactivate ${deactivateCustody.status}, delete ${deleteCustody.status}, custodian ${custodyAssetAfter?.assigned_to?.id}`,
+      custodyAssign.status === 200 && deactivateCustody.status === 409 && deleteCustody.status === 409
+        && custodyUsers.some(u => u.id === custodyUserId)
+        && custodyAssetAfter?.assigned_to?.id === custodyUserId);
+
     // ---------- Summary ----------
     const total = results.length;
     const passed = results.filter(r => r.pass).length;
