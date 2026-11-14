@@ -146,7 +146,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
   const totalAssetCount = filteredAssets.length || 1;
 
-  // Breakdown per Division (IT, GA, SC, PIBC) — mengikuti filter aktif
+  // Breakdown per Division (IT, GA, RPC, PIBC) — mengikuti filter aktif
   const itAssets = filteredAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
   const gaAssets = filteredAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
   const scAssets = filteredAssets.filter(a => a.owner_division === 'RPC' || a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('RPC-') || a.asset_number?.startsWith('SC-'));
@@ -465,7 +465,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi SC (Supply Chain &amp; Gudang Beras)</span>
+                <span>Divisi RPC</span>
                 <span className="font-bold text-slate-900">{scAssets.length} Unit ({Math.round((scAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -575,7 +575,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
                       </span>
                     ) : group.code === 'MSN' ? (
                       <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200 text-[10px]">
-                        SC / PIBC (Pabrik &amp; Timbangan)
+                        RPC / PIBC (operasional &amp; timbangan)
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold border border-slate-200 text-[10px]">
