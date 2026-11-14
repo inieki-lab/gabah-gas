@@ -84,9 +84,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
     (departmentFilter === 'all' || (t.reporter_department || '') === departmentFilter)
   ), [safeTickets, divisionFilter, departmentFilter]);
 
-  const filteredMaintenances = useMemo(() => safeMaintenances.filter(m =>
-    divisionFilter === 'all' || normalizeDivision(m.owner_division) === divisionFilter
-  ), [safeMaintenances, divisionFilter]);
+  const filteredMaintenances = useMemo(() => safeMaintenances.filter(m => {
+    const matchesDivision = divisionFilter === 'all' || normalizeDivision(m.owner_division) === divisionFilter;
+    // Maintenance records have no department field; when a department filter is
+    // selected, attribute the schedule to the linked asset's current custodian.
+    const linkedAsset = safeAssets.find(asset => asset.id === m.asset_id);
+    const matchesDepartment = departmentFilter === 'all' ||
+      (linkedAsset?.assigned_to?.department || '') === departmentFilter;
+    return matchesDivision && matchesDepartment;
+  }), [safeMaintenances, safeAssets, divisionFilter, departmentFilter]);
 
   const isFilterActive = divisionFilter !== 'all' || departmentFilter !== 'all';
 
@@ -345,15 +351,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
             </div>
             <div>
               <h3 className="font-extrabold text-base text-slate-900">
-                Valuasi Nilai Buku &amp; Depresiasi Aset (PSAK 16 - Straight Line)
+                Estimasi Nilai Buku &amp; Penyusutan Indikatif Aset
               </h3>
               <p className="text-xs text-slate-500">
-                Kalkulasi penyusutan sistematis aktiva tetap untuk audit keuangan tahunan BUMD.
+                Simulasi internal metode garis lurus berdasarkan asumsi umur manfaat sistem; bukan pembukuan atau perhitungan PSAK 16.
               </p>
             </div>
           </div>
           <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 w-fit">
-            Metode Garis Lurus (Straight Line)
+            Estimasi garis lurus (asumsi sistem)
           </span>
         </div>
 
@@ -361,27 +367,27 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Nilai Buku Bersih (Net Book Value)</div>
             <div className="text-2xl font-black text-emerald-700">{formatRupiah(totalNetBookValue)}</div>
-            <div className="text-[10px] text-slate-500">Sisa nilai aktiva berjalan saat ini</div>
+            <div className="text-[10px] text-slate-500">Estimasi nilai setelah penyusutan indikatif</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Akumulasi Beban Penyusutan</div>
             <div className="text-2xl font-black text-rose-600">{formatRupiah(totalAccumulatedDepreciation)}</div>
-            <div className="text-[10px] text-slate-500">Total depresiasi terbukukan</div>
+            <div className="text-[10px] text-slate-500">Akumulasi hasil simulasi, bukan jurnal pembukuan</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Beban Penyusutan / Bulan</div>
             <div className="text-xl font-black text-slate-900">{formatRupiah(totalMonthlyDepreciation)}</div>
-            <div className="text-[10px] text-slate-500">Beban amortisasi &amp; depresiasi bulanan</div>
+            <div className="text-[10px] text-slate-500">Estimasi penyusutan bulanan; bukan amortisasi lisensi</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Rasio Penyusutan Korporat</div>
+            <div className="text-slate-500 text-[11px] font-medium">Rasio Penyusutan Indikatif</div>
             <div className="text-2xl font-black text-amber-600">
               {totalAssetValue > 0 ? Math.round((totalAccumulatedDepreciation / totalAssetValue) * 100) : 0}%
             </div>
-            <div className="text-[10px] text-slate-500">Dari total biaya perolehan aktiva</div>
+            <div className="text-[10px] text-slate-500">Estimasi terhadap nilai perolehan aset</div>
           </div>
         </div>
       </div>
@@ -423,27 +429,27 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Estimasi / Realisasi Biaya Servis</div>
+            <div className="text-slate-500 text-[11px] font-medium">Biaya Pemeliharaan (Aktual / Estimasi)</div>
             <div className="text-xl font-black text-amber-700">{formatRupiah(totalMaintenanceBudget)}</div>
-            <div className="text-[10px] text-slate-500">Anggaran OPEX perawatan aktiva</div>
+            <div className="text-[10px] text-slate-500">Mengutamakan biaya aktual; jika kosong memakai estimasi</div>
           </div>
         </div>
       </div>
 
-      {/* Visual Chart Breakdown Simulation */}
+      {/* Visual chart breakdown from current records */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Division Distribution */}
         <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
           <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
             <PieChart className="w-4 h-4 text-emerald-600" />
-            Distribusi Aset Berdasarkan Devisi Korporat
+            Distribusi Aset Berdasarkan Divisi Pemilik
           </h3>
 
           <div className="space-y-3 text-xs">
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi IT (Hardware &amp; Software)</span>
+                <span>Divisi IT (Hardware &amp; Software)</span>
                 <span className="font-bold text-slate-900">{itAssets.length} Unit ({Math.round((itAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -454,7 +460,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi GA (General Affair &amp; Fasilitas)</span>
+                <span>Divisi GA (General Affairs &amp; Fasilitas)</span>
                 <span className="font-bold text-slate-900">{gaAssets.length} Unit ({Math.round((gaAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -476,7 +482,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
             <div>
               <div className="flex justify-between text-slate-700 mb-1 font-medium">
-                <span>Devisi PIBC (Pasar Induk Beras Cipinang)</span>
+                <span>Divisi PIBC (Pasar Induk Beras Cipinang)</span>
                 <span className="font-bold text-slate-900">{pibcAssets.length} Unit ({Math.round((pibcAssets.length / totalAssetCount) * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
@@ -531,10 +537,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           <div>
             <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
               <PackageCheck className="w-5 h-5 text-emerald-600" />
-              Rekapitulasi 9 Jenis Aktiva Tetap Standar Korporat
+              Rekapitulasi Kategori Aset Berdasarkan Kode Saat Ini
             </h3>
             <p className="text-xs text-slate-500">
-              Klasifikasi taksonomi resmi akuntansi aktiva PT Food Station Tjipinang Jaya.
+              Pengelompokan indikatif dari category_code dan nomor aset yang tersimpan; bukan standar akuntansi atau daftar kategori resmi.
             </p>
           </div>
           <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 border border-slate-200">
@@ -548,7 +554,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
               <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                 <th className="py-2.5 px-3">Kode</th>
                 <th className="py-2.5 px-3">Klasifikasi Aktiva Tetap</th>
-                <th className="py-2.5 px-3">Kewenangan / Devisi Pemilik</th>
+                <th className="py-2.5 px-3">Kategori / Divisi Pemilik</th>
                 <th className="py-2.5 px-3 text-center">Jumlah Unit</th>
                 <th className="py-2.5 px-3 text-right">Nilai Perolehan</th>
               </tr>
