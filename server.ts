@@ -759,6 +759,9 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
+      if (is_active !== undefined && typeof is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'Status pengguna harus berupa boolean.' });
+      }
       const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
       const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
