@@ -2467,6 +2467,25 @@ async function startServer() {
     }
   });
 
+  const validateMaintenanceInput = (body: any): string | null => {
+    const frequencies = ['weekly', 'monthly', 'quarterly', 'biannual', 'annual', 'one_time'];
+    const statuses = ['scheduled', 'in_progress', 'completed', 'overdue', 'cancelled'];
+    if (body.frequency !== undefined && !frequencies.includes(body.frequency)) return 'Frekuensi maintenance tidak valid.';
+    if (body.status !== undefined && !statuses.includes(body.status)) return 'Status maintenance tidak valid.';
+    if (body.scheduled_date !== undefined) {
+      const date = body.scheduled_date;
+      if (typeof date !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || new Date(date).toISOString().slice(0, 10) !== date) return 'Tanggal maintenance harus berupa tanggal kalender valid (YYYY-MM-DD).';
+    }
+    for (const field of ['estimated_cost', 'actual_cost']) {
+      if (body[field] !== undefined && (typeof body[field] !== 'number' || !Number.isFinite(body[field]) || body[field] < 0)) return 'Biaya maintenance harus berupa angka non-negatif.';
+    }
+    for (const [field, max] of [['title', 180], ['technician_name', 180], ['notes', 4000]] as const) {
+      if (body[field] !== undefined && (typeof body[field] !== 'string' || body[field].length > max)) return `Field ${field} harus berupa teks maksimal ${max} karakter.`;
+    }
+    if (body.checklist !== undefined && (!Array.isArray(body.checklist) || body.checklist.length > 100 || body.checklist.some((item: unknown) => typeof item !== 'string' || item.length > 300))) return 'Checklist harus berupa daftar teks (maksimal 100 item, 300 karakter per item).';
+    return null;
+  };
+
   // Maintenance & Calibration Schedules
   app.get('/api/maintenances', (req, res) => {
     const actor = getActor(req);
@@ -2506,6 +2525,8 @@ async function startServer() {
 
   app.post('/api/maintenances', (req, res) => {
     const actor = getActor(req);
+    const validationError = validateMaintenanceInput(req.body || {});
+    if (validationError) return res.status(400).json({ success: false, message: validationError });
     // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
     // GA) secara eksplisit; mode PostgreSQL beralih ke permission dinamis
     // `maintenances.create` (Stage 13F, seed 020 mirror daftar yang sama).
@@ -2559,6 +2580,8 @@ async function startServer() {
 
   app.patch('/api/maintenances/:id', (req, res) => {
     const actor = getActor(req);
+    const validationError = validateMaintenanceInput(req.body || {});
+    if (validationError) return res.status(400).json({ success: false, message: validationError });
     // RBAC: file-store mempertahankan allowlist legacy; PostgreSQL beralih ke
     // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
     if (isPostgresPersistenceActive()) {
