@@ -47,32 +47,45 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
+  const normalizeDivision = (value?: string) => {
+    const normalized = String(value || 'Umum').trim();
+    return ['SC', 'SUPPLY CHAIN'].includes(normalized.toUpperCase()) ? 'RPC' : normalized;
+  };
   const divisionOptions = useMemo(
-    () => Array.from(new Set(safeAssets.map(a => a.owner_division || 'Umum'))).sort(),
-    [safeAssets]
+    () => Array.from(new Set([
+      ...safeAssets.map(a => normalizeDivision(a.owner_division)),
+      ...safeLoans.map(l => normalizeDivision(l.owner_division || l.asset_number?.split('-')[0])),
+      ...safeTickets.map(t => normalizeDivision(t.category)),
+      ...safeMaintenances.map(m => normalizeDivision(m.owner_division)),
+    ])).sort(),
+    [safeAssets, safeLoans, safeTickets, safeMaintenances]
   );
   const departmentOptions = useMemo(
-    () => Array.from(new Set(safeAssets.map(a => a.assigned_to?.department).filter(Boolean) as string[])).sort(),
-    [safeAssets]
+    () => Array.from(new Set([
+      ...safeAssets.map(a => a.assigned_to?.department),
+      ...safeLoans.map(l => l.borrower_department),
+      ...safeTickets.map(t => t.reporter_department),
+    ].filter((value): value is string => Boolean(value && value.trim())))).sort(),
+    [safeAssets, safeLoans, safeTickets]
   );
 
   const filteredAssets = useMemo(() => safeAssets.filter(a =>
-    (divisionFilter === 'all' || (a.owner_division || 'Umum') === divisionFilter) &&
+    (divisionFilter === 'all' || normalizeDivision(a.owner_division) === divisionFilter) &&
     (departmentFilter === 'all' || (a.assigned_to?.department || '') === departmentFilter)
   ), [safeAssets, divisionFilter, departmentFilter]);
 
   const filteredLoans = useMemo(() => safeLoans.filter(l =>
-    (divisionFilter === 'all' || (l.owner_division || l.asset_number?.split('-')[0]) === divisionFilter) &&
+    (divisionFilter === 'all' || normalizeDivision(l.owner_division || l.asset_number?.split('-')[0]) === divisionFilter) &&
     (departmentFilter === 'all' || (l.borrower_department || '') === departmentFilter)
   ), [safeLoans, divisionFilter, departmentFilter]);
 
   const filteredTickets = useMemo(() => safeTickets.filter(t =>
-    (divisionFilter === 'all' || t.category === divisionFilter) &&
+    (divisionFilter === 'all' || normalizeDivision(t.category) === divisionFilter) &&
     (departmentFilter === 'all' || (t.reporter_department || '') === departmentFilter)
   ), [safeTickets, divisionFilter, departmentFilter]);
 
   const filteredMaintenances = useMemo(() => safeMaintenances.filter(m =>
-    divisionFilter === 'all' || (m.owner_division || 'Umum') === divisionFilter
+    divisionFilter === 'all' || normalizeDivision(m.owner_division) === divisionFilter
   ), [safeMaintenances, divisionFilter]);
 
   const isFilterActive = divisionFilter !== 'all' || departmentFilter !== 'all';
@@ -136,7 +149,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   // Breakdown per Division (IT, GA, SC, PIBC) — mengikuti filter aktif
   const itAssets = filteredAssets.filter(a => a.owner_division === 'IT' || a.asset_number?.startsWith('IT-'));
   const gaAssets = filteredAssets.filter(a => a.owner_division === 'GA' || a.asset_number?.startsWith('GA-'));
-  const scAssets = filteredAssets.filter(a => a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('SC-'));
+  const scAssets = filteredAssets.filter(a => a.owner_division === 'RPC' || a.owner_division === 'SC' || a.owner_division === 'Supply Chain' || a.asset_number?.startsWith('RPC-') || a.asset_number?.startsWith('SC-'));
   const pibcAssets = filteredAssets.filter(a => a.owner_division === 'PIBC' || a.asset_number?.startsWith('PIBC-'));
 
   const itValue = itAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
@@ -319,7 +332,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="text-xs font-bold uppercase text-slate-500">Total Nilai Perolehan Aset</div>
           <div className="text-2xl font-black text-indigo-700 mt-2">{formatRupiah(totalAssetValue)}</div>
-          <div className="text-xs text-slate-600 mt-1 font-medium">IT + GA + Lisensi Enterprise</div>
+          <div className="text-xs text-slate-600 mt-1 font-medium">Nilai perolehan seluruh aset dalam cakupan filter aktif</div>
         </div>
       </div>
 
@@ -397,16 +410,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Total Jadwal Pemeliharaan</div>
-            <div className="text-2xl font-black text-slate-900">{safeMaintenances.length} Jadwal</div>
-            <div className="text-[10px] text-slate-500">Mencakup IT, GA, Supply Chain, &amp; PIBC</div>
+            <div className="text-2xl font-black text-slate-900">{filteredMaintenances.length} Jadwal</div>
+            <div className="text-[10px] text-slate-500">Mengikuti data dan filter divisi yang tersedia</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
             <div className="text-slate-500 text-[11px] font-medium">Realisasi Selesai / On-Track</div>
             <div className="text-2xl font-black text-emerald-700">
-              {completedMaintenanceCount} Selesai ({safeMaintenances.length > 0 ? Math.round((completedMaintenanceCount / safeMaintenances.length) * 100) : 100}%)
+              {filteredMaintenances.length === 0 ? '—' : `${completedMaintenanceCount} Selesai (${Math.round((completedMaintenanceCount / filteredMaintenances.length) * 100)}%)`}
             </div>
-            <div className="text-[10px] text-emerald-600 font-medium">Aset dalam kondisi prima siap operasi</div>
+            <div className="text-[10px] text-slate-500 font-medium">{filteredMaintenances.length === 0 ? 'Belum ada data jadwal pemeliharaan' : 'Proporsi jadwal berstatus selesai'}</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
