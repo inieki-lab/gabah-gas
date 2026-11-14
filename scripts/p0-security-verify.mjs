@@ -220,6 +220,8 @@ async function main() {
       });
       const assetId = create.json?.data?.id;
       if (assetId) {
+        const caseVariantRead = await req(base, 'GET', `/API/ASSETS/${assetId}/`, { token: adminToken });
+        record('Security path normalization preserves case-sensitive asset ID', '200', `HTTP ${caseVariantRead.status}`, caseVariantRead.status === 200);
         const mass = await req(base, 'PATCH', `/api/assets/${assetId}`, {
           token: adminToken,
           body: {
