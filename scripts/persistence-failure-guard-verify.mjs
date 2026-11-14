@@ -17,4 +17,21 @@ assert.ok(passwordRoute.indexOf('persistMutationOrRespond(res)') < passwordRoute
 assert.match(passwordRoute, /previousCredentials[\s\S]*user\.password_hash = previousCredentials\.password_hash/,
   'Password credentials must be restored if persistence fails');
 
+const services = fs.readFileSync('server/services.ts', 'utf8');
+const roomMutators = [
+  'requestRoomReservation', 'approveRoomReservation', 'rejectRoomReservation',
+  'checkinRoomReservation', 'checkoutRoomReservation', 'cancelRoomReservation',
+  'updateMeetingRoom', 'createMeetingType', 'updateMeetingType', 'deleteMeetingType',
+  'createMeetingFacility', 'updateMeetingFacility', 'deleteMeetingFacility',
+];
+const roomServiceStart = services.indexOf('static async requestRoomReservation');
+const roomServiceTail = services.slice(roomServiceStart);
+assert.ok(roomServiceStart >= 0, 'Room mutation service methods must be async');
+assert.equal((roomServiceTail.match(/persistDataStore\\(\\)\\.catch\\(err => console\\.warn/g) || []).length, 0,
+  'Room/facility mutation services must await persistence rather than log-and-return');
+for (const method of roomMutators) {
+  assert.ok(services.includes('static async ' + method + '('), method + ' must be asynchronous');
+  assert.ok(server.includes('await GabahDomainService.' + method + '('), method + ' route must await the asynchronous domain service');
+}
+
 console.log('Persistence failure response contract: PASS');
