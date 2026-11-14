@@ -70,8 +70,12 @@ const PUBLIC_API_PATHS = [
 ];
 
 export function gabahSecurityMiddleware(req: Request, res: Response, next: NextFunction) {
+  // Express routes are case-insensitive and accept a trailing slash by default.
+  // Normalize paths before authorization comparisons so route variants cannot
+  // bypass exact-path security checks.
+  const normalizedPath = req.path.toLowerCase().replace(/\/+$/, '') || '/';
   // Only intercept API calls
-  if (!req.path.startsWith('/api/')) return next();
+  if (!normalizedPath.startsWith('/api/')) return next();
 
   // General API rate limiter across all endpoints (mitigates brute-force, scraping, and enumeration)
   const clientIp = (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || '127.0.0.1').split(',')[0].trim();
@@ -90,7 +94,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   }
 
   // Allow public endpoints
-  if (PUBLIC_API_PATHS.includes(req.path)) return next();
+  if (PUBLIC_API_PATHS.includes(normalizedPath)) return next();
 
   // Validate server-side session token
   const authResult = authenticateRequest(req);
@@ -122,8 +126,8 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   // identity switching must never be usable to escape the read-only gate.
   if (isAuditorActor(actor) && req.method !== 'GET') {
     const allowedAuditorActions = ['/api/auth/logout', '/api/notifications/read-all'];
-    const isNotificationRead = req.path.match(/^\/api\/notifications\/[^/]+\/read$/);
-    if (!allowedAuditorActions.includes(req.path) && !isNotificationRead) {
+    const isNotificationRead = normalizedPath.match(/^\/api\/notifications\/[^/]+\/read$/);
+    if (!allowedAuditorActions.includes(normalizedPath) && !isNotificationRead) {
       return res.status(403).json({
         success: false,
         message: 'Akses ditolak: Peran Auditor memiliki hak akses Read-Only dan dilarang membuat atau mengubah data.',
@@ -131,26 +135,26 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     }
   }
 
-  if (req.path === '/api/audit-logs' && !isGlobalObserver(actor)) {
+  if (normalizedPath === '/api/audit-logs' && !isGlobalObserver(actor)) {
     return res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });
   }
-  if (req.path === '/api/reconciliation' && !isGlobalObserver(actor)) {
+  if (normalizedPath === '/api/reconciliation' && !isGlobalObserver(actor)) {
     return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
   }
 
-  const assetMatch = req.path.match(/^\/api\/assets\/([^/]+)/);
+  const assetMatch = normalizedPath.match(/^\/api\/assets\/([^/]+)/);
   // '/bulk-import' adalah operasi collection-level (bukan asset id);
   // authority per baris ditegakkan di handler + domain service.
   if (assetMatch && assetMatch[1] !== 'bulk-import' && !canSeeAsset(actor, assetMatch[1])) {
     return res.status(403).json({ success: false, message: 'Aset berada di luar scope pengguna.' });
   }
 
-  const ticketMatch = req.path.match(/^\/api\/tickets\/([^/]+)\/status$/);
+  const ticketMatch = normalizedPath.match(/^\/api\/tickets\/([^/]+)\/status$/);
   if (ticketMatch && !canManageTicket(actor, ticketMatch[1])) {
     return res.status(403).json({ success: false, message: 'Pengguna tidak berwenang mengubah tiket ini.' });
   }
 
-  if (req.path === '/api/dashboard/attention') {
+  if (normalizedPath === '/api/dashboard/attention') {
     const originalJson = res.json.bind(res);
     res.json = ((body: any) => {
       if (body && Array.isArray(body.data)) body = { ...body, data: scopedAttention(actor, body.data) };
