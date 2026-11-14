@@ -91,6 +91,9 @@ jobs:
       - name: P0 security verification (live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
 
+      - name: User role validation and persistence integrity
+        run: npm run test:user-role-validation
+
       - name: User directory read scope verification
         run: node scripts/rbac-scoping-verify.mjs
 
