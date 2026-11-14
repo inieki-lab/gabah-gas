@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ROLE_NAVIGATION, getDefaultNavTabForRole, isNavTabAllowedForRole } from '../src/navigation/roleNavigation';
+import { ROLE_NAVIGATION, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../src/navigation/roleNavigation';
 
 const expectedRoles = [
   'Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas',
@@ -65,6 +65,12 @@ assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'reports');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loans.read']), 'tickets');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
+
+// Legacy display labels must not override PostgreSQL effective superadmin capabilities.
+assert.equal(isSuperadminNavigationAllowed('Admin GABAH', false, ['dashboard.read']), false);
+assert.ok(isSuperadminNavigationAllowed('Admin GABAH', true, ['dashboard.read']));
+assert.ok(isSuperadminNavigationAllowed('Custom Role' as any, false, ['*']));
+assert.ok(isSuperadminNavigationAllowed('Admin GABAH', false, undefined));
 
 
 console.log('Role navigation policy: PASS (9 roles, explicit allow/deny checks)');
