@@ -3296,12 +3296,12 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingRooms() });
   });
 
-  app.patch('/api/meeting-rooms/:id', (req, res) => {
+  app.patch('/api/meeting-rooms/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_rooms.update')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -3387,12 +3387,12 @@ async function startServer() {
     res.json({ success: true, data });
   });
 
-  app.post('/api/room-reservations', (req, res) => {
+  app.post('/api/room-reservations', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.create')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.requestRoomReservation(req.body, actor);
+      const created = await GabahDomainService.requestRoomReservation(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
       // RBAC: preserve domain-service status codes — 403 for override/interupsi
@@ -3407,60 +3407,60 @@ async function startServer() {
     }
   });
 
-  app.post('/api/room-reservations/:id/approve', (req, res) => {
+  app.post('/api/room-reservations/:id/approve', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.approve')) return;
     const actor = getActor(req);
-      const approved = GabahDomainService.approveRoomReservation(req.params.id, actor);
+      const approved = await GabahDomainService.approveRoomReservation(req.params.id, actor);
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/reject', (req, res) => {
+  app.post('/api/room-reservations/:id/reject', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.reject')) return;
     const actor = getActor(req);
-      const rejected = GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
+      const rejected = await GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
       res.json({ success: true, data: rejected });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/checkin', (req, res) => {
+  app.post('/api/room-reservations/:id/checkin', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.checkin')) return;
     const actor = getActor(req);
-      const checkedIn = GabahDomainService.checkinRoomReservation(req.params.id, actor);
+      const checkedIn = await GabahDomainService.checkinRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedIn });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/checkout', (req, res) => {
+  app.post('/api/room-reservations/:id/checkout', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.checkout')) return;
     const actor = getActor(req);
-      const checkedOut = GabahDomainService.checkoutRoomReservation(req.params.id, actor);
+      const checkedOut = await GabahDomainService.checkoutRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedOut });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/cancel', (req, res) => {
+  app.post('/api/room-reservations/:id/cancel', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.cancel')) return;
     const actor = getActor(req);
-      const cancelled = GabahDomainService.cancelRoomReservation(req.params.id, actor);
+      const cancelled = await GabahDomainService.cancelRoomReservation(req.params.id, actor);
       res.json({ success: true, data: cancelled });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -3474,36 +3474,36 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingTypes() });
   });
 
-  app.post('/api/meeting-types', (req, res) => {
+  app.post('/api/meeting-types', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.createMeetingType(req.body, actor);
+      const created = await GabahDomainService.createMeetingType(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.patch('/api/meeting-types/:id', (req, res) => {
+  app.patch('/api/meeting-types/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.delete('/api/meeting-types/:id', (req, res) => {
+  app.delete('/api/meeting-types/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const result = GabahDomainService.deleteMeetingType(req.params.id, actor);
+      const result = await GabahDomainService.deleteMeetingType(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -3517,36 +3517,36 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingFacilities() });
   });
 
-  app.post('/api/meeting-facilities', (req, res) => {
+  app.post('/api/meeting-facilities', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.createMeetingFacility(req.body, actor);
+      const created = await GabahDomainService.createMeetingFacility(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.patch('/api/meeting-facilities/:id', (req, res) => {
+  app.patch('/api/meeting-facilities/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.delete('/api/meeting-facilities/:id', (req, res) => {
+  app.delete('/api/meeting-facilities/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const result = GabahDomainService.deleteMeetingFacility(req.params.id, actor);
+      const result = await GabahDomainService.deleteMeetingFacility(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
