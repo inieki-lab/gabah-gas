@@ -1,3 +1,12 @@
+## [2026-11-14] — Preserve asset custody during user offboarding
+
+- User deactivation and deletion now return HTTP 409 while the user has active loans or assets assigned to their custody.
+- Removed automatic asset unassignment and fabricated "available" status during account deletion.
+- Assets must be returned or transferred through the audited asset workflow before offboarding can complete.
+- Added regression coverage for assigned-asset deactivation/deletion attempts.
+
+---
+
 ## [2026-11-13] — Preserve asset and borrower integrity across loan lifecycle
 
 - Loan requests require an available loanable asset and a real calendar date range.
