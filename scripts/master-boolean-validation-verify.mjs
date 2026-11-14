@@ -28,6 +28,15 @@ async function main(){
     const token=login.json?.data?.token||login.json?.token;
     record('Admin login','token',token?'token issued':`HTTP ${login.status}`,Boolean(token));if(!token)throw new Error('Admin login failed');
     const stamp=Date.now().toString().slice(-7);
+    const userEmail=`qa-boolean-${stamp}@example.test`;
+    const userCreate=await req(base,'POST','/api/users',{token,body:{name:'QA Boolean User',email:userEmail,role:'Karyawan',division:'IT',department:'QA'}});
+    const userId=userCreate.json?.data?.id;
+    const userBad=userId?await req(base,'PATCH',`/api/users/${encodeURIComponent(userId)}`,{token,body:{is_active:'false'}}):{status:0};
+    const userList=(await req(base,'GET','/api/users',{token})).json?.data||[];
+    const userAfterBad=userList.find(x=>x.id===userId);
+    record('User update rejects string is_active without deactivation','400 + active true',`create ${userCreate.status}, patch ${userBad.status}, active ${userAfterBad?.is_active}`,userCreate.status===201&&userBad.status===400&&userAfterBad?.is_active===true);
+    const userValid=userId?await req(base,'PATCH',`/api/users/${encodeURIComponent(userId)}`,{token,body:{is_active:false}}):{status:0};
+    record('User update accepts real boolean is_active','200 + inactive',`HTTP ${userValid.status} + ${userValid.json?.data?.is_active}`,userValid.status===200&&userValid.json?.data?.is_active===false);
     const job=await req(base,'POST','/api/master/job-levels',{token,body:{code:`QA${stamp}`,label:'QA Boolean Fixture'}});
     const jobId=job.json?.data?.code;
     const jobBad=jobId?await req(base,'PATCH',`/api/master/job-levels/${jobId}`,{token,body:{is_active:'false'}}):{status:0};
