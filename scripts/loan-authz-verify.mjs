@@ -153,6 +153,38 @@ async function main() {
     const itAsset4 = await mkAsset('HLT', 'IT', 'LoanAuthz IT Laptop 4');
     const gaAsset1 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 1');
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
+
+    // Asset creation must never silently ignore a missing or inactive custodian.
+    const inactiveCustodian = await req(base, 'POST', '/api/users', {
+      token: admin.token,
+      body: {
+        name: 'Inactive Initial Custodian Fixture',
+        email: `inactive-initial-custodian-${Date.now()}@example.test`,
+        role: 'Karyawan',
+        division: 'Umum',
+        department: 'QA Fixture',
+      },
+    });
+    const inactiveCustodianId = inactiveCustodian.json?.data?.id;
+    const deactivateInitialCustodian = inactiveCustodianId
+      ? await req(base, 'PATCH', `/api/users/${inactiveCustodianId}`, { token: admin.token, body: { is_active: false } })
+      : { status: 0 };
+    const rejectedInitialAssignment = inactiveCustodianId
+      ? await req(base, 'POST', '/api/assets', {
+          token: admin.token,
+          body: {
+            category_name_or_code: 'HLT',
+            owner_division: 'IT',
+            name: 'Must Not Create With Inactive Custodian',
+            assigned_to_user_id: inactiveCustodianId,
+          },
+        })
+      : { status: 0 };
+    const noOrphanedInitialAsset = !(((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || [])
+      .some(asset => asset.name === 'Must Not Create With Inactive Custodian'));
+    record('Asset creation rejects inactive initial custodian without creating an orphan asset', '404 + no asset created',
+      `deactivate ${deactivateInitialCustodian.status}, create ${rejectedInitialAssignment.status}, absent ${noOrphanedInitialAsset}`,
+      deactivateInitialCustodian.status === 200 && rejectedInitialAssignment.status === 404 && noOrphanedInitialAsset);
     record('Setup: 5 loanable fixtures created (4 IT + 2 GA)', 'ids issued',
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].filter(a => a.id).length + ' ids',
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2].every(a => a.id));
