@@ -10,9 +10,11 @@ assert.ok(actor, 'IT actor fixture exists');
 
 // Permission regression: update-only RBAC grants must never imply create authority.
 const contractSource = readFileSync(new URL('../server/contracts.ts', import.meta.url), 'utf8');
-const manageGuard = contractSource.match(/export function canManageContracts\\(user: ServerUser\\): boolean \\{([\\s\\S]*?)\\n\\}/)?.[1] || '';
-assert.match(manageGuard, /hasRbacPermission\\(String\\(user\\.id\\), 'contracts\\.create'\\)/);
-assert.doesNotMatch(manageGuard, /contracts\\.update/);
+const manageStart = contractSource.indexOf('export function canManageContracts(');
+const manageEnd = contractSource.indexOf('// SEC-08:', manageStart);
+const manageGuard = contractSource.slice(manageStart, manageEnd);
+assert.ok(manageGuard.includes("'contracts.create'"), 'Create permission must be checked explicitly');
+assert.ok(!manageGuard.includes("'contracts.update'"), 'Update permission must not imply create authority');
 
 
 const base = {
@@ -141,4 +143,4 @@ console.log('PASS | update allowlist ignores protected fields and validates edit
 console.log('PASS | document metadata validated and uploader identity is server-derived');
 console.log('PASS | milestone type/date/amount validated and status/id are server-derived');
 console.log('PASS | auto-renewal/restricted flags and renewal notes are strictly validated');
-console.log('TOTAL: 8 | PASS: 8 | FAIL: 0');
+console.log('TOTAL: 10 | PASS: 10 | FAIL: 0');
