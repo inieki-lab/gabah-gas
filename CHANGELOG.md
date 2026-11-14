@@ -1,3 +1,11 @@
+## [2026-11-14] — Validate user roles before account persistence
+
+- User create/update APIs now accept only the canonical application role labels defined by the server-side user model.
+- Unknown or non-string role values are rejected before mutating the user record, preventing an account from being persisted before primary RBAC synchronization fails.
+- Added live HTTP regression coverage for both create and update paths in the P0 security verification suite.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
