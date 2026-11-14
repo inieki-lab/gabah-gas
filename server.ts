@@ -807,6 +807,23 @@ async function startServer() {
       const privilegeChanged = role !== undefined && primaryRole !== targetUser.role;
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
 
+      // Personnel offboarding must not hide unresolved physical custody.
+      // Keep the account active until its loan requests and assigned assets
+      // have been returned/transferred through their own audited workflows.
+      if (accountDeactivated) {
+        const activeLoans = (db.loans || []).filter(loan =>
+          loan.borrower_id === targetUser.id
+          && ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(loan.status)
+        );
+        const assignedAssets = (db.assets || []).filter(asset => asset.assigned_to?.id === targetUser.id);
+        if (activeLoans.length || assignedAssets.length) {
+          return res.status(409).json({
+            success: false,
+            message: `Akun belum dapat dinonaktifkan: ${activeLoans.length} pinjaman aktif dan ${assignedAssets.length} aset masih tercatat pada pengguna. Selesaikan pengembalian atau alih penanggung jawab terlebih dahulu.`,
+          });
+        }
+      }
+
       if (role !== undefined) {
         targetUser.role = primaryRole;
         const roleLabels: Record<string, string> = {
@@ -898,29 +915,20 @@ async function startServer() {
         loan.borrower_id === targetId
         && ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(loan.status)
       );
-      if (activeBorrowerLoans.length > 0) {
+      const assignedAssets = (db.assets || []).filter(asset => asset.assigned_to?.id === targetId);
+      if (activeBorrowerLoans.length > 0 || assignedAssets.length > 0) {
         const summary = activeBorrowerLoans
           .map(loan => `${loan.loan_number} (${loan.status})`)
           .join(', ');
         return res.status(409).json({
           success: false,
-          message: `Akun tidak dapat dihapus karena masih memiliki pinjaman aktif: ${summary}. Selesaikan pembatalan atau pengembalian fisik terlebih dahulu.`,
+          message: `Akun tidak dapat dihapus: ${activeBorrowerLoans.length} pinjaman aktif dan ${assignedAssets.length} aset masih tercatat pada pengguna. Selesaikan pengembalian atau alih penanggung jawab terlebih dahulu.`,
         });
       }
 
       if (targetUser.is_active && isRbacSuperadmin(targetUser.id)
         && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
         return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh dihapus.' });
-      }
-
-      // Auto unassign any assets assigned to this user back to available pool
-      let releasedAssetsCount = 0;
-      for (const a of db.assets) {
-        if (a.assigned_to?.id === targetId) {
-          a.status = 'available';
-          a.assigned_to = null;
-          releasedAssetsCount++;
-        }
       }
 
       // Cancel any pending reservations organized by this user
@@ -939,7 +947,7 @@ async function startServer() {
       GabahDomainService.recordAudit(
         'USER_DELETED',
         'Users',
-        `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - ${releasedAssetsCount} aset dilepaskan; tidak ada pinjaman aktif yang ditutup otomatis`,
+        `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - tidak ada pinjaman aktif atau aset dalam penguasaan yang dilepas otomatis`,
         actor,
         targetId
       );
@@ -949,7 +957,7 @@ async function startServer() {
 
       res.json({
         success: true,
-        message: `Pengguna ${targetUser.name} berhasil dihapus.${releasedAssetsCount > 0 ? ` ${releasedAssetsCount} aset berhasil dikembalikan ke status Tersedia.` : ''}`
+        message: `Pengguna ${targetUser.name} berhasil dihapus.`
       });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
