@@ -490,6 +490,10 @@ async function startServer() {
       if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
+      const validUserRoles = ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor', 'Sekretaris Direksi', 'Humas'];
+      if (req.body?.role !== undefined && (typeof req.body.role !== 'string' || !validUserRoles.includes(req.body.role))) {
+        return res.status(400).json({ success: false, message: 'Peran pengguna tidak dikenal. Pilih role yang tersedia pada master aplikasi.' });
+      }
       const { name, email, role, division, department, password, phone } = req.body;
       const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : (role || 'Karyawan');
       const inferredOfficeLocation = role === 'Supply Chain' ? 'OFF-RPC' : role === 'PIBC' ? 'OFF-PIBC' : undefined;
@@ -759,6 +763,10 @@ async function startServer() {
       }
 
       const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
+      const validUserRoles = ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Karyawan', 'Auditor', 'Sekretaris Direksi', 'Humas'];
+      if (role !== undefined && (typeof role !== 'string' || !validUserRoles.includes(role))) {
+        return res.status(400).json({ success: false, message: 'Peran pengguna tidak dikenal. Pilih role yang tersedia pada master aplikasi.' });
+      }
       const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
       const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
