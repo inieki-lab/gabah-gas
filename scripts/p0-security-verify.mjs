@@ -176,6 +176,37 @@ async function main() {
 
     if (!adminToken) throw new Error('Cannot continue without admin session');
 
+    // ---------- User role validation: reject invalid roles before any mutation ----------
+    {
+      const stamp = Date.now().toString().slice(-7);
+      const invalidEmail = `qa-invalid-role-${stamp}@example.test`;
+      const invalidCreate = await req(base, 'POST', '/api/users', {
+        token: adminToken,
+        body: { name: 'Invalid Role Fixture', email: invalidEmail, role: 'Super User' },
+      });
+      const afterInvalidCreate = await req(base, 'GET', '/api/users', { token: adminToken });
+      const persistedInvalidUser = (afterInvalidCreate.json?.data || []).some(u => u.email === invalidEmail);
+      record('User create rejects unknown role before persistence', '400 + no account stored',
+        `HTTP ${invalidCreate.status}, persisted=${persistedInvalidUser}`,
+        invalidCreate.status === 400 && !persistedInvalidUser);
+
+      const validEmail = `qa-valid-role-${stamp}@example.test`;
+      const validCreate = await req(base, 'POST', '/api/users', {
+        token: adminToken,
+        body: { name: 'Valid Role Fixture', email: validEmail, role: 'Karyawan', division: 'IT', department: 'QA' },
+      });
+      const userId = validCreate.json?.data?.id || '';
+      const invalidUpdate = userId ? await req(base, 'PATCH', `/api/users/${encodeURIComponent(userId)}`, {
+        token: adminToken,
+        body: { role: 'Super User' },
+      }) : { status: 0 };
+      const afterInvalidUpdate = await req(base, 'GET', '/api/users', { token: adminToken });
+      const roleAfterUpdate = (afterInvalidUpdate.json?.data || []).find(u => u.id === userId)?.role;
+      record('User update rejects unknown role without changing account', '400 + role remains Karyawan',
+        `create=${validCreate.status}, patch=${invalidUpdate.status}, role=${roleAfterUpdate}`,
+        validCreate.status === 201 && invalidUpdate.status === 400 && roleAfterUpdate === 'Karyawan');
+    }
+
     // Login the Karyawan persona EARLY (before any mutations) and stash the token.
     let karyawanToken = '';
     {
