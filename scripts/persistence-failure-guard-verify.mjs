@@ -18,7 +18,7 @@ assert.match(passwordRoute, /previousCredentials[\s\S]*user\.password_hash = pre
   'Password credentials must be restored if persistence fails');
 
 const services = fs.readFileSync('server/services.ts', 'utf8');
-assert.match(services, /async function persistDomainMutation[\\s\\S]*statusCode: 503/,
+assert.match(services, /async function persistDomainMutation[\s\S]*statusCode: 503/,
   'Room/facility service persistence failures must preserve HTTP 503');
 const roomMutators = [
   'requestRoomReservation', 'approveRoomReservation', 'rejectRoomReservation',
