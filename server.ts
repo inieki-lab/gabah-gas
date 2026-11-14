@@ -2522,6 +2522,18 @@ async function startServer() {
       return res.status(400).json({ success: false, message: 'Aset yang dipilih tidak ditemukan.' });
     }
 
+    const requestedVendorId = String(req.body.vendor_id || '').trim();
+    const requestedVendorName = String(req.body.vendor_name || '').trim();
+    let linkedVendor: typeof db.vendors[number] | undefined;
+    if (requestedVendorId || requestedVendorName) {
+      linkedVendor = requestedVendorId
+        ? db.vendors.find(v => v.id === requestedVendorId)
+        : db.vendors.find(v => String(v.name || '').trim().toLocaleLowerCase('id-ID') === requestedVendorName.toLocaleLowerCase('id-ID'));
+      if (!linkedVendor || (requestedVendorName && requestedVendorName.toLocaleLowerCase('id-ID') !== String(linkedVendor.name || '').trim().toLocaleLowerCase('id-ID'))) {
+        return res.status(400).json({ success: false, message: 'Vendor maintenance tidak valid atau ID dan nama vendor tidak cocok.' });
+      }
+    }
+
     // Maintenance authority inherits the asset's owner domain and requires
     // the operation permission plus an explicit matching owner scope.
     if (!canMutateAssetOwner(actor, asset.owner_division, 'maintenances.create')) {
@@ -2543,8 +2555,8 @@ async function startServer() {
       frequency: req.body.frequency || 'one_time',
       status: req.body.status || 'scheduled',
       technician_name: req.body.technician_name || 'Tim Internal',
-      vendor_id: req.body.vendor_id,
-      vendor_name: req.body.vendor_name,
+      vendor_id: linkedVendor?.id,
+      vendor_name: linkedVendor?.name,
       estimated_cost: req.body.estimated_cost || 0,
       actual_cost: req.body.actual_cost || 0,
       notes: req.body.notes || '',
@@ -2575,17 +2587,34 @@ async function startServer() {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.update dan scope owner "${schedule.owner_division}" wajib dimiliki.` });
     }
 
+    const hasVendorInput = req.body.vendor_id !== undefined || req.body.vendor_name !== undefined;
+    let linkedVendor: typeof db.vendors[number] | undefined;
+    if (hasVendorInput) {
+      const requestedVendorId = String(req.body.vendor_id ?? schedule.vendor_id ?? '').trim();
+      const requestedVendorName = String(req.body.vendor_name ?? schedule.vendor_name ?? '').trim();
+      linkedVendor = requestedVendorId
+        ? db.vendors.find(v => v.id === requestedVendorId)
+        : db.vendors.find(v => String(v.name || '').trim().toLocaleLowerCase('id-ID') === requestedVendorName.toLocaleLowerCase('id-ID'));
+      if (!linkedVendor || (requestedVendorName && requestedVendorName.toLocaleLowerCase('id-ID') !== String(linkedVendor.name || '').trim().toLocaleLowerCase('id-ID'))) {
+        return res.status(400).json({ success: false, message: 'Vendor maintenance tidak valid atau ID dan nama vendor tidak cocok.' });
+      }
+    }
+
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, schedule_code, asset_id, asset_name,
     // asset_number, category_type, owner_division, created_at.
     const allowedMaintenanceFields = [
       'title', 'scheduled_date', 'frequency', 'status', 'technician_name',
-      'vendor_id', 'vendor_name', 'estimated_cost', 'actual_cost', 'notes', 'checklist',
+      'estimated_cost', 'actual_cost', 'notes', 'checklist',
     ];
     for (const key of allowedMaintenanceFields) {
       if (req.body[key] !== undefined) {
         (schedule as any)[key] = req.body[key];
       }
+    }
+    if (linkedVendor) {
+      schedule.vendor_id = linkedVendor.id;
+      schedule.vendor_name = linkedVendor.name;
     }
     if (req.body.status === 'completed') {
       schedule.last_completed_at = new Date().toISOString();
