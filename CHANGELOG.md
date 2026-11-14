@@ -1,3 +1,12 @@
+## [2026-11-14] — Enforce asset custody integrity across user and bulk workflows
+
+- Blocked user deactivation/deletion while active loans or assigned assets remain; no synthetic returns or automatic asset unassignment.
+- Locked direct asset status/loanability edits while an approved or borrowed loan exists.
+- Applied the same lock and strict status/boolean validation to bulk asset import, closing a bypass of the direct asset update guard.
+- Added regression coverage for deactivation/deletion custody, active-loan bulk import bypass, and invalid bulk status values.
+
+---
+
 ## [2026-11-14] — Preserve asset custody during user offboarding
 
 - User deactivation and deletion now return HTTP 409 while the user has active loans or assets assigned to their custody.
