@@ -80,8 +80,9 @@ export function canSeeContract(user: ServerUser, contract: ServerContract): bool
 export function canManageContracts(user: ServerUser): boolean {
   if (isSuperadminActor(user)) return true;
   if (isPostgresPersistenceActive()) {
-    return hasRbacPermission(String(user.id), 'contracts.create')
-      || hasRbacPermission(String(user.id), 'contracts.update');
+    // Creating a contract is a distinct capability; update-only users must not
+    // inherit create authority merely because both actions belong to this module.
+    return hasRbacPermission(String(user.id), 'contracts.create');
   }
   return user.role === 'IT' || user.role === 'GA';
 }
@@ -186,6 +187,13 @@ export const ContractDomainService = {
       if (!canSeeContract(actor, parent)) {
         throw new Error('Akses ditolak: kontrak induk berada di luar scope pengguna.');
       }
+    }
+
+    if (payload.auto_renewal !== undefined && typeof payload.auto_renewal !== 'boolean') {
+      throw new Error('Status auto-renewal harus berupa boolean.');
+    }
+    if (payload.restricted !== undefined && typeof payload.restricted !== 'boolean') {
+      throw new Error('Flag restricted harus berupa boolean.');
     }
 
     const reminderConfig: ContractReminderConfig = {
@@ -293,6 +301,14 @@ export const ContractDomainService = {
       && (!Number.isFinite(updates.contract_value) || updates.contract_value < 0)) {
       throw new Error('Nilai kontrak harus berupa angka non-negatif yang valid.');
     }
+    if (updates.auto_renewal !== undefined && typeof updates.auto_renewal !== 'boolean') {
+      throw new Error('Status auto-renewal harus berupa boolean.');
+    }
+    if (updates.renewal_notes !== undefined
+      && updates.renewal_notes !== null
+      && (typeof updates.renewal_notes !== 'string' || updates.renewal_notes.length > 2000)) {
+      throw new Error('Catatan renewal maksimal 2000 karakter dan harus berupa teks.');
+    }
     if (updates.reminder_config !== undefined) {
       const reminder = updates.reminder_config;
       const values = [reminder?.reminder1_days, reminder?.reminder2_days, reminder?.reminder3_days];
@@ -398,6 +414,9 @@ export const ContractDomainService = {
     ];
     if (!allowedOutcomes.includes(outcome)) {
       throw new Error('Keputusan renewal tidak valid.');
+    }
+    if (typeof notes !== 'string' || notes.length > 2000) {
+      throw new Error('Catatan keputusan renewal maksimal 2000 karakter dan harus berupa teks.');
     }
 
     if (outcome === 'replaced_by_new_contract') {
