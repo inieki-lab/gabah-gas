@@ -2041,7 +2041,12 @@ async function startServer() {
 
         let isLoanable: boolean | undefined = undefined;
         if (row.is_loanable !== undefined && String(row.is_loanable).trim() !== '') {
-          isLoanable = /^(true|1|ya|yes)$/i.test(String(row.is_loanable).trim());
+          const loanableText = String(row.is_loanable).trim().toLowerCase();
+          if (!['true', 'false', '1', '0', 'ya', 'tidak', 'yes', 'no'].includes(loanableText)) {
+            errors.push(`Baris ${rowNo}: Nilai is_loanable harus boolean (true/false).`);
+            continue;
+          }
+          isLoanable = ['true', '1', 'ya', 'yes'].includes(loanableText);
         }
 
         const existing = (serial && db.assets.find(a => a.serial_number && a.serial_number.trim().toLowerCase() === serial.toLowerCase()))
