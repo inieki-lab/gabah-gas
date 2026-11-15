@@ -67,6 +67,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   initialCategoryFilter,
 }) => {
   const [activeTab, setActiveTab] = useState<SubTab>(initialCategoryFilter ? 'reservations' : 'calendar');
+  const isHumas = currentUser.role === 'Humas' || currentUser.role_keys?.includes('humas') === true;
+  const isSekdir = currentUser.role === 'Sekretaris Direksi' || currentUser.role_keys?.includes('sekretaris_direksi') === true;
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -298,15 +300,15 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           <span className="text-slate-400">Pengguna Login:</span>
           <strong className="text-white">{currentUser.name}</strong>
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700">
-            {currentUser.role}
+            {currentUser.role_label || currentUser.role}
           </span>
-          {currentUser.role === 'Sekretaris Direksi' && (
+          {isSekdir && (
             <span className="text-amber-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               Hak Interupsi Direksi Aktif: Berwenang menggeser jadwal Ruang Setra Wangi untuk agenda Direksi & Komisaris.
             </span>
           )}
-          {currentUser.role === 'Humas' && (
+          {isHumas && (
             <span className="text-sky-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Camera className="w-3.5 h-3.5 text-sky-400" />
               Akses Humas: Memantau & menangani order dokumentasi liputan foto/video rapat perusahaan.
@@ -320,7 +322,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {currentUser.role === 'Humas' && (
+          {isHumas && (
             <button
               onClick={() => { setActiveTab('reservations'); setCategoryFilter('documentation'); }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1.5 ${
@@ -430,7 +432,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             )}
           </button>
 
-          {currentUser.role === 'Humas' && (
+          {isHumas && (
             <button
               onClick={() => {
                 setActiveTab('reservations');
