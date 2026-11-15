@@ -1,3 +1,10 @@
+## Security — Telegram chat ID response redaction (2026-11-15)
+
+- Ordinary user serialization now omits `telegram_chat_id` by default, alongside password material.
+- User directory exposes the routing ID only to Superadmin; admin-managed create/import/edit responses explicitly opt in.
+- Login, session, and role-switch payloads remain redacted by default.
+- Added a CI regression check; runtime response verification across roles remains required before deployment.
+
 ## [2026-11-14] — Enforce asset custody integrity across user and bulk workflows
 
 - Blocked user deactivation/deletion while active loans or assigned assets remain; no synthetic returns or automatic asset unassignment.
