@@ -62,8 +62,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const isSuperAdmin = currentUser?.role === 'Admin GABAH';
   const isIT = currentUser?.role === 'IT';
   const isGA = currentUser?.role === 'GA';
-  const isSC = currentUser?.role === 'Supply Chain';
-  const isPIBC = currentUser?.role === 'PIBC';
+  const isSC = currentUser?.role === 'Supply Chain' || currentUser?.unit_id === 'UNIT-SC';
+  const isPIBC = currentUser?.role === 'PIBC' || currentUser?.unit_id === 'UNIT-PIBC';
   const isAuditor = currentUser?.role === 'Auditor';
   // Self-service roles see their own submissions; operating divisions see the
   // tickets already authorized for their division by GabahService.
