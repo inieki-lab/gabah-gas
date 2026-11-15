@@ -63,7 +63,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const isIT = currentUser?.role === 'IT';
   const isGA = currentUser?.role === 'GA';
   // RPC/SC and PIBC are office locations, not primary profile roles.
-  const isRPC = currentUser?.office_location_id === 'OFF-RPC' || currentUser?.unit_id === 'UNIT-SC' || currentUser?.role === 'RPC/SC';
+  const isRPC = currentUser?.office_location_id === 'OFF-RPC' || currentUser?.unit_id === 'UNIT-SC' || currentUser?.role === 'Supply Chain';
   const isPIBC = currentUser?.office_location_id === 'OFF-PIBC' || currentUser?.unit_id === 'UNIT-PIBC' || currentUser?.role === 'PIBC';
   const isAuditor = currentUser?.role === 'Auditor';
   // Self-service roles see their own submissions; operating divisions see the
