@@ -155,6 +155,38 @@ async function main() {
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
     const itAsset5 = await mkAsset('HLT', 'IT', 'LoanAuthz unavailable request fixture');
     const itAsset6 = await mkAsset('HLT', 'IT', 'LoanAuthz approval recheck fixture');
+
+    // Asset creation must never silently ignore a missing or inactive custodian.
+    const inactiveCustodian = await req(base, 'POST', '/api/users', {
+      token: admin.token,
+      body: {
+        name: 'Inactive Initial Custodian Fixture',
+        email: `inactive-initial-custodian-${Date.now()}@example.test`,
+        role: 'Karyawan',
+        division: 'Umum',
+        department: 'QA Fixture',
+      },
+    });
+    const inactiveCustodianId = inactiveCustodian.json?.data?.id;
+    const deactivateInitialCustodian = inactiveCustodianId
+      ? await req(base, 'PATCH', `/api/users/${inactiveCustodianId}`, { token: admin.token, body: { is_active: false } })
+      : { status: 0 };
+    const rejectedInitialAssignment = inactiveCustodianId
+      ? await req(base, 'POST', '/api/assets', {
+          token: admin.token,
+          body: {
+            category_name_or_code: 'HLT',
+            owner_division: 'IT',
+            name: 'Must Not Create With Inactive Custodian',
+            assigned_to_user_id: inactiveCustodianId,
+          },
+        })
+      : { status: 0 };
+    const noOrphanedInitialAsset = !(((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || [])
+      .some(asset => asset.name === 'Must Not Create With Inactive Custodian'));
+    record('Asset creation rejects inactive initial custodian without creating an orphan asset', '404 + no asset created',
+      `deactivate ${deactivateInitialCustodian.status}, create ${rejectedInitialAssignment.status}, absent ${noOrphanedInitialAsset}`,
+      deactivateInitialCustodian.status === 200 && rejectedInitialAssignment.status === 404 && noOrphanedInitialAsset);
     record('Setup: 8 loanable fixtures created (6 IT + 2 GA)', 'ids issued',
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].filter(a => a.id).length + ' ids',
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].every(a => a.id));
@@ -317,6 +349,26 @@ async function main() {
     record('Unauthorized handover: GA on second IT loan (L2)', '403', `HTTP ${h2Wrong.status}`, h2Wrong.status === 403);
     const h2Ok = await req(base, 'POST', `/api/loans/${L2.id}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan' } });
     record('Authorized handover: IT custodian on L2', '200 + borrowed', `HTTP ${h2Ok.status} + ${h2Ok.json?.data?.status}`, h2Ok.status === 200 && h2Ok.json?.data?.status === 'borrowed');
+
+    // Direct asset mutation routes must not bypass the active loan state machine.
+    const assetBeforeBlockedMutations = ((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || []).find(a => a.id === itAsset2.id);
+    const reassignBorrowedAsset = await req(base, 'POST', `/api/assets/${itAsset2.id}/assign`, {
+      token: admin.token, body: { targetUserId: gaId, reason: 'Must not steal active loan custody' },
+    });
+    const unassignBorrowedAsset = await req(base, 'POST', `/api/assets/${itAsset2.id}/assign`, {
+      token: admin.token, body: { targetUserId: '', reason: 'Must not release active loan custody' },
+    });
+    const lifecycleBorrowedAsset = await req(base, 'POST', `/api/assets/${itAsset2.id}/lifecycle`, {
+      token: admin.token, body: { action: 'damaged', notes: 'Must not mutate an asset while borrowed' },
+    });
+    const assetAfterBlockedMutations = ((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || []).find(a => a.id === itAsset2.id);
+    const loanAfterBlockedMutations = await loanStatus(L2.id);
+    record('Active loan blocks direct reassignment, unassignment and lifecycle mutation', '409/409/409 + borrowed custody preserved',
+      `HTTP ${reassignBorrowedAsset.status}/${unassignBorrowedAsset.status}/${lifecycleBorrowedAsset.status}, asset ${assetAfterBlockedMutations?.status}, custodian unchanged ${assetAfterBlockedMutations?.assigned_to?.id === assetBeforeBlockedMutations?.assigned_to?.id}, loan ${loanAfterBlockedMutations}`,
+      reassignBorrowedAsset.status === 409 && unassignBorrowedAsset.status === 409 && lifecycleBorrowedAsset.status === 409
+        && assetAfterBlockedMutations?.status === assetBeforeBlockedMutations?.status
+        && assetAfterBlockedMutations?.assigned_to?.id === assetBeforeBlockedMutations?.assigned_to?.id
+        && loanAfterBlockedMutations === 'borrowed');
     const statusEditBorrowedL2 = await setAssetStatus(itAsset2.id, 'damaged');
     const loanAfterStatusEditL2 = await loanStatus(L2.id);
     record('Manual asset status edit is blocked during borrowed loan L2', '409 + borrowed',
