@@ -1,3 +1,13 @@
+## [2026-11-16] — Enforce ticket linked-asset visibility
+
+- Validate related asset IDs in the ticket domain service against the same per-user scoped asset catalogue used by asset reads.
+- Reject blank, dangling, or out-of-scope asset links before creating a ticket.
+- Validate optional contract IDs before ticket creation; return a generic not-found response for unknown or inaccessible contracts.
+- Persist only canonical linked IDs and metadata copied from authorized master records.
+- Add source-level and fixture regression checks.
+
+---
+
 ## [2026-11-16] — Preserve ticket resolution timestamps
 
 - Keep resolved_at when a ticket transitions to either resolved or closed.
