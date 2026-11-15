@@ -91,6 +91,9 @@ jobs:
       - name: P0 security verification (live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
 
+      - name: Trusted client IP extraction regression
+        run: npm run test:trusted-client-ip
+
       - name: User directory read scope verification
         run: node scripts/rbac-scoping-verify.mjs
 
