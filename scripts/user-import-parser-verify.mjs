@@ -9,9 +9,9 @@ const offices = ['OFF-RPC', 'OFF-PIBC'];
 
 const csv = [
   'Nama,Email,Role Utama,Divisi Referensi,Departemen,Telepon,Kode Jabatan,ID Unit,ID Lokasi Kantor',
-  'Pegawai Umum,pegawai@example.test,Karyawan,Umum,Operasional,08123456789,STAF,UNIT-PIBC,OFF-PIBC',
-  'Pegawai RPC,rpc@example.test,Supply Chain,Umum,Distribusi,,STAF,UNIT-SC,OFF-RPC',
-  'Pegawai PIBC,pibc@example.test,PIBC,Umum,Pasar,,STAF,UNIT-PIBC,OFF-PIBC',
+  'Pegawai Umum,pegawai@example.test,Karyawan,Umum,Operasional,08123456789,STAF,,OFF-PIBC',
+  'Pegawai RPC,rpc@example.test,Supply Chain,Umum,Distribusi,,STAF,,OFF-RPC',
+  'Pegawai PIBC,pibc@example.test,PIBC,Umum,Pasar,,STAF,,OFF-PIBC',
   'Pegawai Humas,humas@example.test,Humas,Umum,Humas,,,,',
   'Role Tidak Dikenal,unknown@example.test,Peran Ngawur,Umum,Operasional,,,,',
 ].join('\n');
@@ -21,11 +21,11 @@ assert.equal(parsed.valid.length, 3);
 assert.equal(parsed.errors.length, 2);
 assert.equal(parsed.valid[0].role, 'Karyawan');
 assert.equal(parsed.valid[0].job_level_code, 'STAF');
-assert.equal(parsed.valid[0].unit_id, 'UNIT-PIBC');
+assert.equal(parsed.valid[0].unit_id, undefined);
 assert.equal(parsed.valid[1].role, 'Supply Chain', 'legacy SC alias is retained for server-side mapping');
-assert.equal(parsed.valid[1].unit_id, 'UNIT-SC');
 assert.equal(parsed.valid[1].office_location_id, 'OFF-RPC');
 assert.equal(parsed.valid[2].role, 'PIBC', 'legacy PIBC alias is retained for server-side mapping');
+assert.equal(parsed.valid[2].unit_id, undefined);
 assert.ok(parsed.errors.some(error => error.includes('Humas')));
 assert.ok(parsed.errors.some(error => error.includes('Peran Ngawur')));
 

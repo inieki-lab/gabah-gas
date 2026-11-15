@@ -100,6 +100,15 @@ jobs:
       - name: User administration validation regression
         run: npm run test:user-admin-validation
 
+      - name: User bulk-import primary-role regression
+        run: npm run test:bulk-import
+
+      - name: User CSV import parser regression
+        run: npm run test:user-import-parser
+
+      - name: Canonical primary-role policy regression
+        run: npm run test:primary-role-policy
+
       - name: Category master strict boolean regression
         run: npm run test:category-master-boolean
 

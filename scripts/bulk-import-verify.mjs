@@ -109,21 +109,34 @@ async function main() {
     // NOTE: /api/auth/switch-role ROTATES the session (old token destroyed).
     // The non-admin guard test therefore runs LAST, after all admin-token tests.
 
-    // ---------- Happy path: 2 new users + 1 invalid row ----------
+    // ---------- Canonical primary-role and legacy-location mapping matrix ----------
+    const invalidPrimaryCreate = await req(base, 'POST', '/api/users', {
+      token: adminToken,
+      body: { name: 'Primary Role Humas', email: `primary.humas.${crypto.randomBytes(3).toString('hex')}@foodstation.co.id`, role: 'Humas' },
+    });
+    record('Create user rejects function role as primary profile', '400', `HTTP ${invalidPrimaryCreate.status}`, invalidPrimaryCreate.status === 400);
+    const invalidBranchCreate = await req(base, 'POST', '/api/users', {
+      token: adminToken,
+      body: { name: 'Primary Role SC', email: `primary.sc.${crypto.randomBytes(3).toString('hex')}@foodstation.co.id`, role: 'Supply Chain' },
+    });
+    record('Create user rejects location label as primary profile', '400', `HTTP ${invalidBranchCreate.status}`, invalidBranchCreate.status === 400);
+
+    // ---------- Happy path: 2 new users + invalid rows ----------
     const suffix = crypto.randomBytes(3).toString('hex');
     const batch1 = [
       { name: 'Impor Dua', email: `impor.dua.${suffix}@foodstation.co.id`, role: 'GA', division: 'GA', department: 'Sarpras', phone: '081200000002' },
       { name: 'Impor Tiga', email: `impor.tiga.${suffix}@foodstation.co.id`, role: 'Peran Ngawur', division: 'XX', department: 'Gudang', phone: '' },
+      { name: 'Impor Humas', email: `impor.humas.${suffix}@foodstation.co.id`, role: 'Humas', division: 'Umum', department: 'Humas', phone: '' },
     ];
     const r1 = await req(base, 'POST', '/api/users/bulk-import', {
       token: adminToken,
       body: { users: [...batch1, { name: 'Email Rusak', email: 'bukan-email', role: 'Karyawan' }] },
     });
     const d1 = r1.json?.data || {};
-    record('Bulk import returns created=2', 'created=2', `created=${d1.created}`, d1.created === 2);
-    record('Invalid email row rejected', 'failed=1', `failed=${d1.failed}`, d1.failed === 1);
-    record('Unknown role -> warning (not failure); bad email -> error', 'warnings>=1 & errors=1', `warnings=${(d1.warnings || []).length} errors=${(d1.errors || []).length}`,
-      (d1.warnings || []).length >= 1 && (d1.errors || []).length === 1);
+    record('Bulk import creates only canonical primary-role row', 'created=1', `created=${d1.created}`, d1.created === 1);
+    record('Invalid email, unknown role, and function role rows rejected', 'failed=3', `failed=${d1.failed}`, d1.failed === 3);
+    record('Unknown/function primary roles are returned as row errors', 'errors=3', `errors=${(d1.errors || []).length}`, (d1.errors || []).length === 3);
+    record('Humas is rejected as primary role', 'Humas row rejected with additional-role guidance', (d1.errors || []).some(e => e.includes('role tambahan')), (d1.errors || []).some(e => e.includes('role tambahan')));
     record('No password echoed in response', 'no password fields', JSON.stringify(r1.json).includes('password') ? 'found password key' : 'clean',
       !/temp_password|password_hash/.test(JSON.stringify(r1.json)));
 
@@ -133,13 +146,15 @@ async function main() {
       body: {
         users: [
           { name: 'Impor Dua (Updated)', email: `impor.dua.${suffix}@foodstation.co.id`, role: 'IT', division: 'IT', department: 'Infrastruktur', phone: '081200000009' },
-          { name: 'Impor Empat', email: `impor.empat.${suffix}@foodstation.co.id`, role: 'PIBC', division: 'PIBC', department: 'Pasar', phone: '' },
+          { name: 'Impor Empat', email: `impor.empat.${suffix}@foodstation.co.id`, role: 'PIBC', division: 'Umum', department: 'Pasar', phone: '' },
+          { name: 'Impor Lima', email: `impor.lima.${suffix}@foodstation.co.id`, role: 'Supply Chain', division: 'Umum', department: 'Distribusi', phone: '' },
         ],
       },
     });
     const d2 = r2.json?.data || {};
     record('Second import updates existing email', 'updated=1', `updated=${d2.updated}`, d2.updated === 1);
-    record('Second import creates new account', 'created=1', `created=${d2.created}`, d2.created === 1);
+    record('Second import creates new accounts for legacy location aliases', 'created=2', `created=${d2.created}`, d2.created === 2);
+    record('Legacy branch role mapping is disclosed', 'warning explains Karyawan + office location', (d2.warnings || []).join(' | '), (d2.warnings || []).some(w => w.includes('dipetakan sebagai Karyawan dengan lokasi kantor')));
 
     // ---------- Verify persisted state ----------
     const list = await req(base, 'GET', '/api/users', { token: adminToken });
@@ -148,10 +163,23 @@ async function main() {
     record('Updated profile persisted (name+dept+role)', 'Impor Dua (Updated) / Infrastruktur / IT',
       `${updatedUser?.name} / ${updatedUser?.department} / ${updatedUser?.role}`,
       updatedUser?.name === 'Impor Dua (Updated)' && updatedUser?.department === 'Infrastruktur' && updatedUser?.role === 'IT');
+    const invalidPrimaryUpdate = await req(base, 'PATCH', `/api/users/${updatedUser?.id}`, {
+      token: adminToken,
+      body: { role: 'Supply Chain' },
+    });
+    record('Update user rejects branch label as primary profile', '400', `HTTP ${invalidPrimaryUpdate.status}`, invalidPrimaryUpdate.status === 400);
     record('No duplicate account after re-import', 'single account', `count=${users.filter(u => u.email === `impor.dua.${suffix}@foodstation.co.id`).length}`,
       users.filter(u => u.email === `impor.dua.${suffix}@foodstation.co.id`).length === 1);
-    const fallbackUser = users.find(u => u.email === `impor.tiga.${suffix}@foodstation.co.id`);
-    record('Unknown role defaulted to Karyawan', 'role=Karyawan', `role=${fallbackUser?.role}`, fallbackUser?.role === 'Karyawan');
+    const unknownRoleUser = users.find(u => u.email === `impor.tiga.${suffix}@foodstation.co.id`);
+    record('Unknown primary role was not created', 'no account', unknownRoleUser ? unknownRoleUser.role : 'not created', !unknownRoleUser);
+    const branchUser = users.find(u => u.email === `impor.empat.${suffix}@foodstation.co.id`);
+    record('Legacy PIBC role maps to Karyawan + office location (unit stays independent)', 'Karyawan / OFF-PIBC', `${branchUser?.role} / unit=${branchUser?.unit_id || 'none'} / ${branchUser?.office_location_id}`,
+      branchUser?.role === 'Karyawan' && !branchUser?.unit_id && branchUser?.office_location_id === 'OFF-PIBC');
+    const rpcUser = users.find(u => u.email === `impor.lima.${suffix}@foodstation.co.id`);
+    record('Legacy Supply Chain role maps to Karyawan + RPC office location (unit stays independent)', 'Karyawan / OFF-RPC', `${rpcUser?.role} / unit=${rpcUser?.unit_id || 'none'} / ${rpcUser?.office_location_id}`,
+      rpcUser?.role === 'Karyawan' && !rpcUser?.unit_id && rpcUser?.office_location_id === 'OFF-RPC');
+    const functionRoleUser = users.find(u => u.email === `impor.humas.${suffix}@foodstation.co.id`);
+    record('Function role was not created as primary profile', 'no Humas user', functionRoleUser ? functionRoleUser.role : 'not created', !functionRoleUser);
 
     // ---------- Empty batch rejected ----------
     const r3 = await req(base, 'POST', '/api/users/bulk-import', { token: adminToken, body: { users: [] } });

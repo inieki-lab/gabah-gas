@@ -1411,12 +1411,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     setEditUserData({
       name: user.name || '',
       email: user.email || '',
-      role: user.role,
-      division: (user.division as OwnerDivision) || 'SC',
+      role: PRIMARY_PROFILE_ROLES.some(r => r.value === user.role) ? user.role : 'Karyawan',
+      division: (user.division as OwnerDivision) || 'Umum',
       department: user.department || '',
       job_level_code: (user as any).job_level_code || '',
       unit_id: (user as any).unit_id || '',
-      office_location_id: (user as any).office_location_id || '',
+      office_location_id: (user as any).office_location_id || (user.role === 'Supply Chain' ? 'OFF-RPC' : user.role === 'PIBC' ? 'OFF-PIBC' : ''),
       phone: user.phone || '',
       is_active: user.is_active !== undefined ? user.is_active : true,
       telegram_chat_id: user.telegram_chat_id || '',
@@ -1426,13 +1426,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // ============ IMPORT MASSAL PEGAWAI (CSV/Excel) ============
-  const validImportRoles = SYSTEM_ROLES.map(r => r.value as string);
+  const validImportRoles = [...PRIMARY_PROFILE_ROLES.map(r => r.value as string), 'Supply Chain', 'PIBC'];
   const validImportDivisions = divisions.map(d => String(d.code));
+  const validImportJobLevels = jobLevels.filter(j => j.is_active).map(j => String(j.code));
+  const validImportUnitIds = orgUnits.filter(u => u.is_active).map(u => String(u.id));
+  const validImportOfficeLocationIds = officeLocations.filter(l => l.is_active).map(l => String(l.id));
 
   const handleImportFilePicked = async (file: File) => {
     try {
       const text = await file.text();
-      const parsed = parseUsersImportCsv(text, validImportRoles, validImportDivisions);
+      const parsed = parseUsersImportCsv(text, validImportRoles, validImportDivisions, validImportJobLevels, validImportUnitIds, validImportOfficeLocationIds);
       setImportPreview(parsed);
       if (parsed.valid.length === 0 && parsed.errors.length > 0) {
         showToast(`Tidak ada baris valid. Periksa: ${parsed.errors[0]}`, 'warning');
@@ -2063,6 +2066,32 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       />
                     </div>
                     <div>
+                      <label className="block text-slate-600 mb-1 font-medium">Jabatan</label>
+                      <select
+                        value={newUserData.job_level_code || ''}
+                        onChange={e => setNewUserData({ ...newUserData, job_level_code: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                      >
+                        <option value="">— Pilih jabatan —</option>
+                        {jobLevels.filter(level => level.is_active).map(level => (
+                          <option key={level.code} value={level.code}>{level.label || level.code}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 mb-1 font-medium">Unit Organisasi</label>
+                      <select
+                        value={newUserData.unit_id || ''}
+                        onChange={e => setNewUserData({ ...newUserData, unit_id: e.target.value || null })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                      >
+                        <option value="">— Pilih unit —</option>
+                        {orgUnits.filter(unit => unit.is_active).map(unit => (
+                          <option key={unit.id} value={unit.id}>{unit.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-slate-600 mb-1 font-medium">Lokasi Kerja / Kantor</label>
                       <select
                         value={newUserData.office_location_id || ''}
@@ -2309,10 +2338,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
-                            {SYSTEM_ROLES.map(r => (
+                            {PRIMARY_PROFILE_ROLES.map(r => (
                               <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>
+                          <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat ditetapkan sebagai role fungsi. RPC/SC dan PIBC dicatat melalui unit serta lokasi kantor.</p>
                         </div>
 
                         <div className="space-y-1.5">
