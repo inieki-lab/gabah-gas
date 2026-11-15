@@ -112,14 +112,15 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [serverConflictData, setServerConflictData] = useState<any | null>(null);
 
+  // Function capability is independent from the employee's primary profile role.
+  const isSekdir = currentUser.role_keys?.includes('sekretaris_direksi') === true
+    || currentUser.role === 'Sekretaris Direksi'
+    || /sekretariat/i.test(currentUser.role_label || '');
+
   // Privileged Role Check
-  const canOverride = useMemo(() => {
-    return (
-      currentUser.role === 'Sekretaris Direksi' ||
-      currentUser.role === 'GA' ||
-      currentUser.role === 'Admin GABAH'
-    );
-  }, [currentUser.role]);
+  const canOverride = useMemo(() => (
+    isSekdir || currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+  ), [isSekdir, currentUser.role]);
 
   // Load master types and facilities
   useEffect(() => {
@@ -136,14 +137,14 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
 
   // Auto set priority based on meeting type & user role
   useEffect(() => {
-    if (currentUser.role === 'Sekretaris Direksi' || meetingType === 'direksi') {
+    if (isSekdir || meetingType === 'direksi') {
       setPriority('high');
     }
     const matchedType = meetingTypes.find(t => t.code === meetingType);
-    if (matchedType && matchedType.priority_level && currentUser.role !== 'Sekretaris Direksi') {
+    if (matchedType && matchedType.priority_level && !isSekdir) {
       setPriority(matchedType.priority_level);
     }
-  }, [meetingType, meetingTypes, currentUser.role]);
+  }, [meetingType, meetingTypes, isSekdir]);
 
   // Sync attendees pax with consumption pax
   useEffect(() => {
@@ -280,7 +281,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-white tracking-tight">Formulir Reservasi Ruang Rapat</h2>
-                {currentUser.role === 'Sekretaris Direksi' && (
+                {isSekdir && (
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-xs">
                     Prioritas Direksi Aktif
                   </span>
