@@ -1774,13 +1774,18 @@ async function startServer() {
       if (!db.orgUnits) db.orgUnits = [];
       const unit = db.orgUnits.find(u => u.id === req.params.id);
       if (!unit) return res.status(404).json({ success: false, message: 'Unit tidak ditemukan.' });
-      if (req.body.name !== undefined) unit.name = String(req.body.name).trim() || unit.name;
+      // Resolve and validate every supplied relation before mutating the
+      // in-memory master row, so a rejected division cannot partially apply
+      // an otherwise valid name change.
+      let resolvedDivisionCode: string | undefined;
       if (req.body.division_code !== undefined) {
         const requestedDivisionCode = String(req.body.division_code || '').trim();
         const configuredDivision = (db.divisions || []).find(d => String(d.code || '').trim().toLowerCase() === requestedDivisionCode.toLowerCase());
         if (!configuredDivision) return res.status(400).json({ success: false, message: `Divisi "${requestedDivisionCode}" tidak terdaftar pada Master Divisi.` });
-        unit.division_code = String(configuredDivision.code) as any;
+        resolvedDivisionCode = String(configuredDivision.code);
       }
+      if (req.body.name !== undefined) unit.name = String(req.body.name).trim() || unit.name;
+      if (resolvedDivisionCode !== undefined) unit.division_code = resolvedDivisionCode as any;
       if (req.body.is_active !== undefined) unit.is_active = Boolean(req.body.is_active);
       GabahDomainService.recordAudit('ORG_UNIT_UPDATED', 'Organization', `Memperbarui master unit ${unit.name} — aktif: ${unit.is_active}`, actor);
       await persistDataStore();
