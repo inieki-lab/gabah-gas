@@ -1771,9 +1771,12 @@ async function startServer() {
       if (!db.orgUnits) db.orgUnits = [];
       const unit = db.orgUnits.find(u => u.id === req.params.id);
       if (!unit) return res.status(404).json({ success: false, message: 'Unit tidak ditemukan.' });
+      if (req.body?.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean true atau false.' });
+      }
       if (req.body.name !== undefined) unit.name = String(req.body.name).trim() || unit.name;
       if (req.body.division_code !== undefined) unit.division_code = String(req.body.division_code).trim().toUpperCase() as any;
-      if (req.body.is_active !== undefined) unit.is_active = Boolean(req.body.is_active);
+      if (req.body.is_active !== undefined) unit.is_active = req.body.is_active;
       GabahDomainService.recordAudit('ORG_UNIT_UPDATED', 'Organization', `Memperbarui master unit ${unit.name} — aktif: ${unit.is_active}`, actor);
       await persistDataStore();
       res.json({ success: true, data: unit });
@@ -1817,8 +1820,11 @@ async function startServer() {
       if (!db.officeLocations) db.officeLocations = [];
       const loc = db.officeLocations.find(l => l.id === req.params.id);
       if (!loc) return res.status(404).json({ success: false, message: 'Lokasi kantor tidak ditemukan.' });
+      if (req.body?.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean true atau false.' });
+      }
       if (req.body.name !== undefined) loc.name = String(req.body.name).trim() || loc.name;
-      if (req.body.is_active !== undefined) loc.is_active = Boolean(req.body.is_active);
+      if (req.body.is_active !== undefined) loc.is_active = req.body.is_active;
       GabahDomainService.recordAudit('OFFICE_LOCATION_UPDATED', 'Organization', `Memperbarui master lokasi kantor ${loc.name} — aktif: ${loc.is_active}`, actor);
       await persistDataStore();
       res.json({ success: true, data: loc });
@@ -1874,6 +1880,9 @@ async function startServer() {
       if (!db.assetLocations) db.assetLocations = [];
       const loc = db.assetLocations.find(l => l.id === req.params.id);
       if (!loc) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
+      if (req.body?.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean true atau false.' });
+      }
       if (req.body.name !== undefined) {
         const newName = String(req.body.name).trim() || loc.name;
         const newParent = req.body.parent_id !== undefined ? (req.body.parent_id ? String(req.body.parent_id).trim() : null) : (loc.parent_id || null);
@@ -1896,7 +1905,7 @@ async function startServer() {
         }
         loc.parent_id = parentId;
       }
-      if (req.body.is_active !== undefined) loc.is_active = Boolean(req.body.is_active);
+      if (req.body.is_active !== undefined) loc.is_active = req.body.is_active;
       GabahDomainService.recordAudit('ASSET_LOCATION_UPDATED', 'Assets', `Memperbarui master lokasi fisik aset ${getAssetLocationPath(loc)} — aktif: ${loc.is_active}`, actor);
       await persistDataStore();
       res.json({ success: true, data: loc });
