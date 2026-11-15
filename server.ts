@@ -78,6 +78,174 @@ async function startServer() {
     if (verified) return verified;
     throw new Error('Pengguna tidak terautentikasi.');
   };
+  // Module availability is a separate global lifecycle switch from Dynamic RBAC.
+  // Cache status briefly to avoid a PostgreSQL round-trip on every API request.
+  const moduleStatusCache = new Map<string, { is_active: boolean; expires_at: number }>();
+  const MODULE_STATUS_CACHE_MS = 5000;
+
+  const readModuleStatus = async (moduleKey: string): Promise<boolean> => {
+    const now = Date.now();
+    const cached = moduleStatusCache.get(moduleKey);
+    if (cached && cached.expires_at > now) return cached.is_active;
+    const result = await queryRbac<{ is_active: boolean }>(
+      'SELECT is_active FROM gabah_modules WHERE module_key = $1',
+      [moduleKey],
+    );
+    if (!result.rows.length) throw new Error(`Module registry entry missing: ${moduleKey}`);
+    const isActive = result.rows[0].is_active === true;
+    moduleStatusCache.set(moduleKey, { is_active: isActive, expires_at: now + MODULE_STATUS_CACHE_MS });
+    return isActive;
+  };
+
+  const matchesApiPrefix = (path: string, prefix: string): boolean =>
+    path === prefix || path.startsWith(prefix + '/');
+
+  const resolveModuleKeyForRequest = (req: express.Request, actor: ServerUser): string | null => {
+    const path = req.path;
+    if (matchesApiPrefix(path, '/api/modules')) return null;
+
+    if (matchesApiPrefix(path, '/api/assets')) {
+      if (req.method === 'GET') {
+        // My Assets and the full asset catalogue share the read endpoint.
+        // A principal with catalogue/audit capability must have the Assets
+        // module enabled; a self-service reader uses the My Assets module.
+        const canReadCatalogue = hasRbacPermission(actor.id, 'assets.catalog.read')
+          || hasRbacPermission(actor.id, 'assets.audit.read');
+        return canReadCatalogue ? 'assets' : 'my_assets';
+      }
+      return 'assets';
+    }
+    if (['/api/taxonomy', '/api/numbering', '/api/movements', '/api/master/asset-locations'].some(prefix => matchesApiPrefix(path, prefix))) return 'assets';
+    if (matchesApiPrefix(path, '/api/dashboard')) return 'dashboard';
+    if (matchesApiPrefix(path, '/api/loans')) return 'loans';
+    if (matchesApiPrefix(path, '/api/tickets')) return 'tickets';
+    if (matchesApiPrefix(path, '/api/maintenances')) return 'maintenance';
+    if (matchesApiPrefix(path, '/api/vendors')) return 'vendors';
+    if (matchesApiPrefix(path, '/api/knowledge')) return 'knowledge';
+    if (matchesApiPrefix(path, '/api/contracts')) return 'contracts';
+    if (matchesApiPrefix(path, '/api/meeting-rooms') || matchesApiPrefix(path, '/api/room-reservations')) return 'meeting_rooms';
+    return null;
+  };
+
+  const isModuleManagedPath = (req: express.Request): boolean => {
+    const path = req.path;
+    if (matchesApiPrefix(path, '/api/modules')) return false;
+    return [
+      '/api/assets', '/api/taxonomy', '/api/numbering', '/api/movements',
+      '/api/master/asset-locations', '/api/dashboard', '/api/loans',
+      '/api/tickets', '/api/maintenances', '/api/vendors', '/api/knowledge',
+      '/api/contracts', '/api/meeting-rooms', '/api/room-reservations',
+    ].some(prefix => matchesApiPrefix(path, prefix));
+  };
+
+  // This guard runs after authentication and before all business routes.
+  // Unmanaged endpoints (login, health, notifications, administration) bypass
+  // module status checks; missing registry state fails closed for managed APIs.
+  app.use(async (req, res, next) => {
+    if (!req.path.startsWith('/api/') || !isPostgresPersistenceActive() || !isModuleManagedPath(req)) return next();
+    let actor: ServerUser;
+    try {
+      actor = getActor(req);
+    } catch {
+      return res.status(401).json({ success: false, code: 'UNAUTHENTICATED', message: 'Sesi tidak valid.' });
+    }
+    const moduleKey = resolveModuleKeyForRequest(req, actor);
+    if (!moduleKey) return next();
+    try {
+      if (!(await readModuleStatus(moduleKey))) {
+        return res.status(403).json({
+          success: false,
+          code: 'MODULE_DISABLED',
+          module_key: moduleKey,
+          message: 'Modul sedang dinonaktifkan oleh administrator.',
+        });
+      }
+      return next();
+    } catch {
+      return res.status(503).json({
+        success: false,
+        code: 'MODULE_STATUS_UNAVAILABLE',
+        module_key: moduleKey,
+        message: 'Status modul belum dapat diverifikasi. Operasi ditolak sementara.',
+      });
+    }
+  });
+
+  // Authenticated users may read global module availability to build navigation.
+  app.get('/api/modules', async (req, res) => {
+    try {
+      getActor(req);
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'MODULE_REGISTRY_UNAVAILABLE', message: 'Registry modul memerlukan PostgreSQL aktif.' });
+      }
+      const result = await queryRbac(
+        'SELECT module_key, name, description, is_active, is_system, sort_order, updated_at FROM gabah_modules ORDER BY sort_order, module_key',
+      );
+      res.json({ success: true, data: result.rows });
+    } catch (err: any) {
+      res.status(503).json({ success: false, code: 'MODULE_REGISTRY_UNAVAILABLE', message: 'Status modul belum dapat dibaca.' });
+    }
+  });
+
+  app.get('/api/modules/:moduleKey/audit', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (!isSuperadminActor(actor)) return res.status(403).json({ success: false, message: 'Hanya Superadmin yang dapat melihat histori perubahan modul.' });
+      if (!isPostgresPersistenceActive()) return res.status(503).json({ success: false, code: 'MODULE_REGISTRY_UNAVAILABLE' });
+      const moduleKey = String(req.params.moduleKey || '').trim();
+      if (!/^[a-z][a-z0-9_]{1,79}$/.test(moduleKey)) return res.status(400).json({ success: false, message: 'Kode modul tidak valid.' });
+      const exists = await queryRbac('SELECT 1 FROM gabah_modules WHERE module_key = $1', [moduleKey]);
+      if (!exists.rows.length) return res.status(404).json({ success: false, message: 'Modul tidak ditemukan.' });
+      const audit = await queryRbac(
+        'SELECT id, module_key, previous_is_active, new_is_active, reason, changed_by_user_id, changed_at FROM gabah_module_status_audit WHERE module_key = $1 ORDER BY changed_at DESC LIMIT 50',
+        [moduleKey],
+      );
+      res.json({ success: true, data: audit.rows });
+    } catch {
+      res.status(503).json({ success: false, code: 'MODULE_AUDIT_UNAVAILABLE', message: 'Histori modul belum dapat dibaca.' });
+    }
+  });
+
+  app.patch('/api/modules/:moduleKey', async (req, res) => {
+    try {
+      const actor = getActor(req);
+      if (!isSuperadminActor(actor)) return res.status(403).json({ success: false, message: 'Hanya Superadmin yang dapat mengubah status modul.' });
+      if (!isPostgresPersistenceActive()) return res.status(503).json({ success: false, code: 'MODULE_REGISTRY_UNAVAILABLE' });
+      const moduleKey = String(req.params.moduleKey || '').trim();
+      const { is_active, reason } = req.body || {};
+      if (!/^[a-z][a-z0-9_]{1,79}$/.test(moduleKey)) return res.status(400).json({ success: false, message: 'Kode modul tidak valid.' });
+      if (typeof is_active !== 'boolean') return res.status(400).json({ success: false, message: 'is_active harus berupa boolean true atau false.' });
+      if (typeof reason !== 'string' || reason.trim().length < 5 || reason.trim().length > 500) {
+        return res.status(400).json({ success: false, message: 'Alasan perubahan wajib 5–500 karakter.' });
+      }
+      const updated = await withRbacTransaction(async client => {
+        const current = await client.query(
+          'SELECT module_key, name, is_active, is_system, sort_order FROM gabah_modules WHERE module_key = $1 FOR UPDATE',
+          [moduleKey],
+        );
+        if (!current.rows.length) {
+          throw Object.assign(new Error('Modul tidak ditemukan.'), { statusCode: 404 });
+        }
+        const previous = current.rows[0].is_active === true;
+        if (previous === is_active) return current.rows[0];
+        const result = await client.query(
+          'UPDATE gabah_modules SET is_active = $2, updated_by_user_id = $3, updated_at = NOW() WHERE module_key = $1 RETURNING module_key, name, description, is_active, is_system, sort_order, updated_at',
+          [moduleKey, is_active, actor.id],
+        );
+        await client.query(
+          'INSERT INTO gabah_module_status_audit (module_key, previous_is_active, new_is_active, reason, changed_by_user_id) VALUES ($1, $2, $3, $4, $5)',
+          [moduleKey, previous, is_active, reason.trim(), actor.id],
+        );
+        return result.rows[0];
+      });
+      moduleStatusCache.delete(moduleKey);
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      const status = typeof err?.statusCode === 'number' ? err.statusCode : 503;
+      res.status(status).json({ success: false, message: status === 404 ? 'Modul tidak ditemukan.' : 'Status modul gagal diperbarui.' });
+    }
+  });
+
 
   // Effective permissions are returned only to the authenticated principal.
   // This drives the UI menu; backend route guards remain authoritative.
