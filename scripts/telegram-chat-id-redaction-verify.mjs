@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const auth = fs.readFileSync(new URL('../server/auth.ts', import.meta.url), 'utf8');
 const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const sanitizeStart = auth.indexOf('export function sanitizeUser(');
-const sanitizeEnd = auth.indexOf('\\n}', sanitizeStart);
+const sanitizeEnd = auth.indexOf('\n}', sanitizeStart);
 const sanitizer = sanitizeStart >= 0 && sanitizeEnd > sanitizeStart ? auth.slice(sanitizeStart, sanitizeEnd + 2) : '';
 
 const checks = [
