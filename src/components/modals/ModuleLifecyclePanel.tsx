@@ -49,6 +49,11 @@ export const ModuleLifecyclePanel: React.FC<ModuleLifecyclePanelProps> = ({ show
         is_active: !module.is_active,
         reason: reason.trim(),
       });
+      setAuditRows(prev => {
+        const next = { ...prev };
+        delete next[module.module_key];
+        return next;
+      });
       setPendingKey(null);
       setReason('');
       await refresh();
