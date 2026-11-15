@@ -1,3 +1,12 @@
+## [2026-11-15] — Canonical primary roles and location-aware user import
+
+- Restrict primary profile roles to Admin GABAH, IT, GA, Karyawan, and Auditor; Humas/Sekretariat remain function capabilities.
+- Treat legacy Supply Chain and PIBC import values as location aliases, mapping primary role to Karyawan and setting office location (RPC/SC or PIBC) without inventing an organizational unit.
+- Validate role changes and preserve existing Humas/Sekretariat function labels when updating primary roles.
+- Extend user import CSV with job level, unit, and office location fields; add live bulk-import and parser regressions to CI.
+
+---
+
 ## [2026-11-15] — Canonicalize API paths before security checks
 
 - Normalize API paths for public-route, Auditor read-only, audit-log, reconciliation, asset-ID, ticket-status, and dashboard-attention authorization checks.
