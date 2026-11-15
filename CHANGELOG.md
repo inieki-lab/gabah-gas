@@ -1,3 +1,10 @@
+## Security — Telegram chat ID response redaction (2026-11-15)
+
+- Ordinary user serialization omits `telegram_chat_id` by default.
+- User directory exposes the routing ID only to Superadmin; admin-managed create/import/edit responses explicitly opt in.
+- Login, session, and role-switch payloads remain redacted by default.
+- Added a focused CI regression check.
+
 ## Security — Ticket resolution notes validation (2026-11-15)
 
 - Reject non-string resolution notes and values longer than 4,000 characters before ticket state mutation.
