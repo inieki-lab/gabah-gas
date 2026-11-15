@@ -37,7 +37,8 @@ assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets', ['assets.read']), 
 assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance', ['dashboard.read', 'assets.read']), false);
 assert.equal(isNavTabAllowedForRole('IT', 'assets', ['assets.update']), false);
 assert.equal(isNavTabAllowedForRole('GA', 'assets', ['assets.create']), false);
-assert.equal(isNavTabAllowedForRole('Auditor', 'assets', ['assets.read', 'assets.audit.read']), false);
+assert.ok(isNavTabAllowedForRole('Auditor', 'assets', ['assets.read', 'assets.audit.read']));
+assert.equal(isNavTabAllowedForRole('Auditor', 'assets', ['assets.audit.read']), false);
 assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'assets', ['assets.catalog.read']), false);
 assert.ok(isNavTabAllowedForRole('IT', 'assets', ['assets.catalog.read', 'assets.read']));
 assert.ok(isNavTabAllowedForRole('GA', 'assets', ['assets.catalog.read', 'assets.read']));
