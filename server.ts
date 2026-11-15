@@ -778,7 +778,7 @@ async function startServer() {
       if (name !== undefined && !name.trim()) {
         return res.status(400).json({ success: false, message: 'Nama tidak boleh kosong.' });
       }
-      if (email !== undefined && (!email.trim() || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim()))) {
+      if (email !== undefined && (!email.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()))) {
         return res.status(400).json({ success: false, message: 'Format email tidak valid.' });
       }
       // Primary profile roles are the built-in identity roles; custom job-function
