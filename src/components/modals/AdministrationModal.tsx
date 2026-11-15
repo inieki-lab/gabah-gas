@@ -42,6 +42,7 @@ import {
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
 import { exportUsersToCsv, downloadUsersImportTemplate, parseUsersImportCsv } from '../../services/gabahService';
+import { ModuleLifecyclePanel } from './ModuleLifecyclePanel';
 
 export type AdminSection =
   | 'overview'
@@ -55,7 +56,8 @@ export type AdminSection =
   | 'audit_log'
   | 'settings'
   | 'data_admin'
-  | 'health';
+  | 'health'
+  | 'modules';
 
 interface AdministrationModalProps {
   isOpen: boolean;
@@ -72,6 +74,7 @@ interface AdministrationModalProps {
   onDeleteUser?: (userId: string) => void;
   showToast: (text: string, type?: 'success' | 'warning' | 'info') => void;
   onRefreshData?: () => Promise<void>;
+  onModulesChanged?: () => Promise<void> | void;
 }
 
 export interface RolePermissionRow {
@@ -236,7 +239,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   onCreateUser,
   onDeleteUser,
   showToast,
-  onRefreshData
+  onRefreshData,
+  onModulesChanged
 }) => {
   // Hak akses administrasi dibatasi HANYA untuk Super Admin ('Admin GABAH')
   const isCurrentUserAdmin = (activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH');
@@ -1359,6 +1363,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Identitas perusahaan, parameter PSAK, SLA, dan retensi data.', dataSource: 'Konfigurasi masih lokal', icon: Settings2, badge: 'Perlu sentralisasi' },
     { id: 'data_admin' as AdminSection, label: 'Ekspor & Rekonsiliasi', description: 'Fungsi ekspor dan pemeriksaan konsistensi data; bukan pengganti backup terjadwal.', dataSource: 'Operasi administratif', icon: FileSpreadsheet, badge: 'Alat data' },
     { id: 'health' as AdminSection, label: 'Kesehatan Sistem', description: 'Pemeriksaan langsung API dan informasi runtime yang benar-benar tersedia.', dataSource: 'Live check', icon: HeartPulse, badge: healthStatus.status },
+    { id: 'modules' as AdminSection, label: 'Siklus Hidup Modul', description: 'Aktif/nonaktif modul, enforcement API, dan histori perubahan.', dataSource: 'Database lifecycle registry', icon: Power, badge: '12 modul' },
   ];
 
   // Handle User Add
@@ -4953,6 +4958,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           {/* =========================================================
               VIEW: 10. SYSTEM HEALTH
              ========================================================= */}
+          {activeSection === 'modules' && (
+            <ModuleLifecyclePanel showToast={showToast} onChanged={onModulesChanged} />
+          )}
+
           {activeSection === 'health' && (
             <div className="space-y-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
