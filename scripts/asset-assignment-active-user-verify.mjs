@@ -7,7 +7,7 @@ seedInitialData();
 const admin = db.users.find(user => user.id === 'USR-01');
 const inactiveUser = db.users.find(user => user.id === 'USR-04');
 const activeUser = db.users.find(user => user.id === 'USR-03');
-const asset = db.assets.find(item => item.id === 'AST-HLT-002');
+const asset = db.assets.find(item => item.id === 'AST-HLT-006');
 assert.ok(admin && inactiveUser && activeUser && asset);
 
 inactiveUser.is_active = false;
