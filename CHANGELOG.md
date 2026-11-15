@@ -1,3 +1,31 @@
+## [2026-11-14] — Enforce asset custody integrity across user and bulk workflows
+
+- Blocked user deactivation/deletion while active loans or assigned assets remain; no synthetic returns or automatic asset unassignment.
+- Locked direct asset status/loanability edits while an approved or borrowed loan exists.
+- Applied the same lock and strict status/boolean validation to bulk asset import, closing a bypass of the direct asset update guard.
+- Added regression coverage for deactivation/deletion custody, active-loan bulk import bypass, and invalid bulk status values.
+
+---
+
+## [2026-11-14] — Preserve asset custody during user offboarding
+
+- User deactivation and deletion now return HTTP 409 while the user has active loans or assets assigned to their custody.
+- Removed automatic asset unassignment and fabricated "available" status during account deletion.
+- Assets must be returned or transferred through the audited asset workflow before offboarding can complete.
+- Added regression coverage for assigned-asset deactivation/deletion attempts.
+
+---
+
+## [2026-11-13] — Preserve asset and borrower integrity across loan lifecycle
+
+- Loan requests require an available loanable asset and a real calendar date range.
+- Approval and handover revalidate the referenced asset before changing loan state; returns require the asset to remain in assigned custody state.
+- Manual asset status/loanability edits are blocked while a loan is approved or borrowed, and status/condition payloads are strictly validated.
+- User deletion is blocked while the user has pending, approved, borrowed, or overdue loans; no automatic fake physical return is recorded.
+- Added live HTTP regression fixtures for unavailable assets, asset status locking, impossible dates, and borrower deletion.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.

@@ -655,18 +655,47 @@ export class GabahDomainService {
     // Self-service requests may only be created for the authenticated borrower.
     // Creating on behalf of another employee is a separate delegated capability;
     // until that capability exists, only Super Admin may set another borrower.
-    if (payload.borrower_id && payload.borrower_id !== actor.id && !isSuperadminActor(actor)) {
+    const requestedBorrowerId = payload.borrower_id === undefined || payload.borrower_id === null
+      ? String(actor.id)
+      : String(payload.borrower_id).trim();
+    if (!requestedBorrowerId) {
+      throw Object.assign(new Error('ID peminjam tidak valid.'), { statusCode: 400 });
+    }
+    if (requestedBorrowerId !== actor.id && !isSuperadminActor(actor)) {
       throw Object.assign(new Error('Pengajuan pinjaman hanya dapat dibuat untuk akun sendiri.'), { statusCode: 403 });
     }
-    const asset = db.assets.find(a => a.id === payload.asset_id);
-    if (!asset) throw new Error('Aset tidak ditemukan');
+    const borrower = db.users.find(user => user.id === requestedBorrowerId && user.is_active);
+    if (!borrower) {
+      throw Object.assign(new Error('Pengguna peminjam tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
+    }
+
+    const assetId = String(payload.asset_id || '').trim();
+    if (!assetId) throw Object.assign(new Error('ID aset wajib diisi.'), { statusCode: 400 });
+    const asset = db.assets.find(a => a.id === assetId);
+    if (!asset) throw Object.assign(new Error('Aset tidak ditemukan.'), { statusCode: 404 });
     if (!asset.is_loanable) throw new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).');
+    if (asset.status !== 'available') {
+      throw Object.assign(new Error(`Aset tidak tersedia untuk dipinjam (status saat ini: "${asset.status}").`), { statusCode: 409 });
+    }
+    if (typeof payload.purpose !== 'string' || !payload.purpose.trim() || payload.purpose.length > 2000) {
+      throw Object.assign(new Error('Tujuan peminjaman wajib diisi (maksimal 2.000 karakter).'), { statusCode: 400 });
+    }
 
-    const start = new Date(payload.start_date).getTime();
-    const due = new Date(payload.due_date).getTime();
-
-    if (isNaN(start) || isNaN(due) || start >= due) {
-      throw new Error('Jadwal peminjaman tidak valid. Tanggal kembali harus setelah tanggal mulai.');
+    const parseLoanDate = (value: unknown): { text: string; timestamp: number } => {
+      const text = typeof value === 'string' ? value.trim() : '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return { text, timestamp: Number.NaN };
+      const parsed = new Date(`${text}T00:00:00.000Z`);
+      if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== text) {
+        return { text, timestamp: Number.NaN };
+      }
+      return { text, timestamp: parsed.getTime() };
+    };
+    const startDate = parseLoanDate(payload.start_date);
+    const dueDate = parseLoanDate(payload.due_date);
+    const start = startDate.timestamp;
+    const due = dueDate.timestamp;
+    if (!Number.isFinite(start) || !Number.isFinite(due) || start >= due) {
+      throw Object.assign(new Error('Jadwal peminjaman tidak valid. Gunakan tanggal YYYY-MM-DD yang benar dan tanggal kembali harus setelah tanggal mulai.'), { statusCode: 400 });
     }
 
     // Authoritative Collision Check: Strictly per-asset on confirmed reservations (approved / borrowed)
@@ -685,8 +714,6 @@ export class GabahDomainService {
       throw new Error(`Tabrakan Jadwal! Aset "${asset.name}" (${asset.asset_number}) sudah dipinjam / disetujui pada periode tersebut (${conflicting.start_date.split('T')[0]} s/d ${conflicting.due_date.split('T')[0]}).`);
     }
 
-    const borrower = db.users.find(u => u.id === payload.borrower_id) || actor;
-
     const loanNumber = AssetNumberingEngine.generateLoanNumber();
     const newLoan: ServerLoan = {
       id: `LOAN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -700,8 +727,8 @@ export class GabahDomainService {
       borrower_department: borrower.department,
       borrower_phone: borrower.phone || '-',
       purpose: payload.purpose.trim(),
-      start_date: payload.start_date,
-      due_date: payload.due_date,
+      start_date: startDate.text,
+      due_date: dueDate.text,
       status: 'pending_approval',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -737,6 +764,12 @@ export class GabahDomainService {
       throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission approve dan scope owner aset yang sesuai atau Super Admin yang dapat menyetujui pinjaman.'), { statusCode: 403 });
     }
 
+    // Revalidate the authoritative asset relation at approval time.
+    const asset = db.assets.find(a => a.id === loan.asset_id);
+    if (!asset || !asset.is_loanable || asset.status !== 'available') {
+      throw Object.assign(new Error('Aset sudah tidak tersedia atau relasinya tidak valid. Permohonan tidak dapat disetujui.'), { statusCode: 409 });
+    }
+
     // Re-verify no collision with other ALREADY APPROVED / BORROWED loans for THIS specific asset
     const start = new Date(loan.start_date).getTime();
     const due = new Date(loan.due_date).getTime();
@@ -761,11 +794,8 @@ export class GabahDomainService {
     loan.approved_at = new Date().toISOString();
     loan.updated_at = new Date().toISOString();
 
-    // Mark asset as reserved
-    const asset = db.assets.find(a => a.id === loan.asset_id);
-    if (asset) {
-      asset.status = 'reserved';
-    }
+    // Mark the already-validated asset as reserved.
+    asset.status = 'reserved';
 
     this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id);
 
@@ -860,16 +890,18 @@ export class GabahDomainService {
       throw Object.assign(new Error(`Serah terima hanya dapat dilakukan pada pinjaman berstatus "approved" (status saat ini: "${loan.status}"). Pinjaman yang sudah diserahkan tidak dapat diserahkan ulang.`), { statusCode: 409 });
     }
 
+    const asset = db.assets.find(a => a.id === loan.asset_id);
+    if (!asset || !asset.is_loanable || asset.status !== 'reserved') {
+      throw Object.assign(new Error('Aset tidak ditemukan atau statusnya bukan reserved. Serah terima dibatalkan.'), { statusCode: 409 });
+    }
+
     loan.status = 'borrowed';
     loan.handover_by_id = actor.id;
     loan.handover_at = new Date().toISOString();
     loan.handover_notes = handoverNotes || 'Unit diserahkan dalam kondisi baik.';
     loan.updated_at = new Date().toISOString();
 
-    const asset = db.assets.find(a => a.id === loan.asset_id);
-    if (asset) {
-      asset.status = 'assigned';
-    }
+    asset.status = 'assigned';
 
     this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id);
 
@@ -908,19 +940,21 @@ export class GabahDomainService {
       throw Object.assign(new Error(`Kondisi pengembalian "${condition}" tidak valid. Pilihan: ${allowedConditions.join(', ')}.`), { statusCode: 400 });
     }
 
+    const asset = db.assets.find(a => a.id === loan.asset_id);
+    if (!asset || asset.status !== 'assigned') {
+      throw Object.assign(new Error('Aset tidak ditemukan atau statusnya bukan assigned. Pengembalian belum dapat diproses.'), { statusCode: 409 });
+    }
+
     loan.status = 'returned';
     loan.actual_returned_at = new Date().toISOString();
     loan.return_condition = condition;
     loan.return_inspected_by_id = actor.id;
     loan.updated_at = new Date().toISOString();
 
-    const asset = db.assets.find(a => a.id === loan.asset_id);
-    if (asset) {
-      asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
-      asset.condition = condition;
-      // Preserve the recorded physical location. Returning a loan changes custody/status,
-      // not the asset's site; a real relocation must use the asset-mutation workflow.
-    }
+    asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
+    asset.condition = condition;
+    // Preserve the recorded physical location. Returning a loan changes custody/status,
+    // not the asset's site; a real relocation must use the asset-mutation workflow.
 
     this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id);
 
