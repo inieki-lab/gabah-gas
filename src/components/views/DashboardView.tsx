@@ -49,11 +49,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewTicketModal,
   onOpenNewAssetModal,
 }) => {
-  const isStaff = currentUser?.role === 'Karyawan' || currentUser?.role === 'Sekretaris Direksi' || currentUser?.role === 'Humas';
+  const currentRoleKeys = currentUser?.role_keys || [];
+  const isHumas = currentRoleKeys.includes('humas') || currentUser?.role === 'Humas' || /humas/i.test(currentUser?.role_label || '');
+  const isSekdir = currentRoleKeys.includes('sekretaris_direksi') || currentUser?.role === 'Sekretaris Direksi' || /sekretariat/i.test(currentUser?.role_label || '');
+  const isStaff = currentUser?.role === 'Karyawan' || isSekdir || isHumas;
   const isEmployee = isStaff;
-  const isHumas = currentUser?.role === 'Humas';
-  const isSekdir = currentUser?.role === 'Sekretaris Direksi';
-  const roleDescriptions: Record<UserRole, string> = {
+    const roleDescriptions: Record<UserRole, string> = {
     'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
     GA: 'Pantau fasilitas kantor, kendaraan dinas, ruang rapat, peminjaman, dan layanan umum.',
@@ -80,9 +81,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
   const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
-  const roleDescription = currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
+  const roleDescription = isHumas
     ? roleDescriptions.Humas
-    : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
+    : isSekdir
       ? roleDescriptions['Sekretaris Direksi']
       : roleDescriptions[currentUser.role];
   const expiringLicenses = dashboardAssets.filter(asset => {
