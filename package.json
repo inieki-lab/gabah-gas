@@ -28,6 +28,7 @@
     "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
     "test:movement-scope": "node scripts/movement-scope-verify.mjs",
     "test:ticket-resolution-notes": "node scripts/ticket-resolution-notes-verify.mjs",
+    "test:telegram-chat-id-redaction": "node scripts/telegram-chat-id-redaction-verify.mjs",
     "test:ticket-reporter-ownership": "node scripts/ticket-reporter-ownership-verify.mjs",
     "test:org-master-active": "node scripts/org-master-active-verify.mjs"
   },
