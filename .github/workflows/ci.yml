@@ -94,6 +94,9 @@ jobs:
       - name: P0 security verification (live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
 
+      - name: User administration validation regression
+        run: npm run test:user-admin-validation
+
       - name: Category master strict boolean regression
         run: npm run test:category-master-boolean
 
