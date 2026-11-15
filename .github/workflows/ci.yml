@@ -91,6 +91,9 @@ jobs:
       - name: P0 security verification (live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
 
+      - name: Notification recipient multi-role RBAC verification
+        run: npm run test:notification-recipient-rbac
+
       - name: Organization master strict active regression
         run: npm run test:org-master-active
 
