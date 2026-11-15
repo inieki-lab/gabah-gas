@@ -2727,6 +2727,30 @@ async function startServer() {
     return res.json({ success: true, data: filtered });
   });
 
+  // Resolve vendor references from the authoritative master only after the
+  // caller has passed permission and asset-owner scope checks. Client-supplied
+  // names are never persisted as authoritative vendor identities.
+  const resolveMaintenanceVendor = (vendorIdInput: unknown, vendorNameInput: unknown) => {
+    const validInput = (value: unknown) => value === undefined || value === null || typeof value === 'string';
+    if (!validInput(vendorIdInput) || !validInput(vendorNameInput)) {
+      return { valid: false as const, vendor: undefined, clear: false };
+    }
+    const requestedVendorId = typeof vendorIdInput === 'string' ? vendorIdInput.trim() : '';
+    const requestedVendorName = typeof vendorNameInput === 'string' ? vendorNameInput.trim() : '';
+    if (!requestedVendorId && !requestedVendorName) {
+      return { valid: true as const, vendor: undefined, clear: true };
+    }
+    const normalizedName = requestedVendorName.toLocaleLowerCase('id-ID');
+    const vendor = requestedVendorId
+      ? db.vendors.find(v => v.id === requestedVendorId)
+      : db.vendors.find(v => String(v.name || '').trim().toLocaleLowerCase('id-ID') === normalizedName);
+    if (!vendor || (requestedVendorName
+      && String(vendor.name || '').trim().toLocaleLowerCase('id-ID') !== normalizedName)) {
+      return { valid: false as const, vendor: undefined, clear: false };
+    }
+    return { valid: true as const, vendor, clear: false };
+  };
+
   app.post('/api/maintenances', (req, res) => {
     const actor = getActor(req);
     // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
@@ -2753,6 +2777,11 @@ async function startServer() {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.create dan scope owner "${asset.owner_division}" wajib dimiliki.` });
     }
 
+    const vendorResolution = resolveMaintenanceVendor(req.body?.vendor_id, req.body?.vendor_name);
+    if (!vendorResolution.valid) {
+      return res.status(400).json({ success: false, message: 'Vendor maintenance tidak valid atau ID dan nama vendor tidak cocok.' });
+    }
+
     const count = db.maintenances.length + 1;
     const scheduleCode = `MNT-2026-${String(count).padStart(3, '0')}`;
     const newSchedule = {
@@ -2768,8 +2797,8 @@ async function startServer() {
       frequency: req.body.frequency || 'one_time',
       status: req.body.status || 'scheduled',
       technician_name: req.body.technician_name || 'Tim Internal',
-      vendor_id: req.body.vendor_id,
-      vendor_name: req.body.vendor_name,
+      vendor_id: vendorResolution.vendor?.id,
+      vendor_name: vendorResolution.vendor?.name,
       estimated_cost: req.body.estimated_cost || 0,
       actual_cost: req.body.actual_cost || 0,
       notes: req.body.notes || '',
@@ -2806,14 +2835,26 @@ async function startServer() {
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, schedule_code, asset_id, asset_name,
     // asset_number, category_type, owner_division, created_at.
+    const hasVendorInput = req.body?.vendor_id !== undefined || req.body?.vendor_name !== undefined;
+    const vendorResolution = hasVendorInput
+      ? resolveMaintenanceVendor(req.body?.vendor_id, req.body?.vendor_name)
+      : undefined;
+    if (vendorResolution && !vendorResolution.valid) {
+      return res.status(400).json({ success: false, message: 'Vendor maintenance tidak valid atau ID dan nama vendor tidak cocok.' });
+    }
+
     const allowedMaintenanceFields = [
       'title', 'scheduled_date', 'frequency', 'status', 'technician_name',
-      'vendor_id', 'vendor_name', 'estimated_cost', 'actual_cost', 'notes', 'checklist',
+      'estimated_cost', 'actual_cost', 'notes', 'checklist',
     ];
     for (const key of allowedMaintenanceFields) {
       if (req.body[key] !== undefined) {
         (schedule as any)[key] = req.body[key];
       }
+    }
+    if (vendorResolution) {
+      schedule.vendor_id = vendorResolution.vendor?.id;
+      schedule.vendor_name = vendorResolution.vendor?.name;
     }
     if (req.body.status === 'completed') {
       schedule.last_completed_at = new Date().toISOString();
