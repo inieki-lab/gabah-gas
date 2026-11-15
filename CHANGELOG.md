@@ -1,3 +1,12 @@
+## [2026-11-16] — Maintenance vendor reference integrity
+
+- Resolve maintenance vendor IDs/names against the server-side vendor master after authorization checks.
+- Reject mismatched or unknown vendor references; never persist client-supplied vendor labels as authoritative data.
+- PATCH updates no longer mass-assign vendor fields and can explicitly clear an existing vendor link.
+- Add regression checks for authorization ordering, canonical vendor linkage, and update behavior.
+
+---
+
 ## [2026-11-15] — Canonical primary roles and location-aware user import
 
 - Restrict primary profile roles to Admin GABAH, IT, GA, Karyawan, and Auditor; Humas/Sekretariat remain function capabilities.
