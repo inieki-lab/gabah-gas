@@ -32,6 +32,7 @@
     "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
     "test:movement-scope": "node scripts/movement-scope-verify.mjs",
     "test:user-admin-validation": "node scripts/user-admin-validation-verify.mjs",
+    "test:bulk-import": "node scripts/bulk-import-verify.mjs",
     "test:category-master-boolean": "node scripts/category-master-boolean-verify.mjs",
     "test:job-level-active": "node scripts/job-level-active-verify.mjs",
     "test:notification-recipient-rbac": "node scripts/notification-recipient-rbac-verify.mjs",
