@@ -127,10 +127,22 @@ async function startServer() {
     return null;
   };
 
+  const isModuleManagedPath = (req: express.Request): boolean => {
+    const path = req.path;
+    if (matchesApiPrefix(path, '/api/modules')) return false;
+    return [
+      '/api/assets', '/api/taxonomy', '/api/numbering', '/api/movements',
+      '/api/master/asset-locations', '/api/dashboard', '/api/loans',
+      '/api/tickets', '/api/maintenances', '/api/vendors', '/api/knowledge',
+      '/api/contracts', '/api/meeting-rooms', '/api/room-reservations',
+    ].some(prefix => matchesApiPrefix(path, prefix));
+  };
+
   // This guard runs after authentication and before all business routes.
-  // Missing registry state or database errors fail closed while PostgreSQL is active.
+  // Unmanaged endpoints (login, health, notifications, administration) bypass
+  // module status checks; missing registry state fails closed for managed APIs.
   app.use(async (req, res, next) => {
-    if (!req.path.startsWith('/api/') || !isPostgresPersistenceActive()) return next();
+    if (!req.path.startsWith('/api/') || !isPostgresPersistenceActive() || !isModuleManagedPath(req)) return next();
     let actor: ServerUser;
     try {
       actor = getActor(req);
