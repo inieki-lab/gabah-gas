@@ -18,4 +18,4 @@ assert.match(form, /!isSekdir/);
 assert.match(form, /\[meetingType, meetingTypes, currentUser\.role, isSekdir\]/);
 assert.doesNotMatch(form, /currentUser\.role === 'Sekretaris Direksi' \|\| meetingType/);
 
-console.log('Room and ticket additional-role UI contract: 12 checks passed');
+console.log('Room and meeting additional-role UI contract: 13 checks passed');
