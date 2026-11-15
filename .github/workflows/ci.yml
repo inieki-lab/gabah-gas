@@ -91,6 +91,12 @@ jobs:
       - name: P0 security verification (live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
 
+      - name: Category master strict boolean regression
+        run: npm run test:category-master-boolean
+
+      - name: Job-level strict active flag regression
+        run: npm run test:job-level-active
+
       - name: Notification recipient multi-role RBAC verification
         run: npm run test:notification-recipient-rbac
 
