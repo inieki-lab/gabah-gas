@@ -497,7 +497,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Role primer tidak valid. Humas/Sekretariat adalah role fungsi; RPC/SC dan PIBC adalah lokasi kerja.' });
       }
       if (typeof name !== 'string' || !name.trim() || name.length > 160
-        || typeof email !== 'string' || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim()) || email.length > 254) {
+        || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
       const primaryRole = requestedPrimaryRole;
