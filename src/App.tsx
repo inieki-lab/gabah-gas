@@ -1148,6 +1148,7 @@ export default function App() {
         onDeleteUser={(userId) => setAllUsers(prev => prev.filter(u => u.id !== userId))}
         showToast={showToast}
         onRefreshData={refreshData}
+        onModulesChanged={refreshModuleStatuses}
       />
 
       <ChangePasswordModal
