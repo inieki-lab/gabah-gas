@@ -12,6 +12,7 @@ assert.ok(validation >= 0, 'Resolution notes must be type- and length-validated'
 assert.ok(mutation > validation, 'Validation must happen before ticket state mutation');
 assert.match(route, /Catatan penyelesaian harus berupa teks maksimal 4000 karakter/);
 assert.match(route, /if \(resolutionNotes !== undefined\) ticket\.resolution_notes = resolutionNotes\.trim\(\)/);
+assert.match(route, /if \(nextStatus === 'resolved' \|\| nextStatus === 'closed'\)[\s\S]*ticket\.resolved_at = new Date\(\)\.toISOString\(\);[\s\S]*else \{[\s\S]*ticket\.resolved_at = undefined/);
 assert.doesNotMatch(route, /if \(resolutionNotes\) ticket\.resolution_notes = resolutionNotes/);
 console.log('PASS | non-string notes rejected');
 console.log('PASS | notes over 4000 chars rejected');
