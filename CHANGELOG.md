@@ -1,3 +1,12 @@
+## 2026-11-12 — Proposed Windows/Linux endpoint inventory agent
+
+- Added a proposal for a cross-platform Go agent with Windows Service and Linux systemd deployment.
+- Defined a separate machine-identity enrollment/authentication boundary; existing employee-authenticated `/api/assets` CRUD is explicitly not reused.
+- Kept device observations separate from the corporate asset register; asset matching/linking requires authorized review and must not overwrite asset ownership or assignment.
+- Proposal only: no agent binary, API, migration, installer, or UI has been implemented. CI/build not applicable to this documentation-only change.
+
+---
+
 ## [2026-11-09] — Honor dynamic asset scopes in maintenance visibility
 
 - PostgreSQL maintenance reads now follow explicit dynamic asset scopes without a second primary-role filter, so additional operational roles are not hidden behind an employee's base identity.
