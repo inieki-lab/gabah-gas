@@ -173,11 +173,11 @@ async function main() {
     const unknownRoleUser = users.find(u => u.email === `impor.tiga.${suffix}@foodstation.co.id`);
     record('Unknown primary role was not created', 'no account', unknownRoleUser ? unknownRoleUser.role : 'not created', !unknownRoleUser);
     const branchUser = users.find(u => u.email === `impor.empat.${suffix}@foodstation.co.id`);
-    record('Legacy PIBC role maps to Karyawan + unit + office location', 'Karyawan / UNIT-PIBC / OFF-PIBC', `${branchUser?.role} / ${branchUser?.unit_id} / ${branchUser?.office_location_id}`,
-      branchUser?.role === 'Karyawan' && branchUser?.unit_id === 'UNIT-PIBC' && branchUser?.office_location_id === 'OFF-PIBC');
+    record('Legacy PIBC role maps to Karyawan + office location (unit stays independent)', 'Karyawan / OFF-PIBC', `${branchUser?.role} / unit=${branchUser?.unit_id || 'none'} / ${branchUser?.office_location_id}`,
+      branchUser?.role === 'Karyawan' && !branchUser?.unit_id && branchUser?.office_location_id === 'OFF-PIBC');
     const rpcUser = users.find(u => u.email === `impor.lima.${suffix}@foodstation.co.id`);
-    record('Legacy Supply Chain role maps to Karyawan + RPC/SC unit/location', 'Karyawan / UNIT-SC / OFF-RPC', `${rpcUser?.role} / ${rpcUser?.unit_id} / ${rpcUser?.office_location_id}`,
-      rpcUser?.role === 'Karyawan' && rpcUser?.unit_id === 'UNIT-SC' && rpcUser?.office_location_id === 'OFF-RPC');
+    record('Legacy Supply Chain role maps to Karyawan + RPC office location (unit stays independent)', 'Karyawan / OFF-RPC', `${rpcUser?.role} / unit=${rpcUser?.unit_id || 'none'} / ${rpcUser?.office_location_id}`,
+      rpcUser?.role === 'Karyawan' && !rpcUser?.unit_id && rpcUser?.office_location_id === 'OFF-RPC');
     const functionRoleUser = users.find(u => u.email === `impor.humas.${suffix}@foodstation.co.id`);
     record('Function role was not created as primary profile', 'no Humas user', functionRoleUser ? functionRoleUser.role : 'not created', !functionRoleUser);
 
