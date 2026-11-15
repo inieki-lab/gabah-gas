@@ -268,7 +268,7 @@ export function downloadUsersImportTemplate() {
   downloadCsv(
     'template_import_pegawai_gabah.csv',
     ['Nama', 'Email', 'Role Utama', 'Divisi Referensi (Opsional)', 'Departemen', 'Telepon', 'Kode Jabatan', 'ID Unit', 'ID Lokasi Kantor'],
-    [['Contoh Pegawai (hapus sebelum impor)', 'contoh@foodstation.co.id', 'Karyawan', 'Umum', 'Operasional', '', 'STAF', 'UNIT-PIBC', 'OFF-PIBC']]
+    [['Contoh Pegawai (hapus sebelum impor)', 'contoh@foodstation.co.id', 'Karyawan', 'Umum', 'Operasional', '', 'STAF', '', 'OFF-PIBC']]
   );
 }
 
