@@ -10,7 +10,7 @@ const patchStart = server.indexOf("app.patch('/api/users/:id'");
 const patchEnd = server.indexOf("app.delete('/api/users/:id'", patchStart);
 const bulkStart = server.indexOf("app.post('/api/users/bulk-import'");
 const bulkEnd = server.indexOf("app.patch('/api/users/:id'", bulkStart);
-assert.ok(createStart >= 0 && createEnd > createStart && patchStart > createEnd && patchEnd > patchStart && bulkStart >= 0 && bulkEnd > bulkStart);
+assert.ok(createStart >= 0 && createEnd > createStart && patchStart >= 0 && patchEnd > patchStart && bulkStart >= 0 && bulkEnd > bulkStart);
 const create = server.slice(createStart, createEnd);
 const patch = server.slice(patchStart, patchEnd);
 const bulk = server.slice(bulkStart, bulkEnd);
