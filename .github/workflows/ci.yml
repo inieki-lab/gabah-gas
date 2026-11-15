@@ -139,6 +139,9 @@ jobs:
       - name: Meeting room reservation regression
         run: npm run test:meeting-room
 
+      - name: Meeting room additional-role UI regression
+        run: npm run test:room-capability-ui
+
       - name: Report KPI data-integrity regression
         run: npm run test:report-kpi-integrity
 
