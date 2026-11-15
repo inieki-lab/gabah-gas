@@ -669,7 +669,7 @@ async function startServer() {
         const requestedRole = roleRaw || 'Karyawan';
         const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
         if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
-          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai Karyawan dengan unit/lokasi kerja; bukan role aplikasi.`);
+          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai Karyawan dengan lokasi kantor; unit organisasi tetap independen.`);
         }
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
