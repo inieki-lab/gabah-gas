@@ -1,3 +1,11 @@
+## [2026-11-15] — Canonicalize API paths before security checks
+
+- Normalize API paths for public-route, Auditor read-only, audit-log, reconciliation, asset-ID, ticket-status, and dashboard-attention authorization checks.
+- Close case-variant and trailing-slash bypasses that could reach Express handlers while evading exact-string middleware checks.
+- Add live HTTP regressions for mixed-case and trailing-slash audit-log/reconciliation requests plus mixed-case asset routes.
+
+---
+
 ## Security — Telegram chat ID response redaction (2026-11-15)
 
 - Ordinary user serialization omits `telegram_chat_id` by default.
