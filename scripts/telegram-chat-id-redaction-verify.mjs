@@ -2,12 +2,9 @@ import fs from 'node:fs';
 
 const auth = fs.readFileSync(new URL('../server/auth.ts', import.meta.url), 'utf8');
 const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
-const start = auth.indexOf('export function sanitizeUser(');
-const end = auth.indexOf('\\n}', start);
-const sanitizer = start >= 0 && end > start ? auth.slice(start, end + 2) : '';
 const checks = [
-  ['Default user serialization omits Telegram chat ID', sanitizer.includes('telegram_chat_id') && sanitizer.includes(': safe;')],
-  ['Telegram chat ID requires explicit opt-in', sanitizer.includes('options.includeTelegramChatId && telegram_chat_id')],
+  ['Default user serialization destructures Telegram ID out of safe profile', auth.includes('temp_password, telegram_chat_id, ...safe')],
+  ['Telegram chat ID requires explicit opt-in', auth.includes('options.includeTelegramChatId && telegram_chat_id') && auth.includes(': safe;')],
   ['User directory limits Telegram ID to Superadmin', server.includes('sanitizeUser(u, { includeTelegramChatId: isSuperadminActor(actor) })')],
   ['Admin create/import/edit responses explicitly opt in', server.includes('sanitizeUser(newUser, { includeTelegramChatId: true })') && server.includes('sanitizeUser(targetUser, { includeTelegramChatId: true })') && server.includes('sanitizeUser(u, { includeTelegramChatId: true })')],
 ];
