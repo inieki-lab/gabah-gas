@@ -5,10 +5,10 @@ const modal = fs.readFileSync('src/components/modals/AdministrationModal.tsx', '
 const service = fs.readFileSync('src/services/gabahService.ts', 'utf8');
 
 const createStart = server.indexOf("app.post('/api/users'");
-const createEnd = server.indexOf("app.get('/api/users'", createStart);
+const bulkStart = server.indexOf("app.post('/api/users/bulk-import'");
+const createEnd = bulkStart;
 const patchStart = server.indexOf("app.patch('/api/users/:id'");
 const patchEnd = server.indexOf("app.delete('/api/users/:id'", patchStart);
-const bulkStart = server.indexOf("app.post('/api/users/bulk-import'");
 const bulkEnd = server.indexOf("app.patch('/api/users/:id'", bulkStart);
 assert.ok(createStart >= 0 && createEnd > createStart && patchStart >= 0 && patchEnd > patchStart && bulkStart >= 0 && bulkEnd > bulkStart);
 const create = server.slice(createStart, createEnd);
