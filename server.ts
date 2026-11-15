@@ -589,8 +589,8 @@ async function startServer() {
 
   // Bulk import pegawai (IMPORT Excel/CSV). Upsert per email:
   //  - email BARU    → akun dibuat (password CSPRNG server-side, out-of-band).
-  //  - email SUDAH ADA → data profil (nama/divisi/departemen/telepon/role) di-update,
-  //    password & status sesi TIDAK disentuh.
+  //  - email SUDAH ADA → data profil di-update; bila role berubah, seluruh sesi
+  //    lama dicabut agar hak akses yang sudah berubah tidak memakai token lama.
   // Guard: hanya Admin GABAH. Setiap baris divalidasi individual agar satu
   // baris buruk tidak menggagalkan seluruh batch.
   app.post('/api/users/bulk-import', async (req, res) => {
@@ -780,7 +780,7 @@ async function startServer() {
       if (name !== undefined && !name.trim()) {
         return res.status(400).json({ success: false, message: 'Nama tidak boleh kosong.' });
       }
-      if (email !== undefined && (!email.trim() || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim()))) {
+      if (email !== undefined && (!email.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()))) {
         return res.status(400).json({ success: false, message: 'Format email tidak valid.' });
       }
       const validRoles = ['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Management', 'Auditor', 'Karyawan'];
