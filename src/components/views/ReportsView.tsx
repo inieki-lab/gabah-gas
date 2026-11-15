@@ -496,11 +496,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
             ))}
           </div>
         </div>
-        </div>
 
       </div>
 
-      {/* Rekapitulasi Berdasarkan 9 Jenis Aset Tetap Standar Korporat */}
+      {/* Rekapitulasi Kategori Aset Berdasarkan Kode Saat Ini */}
       <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
           <div>
