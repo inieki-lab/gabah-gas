@@ -154,7 +154,7 @@ async function main() {
     const d2 = r2.json?.data || {};
     record('Second import updates existing email', 'updated=1', `updated=${d2.updated}`, d2.updated === 1);
     record('Second import creates new accounts for legacy location aliases', 'created=2', `created=${d2.created}`, d2.created === 2);
-    record('Legacy branch role mapping is disclosed', 'warning explains Karyawan + unit/location', (d2.warnings || []).join(' | '), (d2.warnings || []).some(w => w.includes('dipetakan sebagai Karyawan dengan unit/lokasi kerja')));
+    record('Legacy branch role mapping is disclosed', 'warning explains Karyawan + office location', (d2.warnings || []).join(' | '), (d2.warnings || []).some(w => w.includes('dipetakan sebagai Karyawan dengan lokasi kantor')));
 
     // ---------- Verify persisted state ----------
     const list = await req(base, 'GET', '/api/users', { token: adminToken });
