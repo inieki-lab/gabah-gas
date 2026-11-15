@@ -36,8 +36,6 @@ const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const effectivePermissionQuery = policy.slice(policy.indexOf('SELECT ur.user_id'), policy.indexOf('const scopes'));
-const persistence = fs.readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
-
 const checks = [
   ['Legacy function roles are assigned after normalized user rows exist and before profiles are normalized', /await backfillNormalizedTables\(\);\s*const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments\(\);\s*await ensureEmployeeCapabilityAssignments\(legacyCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/.test(persistence)],
   ['Legacy Humas and Secretariat primary mirrors are reconciled to Karyawan', !/WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas'/.test(persistence) && /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/.test(persistence)],
