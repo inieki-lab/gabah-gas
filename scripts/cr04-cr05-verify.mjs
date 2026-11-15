@@ -206,6 +206,36 @@ async function main() {
     const health = await req(base, 'GET', '/api/health');
     const persistence = health.json?.persistence;
     record('CR-04 /api/health reports postgresql persistence (no silent JSON fallback)', 'postgresql', persistence, persistence === 'postgresql');
+    // Legacy function profiles must become Karyawan primary plus a secondary
+    // capability assignment, and the authoritative JSON state must agree.
+    const capabilityRows = await mig.query(
+      `SELECT u.email, u.role, r.role_key, ur.is_primary
+       FROM users u
+       LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id::text
+       LEFT JOIN gabah_roles r ON r.id = ur.role_id
+       WHERE u.email = ANY($1::text[])
+       ORDER BY u.email, ur.is_primary DESC`,
+      [['humas@foodstation.co.id', 'sekretariat.direksi@foodstation.co.id']],
+    );
+    const checkEmployeeCapability = (email, capabilityKey) => {
+      const rows = capabilityRows.rows.filter(row => row.email === email);
+      return rows.length > 0
+        && rows.every(row => row.role === 'Karyawan')
+        && rows.some(row => row.role_key === 'karyawan' && row.is_primary === true)
+        && rows.some(row => row.role_key === capabilityKey && row.is_primary === false);
+    };
+    record('Legacy Humas profile is Karyawan primary + Humas secondary', true,
+      checkEmployeeCapability('humas@foodstation.co.id', 'humas'), checkEmployeeCapability('humas@foodstation.co.id', 'humas'));
+    record('Legacy Sekretariat profile is Karyawan primary + Sekretariat secondary', true,
+      checkEmployeeCapability('sekretariat.direksi@foodstation.co.id', 'sekretaris_direksi'), checkEmployeeCapability('sekretariat.direksi@foodstation.co.id', 'sekretaris_direksi'));
+    const stateUsers = await mig.query("SELECT payload->'users' AS users FROM gabah_state WHERE id = 1");
+    const stateRows = stateUsers.rows[0]?.users || [];
+    const stateRolesNormalized = ['humas@foodstation.co.id', 'sekretariat.direksi@foodstation.co.id'].every(email => {
+      const user = stateRows.find(item => item.email === email);
+      return user?.role === 'Karyawan' && Boolean(user?.role_label);
+    });
+    record('Authoritative JSON state retains normalized employee profiles and function labels', true, stateRolesNormalized, stateRolesNormalized);
+
 
     const mig = new pg.Client({ connectionString: TEST_DB_URL });
     mig.on('error', e => console.error('[pg ledger async error]', e.message));
