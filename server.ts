@@ -1746,8 +1746,11 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master unit.' });
       }
       const name = String(req.body.name || '').trim();
-      const divisionCode = String(req.body.division_code || 'Umum').trim().toUpperCase();
+      const requestedDivisionCode = String(req.body.division_code || 'Umum').trim();
+      const configuredDivision = (db.divisions || []).find(d => String(d.code || '').trim().toLowerCase() === requestedDivisionCode.toLowerCase());
       if (!name) return res.status(400).json({ success: false, message: 'Nama unit wajib diisi.' });
+      if (!configuredDivision) return res.status(400).json({ success: false, message: `Divisi "${requestedDivisionCode}" tidak terdaftar pada Master Divisi.` });
+      const divisionCode = String(configuredDivision.code);
       if (!db.orgUnits) db.orgUnits = [];
       if (db.orgUnits.some(u => u.name.toLowerCase() === name.toLowerCase())) {
         return res.status(400).json({ success: false, message: `Unit "${name}" sudah ada.` });
@@ -1772,7 +1775,12 @@ async function startServer() {
       const unit = db.orgUnits.find(u => u.id === req.params.id);
       if (!unit) return res.status(404).json({ success: false, message: 'Unit tidak ditemukan.' });
       if (req.body.name !== undefined) unit.name = String(req.body.name).trim() || unit.name;
-      if (req.body.division_code !== undefined) unit.division_code = String(req.body.division_code).trim().toUpperCase() as any;
+      if (req.body.division_code !== undefined) {
+        const requestedDivisionCode = String(req.body.division_code || '').trim();
+        const configuredDivision = (db.divisions || []).find(d => String(d.code || '').trim().toLowerCase() === requestedDivisionCode.toLowerCase());
+        if (!configuredDivision) return res.status(400).json({ success: false, message: `Divisi "${requestedDivisionCode}" tidak terdaftar pada Master Divisi.` });
+        unit.division_code = String(configuredDivision.code) as any;
+      }
       if (req.body.is_active !== undefined) unit.is_active = Boolean(req.body.is_active);
       GabahDomainService.recordAudit('ORG_UNIT_UPDATED', 'Organization', `Memperbarui master unit ${unit.name} — aktif: ${unit.is_active}`, actor);
       await persistDataStore();
