@@ -1,3 +1,10 @@
+## Security — ticket reporter ownership (2026-11-15)
+
+- Ticket ownership now treats a populated reporter ID as authoritative; display-name fallback applies only to legacy tickets without reporter IDs.
+- Prevents employees with identical names from inheriting access to another employee's ticket.
+- Added a CI regression check for the reporter ownership predicate.
+- Runtime duplicate-name account tests remain required before deployment.
+
 ## [2026-11-14] — Enforce asset custody integrity across user and bulk workflows
 
 - Blocked user deactivation/deletion while active loans or assigned assets remain; no synthetic returns or automatic asset unassignment.
