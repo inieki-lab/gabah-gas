@@ -14,6 +14,8 @@ const checks = [
   ['App loads module availability for authenticated users', /gabahApi\.getModules\(\)/.test(app)],
   ['App falls back when current module becomes inactive', /activeModuleKeys\.find\(key => isNavTabAllowedForRole/.test(app)],
   ['App passes module status to Sidebar', /activeModuleKeys=\{activeModuleKeys\}/.test(app)],
+  ['App passes additional role assignments to Sidebar', /currentUserRoleKeys=\{currentUser\.role_keys\}/.test(app)],
+  ['Primary Administration modal refreshes module status', /onModulesChanged=\{refreshModuleStatuses\}/.test(app)],
   ['App refreshes menu after module changes', /onModulesChanged=\{refreshModuleStatuses\}/.test(app)],
   ['Sidebar hides inactive navigation modules', /activeModuleKeys === undefined \|\| activeModuleKeys\.includes\(item\.id\)/.test(sidebar)],
   ['Sidebar recognizes additional Humas and Sekdir capabilities', /currentUserRoleKeys\?\.includes\('humas'\)/.test(sidebar) && /currentUserRoleKeys\?\.includes\('sekretaris_direksi'\)/.test(sidebar)],
