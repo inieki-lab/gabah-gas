@@ -1,3 +1,12 @@
+## [2026-11-16] — Ignore spoofable forwarded IP headers
+
+- Login lockout, global API rate limiting, and session IP metadata now use the transport peer IP unless a trusted proxy chain is explicitly configured.
+- Do not trust client-supplied X-Forwarded-For in the current deployment, which has no Express trust-proxy configuration.
+- Reclaim expired login-attempt and API rate-limit entries incrementally to bound in-memory state.
+- Add live HTTP and source regression checks for spoofed forwarded headers.
+
+---
+
 ## [2026-11-16] — Enforce ticket linked-asset visibility
 
 - Validate related asset IDs in the ticket domain service against the same per-user scoped asset catalogue used by asset reads.
