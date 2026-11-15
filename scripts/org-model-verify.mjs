@@ -78,11 +78,18 @@ async function main() {
 
     // Case 3: Admin CRUD/disable master Unit
     const u1c = await req(b, 'POST', '/api/master/org-units', { token: admin, body: { name: 'Unit Uji Coba', division_code: 'GA' } });
+    const u1Case = await req(b, 'POST', '/api/master/org-units', { token: admin, body: { name: 'Unit Uji Casefold', division_code: 'uMuM' } });
+    const duplicateUnitName = await req(b, 'PATCH', `/api/master/org-units/${u1c.json?.data?.id}`, { token: admin, body: { name: 'IT & MIS' } });
+    const duplicateUnitStillOriginal = ((await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data || []).find(x => x.id === u1c.json?.data?.id)?.name === 'Unit Uji Coba';
+    const u1CasePatch = await req(b, 'PATCH', `/api/master/org-units/${u1c.json?.data?.id}`, { token: admin, body: { division_code: 'aUdIt' } });
     const u1UP = (await req(b, 'PATCH', `/api/master/org-units/${u1c.json?.data?.id}`, { token: admin, body: { is_active: false } })).status;
     const unitsNow = (await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data || [];
     const u1Active = unitsNow.find(x => x.id === u1c.json?.data?.id)?.is_active;
     await req(b, 'PATCH', `/api/master/org-units/${u1c.json?.data?.id}`, { token: admin, body: { is_active: true } });
     rec('3: Admin CRUD/disable master Unit', 'create+disable', `${u1c.status}+${u1UP}+aktif=${u1Active}`, u1c.status === 201 && u1UP === 200 && u1Active === false);
+    rec('3a: create unit resolves division code case-insensitively to canonical FK value', 'Umum', `${u1Case.status}:${u1Case.json?.data?.division_code}`, u1Case.status === 201 && u1Case.json?.data?.division_code === 'Umum');
+    rec('3b: update unit resolves division code case-insensitively to canonical FK value', 'Audit', `${u1CasePatch.status}:${(await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data?.find(x => x.id === u1c.json?.data?.id)?.division_code}`, u1CasePatch.status === 200 && (await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data?.find(x => x.id === u1c.json?.data?.id)?.division_code === 'Audit');
+    rec('3c: update rejects duplicate unit names without partial mutation', '400 + original name retained', `${duplicateUnitName.status} + unchanged=${duplicateUnitStillOriginal}`, duplicateUnitName.status === 400 && duplicateUnitStillOriginal);
 
     // Case 4: Admin CRUD/disable master Location
     const l1 = await req(b, 'POST', '/api/master/office-locations', { token: admin, body: { name: 'Kantor Uji Coba' } });
