@@ -667,8 +667,14 @@ async function startServer() {
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
         if (existing) {
           // UPDATE profil (password, is_active, dan sesi tidak disentuh)
+          const previousPrimaryRole = existing.role;
           existing.name = name;
           existing.role = role as ServerUser['role'];
+          if (previousPrimaryRole !== existing.role) {
+            // A bulk-import role change is a privilege change too: revoke every
+            // existing session just as the single-user PATCH endpoint does.
+            revokeUserSessions(existing.id);
+          }
           (existing as any).role_label = roleLabels[role] || role;
           if (requestedRole === 'Supply Chain' && !existing.office_location_id) existing.office_location_id = 'OFF-RPC';
           if (requestedRole === 'PIBC' && !existing.office_location_id) existing.office_location_id = 'OFF-PIBC';
@@ -758,7 +764,35 @@ async function startServer() {
         return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
       }
 
-      const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
+      const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body || {};
+      // Reject malformed profile mutations instead of coercing attacker-controlled
+      // values (notably Boolean("false") === true) into privileged account state.
+      const stringFields: Array<[string, unknown, number]> = [
+        ['name', name, 160], ['email', email, 254], ['division', division, 120],
+        ['department', department, 120], ['phone', phone, 40],
+        ['telegram_chat_id', telegram_chat_id, 128],
+      ];
+      for (const [field, value, maxLength] of stringFields) {
+        if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+          return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
+        }
+      }
+      if (name !== undefined && !name.trim()) {
+        return res.status(400).json({ success: false, message: 'Nama tidak boleh kosong.' });
+      }
+      if (email !== undefined && (!email.trim() || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim()))) {
+        return res.status(400).json({ success: false, message: 'Format email tidak valid.' });
+      }
+      const validRoles = ['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Management', 'Auditor', 'Karyawan'];
+      if (role !== undefined && (typeof role !== 'string' || !validRoles.includes(role))) {
+        return res.status(400).json({ success: false, message: 'Role tidak dikenal.' });
+      }
+      if (is_active !== undefined && typeof is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean true atau false.' });
+      }
+      if (password !== undefined && (typeof password !== 'string' || (password.length > 0 && password.trim().length < 8) || password.length > 256)) {
+        return res.status(400).json({ success: false, message: 'Password harus berupa teks 8–256 karakter.' });
+      }
       const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
       const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
@@ -825,7 +859,7 @@ async function startServer() {
       }
       if (division !== undefined) targetUser.division = division;
       if (department !== undefined) targetUser.department = department.trim();
-      if (is_active !== undefined) targetUser.is_active = Boolean(is_active);
+      if (is_active !== undefined) targetUser.is_active = is_active;
       if (phone !== undefined) targetUser.phone = phone.trim();
       // ORG-MODEL: atribut jabatan/unit/lokasi — independen dari role/permission.
       if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
