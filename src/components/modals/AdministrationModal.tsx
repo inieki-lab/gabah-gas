@@ -1411,12 +1411,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     setEditUserData({
       name: user.name || '',
       email: user.email || '',
-      role: user.role,
-      division: (user.division as OwnerDivision) || 'SC',
+      role: PRIMARY_PROFILE_ROLES.some(r => r.value === user.role) ? user.role : 'Karyawan',
+      division: (user.division as OwnerDivision) || 'Umum',
       department: user.department || '',
       job_level_code: (user as any).job_level_code || '',
-      unit_id: (user as any).unit_id || '',
-      office_location_id: (user as any).office_location_id || '',
+      unit_id: (user as any).unit_id || (user.role === 'Supply Chain' ? 'UNIT-SC' : user.role === 'PIBC' ? 'UNIT-PIBC' : ''),
+      office_location_id: (user as any).office_location_id || (user.role === 'Supply Chain' ? 'OFF-RPC' : user.role === 'PIBC' ? 'OFF-PIBC' : ''),
       phone: user.phone || '',
       is_active: user.is_active !== undefined ? user.is_active : true,
       telegram_chat_id: user.telegram_chat_id || '',
@@ -1426,13 +1426,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // ============ IMPORT MASSAL PEGAWAI (CSV/Excel) ============
-  const validImportRoles = SYSTEM_ROLES.map(r => r.value as string);
+  const validImportRoles = [...PRIMARY_PROFILE_ROLES.map(r => r.value as string), 'Supply Chain', 'PIBC'];
   const validImportDivisions = divisions.map(d => String(d.code));
+  const validImportJobLevels = jobLevels.filter(j => j.is_active).map(j => String(j.code));
+  const validImportUnitIds = orgUnits.filter(u => u.is_active).map(u => String(u.id));
+  const validImportOfficeLocationIds = officeLocations.filter(l => l.is_active).map(l => String(l.id));
 
   const handleImportFilePicked = async (file: File) => {
     try {
       const text = await file.text();
-      const parsed = parseUsersImportCsv(text, validImportRoles, validImportDivisions);
+      const parsed = parseUsersImportCsv(text, validImportRoles, validImportDivisions, validImportJobLevels, validImportUnitIds, validImportOfficeLocationIds);
       setImportPreview(parsed);
       if (parsed.valid.length === 0 && parsed.errors.length > 0) {
         showToast(`Tidak ada baris valid. Periksa: ${parsed.errors[0]}`, 'warning');
@@ -2309,7 +2312,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
-                            {SYSTEM_ROLES.map(r => (
+                            {PRIMARY_PROFILE_ROLES.map(r => (
                               <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>
