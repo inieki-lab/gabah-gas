@@ -229,7 +229,6 @@ async function main() {
     } catch (err) {
       record('CR-04 schema introspection', 'columns/indexes present', `query error: ${err.message}`, false);
     }
-    await mig.end();
 
     // ---------- Module lifecycle registry + immutable audit history ----------
     try {
