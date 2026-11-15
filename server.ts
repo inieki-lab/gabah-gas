@@ -19,6 +19,7 @@ import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus 
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
 import { filterDashboardAttentionItems } from './server/dashboard-attention-scope';
+import { hasRoleCapability } from './server/role-capabilities';
 import {
   createSession,
   destroySession,
@@ -105,8 +106,12 @@ async function startServer() {
       supply_chain: 'Supply Chain',
       pibc: 'PIBC',
     };
-    if (actor.role === legacyLabels[roleKey]) return true;
-    return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
+    // PostgreSQL role assignments are authoritative. In file-store mode,
+    // function capabilities fall back to the explicit role label on the user.
+    if (isPostgresPersistenceActive()) return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
+    if (roleKey === 'humas') return hasRoleCapability(actor, 'humas');
+    if (roleKey === 'sekretaris_direksi') return hasRoleCapability(actor, 'sekretaris_direksi');
+    return actor.role === legacyLabels[roleKey];
   };
 
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
