@@ -320,6 +320,50 @@ async function main() {
 
     if (!adminToken) throw new Error('cannot continue without admin token');
 
+    // ---------- Module lifecycle API + live enforcement ----------
+    const modulesRead = await req(base, 'GET', '/api/modules', { token: karyawanToken });
+    const moduleRows = modulesRead.json?.data || [];
+    record('authenticated staff can read module availability', '200 + 12 seeded active modules',
+      `HTTP ${modulesRead.status} rows=${moduleRows.length}`,
+      modulesRead.status === 200 && moduleRows.length >= 12 && moduleRows.every(m => m.is_active === true));
+
+    const roomReservationsBefore = await req(base, 'GET', '/api/room-reservations', { token: adminToken });
+    const roomCountBefore = (roomReservationsBefore.json?.data || []).length;
+    const staffToggle = await req(base, 'PATCH', '/api/modules/meeting_rooms', { token: karyawanToken, body: { is_active: false, reason: 'Uji nonaktif modul' } });
+    record('non-superadmin cannot toggle module lifecycle', '403', `HTTP ${staffToggle.status}`, staffToggle.status === 403);
+    const invalidToggle = await req(base, 'PATCH', '/api/modules/meeting_rooms', { token: adminToken, body: { is_active: 'false', reason: 'Uji boolean' } });
+    record('module toggle rejects string booleans', '400', `HTTP ${invalidToggle.status}`, invalidToggle.status === 400);
+    const missingReason = await req(base, 'PATCH', '/api/modules/meeting_rooms', { token: adminToken, body: { is_active: false, reason: 'no' } });
+    record('module toggle requires a meaningful reason', '400', `HTTP ${missingReason.status}`, missingReason.status === 400);
+    const missingModule = await req(base, 'PATCH', '/api/modules/missing_module', { token: adminToken, body: { is_active: false, reason: 'Uji modul tidak ada' } });
+    record('unknown module key is rejected', '404', `HTTP ${missingModule.status}`, missingModule.status === 404);
+
+    const disableRoomModule = await req(base, 'PATCH', '/api/modules/meeting_rooms', { token: adminToken, body: { is_active: false, reason: 'Pengujian enforcement modul booking' } });
+    record('superadmin can disable module with audit reason', '200 + inactive', `HTTP ${disableRoomModule.status} active=${disableRoomModule.json?.data?.is_active}`,
+      disableRoomModule.status === 200 && disableRoomModule.json?.data?.is_active === false);
+    const blockedRoomApi = await req(base, 'GET', '/api/room-reservations', { token: adminToken });
+    record('disabled module blocks business API even for superadmin', '403 MODULE_DISABLED',
+      `HTTP ${blockedRoomApi.status} code=${blockedRoomApi.json?.code}`,
+      blockedRoomApi.status === 403 && blockedRoomApi.json?.code === 'MODULE_DISABLED');
+    const staffAudit = await req(base, 'GET', '/api/modules/meeting_rooms/audit', { token: karyawanToken });
+    record('module audit history is superadmin-only', '403', `HTTP ${staffAudit.status}`, staffAudit.status === 403);
+    const moduleAudit = await req(base, 'GET', '/api/modules/meeting_rooms/audit', { token: adminToken });
+    record('module changes are recorded in immutable audit history', '2 entries',
+      `HTTP ${moduleAudit.status} rows=${moduleAudit.json?.data?.length}`,
+      moduleAudit.status === 200 && moduleAudit.json?.data?.length === 1);
+
+    const enableRoomModule = await req(base, 'PATCH', '/api/modules/meeting_rooms', { token: adminToken, body: { is_active: true, reason: 'Pengujian enforcement selesai' } });
+    const roomReservationsAfter = await req(base, 'GET', '/api/room-reservations', { token: adminToken });
+    const roomCountAfter = (roomReservationsAfter.json?.data || []).length;
+    record('reactivated module restores API without deleting data', '200 + unchanged records',
+      `HTTP ${roomReservationsAfter.status}, ${roomCountBefore}->${roomCountAfter}`,
+      enableRoomModule.status === 200 && enableRoomModule.json?.data?.is_active === true
+        && roomReservationsAfter.status === 200 && roomCountBefore === roomCountAfter);
+    const moduleAuditAfter = await req(base, 'GET', '/api/modules/meeting_rooms/audit', { token: adminToken });
+    record('disable and re-enable create two audit entries', '2 entries',
+      `rows=${moduleAuditAfter.json?.data?.length}`,
+      moduleAuditAfter.status === 200 && moduleAuditAfter.json?.data?.length === 2);
+
     const usersRes = await req(base, 'GET', '/api/users', { token: adminToken });
     const itUser = (usersRes.json?.data || []).find(u => u.email === IT_EMAIL);
     const itUserId = itUser?.id || '';
