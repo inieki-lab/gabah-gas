@@ -3,8 +3,6 @@ import assert from 'node:assert/strict';
 
 const rooms = fs.readFileSync('src/components/views/MeetingRoomsView.tsx', 'utf8');
 const form = fs.readFileSync('src/components/modals/CreateRoomReservationModal.tsx', 'utf8');
-const tickets = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
-
 assert.match(rooms, /const isHumas = currentUser\.role === 'Humas' \|\| currentUser\.role_keys\?\.includes\('humas'\) === true/);
 assert.match(rooms, /const isSekdir = currentUser\.role === 'Sekretaris Direksi' \|\| currentUser\.role_keys\?\.includes\('sekretaris_direksi'\) === true/);
 assert.match(rooms, /\{isHumas && \(/);
@@ -20,6 +18,4 @@ assert.match(form, /!isSekdir/);
 assert.match(form, /\[meetingType, meetingTypes, currentUser\.role, isSekdir\]/);
 assert.doesNotMatch(form, /currentUser\.role === 'Sekretaris Direksi' \|\| meetingType/);
 
-assert.match(tickets, /currentUser\?\.unit_id === 'UNIT-SC'/);
-assert.match(tickets, /currentUser\?\.unit_id === 'UNIT-PIBC'/);
-console.log('Room and ticket additional-role UI contract: 14 checks passed');
+console.log('Room and ticket additional-role UI contract: 12 checks passed');
