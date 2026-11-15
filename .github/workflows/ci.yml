@@ -106,6 +106,9 @@ jobs:
       - name: Meeting room reservation regression
         run: npm run test:meeting-room
 
+      - name: Ticket resolution notes validation
+        run: npm run test:ticket-resolution-notes
+
       - name: Contract renewal linkage integrity
         run: npm run test:contract-renewal-integrity
 
