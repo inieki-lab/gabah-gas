@@ -103,6 +103,9 @@ jobs:
       - name: User bulk-import primary-role regression
         run: npm run test:bulk-import
 
+      - name: User CSV import parser regression
+        run: npm run test:user-import-parser
+
       - name: Category master strict boolean regression
         run: npm run test:category-master-boolean
 
