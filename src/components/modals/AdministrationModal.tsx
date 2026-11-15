@@ -2066,6 +2066,32 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       />
                     </div>
                     <div>
+                      <label className="block text-slate-600 mb-1 font-medium">Jabatan</label>
+                      <select
+                        value={newUserData.job_level_code || ''}
+                        onChange={e => setNewUserData({ ...newUserData, job_level_code: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                      >
+                        <option value="">— Pilih jabatan —</option>
+                        {jobLevels.filter(level => level.is_active).map(level => (
+                          <option key={level.code} value={level.code}>{level.label || level.code}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 mb-1 font-medium">Unit Organisasi</label>
+                      <select
+                        value={newUserData.unit_id || ''}
+                        onChange={e => setNewUserData({ ...newUserData, unit_id: e.target.value || null })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                      >
+                        <option value="">— Pilih unit —</option>
+                        {orgUnits.filter(unit => unit.is_active).map(unit => (
+                          <option key={unit.id} value={unit.id}>{unit.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-slate-600 mb-1 font-medium">Lokasi Kerja / Kantor</label>
                       <select
                         value={newUserData.office_location_id || ''}
@@ -2316,6 +2342,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>
+                          <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat ditetapkan sebagai role fungsi. RPC/SC dan PIBC dicatat melalui unit serta lokasi kantor.</p>
                         </div>
 
                         <div className="space-y-1.5">
