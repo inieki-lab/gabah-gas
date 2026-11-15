@@ -253,6 +253,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
 
   // Password reset state must be declared before any conditional render return.
+  const [passwordResetTarget, setPasswordResetTarget] = useState<UserProfile | null>(null);
+  const [tempIssuedPassword, setTempIssuedPassword] = useState<string | null>(null);
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
 
   // Edit User State
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
@@ -1573,9 +1576,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   // (server meng-hash & menyimpannya), lalu tampilkan SEKALI untuk disampaikan
   // out-of-band. Tanpa provider email yang terkonfigurasi, klaim "link email
   // terkirim" adalah palsu — sehingga UI menampilkan sandinya secara eksplisit.
-  const [passwordResetTarget, setPasswordResetTarget] = useState<UserProfile | null>(null);
-  const [tempIssuedPassword, setTempIssuedPassword] = useState<string | null>(null);
-  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
   const handleRealPasswordReset = async () => {
     if (!passwordResetTarget) return;
     try {
