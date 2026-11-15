@@ -2751,12 +2751,22 @@ async function startServer() {
   // =========================
   // Vendor Directory (server-authoritative)
   // =========================
+  // Contract records are linked to vendors by normalized vendor_name (legacy schema).
+  // Never trust a client-provided or cached active_contracts_count value.
+  const getActiveVendorContractCount = (vendorName: string): number => {
+    const normalizedName = String(vendorName || '').trim().toLocaleLowerCase('id-ID');
+    if (!normalizedName) return 0;
+    return db.contracts.filter(contract =>
+      String(contract.vendor_name || '').trim().toLocaleLowerCase('id-ID') === normalizedName &&
+      ['active', 'expiring', 'renewal_in_progress'].includes(String(contract.status || '').toLowerCase())
+    ).length;
+  };
   app.get('/api/vendors', (req, res) => {
     
     if (!requireRbacPermission(req, res, 'vendors.read')) return;
     const actor = getActor(req);
     if (isSuperadminActor(actor) || isAuditorActor(actor)) {
-      return res.json({ success: true, data: db.vendors });
+      return res.json({ success: true, data: db.vendors.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
     }
     const data = db.vendors.filter(v => {
       const owner = String(v.owner_division || '').trim();
@@ -2767,7 +2777,7 @@ async function startServer() {
         ? hasRbacScope(String(actor.id), 'division', owner, 'vendors')
         : actor.role === owner;
     });
-    return res.json({ success: true, data });
+    return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
   });
 
   app.post('/api/vendors', (req, res) => {
@@ -2811,7 +2821,7 @@ async function startServer() {
       pic_phone: req.body.pic_phone || '',
       pic_email: req.body.pic_email || '',
       address: req.body.address || '',
-      active_contracts_count: Number(req.body.active_contracts_count) || 0,
+      active_contracts_count: getActiveVendorContractCount(name),
       rating,
       notes: req.body.notes || '',
     };
@@ -2866,7 +2876,7 @@ async function startServer() {
     }
     const vendor = existingVendor;
     // SECURITY (CR-06): explicit allowlist — id is server-owned.
-    const allowedVendorFields = ['name', 'category', 'owner_division', 'pic_name', 'pic_phone', 'pic_email', 'address', 'active_contracts_count', 'rating', 'notes'];
+    const allowedVendorFields = ['name', 'category', 'owner_division', 'pic_name', 'pic_phone', 'pic_email', 'address', 'rating', 'notes'];
     for (const key of allowedVendorFields) {
       if (req.body[key] !== undefined) (vendor as any)[key] = req.body[key];
     }
@@ -2874,6 +2884,7 @@ async function startServer() {
     vendor.category = requestedCategory;
     vendor.owner_division = requestedOwner;
     vendor.rating = requestedRating;
+    vendor.active_contracts_count = getActiveVendorContractCount(vendor.name);
     GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
     persistDataStore().catch(() => {});
     res.json({ success: true, data: vendor });

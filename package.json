@@ -26,6 +26,7 @@
     "test:asset-category-filter": "tsx scripts/asset-category-filter-verify.ts",
     "test:branch-migration-safety": "node scripts/branch-migration-safety-verify.mjs",
     "test:contract-renewal-integrity": "node scripts/contract-renewal-integrity-verify.mjs",
+    "test:vendor-contract-count": "node scripts/vendor-contract-count-verify.mjs",
     "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
     "test:movement-scope": "node scripts/movement-scope-verify.mjs",
     "test:category-master-boolean": "node scripts/category-master-boolean-verify.mjs",
