@@ -1,3 +1,12 @@
+## [2026-11-16] — Module lifecycle administration UI
+
+- Add a Superadmin Administration panel to activate/deactivate modules with a required reason and view append-only status history.
+- Fetch global module availability for authenticated navigation; hide inactive module tabs and move users away from a module that is disabled while they are viewing it.
+- Keep per-user/per-role access decisions in Dynamic RBAC; module status is a separate global operational switch.
+- Add UI/navigation regression checks.
+
+---
+
 ## [2026-11-16] — Module lifecycle API and enforcement
 
 - Add authenticated module status read, Superadmin-only status update, and Superadmin-only audit history endpoints.
