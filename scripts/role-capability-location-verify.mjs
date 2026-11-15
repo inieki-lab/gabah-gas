@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const header = fs.readFileSync('src/components/HeaderNavbar.tsx', 'utf8');
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+const meeting = fs.readFileSync('src/components/views/MeetingRoomsView.tsx', 'utf8');
+const tickets = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
+const db = fs.readFileSync('server/db.ts', 'utf8');
+
+assert.doesNotMatch(header, /onSelectUser|onSwitchRoleSimulation|allUsers/);
+assert.doesNotMatch(app, /handleSelectUser|handleSwitchRoleSimulation/);
+assert.match(header, /roleKeys\.includes\('humas'\)/);
+assert.match(meeting, /roleKeys\.includes\('sekretaris_direksi'\)/);
+assert.match(meeting, /roleKeys\.includes\('humas'\)/);
+assert.match(tickets, /office_location_id === 'OFF-RPC'/);
+assert.match(tickets, /office_location_id === 'OFF-PIBC'/);
+assert.match(tickets, /const isRPC =/);
+assert.match(tickets, /const isPIBC =/);
+assert.doesNotMatch(tickets, /const isRPC = currentUser\?\.role === 'RPC\/SC'/);
+assert.match(db, /role: 'Karyawan',\s*role_label: 'Staf Sekretariat Direksi'/);
+assert.match(db, /role: 'Karyawan',\s*role_label: 'Staf Humas & Protokoler'/);
+console.log('Role capability and office-location UI: 12 checks passed');
