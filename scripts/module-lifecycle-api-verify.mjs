@@ -7,6 +7,7 @@ const checks = [
   ['Module status is cached briefly', /MODULE_STATUS_CACHE_MS = 5000/.test(server)],
   ['Module status is read from the registry', /SELECT is_active FROM gabah_modules WHERE module_key = \$1/.test(server)],
   ['Module management routes are excluded from their own guard', /matchesApiPrefix\(path, '\/api\/modules'\)\) return null/.test(server)],
+  ['Auth, health, and administration endpoints bypass module gating', /isModuleManagedPath = \(req: express\.Request\)/.test(server) && /!isModuleManagedPath\(req\)/.test(server)],
   ['Disabled modules block before business route handlers', /app\.use\(async \(req, res, next\)/.test(server) && /code: 'MODULE_DISABLED'/.test(server)],
   ['Registry failures fail closed', /code: 'MODULE_STATUS_UNAVAILABLE'/.test(server)],
   ['All users can read module status', /app\.get\('\/api\/modules'/.test(server)],
