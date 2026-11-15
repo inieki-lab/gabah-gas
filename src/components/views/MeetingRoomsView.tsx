@@ -92,6 +92,9 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   }, [initialCategoryFilter]);
 
   const isGAOrAdmin = currentUser.role === 'Admin GABAH' || currentUser.role === 'GA';
+  const roleKeys = currentUser.role_keys || [];
+  const isSekdir = roleKeys.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi' || /sekretariat/i.test(currentUser.role_label || '');
+  const isHumas = roleKeys.includes('humas') || currentUser.role === 'Humas' || /humas/i.test(currentUser.role_label || '');
   const isAuditor = currentUser.role === 'Auditor';
 
   // Stats
@@ -300,13 +303,13 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700">
             {currentUser.role}
           </span>
-          {currentUser.role === 'Sekretaris Direksi' && (
+          {isSekdir && (
             <span className="text-amber-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               Hak Interupsi Direksi Aktif: Berwenang menggeser jadwal Ruang Setra Wangi untuk agenda Direksi & Komisaris.
             </span>
           )}
-          {currentUser.role === 'Humas' && (
+          {isHumas && (
             <span className="text-sky-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Camera className="w-3.5 h-3.5 text-sky-400" />
               Akses Humas: Memantau & menangani order dokumentasi liputan foto/video rapat perusahaan.
@@ -320,7 +323,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {currentUser.role === 'Humas' && (
+          {isHumas && (
             <button
               onClick={() => { setActiveTab('reservations'); setCategoryFilter('documentation'); }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1.5 ${
@@ -430,7 +433,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             )}
           </button>
 
-          {currentUser.role === 'Humas' && (
+          {isHumas && (
             <button
               onClick={() => {
                 setActiveTab('reservations');
