@@ -1,3 +1,12 @@
+## [2026-11-16] — Strict meeting room reservation input validation
+
+- Validate real calendar dates, canonical 24-hour times, and positive integer attendee/consumption counts before collision checks or priority-interruption side effects.
+- Reject non-boolean consumption, documentation, and override flags; validate priority and request-type enums.
+- Validate facility arrays and bounded text fields before creating notifications or changing existing reservations.
+- Treat Sekretariat Direksi auto-approval as an explicit Dynamic RBAC capability, not a primary profile role.
+
+---
+
 ## [2026-11-16] — Maintenance vendor reference integrity
 
 - Resolve maintenance vendor IDs/names against the server-side vendor master after authorization checks.
