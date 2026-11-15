@@ -666,9 +666,14 @@ async function startServer() {
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
         if (existing) {
-          // UPDATE profil (password, is_active, dan sesi tidak disentuh)
+          // UPDATE profil; perubahan role utama adalah perubahan privilege dan
+          // harus membatalkan seluruh sesi lama.
+          const previousPrimaryRole = existing.role;
           existing.name = name;
           existing.role = role as ServerUser['role'];
+          if (previousPrimaryRole !== existing.role) {
+            revokeUserSessions(existing.id);
+          }
           (existing as any).role_label = roleLabels[role] || role;
           if (requestedRole === 'Supply Chain' && !existing.office_location_id) existing.office_location_id = 'OFF-RPC';
           if (requestedRole === 'PIBC' && !existing.office_location_id) existing.office_location_id = 'OFF-PIBC';
@@ -758,7 +763,45 @@ async function startServer() {
         return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
       }
 
-      const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body;
+      const { name, email, role, division, department, is_active, password, phone, telegram_chat_id } = req.body || {};
+      // Validate the complete request before mutating the in-memory user record.
+      const stringFields: Array<[string, unknown, number]> = [
+        ['name', name, 160], ['email', email, 254], ['division', division, 120],
+        ['department', department, 120], ['phone', phone, 40],
+        ['telegram_chat_id', telegram_chat_id, 128],
+      ];
+      for (const [field, value, maxLength] of stringFields) {
+        if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+          return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
+        }
+      }
+      if (name !== undefined && !name.trim()) {
+        return res.status(400).json({ success: false, message: 'Nama tidak boleh kosong.' });
+      }
+      if (email !== undefined && (!email.trim() || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email.trim()))) {
+        return res.status(400).json({ success: false, message: 'Format email tidak valid.' });
+      }
+      // Primary profile roles are the built-in identity roles; custom job-function
+      // roles remain independently assignable through Dynamic RBAC.
+      const validRoles = ['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Supply Chain', 'PIBC', 'Sekretaris Direksi', 'Humas', 'Management', 'Auditor', 'Karyawan'];
+      if (role !== undefined && (typeof role !== 'string' || !validRoles.includes(role))) {
+        return res.status(400).json({ success: false, message: 'Role tidak dikenal.' });
+      }
+      if (is_active !== undefined && typeof is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean true atau false.' });
+      }
+      if (password !== undefined && (typeof password !== 'string' || (password.length > 0 && password.trim().length < 8) || password.length > 256)) {
+        return res.status(400).json({ success: false, message: 'Password harus berupa teks 8–256 karakter.' });
+      }
+      const normalizedName = name === undefined ? undefined : name.trim();
+      const normalizedEmail = email === undefined ? undefined : email.trim().toLowerCase();
+      const normalizedDivision = division === undefined ? undefined : division.trim();
+      const normalizedDepartment = department === undefined ? undefined : department.trim();
+      const normalizedPhone = phone === undefined ? undefined : phone.trim();
+      const normalizedTelegramChatId = telegram_chat_id === undefined ? undefined : telegram_chat_id.trim();
+      if (normalizedEmail !== undefined && db.users.some(u => u.id !== targetUser.id && u.email.toLowerCase().trim() === normalizedEmail)) {
+        return res.status(400).json({ success: false, message: 'Email sudah digunakan oleh akun lain.' });
+      }
       const primaryRole = role === 'Supply Chain' || role === 'PIBC' ? 'Karyawan' : role;
       const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
       const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH' && primaryRole !== 'Superadmin';
@@ -793,17 +836,6 @@ async function startServer() {
         }
         orgOffice = lid;
       }
-      if (name !== undefined) targetUser.name = name.trim();
-      // CR-05: Telegram chat id is an admin-managed profile field (server-side only);
-      // it is NEVER accepted from non-admin input and never echoed in login flows.
-      if (telegram_chat_id !== undefined) targetUser.telegram_chat_id = String(telegram_chat_id).trim() || undefined;
-      if (email !== undefined && email.trim()) {
-        const trimmedEmail = email.trim().toLowerCase();
-        if (db.users.some(u => u.id !== targetUser.id && u.email.toLowerCase().trim() === trimmedEmail)) {
-          return res.status(400).json({ success: false, message: 'Email sudah digunakan oleh akun lain.' });
-        }
-        targetUser.email = trimmedEmail;
-      }
       const privilegeChanged = role !== undefined && primaryRole !== targetUser.role;
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
 
@@ -824,6 +856,12 @@ async function startServer() {
         }
       }
 
+      if (normalizedName !== undefined) targetUser.name = normalizedName;
+      // CR-05: Telegram chat id is an admin-managed profile field (server-side only);
+      // it is NEVER accepted from non-admin input and never echoed in login flows.
+      if (normalizedTelegramChatId !== undefined) targetUser.telegram_chat_id = normalizedTelegramChatId || undefined;
+      if (normalizedEmail !== undefined) targetUser.email = normalizedEmail;
+
       if (role !== undefined) {
         targetUser.role = primaryRole;
         const roleLabels: Record<string, string> = {
@@ -840,10 +878,10 @@ async function startServer() {
         };
         (targetUser as any).role_label = roleLabels[role] || roleLabels[primaryRole] || primaryRole;
       }
-      if (division !== undefined) targetUser.division = division;
-      if (department !== undefined) targetUser.department = department.trim();
-      if (is_active !== undefined) targetUser.is_active = Boolean(is_active);
-      if (phone !== undefined) targetUser.phone = phone.trim();
+      if (normalizedDivision !== undefined) targetUser.division = normalizedDivision;
+      if (normalizedDepartment !== undefined) targetUser.department = normalizedDepartment;
+      if (is_active !== undefined) targetUser.is_active = is_active;
+      if (normalizedPhone !== undefined) targetUser.phone = normalizedPhone;
       // ORG-MODEL: atribut jabatan/unit/lokasi — independen dari role/permission.
       if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
       if (orgUnit !== undefined) targetUser.unit_id = orgUnit;
@@ -851,8 +889,9 @@ async function startServer() {
       if (role === 'Supply Chain' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-RPC';
       if (role === 'PIBC' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-PIBC';
 
-      if (password) {
-        const plain = String(password).trim();
+      const passwordChanged = typeof password === 'string' && password.trim().length > 0;
+      if (passwordChanged) {
+        const plain = password.trim();
         if (plain) {
           const { hash, salt } = hashPassword(plain);
           targetUser.password_hash = hash;
@@ -863,7 +902,7 @@ async function startServer() {
 
       // SECURITY (CR-03 §3.4): password change, privilege change, or
       // deactivation invalidates ALL active sessions of this user.
-      if (password || privilegeChanged || accountDeactivated) {
+      if (passwordChanged || privilegeChanged || accountDeactivated) {
         revokeUserSessions(targetUser.id);
       }
 
