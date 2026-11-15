@@ -78,6 +78,7 @@ export default function App() {
   // No default authenticated user: signed-out visitors get null until login
   // succeeds (prevents ghost sessions appearing after logout).
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [activeModuleKeys, setActiveModuleKeys] = useState<string[] | undefined>(undefined);
   const [loginEmail, setLoginEmail] = useState('');
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [meetingCategoryFilter, setMeetingCategoryFilter] = useState<'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities' | 'high_priority'>('all');
@@ -281,16 +282,41 @@ export default function App() {
     }
   };
 
+  const refreshModuleStatuses = useCallback(async () => {
+    try {
+      const modules = await gabahApi.getModules();
+      setActiveModuleKeys(modules.filter(module => module.is_active).map(module => module.module_key));
+    } catch {
+      // Preserve navigation during a transient registry outage; API enforcement
+      // remains authoritative and fails closed for managed business endpoints.
+      setActiveModuleKeys(undefined);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setActiveModuleKeys(undefined);
+      return;
+    }
+    void refreshModuleStatuses();
+  }, [currentUser?.id, refreshModuleStatuses]);
+
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
+  const isModuleAvailable = (tab: NavTab) => activeModuleKeys === undefined || activeModuleKeys.includes(tab);
+  const fallbackRoleTab = currentUser
+    ? getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys)
+    : null;
   const activeTab: NavTab | null = currentUser
-    ? (isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)
+    ? (isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys) && isModuleAvailable(currentTab)
       ? currentTab
-      : getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys))
+      : (activeModuleKeys === undefined
+        ? fallbackRoleTab
+        : (activeModuleKeys.find(key => isNavTabAllowedForRole(currentUser.role, key as NavTab, currentUser.permission_keys)) as NavTab | undefined) || null))
     : 'dashboard';
 
   const navigateToTab = (tab: NavTab) => {
-    if (!currentUser || !isNavTabAllowedForRole(currentUser.role, tab, currentUser.permission_keys)) {
+    if (!currentUser || !isNavTabAllowedForRole(currentUser.role, tab, currentUser.permission_keys) || !isModuleAvailable(tab)) {
       showToast('Menu tersebut tidak tersedia untuk peran Anda.', 'warning');
       return;
     }
@@ -769,8 +795,11 @@ export default function App() {
             r.status === 'pending_approval'
           )).length}
           currentUserRole={currentUser.role}
+          currentUserRoleKeys={currentUser.role_keys}
           currentUserPermissions={currentUser.permission_keys}
           currentUserIsSuperAdmin={currentUser.is_superadmin}
+          activeModuleKeys={activeModuleKeys}
+          onModulesChanged={refreshModuleStatuses}
           onOpenAdministration={() => {
             if (isSuperadminNavigationAllowed(currentUser.role, currentUser.is_superadmin, currentUser.permission_keys)) {
               setIsAdministrationModalOpen(true);
@@ -1119,6 +1148,7 @@ export default function App() {
         onDeleteUser={(userId) => setAllUsers(prev => prev.filter(u => u.id !== userId))}
         showToast={showToast}
         onRefreshData={refreshData}
+        onModulesChanged={refreshModuleStatuses}
       />
 
       <ChangePasswordModal

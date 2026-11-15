@@ -38,8 +38,11 @@ interface SidebarProps {
   onTabChange: (tab: NavTab) => void;
   userRole?: UserRole;
   currentUserRole?: UserRole;
+  currentUserRoleKeys?: string[];
   currentUserPermissions?: string[];
   currentUserIsSuperAdmin?: boolean;
+  activeModuleKeys?: string[];
+  onModulesChanged?: () => Promise<void> | void;
   pendingLoansCount?: number;
   openTicketsCount?: number;
   pendingReservationsCount?: number;
@@ -68,8 +71,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
   userRole,
   currentUserRole,
+  currentUserRoleKeys,
   currentUserPermissions,
   currentUserIsSuperAdmin = false,
+  activeModuleKeys,
+  onModulesChanged,
   pendingLoansCount = 0,
   openTicketsCount = 0,
   pendingReservationsCount = 0,
@@ -79,9 +85,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
-  const isHumas = activeRole === 'Humas';
-  const isSekdir = activeRole === 'Sekretaris Direksi';
+  const isHumas = activeRole === 'Humas' || currentUserRoleKeys?.includes('humas') === true;
+  const isSekdir = activeRole === 'Sekretaris Direksi' || currentUserRoleKeys?.includes('sekretaris_direksi') === true;
+  const isStaff = activeRole
+    ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) || isSekdir || isHumas
+    : isSekdir || isHumas;
   const isSuperAdmin = isSuperadminNavigationAllowed(activeRole, currentUserIsSuperAdmin, currentUserPermissions);
   const [showAdministration, setShowAdministration] = useState(false);
 
@@ -209,7 +217,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const visibleSections = sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => activeRole ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions) : false),
+      items: section.items.filter(item => activeRole
+        ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions)
+          && (activeModuleKeys === undefined || activeModuleKeys.includes(item.id))
+        : false),
     }))
     .filter(section => section.items.length > 0);
 
@@ -320,6 +331,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           loans={[]}
           tickets={[]}
           showToast={(msg) => console.log(msg)}
+          onModulesChanged={onModulesChanged}
         />
       )}
     </>

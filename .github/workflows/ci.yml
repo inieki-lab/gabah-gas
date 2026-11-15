@@ -130,6 +130,9 @@ jobs:
       - name: Module lifecycle API and enforcement contract
         run: npm run test:module-lifecycle-api
 
+      - name: Module lifecycle UI and navigation contract
+        run: npm run test:module-lifecycle-ui
+
       - name: User directory read scope verification
         run: node scripts/rbac-scoping-verify.mjs
 
