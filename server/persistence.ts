@@ -584,6 +584,68 @@ async function backfillNormalizedTables(): Promise<void> {
   finally { client.release(); }
 }
 
+function collectLegacyEmployeeCapabilityAssignments(): Array<{ userId: string; roleKey: string }> {
+  return (db.users as any[])
+    .filter(user => ['Humas', 'Sekretaris Direksi'].includes(String(user.role || '').trim()))
+    .map(user => ({
+      userId: String(user.id),
+      roleKey: String(user.role).trim() === 'Humas' ? 'humas' : 'sekretaris_direksi',
+    }));
+}
+
+function normalizeLegacyEmployeeProfileRoles(): void {
+  for (const user of db.users as any[]) {
+    const legacyRole = String(user.role || '').trim();
+    if (!['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(legacyRole)) continue;
+
+    if (legacyRole === 'Humas') {
+      if (!user.role_label) user.role_label = 'Humas & Protokoler';
+    } else if (legacyRole === 'Sekretaris Direksi') {
+      if (!user.role_label) user.role_label = 'Sekretariat Direksi';
+    } else if (legacyRole === 'Supply Chain') {
+      if (!user.role_label) user.role_label = 'Karyawan — Lokasi RPC/SC';
+      if (!user.office_location_id && db.officeLocations.some(location => location.id === 'OFF-RPC')) {
+        user.office_location_id = 'OFF-RPC';
+      }
+    } else if (legacyRole === 'PIBC') {
+      if (!user.role_label) user.role_label = 'Karyawan — Lokasi PIBC';
+      if (!user.office_location_id && db.officeLocations.some(location => location.id === 'OFF-PIBC')) {
+        user.office_location_id = 'OFF-PIBC';
+      }
+    }
+
+    user.role = 'Karyawan';
+  }
+}
+
+async function ensureEmployeeCapabilityAssignments(assignments: Array<{ userId: string; roleKey: string }>): Promise<void> {
+  if (assignments.length === 0) return;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const assignment of assignments) {
+      const role = await client.query(
+        'SELECT id FROM gabah_roles WHERE role_key = $1 AND is_active = TRUE LIMIT 1',
+        [assignment.roleKey],
+      );
+      const roleId = Number(role.rows[0]?.id);
+      if (!Number.isSafeInteger(roleId) || roleId < 1) {
+        throw new Error('Capability role "' + assignment.roleKey + '" belum tersedia/aktif saat normalisasi profil pegawai.');
+      }
+      await client.query(
+        'INSERT INTO gabah_user_roles (user_id, role_id, is_primary, assigned_by_user_id) VALUES ($1, $2, FALSE, NULL) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = FALSE',
+        [assignment.userId, roleId],
+      );
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function persistPostgresState(): Promise<void> {
   const payload = createPayload();
   await pool.query(
@@ -614,7 +676,7 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
     "AND ur.is_primary = TRUE " +
     "AND assigned_role.role_key IS DISTINCT FROM CASE u.role " +
     "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
-    "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
+    "WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan' " +
     "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
     "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END",
     [userIds],
@@ -630,7 +692,7 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
     "SELECT u.id::text, r.id, TRUE FROM users u " +
     "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
     "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
-    "WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas' " +
+    "WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan' " +
     "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
     "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END OR r.name = u.role) " +
     "WHERE u.id::text = ANY($1::text[]) " +
@@ -687,6 +749,15 @@ export async function initializePersistence(): Promise<void> {
       backfillAssetLocations('postgresql');
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
+
+      // First materialize canonical users so FK-backed capability assignments
+      // can be inserted safely. Only then normalize legacy profile labels.
+      await backfillNormalizedTables();
+      const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments();
+      await ensureEmployeeCapabilityAssignments(legacyCapabilities);
+      normalizeLegacyEmployeeProfileRoles();
+      saveStateToFile(createPayload());
+
       await persistPostgresState();
       await backfillNormalizedTables();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
