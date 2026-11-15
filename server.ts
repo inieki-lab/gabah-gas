@@ -500,7 +500,7 @@ async function startServer() {
         || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
-      const primaryRole = requestedPrimaryRole;
+      const primaryRole = requestedPrimaryRole as ServerUser['role'];
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
