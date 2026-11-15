@@ -1408,10 +1408,10 @@ async function startServer() {
         owner_division,
         category_type: normalizedCategoryType,
         description: description || `Kategori ${name.trim()} (Milik ${owner_division})`,
-        is_loanable_by_default: Boolean(is_loanable_by_default),
+        is_loanable_by_default: is_loanable_by_default === undefined ? false : is_loanable_by_default,
         // T2B-3: default aktif; nonaktif hanya lewat toggle PATCH (disable,
         // bukan hapus permanen) agar relasi aset tidak pernah rusak.
-        is_active: is_active === undefined ? true : Boolean(is_active),
+        is_active: is_active === undefined ? true : is_active,
       };
 
       db.categories.push(newCategory);
