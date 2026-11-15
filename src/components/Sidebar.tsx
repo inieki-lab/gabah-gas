@@ -38,6 +38,7 @@ interface SidebarProps {
   onTabChange: (tab: NavTab) => void;
   userRole?: UserRole;
   currentUserRole?: UserRole;
+  currentUserRoleKeys?: string[];
   currentUserPermissions?: string[];
   currentUserIsSuperAdmin?: boolean;
   activeModuleKeys?: string[];
@@ -70,6 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
   userRole,
   currentUserRole,
+  currentUserRoleKeys,
   currentUserPermissions,
   currentUserIsSuperAdmin = false,
   activeModuleKeys,
@@ -84,8 +86,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const activeRole = currentUserRole || userRole;
   const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
-  const isHumas = activeRole === 'Humas';
-  const isSekdir = activeRole === 'Sekretaris Direksi';
+  const isHumas = activeRole === 'Humas' || currentUserRoleKeys?.includes('humas') === true;
+  const isSekdir = activeRole === 'Sekretaris Direksi' || currentUserRoleKeys?.includes('sekretaris_direksi') === true;
   const isSuperAdmin = isSuperadminNavigationAllowed(activeRole, currentUserIsSuperAdmin, currentUserPermissions);
   const [showAdministration, setShowAdministration] = useState(false);
 
