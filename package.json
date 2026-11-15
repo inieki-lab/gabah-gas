@@ -19,6 +19,7 @@
     "test:dynamic-rbac-foundation": "node scripts/dynamic-rbac-foundation-verify.mjs",
     "test:maintenance-authz": "node scripts/maintenance-authz-verify.mjs",
     "test:maintenance-dynamic-scope": "node scripts/maintenance-dynamic-scope-verify.mjs",
+    "test:maintenance-vendor-reference": "node scripts/maintenance-vendor-reference-verify.mjs",
     "test:maintenance-input-validation": "node scripts/maintenance-input-validation-verify.mjs",
     "test:navigation-policy": "tsx scripts/navigation-policy-verify.ts",
     "test:dashboard-scope": "tsx scripts/dashboard-scope-verify.ts",
