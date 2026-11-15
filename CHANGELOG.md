@@ -1,3 +1,12 @@
+## [2026-11-16] — Respect additional role capabilities in room and ticket UI
+
+- Meeting Rooms now recognizes Humas and Sekretariat Direksi through effective role_keys while retaining legacy role fallback.
+- Reservation form priority/override affordances recognize the Sekretariat Direksi capability without changing the employee's primary role.
+- Ticket queue hints recognize SC/PIBC through organizational unit IDs, not only legacy role labels.
+- Add source regression checks for the role-capability UI contract.
+
+---
+
 ## [2026-11-16] — Ignore spoofable forwarded IP headers
 
 - Login lockout, global API rate limiting, and session IP metadata now use the transport peer IP unless a trusted proxy chain is explicitly configured.
