@@ -1,3 +1,21 @@
+## [2026-11-16] — Preserve ticket resolution timestamps
+
+- Keep resolved_at when a ticket transitions to either resolved or closed.
+- Clear the timestamp only when the ticket returns to a non-completed state, so SLA reports can measure resolved tickets accurately.
+- Extend the existing ticket resolution regression contract.
+
+---
+
+## [2026-11-16] — Derive report KPIs from recorded data
+
+- Remove hard-coded SLA percentages, response-time claims, and reservation accuracy statements.
+- Calculate SLA compliance and average resolution duration only from ticket timestamps; show unavailable values when source data is incomplete.
+- Replace the unsupported first-response figure with an explicit unavailable state until first-response timestamps are captured.
+- Report owner divisions dynamically; legacy location codes (SC/RPC/PIBC) in owner fields are flagged for correction, not presented as divisions.
+- Re-label depreciation and asset category summaries as indicative estimates rather than official PSAK 16 accounting outputs.
+
+---
+
 ## [2026-11-16] — Strict meeting room reservation input validation
 
 - Validate real calendar dates, canonical 24-hour times, and positive integer attendee/consumption counts before collision checks or priority-interruption side effects.
