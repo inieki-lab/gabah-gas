@@ -1,3 +1,13 @@
+## [2026-11-16] — Module lifecycle API and enforcement
+
+- Add authenticated module status read, Superadmin-only status update, and Superadmin-only audit history endpoints.
+- Require a 5–500 character change reason and strict boolean status values; write status and audit atomically.
+- Enforce module status before business API handlers; disabled modules return 403 MODULE_DISABLED, including for Superadmin.
+- Cache status for five seconds and invalidate immediately on a successful toggle.
+- Add isolated PostgreSQL integration tests for read scope, authorization, status changes, API blocking, audit, and data preservation.
+
+---
+
 ## [2026-11-16] — Module lifecycle registry foundation
 
 - Add an additive PostgreSQL registry for the 12 shipped navigation modules; all are seeded Active to preserve current behavior.
