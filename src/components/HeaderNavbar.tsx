@@ -45,7 +45,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   onNavigateToTickets,
   onNavigateToMeetingRooms,
 }) => {
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
   const safeLoans = Array.isArray(pendingLoans) ? pendingLoans : [];
@@ -334,9 +334,9 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             <button
               id="btn-user-profile"
               type="button"
-              onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+              onClick={() => setShowProfileDropdown(!showProfileDropdown)}
               className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all text-left shadow-xs"
-              aria-expanded={showRoleDropdown}
+              aria-expanded={showProfileDropdown}
             >
               <img
                 src={currentUser.avatar}
@@ -350,7 +350,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
               </div>
               <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
             </button>
-            {showRoleDropdown && (
+            {showProfileDropdown && (
               <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2.5 z-50">
                 <div className="px-3 py-2 border-b border-slate-100 mb-2">
                   <p className="text-xs font-bold text-slate-900">{currentUser.name}</p>
@@ -360,7 +360,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setShowRoleDropdown(false);
+                    setShowProfileDropdown(false);
                     onChangePassword?.();
                   }}
                   className="w-full py-2 px-3 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-2"
