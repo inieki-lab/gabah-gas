@@ -638,8 +638,8 @@ async function startServer() {
         const department = String(row.department || '').trim() || 'Operasional';
         const phone = String(row.phone || '').trim();
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
-        const inferredUnitId = roleRaw === 'Supply Chain' ? 'UNIT-SC' : roleRaw === 'PIBC' ? 'UNIT-PIBC' : '';
-        const unitId = String(row.unit_id || '').trim().toUpperCase() || inferredUnitId;
+        // Unit is an organizational attribute; SC/RPC and PIBC are office locations.
+        const unitId = String(row.unit_id || '').trim().toUpperCase();
         const requestedOfficeLocation = String(row.office_location_id || '').trim().toUpperCase();
         const inferredOfficeLocation = roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '';
         const officeLocationId = requestedOfficeLocation || inferredOfficeLocation;
