@@ -34,6 +34,7 @@
     "test:vendor-contract-count": "node scripts/vendor-contract-count-verify.mjs",
     "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
     "test:movement-scope": "node scripts/movement-scope-verify.mjs",
+    "test:module-lifecycle-registry": "node scripts/module-lifecycle-registry-verify.mjs",
     "test:trusted-client-ip": "node scripts/trusted-client-ip-verify.mjs",
     "test:user-admin-validation": "node scripts/user-admin-validation-verify.mjs",
     "test:bulk-import": "node scripts/bulk-import-verify.mjs",
