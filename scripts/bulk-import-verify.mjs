@@ -115,6 +115,11 @@ async function main() {
       body: { name: 'Primary Role Humas', email: `primary.humas.${crypto.randomBytes(3).toString('hex')}@foodstation.co.id`, role: 'Humas' },
     });
     record('Create user rejects function role as primary profile', '400', `HTTP ${invalidPrimaryCreate.status}`, invalidPrimaryCreate.status === 400);
+    const invalidBranchCreate = await req(base, 'POST', '/api/users', {
+      token: adminToken,
+      body: { name: 'Primary Role SC', email: `primary.sc.${crypto.randomBytes(3).toString('hex')}@foodstation.co.id`, role: 'Supply Chain' },
+    });
+    record('Create user rejects location label as primary profile', '400', `HTTP ${invalidBranchCreate.status}`, invalidBranchCreate.status === 400);
 
     // ---------- Happy path: 2 new users + invalid rows ----------
     const suffix = crypto.randomBytes(3).toString('hex');
@@ -142,12 +147,13 @@ async function main() {
         users: [
           { name: 'Impor Dua (Updated)', email: `impor.dua.${suffix}@foodstation.co.id`, role: 'IT', division: 'IT', department: 'Infrastruktur', phone: '081200000009' },
           { name: 'Impor Empat', email: `impor.empat.${suffix}@foodstation.co.id`, role: 'PIBC', division: 'Umum', department: 'Pasar', phone: '' },
+          { name: 'Impor Lima', email: `impor.lima.${suffix}@foodstation.co.id`, role: 'Supply Chain', division: 'Umum', department: 'Distribusi', phone: '' },
         ],
       },
     });
     const d2 = r2.json?.data || {};
     record('Second import updates existing email', 'updated=1', `updated=${d2.updated}`, d2.updated === 1);
-    record('Second import creates new account', 'created=1', `created=${d2.created}`, d2.created === 1);
+    record('Second import creates new accounts for legacy location aliases', 'created=2', `created=${d2.created}`, d2.created === 2);
     record('Legacy branch role mapping is disclosed', 'warning explains Karyawan + unit/location', (d2.warnings || []).join(' | '), (d2.warnings || []).some(w => w.includes('dipetakan sebagai Karyawan dengan unit/lokasi kerja')));
 
     // ---------- Verify persisted state ----------
@@ -169,6 +175,9 @@ async function main() {
     const branchUser = users.find(u => u.email === `impor.empat.${suffix}@foodstation.co.id`);
     record('Legacy PIBC role maps to Karyawan + unit + office location', 'Karyawan / UNIT-PIBC / OFF-PIBC', `${branchUser?.role} / ${branchUser?.unit_id} / ${branchUser?.office_location_id}`,
       branchUser?.role === 'Karyawan' && branchUser?.unit_id === 'UNIT-PIBC' && branchUser?.office_location_id === 'OFF-PIBC');
+    const rpcUser = users.find(u => u.email === `impor.lima.${suffix}@foodstation.co.id`);
+    record('Legacy Supply Chain role maps to Karyawan + RPC/SC unit/location', 'Karyawan / UNIT-SC / OFF-RPC', `${rpcUser?.role} / ${rpcUser?.unit_id} / ${rpcUser?.office_location_id}`,
+      rpcUser?.role === 'Karyawan' && rpcUser?.unit_id === 'UNIT-SC' && rpcUser?.office_location_id === 'OFF-RPC');
     const functionRoleUser = users.find(u => u.email === `impor.humas.${suffix}@foodstation.co.id`);
     record('Function role was not created as primary profile', 'no Humas user', functionRoleUser ? functionRoleUser.role : 'not created', !functionRoleUser);
 
