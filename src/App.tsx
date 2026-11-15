@@ -795,6 +795,7 @@ export default function App() {
             r.status === 'pending_approval'
           )).length}
           currentUserRole={currentUser.role}
+          currentUserRoleKeys={currentUser.role_keys}
           currentUserPermissions={currentUser.permission_keys}
           currentUserIsSuperAdmin={currentUser.is_superadmin}
           activeModuleKeys={activeModuleKeys}
