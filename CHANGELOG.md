@@ -1,3 +1,11 @@
+## [2026-11-16] — Preserve ticket resolution timestamps
+
+- Keep resolved_at when a ticket transitions to either resolved or closed.
+- Clear the timestamp only when the ticket returns to a non-completed state, so SLA reports can measure resolved tickets accurately.
+- Extend the existing ticket resolution regression contract.
+
+---
+
 ## [2026-11-16] — Derive report KPIs from recorded data
 
 - Remove hard-coded SLA percentages, response-time claims, and reservation accuracy statements.
