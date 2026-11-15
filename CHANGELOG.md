@@ -1,3 +1,9 @@
+## Security — Ticket resolution notes validation (2026-11-15)
+
+- Reject non-string resolution notes and values longer than 4,000 characters before ticket state mutation.
+- Trim leading/trailing whitespace; an explicit empty string clears an existing note.
+- Added a CI regression check for validation order and clear behavior.
+
 ## Security — ticket reporter ownership (2026-11-15)
 
 - Ticket ownership now treats a populated reporter ID as authoritative; display-name fallback applies only to legacy tickets without reporter IDs.

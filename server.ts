@@ -2542,6 +2542,13 @@ async function startServer() {
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
 
       const { status, resolutionNotes } = req.body || {};
+      if (resolutionNotes !== undefined
+        && (typeof resolutionNotes !== 'string' || resolutionNotes.length > 4000)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Catatan penyelesaian harus berupa teks maksimal 4000 karakter.',
+        });
+      }
       const currentStatus = String(ticket.status);
       const nextStatus = String(status || '');
 
@@ -2559,7 +2566,7 @@ async function startServer() {
       // Object-level authorization already enforced by middleware for scoped
       // roles; Admin GABAH handles everything.
       ticket.status = nextStatus as any;
-      if (resolutionNotes) ticket.resolution_notes = resolutionNotes;
+      if (resolutionNotes !== undefined) ticket.resolution_notes = resolutionNotes.trim();
       if (nextStatus === 'resolved' || nextStatus === 'closed') {
         ticket.resolved_at = new Date().toISOString();
       }
