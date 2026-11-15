@@ -1724,9 +1724,12 @@ async function startServer() {
       if (!db.jobLevels) db.jobLevels = [];
       const level = db.jobLevels.find(j => j.code === req.params.code.trim().toUpperCase());
       if (!level) return res.status(404).json({ success: false, message: 'Jabatan tidak ditemukan.' });
+      if (req.body?.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean true atau false.' });
+      }
       if (req.body.label !== undefined) level.label = String(req.body.label).trim() || level.label;
       if (req.body.order !== undefined) level.order = Number(req.body.order);
-      if (req.body.is_active !== undefined) level.is_active = Boolean(req.body.is_active);
+      if (req.body.is_active !== undefined) level.is_active = req.body.is_active;
       GabahDomainService.recordAudit('JOB_LEVEL_UPDATED', 'Organization', `Memperbarui master jabatan ${level.code} (${level.label}) — aktif: ${level.is_active}`, actor);
       await persistDataStore();
       res.json({ success: true, data: level });
