@@ -1,3 +1,10 @@
+## Security — Telegram chat ID response redaction (2026-11-15)
+
+- Ordinary user serialization omits `telegram_chat_id` by default, alongside password material.
+- User directory exposes the routing ID only to Superadmin; admin-managed create/import/edit responses explicitly opt in.
+- Login, session, and role-switch payloads remain redacted by default.
+- Added a CI regression check; runtime response verification across roles remains required before deployment.
+
 ## Security — ticket reporter ownership (2026-11-15)
 
 - Ticket ownership now treats a populated reporter ID as authoritative; display-name fallback applies only to legacy tickets without reporter IDs.
