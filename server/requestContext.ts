@@ -12,8 +12,10 @@ export interface RequestAuditContext {
 export const requestContext = new AsyncLocalStorage<RequestAuditContext>();
 
 /** Extract the best-effort client IP from an Express request. */
-export function extractClientIp(req: { headers?: Record<string, unknown>; socket?: { remoteAddress?: string } }): string | undefined {
-  const xff = typeof req.headers?.['x-forwarded-for'] === 'string' ? (req.headers['x-forwarded-for'] as string) : '';
-  const ip = (xff || req.socket?.remoteAddress || '').split(',')[0].trim();
+export function extractClientIp(req: { socket?: { remoteAddress?: string } }): string | undefined {
+  // X-Forwarded-For is client-controlled unless a trusted proxy chain is
+  // explicitly configured. This deployment has no Express trust-proxy setup,
+  // so use the transport peer and never accept the request header as identity.
+  const ip = String(req.socket?.remoteAddress || '').trim();
   return ip || undefined;
 }
