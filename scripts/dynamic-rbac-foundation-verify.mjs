@@ -36,7 +36,11 @@ const dockerfile = fs.readFileSync('Dockerfile', 'utf8');
 const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const effectivePermissionQuery = policy.slice(policy.indexOf('SELECT ur.user_id'), policy.indexOf('const scopes'));
+const persistence = fs.readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
+
 const checks = [
+  ['Legacy function roles are assigned after normalized user rows exist and before profiles are normalized', /await backfillNormalizedTables\(\);\s*const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments\(\);\s*await ensureEmployeeCapabilityAssignments\(legacyCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/.test(persistence)],
+  ['Legacy Humas and Secretariat primary mirrors are reconciled to Karyawan', !/WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas'/.test(persistence) && /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/.test(persistence)],
   ['runtime effective permissions ignore inactive permission catalogue entries', effectivePermissionQuery.includes('p.permission_key') && effectivePermissionQuery.includes('LEFT JOIN gabah_permissions p') && effectivePermissionQuery.includes('p.is_active = TRUE') && !effectivePermissionQuery.includes('rp.permission_key FROM')],
   ['custom role creation accepts selected permissions atomically and validates the permission catalogue', createRoleRoute.includes('req.body?.permission_keys') && createRoleRoute.includes('withRbacTransaction') && createRoleRoute.includes('INSERT INTO gabah_role_permissions')],
   ['custom role creation rejects an empty permission selection at the API boundary', createRoleRoute.includes('permissionKeys.length === 0') && createRoleRoute.includes('minimal satu permission aktif')],
