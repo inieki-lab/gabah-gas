@@ -115,8 +115,8 @@ export function isNavTabAllowedForRole(
     if (tab === 'meeting_rooms') return permissionKeys.includes('meeting_rooms.read')
       && permissionKeys.includes('room_reservations.read');
     // The inventory page requires its catalogue capability and shared asset read.
-    if (tab === 'assets') return permissionKeys.includes('assets.catalog.read')
-      && permissionKeys.includes('assets.read');
+    if (tab === 'assets') return permissionKeys.includes('assets.read')
+      && (permissionKeys.includes('assets.catalog.read') || permissionKeys.includes('assets.audit.read'));
     return NAV_TAB_PERMISSIONS[tab].some(key => permissionKeys.includes(key));
   }
   return ROLE_NAVIGATION[role]?.includes(tab) ?? false;
