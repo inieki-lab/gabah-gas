@@ -48,6 +48,23 @@ async function main() {
       `${presentRoles.length}/7; branchProfiles=${branchProfilesValid}; legacyBranchRoles=${noBranchRole}`,
       presentRoles.length === 7 && noBranchRole && branchProfilesValid);
 
+    // Regression: legacy branch labels must not infer a user's office location.
+    const roleOnlyEmail = `role-only-${crypto.randomBytes(6).toString('hex')}@example.test`;
+    const roleOnlyCreate = await req(b, 'POST', '/api/users', { token: admin, body: {
+      name: 'Uji Role Tanpa Lokasi', email: roleOnlyEmail, role: 'Supply Chain',
+      division: 'Umum', department: 'Operasional'
+    } });
+    const roleOnlyUser = roleOnlyCreate.json?.data || {};
+    const roleOnlyPatch = roleOnlyCreate.status === 201
+      ? await req(b, 'PATCH', `/api/users/${roleOnlyUser.id}`, { token: admin, body: { role: 'PIBC' } })
+      : { status: 0 };
+    const roleOnlyAfter = roleOnlyPatch.json?.data || {};
+    rec('13: legacy role label never infers office location on create/update',
+      'create=Karyawan/no office; update=Karyawan/no office',
+      `create=${roleOnlyCreate.status}/${roleOnlyUser.role}/${roleOnlyUser.office_location_id}; update=${roleOnlyPatch.status}/${roleOnlyAfter.role}/${roleOnlyAfter.office_location_id}`,
+      roleOnlyCreate.status === 201 && roleOnlyUser.role === 'Karyawan' && !roleOnlyUser.office_location_id
+        && roleOnlyPatch.status === 200 && roleOnlyAfter.role === 'Karyawan' && !roleOnlyAfter.office_location_id);
+
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
     const units = (await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data || [];
