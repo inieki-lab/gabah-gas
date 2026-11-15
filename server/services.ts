@@ -1286,7 +1286,7 @@ export class GabahDomainService {
       throw new Error(`Ruangan "${room.name}" saat ini sedang dalam pemeliharaan/perbaikan.`);
     }
 
-    if (!payload.title || !payload.title.trim()) {
+    if (typeof payload.title !== 'string' || !payload.title.trim()) {
       throw new Error('Judul / Agenda rapat wajib diisi.');
     }
 
@@ -1297,13 +1297,13 @@ export class GabahDomainService {
     // Validate canonical date/time and all side-effecting flags before
     // collision handling or privileged schedule interruption.
     const dateText = String(payload.date).trim();
-    const parsedDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(dateText)
+    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateText)
       ? new Date(`${dateText}T00:00:00.000Z`)
       : new Date(Number.NaN);
     if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dateText) {
       throw Object.assign(new Error('Tanggal reservasi tidak valid. Gunakan format YYYY-MM-DD.'), { statusCode: 400 });
     }
-    const timePattern = /^(?:[01]\\d|2[0-3]):[0-5]\\d$/;
+    const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
     const startTime = String(payload.start_time).trim();
     const endTime = String(payload.end_time).trim();
     if (!timePattern.test(startTime) || !timePattern.test(endTime)) {
@@ -1347,10 +1347,11 @@ export class GabahDomainService {
     if (attendeesCount > room.capacity) {
       throw Object.assign(new Error(`Jumlah peserta (${attendeesCount}) melebihi kapasitas maksimum ruangan ${room.name} (${room.capacity} orang).`), { statusCode: 400 });
     }
-    const consumptionPax = payload.consumption_pax === undefined || payload.consumption_pax === null || payload.consumption_pax === 0
+    const consumptionPax = payload.consumption_pax === undefined || payload.consumption_pax === null
+      || (!payload.consumption_requested && payload.consumption_pax === 0)
       ? attendeesCount
-      : Number(payload.consumption_pax);
-    if (!Number.isSafeInteger(consumptionPax) || consumptionPax < 1 || consumptionPax > 1000) {
+      : payload.consumption_pax;
+    if (typeof consumptionPax !== 'number' || !Number.isSafeInteger(consumptionPax) || consumptionPax < 1 || consumptionPax > 1000) {
       throw Object.assign(new Error('Jumlah porsi konsumsi harus berupa bilangan bulat antara 1 dan 1000.'), { statusCode: 400 });
     }
     const boundedTextFields: Array<[string, unknown, number]> = [
