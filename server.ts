@@ -2654,8 +2654,9 @@ async function startServer() {
       if (resolutionNotes !== undefined) ticket.resolution_notes = resolutionNotes.trim();
       if (nextStatus === 'resolved' || nextStatus === 'closed') {
         ticket.resolved_at = new Date().toISOString();
-      }
-      if (nextStatus !== 'closed') {
+      } else {
+        // Preserve a completion timestamp for both terminal work states;
+        // clear it only when the ticket is reopened or returned to progress.
         ticket.resolved_at = undefined as any;
       }
       ticket.updated_at = new Date().toISOString();
