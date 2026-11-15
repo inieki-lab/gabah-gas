@@ -996,8 +996,15 @@ async function startServer() {
   // P2#10: live numbering sequence snapshot for the admin Asset Numbering panel
   // (replaces the hardcoded sample counters previously shown in the UI).
   app.get('/api/numbering/sequences', (req, res) => {
+    // This endpoint exposes live asset-numbering counters for the Administration panel.
+    // Keep it Admin GABAH-only even in file-store compatibility mode, where dynamic
+    // RBAC permission checks intentionally defer to legacy application-role guards.
+    const actor = getActor(req);
+    if (!isSuperadminActor(actor)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang dapat melihat sequence penomoran.' });
+    }
     if (!requireRbacPermission(req, res, 'numbering.read')) return;
-    
+
     res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
   });
 

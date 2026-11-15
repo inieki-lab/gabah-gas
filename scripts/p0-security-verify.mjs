@@ -197,6 +197,14 @@ async function main() {
       }
     }
 
+    // ---------- Numbering sequence snapshot is Administration-only ----------
+    {
+      const adminSequences = await req(base, 'GET', '/api/numbering/sequences', { token: adminToken });
+      const employeeSequences = await req(base, 'GET', '/api/numbering/sequences', { token: karyawanToken });
+      record('Numbering sequences: Admin GABAH can read snapshot', '200', `HTTP ${adminSequences.status}`, adminSequences.status === 200);
+      record('Numbering sequences: Karyawan cannot read admin snapshot', '403', `HTTP ${employeeSequences.status}`, employeeSequences.status === 403);
+    }
+
     // ---------- CR-06: mass assignment (runs BEFORE admin switch-role,
     // because a successful switch rotates/revokes the admin token) ----------
     {
