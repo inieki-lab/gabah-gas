@@ -2395,7 +2395,7 @@ async function startServer() {
         ? hasRbacScope(String(actor.id), 'division', loan.owner_division, 'loans')
         : actor.role === loan.owner_division)
     );
-    return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
+    return res.json({ success: true, data });
   });
 
   app.post('/api/loans', async (req, res) => {
@@ -2777,7 +2777,7 @@ async function startServer() {
         ? hasRbacScope(String(actor.id), 'division', owner, 'vendors')
         : actor.role === owner;
     });
-    return res.json({ success: true, data });
+    return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
   });
 
   app.post('/api/vendors', (req, res) => {
