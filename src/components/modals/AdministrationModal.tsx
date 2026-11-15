@@ -1415,7 +1415,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       division: (user.division as OwnerDivision) || 'Umum',
       department: user.department || '',
       job_level_code: (user as any).job_level_code || '',
-      unit_id: (user as any).unit_id || (user.role === 'Supply Chain' ? 'UNIT-SC' : user.role === 'PIBC' ? 'UNIT-PIBC' : ''),
+      unit_id: (user as any).unit_id || '',
       office_location_id: (user as any).office_location_id || (user.role === 'Supply Chain' ? 'OFF-RPC' : user.role === 'PIBC' ? 'OFF-PIBC' : ''),
       phone: user.phone || '',
       is_active: user.is_active !== undefined ? user.is_active : true,
