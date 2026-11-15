@@ -31,4 +31,7 @@ assert.match(tickets, /const isPIBC =/);
 assert.doesNotMatch(tickets, /const isRPC = currentUser\?\.role === 'RPC\/SC'/);
 assert.match(db, /role: 'Karyawan',\s*role_label: 'Staf Sekretariat Direksi'/);
 assert.match(db, /role: 'Karyawan',\s*role_label: 'Staf Humas & Protokoler'/);
-console.log('Role capability and office-location UI: 12 checks passed');
+assert.match(mock, /role: 'Karyawan',\s*role_label: 'Staf Sekretariat Direksi'/);
+assert.match(mock, /office_location_id: 'OFF-RPC'/);
+assert.match(mock, /office_location_id: 'OFF-PIBC'/);
+console.log('Role capability and office-location UI: 21 checks passed');
