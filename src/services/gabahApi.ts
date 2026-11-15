@@ -1,5 +1,25 @@
 import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract, MaintenanceSchedule, Vendor, KnowledgeArticle } from '../types';
 
+export interface ModuleLifecycleRecord {
+  module_key: string;
+  name: string;
+  description?: string | null;
+  is_active: boolean;
+  is_system: boolean;
+  sort_order: number;
+  updated_at?: string;
+}
+
+export interface ModuleStatusAuditRecord {
+  id: number;
+  module_key: string;
+  previous_is_active: boolean;
+  new_is_active: boolean;
+  reason: string;
+  changed_by_user_id: string;
+  changed_at: string;
+}
+
 const TOKEN_STORAGE_KEY = 'gabah_auth_token';
 
 class GabahApiClient {
@@ -103,6 +123,21 @@ class GabahApiClient {
 
   async getUsers(): Promise<any[]> {
     return this.request<any[]>('/api/users');
+  }
+
+  async getModules(): Promise<ModuleLifecycleRecord[]> {
+    return this.request<ModuleLifecycleRecord[]>('/api/modules');
+  }
+
+  async updateModuleStatus(moduleKey: string, payload: { is_active: boolean; reason: string }): Promise<ModuleLifecycleRecord> {
+    return this.request<ModuleLifecycleRecord>('/api/modules/' + encodeURIComponent(moduleKey), {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getModuleAudit(moduleKey: string): Promise<ModuleStatusAuditRecord[]> {
+    return this.request<ModuleStatusAuditRecord[]>('/api/modules/' + encodeURIComponent(moduleKey) + '/audit');
   }
 
   async createUser(payload: Partial<UserProfile>): Promise<UserProfile> {
