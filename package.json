@@ -34,6 +34,7 @@
     "test:user-admin-validation": "node scripts/user-admin-validation-verify.mjs",
     "test:bulk-import": "node scripts/bulk-import-verify.mjs",
     "test:user-import-parser": "node --import tsx scripts/user-import-parser-verify.mjs",
+    "test:primary-role-policy": "node scripts/primary-role-policy-verify.mjs",
     "test:category-master-boolean": "node scripts/category-master-boolean-verify.mjs",
     "test:job-level-active": "node scripts/job-level-active-verify.mjs",
     "test:notification-recipient-rbac": "node scripts/notification-recipient-rbac-verify.mjs",
