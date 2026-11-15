@@ -1367,7 +1367,13 @@ async function startServer() {
         });
       }
 
-      const { code, name, main_type, owner_division, category_type, description, is_loanable_by_default, is_active } = req.body;
+      const { code, name, main_type, owner_division, category_type, description, is_loanable_by_default, is_active } = req.body || {};
+      if (is_loanable_by_default !== undefined && typeof is_loanable_by_default !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_loanable_by_default harus berupa boolean.' });
+      }
+      if (is_active !== undefined && typeof is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean.' });
+      }
       if (!code || !name || !main_type || !owner_division) {
         return res.status(400).json({ 
           success: false, 
@@ -1420,10 +1426,10 @@ async function startServer() {
         owner_division,
         category_type: normalizedCategoryType,
         description: description || `Kategori ${name.trim()} (Milik ${owner_division})`,
-        is_loanable_by_default: Boolean(is_loanable_by_default),
+        is_loanable_by_default: is_loanable_by_default === undefined ? false : is_loanable_by_default,
         // T2B-3: default aktif; nonaktif hanya lewat toggle PATCH (disable,
         // bukan hapus permanen) agar relasi aset tidak pernah rusak.
-        is_active: is_active === undefined ? true : Boolean(is_active),
+        is_active: is_active === undefined ? true : is_active,
       };
 
       db.categories.push(newCategory);
@@ -1447,7 +1453,13 @@ async function startServer() {
       const target = db.categories.find(c => c.code.toUpperCase() === code);
       if (!target) return res.status(404).json({ success: false, message: `Kategori "${code}" tidak ditemukan.` });
 
-      const { name, main_type, owner_division, category_type, description, is_loanable_by_default, is_active } = req.body;
+      const { name, main_type, owner_division, category_type, description, is_loanable_by_default, is_active } = req.body || {};
+      if (is_loanable_by_default !== undefined && typeof is_loanable_by_default !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_loanable_by_default harus berupa boolean.' });
+      }
+      if (is_active !== undefined && typeof is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean.' });
+      }
       // T2B-3: validasi domain (bila field dikirim) — nilai di luar enum
       // kanonikal ditolak sehingga master tidak pernah menyimpan junk.
       if (main_type !== undefined && !isFixedAssetMainType(main_type)) {
@@ -1478,10 +1490,10 @@ async function startServer() {
       if (owner_division) target.owner_division = owner_division;
       if (category_type) target.category_type = category_type;
       if (description !== undefined) target.description = description;
-      if (is_loanable_by_default !== undefined) target.is_loanable_by_default = Boolean(is_loanable_by_default);
+      if (is_loanable_by_default !== undefined) target.is_loanable_by_default = is_loanable_by_default;
       // T2B-3: toggle enable/disable (bukan hard-delete). Kategori nonaktif
       // tetap terbaca untuk aset historis, tetapi ditolak sebagai nilai baru.
-      if (is_active !== undefined) target.is_active = Boolean(is_active);
+      if (is_active !== undefined) target.is_active = is_active;
       if (typeof target.is_active !== 'boolean') target.is_active = true;
 
       GabahDomainService.recordAudit(
@@ -1745,9 +1757,12 @@ async function startServer() {
       if (!db.jobLevels) db.jobLevels = [];
       const level = db.jobLevels.find(j => j.code === req.params.code.trim().toUpperCase());
       if (!level) return res.status(404).json({ success: false, message: 'Jabatan tidak ditemukan.' });
+      if (req.body?.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'is_active harus berupa boolean true atau false.' });
+      }
       if (req.body.label !== undefined) level.label = String(req.body.label).trim() || level.label;
       if (req.body.order !== undefined) level.order = Number(req.body.order);
-      if (req.body.is_active !== undefined) level.is_active = Boolean(req.body.is_active);
+      if (req.body.is_active !== undefined) level.is_active = req.body.is_active;
       GabahDomainService.recordAudit('JOB_LEVEL_UPDATED', 'Organization', `Memperbarui master jabatan ${level.code} (${level.label}) — aktif: ${level.is_active}`, actor);
       await persistDataStore();
       res.json({ success: true, data: level });
