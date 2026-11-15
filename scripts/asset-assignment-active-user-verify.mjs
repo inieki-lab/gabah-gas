@@ -26,7 +26,7 @@ assert.equal(asset.location, originalLocation, 'Invalid move must not mutate ass
 
 const originalStatus = asset.status;
 assert.throws(
-  () => GabahDomainService.mutateLifecycle(asset.id, 'forged-action' as any, 'fixture', admin),
+  () => GabahDomainService.mutateLifecycle(asset.id, 'forged-action', 'fixture', admin),
   /Aksi lifecycle aset tidak valid/,
 );
 assert.equal(asset.status, originalStatus, 'Invalid lifecycle action must not mutate asset status');
