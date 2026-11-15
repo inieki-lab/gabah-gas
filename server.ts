@@ -2589,18 +2589,11 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'tickets.create')) return;
     const actor = getActor(req);
       const newTicket = GabahDomainService.createTicket(req.body, actor);
-      // Optional contract linkage: Contract = data, Ticket = pekerjaan (action).
-      // SECURITY: linkage is only honored when the actor may actually see the
-      // contract (canSeeContract) — client input cannot probe restricted contracts.
-      if (req.body?.contract_id) {
-        const contract = db.contracts.find((c: any) => c.id === req.body.contract_id);
-        if (contract && canSeeContract(actor, contract)) newTicket.contract_id = contract.id;
-      }
-      // Await persistence so the linkage is durable before the response is sent.
+      // Domain service validates optional asset/contract relations before creating the ticket.
       await persistDataStore();
       res.status(201).json({ success: true, data: newTicket });
     } catch (err: any) {
-      res.status(err?.statusCode === 400 ? 400 : 400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
