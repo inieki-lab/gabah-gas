@@ -1,3 +1,12 @@
+## [2026-11-16] — Module lifecycle registry foundation
+
+- Add an additive PostgreSQL registry for the 12 shipped navigation modules; all are seeded Active to preserve current behavior.
+- Add append-only module status audit history with database-level UPDATE/DELETE/TRUNCATE rejection.
+- Keep module availability separate from Dynamic RBAC permissions and user role assignments.
+- Extend fresh-database integration and source contract checks; no existing business records or roles are rewritten.
+
+---
+
 ## [2026-11-16] — Respect additional role capabilities in room and ticket UI
 
 - Meeting Rooms now recognizes Humas and Sekretariat Direksi through effective role_keys while retaining legacy role fallback.
