@@ -1905,7 +1905,7 @@ async function startServer() {
         }
         loc.parent_id = parentId;
       }
-      if (req.body.is_active !== undefined) loc.is_active = Boolean(req.body.is_active);
+      if (req.body.is_active !== undefined) loc.is_active = req.body.is_active;
       GabahDomainService.recordAudit('ASSET_LOCATION_UPDATED', 'Assets', `Memperbarui master lokasi fisik aset ${getAssetLocationPath(loc)} — aktif: ${loc.is_active}`, actor);
       await persistDataStore();
       res.json({ success: true, data: loc });
