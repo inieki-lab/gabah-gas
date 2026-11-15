@@ -27,6 +27,8 @@
     "test:contract-renewal-integrity": "node scripts/contract-renewal-integrity-verify.mjs",
     "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
     "test:movement-scope": "node scripts/movement-scope-verify.mjs",
+    "test:category-master-boolean": "node scripts/category-master-boolean-verify.mjs",
+    "test:job-level-active": "node scripts/job-level-active-verify.mjs",
     "test:notification-recipient-rbac": "node scripts/notification-recipient-rbac-verify.mjs",
     "test:ticket-resolution-notes": "node scripts/ticket-resolution-notes-verify.mjs",
     "test:telegram-chat-id-redaction": "node scripts/telegram-chat-id-redaction-verify.mjs",
