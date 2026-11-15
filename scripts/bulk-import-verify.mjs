@@ -141,7 +141,7 @@ async function main() {
       body: {
         users: [
           { name: 'Impor Dua (Updated)', email: `impor.dua.${suffix}@foodstation.co.id`, role: 'IT', division: 'IT', department: 'Infrastruktur', phone: '081200000009' },
-          { name: 'Impor Empat', email: `impor.empat.${suffix}@foodstation.co.id`, role: 'PIBC', division: 'PIBC', department: 'Pasar', phone: '' },
+          { name: 'Impor Empat', email: `impor.empat.${suffix}@foodstation.co.id`, role: 'PIBC', division: 'Umum', department: 'Pasar', phone: '' },
         ],
       },
     });
