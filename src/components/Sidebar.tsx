@@ -40,6 +40,8 @@ interface SidebarProps {
   currentUserRole?: UserRole;
   currentUserPermissions?: string[];
   currentUserIsSuperAdmin?: boolean;
+  activeModuleKeys?: string[];
+  onModulesChanged?: () => Promise<void> | void;
   pendingLoansCount?: number;
   openTicketsCount?: number;
   pendingReservationsCount?: number;
@@ -70,6 +72,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUserRole,
   currentUserPermissions,
   currentUserIsSuperAdmin = false,
+  activeModuleKeys,
+  onModulesChanged,
   pendingLoansCount = 0,
   openTicketsCount = 0,
   pendingReservationsCount = 0,
@@ -209,7 +213,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const visibleSections = sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => activeRole ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions) : false),
+      items: section.items.filter(item => activeRole
+        ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions)
+          && (activeModuleKeys === undefined || activeModuleKeys.includes(item.id))
+        : false),
     }))
     .filter(section => section.items.length > 0);
 
@@ -320,6 +327,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           loans={[]}
           tickets={[]}
           showToast={(msg) => console.log(msg)}
+          onModulesChanged={onModulesChanged}
         />
       )}
     </>
