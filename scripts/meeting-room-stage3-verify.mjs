@@ -55,7 +55,7 @@ async function main(){
   let humasProfile=await req(b,'GET','/api/auth/me',{token:humas});
   // In PostgreSQL mode, role labels do not grant access. Provision the
   // Humas capability explicitly for this isolated integration-test account.
-  if (humasProfile.status===200 && !(humasProfile.json?.data?.role_keys||[]).includes('humas')) {
+  if (humasProfile.status===200 && Array.isArray(humasProfile.json?.data?.role_keys) && !humasProfile.json.data.role_keys.includes('humas')) {
     const rolesResponse=await req(b,'GET','/api/admin/rbac/roles',{token:admin});
     const assignmentsResponse=await req(b,'GET','/api/admin/rbac/user-assignments',{token:admin});
     const humasRole=(rolesResponse.json?.data||[]).find(x=>x.role_key==='humas');
