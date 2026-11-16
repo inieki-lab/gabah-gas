@@ -118,6 +118,13 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 - Skrip regresi import, user administration, notification RBAC, profile/RBAC separation, dan Dynamic RBAC foundation diperbarui mengikuti kontrak baru.
 - CI workflow diperluas agar PR yang menargetkan preview/green-enterprise-theme-laptop juga dapat menjalankan suite yang sama.
 
+### Auditor: audit scope lintas domain untuk baca kontrak (16 November 2026)
+
+- Setelah urutan post-seed diperbaiki, integrasi PostgreSQL naik menjadi 82/84. Dua kegagalan tersisa menunjukkan Auditor dengan assignment tambahan sudah read-only, tetapi belum dapat membaca kontrak/dokumen untuk pekerjaan audit.
+- Ditambahkan scope eksplisit `module=audit, scope_type=all` untuk role Auditor melalui migration 091.
+- `canSeeContract()` kini mengizinkan pembacaan lintas kontrak hanya jika principal memiliki role Auditor, permission `audit.read`, dan scope global `audit` sekaligus. Tidak ada akses tulis yang diberikan; middleware deny-write tetap berlaku.
+- Menunggu pengujian fresh-database terbaru untuk memastikan akses baca Auditor dan seluruh regresi lain lulus.
+
 ### Root cause integrasi PostgreSQL: urutan seed user dan migrasi RBAC (16 November 2026)
 
 - Uji PostgreSQL fresh database menunjukkan migration 010/011/031 dijalankan sebelum `backfillNormalizedTables()` membuat baris user. Akibatnya backfill role yang membaca tabel `users` tidak menemukan akun; migration tercatat selesai, tetapi assignment Superadmin/IT/GA/Karyawan/Auditor tidak terbentuk. Ini menjelaskan gelombang HTTP 403, termasuk Superadmin, pada uji integrasi.
