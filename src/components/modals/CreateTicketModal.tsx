@@ -51,7 +51,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
     if (isAuditorUser) return false;
     if (target === 'IT') return hasPermission(currentUser, 'tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC']);
     if (target === 'GA') return hasPermission(currentUser, 'tickets.create.ga', ['Admin GABAH', 'GA']);
-    if (target === 'ME') return hasPermission(currentUser, 'tickets.create.me', ['Admin GABAH', 'PIBC']);
+    if (target === 'ME') return hasPermission(currentUser, 'tickets.create.me', ['Admin GABAH']);
     return false;
   };
 
