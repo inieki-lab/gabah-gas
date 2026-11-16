@@ -118,6 +118,13 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 - Skrip regresi import, user administration, notification RBAC, profile/RBAC separation, dan Dynamic RBAC foundation diperbarui mengikuti kontrak baru.
 - CI workflow diperluas agar PR yang menargetkan preview/green-enterprise-theme-laptop juga dapat menjalankan suite yang sama.
 
+### Pemisahan label profil dari role assignment pada UI (16 November 2026)
+
+- Tes bulk-import terbaru lulus **22/22** setelah assertion dibetulkan untuk membedakan email invalid dari kesalahan label profil.
+- Tes kebijakan primary-role kemudian menemukan teks UI lama yang menyebut role profil sebagai role utama. Ini bertentangan dengan keputusan bahwa `users.role` adalah label profil, bukan sumber otorisasi.
+- Teks bantuan dan komentar UI sekarang menyatakan dengan tegas bahwa label profil hanya metadata dan user dapat diberi nol atau beberapa role dinamis sesuai tanggung jawab aktual. Endpoint assignment sudah mendukung assignment set kosong dan banyak role tanpa mengubah label profil.
+- Assertion UI diperbarui untuk memeriksa perilaku tersebut; menunggu CI terbaru.
+
 ### P0 path guard dan regresi impor profil (16 November 2026)
 
 - P0 security live HTTP pada commit `61b91904` lulus **45/45**, termasuk variasi kapitalisasi dan trailing slash untuk audit log serta rekonsiliasi.
