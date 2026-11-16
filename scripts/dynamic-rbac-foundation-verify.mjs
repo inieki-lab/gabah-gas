@@ -28,6 +28,9 @@ const server = fs.readFileSync('server.ts', 'utf8');
 const licensesView = fs.readFileSync('src/components/views/LicensesView.tsx', 'utf8');
 const ticketsView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
 const loansView = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
+const gabahService = fs.readFileSync('src/services/gabahService.ts', 'utf8');
+const editAssetModal = fs.readFileSync('src/components/modals/EditAssetModal.tsx', 'utf8');
+const assetDetailModal = fs.readFileSync('src/components/modals/AssetDetailModal.tsx', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -198,6 +201,9 @@ const checks = [
   ['ticket queue UI does not infer SC/PIBC queues from profile labels', !/Supply Chain|Helpdesk & Tiket PIBC|currentUser\?\.role === 'IT'/.test(ticketsView)],
   ['loan creation UI requires effective loans.create and is not inferred from employee profile labels', /const canCreateLoan = hasEffectivePermission\('loans\.create'\)/.test(loansView) && /\{canCreateLoan && \(/.test(loansView) && /\{isEmployee && canCreateLoan && \(/.test(loansView)],
   ['loan approval workspace is capability-driven in PostgreSQL mode', /const hasLoanQueueCapability = \['loans\.approve', 'loans\.reject', 'loans\.handover'\]/.test(loansView) && /const isEmployee = !isAuditor && !hasLoanQueueCapability/.test(loansView)],
+  ['Superadmin wildcard permission is honored by asset, loan, and ticket UI capability helpers', /permission_keys\.includes\('\*'\) \|\| user\.permission_keys\.includes\('assets\.update'\)/.test(gabahService) && /permission_keys\.includes\('\*'\) \|\| user\.permission_keys\.includes\('loans\.approve'\)/.test(gabahService) && (gabahService.match(/permission_keys\.includes\('\*'\) \|\| \['tickets\.update', 'tickets\.assign', 'tickets\.close'\]/g) || []).length >= 2],
+  ['asset edit modal follows effective assets.update permission instead of hard-coded role names', /GabahService\.canEditAsset\(currentUser, asset\)/.test(editAssetModal) && !/currentUser\?\.role === 'IT'|currentUser\?\.role === 'GA'|currentUser\?\.role === 'Supply Chain'/.test(editAssetModal)],
+  ['asset detail edit actions follow the same effective permission helper', (assetDetailModal.match(/onEditThisAsset && canEdit && \(/g) || []).length === 3 && !/onEditThisAsset && \(currentUser\?\.role ===/.test(assetDetailModal)],
 
 
 ];
