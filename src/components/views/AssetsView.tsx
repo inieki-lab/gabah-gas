@@ -129,6 +129,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   const canImportAssets = !isAuditor && (Array.isArray(currentUser.permission_keys)
     ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('assets.bulk_import')
     : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role));
+  const canManageAsset = (asset: Asset) => GabahService.canEditAsset(currentUser, asset) || GabahService.canAssignAsset(currentUser, asset);
 
   return (
     <div className="space-y-6">
@@ -391,7 +392,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
                             Pool / Belum Di-assign
                           </span>
-                          {onEditAsset && GabahService.canEditAsset(currentUser, asset) && (
+                          {onEditAsset && canManageAsset(asset) && (
                             <button
                               type="button"
                               onClick={(e) => {
