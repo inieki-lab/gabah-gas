@@ -2176,7 +2176,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold">
                     <tr>
                       <th className="px-4 py-3">Nama & Profil</th>
-                      <th className="px-4 py-3">Peran (Role)</th>
+                      <th className="px-4 py-3">Profil (metadata) & Role Akses</th>
                       <th className="px-4 py-3">Divisi & Departemen</th>
                       <th className="px-4 py-3">Sandi Sementara</th>
                       <th className="px-4 py-3 text-right">Aksi</th>
@@ -2225,7 +2225,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   ? 'bg-pink-50 text-pink-700 border-pink-200'
                                   : 'bg-slate-100 text-slate-700 border-slate-200'
                               }`}>
-                                {user.role}
+                                Profil: {user.role || 'Pegawai'}
                               </span>
                               {(userAssignments[String(user.id)] || [])
                                 .map(roleId => {
