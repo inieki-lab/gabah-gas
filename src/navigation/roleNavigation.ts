@@ -68,8 +68,8 @@ export function isNavTabAllowedForRole(
     if (permissionKeys.includes('*')) return true;
     if (tab === 'meeting_rooms') return permissionKeys.includes('meeting_rooms.read')
       && permissionKeys.includes('room_reservations.read');
-    if (tab === 'assets') return permissionKeys.includes('assets.read')
-      && (permissionKeys.includes('assets.catalog.read') || permissionKeys.includes('assets.audit.read'));
+    if (tab === 'assets') return permissionKeys.includes('assets.audit.read')
+      || (permissionKeys.includes('assets.read') && permissionKeys.includes('assets.catalog.read'));
     return NAV_TAB_PERMISSIONS[tab].some(key => permissionKeys.includes(key));
   }
   if (!role) return false;
