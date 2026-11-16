@@ -253,3 +253,12 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Dashboard classification now derives operational workspace access from effective permissions (`assets.*`, loan approval/handover, ticket assignment/update, maintenance management, room operations, contract/vendor creation). Superadmin and Auditor remain separate global/read-only dashboards. IT/GA labels are presentation hints only; they no longer determine workspace access.
 - Added regression assertions to `scripts/dashboard-scope-verify.ts` for permission-driven classification.
 - Commits: `b1e3750` (dashboard fix), `9a25f75` (regression test). CI on this latest code change is pending.
+
+### Dashboard workspace follows effective permissions (16 November 2026)
+
+- CI #1612 and #1613 passed before this change. A follow-up review found custom roles with operational permissions but without canonical `karyawan`, `it`, or `ga` role keys could still receive the employee dashboard composition because `isEmployee`/`isDivisionDashboard` were role-key based.
+- Reworked DashboardView classification to derive employee-vs-operational workspace from effective operational permissions across assets, loans, tickets, maintenance, room operations, licenses, knowledge, contracts, vendors, organization, and master data. Superadmin and Auditor global/read-only dashboards are explicitly excluded from the operational division dashboard.
+- IT/GA labels are now presentation hints only; custom and multi-scope roles receive a generic Operasional label rather than being misrepresented as one division.
+- Added static regression assertions in `scripts/dashboard-scope-verify.ts` for custom permission-driven roles, management capabilities, and global dashboard separation.
+- Commits: `b1e3750`, `6914c1e`, `0bb20f8` (dashboard implementation); `9a25f75`, `05a49ff`, `abf34ff` (tests).
+- CI on this final dashboard refinement is pending; do not treat CI #1612/#1613 as validating these later commits.
