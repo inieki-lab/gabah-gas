@@ -584,34 +584,6 @@ async function backfillNormalizedTables(): Promise<void> {
   finally { client.release(); }
 }
 
-async function ensureEmployeeCapabilityAssignments(assignments: Array<{ userId: string; roleKey: string }>): Promise<void> {
-  if (assignments.length === 0) return;
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    for (const assignment of assignments) {
-      const role = await client.query(
-        'SELECT id FROM gabah_roles WHERE role_key = $1 AND is_active = TRUE LIMIT 1',
-        [assignment.roleKey],
-      );
-      const roleId = Number(role.rows[0]?.id);
-      if (!Number.isSafeInteger(roleId) || roleId < 1) {
-        throw new Error('Capability role "' + assignment.roleKey + '" belum tersedia/aktif saat normalisasi profil pegawai.');
-      }
-      await client.query(
-        'INSERT INTO gabah_user_roles (user_id, role_id, is_primary, assigned_by_user_id) VALUES ($1, $2, FALSE, NULL) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = FALSE',
-        [assignment.userId, roleId],
-      );
-    }
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
 async function persistPostgresState(): Promise<void> {
   const payload = createPayload();
   await pool.query(
@@ -619,52 +591,6 @@ async function persistPostgresState(): Promise<void> {
     [JSON.stringify(payload)],
   );
   await backfillNormalizedTables();
-  await backfillDynamicRbacUserRoles();
-}
-
-async function backfillDynamicRbacUserRoles(): Promise<void> {
-  // Do not wipe assignments if the in-memory user store is unexpectedly empty.
-  const userIds = db.users.map(user => String(user.id));
-  if (userIds.length === 0) return;
-
-  // Remove assignments for deleted application users. This prevents a deleted
-  // Superadmin's role assignment from being inherited if an ID is reused later.
-  await pool.query(
-    'DELETE FROM gabah_user_roles WHERE NOT (user_id = ANY($1::text[]))',
-    [userIds],
-  );
-
-  // Reconcile only the primary role mirror from users.role. Additional dynamic
-  // role assignments are preserved and remain additive.
-  await pool.query(
-    "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
-    "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
-    "AND ur.is_primary = TRUE " +
-    "AND assigned_role.role_key IS DISTINCT FROM CASE u.role " +
-    "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
-    "WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan' " +
-    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END",
-    [userIds],
-  );
-  // The users.role field is the primary application role; additional roles
-  // remain assigned but are never marked primary by this compatibility bridge.
-  await pool.query(
-    'UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = ANY($1::text[])',
-    [userIds],
-  );
-  await pool.query(
-    "INSERT INTO gabah_user_roles (user_id, role_id, is_primary) " +
-    "SELECT u.id::text, r.id, TRUE FROM users u " +
-    "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
-    "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
-    "WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan' " +
-    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END OR r.name = u.role) " +
-    "WHERE u.id::text = ANY($1::text[]) " +
-    "ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE",
-    [userIds],
-  );
 }
 
 export async function initializePersistence(): Promise<void> {
