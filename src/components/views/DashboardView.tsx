@@ -64,10 +64,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isEmployee = currentUser.role_keys !== undefined
     ? currentRoleKeys.includes('karyawan') || isHumas || isSekdir
     : currentUser.role === 'Karyawan' || isHumas || isSekdir;
-  const canPermission = (key: string) =>
-    currentUser.permission_keys?.includes('*') === true
-    || currentUser.permission_keys?.includes(key) === true
-    || (currentUser.permission_keys === undefined && !isAuditor);
+  const canPermission = (key: string) => {
+    if (currentUser.permission_keys?.includes('*') === true) return true;
+    if (Array.isArray(currentUser.permission_keys)) return currentUser.permission_keys.includes(key);
+    if (isAuditor) return false;
+    const legacyGrants: Record<string, string[]> = {
+      'loans.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Supply Chain', 'PIBC', 'Humas', 'Sekretaris Direksi'],
+      'tickets.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Supply Chain', 'PIBC', 'Humas', 'Sekretaris Direksi'],
+      'assets.create': ['Admin GABAH', 'IT', 'GA'],
+      'licenses.read': ['Admin GABAH', 'IT'],
+    };
+    return (legacyGrants[key] || []).includes(currentUser.role);
+  };
   const canCreateLoan = canPermission('loans.create');
   const canCreateTicket = canPermission('tickets.create');
   const canCreateAsset = canPermission('assets.create');
