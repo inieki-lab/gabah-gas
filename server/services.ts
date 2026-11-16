@@ -256,12 +256,14 @@ export class GabahDomainService {
    * Filter assets based on user's role and division scope
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
-    if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
+    if (isSuperadminActor(user)) return db.assets;
 
-    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
-    const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
-
+    // File-store compatibility only. Historical persona defaults are not
+    // evaluated in PostgreSQL mode.
     if (!isPostgresPersistenceActive()) {
+      if (isAuditorActor(user)) return db.assets;
+      const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+      const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
       if (isEmployeeBaseline) {
         return db.assets.filter(asset => asset.assigned_to?.id === user.id || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())));
       }
@@ -269,9 +271,6 @@ export class GabahDomainService {
         return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
       }
       if (user.role === 'GA') {
-        // File-store compatibility mirrors the conservative legacy default:
-        // GA owns GA assets and may read IT laptops/desktops only. PostgreSQL
-        // deployments use the explicit assets.read.it_workstations capability.
         return db.assets.filter(asset =>
           String(asset.owner_division || '').toUpperCase() === 'GA'
           || (String(asset.owner_division || '').toUpperCase() === 'IT'
@@ -281,33 +280,18 @@ export class GabahDomainService {
       return [];
     }
 
-    // PostgreSQL: combine employee personal baseline with every explicitly
-    // assigned dynamic role scope. A Karyawan can receive extra job-function
-    // roles without changing employee identity or office location.
+    // PostgreSQL: every employee and auditor is limited to explicit scopes.
+    // Profile labels, office location, and job title never grant asset visibility.
     const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
-    if (user.role === 'GA') {
-      const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
-      const isItWorkstation = (asset: ServerAsset) =>
-        ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
-      // GA's writable inventory follows its explicit dynamic owner scope.
-      // The optional IT workstation exception is strictly read-only and limited
-      // to laptop/desktop categories, independent of the GA owner scope.
-      // Keep every explicitly scoped owner domain, including additional
-      // operational capabilities assigned to a GA employee. The IT workstation
-      // exception remains a separate read-only addition.
-      const readOnlyItWorkstations = canReadItWorkstations
-        ? db.assets.filter(asset =>
-          String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
-        )
-        : [];
-      const visibleIds = new Set([...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
-      return db.assets.filter(asset => visibleIds.has(asset.id));
-    }
-
-    const personalAssets = isEmployeeBaseline
-      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
+    const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
+    const isItWorkstation = (asset: ServerAsset) =>
+      ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+    const readOnlyItWorkstations = canReadItWorkstations
+      ? db.assets.filter(asset =>
+        String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
+      )
       : [];
-    const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
+    const visibleIds = new Set([...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
     return db.assets.filter(asset => visibleIds.has(asset.id));
   }
 
