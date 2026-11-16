@@ -118,6 +118,12 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 - Skrip regresi import, user administration, notification RBAC, profile/RBAC separation, dan Dynamic RBAC foundation diperbarui mengikuti kontrak baru.
 - CI workflow diperluas agar PR yang menargetkan preview/green-enterprise-theme-laptop juga dapat menjalankan suite yang sama.
 
+### Integrasi PostgreSQL dan P0 security (16 November 2026)
+
+- Fresh PostgreSQL CR-04/CR-05 kini lulus **84/84** setelah post-seed assignment dan audit scope Auditor diperbaiki. Login, role assignments, lifecycle modul, kontrak/dokumen, vendor scope, reminder, dan restart persistence berhasil diverifikasi.
+- P0 security live HTTP lulus **43/45**. Dua kegagalan tersisa terkait endpoint rekonsiliasi yang masih melewatkan pembatasan read pada mode file-store ketika dipanggil dengan variasi huruf besar/trailing slash.
+- Ditambahkan guard rekonsiliasi di middleware keamanan menggunakan path yang sudah dinormalisasi. PostgreSQL mensyaratkan `reconciliation.read`; mode file-store membatasi ke Superadmin/Auditor. Perubahan sedang diuji ulang.
+
 ### Auditor: audit scope lintas domain untuk baca kontrak (16 November 2026)
 
 - Setelah urutan post-seed diperbaiki, integrasi PostgreSQL naik menjadi 82/84. Dua kegagalan tersisa menunjukkan Auditor dengan assignment tambahan sudah read-only, tetapi belum dapat membaca kontrak/dokumen untuk pekerjaan audit.
