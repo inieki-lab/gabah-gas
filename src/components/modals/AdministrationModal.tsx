@@ -4573,7 +4573,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Simulator Card */}
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-200">
                 <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-3">
-                  Live Sequence Generator & Simulator
+                  Preview Format Penomoran (Simulasi)
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -4583,7 +4583,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       onChange={e => {
                         const d = e.target.value as OwnerDivision;
                         setTestDiv(d);
-                        setSimulatedNumber(`${d}-${testCode}-2026-000${Math.floor(Math.random() * 5) + 1}`);
+                        setSimulatedNumber(`${d}-${testCode}-${new Date().getFullYear()}-0001`);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold"
                     >
@@ -4601,7 +4601,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       onChange={e => {
                         const c = e.target.value.toUpperCase();
                         setTestCode(c);
-                        setSimulatedNumber(`${testDiv}-${c}-2026-0001`);
+                        setSimulatedNumber(`${testDiv}-${c}-${new Date().getFullYear()}-0001`);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-mono font-bold uppercase"
                       placeholder="Contoh: HLT, FLT, BLD"
@@ -4616,9 +4616,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                 </div>
                 <div className="mt-3 text-[11px] text-emerald-800 leading-relaxed">
-                  ✓ Sequence direset otomatis setiap awal tahun per kombinasi (Divisi, Kode Aset, Tahun).
+                  Preview ini tidak menerbitkan nomor dan tidak mengubah counter.
                   <br />
-                  ✓ Thread-safe & concurrency-safe dengan pemulihan sequence otomatis dari database.
+                  Counter aktual dipulihkan dari nomor aset tersimpan saat server boot. Jaminan sequence atomik lintas beberapa instance masih menjadi pekerjaan penguatan berikutnya.
                 </div>
               </div>
 
