@@ -311,7 +311,7 @@ export function authenticateRequest(req: Request): {
       if (activeUser) {
         // Anti-spoofing verification:
         // If client sends x-user-id that doesn't match the authenticated session and is not superadmin
-        if (headerUserId && headerUserId !== activeUser.id && activeUser.role !== 'Admin GABAH') {
+        if (headerUserId && headerUserId !== activeUser.id) {
           return {
             user: null,
             spoofAttempt: true,
