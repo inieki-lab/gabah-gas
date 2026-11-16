@@ -296,6 +296,16 @@ async function startServer() {
     return true;
   };
 
+  // Delegateable master-data administration: PostgreSQL permission is authoritative;
+  // the file-store compatibility mode remains Superadmin-only.
+  const requireAdminPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
+    if (isPostgresPersistenceActive()) return requireRbacPermission(req, res, permissionKey);
+    const actor = (req as any).user as ServerUser | undefined;
+    if (actor && isSuperadminActor(actor)) return true;
+    res.status(403).json({ success: false, message: 'Akses ditolak: permission ' + permissionKey + ' diperlukan.' });
+    return false;
+  };
+
   // Dynamic RBAC administration API. Business endpoints are progressively migrated
   // to explicit permissions and data-scope enforcement.
   const requireRbacSuperadmin = (req: express.Request, res: express.Response): ServerUser | null => {
@@ -1708,12 +1718,7 @@ async function startServer() {
   app.post('/api/taxonomy/categories', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'Akses ditolak: Hanya Super Admin (Admin GABAH) yang berwenang menambahkan Master Kategori Aset.' 
-        });
-      }
+      if (!requireAdminPermission(req, res, 'master_data.manage')) return;
 
       const { code, name, main_type, owner_division, category_type, description, is_loanable_by_default, is_active } = req.body || {};
       if (is_loanable_by_default !== undefined && typeof is_loanable_by_default !== 'boolean') {
@@ -1793,9 +1798,7 @@ async function startServer() {
   app.patch('/api/taxonomy/categories/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin (Admin GABAH) yang berwenang mengubah Master Kategori.' });
-      }
+      if (!requireAdminPermission(req, res, 'master_data.manage')) return;
       const code = req.params.code.trim().toUpperCase();
       if (!db.categories) db.categories = [...CANONICAL_TAXONOMY];
       const target = db.categories.find(c => c.code.toUpperCase() === code);
@@ -1860,9 +1863,7 @@ async function startServer() {
   app.delete('/api/taxonomy/categories/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin (Admin GABAH) yang berwenang menghapus Master Kategori.' });
-      }
+      if (!requireAdminPermission(req, res, 'master_data.manage')) return;
       const code = req.params.code.trim().toUpperCase();
       const inUse = db.assets.filter(a => a.category_code === code || a.asset_number?.includes(`-${code}-`));
       if (inUse.length > 0) {
@@ -1895,9 +1896,7 @@ async function startServer() {
   app.post('/api/master/locations', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menambah master lokasi.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       const { name, address, capacity } = req.body;
       if (!name || !name.trim()) {
         return res.status(400).json({ success: false, message: 'Nama lokasi fasilitas wajib diisi.' });
@@ -1921,9 +1920,7 @@ async function startServer() {
   app.patch('/api/master/locations/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang mengedit master lokasi.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       if (!db.locations) db.locations = [];
       const target = db.locations.find(l => l.id === req.params.id);
       if (!target) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
@@ -1944,9 +1941,7 @@ async function startServer() {
   app.delete('/api/master/locations/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menghapus master lokasi.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       if (!db.locations) db.locations = [];
       const loc = db.locations.find(l => l.id === req.params.id);
       if (!loc) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
@@ -1968,9 +1963,7 @@ async function startServer() {
   app.post('/api/master/divisions', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menambah divisi.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       const { code, name, leader, depts } = req.body;
       if (!code || !name) {
         return res.status(400).json({ success: false, message: 'Kode divisi dan nama divisi wajib diisi.' });
@@ -2002,9 +1995,7 @@ async function startServer() {
   app.patch('/api/master/divisions/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang mengubah struktur divisi.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       const code = req.params.code.trim().toUpperCase();
       if (!db.divisions) db.divisions = [];
       const div = db.divisions.find(d => d.code.toUpperCase() === code);
@@ -2026,9 +2017,7 @@ async function startServer() {
   app.delete('/api/master/divisions/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menghapus divisi.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       const code = req.params.code.trim().toUpperCase();
       const assetsCount = db.assets.filter(a => String(a.owner_division || '').toUpperCase() === code).length;
       const categoriesCount = (db.categories || []).filter(c => String(c.owner_division || '').toUpperCase() === code).length;
@@ -2075,9 +2064,7 @@ async function startServer() {
   app.post('/api/master/job-levels', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master jabatan.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       const code = String(req.body.code || '').trim().toUpperCase();
       const label = String(req.body.label || '').trim();
       if (!code || !label) return res.status(400).json({ success: false, message: 'Kode dan nama jabatan wajib diisi.' });
@@ -2099,9 +2086,7 @@ async function startServer() {
   app.patch('/api/master/job-levels/:code', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master jabatan.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       if (!db.jobLevels) db.jobLevels = [];
       const level = db.jobLevels.find(j => j.code === req.params.code.trim().toUpperCase());
       if (!level) return res.status(404).json({ success: false, message: 'Jabatan tidak ditemukan.' });
@@ -2126,9 +2111,7 @@ async function startServer() {
   app.post('/api/master/org-units', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master unit.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       const name = String(req.body.name || '').trim();
       const requestedDivisionCode = String(req.body.division_code || 'Umum').trim();
       const configuredDivision = (db.divisions || []).find(d => String(d.code || '').trim().toLowerCase() === requestedDivisionCode.toLowerCase());
@@ -2152,9 +2135,7 @@ async function startServer() {
   app.patch('/api/master/org-units/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master unit.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       if (!db.orgUnits) db.orgUnits = [];
       const unit = db.orgUnits.find(u => u.id === req.params.id);
       if (!unit) return res.status(404).json({ success: false, message: 'Unit tidak ditemukan.' });
@@ -2197,9 +2178,7 @@ async function startServer() {
   app.post('/api/master/office-locations', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi kantor.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       const name = String(req.body.name || '').trim();
       if (!name) return res.status(400).json({ success: false, message: 'Nama lokasi kantor wajib diisi.' });
       if (!db.officeLocations) db.officeLocations = [];
@@ -2219,9 +2198,7 @@ async function startServer() {
   app.patch('/api/master/office-locations/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi kantor.' });
-      }
+      if (!requireAdminPermission(req, res, 'organization.manage')) return;
       if (!db.officeLocations) db.officeLocations = [];
       const loc = db.officeLocations.find(l => l.id === req.params.id);
       if (!loc) return res.status(404).json({ success: false, message: 'Lokasi kantor tidak ditemukan.' });
@@ -2252,9 +2229,7 @@ async function startServer() {
   app.post('/api/master/asset-locations', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi aset.' });
-      }
+      if (!requireAdminPermission(req, res, 'master_data.manage')) return;
       const name = String(req.body.name || '').trim();
       if (!name) return res.status(400).json({ success: false, message: 'Nama lokasi wajib diisi.' });
       if (!db.assetLocations) db.assetLocations = [];
@@ -2279,9 +2254,7 @@ async function startServer() {
   app.patch('/api/master/asset-locations/:id', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master lokasi aset.' });
-      }
+      if (!requireAdminPermission(req, res, 'master_data.manage')) return;
       if (!db.assetLocations) db.assetLocations = [];
       const loc = db.assetLocations.find(l => l.id === req.params.id);
       if (!loc) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
