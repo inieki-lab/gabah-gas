@@ -14,7 +14,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, getUserRbacPolicies, isAuditorActor } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -271,7 +271,10 @@ async function startServer() {
   const hasApplicationRole = (actor: ServerUser, roleKey: string): boolean => {
     if (isPostgresPersistenceActive()) {
       // Production checks only explicit database role assignments, never profile labels.
-      return getEffectiveRoleKeys(String(actor.id)).includes(normalizeRoleKey(roleKey));
+      const normalized = normalizeRoleKey(roleKey);
+      return getUserRbacPolicies(String(actor.id)).some(policy =>
+        policy.roleKey === normalized || normalizeRoleKey(policy.roleName) === normalized
+      );
     }
     const legacyLabels: Record<string, string> = {
       superadmin: 'Admin GABAH', it: 'IT', ga: 'GA', karyawan: 'Karyawan',
