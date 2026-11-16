@@ -2591,10 +2591,6 @@ async function startServer() {
         });
       }
     }
-    if (!hasGeneralAssetUpdate && !changesLifecycleStatus) {
-      return res.json({ success: true, data: asset });
-    }
-
     // Check duplicate serial number
     if (req.body.serial_number && typeof req.body.serial_number === 'string' && req.body.serial_number.trim()) {
       const sn = req.body.serial_number.trim();
@@ -2629,6 +2625,9 @@ async function startServer() {
           message: `Akses ditolak: permission assets.lifecycle dan scope owner "${asset.owner_division}" wajib dimiliki untuk mengubah status aset.`,
         });
       }
+    }
+    if (!hasGeneralAssetUpdate && !changesLifecycleStatus) {
+      return res.json({ success: true, data: asset });
     }
     if (req.body.condition !== undefined && !validAssetConditions.includes(String(req.body.condition))) {
       return res.status(400).json({ success: false, message: 'Kondisi aset tidak valid.' });
