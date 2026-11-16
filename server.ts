@@ -10,7 +10,7 @@ import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGab
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
-import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
+import { ContractDomainService, canSeeContract, canEditContract, canManageContractCapability } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
@@ -3639,8 +3639,8 @@ async function startServer() {
     const actor = getActor(req);
     const contract = db.contracts.find(item => item.id === req.params.id);
     if (!contract) return res.status(404).json({ success: false, message: 'Kontrak tidak ditemukan.' });
-    if (!canEditContract(actor, contract)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: bukan PIC/divisi pemilik kontrak.' });
+    if (!canManageContractCapability(actor, contract, 'contracts.documents.upload')) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: permission upload dokumen atau scope kontrak tidak diberikan.' });
     }
     return next();
   };
