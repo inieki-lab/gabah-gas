@@ -55,7 +55,7 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
           </p>
         </div>
 
-        {(currentUser.is_superadmin === true || currentUser.permission_keys?.includes('licenses.manage') === true || (currentUser.permission_keys === undefined && ['Admin GABAH', 'IT'].includes(currentUser.role))) && (
+        {(currentUser.is_superadmin === true || (currentUser.permission_keys?.includes('licenses.manage') === true && currentUser.permission_keys?.includes('assets.create') === true) || (currentUser.permission_keys === undefined && ['Admin GABAH', 'IT'].includes(currentUser.role))) && (
           <button
             onClick={handleOpenCreate}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
