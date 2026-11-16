@@ -64,17 +64,16 @@ export function getReminderLevel(contract: ServerContract): { level: 'normal' | 
 }
 
 export function canSeeContract(user: ServerUser, contract: ServerContract): boolean {
-  if (isSuperadminActor(user) || isAuditorActor(user)) return true;
-  if (contract.pic_user_id === user.id) return true;
+  if (isSuperadminActor(user)) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
-  if (!owner) return false;
-
   if (isPostgresPersistenceActive()) {
-    return hasRbacPermission(String(user.id), 'contracts.read')
-      && hasRbacScope(String(user.id), 'division', owner, 'contracts');
+    if (!hasRbacPermission(String(user.id), 'contracts.read')) return false;
+    if (contract.pic_user_id === user.id) return true;
+    return Boolean(owner) && hasRbacScope(String(user.id), 'division', owner, 'contracts');
   }
-
-  return user.role === owner;
+  if (isAuditorActor(user)) return true;
+  if (contract.pic_user_id === user.id) return true;
+  return Boolean(owner) && user.role === owner;
 }
 
 export function canManageContracts(user: ServerUser): boolean {
@@ -393,7 +392,7 @@ export const ContractDomainService = {
 
   getNotificationLogs(user: ServerUser, contractId?: string): ServerContractNotificationLog[] {
     const logs = contractId ? db.contractNotificationLogs.filter(l => l.contract_id === contractId) : db.contractNotificationLogs;
-    if (isSuperadminActor(user) || isAuditorActor(user)) return logs;
+    if (isSuperadminActor(user)) return logs;
     const visibleContracts = new Set(this.listContracts(user).map(c => c.id));
     return logs.filter(l => visibleContracts.has(l.contract_id));
   },
