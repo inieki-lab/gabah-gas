@@ -9,7 +9,7 @@
  *
  * Requires `npm run build` first (dist/server.cjs).
  */
-process.env.NODE_ENV = 'production'; // This verifies the compiled production server; Vite/HMR must not start in this test.
+process.env.NODE_ENV = 'test'; // Isolated API connectivity test; production PostgreSQL fail-fast is covered by CR-04.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -68,7 +68,7 @@ async function main() {
     env: {
       ...process.env,
       PORT: String(PORT),
-      NODE_ENV: 'production',
+      NODE_ENV: 'test',
       GABAH_INITIAL_ADMIN_PASSWORD: adminPass,
       // Neutralize inherited workspace GABAH_TEST_PASSWORD (see .env.local)
       GABAH_TEST_PASSWORD: '',
