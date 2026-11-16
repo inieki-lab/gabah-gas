@@ -408,3 +408,13 @@ The repository contains a direct architecture/seed contradiction that must be re
 - Static route inventory cannot prove record-level scope, attachment authorization, or behavior under malformed/direct-ID requests. Those still require live HTTP tests against PostgreSQL for each module.
 
 **Exact-head status:** CI green on `493a9edd`; product readiness remains **pre-UAT / staging candidate**, not production-ready. Open gates remain taxonomy/owner reconciliation, ticket category and ME routing design, browser UAT, lifecycle completion/asset custody rules, backup/restore, and deployment security/operations checks. PR #115 stays Draft; `main` remains untouched.
+
+
+### Notification routing follows dynamic capability — 17 November 2026
+
+- A further API review found that photo/documentation notifications were filtered by the literal `humas` role key and by title/message keyword heuristics. That contradicted the requirement that any custom role may receive the Humas/documentation function through explicit permissions.
+- In PostgreSQL mode, notification recipient resolution for the legacy Humas recipient role now uses the existing `room_reservations.documentation.read` capability. The photo/documentation queue filter uses the same effective permission. File-store compatibility retains the legacy Humas role fallback; Superadmin retains global notification visibility.
+- Added a static regression assertion to `scripts/dynamic-rbac-foundation-verify.mjs` for capability-driven routing.
+- Commits: `fa1d5f9` (server authorization), `66e4ac8` (regression assertion).
+- CI for commit `66e4ac8` had not yet been reported when this note was written. Do not treat this change as validated until the exact-head workflow completes successfully.
+
