@@ -110,7 +110,7 @@ export function canEditContract(user: ServerUser, contract: ServerContract): boo
 }
 
 /** Contract sub-resources use their own capability plus record-level ownership/scope. */
-function canManageContractCapability(user: ServerUser, contract: ServerContract, permissionKey: 'contracts.milestones.manage' | 'contracts.renewal.decide'): boolean {
+export function canManageContractCapability(user: ServerUser, contract: ServerContract, permissionKey: 'contracts.documents.upload' | 'contracts.milestones.manage' | 'contracts.renewal.decide'): boolean {
   if (isSuperadminActor(user)) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
   if (!owner) return false;
@@ -263,7 +263,7 @@ export const ContractDomainService = {
   addDocument(contractId: string, doc: { kind: ServerContractDocument['kind']; file_name: string; file_ref: string }, actor: ServerUser): ServerContract {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
-    if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
+    if (!canManageContractCapability(actor, contract, 'contracts.documents.upload')) throw new Error('Akses ditolak: permission contracts.documents.upload atau scope kontrak tidak diberikan.');
 
     // Versioning-ready: documents are appended, never overwritten
     contract.documents.push({
