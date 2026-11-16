@@ -4553,7 +4553,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
                         <div className="text-[10px] text-slate-400 mt-1">
                           Interval {Math.round((reminderOverview.scheduler?.intervalMs || 0) / 60000)} menit · {reminderOverview.timezone}
-                          <br />Run terakhir: {reminderOverview.scheduler?.lastRun || '—'}
+                          <br />Run terakhir: {reminderOverview.scheduler?.lastRun?.at
+                            ? new Date(reminderOverview.scheduler.lastRun.at).toLocaleString('id-ID')
+                            : 'Belum pernah berjalan'}
+                          {reminderOverview.scheduler?.lastRun && (
+                            <span className="block mt-1">
+                              Status: {reminderOverview.scheduler.lastRun.ok ? 'Berhasil' : 'Gagal'}
+                              {reminderOverview.scheduler.lastRun.summary
+                                ? ` — ${reminderOverview.scheduler.lastRun.summary}`
+                                : ''}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
