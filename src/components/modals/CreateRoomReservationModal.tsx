@@ -113,7 +113,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const [serverConflictData, setServerConflictData] = useState<any | null>(null);
 
   // Auditor remains read-only even when other operational roles are assigned.
-  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+  const isAuditor = Array.isArray(currentUser.role_keys) ? currentUser.role_keys.includes('auditor') : currentUser.role === 'Auditor';
   // Sekretariat Direksi is an additional capability, not a primary profile role.
   const canOverride = useMemo(() => !isAuditor && (
     currentUser.is_superadmin === true
