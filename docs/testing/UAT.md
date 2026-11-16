@@ -10,11 +10,14 @@
 
 ## 1. Lingkungan Pengujian (Test Environment)
 
-- **Development Port**: `http://localhost:3000` (dijalankan via `npm run dev`)
-- **Docker Production Port**: `http://localhost:80` (dijalankan via `docker compose up -d`)
-- **Database Engine**: PostgreSQL 17 (driver `pg`)
-- **Token Format**: Bearer Token pada header `Authorization`
-- **Metode Pengujian**: Manual UI end-to-end melalui browser dan verifikasi otomatis via API client.
+- **Runtime tunggal Development/UAT**: Docker Compose (app + PostgreSQL 17).
+- **URL browser default**: `http://localhost` (host port 80; dapat diubah melalui `GABAH_WEB_PORT`).
+- **Aplikasi**: container `gabah_app`, port internal 3000.
+- **Database**: container `gabah_database`; aplikasi selalu menggunakan `PGHOST=database` dan `PGPORT=5432` pada jaringan Compose.
+- **Token Format**: Bearer Token pada header `Authorization`.
+- **Metode Pengujian**: UI end-to-end melalui browser, API assertions, regression scripts, serta CI. Jangan menjalankan server Node/TSX host bersamaan dengan database Docker.
+- **Standar utama**: ikuti [MASTER-TEST-STRATEGY.md](./MASTER-TEST-STRATEGY.md). Jalankan `docker compose config --quiet`, `docker compose up -d --build`, periksa `docker compose ps` dan `docker compose logs --tail=200 app`, lalu akses `http://localhost`.
+- **Peringatan data**: jangan gunakan `docker compose down -v` pada environment yang datanya ingin dipertahankan.
 
 ---
 
@@ -252,6 +255,17 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
 - **Tampilan mengikuti server**: System Health membaca `/api/health` riil (latency, persistence CR-04, scheduler CR-05); Asset Numbering menampilkan sequence live dari `/api/numbering/sequences`; Notification Center menampilkan overview CR-05 dari `/api/contracts/reminders/overview` (admin-only, live-tested 200 admin / 403 non-admin).
 - **Data lengkap**: audit log kini membawa `ip_address` (request context ALS, live-tested terisi) + search/filter/pagination; seed divisi 6 kode (SC, PIBC, IT, GA, Audit, Umum); badge dinamis; field `telegram_chat_id` + badge Nonaktif di user management.
 
+### 4.7 Green Enterprise Theme & Asset Numbering Rule Administration (16 November 2026)
+- Periksa konsistensi tema pada Login, Dashboard, katalog aset, header, sidebar, form, tabel, dan Administration Control Panel; warna status warning/danger/info harus tetap berbeda.
+- Superadmin dapat melihat aturan yang tersinkron dari kombinasi owner-divisi/kategori aset yang sudah ada.
+- Tambah aturan untuk kombinasi yang belum terdaftar; validasi separator dan panjang sequence 3–8 digit.
+- Edit aturan yang sudah dipakai: separator/panjang sequence boleh berubah untuk nomor berikutnya, tetapi nomor aset historis tidak boleh berubah. Identitas owner-divisi/kode aset tetap terkunci setelah penggunaan.
+- Nonaktifkan aturan: pembuatan aset baru pada kombinasi tersebut harus ditolak; aset lama tetap tampil dan dapat dikelola.
+- Hapus aturan tanpa aset/sequence: harus mengetik tepat `DIV/CODE` dan mengisi alasan minimal 20 karakter; audit log mencatat aksi.
+- Hapus aturan yang sudah dipakai: server harus menolak dengan HTTP 409 meskipun UI dimanipulasi.
+- Verifikasi generator melanjutkan sequence di atas nomor tersimpan dan preview tidak mengonsumsi sequence.
+- **Release gate:** sequence engine masih process-memory based. UAT satu instance tidak membuktikan atomicity multi-instance; penggantian generator ke PostgreSQL atomic UPSERT harus selesai sebelum horizontal scaling / multi-replica.
+ 
 ### 4.6 Data Contoh UAT Multi-Modul & Perbaikan Sesi (1 Oktober 2026)
 - **Seed kontrak sampel (5)**: `seedInitialData()` kini mengisi `db.contracts` dengan tanggal relatif terhadap hari seed sehingga threshold reminder selalu bermakna — CTR-2026-0001 (sisa ±5 hari → EXPIRY_7), CTR-2026-0002 (±28 hari → EXPIRY_35 + NOTICE_DATE lewat), CTR-2026-0003 (±75 hari → EXPIRY_60), CTR-2026-0004 (auto-renewal jangka panjang), CTR-2026-0005 (restricted — terverifikasi tersembunyi dari peran non-PIBC/non-owner, terlihat bagi Admin & Auditor). Live-tested di DB fresh: `GET /api/contracts` = 5 (admin), sweep boot mengantre 51 log `EXPIRY_60/35/7` dengan status jujur.
 - **Seed peminjaman & tiket ke-3**: LOAN-003 (pending_approval, peminjam USR-04) dan TKT-003 (kategory GA, medium) melengkapi target ≥3 data per modul (aset 17, vendor, ruang 7, reservasi 4, maintenance 3, kontrak 5, pinjaman 3, tiket 3).

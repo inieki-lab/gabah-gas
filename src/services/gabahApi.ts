@@ -1,5 +1,19 @@
 import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract, MaintenanceSchedule, Vendor, KnowledgeArticle } from '../types';
 
+export interface AssetNumberingRule {
+  id: string;
+  owner_division: string;
+  asset_code: string;
+  separator: string;
+  sequence_digits: number;
+  is_active: boolean;
+  notes: string;
+  usage_count: number;
+  sequence_current?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface ModuleLifecycleRecord {
   module_key: string;
   name: string;
@@ -593,6 +607,32 @@ class GabahApiClient {
   /** Live asset numbering sequence snapshot (P2#10). */
   async getNumberingSequences(): Promise<Array<{ key: string; division: string; code: string; year: number; current: number }>> {
     return this.request<Array<{ key: string; division: string; code: string; year: number; current: number }>>('/api/numbering/sequences');
+  }
+
+  /** Server-persisted numbering rule catalog (Superadmin only). */
+  async getNumberingRules(): Promise<AssetNumberingRule[]> {
+    return this.request<AssetNumberingRule[]>('/api/numbering/rules');
+  }
+
+  async createNumberingRule(payload: Pick<AssetNumberingRule, 'owner_division' | 'asset_code' | 'separator' | 'sequence_digits' | 'notes'>): Promise<AssetNumberingRule> {
+    return this.request<AssetNumberingRule>('/api/numbering/rules', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateNumberingRule(id: string, payload: Partial<Pick<AssetNumberingRule, 'separator' | 'sequence_digits' | 'is_active' | 'notes'>>): Promise<AssetNumberingRule> {
+    return this.request<AssetNumberingRule>(`/api/numbering/rules/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteNumberingRule(id: string, payload: { confirmation_code: string; reason: string }): Promise<{ id: string; deleted: boolean }> {
+    return this.request<{ id: string; deleted: boolean }>(`/api/numbering/rules/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      body: JSON.stringify(payload),
+    });
   }
 
   /** CR-05 reminder subsystem overview for the admin Notification Center (P2#11). */

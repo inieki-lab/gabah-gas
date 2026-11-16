@@ -1,3 +1,13 @@
+## [2026-11-16] — Green theme enforcement & asset numbering rule management
+
+- Extend the green enterprise palette across legacy Tailwind color utilities so administration, forms, cards, and neutral surfaces no longer retain the previous gray/teal appearance.
+- Add PostgreSQL-backed asset numbering rule catalog with Superadmin-only read/create/update/delete endpoints and audit entries.
+- Allow separator and sequence-width changes for rules already in use while preserving issued asset numbers; lock owner/code identity after use.
+- Block deletion if assets or sequence history exist; unused-rule deletion requires exact `DIV/CODE` confirmation and a reason of at least 20 characters.
+- Document the remaining numbering-engine limitation: sequence counters are currently process-memory based and reconstructed from saved assets at boot; PostgreSQL atomic multi-instance issuance remains a release-gate item.
+
+---
+
 ## [2026-11-16] — Normalize legacy Humas and Secretariat profiles
 
 - PostgreSQL startup now materializes user rows before inserting legacy Humas/Sekretariat secondary capability assignments, avoiding foreign-key failures on a fresh database.
@@ -1480,3 +1490,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Docker PostgreSQL port now binds to 127.0.0.1 only, not all VM interfaces. Initial admin/user provisioning secrets are passed from .env to the app container.
 - CI now validates docker compose config and bash -n deploy.sh.
 - Replaced OFFICE-VM-RUNBOOK's destructive reset --hard/clean instructions with a release-gated update, PostgreSQL backup, health verification, rollback and restore procedure. It explicitly marks current release NO-GO.
+
+## 2026-11-16 — Green Enterprise UI Theme
+- Menetapkan arah visual gratis berbasis referensi Shadcn Dashboard (React + Vite, MIT) dengan palet hijau Food Station.
+- Memperbarui design tokens global, header, sidebar aktif, dan canvas workspace.
+- Tidak mengganti stack, menambah dependency UI, atau mengubah RBAC, API, route, workflow, maupun data.
+- Perlu verifikasi lint/build dan UAT visual lintas role sebelum merge.

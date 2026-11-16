@@ -40,7 +40,7 @@ import {
   Power
 } from 'lucide-react';
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
-import { gabahApi } from '../../services/gabahApi';
+import { gabahApi, AssetNumberingRule } from '../../services/gabahApi';
 import { exportUsersToCsv, downloadUsersImportTemplate, parseUsersImportCsv } from '../../services/gabahService';
 import { ModuleLifecyclePanel } from './ModuleLifecyclePanel';
 
@@ -772,11 +772,29 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   // Notification Rules State
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => {
-    const saved = localStorage.getItem('gabah_notification_rules');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
+    // Browser storage is untrusted input: old versions may contain malformed
+    // JSON, a non-array value, or incomplete rule objects. Never let it crash
+    // the Administration modal during render.
+    try {
+      const saved = window.localStorage.getItem('gabah_notification_rules');
+      if (!saved) return DEFAULT_NOTIFICATION_RULES;
+      const parsed: unknown = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return DEFAULT_NOTIFICATION_RULES;
+      const validRules = parsed.filter((rule): rule is NotificationRule =>
+        !!rule &&
+        typeof rule === 'object' &&
+        typeof rule.id === 'string' &&
+        typeof rule.title === 'string' &&
+        typeof rule.trigger === 'string' &&
+        typeof rule.target === 'string' &&
+        (rule.status === 'Aktif' || rule.status === 'Nonaktif') &&
+        (rule.severity === 'warning' || rule.severity === 'critical' || rule.severity === 'info')
+      );
+      return validRules.length > 0 ? validRules : DEFAULT_NOTIFICATION_RULES;
+    } catch (error) {
+      console.warn('[GABAH Administration] Notification rules storage unavailable; using defaults.', error);
+      return DEFAULT_NOTIFICATION_RULES;
     }
-    return DEFAULT_NOTIFICATION_RULES;
   });
 
   // Audit Search & Filter State
@@ -785,15 +803,106 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [auditPage, setAuditPage] = useState(0);
   const AUDIT_PAGE_SIZE = 20;
 
-  // P2#10: live numbering sequences (server snapshot) — no more hardcoded samples.
+  // Server-authoritative numbering rules and sequence counters.
   const [liveSequences, setLiveSequences] = useState<Array<{ key: string; division: string; code: string; year: number; current: number }> | null>(null);
+  const [numberingRules, setNumberingRules] = useState<AssetNumberingRule[] | null>(null);
+  const [numberingRulesError, setNumberingRulesError] = useState('');
+  const [numberingRuleForm, setNumberingRuleForm] = useState({ owner_division: 'IT', asset_code: '', separator: '-', sequence_digits: 4, notes: '' });
+  const [editingNumberingRuleId, setEditingNumberingRuleId] = useState<string | null>(null);
+  const [numberingRuleDeleteTarget, setNumberingRuleDeleteTarget] = useState<AssetNumberingRule | null>(null);
+  const [numberingRuleDeleteCode, setNumberingRuleDeleteCode] = useState('');
+  const [numberingRuleDeleteReason, setNumberingRuleDeleteReason] = useState('');
+  const [isSavingNumberingRule, setIsSavingNumberingRule] = useState(false);
+  const refreshNumberingAdmin = async () => {
+    setNumberingRulesError('');
+    try {
+      const [rules, sequences] = await Promise.all([
+        gabahApi.getNumberingRules(),
+        gabahApi.getNumberingSequences(),
+      ]);
+      setNumberingRules(rules);
+      setLiveSequences(sequences);
+    } catch (error: any) {
+      setNumberingRulesError(error.message || 'Gagal memuat aturan penomoran dari server.');
+    }
+  };
   useEffect(() => {
     let cancelled = false;
-    gabahApi.getNumberingSequences()
-      .then(seq => { if (!cancelled) setLiveSequences(seq); })
-      .catch(() => { /* keep null → UI shows honest "unavailable" state */ });
+    Promise.all([gabahApi.getNumberingRules(), gabahApi.getNumberingSequences()])
+      .then(([rules, sequences]) => {
+        if (!cancelled) {
+          setNumberingRules(rules);
+          setLiveSequences(sequences);
+        }
+      })
+      .catch((error: any) => {
+        if (!cancelled) setNumberingRulesError(error.message || 'Gagal memuat aturan penomoran dari server.');
+      });
     return () => { cancelled = true; };
   }, []);
+
+  const resetNumberingRuleForm = () => {
+    setEditingNumberingRuleId(null);
+    setNumberingRuleForm({ owner_division: 'IT', asset_code: '', separator: '-', sequence_digits: 4, notes: '' });
+  };
+
+  const handleSaveNumberingRule = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!numberingRuleForm.asset_code.trim()) {
+      showToast('Kode aset wajib diisi.', 'warning');
+      return;
+    }
+    try {
+      setIsSavingNumberingRule(true);
+      if (editingNumberingRuleId) {
+        const updated = await gabahApi.updateNumberingRule(editingNumberingRuleId, {
+          separator: numberingRuleForm.separator,
+          sequence_digits: numberingRuleForm.sequence_digits,
+          notes: numberingRuleForm.notes,
+        });
+        setNumberingRules(prev => (prev || []).map(rule => rule.id === updated.id ? updated : rule));
+        showToast('Aturan penomoran diperbarui. Nomor aset yang sudah terbit tetap tidak berubah.', 'success');
+      } else {
+        const created = await gabahApi.createNumberingRule(numberingRuleForm);
+        setNumberingRules(prev => [...(prev || []), created].sort((a, b) => a.owner_division.localeCompare(b.owner_division) || a.asset_code.localeCompare(b.asset_code)));
+        showToast('Aturan penomoran baru berhasil dibuat.', 'success');
+      }
+      resetNumberingRuleForm();
+      await refreshNumberingAdmin();
+    } catch (error: any) {
+      showToast(error.message || 'Gagal menyimpan aturan penomoran.', 'warning');
+    } finally {
+      setIsSavingNumberingRule(false);
+    }
+  };
+
+  const handleToggleNumberingRule = async (rule: AssetNumberingRule) => {
+    try {
+      const updated = await gabahApi.updateNumberingRule(rule.id, { is_active: !rule.is_active });
+      setNumberingRules(prev => (prev || []).map(item => item.id === updated.id ? updated : item));
+      showToast(updated.is_active ? 'Aturan penomoran diaktifkan.' : 'Aturan dinonaktifkan. Aset lama tetap memakai nomor yang sudah terbit.', 'info');
+    } catch (error: any) {
+      showToast(error.message || 'Gagal mengubah status aturan.', 'warning');
+    }
+  };
+
+  const handleDeleteNumberingRule = async () => {
+    if (!numberingRuleDeleteTarget) return;
+    try {
+      await gabahApi.deleteNumberingRule(numberingRuleDeleteTarget.id, {
+        confirmation_code: numberingRuleDeleteCode,
+        reason: numberingRuleDeleteReason,
+      });
+      setNumberingRules(prev => (prev || []).filter(rule => rule.id !== numberingRuleDeleteTarget.id));
+      setNumberingRuleDeleteTarget(null);
+      setNumberingRuleDeleteCode('');
+      setNumberingRuleDeleteReason('');
+      showToast('Aturan penomoran yang belum pernah dipakai berhasil dihapus dan dicatat di audit log.', 'success');
+      await refreshNumberingAdmin();
+    } catch (error: any) {
+      showToast(error.message || 'Penghapusan aturan ditolak.', 'warning');
+    }
+  };
 
   // P2#11: CR-05 reminder subsystem overview (admin-only endpoint).
   const [reminderOverview, setReminderOverview] = useState<any>(null);
@@ -838,7 +947,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     timestamp: string;
     isChecking: boolean;
     persistence?: string;
-    scheduler?: { enabled?: boolean; running?: boolean; intervalMs?: number; timezone?: string; lastRun?: string | null };
+    scheduler?: { enabled?: boolean; running?: boolean; intervalMs?: number; timezone?: string; lastRun?: string | { at?: string; ok?: boolean; summary?: string } | null };
   }>({
     // Status awal: BELUM diperiksa — jangan mengarang angka latency/status.
     status: 'Belum Diperiksa',
@@ -1220,7 +1329,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       return r;
     });
     setNotificationRules(updated);
-    localStorage.setItem('gabah_notification_rules', JSON.stringify(updated));
+    try {
+      window.localStorage.setItem('gabah_notification_rules', JSON.stringify(updated));
+    } catch (error) {
+      console.error('[GABAH Administration] Failed to persist notification rules locally:', error);
+      showToast('Perubahan hanya berlaku sementara di browser ini; penyimpanan lokal tidak tersedia.', 'warning');
+      return;
+    }
     const target = updated.find(r => r.id === id);
     showToast(`Aturan "${target?.title}" diubah menjadi: ${target?.status}`, 'info');
   };
@@ -4342,10 +4457,123 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </p>
               </div>
 
+              {/* Server-persisted numbering rule management */}
+              <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm space-y-4">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-emerald-950">Master Aturan Penomoran</h4>
+                    <p className="text-[11px] text-slate-500 mt-1">Aturan disimpan di PostgreSQL dan berlaku untuk nomor yang diterbitkan setelah perubahan.</p>
+                  </div>
+                  <span className="text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1">Superadmin</span>
+                </div>
+
+                {numberingRulesError && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    {numberingRulesError} Pastikan sesi Superadmin masih aktif dan PostgreSQL tersedia.
+                    <button type="button" onClick={refreshNumberingAdmin} className="ml-2 font-bold underline">Coba lagi</button>
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveNumberingRule} className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-extrabold text-emerald-950">{editingNumberingRuleId ? 'Edit format aturan' : 'Tambah aturan baru'}</div>
+                    {editingNumberingRuleId && (
+                      <button type="button" onClick={resetNumberingRuleForm} className="text-[11px] font-bold text-slate-500 hover:text-slate-800">Batal edit</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Divisi pemilik
+                      <select value={numberingRuleForm.owner_division} disabled={!!editingNumberingRuleId} onChange={e => setNumberingRuleForm(prev => ({ ...prev, owner_division: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs disabled:bg-slate-100">
+                        <option value="IT">IT</option><option value="GA">GA</option><option value="SC">RPC / SC</option><option value="PIBC">PIBC</option><option value="Umum">Umum</option>
+                      </select>
+                    </label>
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Kode aset
+                      <input value={numberingRuleForm.asset_code} disabled={!!editingNumberingRuleId} onChange={e => setNumberingRuleForm(prev => ({ ...prev, asset_code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') }))} placeholder="Contoh HLT" maxLength={30} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-mono disabled:bg-slate-100" />
+                    </label>
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Pemisah
+                      <select value={numberingRuleForm.separator} onChange={e => setNumberingRuleForm(prev => ({ ...prev, separator: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs">
+                        <option value="-">Strip (-)</option><option value="_">Underscore (_)</option><option value="/">Garis miring (/)</option>
+                      </select>
+                    </label>
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Digit sequence
+                      <select value={numberingRuleForm.sequence_digits} onChange={e => setNumberingRuleForm(prev => ({ ...prev, sequence_digits: Number(e.target.value) }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs">
+                        {[3,4,5,6,7,8].map(n => <option key={n} value={n}>{n} digit</option>)}
+                      </select>
+                    </label>
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Catatan
+                      <input value={numberingRuleForm.notes} onChange={e => setNumberingRuleForm(prev => ({ ...prev, notes: e.target.value }))} maxLength={500} placeholder="Opsional" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs" />
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <p className="text-[10px] text-slate-500">Contoh: {numberingRuleForm.owner_division}{numberingRuleForm.separator}{numberingRuleForm.asset_code || 'KODE'}{numberingRuleForm.separator}{new Date().getFullYear()}{numberingRuleForm.separator}{String(1).padStart(numberingRuleForm.sequence_digits, '0')}</p>
+                    <button type="submit" disabled={isSavingNumberingRule || !numberingRuleForm.asset_code.trim()} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50">
+                      {editingNumberingRuleId ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                      {isSavingNumberingRule ? 'Menyimpan…' : editingNumberingRuleId ? 'Simpan perubahan' : 'Tambah aturan'}
+                    </button>
+                  </div>
+                </form>
+
+                {numberingRules === null ? (
+                  <div className="py-4 text-center text-xs text-slate-400">Memuat aturan dari server…</div>
+                ) : numberingRules.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/40 p-4 text-center text-xs text-slate-500">
+                    Belum ada aturan khusus tersimpan. Generator tetap memakai format baku GABAH sampai aturan ditambahkan.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {numberingRules.map(rule => (
+                      <div key={rule.id} className="rounded-xl border border-slate-200 bg-white p-3 flex flex-col lg:flex-row lg:items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-xs font-extrabold text-slate-900">{rule.owner_division}{rule.separator}{rule.asset_code}{rule.separator}{new Date().getFullYear()}{rule.separator}{String(1).padStart(rule.sequence_digits, '0')}</span>
+                            <span className={`text-[9px] font-bold rounded-full px-2 py-0.5 ${rule.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>{rule.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                          </div>
+                          <div className="mt-1 text-[10px] text-slate-500">{rule.usage_count} aset memakai kombinasi ini · counter {rule.sequence_current || 0} · {rule.sequence_digits} digit · pemisah "{rule.separator}"</div>
+                          {rule.notes && <div className="mt-1 text-[10px] text-slate-400">{rule.notes}</div>}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button type="button" onClick={() => { setEditingNumberingRuleId(rule.id); setNumberingRuleForm({ owner_division: rule.owner_division, asset_code: rule.asset_code, separator: rule.separator, sequence_digits: rule.sequence_digits, notes: rule.notes || '' }); setNumberingRuleDeleteTarget(null); }} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-50"><Pencil className="w-3 h-3" />Edit</button>
+                          <button type="button" onClick={() => handleToggleNumberingRule(rule)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50"><Power className="w-3 h-3" />{rule.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                          {rule.usage_count === 0 && (rule.sequence_current || 0) === 0 ? (
+                            <button type="button" onClick={() => { setNumberingRuleDeleteTarget(rule); setNumberingRuleDeleteCode(''); setNumberingRuleDeleteReason(''); }} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="w-3 h-3" />Hapus</button>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 px-2">Tidak dapat dihapus: sudah dipakai</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {numberingRuleDeleteTarget && (
+                  <div className="rounded-xl border-2 border-rose-200 bg-rose-50 p-3 space-y-2">
+                    <div className="text-xs font-extrabold text-rose-900">Konfirmasi penghapusan permanen</div>
+                    <p className="text-[10px] text-rose-800">Penghapusan hanya tersedia jika belum ada aset yang memakai aturan ini dan counter sequence masih nol. Tindakan akan masuk audit log.</p>
+                    <label className="block text-[10px] font-bold text-rose-900">
+                      Ketik persis {numberingRuleDeleteTarget.owner_division}/{numberingRuleDeleteTarget.asset_code}
+                      <input value={numberingRuleDeleteCode} onChange={e => setNumberingRuleDeleteCode(e.target.value.toUpperCase())} className="mt-1 w-full rounded-lg border border-rose-200 bg-white px-2.5 py-2 text-xs font-mono" />
+                    </label>
+                    <label className="block text-[10px] font-bold text-rose-900">
+                      Alasan penghapusan (minimal 20 karakter)
+                      <textarea value={numberingRuleDeleteReason} onChange={e => setNumberingRuleDeleteReason(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-rose-200 bg-white px-2.5 py-2 text-xs" />
+                    </label>
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => setNumberingRuleDeleteTarget(null)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold text-slate-600">Batal</button>
+                      <button type="button" disabled={numberingRuleDeleteCode.trim().toUpperCase() !== `${numberingRuleDeleteTarget.owner_division}/${numberingRuleDeleteTarget.asset_code}` || numberingRuleDeleteReason.trim().length < 20} onClick={handleDeleteNumberingRule} className="rounded-lg bg-rose-700 px-3 py-1.5 text-[10px] font-bold text-white disabled:opacity-40">Hapus permanen</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Simulator Card */}
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-200">
                 <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-3">
-                  Live Sequence Generator & Simulator
+                  Preview Format Penomoran (Simulasi)
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
@@ -4355,7 +4583,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       onChange={e => {
                         const d = e.target.value as OwnerDivision;
                         setTestDiv(d);
-                        setSimulatedNumber(`${d}-${testCode}-2026-000${Math.floor(Math.random() * 5) + 1}`);
+                        setSimulatedNumber(`${d}-${testCode}-${new Date().getFullYear()}-0001`);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold"
                     >
@@ -4373,7 +4601,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       onChange={e => {
                         const c = e.target.value.toUpperCase();
                         setTestCode(c);
-                        setSimulatedNumber(`${testDiv}-${c}-2026-0001`);
+                        setSimulatedNumber(`${testDiv}-${c}-${new Date().getFullYear()}-0001`);
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-mono font-bold uppercase"
                       placeholder="Contoh: HLT, FLT, BLD"
@@ -4388,9 +4616,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                 </div>
                 <div className="mt-3 text-[11px] text-emerald-800 leading-relaxed">
-                  ✓ Sequence direset otomatis setiap awal tahun per kombinasi (Divisi, Kode Aset, Tahun).
+                  Preview ini tidak menerbitkan nomor dan tidak mengubah counter.
                   <br />
-                  ✓ Thread-safe & concurrency-safe dengan pemulihan sequence otomatis dari database.
+                  Counter aktual dipulihkan dari nomor aset tersimpan saat server boot. Jaminan sequence atomik lintas beberapa instance masih menjadi pekerjaan penguatan berikutnya.
                 </div>
               </div>
 
@@ -4529,7 +4757,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
                         <div className="text-[10px] text-slate-400 mt-1">
                           Interval {Math.round((reminderOverview.scheduler?.intervalMs || 0) / 60000)} menit · {reminderOverview.timezone}
-                          <br />Run terakhir: {reminderOverview.scheduler?.lastRun || '—'}
+                          <br />Run terakhir: {reminderOverview.scheduler?.lastRun?.at
+                            ? new Date(reminderOverview.scheduler.lastRun.at).toLocaleString('id-ID')
+                            : 'Belum pernah berjalan'}
+                          {reminderOverview.scheduler?.lastRun && (
+                            <span className="block mt-1">
+                              Status: {reminderOverview.scheduler.lastRun.ok ? 'Berhasil' : 'Gagal'}
+                              {reminderOverview.scheduler.lastRun.summary
+                                ? ` — ${reminderOverview.scheduler.lastRun.summary}`
+                                : ''}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
@@ -5032,7 +5270,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                   <div className="text-[11px] text-slate-400 mt-1">
                     {healthStatus.scheduler
-                      ? `Interval ${(healthStatus.scheduler.intervalMs ?? 0) / 60000 || '?'} menit · ${healthStatus.scheduler.timezone || '-'} · Run terakhir: ${healthStatus.scheduler.lastRun || '—'}${healthStatus.scheduler.lastRun ? '' : ' (menunggu jadwal pertama)'}`
+                      ? `Interval ${(healthStatus.scheduler.intervalMs ?? 0) / 60000 || '?'} menit · ${healthStatus.scheduler.timezone || '-'} · Run terakhir: ${typeof healthStatus.scheduler.lastRun === 'string' ? healthStatus.scheduler.lastRun : healthStatus.scheduler.lastRun?.at ? new Date(healthStatus.scheduler.lastRun.at).toLocaleString('id-ID') : 'Belum pernah berjalan'}`
                       : 'Status dari /api/health'}
                   </div>
                 </div>

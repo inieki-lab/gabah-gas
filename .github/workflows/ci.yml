@@ -127,6 +127,9 @@ jobs:
       - name: Organization master strict active regression
         run: npm run test:org-master-active
 
+      - name: Asset numbering rule integrity and deletion safeguards
+        run: npm run test:numbering-rules
+
       - name: Module lifecycle registry contract
         run: npm run test:module-lifecycle-registry
 

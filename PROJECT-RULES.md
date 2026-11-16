@@ -26,9 +26,11 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 
 ### 2.1 Penomoran Aset (Asset Numbering)
 - Format resmi: `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` (Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`).
-- Penomoran di-generate secara atomik oleh backend melalui `AssetNumberingEngine.generateAssetNumber()`.
+- Penomoran dibuat oleh backend melalui `AssetNumberingEngine.generateAssetNumber()`; counter runtime saat ini disinkronkan dari aset tersimpan saat boot, belum atomik lintas instance PostgreSQL. Dilarang mengklaim concurrency-safe sampai jalur sequence DB atomik selesai diuji.
 - Urutan sequence nomor mereset per tahun per kombinasi divisi pemilik dan kode aset.
 - Frontend dilarang meng-generate atau meng-hardcode nomor aset secara manual saat create asset.
+- Aturan format disimpan di PostgreSQL (`asset_numbering_rules`) dan hanya dapat dikelola Superadmin. Aturan yang sudah dipakai boleh mengubah format penerbitan berikutnya, tetapi identitas divisi/kode dikunci dan nomor historis tidak boleh ditulis ulang.
+- Penghapusan hanya untuk aturan tanpa aset/sequence, wajib konfirmasi kode `DIV/CODE` dan alasan minimal 20 karakter; aturan terpakai harus dinonaktifkan, bukan dihapus.
 - Nomor ERP Accurate disimpan secara terpisah di kolom `corporate_asset_number` dan tidak boleh menimpa nomor kanonikal.
 
 ### 2.2 Pencegahan Tabrakan Peminjaman (Loan Anti-Collision)
@@ -73,10 +75,10 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
    - Menggunakan Tailwind CSS v4 (impor global `@import "tailwindcss";` di `src/index.css`).
    - Font tipografi kanonikal: `Plus Jakarta Sans`.
    - Warna tema identitas korporat Food Station Tjipinang Jaya:
-     - Primary Teal: `#4ABDAC` / `#206f65`
-     - Secondary Accent Peach: `#FC4A1A`
+     - Primary Green: `#176B45` / `#218653` (Green Enterprise theme)
+     - Secondary Accent Coral: `#FC4A1A`
      - Warning Yellow Gold: `#F7B733`
-     - Clean Slate Base: `#DFDCE3` / `slate-50` s/d `slate-900`
+     - Clean Green-Slate Base: `#F4F8F5` canvas / `#E1EBE4` border / `slate-50` s/d `slate-900`
 3. **Verifikasi Build Sebelum Rilis**:
    - Build produksi wajib dipastikan sukses: `npm run build` menghasilkan bundle frontend di `dist/` dan bundle backend di `dist/server.cjs`.
 

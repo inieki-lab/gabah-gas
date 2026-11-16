@@ -1236,6 +1236,188 @@ async function startServer() {
     res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
   });
 
+  // Configurable numbering rules: Superadmin-only, persisted in PostgreSQL and audited.
+  app.get('/api/numbering/rules', async (req, res) => {
+    const actor = getActor(req);
+    if (!isSuperadminActor(actor)) {
+      return res.status(403).json({ success: false, message: 'Hanya Superadmin yang dapat melihat aturan penomoran.' });
+    }
+    if (!requireRbacPermission(req, res, 'numbering.read')) return;
+    try {
+      const result = await queryRbac<any>(
+        'SELECT id, owner_division, asset_code, separator, sequence_digits, is_active, notes, created_at, updated_at FROM asset_numbering_rules ORDER BY owner_division, asset_code'
+      );
+      const data = await Promise.all(result.rows.map(async rule => {
+        const usage = await queryRbac<{ count: string }>(
+          `SELECT COUNT(*)::text AS count
+           FROM assets a
+           JOIN divisions d ON d.id = a.owner_division_id
+           LEFT JOIN asset_categories c ON c.id = a.category_id
+           WHERE UPPER(d.code) = UPPER($1)
+             AND (UPPER(c.code) = UPPER($2) OR a.asset_number LIKE $3)`,
+          [rule.owner_division, rule.asset_code, `${rule.owner_division}-${rule.asset_code}-%`]
+        );
+        const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
+          s.division === rule.owner_division && s.code === rule.asset_code
+        );
+        return { ...rule, usage_count: Number(usage.rows[0]?.count || 0), sequence_current: sequence?.current || 0 };
+      }));
+      res.json({ success: true, data });
+    } catch (err: any) {
+      res.status(503).json({ success: false, message: err.message || 'Aturan penomoran tidak tersedia.' });
+    }
+  });
+
+  app.post('/api/numbering/rules', async (req, res) => {
+    const actor = getActor(req);
+    if (!isSuperadminActor(actor)) {
+      return res.status(403).json({ success: false, message: 'Hanya Superadmin yang dapat membuat aturan penomoran.' });
+    }
+    if (!requireRbacPermission(req, res, 'numbering.manage')) return;
+    const owner = String(req.body?.owner_division || '').trim().toUpperCase();
+    const code = String(req.body?.asset_code || '').trim().toUpperCase();
+    const separator = String(req.body?.separator ?? '-');
+    const digits = Number(req.body?.sequence_digits ?? 4);
+    const notes = String(req.body?.notes || '').trim().slice(0, 500);
+    if (!/^[A-Z0-9]{2,12}$/.test(owner) || !/^[A-Z0-9][A-Z0-9-]{1,29}$/.test(code)) {
+      return res.status(400).json({ success: false, message: 'Kode divisi dan kode aset tidak valid.' });
+    }
+    if (!/^[-_/]$/.test(separator) || !Number.isInteger(digits) || digits < 3 || digits > 8) {
+      return res.status(400).json({ success: false, message: 'Pemisah harus satu karakter (-, _, /) dan digit sequence 3–8.' });
+    }
+    try {
+      const id = crypto.randomUUID();
+      const result = await queryRbac<any>(
+        `INSERT INTO asset_numbering_rules (id, owner_division, asset_code, separator, sequence_digits, is_active, notes)
+         VALUES ($1, $2, $3, $4, $5, TRUE, $6)
+         RETURNING id, owner_division, asset_code, separator, sequence_digits, is_active, notes, created_at, updated_at`,
+        [id, owner, code, separator, digits, notes]
+      );
+      AssetNumberingEngine.upsertRule(result.rows[0]);
+      GabahDomainService.recordAudit('NUMBERING_RULE_CREATED', 'Asset Numbering', `Membuat aturan penomoran ${owner}/${code}; pemisah "${separator}", digit ${digits}.`, actor);
+      await persistDataStore();
+      res.status(201).json({ success: true, data: { ...result.rows[0], usage_count: 0 } });
+    } catch (err: any) {
+      const duplicate = err.code === '23505';
+      res.status(duplicate ? 409 : 400).json({ success: false, message: duplicate ? `Aturan ${owner}/${code} sudah terdaftar.` : (err.message || 'Gagal membuat aturan penomoran.') });
+    }
+  });
+
+  app.patch('/api/numbering/rules/:id', async (req, res) => {
+    const actor = getActor(req);
+    if (!isSuperadminActor(actor)) {
+      return res.status(403).json({ success: false, message: 'Hanya Superadmin yang dapat mengubah aturan penomoran.' });
+    }
+    if (!requireRbacPermission(req, res, 'numbering.manage')) return;
+    try {
+      const currentResult = await queryRbac<any>(
+        'SELECT id, owner_division, asset_code, separator, sequence_digits, is_active, notes FROM asset_numbering_rules WHERE id = $1',
+        [req.params.id]
+      );
+      const current = currentResult.rows[0];
+      if (!current) return res.status(404).json({ success: false, message: 'Aturan penomoran tidak ditemukan.' });
+      const usageResult = await queryRbac<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+         FROM assets a
+         JOIN divisions d ON d.id = a.owner_division_id
+         LEFT JOIN asset_categories c ON c.id = a.category_id
+         WHERE UPPER(d.code) = UPPER($1)
+           AND (UPPER(c.code) = UPPER($2) OR a.asset_number LIKE $3)`,
+        [current.owner_division, current.asset_code, `${current.owner_division}-${current.asset_code}-%`]
+      );
+      const usageCount = Number(usageResult.rows[0]?.count || 0);
+      // Once a rule has issued numbers, its identity (owner + asset code) is immutable.
+      // Formatting may still be changed; existing asset numbers are never rewritten.
+      if (req.body?.owner_division || req.body?.asset_code) {
+        const requestedOwner = String(req.body.owner_division || current.owner_division).trim().toUpperCase();
+        const requestedCode = String(req.body.asset_code || current.asset_code).trim().toUpperCase();
+        if (usageCount > 0 && (requestedOwner !== current.owner_division || requestedCode !== current.asset_code)) {
+          return res.status(409).json({ success: false, message: 'Aturan sudah digunakan. Divisi dan kode aset dikunci; format nomor berikutnya masih dapat disesuaikan.' });
+        }
+        if (requestedOwner !== current.owner_division || requestedCode !== current.asset_code) {
+          return res.status(409).json({ success: false, message: 'Perubahan identitas aturan belum didukung. Buat aturan baru untuk kombinasi divisi/kode yang berbeda.' });
+        }
+      }
+      const separator = req.body?.separator === undefined ? current.separator : String(req.body.separator);
+      const digits = req.body?.sequence_digits === undefined ? Number(current.sequence_digits) : Number(req.body.sequence_digits);
+      const isActive = req.body?.is_active === undefined ? current.is_active : req.body.is_active === true;
+      const notes = req.body?.notes === undefined ? current.notes : String(req.body.notes).trim().slice(0, 500);
+      if (!/^[-_/]$/.test(separator) || !Number.isInteger(digits) || digits < 3 || digits > 8) {
+        return res.status(400).json({ success: false, message: 'Pemisah harus satu karakter (-, _, /) dan digit sequence 3–8.' });
+      }
+      const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
+        s.division === current.owner_division && s.code === current.asset_code
+      );
+      if (sequence && sequence.current >= Math.pow(10, digits)) {
+        return res.status(409).json({ success: false, message: `Digit sequence ${digits} terlalu pendek untuk counter ${sequence.current}. Pilih minimal ${String(sequence.current + 1).length} digit.` });
+      }
+      const preview = AssetNumberingEngine.previewAssetNumber(current.owner_division, current.asset_code, new Date().getFullYear(), {
+        separator, sequence_digits: digits,
+      });
+      const collision = await queryRbac('SELECT 1 FROM assets WHERE asset_number = $1 LIMIT 1', [preview]);
+      if (collision.rowCount > 0) {
+        return res.status(409).json({ success: false, message: `Format baru berpotensi menghasilkan nomor yang sudah terpakai (${preview}).` });
+      }
+      const updated = await queryRbac<any>(
+        `UPDATE asset_numbering_rules SET separator = $2, sequence_digits = $3, is_active = $4, notes = $5, updated_at = NOW()
+         WHERE id = $1
+         RETURNING id, owner_division, asset_code, separator, sequence_digits, is_active, notes, created_at, updated_at`,
+        [current.id, separator, digits, isActive, notes]
+      );
+      AssetNumberingEngine.upsertRule(updated.rows[0]);
+      GabahDomainService.recordAudit('NUMBERING_RULE_UPDATED', 'Asset Numbering', `Memperbarui aturan ${current.owner_division}/${current.asset_code} (terpakai: ${usageCount}); nomor yang telah terbit tidak diubah.`, actor);
+      await persistDataStore();
+      res.json({ success: true, data: { ...updated.rows[0], usage_count: usageCount } });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message || 'Gagal memperbarui aturan penomoran.' });
+    }
+  });
+
+  app.delete('/api/numbering/rules/:id', async (req, res) => {
+    const actor = getActor(req);
+    if (!isSuperadminActor(actor)) {
+      return res.status(403).json({ success: false, message: 'Hanya Superadmin yang dapat menghapus aturan penomoran.' });
+    }
+    if (!requireRbacPermission(req, res, 'numbering.manage')) return;
+    try {
+      const result = await queryRbac<any>(
+        'SELECT id, owner_division, asset_code FROM asset_numbering_rules WHERE id = $1',
+        [req.params.id]
+      );
+      const rule = result.rows[0];
+      if (!rule) return res.status(404).json({ success: false, message: 'Aturan penomoran tidak ditemukan.' });
+      const usageResult = await queryRbac<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+         FROM assets a
+         JOIN divisions d ON d.id = a.owner_division_id
+         LEFT JOIN asset_categories c ON c.id = a.category_id
+         WHERE UPPER(d.code) = UPPER($1)
+           AND (UPPER(c.code) = UPPER($2) OR a.asset_number LIKE $3)`,
+        [rule.owner_division, rule.asset_code, `${rule.owner_division}-${rule.asset_code}-%`]
+      );
+      const usageCount = Number(usageResult.rows[0]?.count || 0);
+      const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
+        s.division === rule.owner_division && s.code === rule.asset_code
+      );
+      if (usageCount > 0 || (sequence?.current || 0) > 0) {
+        return res.status(409).json({ success: false, message: `Aturan ${rule.owner_division}/${rule.asset_code} sudah memiliki riwayat penggunaan. Aturan tidak boleh dihapus; nonaktifkan bila tidak lagi digunakan.` });
+      }
+      const confirmation = String(req.body?.confirmation_code || '').trim().toUpperCase();
+      const reason = String(req.body?.reason || '').trim();
+      const expected = `${rule.owner_division}/${rule.asset_code}`;
+      if (confirmation !== expected || reason.length < 20) {
+        return res.status(400).json({ success: false, message: `Konfirmasi harus mengetik "${expected}" dan alasan penghapusan minimal 20 karakter.` });
+      }
+      await queryRbac('DELETE FROM asset_numbering_rules WHERE id = $1', [rule.id]);
+      AssetNumberingEngine.removeRule(rule.owner_division, rule.asset_code);
+      GabahDomainService.recordAudit('NUMBERING_RULE_DELETED', 'Asset Numbering', `Menghapus aturan ${expected}. Alasan: ${reason}`, actor);
+      await persistDataStore();
+      res.json({ success: true, data: { id: rule.id, deleted: true } });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message || 'Gagal menghapus aturan penomoran.' });
+    }
+  });
+
   // P2#11: CR-05 reminder subsystem overview for the admin Notification Center —
   // scheduler state, provider configuration presence, thresholds, and delivery
   // statistics derived from the authoritative notification log. Admin-only;
