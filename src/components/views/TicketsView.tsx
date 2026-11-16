@@ -66,8 +66,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     ? currentUser.role_keys.includes(key)
     : currentUser?.role === label;
   const isAuditor = hasLegacyRole('auditor', 'Auditor');
-  const canCreateTicket = hasEffectivePermission('tickets.create')
-    ?? (currentUser?.role !== 'Auditor');
+  const canCreateTicket = !isAuditor && (hasEffectivePermission('tickets.create')
+    ?? (currentUser?.role !== 'Auditor'));
   // The API supplies permission- and scope-filtered tickets in PostgreSQL mode.
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const baseTickets = safeTickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
