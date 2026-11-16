@@ -7,10 +7,13 @@ const form = fs.readFileSync('src/components/modals/CreateRoomReservationModal.t
 // PostgreSQL mode resolves function capabilities from assigned role keys;
 // legacy profile labels are consulted only when role_keys are unavailable.
 assert.match(rooms, /const hasRoleKey = \(key: string, legacyLabel: string\) =>[\s\S]*currentUser\.role_keys !== undefined[\s\S]*currentUser\.role_keys\.includes\(key\)[\s\S]*currentUser\.role === legacyLabel/);
-assert.match(rooms, /const isHumas = hasRoleKey\('humas', 'Humas'\)/);
-assert.match(rooms, /const isSekdir = currentUser\.is_superadmin === true \|\| currentUser\.permission_keys\?\.includes\('room_reservations\.override_priority'\) === true \|\| \(currentUser\.permission_keys === undefined && currentUser\.role === 'Sekretaris Direksi'\)/);
+assert.match(rooms, /const isHumas = !isSuperAdmin && !isAuditor && \(currentUser\.permission_keys !== undefined[\s\S]*room_reservations\.documentation\.read[\s\S]*hasRoleKey\('humas', 'Humas'\)/);
+assert.match(rooms, /const isSekdir = !isSuperAdmin && !isAuditor && \(currentUser\.permission_keys !== undefined[\s\S]*room_reservations\.override_priority[\s\S]*currentUser\.role === 'Sekretaris Direksi'/);
 assert.match(rooms, /\{isHumas && \(/);
 assert.match(rooms, /\{isSekdir && \(/);
+assert.match(rooms, /const canCreateReservation = !isAuditor && hasPermission\('room_reservations\.create'\)/);
+assert.match(rooms, /const canApproveReservations = !isAuditor && \(isSuperAdmin \|\| hasPermission\('room_reservations\.approve'\)\)/);
+assert.match(rooms, /const canManageRoomMasters = !isAuditor && \(/);
 assert.match(rooms, /currentUser\.role_label \|\| currentUser\.role/);
 assert.doesNotMatch(rooms, /currentUser\.role === 'Humas' &&/);
 assert.doesNotMatch(rooms, /currentUser\.role === 'Sekretaris Direksi' &&/);
