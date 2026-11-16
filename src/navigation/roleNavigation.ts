@@ -1,65 +1,29 @@
 import type { UserRole } from '../types';
 
 export type AppNavTab =
-  | 'dashboard'
-  | 'my_assets'
-  | 'meeting_rooms'
-  | 'assets'
-  | 'maintenance'
-  | 'loans'
-  | 'tickets'
-  | 'licenses'
-  | 'contracts'
-  | 'vendors'
-  | 'knowledge'
-  | 'reports';
+  | 'dashboard' | 'my_assets' | 'meeting_rooms' | 'assets' | 'maintenance'
+  | 'loans' | 'tickets' | 'licenses' | 'contracts' | 'vendors' | 'knowledge' | 'reports';
 
 /**
- * Product navigation policy.
- *
- * This controls presentation only. Every API and business operation must
- * continue to enforce authorization on the server.
+ * Legacy file-store navigation only. PostgreSQL mode is permission-first and
+ * does not require a primary role, job title, division, or office location.
  */
 export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> = {
-  'Admin GABAH': [
-    'dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance',
-    'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports',
-  ],
-  IT: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance',
-    'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports',
-  ],
-  GA: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance',
-    'loans', 'tickets', 'contracts', 'vendors', 'knowledge', 'reports',
-  ],
-  'Sekretaris Direksi': [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  Humas: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  // Legacy labels retained for account compatibility only. These are
-  // locations, not application roles or asset-owner domains.
-  'Supply Chain': [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  PIBC: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  Karyawan: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  Auditor: [
-    'dashboard', 'assets', 'maintenance', 'loans', 'tickets', 'licenses',
-    'contracts', 'vendors', 'knowledge', 'reports',
-  ],
+  'Admin GABAH': ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
+  IT: ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
+  GA: ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'contracts', 'vendors', 'knowledge', 'reports'],
+  'Sekretaris Direksi': ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  Humas: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  // Legacy labels retained only for file-store compatibility.
+  'Supply Chain': ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  PIBC: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  Karyawan: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  Auditor: ['dashboard', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
 };
 
 const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   dashboard: ['dashboard.read'],
   my_assets: ['assets.read'],
-  // A visible page must be readable; mutation-only permissions cannot expose a page.
   meeting_rooms: ['meeting_rooms.read'],
   assets: ['assets.catalog.read'],
   maintenance: ['maintenances.read'],
@@ -72,7 +36,6 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   reports: ['reports.read'],
 };
 
-/** Superadmin navigation follows the effective RBAC capability in PostgreSQL mode. */
 export function isSuperadminNavigationAllowed(
   role: UserRole | null | undefined,
   isSuperadmin: boolean | undefined,
@@ -87,37 +50,28 @@ const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
   'maintenance', 'contracts', 'vendors', 'licenses', 'knowledge', 'reports',
 ];
 
-/** Pick an authorized landing page when a user's current tab is no longer allowed. */
 export function getDefaultNavTabForRole(
   role: UserRole | null | undefined,
   permissionKeys?: readonly string[],
 ): AppNavTab | null {
   const allowedTab = DEFAULT_NAV_TAB_ORDER.find(tab => isNavTabAllowedForRole(role, tab, permissionKeys));
-  // In PostgreSQL mode, an empty effective permission set must not silently
-  // fall back to an unauthorized Dashboard. Legacy mode keeps its old default.
   return allowedTab || (permissionKeys === undefined ? 'dashboard' : null);
 }
 
-/**
- * PostgreSQL RBAC permissions are authoritative for the visible menu.
- * The role map is retained only for the file-store compatibility mode where
- * effective permission keys are intentionally not emitted by the API.
- */
+/** PostgreSQL effective permissions are authoritative, independent of legacy role labels. */
 export function isNavTabAllowedForRole(
   role: UserRole | null | undefined,
   tab: AppNavTab,
   permissionKeys?: readonly string[],
 ): boolean {
-  if (!role) return false;
   if (permissionKeys !== undefined) {
     if (permissionKeys.includes('*')) return true;
-    // The room workspace loads both the room catalogue and reservation queue.
     if (tab === 'meeting_rooms') return permissionKeys.includes('meeting_rooms.read')
       && permissionKeys.includes('room_reservations.read');
-    // The inventory page requires its catalogue capability and shared asset read.
     if (tab === 'assets') return permissionKeys.includes('assets.read')
       && (permissionKeys.includes('assets.catalog.read') || permissionKeys.includes('assets.audit.read'));
     return NAV_TAB_PERMISSIONS[tab].some(key => permissionKeys.includes(key));
   }
+  if (!role) return false;
   return ROLE_NAVIGATION[role]?.includes(tab) ?? false;
 }
