@@ -55,6 +55,14 @@ assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loa
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), null);
 
+
+// PostgreSQL permissions work without a primary/legacy role label.
+assert.ok(isNavTabAllowedForRole(undefined, 'reports', ['reports.read']));
+assert.ok(isNavTabAllowedForRole(null, 'tickets', ['tickets.read']));
+assert.equal(isNavTabAllowedForRole(undefined, 'reports', []), false);
+assert.equal(getDefaultNavTabForRole(undefined, ['reports.read']), 'reports');
+assert.equal(getDefaultNavTabForRole(null, []), null);
+
 // Administration visibility follows effective Superadmin capability, not a legacy label.
 assert.equal(isSuperadminNavigationAllowed('Admin GABAH', false, ['dashboard.read']), false);
 assert.ok(isSuperadminNavigationAllowed('Admin GABAH', true, ['dashboard.read']));
