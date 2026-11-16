@@ -2330,6 +2330,15 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'assets.create')) return;
     try {
       const actor = getActor(req);
+      const requestedCategory = String(req.body?.category_code || req.body?.category_name_or_code || req.body?.category_name || '').trim().toLowerCase();
+      const categoryMeta = (db.categories || []).find(category =>
+        String(category.code || '').trim().toLowerCase() === requestedCategory
+        || String(category.name || '').trim().toLowerCase() === requestedCategory
+      );
+      const isLicenseAsset = String(req.body?.category_type || categoryMeta?.category_type || '').toLowerCase() === 'license';
+      if (isLicenseAsset && isPostgresPersistenceActive() && !hasRbacPermission(String(actor.id), 'licenses.manage')) {
+        return res.status(403).json({ success: false, message: 'Permission licenses.manage diperlukan untuk membuat aset lisensi.' });
+      }
       // Effective permission and explicit owner-domain scope are enforced by
       // createAsset() for every user, regardless of job title or work location.
       const newAsset = GabahDomainService.createAsset(req.body, actor);
@@ -2538,6 +2547,10 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'assets.update')) return;
     const actor = getActor(req);
     const asset = db.assets.find(a => a.id === req.params.id);
+    if (asset?.category_type === 'License' && isPostgresPersistenceActive()
+      && !hasRbacPermission(String(actor.id), 'licenses.manage')) {
+      return res.status(403).json({ success: false, message: 'Permission licenses.manage diperlukan untuk mengubah aset lisensi.' });
+    }
     if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
 
     // Auditor remains strictly read-only. Every other user, including a
