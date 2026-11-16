@@ -223,3 +223,10 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - The run still failed the same three Humas documentation-queue assertions. The meeting-room fixture's `/api/auth/me` payload contained the legacy profile label `Humas` but no `role_keys`, indicating the isolated test server was exercising file-store compatibility rather than PostgreSQL role assignments.
 - The Humas queue fallback was unnecessarily routed through the generic application-role normalizer. Changed only the file-store fallback to the explicit legacy profile check `actor.role === 'Humas'`. PostgreSQL remains strictly gated by `room_reservations.documentation.read`; no profile-label authorization was added to PostgreSQL mode.
 - Commit: `b274e4e`. New CI on this exact head is pending; CI #1606 remains failed and must not be reported as green.
+
+### Auditor asset catalogue scope correction (16 November 2026)
+
+- A further code-path review found that PostgreSQL Auditor had `assets.audit.read` and `assets.read` but `getScopedAssets()` still returned only ordinary dynamic `assets`/`licenses` scopes. Migration 091 grants the `audit` module scope, not the `assets` module scope, so Auditor's direct asset catalogue could be empty despite the explicit audit permission.
+- Added an explicit read-only exception in the canonical asset resolver: an active PostgreSQL Auditor assignment plus `assets.audit.read` exposes the full asset catalogue. The global Auditor middleware continues to deny all non-GET operations, so this does not grant asset mutation authority.
+- Added static regression coverage tying the explicit audit permission to the canonical resolver and the global read-only guard.
+- Commits: `6da79c4` (fix), `ead2952` (test). CI on the latest branch head is pending.
