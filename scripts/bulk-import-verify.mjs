@@ -135,7 +135,8 @@ async function main() {
     const d1 = r1.json?.data || {};
     record('Bulk import accepts custom/function profile labels', 'created=3', `created=${d1.created}`, d1.created === 3);
     record('Only invalid email row is rejected', 'failed=1', `failed=${d1.failed}`, d1.failed === 1);
-    record('No profile-label validation errors', 'errors=0', `errors=${(d1.errors || []).length}`, (d1.errors || []).length === 0);
+    const profileLabelErrors = (d1.errors || []).filter(error => /role|peran|label profil/i.test(String(error)));
+    record('No profile-label validation errors', 'errors=0', `errors=${profileLabelErrors.length}`, profileLabelErrors.length === 0);
     record('Humas is stored as a profile label', 'Humas profile', (d1.users || []).find(u => u.email === `impor.humas.${suffix}@foodstation.co.id`)?.role, (d1.users || []).some(u => u.email === `impor.humas.${suffix}@foodstation.co.id` && u.role === 'Humas'));
     record('No password echoed in response', 'no password fields', JSON.stringify(r1.json).includes('password') ? 'found password key' : 'clean',
       !/temp_password|password_hash/.test(JSON.stringify(r1.json)));
