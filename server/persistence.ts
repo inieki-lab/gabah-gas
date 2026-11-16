@@ -599,7 +599,14 @@ async function persistPostgresState(): Promise<void> {
 }
 
 export async function initializePersistence(): Promise<void> {
-  // If PostgreSQL is not configured with an external address, operate standalone with local persistent file store
+  // Production must always have an explicitly configured PostgreSQL authority.
+  // An empty DATABASE_URL/PGHOST must never activate the standalone JSON store.
+  if (process.env.NODE_ENV === 'production' && !dbConfig.isConfigured) {
+    isPostgresAvailable = false;
+    throw new Error('[GABAH Persistence] FATAL: DATABASE_URL or PGHOST is required in production. Refusing to start with the file store.');
+  }
+
+  // Development and test environments may operate standalone with local persistent file store.
   if (!dbConfig.isConfigured) {
     isPostgresAvailable = false;
     console.log('[GABAH Persistence] Standalone environment active. Utilizing resilient local file storage.');
