@@ -4,52 +4,32 @@ import assert from 'node:assert/strict';
 const server = fs.readFileSync('server.ts', 'utf8');
 const modal = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
 const service = fs.readFileSync('src/services/gabahService.ts', 'utf8');
+const db = fs.readFileSync('server/db.ts', 'utf8');
 
-function routeBody(route, nextRoutes = []) {
-  const start = server.indexOf(route);
-  assert.ok(start >= 0, `Route exists: ${route}`);
-  const boundaries = nextRoutes
-    .map((candidate) => server.indexOf(candidate, start + route.length))
-    .filter((index) => index >= 0);
-  const end = boundaries.length ? Math.min(...boundaries) : server.length;
-  return server.slice(start, end);
-}
+const createStart = server.indexOf("app.post('/api/users'");
+const bulkStart = server.indexOf("app.post('/api/users/bulk-import'");
+const patchStart = server.indexOf("app.patch('/api/users/:id'");
+const deleteStart = server.indexOf("app.delete('/api/users/:id'");
+const create = server.slice(createStart, bulkStart);
+const bulk = server.slice(bulkStart, patchStart);
+const patch = server.slice(patchStart, deleteStart);
 
-const create = routeBody("app.post('/api/users'", [
-  "app.get('/api/users'",
-  "app.post('/api/users/bulk-import'",
-  "app.patch('/api/users/:id'",
-  "app.delete('/api/users/:id'",
-]);
-const bulk = routeBody("app.post('/api/users/bulk-import'", [
-  "app.patch('/api/users/:id'",
-  "app.delete('/api/users/:id'",
-]);
-const patch = routeBody("app.patch('/api/users/:id'", [
-  "app.delete('/api/users/:id'",
-]);
-
-// Primary profile roles are deliberately narrower than functional capabilities.
-assert.match(create, /validPrimaryRoles = \['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor'\]/);
-assert.match(patch, /validRoles = \['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Auditor', 'Karyawan'\]/);
-assert.doesNotMatch(create, /validPrimaryRoles[^;]*Supply Chain/s);
-assert.doesNotMatch(create, /validPrimaryRoles[^;]*PIBC/s);
-assert.doesNotMatch(patch, /validRoles[^;]*Supply Chain/s);
-assert.doesNotMatch(patch, /validRoles[^;]*PIBC/s);
-
-// Legacy location labels are import-only aliases, never stored as primary roles.
-assert.match(bulk, /validRoles = \['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor', 'Supply Chain', 'PIBC'\]/);
-assert.match(bulk, /\['Humas', 'Sekretaris Direksi'\]/);
-assert.match(bulk, /roleRaw === 'Supply Chain' \? 'OFF-RPC' : roleRaw === 'PIBC' \? 'OFF-PIBC'/);
-assert.match(bulk, /requestedRole === 'Supply Chain' \|\| requestedRole === 'PIBC' \? 'Karyawan'/);
-assert.match(bulk, /lokasi kantor; unit organisasi tetap independen/);
-
-// User administration UI and CSV template expose separate employee attributes.
-assert.match(modal, /PRIMARY_PROFILE_ROLES\.map/);
-assert.match(modal, /'Supply Chain', 'PIBC'/);
-assert.match(modal, /job_level_code/);
-assert.match(modal, /unit_id/);
+assert.match(db, /role: string;/, 'profile label accepts dynamic text');
+assert.match(create, /profileLabel = .*String\(role\)/);
+assert.doesNotMatch(create, /syncPrimaryRbacRole|primaryRoleKey/);
+assert.doesNotMatch(bulk, /syncPrimaryRbacRoles|inferredOfficeLocation/);
+assert.doesNotMatch(bulk, /validRoles = \[/);
+assert.match(bulk, /const officeLocationId = requestedOfficeLocation/);
+assert.match(bulk, /roleRaw.length > 120/);
+assert.match(patch, /role.trim\(\).length > 120/);
+assert.doesNotMatch(patch, /syncPrimaryRbacRole|privilegeChanged/);
+assert.doesNotMatch(patch, /role === 'Supply Chain'.*OFF-RPC|role === 'PIBC'.*OFF-PIBC/s);
+assert.match(server, /const assignmentIds = \[\.\.\.new Set\(\(roleIds as number\[\]\)\.map\(Number\)\)\]/);
+assert.match(server, /primary_role_id: null/);
+assert.match(modal, /Label Profil Pegawai \(bukan hak akses\)/);
+assert.match(modal, /Pilih nol, satu, atau beberapa role akses/);
+assert.doesNotMatch(modal, /PRIMARY_PROFILE_ROLES\.map/);
+assert.match(service, /Employee profile labels are free-form/);
 assert.match(modal, /office_location_id/);
-assert.match(service, /'Kode Jabatan', 'ID Unit', 'ID Lokasi Kantor'/);
 
-console.log('Canonical primary-role policy: 15 checks passed');
+console.log('Dynamic profile / RBAC separation: PASS');
