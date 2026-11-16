@@ -256,7 +256,7 @@ async function startServer() {
       safe.permission_keys = safe.is_superadmin ? ['*'] : getEffectivePermissionKeys(String(user.id));
       safe.role_keys = getEffectiveRoleKeys(String(user.id));
     } else {
-      safe.is_superadmin = user.role === 'Admin GABAH';
+      safe.is_superadmin = user.id === 'USR-01' || user.role === 'Admin GABAH';
     }
     return safe;
   };
