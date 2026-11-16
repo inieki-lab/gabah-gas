@@ -2609,24 +2609,18 @@ async function startServer() {
       }
     }
 
-    // Validate mutable asset fields before any mutation.
-    const validAssetStatuses = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive', 'in_use', 'loaned', 'maintenance'];
-    const validAssetConditions = ['new', 'good', 'fair', 'poor', 'broken', 'excellent', 'damaged'];
-    if (req.body.status !== undefined && !validAssetStatuses.includes(String(req.body.status))) {
-      return res.status(400).json({ success: false, message: 'Status aset tidak valid.' });
-    }
+    // Status transitions are never accepted through generic asset PATCH.
+    // Assignment, loan, and lifecycle workflows own their respective transitions.
     const changesLifecycleStatus = req.body.status !== undefined
       && String(req.body.status) !== String(asset.status);
     if (changesLifecycleStatus) {
-      if (!requireRbacPermission(req, res, 'assets.lifecycle')) return;
-      if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.lifecycle')) {
-        return res.status(403).json({
-          success: false,
-          message: `Akses ditolak: permission assets.lifecycle dan scope owner "${asset.owner_division}" wajib dimiliki untuk mengubah status aset.`,
-        });
-      }
+      return res.status(409).json({
+        success: false,
+        message: 'Perubahan status harus melalui workflow penugasan, peminjaman, atau lifecycle agar state machine dan audit trail tetap konsisten.',
+      });
     }
-    if (!hasGeneralAssetUpdate && !changesLifecycleStatus) {
+    const validAssetConditions = ['new', 'good', 'fair', 'poor', 'broken', 'excellent', 'damaged'];
+    if (!hasGeneralAssetUpdate) {
       return res.json({ success: true, data: asset });
     }
     if (req.body.condition !== undefined && !validAssetConditions.includes(String(req.body.condition))) {
@@ -2678,7 +2672,7 @@ async function startServer() {
     }
 
     // Update mutable fields (not asset_number or owner_division)
-    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
+    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         (asset as any)[key] = req.body[key];
