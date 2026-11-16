@@ -272,7 +272,7 @@ async function main() {
     record('ME requester template only grants ME ticket creation', 'tickets.create.me',
       hasGrant('pemohon_tiket_me', 'tickets.create.me'), hasGrant('pemohon_tiket_me', 'tickets.create.me'));
     record('Generic GA role does not automatically dispatch tickets', 'no tickets.update/assign',
-      !hasGrant('ga', 'tickets.update') && !hasGrant('ga', 'tickets.assign'),
+      !hasGrant('ga', 'tickets.update') && !hasGrant('ga', 'tickets.assign') && !hasGrant('ga', 'tickets.close'),
       !hasGrant('ga', 'tickets.update') && !hasGrant('ga', 'tickets.assign'));
 
     const queueScopes = await mig.query(
