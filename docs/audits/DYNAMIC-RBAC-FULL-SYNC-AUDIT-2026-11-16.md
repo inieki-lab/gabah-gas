@@ -88,6 +88,12 @@ GitHub Actions run 1509 pada commit `ecf0ccc56b6ec74084ec4828eb962882501c0222` g
 
 Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah dibuat pada branch audit; statusnya belum lulus CI/UAT.
 
+### Perbaikan fixture antrean dokumentasi Humas (16 November 2026)
+
+- Tes HTTP menemukan antrean Humas kosong pada mode PostgreSQL karena akun fixture memiliki label profil `Humas` tetapi belum memiliki assignment RBAC eksplisit. Ini adalah hasil yang benar dari kebijakan produksi: label profil tidak boleh memberikan hak akses.
+- Fixture integrasi diperbaiki agar, pada mode PostgreSQL, membaca katalog role dan assignment user melalui API Superadmin lalu menambahkan role `humas` secara eksplisit sebelum memeriksa antrean. Assignment yang sudah ada dipertahankan. Pada file-store, tes tetap menggunakan jalur kompatibilitas label lama.
+- Pengujian berikutnya harus memastikan antrean hanya mengembalikan permintaan dokumentasi dan tetap menyamarkan data privat. CI untuk perubahan fixture terbaru masih berjalan; belum dinyatakan lulus.
+
 ### Perbaikan CI TypeScript (16 November 2026)
 
 - CI menemukan JSX tidak valid pada conditional render daftar user di `HeaderNavbar.tsx`; conditional tersebut kini membungkus elemen dan komentar dengan fragment JSX yang valid.
