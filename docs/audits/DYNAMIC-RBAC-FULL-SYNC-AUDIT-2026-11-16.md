@@ -382,3 +382,18 @@ The repository contains a direct architecture/seed contradiction that must be re
 - Further source audit found shared frontend helpers still had three remaining Auditor checks that combined `role_keys` with a profile-label fallback using OR. All four shared helper guards now use effective `role_keys` whenever supplied.
 - `CreateTicketModal` now follows the same effective-role rule. Asset issue-report action now also requires `tickets.create` when dynamic permissions are available.
 - Latest observed head before this note: `80cb358`; CI #1707 was running. Check the latest head's workflow result before treating these additional changes as green.
+
+
+### Asset permissions and lifecycle follow-up — 17 November 2026
+- Asset editor now separates `assets.update`, `assets.assign`, and `assets.lifecycle`. A user with assignment-only authority can assign/unassign without receiving general asset-edit controls; lifecycle-only authority exposes the dedicated lifecycle action panel.
+- Asset detail/list actions distinguish Assign PIC from general edit/lifecycle management.
+- Generic `PATCH /api/assets/:id` no longer changes asset status. Status transitions are delegated to assignment, loan, or the dedicated lifecycle state machine.
+- Bulk-import UPDATE no longer accepts status changes, closing the CSV path that could otherwise bypass lifecycle authorization.
+- The asset editor invokes `POST /api/assets/:id/lifecycle` through the API client for repair/damaged/cannibalize/disposal/auction actions. Generic asset edits and assignments remain separate submissions.
+- Loan authorization regression fixtures now use lifecycle/assignment workflows to change status rather than relying on direct PATCH.
+- CI #1736 passed 63/63 steps on commit `5781ab3`. CI #1738 was running for the subsequent bulk-import status boundary and regression assertion changes; verify its final conclusion on the latest head.
+
+### Lifecycle business rules still require completion
+- The current lifecycle action set has initiation actions (repair, damaged, cannibalize, propose disposal, auction) and Superadmin disposal approval, but no explicit repair-completion or auction-finalization transition.
+- Destructive actions such as cannibalization/disposal/auction should be reviewed for assigned-custodian handling; active-loan checks exist, but assignment/custody preconditions need explicit business approval.
+- Do not invent a completion workflow or silently unassign assets. Keep these as release-gate findings until the business process is confirmed.
