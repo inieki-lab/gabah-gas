@@ -120,10 +120,10 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   }, [safeAssets, selectedDivision, selectedCategory, selectedStatus, searchQuery]);
 
   const canCreateAsset = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('assets.create')
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('assets.create')
     : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
   const canImportAssets = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('assets.bulk_import')
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('assets.bulk_import')
     : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
 
   return (
