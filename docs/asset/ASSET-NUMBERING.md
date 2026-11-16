@@ -4,8 +4,8 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Authority Kode Sumber:** `server/numbering.ts`, `server/taxonomy.ts`, `server/services.ts`  
-**Status:** Authoritative Specification (100% Sesuai Source Code Aktual)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Spesifikasi aktif; batasan implementasi runtime dicatat pada §4  
+**Terakhir Diperbarui:** 16 November 2026  
 
 ---
 
@@ -82,16 +82,27 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 ## 4. Mekanisme Penomoran & Aturan Duplikasi
 
 ### 4.1 Siklus & Reset Sequence
-- Sequence penomoran dikelola oleh `AssetNumberingEngine` (`server/numbering.ts`) dan tabel database `asset_number_sequences`.
-- Nilai sequence dihitung menggunakan kombinasi kunci unik:
-  $$\text{Key} = \text{OWNER\_DIVISION} : \text{ASSET\_CODE} : \text{YEAR}$$
-- Saat tahun berganti (misal dari 2025 ke 2026), sequence untuk kategori yang sama otomatis kembali dari `0001`.
+- Kunci sequence runtime: `OWNER_DIVISION:ASSET_CODE:YEAR`.
+- Sequence saat ini disinkronkan kembali dari nomor aset yang telah tersimpan ketika server melakukan boot.
+- Tahun menjadi bagian dari kunci sehingga counter per tahun dimulai dari nomor pertama untuk kombinasi divisi dan kode aset tersebut.
+- **Batasan yang masih harus ditutup sebelum klaim production-ready:** counter generator masih berada di memori proses. Tabel `asset_number_sequences` tersedia pada skema, tetapi belum menjadi jalur atomik yang dipakai `generateAssetNumber()`. Karena itu, multi-instance/concurrent issuance belum dijamin atomik oleh PostgreSQL. Jangan mengklaim concurrency-safe sampai generator dipindahkan ke transaksi/UPSERT database dan diuji lintas proses.
 
-### 4.2 Validasi Duplikasi Nomor Seri Fisik
+### 4.2 Master Aturan Penomoran
+- Aturan tersimpan di tabel `asset_numbering_rules` (Migration 034) dan dikelola melalui Administration Control Panel oleh Superadmin.
+- Setiap aturan mengikat kombinasi `owner_division + asset_code`, separator, panjang sequence (3–8 digit), status aktif/nonaktif, dan catatan.
+- Jika tidak ada aturan khusus, generator mempertahankan format default `DIV-CODE-YEAR-SEQUENCE` dengan separator strip dan 4 digit.
+- Aturan nonaktif menolak penerbitan nomor baru untuk kombinasi tersebut; nomor aset lama tetap valid dan tidak diubah.
+- Aturan yang sudah digunakan boleh mengubah separator/panjang sequence selama validasi counter dan collision lolos. Identitas divisi/kode aset tidak dapat diubah setelah digunakan.
+- Aturan yang belum pernah digunakan dapat dihapus hanya dengan konfirmasi kode `DIV/CODE` dan alasan minimal 20 karakter. Penghapusan dicatat ke audit log.
+- Aturan yang sudah memiliki aset atau sequence tidak dapat dihapus; gunakan Nonaktifkan agar histori tetap utuh.
+
+### 4.3 Validasi Duplikasi Nomor Seri Fisik
+
+### 4.4 Validasi Duplikasi Nomor Seri Fisik
 - Sistem memvalidasi keunikan `serial_number`. Jika serial number yang sama sudah ada di database, server menolak pendaftaran dengan pesan:
   `Nomor Seri (Serial Number) "XYZ" sudah terdaftar pada aset IT-HLT-2026-0001 (Laptop Lenovo ThinkPad).`
 
-### 4.3 Nomor Aset Accurate ERP (`corporate_asset_number`)
+### 4.5 Nomor Aset Accurate ERP (`corporate_asset_number`)
 - Sistem akuntansi BUMD menggunakan Accurate ERP dengan format nomor aset tersendiri (misal: `FA-2024-00892`).
 - Nomor Accurate disimpan pada kolom `corporate_asset_number` di tabel `assets`.
 - Nilai `corporate_asset_number` diatur dengan constraint **UNIQUE** parsial (jika tidak null) di PostgreSQL:
@@ -105,6 +116,8 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 ---
 
 ## 5. Sumber Otoritas Kode (Authority Reference)
+- `server/migrations/034_asset_numbering_rules.sql`: tabel aturan penomoran.
+- `server.ts`: API Superadmin untuk membaca, membuat, mengubah, menonaktifkan, dan menghapus aturan dengan guard server-side.
 
 Logika di atas tertanam secara otoritatif pada:
 - `server/numbering.ts`: Class `AssetNumberingEngine` yang mengatur sinkronisasi sequence dari memori dan generator atomik.
