@@ -3830,14 +3830,12 @@ async function startServer() {
     // Agenda details are private by default. Operational queues are granted
     // by explicit capabilities, never by the employee's primary role label.
     if (!isSuperadminActor(actor)) {
-      if (isAuditorActor(actor)) {
-        // Auditor visibility is limited to an explicit room-reservations audit scope.
-        // Without an all-scope grant, only the auditor's own reservations are visible.
-        const hasGlobalReservationAuditScope = isPostgresPersistenceActive()
-          && hasRbacScope(String(actor.id), 'all', null, 'room_reservations');
-        if (!hasGlobalReservationAuditScope) {
-          data = data.filter(item => item.organizer_id === actor.id);
-        }
+      const hasGlobalReservationAuditScope = isAuditorActor(actor)
+        && isPostgresPersistenceActive()
+        && hasRbacScope(String(actor.id), 'all', null, 'room_reservations');
+      if (isAuditorActor(actor) && !hasGlobalReservationAuditScope) {
+        // Without an explicit module-wide audit scope, only own reservations are visible.
+        data = data.filter(item => item.organizer_id === actor.id);
       }
       const canOperateRooms = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.approve')
@@ -3849,7 +3847,22 @@ async function startServer() {
       const canReadDocumentationQueue = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.documentation.read')
         : hasApplicationRole(actor, 'humas');
-      if (canOperateRooms) {
+      if (isAuditorActor(actor) && hasGlobalReservationAuditScope) {
+        // Audit scope exposes schedule metadata only; personal/contact and operational notes stay private.
+        data = data.map(item => item.organizer_id === actor.id ? item : ({
+          ...item,
+          title: 'Reservasi ruang rapat',
+          description: undefined,
+          attendees_list: undefined,
+          organizer_phone: '',
+          consumption_notes: undefined,
+          documentation_type: undefined,
+          documentation_notes: undefined,
+          notes: undefined,
+          rejection_reason: undefined,
+          interruption_reason: undefined,
+        }));
+      } else if (canOperateRooms) {
         data = data.map(item => item.organizer_id === actor.id ? item : ({
           ...item,
           title: 'Reservasi ruang rapat',
