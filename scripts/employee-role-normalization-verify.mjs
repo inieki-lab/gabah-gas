@@ -15,6 +15,7 @@ assert.match(migration, /INSERT INTO gabah_user_roles/);
 assert.match(migration, /UPDATE users\s+SET role = 'Karyawan'/);
 assert.match(dashboard, /hasRoleKey\('humas', 'Humas'\)/);
 assert.match(dashboard, /hasRoleKey\('sekretaris_direksi', 'Sekretaris Direksi'\)/);
-assert.match(header, /currentUser\.role_keys !== undefined[\s\S]*currentUser\.role_keys\.includes\(key\)[\s\S]*currentUser\.role === legacyLabel/);\nassert.match(header, /hasRoleKey\('humas', 'Humas'\)/);
+assert.match(header, /currentUser\.role_keys !== undefined[\s\S]*currentUser\.role_keys\.includes\(key\)[\s\S]*currentUser\.role === legacyLabel/);
+assert.match(header, /hasRoleKey\('humas', 'Humas'\)/);
 assert.match(dynamic, /one-time migration preserves Humas and Secretariat function assignments/);
 console.log('Employee profile and RBAC persistence separation: PASS');
