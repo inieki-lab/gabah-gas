@@ -98,7 +98,8 @@ assert.equal(filterContractsForRole(contracts, { ...user, role: 'Auditor' } as U
 const dashboardView = fs.readFileSync('src/components/views/DashboardView.tsx', 'utf8');
 assert.match(dashboardView, /const hasOperationalManagementAccess = operationalManagementPermissions\.some\(canPermission\)/);
 assert.match(dashboardView, /const isEmployee = !isSuperAdmin && !isAuditor && !hasOperationalManagementAccess/);
-assert.match(dashboardView, /const isDivisionDashboard = hasOperationalManagementAccess/);
+assert.match(dashboardView, /const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess/);
+assert.match(dashboardView, /'licenses\\.manage'[\\s\\S]*'knowledge\\.create'[\\s\\S]*'contracts\\.update'[\\s\\S]*'vendors\\.update'/);
 assert.doesNotMatch(dashboardView, /const isDivisionDashboard = hasRoleKey\('it', 'IT'\) \|\| hasRoleKey\('ga', 'GA'\)/);
 
 console.log('Role dashboard scope: PASS (division, personal, maintenance, contract, and exact identity scopes)');
