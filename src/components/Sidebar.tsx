@@ -226,7 +226,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      <aside className="w-64 bg-white border-r border-[#DFDCE3] flex flex-col shrink-0 min-h-[calc(100vh-4rem)] shadow-xs">
+      <aside className="w-64 bg-[#f8fbf8] border-r border-[#e1ebe4] flex flex-col shrink-0 min-h-[calc(100vh-4rem)] shadow-xs">
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
           {visibleSections.map((section, idx) => (
             <div key={idx} className="space-y-1">
@@ -247,14 +247,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => onTabChange(item.id)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all group ${
                       isActive
-                        ? 'bg-[#4ABDAC] text-white shadow-md shadow-[#4ABDAC]/25 font-bold'
-                        : 'text-slate-600 hover:text-[#206f65] hover:bg-[#4ABDAC]/10 font-medium'
+                        ? 'bg-[#e5f4eb] text-[#176b45] ring-1 ring-inset ring-[#cfe7d8] font-bold'
+                        : 'text-slate-600 hover:text-[#176b45] hover:bg-[#edf6ef] font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Icon
                         className={`w-4 h-4 shrink-0 transition-colors ${
-                          isActive ? 'text-white' : 'text-slate-500 group-hover:text-[#4ABDAC]'
+                          isActive ? 'text-[#176b45]' : 'text-slate-500 group-hover:text-[#218653]'
                         }`}
                       />
                       <div className="truncate">
@@ -262,7 +262,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         {item.description && (
                           <div
                             className={`text-[10px] truncate leading-tight mt-0.5 ${
-                              isActive ? 'text-white/80' : 'text-slate-400'
+                              isActive ? 'text-[#397657]' : 'text-slate-400'
                             }`}
                           >
                             {item.description}
@@ -301,10 +301,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     setShowAdministration(true);
                   }
                 }}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all group text-slate-700 hover:text-[#206f65] hover:bg-[#4ABDAC]/10 font-bold border border-slate-200"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all group text-slate-700 hover:text-[#176b45] hover:bg-[#edf6ef] font-bold border border-[#dce9df]"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <ShieldCheck className="w-4 h-4 shrink-0 text-[#4ABDAC]" />
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-[#218653]" />
                   <div className="truncate">
                     <div className="text-xs leading-tight truncate">Administration Control Panel</div>
                     <div className="text-[10px] leading-tight mt-0.5 text-slate-400 truncate">
@@ -312,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                   </div>
                 </div>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 bg-[#4ABDAC]/15 text-[#206f65] border-[#4ABDAC]/30">
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 bg-[#e5f4eb] text-[#176b45] border-[#cfe7d8]">
                   Super Admin
                 </span>
               </button>
