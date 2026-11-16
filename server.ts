@@ -2792,7 +2792,7 @@ async function startServer() {
         ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
         : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
       : (ticket.assigned_unit_id
-        ? ticket.assigned_unit_id === actor.unit_id && /admin tiket me|petugas me/i.test(String(actor.role_label || ''))
+        ? ticket.assigned_unit_id === actor.unit_id && /admin tiket me/i.test(String(actor.role_label || ''))
         : ticket.category === 'GA'
           ? /petugas helpdesk ga/i.test(String(actor.role_label || ''))
           : actor.role === getTicketOwnerDivision(ticket.category));
@@ -2906,9 +2906,9 @@ async function startServer() {
           ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
           : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
         : (ticket.assigned_unit_id
-          ? ticket.assigned_unit_id === actor.unit_id && /admin tiket me/i.test(String(actor.role_label || ''))
+          ? ticket.assigned_unit_id === actor.unit_id && /admin tiket me|petugas me/i.test(String(actor.role_label || ''))
           : ticket.category === 'GA'
-            ? /petugas helpdesk ga/i.test(String(actor.role_label || ''))
+            ? /petugas helpdesk ga|petugas ga/i.test(String(actor.role_label || ''))
             : ticket.category !== 'ME' && actor.role === getTicketOwnerDivision(ticket.category));
       if (!isSuperadminActor(actor) && !ticketScopeAllowed) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: tiket berada di luar scope unit/divisi Anda.' });
