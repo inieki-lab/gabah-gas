@@ -38,6 +38,8 @@ const vendorsView = fs.readFileSync('src/components/views/VendorsView.tsx', 'utf
 const createLoanModal = fs.readFileSync('src/components/modals/CreateLoanModal.tsx', 'utf8');
 const createContractModal = fs.readFileSync('src/components/modals/CreateContractModal.tsx', 'utf8');
 const createRoomReservationModal = fs.readFileSync('src/components/modals/CreateRoomReservationModal.tsx', 'utf8');
+const headerNavbar = fs.readFileSync('src/components/HeaderNavbar.tsx', 'utf8');
+const sidebar = fs.readFileSync('src/components/Sidebar.tsx', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -216,6 +218,8 @@ const checks = [
   ['Auditor additional-role assignment remains read-only in shared UI capability helpers', /if \(!user \|\| !asset \|\| user\.role_keys\?\.includes\('auditor'\) === true \|\| user\.role === 'Auditor'\) return false/.test(gabahService) && /if \(!user \|\| user\.role_keys\?\.includes\('auditor'\) === true \|\| user\.role === 'Auditor'\) return false/.test(gabahService) && /if \(!user \|\| !ticket \|\| user\.role_keys\?\.includes\('auditor'\) === true \|\| user\.role === 'Auditor'\) return false/.test(gabahService)],
   ['Auditor is excluded from asset, knowledge, license, vendor, maintenance, loan, contract and room-reservation write controls', /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(assetsView) && /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(knowledgeView) && /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(licensesView) && /const canCreate = !isAuditor/.test(vendorsView) && /const canUpdate = !isAuditor/.test(vendorsView) && /const canCreate = !isAuditor && hasPermission\('maintenances\.create'\)/.test(maintenanceView) && /const isAuditor = currentUser\?\.role_keys\?\.includes\('auditor'\)/.test(createLoanModal) && /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(createContractModal) && /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(createRoomReservationModal)],
   ['maintenance create and update actions use independent effective permissions', /const canCreate = !isAuditor && hasPermission\('maintenances\.create'\)/.test(maintenanceView) && /const canUpdate = !isAuditor && hasPermission\('maintenances\.update'\)/.test(maintenanceView) && /\{canCreate && \(/.test(maintenanceView) && /\{canUpdate && onUpdateScheduleStatus/.test(maintenanceView)],
+  ['header and sidebar service queues are capability-driven for custom roles, not profile labels', /hasPermission\('room_reservations\.documentation\.read'\)/.test(headerNavbar) && /hasPermission\('room_reservations\.it_facilities\.read'\)/.test(headerNavbar) && /room_reservations\.approve/.test(headerNavbar) && /hasPermission\('room_reservations\.documentation\.read'\)/.test(sidebar) && /hasPermission\('room_reservations\.it_facilities\.read'\)/.test(sidebar) && /room_reservations\.approve/.test(sidebar)],
+  ['Superadmin notification queues are counted once without duplicate badge totals', /const totalNotifications =\s*safeLoans\.length \+\s*safeTickets\.length \+\s*docReservations\.length \+\s*itFacilityReservations\.length \+\s*gaReservations\.length/.test(headerNavbar)],
 
 
 ];
