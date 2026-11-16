@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, preview/green-enterprise-theme-laptop]
 
 jobs:
   verify:
