@@ -237,3 +237,11 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - CI #1607 then stopped at `Meeting room additional-role UI regression`. Its static assertions expected an older inline `currentUser.role`/`role_keys` expression and an obsolete GA override fallback, while the current UI correctly uses a shared `hasRoleKey` resolver and the explicit `room_reservations.override_priority` permission.
 - Updated `scripts/room-capability-ui-verify.mjs` to assert the current permission-first implementation and the narrow file-store fallback, rather than reverting working UI code to satisfy stale assertions.
 - Commit: `5e5ce49`. CI #1607 remains failed because it ran before this test correction; new CI on the updated head is pending.
+
+### CI run #1612 — complete regression suite PASS (16 November 2026)
+
+- CI run #1612 completed with **SUCCESS** on code commit `5e5ce49`.
+- Passed TypeScript, Dynamic RBAC contract, employee-role normalization, migration safety, asset scope (including the new Auditor `assets.audit.read` path), asset integrity, movement scope, navigation/dashboard scope, production build, Docker image/runtime smoke, PostgreSQL 17 fresh-database and persistence integration, P0 live HTTP security, user administration/import, notification multi-role RBAC, user-directory scope, ticket reporter/related-asset scope, loan authorization/state transitions, meeting-room reservation regression, meeting-room additional-role UI regression, KPI integrity, contract/vendor/org/asset master regressions, sidebar connectivity, and maintenance authorization/dynamic scope/vendor/input checks.
+- Meeting-room regression passed `38/38`, including Humas queue visibility, private-field redaction, and documentation brief retention. The UI static test now validates the permission-first `hasRoleKey`/`override_priority` implementation.
+- CI #1613 was triggered by the subsequent audit-documentation-only commit `c9bc6f9`; it is separate from the code validation above.
+- Release remains gated by browser UAT, complete endpoint/scope review, and integration with the stacked theme/numbering PR #114. Neither PR is merged.
