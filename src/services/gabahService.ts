@@ -663,7 +663,7 @@ export class GabahService {
     if (Array.isArray(user.permission_keys)) {
       return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
-    return ['Admin GABAH', 'IT'].includes(user.role);
+    return ['Admin GABAH', 'IT'].includes(user.role) || /petugas helpdesk ga|admin tiket me/i.test(String(user.role_label || ''));
   }
 
   /**
