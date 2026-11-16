@@ -25,6 +25,7 @@ const primaryRoleMigration = fs.readFileSync('server/migrations/030_rbac_primary
 const employeeCapabilityMigration = fs.readFileSync('server/migrations/031_employee_primary_role_with_job_capabilities.sql', 'utf8');
 const branchLocationMigration = fs.readFileSync('server/migrations/026_map_branch_accounts_to_employee_location.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
+const licensesView = fs.readFileSync('src/components/views/LicensesView.tsx', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -190,6 +191,7 @@ const checks = [
   ['contract document upload uses its dedicated capability at route and service layers with contract scope', /canManageContractCapability\(actor, contract, 'contracts\.documents\.upload'\)/.test(server) && /canManageContractCapability\(actor, contract, 'contracts\.documents\.upload'\)/.test(contractAccess) && /contracts\.documents\.upload/.test(contractAccess.slice(contractAccess.indexOf('function canManageContractCapability'), contractAccess.indexOf('function recordContractAudit')))],
   ['contract creation service requires contracts.create only and cannot inherit create authority from contracts.update', (() => { const start = contractAccess.indexOf('export function canManageContracts('); const end = contractAccess.indexOf('// SEC-08', start); const body = contractAccess.slice(start, end); return start >= 0 && body.includes("hasRbacPermission(String(user.id), 'contracts.create')") && !body.includes("hasRbacPermission(String(user.id), 'contracts.update')"); })()],
   ['contract reminder execution and scheduler status are controlled by explicit contracts.reminders.manage permission, not hard-coded Superadmin role', (() => { const start = server.indexOf("app.post('/api/contracts/reminders/run'"); const end = server.indexOf("app.get('/api/contracts/:id/notification-logs'", start); const body = server.slice(start, end); return start >= 0 && body.includes("requireRbacPermission(req, res, 'contracts.reminders.manage')") && !body.includes('isSuperadminActor(actor)'); })()],
+  ['license creation UI uses licenses.manage alone and does not require unrelated assets.create', /currentUser\.permission_keys\?\.includes\('licenses\.manage'\) === true/.test(licensesView) && !/licenses\.manage'\) === true && currentUser\.permission_keys\?\.includes\('assets\.create'/.test(licensesView)],
 
 
 ];
