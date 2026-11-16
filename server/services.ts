@@ -1842,8 +1842,8 @@ export class GabahDomainService {
   }
 
   static createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
-    if (!isSuperadminActor(actor)) {
-      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menambah tipe rapat.');
+    if (!hasRoomPermission(actor, 'meeting_types.manage')) {
+      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan. menambah tipe rapat.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama tipe rapat wajib diisi.');
     const newItem: ServerMeetingType = {
@@ -1863,8 +1863,8 @@ export class GabahDomainService {
   }
 
   static updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
-    if (!isSuperadminActor(actor)) {
-      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang mengubah tipe rapat.');
+    if (!hasRoomPermission(actor, 'meeting_types.manage')) {
+      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan. mengubah tipe rapat.');
     }
     const item = (db.meetingTypes || []).find(m => m.id === id);
     if (!item) throw new Error('Tipe rapat tidak ditemukan.');
@@ -1879,8 +1879,8 @@ export class GabahDomainService {
   }
 
   static deleteMeetingType(id: string, actor: ServerUser): { success: boolean } {
-    if (!isSuperadminActor(actor)) {
-      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menghapus tipe rapat.');
+    if (!hasRoomPermission(actor, 'meeting_types.manage')) {
+      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan. menghapus tipe rapat.');
     }
     const idx = (db.meetingTypes || []).findIndex(m => m.id === id);
     if (idx === -1) throw new Error('Tipe rapat tidak ditemukan.');
@@ -1897,7 +1897,9 @@ export class GabahDomainService {
   }
 
   static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
+    if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
+      : actor.role === 'GA' || actor.role === 'IT'))) {
       throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menambah fasilitas.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
@@ -1917,7 +1919,9 @@ export class GabahDomainService {
   }
 
   static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
+    if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
+      : actor.role === 'GA' || actor.role === 'IT'))) {
       throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang mengubah fasilitas.');
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
@@ -1932,7 +1936,9 @@ export class GabahDomainService {
   }
 
   static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
+    if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
+      : actor.role === 'GA' || actor.role === 'IT'))) {
       throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menghapus fasilitas.');
     }
     const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);
