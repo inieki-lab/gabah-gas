@@ -1091,10 +1091,20 @@ async function startServer() {
         }
       }
 
+      // Remove authorization grants and deactivate the normalized account before
+      // removing it from the application snapshot. Keep the users row for FK-backed
+      // audit/history records; a deleted account must never retain effective roles.
+      if (isPostgresPersistenceActive()) {
+        await withRbacTransaction(async client => {
+          await client.query('DELETE FROM gabah_user_roles WHERE user_id = $1', [targetId]);
+          await client.query('UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1', [targetId]);
+        });
+      }
+
       // Invalidate all active sessions for this user
       destroyAllUserSessions(targetId);
 
-      // Perform deletion from database
+      // Remove the account from the application snapshot (normalized row remains inactive).
       db.users.splice(userIndex, 1);
 
       GabahDomainService.recordAudit(
