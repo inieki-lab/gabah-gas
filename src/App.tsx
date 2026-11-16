@@ -1135,7 +1135,7 @@ export default function App() {
       <GlobalSearchModal
         isOpen={isGlobalSearchOpen}
         onClose={() => setIsGlobalSearchOpen(false)}
-        assets={isNavTabAllowedForRole(currentUser.role, 'assets', currentUser.permission_keys) || isNavTabAllowedForRole(currentUser.role, 'my_assets', currentUser.permission_keys) ? visibleAssets : []}
+        assets={isNavTabAllowedForRole(currentUser.role, 'assets', currentUser.permission_keys) || isNavTabAllowedForRole(currentUser.role, 'my_assets', currentUser.permission_keys) || currentUser.permission_keys?.includes('licenses.read') === true ? visibleAssets : []}
         loans={isNavTabAllowedForRole(currentUser.role, 'loans', currentUser.permission_keys) ? visibleLoans : []}
         tickets={isNavTabAllowedForRole(currentUser.role, 'tickets', currentUser.permission_keys) ? visibleTickets : []}
         onSelectAsset={(ast) => {
