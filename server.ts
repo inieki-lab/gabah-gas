@@ -171,6 +171,30 @@ async function startServer() {
     }
   });
 
+  // Read-only is a deny-write policy across the entire API surface, not a
+  // collection of per-route checks. This prevents a principal with Auditor
+  // assigned alongside another operational role from reaching any mutation
+  // route that has not yet been individually migrated to Dynamic RBAC.
+  // Authentication lifecycle actions remain available so the user can log out
+  // or rotate their own password.
+  app.use((req, res, next) => {
+    if (!isPostgresPersistenceActive()
+      || !req.path.startsWith('/api/')
+      || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+      || ['/api/auth/login', '/api/auth/logout', '/api/auth/change-password'].includes(req.path)) {
+      return next();
+    }
+    const actor = (req as any).user as ServerUser | undefined;
+    if (actor && isAuditorActor(actor)) {
+      return res.status(403).json({
+        success: false,
+        code: 'READ_ONLY_PRINCIPAL',
+        message: 'Akun dengan kebijakan read-only tidak diizinkan mengubah data.',
+      });
+    }
+    return next();
+  });
+
   // Authenticated users may read global module availability to build navigation.
   app.get('/api/modules', async (req, res) => {
     try {
