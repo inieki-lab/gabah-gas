@@ -20,17 +20,44 @@ export class AssetNumberingEngine {
   private static loanSeq = new Map<number, number>();
 
   static syncFromExistingAssets(assets: Array<{ asset_number: string }>) {
-    for (const a of assets) {
-      if (!a.asset_number) continue;
-      const parts = a.asset_number.split('-');
+    this.sequenceStore.clear();
+    for (const asset of assets) {
+      const number = String(asset.asset_number || '').trim().toUpperCase();
+      if (!number) continue;
+      let matched = false;
+
+      // A rule may have changed its separator after older numbers were issued.
+      // Parse all supported historical separators so a restart never resets
+      // the counter merely because the current rule now uses a different one.
+      for (const rule of this.rules.values()) {
+        for (const separator of ['-', '_', '/']) {
+          const prefix = `${rule.owner_division}${separator}${rule.asset_code}${separator}`;
+          if (!number.startsWith(prefix)) continue;
+          const tail = number.slice(prefix.length).split(separator);
+          if (tail.length !== 2) continue;
+          const year = Number.parseInt(tail[0], 10);
+          const sequence = Number.parseInt(tail[1], 10);
+          if (!Number.isInteger(year) || !Number.isInteger(sequence)) continue;
+          const key = `${rule.owner_division}:${rule.asset_code}:${year}`;
+          this.sequenceStore.set(key, Math.max(this.sequenceStore.get(key) || 0, sequence));
+          matched = true;
+          break;
+        }
+        if (matched) break;
+      }
+
+      if (matched) continue;
+      // Backward compatibility for historical combinations without an
+      // explicitly configured rule; canonical legacy format uses hyphens.
+      const parts = number.split('-');
       if (parts.length < 4) continue;
       const division = parts[0].toUpperCase();
-      const year = parseInt(parts[parts.length - 2], 10);
-      const seq = parseInt(parts[parts.length - 1], 10);
+      const year = Number.parseInt(parts[parts.length - 2], 10);
+      const sequence = Number.parseInt(parts[parts.length - 1], 10);
       const code = parts.slice(1, parts.length - 2).join('-').toUpperCase();
-      if (!isNaN(year) && !isNaN(seq)) {
+      if (Number.isInteger(year) && Number.isInteger(sequence)) {
         const key = `${division}:${code}:${year}`;
-        this.sequenceStore.set(key, Math.max(this.sequenceStore.get(key) || 0, seq));
+        this.sequenceStore.set(key, Math.max(this.sequenceStore.get(key) || 0, sequence));
       }
     }
   }
