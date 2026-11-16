@@ -91,10 +91,10 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 ### Penguatan deny-write Auditor (16 November 2026)
 
 - Ditemukan bahwa pemeriksaan Auditor sebelumnya hanya berada pada beberapa jalur aset, tiket, dan reservasi. Endpoint mutasi lain berpotensi belum memiliki pemeriksaan read-only yang konsisten.
-- Ditambahkan middleware deny-write global untuk mode PostgreSQL. Jika user memiliki role Auditor sebagai salah satu assignment, seluruh request API yang mengubah state ditolak dengan HTTP 403 dan kode `READ_ONLY_PRINCIPAL`, termasuk endpoint yang belum dimigrasikan satu per satu.
-- GET/HEAD/OPTIONS tetap dapat digunakan. Login, logout, dan perubahan password milik sendiri tetap diizinkan agar user dapat mengelola sesi dan kredensial.
-- Ini adalah penguatan untuk role key Auditor yang sudah ada, belum solusi final bagi kebijakan read-only yang dapat dipasang pada role kustom sembarang. Model `access_mode/read_only` yang dapat dikonfigurasi masih perlu dirancang bersama UI dan migrasi database.
-- Belum dinyatakan lulus runtime/CI; perlu pengujian API positif-negatif untuk seluruh metode mutasi dan pengecualian autentikasi.
+- Pemeriksaan lanjutan menemukan bahwa deny-write global sebenarnya sudah diterapkan lebih awal pada `gabahSecurityMiddleware` di `server/runtime-hardening.ts`. Middleware tersebut memeriksa seluruh metode non-GET untuk user yang memiliki assignment Auditor melalui `isAuditorActor`; ada pengecualian terbatas untuk logout dan penandaan notifikasi telah dibaca.
+- Middleware tambahan sempat dibuat pada `server.ts`, tetapi kemudian dibatalkan agar tidak menggandakan kontrol keamanan dan tidak memblokir pengecualian notifikasi yang memang sudah disediakan.
+- `isAuditorActor` memeriksa seluruh effective role keys di PostgreSQL, sehingga Auditor sebagai role tambahan tetap memicu kebijakan read-only.
+- Batasan yang masih ada: read-only masih hard-coded pada stable key `auditor`, belum menjadi access-mode/deny-write yang dapat dipasang pada role kustom lain. Pengujian HTTP langsung tetap diperlukan untuk memastikan seluruh pengecualian dan mutasi terlindungi.
 
 ### Perbaikan yang sudah diterapkan
 
