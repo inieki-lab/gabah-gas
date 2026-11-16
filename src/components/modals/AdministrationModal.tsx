@@ -654,7 +654,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   // Dynamic per-user role assignment. The profile role remains the primary role;
   // additional capabilities are assigned independently and persisted in PostgreSQL.
   const [userAssignments, setUserAssignments] = useState<Record<string, number[]>>({});
-  const [primaryRoleIds, setPrimaryRoleIds] = useState<Record<string, number>>({});
   const [roleAssignmentTarget, setRoleAssignmentTarget] = useState<UserProfile | null>(null);
   const [roleAssignmentDraft, setRoleAssignmentDraft] = useState<number[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
@@ -665,14 +664,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     try {
       const assignments = await gabahApi.getRbacUserAssignments();
       const next: Record<string, number[]> = {};
-      const primary: Record<string, number> = {};
       for (const item of Array.isArray(assignments) ? assignments : []) {
         const userId = String(item.user_id);
         next[userId] = Array.isArray(item.role_ids) ? item.role_ids.map(Number) : [];
-        if (item.primary_role_id != null) primary[userId] = Number(item.primary_role_id);
       }
       setUserAssignments(next);
-      setPrimaryRoleIds(primary);
     } catch (error: any) {
       showToast(error?.message || 'Gagal memuat assignment role pegawai.', 'warning');
     } finally {
@@ -686,7 +682,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   const toggleRoleAssignment = (roleId: number, checked: boolean) => {
-    if (roleAssignmentTarget && primaryRoleIds[String(roleAssignmentTarget.id)] === roleId) return;
     setRoleAssignmentDraft(current => checked
       ? [...new Set([...current, roleId])]
       : current.filter(id => id !== roleId));
@@ -2311,7 +2306,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                 {user.role}
                               </span>
                               {(userAssignments[String(user.id)] || [])
-                                .filter(roleId => roleId !== primaryRoleIds[String(user.id)])
                                 .map(roleId => {
                                   const assignedRole = rbacRoles.find((role: any) => Number(role.id) === Number(roleId));
                                   return assignedRole ? (
@@ -2808,21 +2802,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <p className="text-sm text-slate-500 text-center py-6">Memuat assignment role...</p>
                       ) : rbacRoles.filter((role: any) => role.is_active).map((role: any) => {
                         const roleId = Number(role.id);
-                        const isPrimary = primaryRoleIds[String(roleAssignmentTarget.id)] === roleId;
                         const checked = roleAssignmentDraft.includes(roleId);
                         return (
                           <label key={roleId} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
                             <input
                               type="checkbox"
                               checked={checked}
-                              disabled={assignmentsSaving || isPrimary}
+                              disabled={assignmentsSaving}
                               onChange={e => toggleRoleAssignment(roleId, e.target.checked)}
                               className="mt-0.5"
                             />
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-bold text-slate-800">{role.name}</span>
-                                {isPrimary && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">Role utama</span>}
                                 {role.is_superadmin && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">Superadmin</span>}
                               </span>
                               <span className="block text-[11px] text-slate-500">{role.description || role.role_key}</span>
@@ -2836,7 +2828,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </div>
                     <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
                       <button type="button" onClick={() => setRoleAssignmentTarget(null)} disabled={assignmentsSaving} className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">Batal</button>
-                      <button type="button" onClick={() => void saveRoleAssignment()} disabled={assignmentsSaving || assignmentsLoading || !primaryRoleIds[String(roleAssignmentTarget.id)]} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
+                      <button type="button" onClick={() => void saveRoleAssignment()} disabled={assignmentsSaving || assignmentsLoading} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
                         {assignmentsSaving ? 'Menyimpan...' : 'Simpan Role'}
                       </button>
                     </div>
