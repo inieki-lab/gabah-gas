@@ -792,12 +792,8 @@ async function startServer() {
         if (existing) {
           // UPDATE profil; perubahan role utama adalah perubahan privilege dan
           // harus membatalkan seluruh sesi lama.
-          const previousPrimaryRole = existing.role;
           existing.name = name;
           existing.role = role as ServerUser['role'];
-          if (previousPrimaryRole !== existing.role) {
-            revokeUserSessions(existing.id);
-          }
           const existingFunctionLabel = String(existing.role_label || '');
           (existing as any).role_label = /humas|sekretariat/i.test(existingFunctionLabel)
             ? existingFunctionLabel
