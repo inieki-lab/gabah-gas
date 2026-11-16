@@ -118,6 +118,13 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 - Skrip regresi import, user administration, notification RBAC, profile/RBAC separation, dan Dynamic RBAC foundation diperbarui mengikuti kontrak baru.
 - CI workflow diperluas agar PR yang menargetkan preview/green-enterprise-theme-laptop juga dapat menjalankan suite yang sama.
 
+### Konsistensi pembacaan aset dan lisensi (16 November 2026)
+
+- Ditemukan perbedaan antara endpoint koleksi `GET /api/assets` dan detail `GET /api/assets/:id`: koleksi mengizinkan pembaca dengan `licenses.read` saja untuk melihat aset kategori License, sedangkan detail sebelumnya mensyaratkan `assets.read`.
+- Detail kini menerapkan permission yang konsisten dengan koleksi: `assets.read` untuk katalog aset, atau `licenses.read` untuk pembaca lisensi saja; pembaca lisensi tidak dapat mengambil aset non-lisensi dengan menebak ID. Data tetap difilter oleh resolver scope aset yang sama.
+- Kontrak tes diperbarui agar menguji implementasi permission-first dan scope dinamis yang sekarang berlaku, bukan pola kode lama. Perubahan tes bukan penghapusan validasi; pemeriksaan memastikan pemisahan scope `assets` dan `licenses`, deny-by-default, dan role lama hanya digunakan pada file-store.
+- CI commit sebelumnya masih tertahan oleh sintaks pada skrip verifikasi (literal `\\n` yang tidak sengaja tertulis); sudah diperbaiki. Menunggu hasil CI commit terbaru.
+
 ### Hasil inventaris route API (review statis awal)
 
 - Inventaris statis menemukan beberapa endpoint GET yang belum memperlihatkan guard permission eksplisit di dalam handler, antara lain `/api/taxonomy/categories`, master locations/divisions/job-levels/org-units/office-locations, serta `/api/modules`. Sebagian endpoint memang memerlukan autentikasi atau mungkin merupakan master data referensi; tetapi perlu keputusan permission baca yang eksplisit dan uji direct API agar tidak bergantung hanya pada visibilitas menu.
