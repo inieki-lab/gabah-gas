@@ -713,7 +713,6 @@ export default function App() {
         currentUser={currentUser}
         allUsers={allUsers}
         onSelectUser={handleSelectUser}
-        onSwitchRoleSimulation={handleSwitchRoleSimulation}
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
         onChangePassword={() => setIsChangePasswordOpen(true)}
