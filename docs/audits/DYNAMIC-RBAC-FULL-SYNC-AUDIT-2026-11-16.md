@@ -216,3 +216,10 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Regression static check diperluas untuk memverifikasi backfill Humas/Sekdir pada migration upgrade dan diperbaiki regex whitespace-nya.
 - Commit migration: `04f305b`; test: `b5fd42e`, `bb6945a`.
 - Status: akar masalah dan perbaikan sudah dikomit; CI baru setelah commit `bb6945a` masih harus diverifikasi. CI #1602 tetap FAIL dan tidak boleh dianggap lulus.
+
+### CI run #1606 — fallback Humas queue path (16 November 2026)
+
+- PostgreSQL 17 integration, P0 security, migration checks, build, Docker image/runtime smoke, user/role/import, notification RBAC, user-directory scope, ticket ownership, and loan authorization all passed in CI #1606.
+- The run still failed the same three Humas documentation-queue assertions. The meeting-room fixture's `/api/auth/me` payload contained the legacy profile label `Humas` but no `role_keys`, indicating the isolated test server was exercising file-store compatibility rather than PostgreSQL role assignments.
+- The Humas queue fallback was unnecessarily routed through the generic application-role normalizer. Changed only the file-store fallback to the explicit legacy profile check `actor.role === 'Humas'`. PostgreSQL remains strictly gated by `room_reservations.documentation.read`; no profile-label authorization was added to PostgreSQL mode.
+- Commit: `b274e4e`. New CI on this exact head is pending; CI #1606 remains failed and must not be reported as green.
