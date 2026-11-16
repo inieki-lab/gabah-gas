@@ -129,7 +129,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   const canImportAssets = !isAuditor && (Array.isArray(currentUser.permission_keys)
     ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('assets.bulk_import')
     : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role));
-  const canManageAsset = (asset: Asset) => GabahService.canEditAsset(currentUser, asset) || GabahService.canAssignAsset(currentUser, asset);
+  const canManageAsset = (asset: Asset) => GabahService.canEditAsset(currentUser, asset) || GabahService.canAssignAsset(currentUser, asset) || GabahService.canManageAssetLifecycle(currentUser, asset);
 
   return (
     <div className="space-y-6">
