@@ -14,7 +14,7 @@ const checks = [
   ['PATCH checks offboarding custody before mutating target user', route.indexOf('if (accountDeactivated)') < route.indexOf('targetUser.name = normalizedName')],
   ['PATCH does not Boolean-coerce is_active', !/targetUser\.is_active = Boolean\(is_active\)/.test(route)],
   ['bulk import revokes sessions after primary-role change', /previousPrimaryRole !== existing\.role[\s\S]{0,220}revokeUserSessions\(existing\.id\)/.test(source)],
-  ['single-user role/password/deactivation path revokes sessions', /if \(passwordChanged \|\| privilegeChanged \|\| accountDeactivated\) \{\s*revokeUserSessions\(targetUser\.id\);/.test(route)],
+  ['single-user password/deactivation path revokes sessions', /if \(passwordChanged \|\| privilegeChanged \|\| accountDeactivated\) \{\s*revokeUserSessions\(targetUser\.id\);/.test(route)],
 ];
 let failed = false;
 for (const [name, passed] of checks) {
