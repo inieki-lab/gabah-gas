@@ -60,11 +60,18 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
     currentUser.role_keys !== undefined
       ? currentUser.role_keys.includes(key)
       : currentUser.role === legacyLabel;
+  const hasPermission = (key: string) => Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key)
+    : undefined;
   const isSuperAdmin = currentUser.is_superadmin === true
-    || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
-  const isHumas = hasRoleKey('humas', 'Humas');
-  const isIT = hasRoleKey('it', 'IT') || isSuperAdmin;
-  const isGA = hasRoleKey('ga', 'GA') || isSuperAdmin;
+    || (currentUser.permission_keys === undefined && currentUser.role === 'Admin GABAH');
+  const isHumas = hasPermission('room_reservations.documentation.read') ?? hasRoleKey('humas', 'Humas');
+  const isIT = (hasPermission('room_reservations.it_facilities.read') ?? hasRoleKey('it', 'IT')) || isSuperAdmin;
+  const isGA = (Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('*')
+      || currentUser.permission_keys.includes('room_reservations.approve')
+      || currentUser.permission_keys.includes('room_reservations.reject')
+    : hasRoleKey('ga', 'GA')) || isSuperAdmin;
 
   // 1. Photo & documentation request notifications - assigned Humas capability or Superadmin
   const docReservations = (isHumas || isSuperAdmin)
@@ -91,13 +98,14 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
       )
     : [];
 
-  const totalNotifications = 
-    safeLoans.length + 
-    safeTickets.length + 
-    (isHumas ? docReservations.length : 0) +
-    (isIT ? itFacilityReservations.length : 0) +
-    (isGA ? gaReservations.length : 0) +
-    (isSuperAdmin ? (docReservations.length + itFacilityReservations.length + gaReservations.length) : 0);
+  // The three queues above already include Superadmin visibility; count each
+  // filtered queue exactly once to avoid duplicate badges for global admins.
+  const totalNotifications =
+    safeLoans.length +
+    safeTickets.length +
+    docReservations.length +
+    itFacilityReservations.length +
+    gaReservations.length;
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#e1ebe4] text-slate-800 shadow-[0_1px_2px_rgba(20,60,35,0.04)]">
