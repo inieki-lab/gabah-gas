@@ -92,6 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ? currentUserRoleKeys.includes(key)
       : activeRole === legacyLabel;
   const isHumas = hasRoleKey('humas', 'Humas');
+  const isSekdir = hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi');
   const isIT = hasRoleKey('it', 'IT');
   const isGA = hasRoleKey('ga', 'GA');
   const isSuperAdmin = isSuperadminNavigationAllowed(activeRole, currentUserIsSuperAdmin, currentUserPermissions);
@@ -103,8 +104,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           id: 'dashboard',
-          label: isHumas ? 'Dashboard Humas' : 'Dashboard',
-          description: isHumas ? 'Ringkasan & permintaan dokumentasi' : 'Ringkasan aktivitas sesuai hak akses',
+          label: isHumas ? 'Dashboard Humas' : isSekdir ? 'Dashboard Sekretariat Direksi' : 'Dashboard',
+          description: isHumas ? 'Ringkasan & permintaan dokumentasi' : isSekdir ? 'Ringkasan sekretariat dan agenda direksi' : 'Ringkasan aktivitas sesuai hak akses',
           icon: LayoutDashboard,
           badge: null,
         },
@@ -117,8 +118,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'meeting_rooms',
-          label: isHumas ? 'Ruang Rapat & Liputan' : 'Reservasi Ruangan',
-          description: isHumas ? 'Jadwal & permintaan dokumentasi' : 'Jadwal dan fasilitas ruang rapat',
+          label: isHumas ? 'Ruang Rapat & Liputan' : isSekdir ? 'Agenda Direksi & Ruang Rapat' : 'Reservasi Ruangan',
+          description: isHumas ? 'Jadwal & permintaan dokumentasi' : isSekdir ? 'Jadwal rapat dan koordinasi agenda direksi' : 'Jadwal dan fasilitas ruang rapat',
           icon: isHumas ? Camera : Building2,
           badge: isHumas
             ? (documentationRequestsCount > 0 ? `${documentationRequestsCount} Foto` : null)
