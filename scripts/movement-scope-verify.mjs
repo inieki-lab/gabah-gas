@@ -7,8 +7,8 @@ if (start < 0 || end < 0) throw new Error('GET /api/movements route not found');
 const route = source.slice(start, end);
 const checks = [
   ['Movement history uses the canonical dynamic asset-scope resolver', /GabahDomainService\.getScopedAssets\(actor\)/.test(route)],
-  ['Employee movement scope keeps assigned assets and independently granted dynamic scopes', /isEmployeeBaseline[\s\S]*scopedAssets\.filter\(asset =>[\s\S]*asset\.assigned_to\?\.id === actor\.id \|\| assetVisibleUnderDynamicScopes\(actor, asset\)/.test(route)],
-  ['Unassigned loan-pool catalogue visibility is excluded from employee movement history', /const movementAssets = isEmployeeBaseline[\s\S]*\? scopedAssets\.filter\([\s\S]*asset\.assigned_to\?\.id === actor\.id \|\| assetVisibleUnderDynamicScopes\(actor, asset\)[\s\S]*: scopedAssets/.test(route)],
+  ['File-store employee movement scope keeps assigned assets and independently granted dynamic scopes', /isPostgresPersistenceActive\(\)[\s\S]*\? scopedAssets[\s\S]*: isEmployeeBaseline[\s\S]*scopedAssets\.filter\(asset =>[\s\S]*asset\.assigned_to\?\.id === actor\.id \|\| assetVisibleUnderDynamicScopes\(actor, asset\)/.test(route)],
+  ['PostgreSQL movement history trusts only canonical scoped assets and file-store excludes unassigned loan-pool assets', /const movementAssets = isPostgresPersistenceActive\(\)[\s\S]*\? scopedAssets[\s\S]*: isEmployeeBaseline[\s\S]*\? scopedAssets\.filter\([\s\S]*asset\.assigned_to\?\.id === actor\.id \|\| assetVisibleUnderDynamicScopes\(actor, asset\)[\s\S]*: scopedAssets/.test(route)],
   ['Single-asset movement lookup checks visibility before returning history', /if \(assetId\)[\s\S]*!visibleAssetIds\.has\(String\(assetId\)\)/.test(route)],
   ['Collection movement lookup filters by visible asset IDs', /db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(route)],
 ];
