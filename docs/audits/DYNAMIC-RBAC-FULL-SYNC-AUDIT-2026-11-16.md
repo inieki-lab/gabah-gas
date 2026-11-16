@@ -118,6 +118,13 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 - Skrip regresi import, user administration, notification RBAC, profile/RBAC separation, dan Dynamic RBAC foundation diperbarui mengikuti kontrak baru.
 - CI workflow diperluas agar PR yang menargetkan preview/green-enterprise-theme-laptop juga dapat menjalankan suite yang sama.
 
+### P0 path guard dan regresi impor profil (16 November 2026)
+
+- P0 security live HTTP pada commit `61b91904` lulus **45/45**, termasuk variasi kapitalisasi dan trailing slash untuk audit log serta rekonsiliasi.
+- Uji fresh PostgreSQL pada commit yang sama lulus **84/84**.
+- Satu tes bulk-import kemudian gagal karena assertion menghitung semua baris `errors` sebagai kesalahan label profil, padahal batch sengaja menyertakan satu email invalid yang memang harus ditolak. Assertion diperbaiki agar hanya menghitung error yang berkaitan dengan role/peran/label profil; validasi email invalid tetap diuji terpisah.
+- Menunggu CI penuh terbaru setelah koreksi assertion ini.
+
 ### Integrasi PostgreSQL dan P0 security (16 November 2026)
 
 - Fresh PostgreSQL CR-04/CR-05 kini lulus **84/84** setelah post-seed assignment dan audit scope Auditor diperbaiki. Login, role assignments, lifecycle modul, kontrak/dokumen, vendor scope, reminder, dan restart persistence berhasil diverifikasi.
