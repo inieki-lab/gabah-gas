@@ -94,7 +94,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     : !isSuperAdmin && !isAuditor && !['IT', 'GA'].includes(currentUser?.role || '');
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
-  const canAssignTickets = hasPermission('tickets.assign', ['GA']);
+  const canAssignTickets = hasPermission('tickets.assign');
   const defaultCategories = isSelfTicketsOnly
     ? ['ALL', ...Array.from(baseCategorySet)]
     : [
