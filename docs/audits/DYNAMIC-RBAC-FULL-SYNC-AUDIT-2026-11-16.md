@@ -293,3 +293,20 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Another endpoint review found manual contract reminder execution and scheduler-status routes checked `contracts.reminders.manage` and then redundantly required the Superadmin role. Removed the redundant role check: explicit permission is now authoritative for these administrative endpoints. Added a regression assertion. CI #1637 validates this latest reminder permission correction.
 - Taxonomy review confirmed the remaining legacy mismatch is broader than a label rename: `server/taxonomy.ts` still models SC/PIBC as asset owner divisions; `server/db.ts` still seeds SC/PIBC divisions and org units, while office locations already include RPC/SC and PIBC. Migration 026 is intentionally a no-op compatibility marker and warns against rewriting user roles or ownership from branch labels. Do not apply a blanket data migration. A separately reviewed ownership/location reconciliation is required before removing SC/PIBC owner values.
 - Latest CI runs #1635 and #1637 were still running when this note was written. Confirm exact-head success before treating these changes as validated.
+
+
+### 2026-11-17 — deeper taxonomy and seed reconciliation (read-only)
+
+The repository contains a direct architecture/seed contradiction that must be resolved before a data migration:
+
+- `docs/architecture/RBAC.md` states that Supply Chain and PIBC are not permanent application roles, and describes owner domains as flexible (examples include IT, GA, RPC/SC).
+- `docs/PRIMARY-ROLE-AND-LOCATION-MAPPING.md` maps legacy Supply Chain and PIBC accounts to primary role `Karyawan` and office locations `OFF-RPC` / `OFF-PIBC`.
+- `server/migrations/006_org_model_masters.sql` nevertheless creates `UNIT-SC` and `UNIT-PIBC` as org units linked to `divisions`; its comments explicitly distinguish asset ownership from physical location.
+- `server/migrations/007_asset_managing_unit.sql` backfills managing units from `owner_division`, including SC and PIBC.
+- `server/migrations/009_asset_category_master.sql` seeds categories `KDR-SC`, `MSN`, and `MSN-PIBC` with owner divisions SC/PIBC.
+- `server/migrations/033_current_office_location_master.sql` normalizes office labels to RPC/SC and PIBC, while `server/taxonomy.ts` and `server/db.ts` still carry SC/PIBC as ownership/division concepts.
+- The demo seed includes assets owned by SC and PIBC, while also including examples where GA remains owner at PIBC location. This confirms that physical location cannot be used to infer owner.
+
+**Conclusion:** account role/location backfill is already partly normalized, but the asset owner/org-unit model is not. Do not drop SC/PIBC division rows or mass-rewrite `assets.owner_division`, `managing_unit_id`, category owner mappings, or historical asset numbers yet. A safe follow-up requires an approved owner-domain mapping for each asset class and a compatibility plan for existing foreign keys, reports, imports, loan approvals, and category filters. Preserve the established rule that IT and GA ownership follows the owning function across all locations.
+
+**Safe next implementation boundary:** first make the code and database schema consistently treat office location, employee org assignment, and asset owner domain as separate dimensions; then provide an explicit, reviewable mapping for legacy owner values. No destructive taxonomy migration is included in this PR.
