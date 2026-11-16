@@ -3645,7 +3645,7 @@ async function startServer() {
   const uploadRoot = () => path.resolve(process.env.GABAH_UPLOAD_DIR || path.join(process.cwd(), 'uploads'));
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: {
+    limits: ({
       fileSize: 10 * 1024 * 1024,
       files: 1,
       fields: 0,
@@ -3654,7 +3654,7 @@ async function startServer() {
       fieldSize: 1024,
       fieldNestingDepth: 1,
       fieldArrayIndexLimit: 1,
-    },
+    } as multer.Options['limits']),
     fileFilter: (req, file, cb) => {
       const mimeByExtension: Record<string, string> = {
         '.pdf': 'application/pdf',
