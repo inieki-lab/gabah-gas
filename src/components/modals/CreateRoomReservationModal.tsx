@@ -113,11 +113,14 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const [serverConflictData, setServerConflictData] = useState<any | null>(null);
 
   // Sekretariat Direksi is an additional capability, not a primary profile role.
-  const isSekdir = currentUser.role === 'Sekretaris Direksi'
-    || currentUser.role_keys?.includes('sekretaris_direksi') === true;
+  const isSekdir = currentUser.role_keys !== undefined
+    ? currentUser.role_keys.includes('sekretaris_direksi')
+    : currentUser.role === 'Sekretaris Direksi';
   const canOverride = useMemo(() => (
-    isSekdir || currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
-  ), [currentUser.role, isSekdir]);
+    currentUser.is_superadmin === true
+    || currentUser.permission_keys?.includes('room_reservations.override_priority') === true
+    || (currentUser.permission_keys === undefined && currentUser.role === 'Sekretaris Direksi')
+  ), [currentUser.is_superadmin, currentUser.permission_keys, currentUser.role]);
 
   // Load master types and facilities
   useEffect(() => {
@@ -315,7 +318,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-slate-500">Role Sistem:</span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
-                {currentUser.role}
+                {currentUser.role_label || currentUser.role}
               </span>
               {canOverride && (
                 <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300">
@@ -406,7 +409,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                     <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="text-xs font-bold text-amber-900">
-                        Opsi Interupsi Ruang Rapat (Hak Akses {currentUser.role})
+                        Opsi Interupsi Ruang Rapat (Hak Interupsi sesuai permission)
                       </h4>
                       <p className="text-[11px] text-amber-800">
                         Sesuai tata kelola, agenda pimpinan Direksi memiliki prioritas utama. Anda dapat menggeser rapat eksisting di atas ke ruangan alternatif lain (seperti Ruang Setra Ramos / Jasmine) atau menjadwal ulang secara otomatis.
