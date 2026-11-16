@@ -261,20 +261,24 @@ async function startServer() {
     return safe;
   };
 
+  const normalizeRoleKey = (value: string): string => {
+    const normalized = String(value || '').trim().toLowerCase().normalize('NFKD')
+      .replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const aliases: Record<string, string> = { 'admin_gabah': 'superadmin', 'admin_gabah_super_admin': 'superadmin' };
+    return aliases[normalized] || normalized;
+  };
+
   const hasApplicationRole = (actor: ServerUser, roleKey: string): boolean => {
+    if (isPostgresPersistenceActive()) {
+      // Production checks only explicit database role assignments, never profile labels.
+      return getEffectiveRoleKeys(String(actor.id)).includes(normalizeRoleKey(roleKey));
+    }
     const legacyLabels: Record<string, string> = {
-      superadmin: 'Admin GABAH',
-      it: 'IT',
-      ga: 'GA',
-      karyawan: 'Karyawan',
-      auditor: 'Auditor',
-      humas: 'Humas',
-      sekretaris_direksi: 'Sekretaris Direksi',
-      supply_chain: 'Supply Chain',
-      pibc: 'PIBC',
+      superadmin: 'Admin GABAH', it: 'IT', ga: 'GA', karyawan: 'Karyawan',
+      auditor: 'Auditor', humas: 'Humas', sekretaris_direksi: 'Sekretaris Direksi',
+      supply_chain: 'Supply Chain', pibc: 'PIBC',
     };
-    if (actor.role === legacyLabels[roleKey]) return true;
-    return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
+    return actor.role === legacyLabels[normalizeRoleKey(roleKey)];
   };
 
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
@@ -3369,7 +3373,7 @@ async function startServer() {
     if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
     // A user may hold additional RBAC roles beyond the primary profile role.
     if (notification.recipient_role) {
-      return hasApplicationRole(actor, primaryRoleKey(notification.recipient_role));
+      return hasApplicationRole(actor, normalizeRoleKey(notification.recipient_role));
     }
     if (notification.recipient_division) return notification.recipient_division === actor.division;
     return false;
