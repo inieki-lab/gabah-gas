@@ -40,7 +40,7 @@ import {
   Power
 } from 'lucide-react';
 import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } from '../../types';
-import { gabahApi } from '../../services/gabahApi';
+import { gabahApi, AssetNumberingRule } from '../../services/gabahApi';
 import { exportUsersToCsv, downloadUsersImportTemplate, parseUsersImportCsv } from '../../services/gabahService';
 import { ModuleLifecyclePanel } from './ModuleLifecyclePanel';
 
@@ -803,15 +803,106 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [auditPage, setAuditPage] = useState(0);
   const AUDIT_PAGE_SIZE = 20;
 
-  // P2#10: live numbering sequences (server snapshot) — no more hardcoded samples.
+  // Server-authoritative numbering rules and sequence counters.
   const [liveSequences, setLiveSequences] = useState<Array<{ key: string; division: string; code: string; year: number; current: number }> | null>(null);
+  const [numberingRules, setNumberingRules] = useState<AssetNumberingRule[] | null>(null);
+  const [numberingRulesError, setNumberingRulesError] = useState('');
+  const [numberingRuleForm, setNumberingRuleForm] = useState({ owner_division: 'IT', asset_code: '', separator: '-', sequence_digits: 4, notes: '' });
+  const [editingNumberingRuleId, setEditingNumberingRuleId] = useState<string | null>(null);
+  const [numberingRuleDeleteTarget, setNumberingRuleDeleteTarget] = useState<AssetNumberingRule | null>(null);
+  const [numberingRuleDeleteCode, setNumberingRuleDeleteCode] = useState('');
+  const [numberingRuleDeleteReason, setNumberingRuleDeleteReason] = useState('');
+  const [isSavingNumberingRule, setIsSavingNumberingRule] = useState(false);
+  const refreshNumberingAdmin = async () => {
+    setNumberingRulesError('');
+    try {
+      const [rules, sequences] = await Promise.all([
+        gabahApi.getNumberingRules(),
+        gabahApi.getNumberingSequences(),
+      ]);
+      setNumberingRules(rules);
+      setLiveSequences(sequences);
+    } catch (error: any) {
+      setNumberingRulesError(error.message || 'Gagal memuat aturan penomoran dari server.');
+    }
+  };
   useEffect(() => {
     let cancelled = false;
-    gabahApi.getNumberingSequences()
-      .then(seq => { if (!cancelled) setLiveSequences(seq); })
-      .catch(() => { /* keep null → UI shows honest "unavailable" state */ });
+    Promise.all([gabahApi.getNumberingRules(), gabahApi.getNumberingSequences()])
+      .then(([rules, sequences]) => {
+        if (!cancelled) {
+          setNumberingRules(rules);
+          setLiveSequences(sequences);
+        }
+      })
+      .catch((error: any) => {
+        if (!cancelled) setNumberingRulesError(error.message || 'Gagal memuat aturan penomoran dari server.');
+      });
     return () => { cancelled = true; };
   }, []);
+
+  const resetNumberingRuleForm = () => {
+    setEditingNumberingRuleId(null);
+    setNumberingRuleForm({ owner_division: 'IT', asset_code: '', separator: '-', sequence_digits: 4, notes: '' });
+  };
+
+  const handleSaveNumberingRule = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!numberingRuleForm.asset_code.trim()) {
+      showToast('Kode aset wajib diisi.', 'warning');
+      return;
+    }
+    try {
+      setIsSavingNumberingRule(true);
+      if (editingNumberingRuleId) {
+        const updated = await gabahApi.updateNumberingRule(editingNumberingRuleId, {
+          separator: numberingRuleForm.separator,
+          sequence_digits: numberingRuleForm.sequence_digits,
+          notes: numberingRuleForm.notes,
+        });
+        setNumberingRules(prev => (prev || []).map(rule => rule.id === updated.id ? updated : rule));
+        showToast('Aturan penomoran diperbarui. Nomor aset yang sudah terbit tetap tidak berubah.', 'success');
+      } else {
+        const created = await gabahApi.createNumberingRule(numberingRuleForm);
+        setNumberingRules(prev => [...(prev || []), created].sort((a, b) => a.owner_division.localeCompare(b.owner_division) || a.asset_code.localeCompare(b.asset_code)));
+        showToast('Aturan penomoran baru berhasil dibuat.', 'success');
+      }
+      resetNumberingRuleForm();
+      await refreshNumberingAdmin();
+    } catch (error: any) {
+      showToast(error.message || 'Gagal menyimpan aturan penomoran.', 'warning');
+    } finally {
+      setIsSavingNumberingRule(false);
+    }
+  };
+
+  const handleToggleNumberingRule = async (rule: AssetNumberingRule) => {
+    try {
+      const updated = await gabahApi.updateNumberingRule(rule.id, { is_active: !rule.is_active });
+      setNumberingRules(prev => (prev || []).map(item => item.id === updated.id ? updated : item));
+      showToast(updated.is_active ? 'Aturan penomoran diaktifkan.' : 'Aturan dinonaktifkan. Aset lama tetap memakai nomor yang sudah terbit.', 'info');
+    } catch (error: any) {
+      showToast(error.message || 'Gagal mengubah status aturan.', 'warning');
+    }
+  };
+
+  const handleDeleteNumberingRule = async () => {
+    if (!numberingRuleDeleteTarget) return;
+    try {
+      await gabahApi.deleteNumberingRule(numberingRuleDeleteTarget.id, {
+        confirmation_code: numberingRuleDeleteCode,
+        reason: numberingRuleDeleteReason,
+      });
+      setNumberingRules(prev => (prev || []).filter(rule => rule.id !== numberingRuleDeleteTarget.id));
+      setNumberingRuleDeleteTarget(null);
+      setNumberingRuleDeleteCode('');
+      setNumberingRuleDeleteReason('');
+      showToast('Aturan penomoran yang belum pernah dipakai berhasil dihapus dan dicatat di audit log.', 'success');
+      await refreshNumberingAdmin();
+    } catch (error: any) {
+      showToast(error.message || 'Penghapusan aturan ditolak.', 'warning');
+    }
+  };
 
   // P2#11: CR-05 reminder subsystem overview (admin-only endpoint).
   const [reminderOverview, setReminderOverview] = useState<any>(null);
