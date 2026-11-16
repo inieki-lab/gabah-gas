@@ -4457,6 +4457,119 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </p>
               </div>
 
+              {/* Server-persisted numbering rule management */}
+              <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm space-y-4">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-emerald-950">Master Aturan Penomoran</h4>
+                    <p className="text-[11px] text-slate-500 mt-1">Aturan disimpan di PostgreSQL dan berlaku untuk nomor yang diterbitkan setelah perubahan.</p>
+                  </div>
+                  <span className="text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1">Superadmin</span>
+                </div>
+
+                {numberingRulesError && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    {numberingRulesError} Pastikan sesi Superadmin masih aktif dan PostgreSQL tersedia.
+                    <button type="button" onClick={refreshNumberingAdmin} className="ml-2 font-bold underline">Coba lagi</button>
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveNumberingRule} className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-extrabold text-emerald-950">{editingNumberingRuleId ? 'Edit format aturan' : 'Tambah aturan baru'}</div>
+                    {editingNumberingRuleId && (
+                      <button type="button" onClick={resetNumberingRuleForm} className="text-[11px] font-bold text-slate-500 hover:text-slate-800">Batal edit</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Divisi pemilik
+                      <select value={numberingRuleForm.owner_division} disabled={!!editingNumberingRuleId} onChange={e => setNumberingRuleForm(prev => ({ ...prev, owner_division: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs disabled:bg-slate-100">
+                        <option value="IT">IT</option><option value="GA">GA</option><option value="SC">RPC / SC</option><option value="PIBC">PIBC</option><option value="Umum">Umum</option>
+                      </select>
+                    </label>
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Kode aset
+                      <input value={numberingRuleForm.asset_code} disabled={!!editingNumberingRuleId} onChange={e => setNumberingRuleForm(prev => ({ ...prev, asset_code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') }))} placeholder="Contoh HLT" maxLength={30} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-mono disabled:bg-slate-100" />
+                    </label>
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Pemisah
+                      <select value={numberingRuleForm.separator} onChange={e => setNumberingRuleForm(prev => ({ ...prev, separator: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs">
+                        <option value="-">Strip (-)</option><option value="_">Underscore (_)</option><option value="/">Garis miring (/)</option>
+                      </select>
+                    </label>
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Digit sequence
+                      <select value={numberingRuleForm.sequence_digits} onChange={e => setNumberingRuleForm(prev => ({ ...prev, sequence_digits: Number(e.target.value) }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs">
+                        {[3,4,5,6,7,8].map(n => <option key={n} value={n}>{n} digit</option>)}
+                      </select>
+                    </label>
+                    <label className="text-[10px] font-bold text-slate-600">
+                      Catatan
+                      <input value={numberingRuleForm.notes} onChange={e => setNumberingRuleForm(prev => ({ ...prev, notes: e.target.value }))} maxLength={500} placeholder="Opsional" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs" />
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <p className="text-[10px] text-slate-500">Contoh: {numberingRuleForm.owner_division}{numberingRuleForm.separator}{numberingRuleForm.asset_code || 'KODE'}{numberingRuleForm.separator}{new Date().getFullYear()}{numberingRuleForm.separator}{String(1).padStart(numberingRuleForm.sequence_digits, '0')}</p>
+                    <button type="submit" disabled={isSavingNumberingRule || !numberingRuleForm.asset_code.trim()} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50">
+                      {editingNumberingRuleId ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                      {isSavingNumberingRule ? 'Menyimpan…' : editingNumberingRuleId ? 'Simpan perubahan' : 'Tambah aturan'}
+                    </button>
+                  </div>
+                </form>
+
+                {numberingRules === null ? (
+                  <div className="py-4 text-center text-xs text-slate-400">Memuat aturan dari server…</div>
+                ) : numberingRules.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/40 p-4 text-center text-xs text-slate-500">
+                    Belum ada aturan khusus tersimpan. Generator tetap memakai format baku GABAH sampai aturan ditambahkan.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {numberingRules.map(rule => (
+                      <div key={rule.id} className="rounded-xl border border-slate-200 bg-white p-3 flex flex-col lg:flex-row lg:items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-xs font-extrabold text-slate-900">{rule.owner_division}{rule.separator}{rule.asset_code}{rule.separator}{new Date().getFullYear()}{rule.separator}{String(1).padStart(rule.sequence_digits, '0')}</span>
+                            <span className={`text-[9px] font-bold rounded-full px-2 py-0.5 ${rule.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>{rule.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                          </div>
+                          <div className="mt-1 text-[10px] text-slate-500">{rule.usage_count} aset memakai kombinasi ini · {rule.sequence_digits} digit · pemisah "{rule.separator}"</div>
+                          {rule.notes && <div className="mt-1 text-[10px] text-slate-400">{rule.notes}</div>}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button type="button" onClick={() => { setEditingNumberingRuleId(rule.id); setNumberingRuleForm({ owner_division: rule.owner_division, asset_code: rule.asset_code, separator: rule.separator, sequence_digits: rule.sequence_digits, notes: rule.notes || '' }); setNumberingRuleDeleteTarget(null); }} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-50"><Pencil className="w-3 h-3" />Edit</button>
+                          <button type="button" onClick={() => handleToggleNumberingRule(rule)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50"><Power className="w-3 h-3" />{rule.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                          {rule.usage_count === 0 ? (
+                            <button type="button" onClick={() => { setNumberingRuleDeleteTarget(rule); setNumberingRuleDeleteCode(''); setNumberingRuleDeleteReason(''); }} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="w-3 h-3" />Hapus</button>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 px-2">Tidak dapat dihapus: sudah dipakai</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {numberingRuleDeleteTarget && (
+                  <div className="rounded-xl border-2 border-rose-200 bg-rose-50 p-3 space-y-2">
+                    <div className="text-xs font-extrabold text-rose-900">Konfirmasi penghapusan permanen</div>
+                    <p className="text-[10px] text-rose-800">Penghapusan hanya tersedia jika belum ada aset yang memakai aturan ini dan counter sequence masih nol. Tindakan akan masuk audit log.</p>
+                    <label className="block text-[10px] font-bold text-rose-900">
+                      Ketik persis {numberingRuleDeleteTarget.owner_division}/{numberingRuleDeleteTarget.asset_code}
+                      <input value={numberingRuleDeleteCode} onChange={e => setNumberingRuleDeleteCode(e.target.value.toUpperCase())} className="mt-1 w-full rounded-lg border border-rose-200 bg-white px-2.5 py-2 text-xs font-mono" />
+                    </label>
+                    <label className="block text-[10px] font-bold text-rose-900">
+                      Alasan penghapusan (minimal 20 karakter)
+                      <textarea value={numberingRuleDeleteReason} onChange={e => setNumberingRuleDeleteReason(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-rose-200 bg-white px-2.5 py-2 text-xs" />
+                    </label>
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => setNumberingRuleDeleteTarget(null)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold text-slate-600">Batal</button>
+                      <button type="button" disabled={numberingRuleDeleteCode.trim().toUpperCase() !== `${numberingRuleDeleteTarget.owner_division}/${numberingRuleDeleteTarget.asset_code}` || numberingRuleDeleteReason.trim().length < 20} onClick={handleDeleteNumberingRule} className="rounded-lg bg-rose-700 px-3 py-1.5 text-[10px] font-bold text-white disabled:opacity-40">Hapus permanen</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Simulator Card */}
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-200">
                 <h4 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-3">
