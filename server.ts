@@ -2439,6 +2439,11 @@ async function startServer() {
           || (corp && db.assets.find(a => a.corporate_asset_number && a.corporate_asset_number.trim().toLowerCase() === corp.toLowerCase()));
 
         if (existing) {
+          if (existing.category_type === 'License' && isPostgresPersistenceActive()
+            && !hasRbacPermission(String(actor.id), 'licenses.manage')) {
+            errors.push(`Baris ${rowNo}: Permission licenses.manage diperlukan untuk memperbarui aset lisensi.`);
+            continue;
+          }
           if (!allowUpdate) {
             errors.push(`Baris ${rowNo}: ${serial ? `Serial "${serial}"` : `Nomor Accurate "${corp}"`} sudah terdaftar pada aset ${existing.asset_number} (${existing.name}). Aktifkan opsi perbarui bila ingin memperbarui.`);
             continue;
@@ -2486,6 +2491,17 @@ async function startServer() {
         }
 
         // CREATE path — domain service yang otoritatif
+        const importCategory = String(row.category_name_or_code || row.category || '').trim().toLowerCase();
+        const importCategoryMeta = (db.categories || []).find(category =>
+          String(category.code || '').trim().toLowerCase() === importCategory
+          || String(category.name || '').trim().toLowerCase() === importCategory
+        );
+        if (String(importCategoryMeta?.category_type || '').toLowerCase() === 'license'
+          && isPostgresPersistenceActive()
+          && !hasRbacPermission(String(actor.id), 'licenses.manage')) {
+          errors.push(`Baris ${rowNo}: Permission licenses.manage diperlukan untuk membuat aset lisensi.`);
+          continue;
+        }
         const priceRaw = String(row.purchase_price ?? '').replace(/[^0-9.-]/g, '');
         const priceNum = Number(priceRaw);
         try {
