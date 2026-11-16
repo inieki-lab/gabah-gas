@@ -78,7 +78,7 @@ export function isRbacSuperadmin(userId: string): boolean {
 
 /** Preserve local file-store development while making PostgreSQL role identity authoritative. */
 export function isSuperadminActor(actor: { id: string; role?: string }): boolean {
-  return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : actor.role === 'Admin GABAH';
+  return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : (actor.id === 'USR-01' || actor.role === 'Admin GABAH');
 }
 
 /** Auditor is a deny-write capability: assigning it as an additional role must not bypass read-only enforcement. */
