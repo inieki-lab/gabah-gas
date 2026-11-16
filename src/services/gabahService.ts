@@ -622,7 +622,7 @@ export class GabahService {
 
   // RBAC Permission helpers
   static canEditAsset(user?: UserProfile, asset?: Asset | null): boolean {
-    if (!user || !asset) return false;
+    if (!user || !asset || user.role_keys?.includes('auditor') === true || user.role === 'Auditor') return false;
     // PostgreSQL/Dynamic RBAC: the API has already applied the object's owner
     // scope. The client checks the effective permission only; it must not
     // reconstruct ownership authority from a legacy branch-role label.
@@ -638,7 +638,7 @@ export class GabahService {
   }
 
   static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
-    if (!user) return false;
+    if (!user || user.role_keys?.includes('auditor') === true || user.role === 'Auditor') return false;
     if (Array.isArray(user.permission_keys)) {
       return user.permission_keys.includes('*') || user.permission_keys.includes('loans.approve');
     }
@@ -651,7 +651,7 @@ export class GabahService {
   }
 
   static canManageTickets(user?: UserProfile): boolean {
-    if (!user) return false;
+    if (!user || user.role_keys?.includes('auditor') === true || user.role === 'Auditor') return false;
     if (Array.isArray(user.permission_keys)) {
       return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
@@ -703,7 +703,7 @@ export class GabahService {
   }
 
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
-    if (!user || !ticket) return false;
+    if (!user || !ticket || user.role_keys?.includes('auditor') === true || user.role === 'Auditor') return false;
     if (Array.isArray(user.permission_keys)) {
       return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
