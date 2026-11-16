@@ -135,6 +135,16 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     }
   }
 
+  if (normalizedPath === '/api/reconciliation') {
+    const canReadReconciliation = isGlobalObserver(actor)
+      || (isPostgresPersistenceActive()
+        ? hasRbacPermission(String(actor.id), 'reconciliation.read')
+        : isAuditorActor(actor));
+    if (!canReadReconciliation) {
+      return res.status(403).json({ success: false, message: 'Rekonsiliasi memerlukan permission reconciliation.read.' });
+    }
+  }
+
   if (normalizedPath === '/api/audit-logs') {
     const hasExplicitAuditScope = isAuditorActor(actor)
       && isPostgresPersistenceActive()
