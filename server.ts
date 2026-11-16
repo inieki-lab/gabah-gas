@@ -289,8 +289,8 @@ async function startServer() {
     return true;
   };
 
-  // Dynamic RBAC administration API. Runtime business authorization remains legacy
-  // until all endpoints are migrated and regression-tested.
+  // Dynamic RBAC administration API. Business endpoints are progressively migrated
+  // to explicit permissions and data-scope enforcement.
   const requireRbacSuperadmin = (req: express.Request, res: express.Response): ServerUser | null => {
     const actor = (req as any).user as ServerUser | undefined;
     if (!isPostgresPersistenceActive()) {
@@ -956,7 +956,6 @@ async function startServer() {
         }
         orgOffice = lid;
       }
-      const profileLabelChanged = role !== undefined && role.trim() !== targetUser.role;
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
 
       // Personnel offboarding must not hide unresolved physical custody.
