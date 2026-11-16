@@ -27,7 +27,9 @@ assert.doesNotMatch(patch, /role === 'Supply Chain'.*OFF-RPC|role === 'PIBC'.*OF
 assert.match(server, /const assignmentIds = \[\.\.\.new Set\(\(roleIds as number\[\]\)\.map\(Number\)\)\]/);
 assert.match(server, /primary_role_id: null/);
 assert.match(modal, /Label Profil Pegawai \(bukan hak akses\)/);
-assert.match(modal, /Pilih nol, satu, atau beberapa role akses/);
+assert.match(modal, /Label profil pegawai hanya metadata/);
+assert.match(modal, /Pilih nol atau beberapa role dinamis sesuai tanggung jawab aktual/);
+assert.match(modal, /roleAssignmentDraft/);
 assert.doesNotMatch(modal, /PRIMARY_PROFILE_ROLES\.map/);
 assert.match(service, /Employee profile labels are free-form/);
 assert.match(modal, /office_location_id/);
