@@ -146,10 +146,10 @@ function assetMatchesAssetScope(asset: ServerAsset, scope: AssetScopeSpec, user:
  * dinamis dari gabah_role_division_scopes dengan semantik sisi baca yang dapat
  * dipakai ulang oleh modul lain (mis. Maintenance) tanpa mengubah perilaku.
  */
-export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAsset): boolean {
+export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAsset, module = 'assets'): boolean {
   const owner = String(asset.owner_division || '').trim().toUpperCase();
   if (!owner) return false;
-  const scopes = dynamicScopesForUser(user);
+  const scopes = dynamicScopesForUser(user, module);
   if (scopes == null) return false; // tanpa policy/scope: deny-by-default
   const excluded = scopes.some(scope => scope.type === 'division_except' && textEquals(asset.owner_division, scope.value));
   const explicitOwnerGrant = scopes.some(scope => scope.type === 'division' && assetMatchesAssetScope(asset, scope, user));
@@ -163,9 +163,9 @@ export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAs
   ));
 }
 
-function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): ServerAsset[] {
+function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser, module = 'assets'): ServerAsset[] {
   if (getUserRbacPolicies(String(user.id)).some(policy => policy.isSuperadmin)) return assets;
-  const scopes = dynamicScopesForUser(user);
+  const scopes = dynamicScopesForUser(user, module);
   if (scopes == null) return [];
   const classifiedOwnerAssets = assets.filter(asset => String(asset.owner_division || '').trim().length > 0);
   return classifiedOwnerAssets.filter(asset => {
@@ -282,7 +282,10 @@ export class GabahDomainService {
 
     // PostgreSQL: every employee and auditor is limited to explicit scopes.
     // Profile labels, office location, and job title never grant asset visibility.
-    const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
+    const dynamicAssets = [
+      ...filterAssetsByDynamicScopes(db.assets.filter(asset => asset.category_type !== 'License'), user, 'assets'),
+      ...filterAssetsByDynamicScopes(db.assets.filter(asset => asset.category_type === 'License'), user, 'licenses'),
+    ];
     const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
     const isItWorkstation = (asset: ServerAsset) =>
       ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
