@@ -32,7 +32,7 @@ const OWNER_DIVISION_OPTIONS = ['GA', 'IT', 'SC', 'PIBC', 'Sekretariat Direksi',
 const CONTRACT_TYPE_PRESETS = ['Security', 'Maintenance', 'Supplier Barang', 'Layanan Pasar', 'Sewa', 'Konsultansi', 'Langganan Layanan', 'Umum'];
 
 export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen, onClose, users, currentUser, onCreate }) => {
-  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+  const isAuditor = Array.isArray(currentUser.role_keys) ? currentUser.role_keys.includes('auditor') : currentUser.role === 'Auditor';
   const isAdmin = !isAuditor && (currentUser.is_superadmin === true
     || currentUser.permission_keys?.includes('*') === true
     || currentUser.permission_keys?.includes('contracts.manage') === true
