@@ -379,6 +379,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 </div>
 
                 {isSuperAdmin && (
+                  <>
                   {/* Section 1: Registered Users in Database */}
                   <div className="mb-3">
                     <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
@@ -417,8 +418,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                       })}
                     </div>
                   </div>
-  
-  
+                  </>
                 )}
  
                 {/* Account actions */}
