@@ -1320,8 +1320,9 @@ async function startServer() {
         `SELECT COUNT(*)::text AS count
          FROM assets a
          JOIN divisions d ON d.id = a.owner_division_id
-         JOIN asset_categories c ON c.id = a.category_id
-         WHERE UPPER(d.code) = UPPER($1) AND UPPER(c.code) = UPPER($2)`,
+         LEFT JOIN asset_categories c ON c.id = a.category_id
+         WHERE UPPER(d.code) = UPPER($1)
+           AND (UPPER(c.code) = UPPER($2) OR a.asset_number LIKE $3)`,
         [current.owner_division, current.asset_code, `${current.owner_division}-${current.asset_code}-%`]
       );
       const usageCount = Number(usageResult.rows[0]?.count || 0);
@@ -1389,8 +1390,9 @@ async function startServer() {
         `SELECT COUNT(*)::text AS count
          FROM assets a
          JOIN divisions d ON d.id = a.owner_division_id
-         JOIN asset_categories c ON c.id = a.category_id
-         WHERE UPPER(d.code) = UPPER($1) AND UPPER(c.code) = UPPER($2)`,
+         LEFT JOIN asset_categories c ON c.id = a.category_id
+         WHERE UPPER(d.code) = UPPER($1)
+           AND (UPPER(c.code) = UPPER($2) OR a.asset_number LIKE $3)`,
         [rule.owner_division, rule.asset_code, `${rule.owner_division}-${rule.asset_code}-%`]
       );
       const usageCount = Number(usageResult.rows[0]?.count || 0);
