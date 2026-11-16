@@ -257,6 +257,12 @@ export class GabahDomainService {
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
     if (isSuperadminActor(user)) return db.assets;
+    // Auditor receives cross-domain asset visibility only when the explicit
+    // audit catalogue capability is assigned. Global middleware enforces
+    // read-only behavior for every principal holding the Auditor role.
+    if (isPostgresPersistenceActive()
+      && isAuditorActor(user)
+      && hasRbacPermission(String(user.id), 'assets.audit.read')) return db.assets;
 
     // File-store compatibility only. Historical persona defaults are not
     // evaluated in PostgreSQL mode.
