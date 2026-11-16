@@ -94,15 +94,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const hasPermission = (key: string) => currentUserPermissions !== undefined
     ? currentUserPermissions.includes('*') || currentUserPermissions.includes(key)
     : undefined;
-  const isHumas = hasPermission('room_reservations.documentation.read') ?? hasRoleKey('humas', 'Humas');
-  const isSekdir = hasPermission('room_reservations.override_priority') ?? hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi');
-  const isIT = hasPermission('room_reservations.it_facilities.read') ?? hasRoleKey('it', 'IT');
-  const isGA = (currentUserPermissions !== undefined
-    ? currentUserPermissions.includes('*')
-      || currentUserPermissions.includes('room_reservations.approve')
-      || currentUserPermissions.includes('room_reservations.reject')
-    : hasRoleKey('ga', 'GA'));
   const isSuperAdmin = isSuperadminNavigationAllowed(activeRole, currentUserIsSuperAdmin, currentUserPermissions);
+  // Wildcard access makes Superadmin capable of every queue, but must not
+  // mislabel the global workspace as Humas/IT/GA/Sekdir.
+  const isHumas = !isSuperAdmin && (hasPermission('room_reservations.documentation.read') ?? hasRoleKey('humas', 'Humas'));
+  const isSekdir = !isSuperAdmin && (hasPermission('room_reservations.override_priority') ?? hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi'));
+  const isIT = !isSuperAdmin && (hasPermission('room_reservations.it_facilities.read') ?? hasRoleKey('it', 'IT'));
+  const isGA = !isSuperAdmin && (currentUserPermissions !== undefined
+    ? currentUserPermissions.includes('room_reservations.approve') || currentUserPermissions.includes('room_reservations.reject')
+    : hasRoleKey('ga', 'GA'));
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
@@ -128,11 +128,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: isHumas ? 'Ruang Rapat & Liputan' : isSekdir ? 'Agenda Direksi & Ruang Rapat' : 'Reservasi Ruangan',
           description: isHumas ? 'Jadwal & permintaan dokumentasi' : isSekdir ? 'Jadwal rapat dan koordinasi agenda direksi' : 'Jadwal dan fasilitas ruang rapat',
           icon: isHumas ? Camera : Building2,
-          badge: isHumas
+          badge: isSuperAdmin
+            ? (documentationRequestsCount + itFacilitiesCount + gaRequestsCount || null)
+            : isHumas
             ? (documentationRequestsCount > 0 ? `${documentationRequestsCount} Foto` : null)
             : isIT && itFacilitiesCount > 0
             ? `${itFacilitiesCount} IT`
-            : (isGA || isSuperAdmin) && (gaRequestsCount > 0 || pendingReservationsCount > 0)
+            : isGA && (gaRequestsCount > 0 || pendingReservationsCount > 0)
             ? (gaRequestsCount || pendingReservationsCount)
             : null,
           badgeColor: isHumas 
