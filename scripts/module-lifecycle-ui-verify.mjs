@@ -18,7 +18,7 @@ const checks = [
   ['Primary Administration modal refreshes module status', /onModulesChanged=\{refreshModuleStatuses\}/.test(app)],
   ['App refreshes menu after module changes', /onModulesChanged=\{refreshModuleStatuses\}/.test(app)],
   ['Sidebar hides inactive navigation modules', /activeModuleKeys === undefined \|\| activeModuleKeys\.includes\(item\.id\)/.test(sidebar)],
-  ['Sidebar recognizes additional Humas and Sekdir capabilities', /currentUserRoleKeys\?\.includes\('humas'\)/.test(sidebar) && /currentUserRoleKeys\?\.includes\('sekretaris_direksi'\)/.test(sidebar)],
+  ['Sidebar recognizes additional Humas and Sekdir capabilities from assigned role keys', /hasRoleKey\('humas', 'Humas'\)/.test(sidebar) && /hasRoleKey\('sekretaris_direksi', 'Sekretaris Direksi'\)/.test(sidebar) && /Dashboard Sekretariat Direksi/.test(sidebar)],
   ['Administration exposes a module lifecycle section', /id: 'modules' as AdminSection/.test(admin) && /activeSection === 'modules'/.test(admin)],
   ['Module panel requires a reason and updates status', /reason\.trim\(\)\.length < 5/.test(panel) && /gabahApi\.updateModuleStatus/.test(panel)],
   ['Module panel displays append-only audit history', /gabahApi\.getModuleAudit/.test(panel) && /row\.previous_is_active/.test(panel)],
