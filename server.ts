@@ -2718,11 +2718,13 @@ async function startServer() {
     // to request a loan, but that catalogue visibility must not expose their
     // movement history. Keep personally assigned assets and independently
     // granted dynamic owner/unit/location scopes only.
-    const movementAssets = isEmployeeBaseline
-      ? scopedAssets.filter(asset =>
-          asset.assigned_to?.id === actor.id || assetVisibleUnderDynamicScopes(actor, asset)
-        )
-      : scopedAssets;
+    const movementAssets = isPostgresPersistenceActive()
+      ? scopedAssets
+      : isEmployeeBaseline
+        ? scopedAssets.filter(asset =>
+            asset.assigned_to?.id === actor.id || assetVisibleUnderDynamicScopes(actor, asset)
+          )
+        : scopedAssets;
     const visibleAssetIds = new Set(movementAssets.map(asset => asset.id));
     const { assetId } = req.query;
     if (assetId) {
@@ -3011,8 +3013,8 @@ async function startServer() {
       const dynamicallyScopedScheduleIds = new Set(
         filterMaintenanceSchedulesByDynamicScopes(db.maintenances, actor).map(schedule => schedule.id)
       );
-      const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
-      const personalAssetIds = new Set(employeeBaselineRoles.includes(actor.role)
+      const hasOwnMaintenanceScope = hasRbacScope(String(actor.id), 'own', null, 'maintenances');
+      const personalAssetIds = new Set(hasOwnMaintenanceScope
         ? db.assets.filter(asset => asset.assigned_to?.id === actor.id).map(asset => asset.id)
         : []);
       const filtered = db.maintenances.filter(schedule =>
