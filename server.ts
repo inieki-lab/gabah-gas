@@ -1282,8 +1282,8 @@ async function startServer() {
     if (!/^[A-Z0-9]{2,12}$/.test(owner) || !/^[A-Z0-9][A-Z0-9-]{1,29}$/.test(code)) {
       return res.status(400).json({ success: false, message: 'Kode divisi dan kode aset tidak valid.' });
     }
-    if (!/^[-_/]{1,3}$/.test(separator) || !Number.isInteger(digits) || digits < 3 || digits > 8) {
-      return res.status(400).json({ success: false, message: 'Pemisah harus 1–3 karakter (-, _, /) dan digit sequence 3–8.' });
+    if (!/^[-_/]$/.test(separator) || !Number.isInteger(digits) || digits < 3 || digits > 8) {
+      return res.status(400).json({ success: false, message: 'Pemisah harus satu karakter (-, _, /) dan digit sequence 3–8.' });
     }
     try {
       const id = crypto.randomUUID();
@@ -1342,8 +1342,8 @@ async function startServer() {
       const digits = req.body?.sequence_digits === undefined ? Number(current.sequence_digits) : Number(req.body.sequence_digits);
       const isActive = req.body?.is_active === undefined ? current.is_active : req.body.is_active === true;
       const notes = req.body?.notes === undefined ? current.notes : String(req.body.notes).trim().slice(0, 500);
-      if (!/^[-_/]{1,3}$/.test(separator) || !Number.isInteger(digits) || digits < 3 || digits > 8) {
-        return res.status(400).json({ success: false, message: 'Pemisah harus 1–3 karakter (-, _, /) dan digit sequence 3–8.' });
+      if (!/^[-_/]$/.test(separator) || !Number.isInteger(digits) || digits < 3 || digits > 8) {
+        return res.status(400).json({ success: false, message: 'Pemisah harus satu karakter (-, _, /) dan digit sequence 3–8.' });
       }
       const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
         s.division === current.owner_division && s.code === current.asset_code
