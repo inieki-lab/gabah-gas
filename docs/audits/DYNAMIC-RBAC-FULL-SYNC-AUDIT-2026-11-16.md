@@ -88,6 +88,14 @@ GitHub Actions run 1509 pada commit `ecf0ccc56b6ec74084ec4828eb962882501c0222` g
 
 Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah dibuat pada branch audit; statusnya belum lulus CI/UAT.
 
+### Penguatan deny-write Auditor (16 November 2026)
+
+- Ditemukan bahwa pemeriksaan Auditor sebelumnya hanya berada pada beberapa jalur aset, tiket, dan reservasi. Endpoint mutasi lain berpotensi belum memiliki pemeriksaan read-only yang konsisten.
+- Ditambahkan middleware deny-write global untuk mode PostgreSQL. Jika user memiliki role Auditor sebagai salah satu assignment, seluruh request API yang mengubah state ditolak dengan HTTP 403 dan kode `READ_ONLY_PRINCIPAL`, termasuk endpoint yang belum dimigrasikan satu per satu.
+- GET/HEAD/OPTIONS tetap dapat digunakan. Login, logout, dan perubahan password milik sendiri tetap diizinkan agar user dapat mengelola sesi dan kredensial.
+- Ini adalah penguatan untuk role key Auditor yang sudah ada, belum solusi final bagi kebijakan read-only yang dapat dipasang pada role kustom sembarang. Model `access_mode/read_only` yang dapat dikonfigurasi masih perlu dirancang bersama UI dan migrasi database.
+- Belum dinyatakan lulus runtime/CI; perlu pengujian API positif-negatif untuk seluruh metode mutasi dan pengecualian autentikasi.
+
 ### Perbaikan yang sudah diterapkan
 
 - UserRole frontend dan ServerUser.role sekarang menerima label profil bebas; katalog role statis di Administration dihapus.
