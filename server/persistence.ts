@@ -424,7 +424,7 @@ async function ensureNormalizedSchema(): Promise<void> {
  * paths still explicitly recognize Admin GABAH.
  */
 function ensureOptionalMeDummyUser(): void {
-  if (process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') return;
+  if (process.env.NODE_ENV === 'production' || process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') return;
   const template = CANONICAL_USERS.find(user => user.id === 'USR-ME-ADMIN-001');
   if (!template) return;
   const exists = db.users.some(user =>
@@ -715,7 +715,7 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
 }
 
 async function ensureMeDummyRoleAssignment(): Promise<void> {
-  if (process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') return;
+  if (process.env.NODE_ENV === 'production' || process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') return;
   await pool.query(
     `INSERT INTO gabah_user_roles (user_id, role_id, is_primary)
      SELECT u.id::text, r.id, FALSE
