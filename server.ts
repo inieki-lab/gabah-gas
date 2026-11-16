@@ -10,7 +10,7 @@ import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGab
 import { AssetNumberingEngine } from './server/numbering';
 import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
-import { ContractDomainService, canSeeContract, canEditContract, canManageContractCapability } from './server/contracts';
+import { ContractDomainService, canSeeContract, canManageContractCapability } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
