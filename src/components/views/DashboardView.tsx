@@ -50,21 +50,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewAssetModal,
 }) => {
   const currentRoleKeys = currentUser?.role_keys || [];
-  const isHumas = currentRoleKeys.includes('humas') || currentUser?.role === 'Humas';
-  const isSekdir = currentRoleKeys.includes('sekretaris_direksi') || currentUser?.role === 'Sekretaris Direksi';
-  const isStaff = currentUser?.role === 'Karyawan' || isHumas || isSekdir;
-  const isEmployee = isStaff;
-  const roleDescriptions: Record<UserRole, string> = {
-    'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
-    IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
-    GA: 'Pantau fasilitas kantor, kendaraan dinas, ruang rapat, peminjaman, dan layanan umum.',
-    'Sekretaris Direksi': 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan fasilitas kegiatan Direksi.',
-    Humas: 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat sesuai penugasan.',
-    'Supply Chain': 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
-    PIBC: 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
-    Karyawan: 'Akses layanan mandiri untuk aset yang ditugaskan, peminjaman, tiket bantuan, dan reservasi ruang.',
-    Auditor: 'Pemantauan read-only atas aset, peminjaman, tiket, laporan, dan jejak audit.',
-  };
+  // PostgreSQL identity is capability-based. Legacy profile labels are used only
+  // when role_keys are absent in file-store compatibility mode.
+  const hasRoleKey = (key: string, legacyLabel: string) =>
+    currentUser.role_keys !== undefined
+      ? currentRoleKeys.includes(key)
+      : currentUser.role === legacyLabel;
+  const isHumas = hasRoleKey('humas', 'Humas');
+  const isSekdir = hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi');
+  const isAuditor = hasRoleKey('auditor', 'Auditor');
+  const isSuperAdmin = Boolean(currentUser.is_superadmin)
+    || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
+  const isEmployee = currentUser.role_keys !== undefined
+    ? currentRoleKeys.includes('karyawan') || isHumas || isSekdir
+    : currentUser.role === 'Karyawan' || isHumas || isSekdir;
+  const canPermission = (key: string) =>
+    currentUser.permission_keys?.includes('*') === true
+    || currentUser.permission_keys?.includes(key) === true
+    || (currentUser.permission_keys === undefined && !isAuditor);
+  const canCreateLoan = canPermission('loans.create');
+  const canCreateTicket = canPermission('tickets.create');
+  const canCreateAsset = canPermission('assets.create');
 
   // All collections arrive pre-scoped by backend permissions and module scope.
   // Do not re-filter them by a single legacy role name in the browser.
@@ -74,18 +80,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || currentUser.role === 'Auditor';
-  const isDivisionDashboard = currentUser.role === 'IT' || currentUser.role === 'GA';
+  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || isAuditor;
+  const isDivisionDashboard = hasRoleKey('it', 'IT') || currentUser.role === 'GA';
   const divisionLabel = isDivisionDashboard ? currentUser.role : 'Unit kerja';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
-  const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
-  const roleDescription = currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
-    ? roleDescriptions.Humas
-    : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
-      ? roleDescriptions['Sekretaris Direksi']
-      : roleDescriptions[currentUser.role];
+  const isLicenseDashboard = isGlobalDashboard || canPermission('licenses.read');
+  const roleDescription = isHumas
+    ? 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat sesuai penugasan.'
+    : isSekdir
+      ? 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan fasilitas kegiatan Direksi.'
+      : isAuditor
+        ? 'Pemantauan read-only sesuai permission dan cakupan audit.'
+        : isSuperAdmin
+          ? 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional.'
+          : 'Ringkasan pekerjaan dan layanan sesuai permission serta cakupan data Anda.';
   const expiringLicenses = dashboardAssets.filter(asset => {
     const expiry = asset.license_detail?.expiration_date;
     if (!expiry) return false;
@@ -168,7 +178,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {currentUser.role !== 'Auditor' && (
+            {canCreateLoan && !isAuditor && (
               <button
                 id="btn-quick-loan"
                 onClick={onOpenNewLoanModal}
@@ -178,7 +188,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Pinjam Aset
               </button>
             )}
-            {currentUser?.role !== 'Auditor' ? (
+            {canCreateTicket && !isAuditor ? (
               <button
                 id="btn-quick-ticket"
                 onClick={onOpenNewTicketModal}
