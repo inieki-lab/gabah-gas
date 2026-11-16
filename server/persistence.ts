@@ -780,11 +780,11 @@ export async function initializePersistence(): Promise<void> {
         );
       }
 
-      AssetNumberingEngine.syncFromExistingAssets(db.assets);
       const numberingRules = await pool.query(
         'SELECT id, owner_division, asset_code, separator, sequence_digits, is_active, notes FROM asset_numbering_rules ORDER BY owner_division, asset_code'
       );
       AssetNumberingEngine.configureRules(numberingRules.rows);
+      AssetNumberingEngine.syncFromExistingAssets(db.assets);
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
       saveStateToFile(createPayload());
