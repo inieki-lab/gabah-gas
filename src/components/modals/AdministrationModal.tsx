@@ -146,8 +146,6 @@ export const GABAH_TAXONOMY_TYPES: { value: 'IT' | 'License' | 'General'; label:
 ];
 
 const DEFAULT_DIVISIONS: OrgDivision[] = [
-  { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
-  { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
   { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
   { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
 ];
