@@ -118,9 +118,11 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   // permissions and never infers write authority from job title or profile label.
   const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
   const canEditThisAsset = GabahService.canEditAsset(currentUser, asset);
-  const authorityWarning = canEditThisAsset
+  const canAssignThisAsset = GabahService.canAssignAsset(currentUser, asset);
+  const canManageThisAsset = canEditThisAsset || canAssignThisAsset;
+  const authorityWarning = canManageThisAsset
     ? ''
-    : 'Hak assets.update atau scope pengelolaan aset ini belum diberikan kepada akun Anda.';
+    : 'Permission assets.update atau assets.assign beserta scope owner aset belum diberikan kepada akun Anda.';
 
   const handleAutoGenerateFst = () => {
     const auto = GabahService.generateCorporateAssetNumber(allAssets);
@@ -129,8 +131,8 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canEditThisAsset) {
-      setErrorMsg('Anda tidak memiliki wewenang mengedit aset ini.');
+    if (!canManageThisAsset) {
+      setErrorMsg('Anda tidak memiliki wewenang mengubah data atau penugasan aset ini.');
       return;
     }
 
@@ -138,7 +140,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const updates: Partial<Asset> = {
+      const updates: Partial<Asset> = canEditThisAsset ? {
         name: formData.name.trim(),
         brand: formData.brand.trim(),
         model: formData.model.trim(),
@@ -152,16 +154,19 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         specifications: formData.specifications.trim(),
         notes: formData.notes.trim(),
         status: selectedUserId ? 'assigned' : formData.status,
-      };
+      } : {};
+      const assignmentChanged = canAssignThisAsset
+        && selectedUserId !== (asset.assigned_to?.id || '');
+
 
       if (onSaveAsset) {
         await onSaveAsset(
-          asset.id, 
-          updates, 
-          selectedUserId !== (asset.assigned_to?.id || '') ? selectedUserId : undefined, 
+          asset.id,
+          updates,
+          assignmentChanged ? selectedUserId : undefined,
           assignmentReason.trim()
         );
-      } else if (onSaved) {
+      } else if (onSaved && canEditThisAsset) {
         await onSaved({ ...asset, ...updates });
       }
       
@@ -262,7 +267,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     Pilih Karyawan Penerima Aset
                   </label>
                   <select
-                    disabled={!canEditThisAsset || isSubmitting}
+                    disabled={!canAssignThisAsset || isSubmitting}
                     value={selectedUserId}
                     onChange={(e) => {
                       setSelectedUserId(e.target.value);
@@ -292,7 +297,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    disabled={!canEditThisAsset || isSubmitting}
+                    disabled={!canAssignThisAsset || isSubmitting}
                     value={assignmentReason}
                     onChange={(e) => setAssignmentReason(e.target.value)}
                     placeholder="Contoh: Laptop kerja dinas staf akuntansi baru"
@@ -566,7 +571,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
             <button
               type="submit"
               form="edit-asset-form"
-              disabled={!canEditThisAsset || isSubmitting}
+              disabled={!canManageThisAsset || isSubmitting}
               className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs"
             >
               {isSubmitting ? (
