@@ -88,6 +88,12 @@ GitHub Actions run 1509 pada commit `ecf0ccc56b6ec74084ec4828eb962882501c0222` g
 
 Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah dibuat pada branch audit; statusnya belum lulus CI/UAT.
 
+### Perbaikan CI TypeScript (16 November 2026)
+
+- CI menemukan JSX tidak valid pada conditional render daftar user di `HeaderNavbar.tsx`; conditional tersebut kini membungkus elemen dan komentar dengan fragment JSX yang valid.
+- CI berikutnya mengungkap dua referensi usang: callback `handleSwitchRoleSimulation` yang tidak lagi tersedia pada `App.tsx`, dan variabel `permissions` lama pada backup Administration. Referensi callback dihapus karena HeaderNavbar tidak mendeklarasikan prop tersebut; backup kini menyertakan `rbac_roles` dan `rbac_permissions` dari state katalog Dynamic RBAC.
+- Perbaikan sudah dikomit ke branch. Belum ada hasil CI untuk commit paling baru pada saat catatan ini dibuat; typecheck/build dan seluruh suite tetap menunggu verifikasi ulang.
+
 ### Penguatan deny-write Auditor (16 November 2026)
 
 - Ditemukan bahwa pemeriksaan Auditor sebelumnya hanya berada pada beberapa jalur aset, tiket, dan reservasi. Endpoint mutasi lain berpotensi belum memiliki pemeriksaan read-only yang konsisten.
