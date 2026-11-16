@@ -182,7 +182,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   onModulesChanged
 }) => {
   // Hak akses administrasi dibatasi HANYA untuk Super Admin ('Admin GABAH')
-  const isCurrentUserAdmin = (activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH');
+  const isCurrentUserAdmin = currentUser?.is_superadmin === true
+    || (currentUser?.permission_keys === undefined && currentUser?.role === 'Admin GABAH');
   const currentRoleName = activeRole || currentUser?.role || 'Admin GABAH';
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 
@@ -2530,7 +2531,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   a => a.assigned_to?.id === userToDelete.id && a.status === 'assigned'
                 ).length;
                 const hasBlockers = activeLoansCount > 0 || assignedAssetsCount > 0;
-                const isOnlySuperAdmin = userToDelete.role === 'Admin GABAH' && userList.filter(u => u.role === 'Admin GABAH').length <= 1;
+                const isTargetSuperAdmin = rbacRoles.some(role => role.is_superadmin && (userAssignments[String(userToDelete.id)] || []).includes(Number(role.id)));
+                const activeSuperadminCount = userList.filter(user => user.is_active && rbacRoles.some(role => role.is_superadmin && (userAssignments[String(user.id)] || []).includes(Number(role.id)))).length;
+                const isOnlySuperAdmin = isTargetSuperAdmin && activeSuperadminCount <= 1;
 
                 return (
                   <div className="fixed inset-0 z-[90] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
