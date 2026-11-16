@@ -303,51 +303,6 @@ async function startServer() {
     }
     return actor;
   };
-  const primaryRoleKey = (label: string): string => {
-    const normalized = String(label || 'Karyawan').trim();
-    const canonical: Record<string, string> = {
-      'Admin GABAH': 'superadmin',
-      'Superadmin': 'superadmin',
-      'IT': 'it',
-      'GA': 'ga',
-      'Karyawan': 'karyawan',
-      'Auditor': 'auditor',
-      'Humas': 'humas',
-      'Sekretaris Direksi': 'sekretaris_direksi',
-      'Supply Chain': 'karyawan',
-      'PIBC': 'karyawan',
-    };
-    return canonical[normalized] || normalized.toLowerCase().normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-  };
-
-  // Keep users.role and the primary dynamic RBAC assignment synchronized,
-  // while preserving any additional job-function roles assigned by Super Admin.
-  const syncPrimaryRbacRoles = async (users: Array<{ id: string; role: string }>): Promise<void> => {
-    if (!isPostgresPersistenceActive() || users.length === 0) return;
-    await withRbacTransaction(async client => {
-      for (const user of users) {
-        const roleKey = primaryRoleKey(user.role);
-        const result = await client.query(
-          'SELECT id FROM gabah_roles WHERE is_active = TRUE AND (role_key = $1 OR name = $2) ORDER BY CASE WHEN role_key = $1 THEN 0 ELSE 1 END LIMIT 1',
-          [roleKey, user.role]
-        );
-        const roleId = Number(result.rows[0]?.id);
-        if (!Number.isSafeInteger(roleId) || roleId < 1) {
-          throw new Error('Role aplikasi "' + user.role + '" belum tersedia/aktif di master RBAC.');
-        }
-        await client.query('DELETE FROM gabah_user_roles WHERE user_id = $1 AND is_primary = TRUE AND role_id <> $2', [user.id, roleId]);
-        await client.query(
-          'INSERT INTO gabah_user_roles (user_id, role_id, is_primary) VALUES ($1, $2, TRUE) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE',
-          [user.id, roleId]
-        );
-      }
-    });
-  };
-  const syncPrimaryRbacRole = async (userId: string, roleLabel: string): Promise<void> => {
-    await syncPrimaryRbacRoles([{ id: userId, role: roleLabel }]);
-  };
-
   const rbacFailure = (res: express.Response, error: any) => {
     if (error?.code === '23505') return res.status(409).json({ success: false, message: 'Nama atau kunci role sudah digunakan.' });
     if (error?.code === '23503') return res.status(409).json({ success: false, message: 'Role masih memiliki relasi yang digunakan.' });
@@ -659,16 +614,15 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body || {};
-      const validPrimaryRoles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor'];
-      const requestedPrimaryRole = role === 'Superadmin' ? 'Admin GABAH' : (role || 'Karyawan');
-      if (typeof requestedPrimaryRole !== 'string' || !validPrimaryRoles.includes(requestedPrimaryRole)) {
-        return res.status(400).json({ success: false, message: 'Role primer tidak valid. Humas/Sekretariat adalah role fungsi; RPC/SC dan PIBC adalah lokasi kerja.' });
+      const profileLabel = role === undefined || role === null || role === '' ? 'Pegawai' : String(role).trim();
+      if (!profileLabel || profileLabel.length > 120) {
+        return res.status(400).json({ success: false, message: 'Label profil pegawai wajib berupa teks maksimal 120 karakter.' });
       }
       if (typeof name !== 'string' || !name.trim() || name.length > 160
         || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
-      const primaryRole = requestedPrimaryRole as ServerUser['role'];
+      const primaryRole = profileLabel;
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
@@ -747,7 +701,8 @@ async function startServer() {
       );
 
       await persistDataStore();
-      await syncPrimaryRbacRole(newUser.id, newUser.role);
+      // New employee accounts receive no implicit permissions. Superadmin assigns
+      // one or more explicit Dynamic RBAC roles after the profile is created.
       await refreshRbacPolicy();
 
       res.status(201).json({
@@ -780,7 +735,6 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Maksimal 500 baris per impor. Pisahkan menjadi beberapa berkas.' });
       }
 
-      const validRoles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor', 'Supply Chain', 'PIBC'];
       const roleLabels: Record<string, string> = {
         'Admin GABAH': 'Super Admin',
         'IT': 'IT Technical Support',
@@ -809,19 +763,11 @@ async function startServer() {
         // Unit is an organizational attribute; SC/RPC and PIBC are office locations.
         const unitId = String(row.unit_id || '').trim().toUpperCase();
         const requestedOfficeLocation = String(row.office_location_id || '').trim().toUpperCase();
-        const inferredOfficeLocation = roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '';
-        const officeLocationId = requestedOfficeLocation || inferredOfficeLocation;
+        const officeLocationId = requestedOfficeLocation;
 
         if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
         if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
-        if (['Humas', 'Sekretaris Direksi'].includes(roleRaw)) {
-          errors.push(`Baris ${rowNo}: "${roleRaw}" adalah role tambahan, bukan role primer. Impor sebagai Karyawan lalu tetapkan capability melalui Role & Hak Akses.`);
-          continue;
-        }
-        if (roleRaw && !validRoles.includes(roleRaw)) {
-          errors.push(`Baris ${rowNo}: Role primer "${roleRaw}" tidak dikenali. Gunakan role profil utama yang valid.`);
-          continue;
-        }
+        if (roleRaw.length > 120) { errors.push(`Baris ${rowNo}: Label profil terlalu panjang (maksimal 120 karakter).`); continue; }
         if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di dalam berkas (${email}).`); continue; }
         seenEmails.add(email);
         if (jobLevelCode && !(db.jobLevels || []).some(item => item.code === jobLevelCode && item.is_active)) {
@@ -834,10 +780,10 @@ async function startServer() {
           errors.push(`Baris ${rowNo}: Lokasi kantor "${officeLocationId}" tidak terdaftar/aktif.`); continue;
         }
 
-        const requestedRole = roleRaw || 'Karyawan';
-        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
+        const requestedRole = roleRaw || 'Pegawai';
+        const role = requestedRole;
         if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
-          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai Karyawan dengan lokasi kantor; unit organisasi tetap independen.`);
+          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipertahankan sebagai label profil lama saja; lokasi kantor tidak ditebak. Isi kolom office_location_id secara eksplisit.`);
         }
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
@@ -910,7 +856,7 @@ async function startServer() {
 
       if (created > 0 || updated > 0) {
         await persistDataStore();
-        await syncPrimaryRbacRoles(importedUsers.map(user => ({ id: user.id, role: user.role })));
+        // Import updates employee profiles only; it must never grant or revoke RBAC roles.
         await refreshRbacPolicy();
       }
 
@@ -960,11 +906,9 @@ async function startServer() {
       if (email !== undefined && (!email.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()))) {
         return res.status(400).json({ success: false, message: 'Format email tidak valid.' });
       }
-      // Primary profile roles are the built-in identity roles; custom job-function
-      // roles remain independently assignable through Dynamic RBAC.
-      const validRoles = ['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Auditor', 'Karyawan'];
-      if (role !== undefined && (typeof role !== 'string' || !validRoles.includes(role))) {
-        return res.status(400).json({ success: false, message: 'Role tidak dikenal.' });
+      // Profile labels are descriptive only; permissions are managed separately in Dynamic RBAC.
+      if (role !== undefined && (typeof role !== 'string' || !role.trim() || role.trim().length > 120)) {
+        return res.status(400).json({ success: false, message: 'Label profil harus berupa teks 1–120 karakter.' });
       }
       if (is_active !== undefined && typeof is_active !== 'boolean') {
         return res.status(400).json({ success: false, message: 'is_active harus berupa boolean true atau false.' });
@@ -981,11 +925,8 @@ async function startServer() {
       if (normalizedEmail !== undefined && db.users.some(u => u.id !== targetUser.id && u.email.toLowerCase().trim() === normalizedEmail)) {
         return res.status(400).json({ success: false, message: 'Email sudah digunakan oleh akun lain.' });
       }
-      const primaryRole = role === 'Superadmin' ? 'Admin GABAH' : role;
-      const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
-      const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH';
-      const wouldDeactivateSuperadmin = is_active === false;
-      if (targetIsSuperadmin && (wouldDemoteSuperadmin || wouldDeactivateSuperadmin)
+      const wouldDeactivateSuperadmin = is_active === false && targetUser.is_active === true;
+      if (isRbacSuperadmin(targetUser.id) && wouldDeactivateSuperadmin
         && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
         return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh diturunkan atau dinonaktifkan.' });
       }
@@ -1015,7 +956,7 @@ async function startServer() {
         }
         orgOffice = lid;
       }
-      const privilegeChanged = role !== undefined && primaryRole !== targetUser.role;
+      const profileLabelChanged = role !== undefined && role.trim() !== targetUser.role;
       const accountDeactivated = is_active !== undefined && is_active === false && targetUser.is_active === true;
 
       // Personnel offboarding must not hide unresolved physical custody.
@@ -1042,7 +983,7 @@ async function startServer() {
       if (normalizedEmail !== undefined) targetUser.email = normalizedEmail;
 
       if (role !== undefined) {
-        targetUser.role = primaryRole;
+        targetUser.role = role.trim();
         const roleLabels: Record<string, string> = {
           'Admin GABAH': 'Admin GABAH (Super Admin)',
           'IT': 'Staff Divisi IT',
@@ -1064,8 +1005,6 @@ async function startServer() {
       if (orgJobLevel !== undefined) targetUser.job_level_code = orgJobLevel ?? undefined;
       if (orgUnit !== undefined) targetUser.unit_id = orgUnit;
       if (orgOffice !== undefined) targetUser.office_location_id = orgOffice;
-      if (role === 'Supply Chain' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-RPC';
-      if (role === 'PIBC' && !targetUser.office_location_id && orgOffice === undefined) targetUser.office_location_id = 'OFF-PIBC';
 
       const passwordChanged = typeof password === 'string' && password.trim().length > 0;
       if (passwordChanged) {
@@ -1080,7 +1019,7 @@ async function startServer() {
 
       // SECURITY (CR-03 §3.4): password change, privilege change, or
       // deactivation invalidates ALL active sessions of this user.
-      if (passwordChanged || privilegeChanged || accountDeactivated) {
+      if (passwordChanged || accountDeactivated) {
         revokeUserSessions(targetUser.id);
       }
 
@@ -1093,7 +1032,7 @@ async function startServer() {
       );
 
       await persistDataStore();
-      if (role !== undefined) await syncPrimaryRbacRole(targetUser.id, targetUser.role);
+      // Profile edits do not alter RBAC assignments or permissions.
       await refreshRbacPolicy();
 
       res.json({ success: true, data: sanitizeUser(targetUser, { includeTelegramChatId: true }) });
