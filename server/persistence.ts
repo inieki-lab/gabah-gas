@@ -423,6 +423,18 @@ async function ensureNormalizedSchema(): Promise<void> {
  * persisted onto USR-01 yet because several legacy backend authorization
  * paths still explicitly recognize Admin GABAH.
  */
+function ensureOptionalMeDummyUser(): void {
+  if (process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') return;
+  const template = CANONICAL_USERS.find(user => user.id === 'USR-ME-ADMIN-001');
+  if (!template) return;
+  const exists = db.users.some(user =>
+    user.id === template.id || String(user.email || '').toLowerCase() === template.email.toLowerCase()
+  );
+  if (!exists) {
+    db.users.push({ ...template, password_hash: '', password_salt: '' } as any);
+  }
+}
+
 function ensureCanonicalAdministrator(): void {
   const legacy = db.users.find(u => u.id === 'USR-01');
   if (legacy) {
@@ -734,6 +746,7 @@ export async function initializePersistence(): Promise<void> {
     }
 
     ensureCanonicalAdministrator();
+    ensureOptionalMeDummyUser();
     provisionCanonicalUserPasswords();
     AssetNumberingEngine.syncFromExistingAssets(db.assets);
     return;
@@ -761,6 +774,7 @@ export async function initializePersistence(): Promise<void> {
       // T2B-2: backfill asset_location_id (idempoten, exact-match teks legacy).
       backfillAssetLocations('postgresql');
       ensureCanonicalAdministrator();
+      ensureOptionalMeDummyUser();
       provisionCanonicalUserPasswords();
 
       // First materialize canonical users so FK-backed capability assignments
@@ -813,6 +827,7 @@ export async function initializePersistence(): Promise<void> {
   }
 
   ensureCanonicalAdministrator();
+  ensureOptionalMeDummyUser();
   provisionCanonicalUserPasswords();
   AssetNumberingEngine.syncFromExistingAssets(db.assets);
 }
