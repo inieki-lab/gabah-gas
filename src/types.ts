@@ -244,16 +244,11 @@ export interface KnowledgeArticle {
   updated_at: string;
 }
 
-export type UserRole =
-  | 'Admin GABAH'
-  | 'IT'
-  | 'GA'
-  | 'Sekretaris Direksi'
-  | 'Humas'
-  | 'Supply Chain'
-  | 'PIBC'
-  | 'Karyawan'
-  | 'Auditor';
+/**
+ * Role names are database-managed and may be created by Superadmin.
+ * Legacy labels remain accepted for compatibility with older records only.
+ */
+export type UserRole = string;
 
 export interface UserProfile {
   id: string;
