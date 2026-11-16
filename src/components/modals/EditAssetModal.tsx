@@ -120,7 +120,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   const canEditThisAsset = GabahService.canEditAsset(currentUser, asset);
   const canAssignThisAsset = GabahService.canAssignAsset(currentUser, asset);
   const canChangeAssetStatus = GabahService.canManageAssetLifecycle(currentUser, asset);
-  const canManageThisAsset = canEditThisAsset || canAssignThisAsset;
+  const canManageThisAsset = canEditThisAsset || canAssignThisAsset || canChangeAssetStatus;
   const authorityWarning = canManageThisAsset
     ? ''
     : 'Permission assets.update atau assets.assign beserta scope owner aset belum diberikan kepada akun Anda.';
@@ -141,21 +141,23 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const updates: Partial<Asset> = canEditThisAsset ? {
-        name: formData.name.trim(),
-        brand: formData.brand.trim(),
-        model: formData.model.trim(),
-        serial_number: formData.serial_number.trim(),
-        corporate_asset_number: formData.corporate_asset_number.trim() ? formData.corporate_asset_number.trim() : null,
-        // T2B-2: relasi lokasi fisik + teks legacy (sinkron bila master dipilih).
-        asset_location_id: formData.asset_location_id || null,
-        location: (formData.asset_location_id ? assetLocationPath(formData.asset_location_id) : formData.location.trim()) || formData.location.trim(),
-        condition: formData.condition,
-        is_loanable: formData.is_loanable,
-        specifications: formData.specifications.trim(),
-        notes: formData.notes.trim(),
+      const updates: Partial<Asset> = {
+        ...(canEditThisAsset ? {
+          name: formData.name.trim(),
+          brand: formData.brand.trim(),
+          model: formData.model.trim(),
+          serial_number: formData.serial_number.trim(),
+          corporate_asset_number: formData.corporate_asset_number.trim() ? formData.corporate_asset_number.trim() : null,
+          // T2B-2: relasi lokasi fisik + teks legacy (sinkron bila master dipilih).
+          asset_location_id: formData.asset_location_id || null,
+          location: (formData.asset_location_id ? assetLocationPath(formData.asset_location_id) : formData.location.trim()) || formData.location.trim(),
+          condition: formData.condition,
+          is_loanable: formData.is_loanable,
+          specifications: formData.specifications.trim(),
+          notes: formData.notes.trim(),
+        } : {}),
         ...(canChangeAssetStatus ? { status: selectedUserId ? 'assigned' : formData.status } : {}),
-      } : {};
+      };
       const assignmentChanged = canAssignThisAsset
         && selectedUserId !== (asset.assigned_to?.id || '');
 
