@@ -374,11 +374,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                       <Shield className="w-3.5 h-3.5 text-emerald-600" /> Akun & Profil
                     </p>
-                    {currentUser.id.startsWith('SIM-') && (
-                      <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                        Mode Simulasi
-                      </span>
-                    )}
                   </div>
                   <p className="text-[11px] text-slate-500 mt-0.5">Pilih akun terdaftar untuk berpindah sesi</p>
                 </div>
