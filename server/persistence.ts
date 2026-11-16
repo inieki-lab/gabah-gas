@@ -658,7 +658,8 @@ export async function initializePersistence(): Promise<void> {
       // one-time migration results to the in-memory snapshot before it is saved
       // or synchronized again; preserve role_label and all other profile fields.
       const normalizedUsers = await pool.query<{ id: string; role: string }>('SELECT id::text AS id, role FROM users');
-      const normalizedRoles = new Map(normalizedUsers.rows.map(row => [String(row.id), String(row.role)]));
+      const normalizedRoles = new Map<string, string>();
+      for (const row of normalizedUsers.rows) normalizedRoles.set(String(row.id), String(row.role));
       for (const user of db.users) {
         const normalizedRole = normalizedRoles.get(String(user.id));
         if (normalizedRole) user.role = normalizedRole;
