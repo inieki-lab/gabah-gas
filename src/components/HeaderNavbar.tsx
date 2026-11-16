@@ -63,7 +63,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
       ? currentUser.role_keys.includes(key)
       : currentUser.role === legacyLabel;
   const isSuperAdmin = currentUser.is_superadmin === true
-    || (currentUser.role_keys === undefined && isSuperAdmin);
+    || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
   const isHumas = hasRoleKey('humas', 'Humas');
   const isIT = hasRoleKey('it', 'IT') || isSuperAdmin;
   const isGA = hasRoleKey('ga', 'GA') || isSuperAdmin;
