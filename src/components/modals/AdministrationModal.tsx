@@ -1521,7 +1521,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     setEditUserData({
       name: user.name || '',
       email: user.email || '',
-      role: PRIMARY_PROFILE_ROLES.some(r => r.value === user.role) ? user.role : 'Karyawan',
+      role: user.role || 'Pegawai',
       division: (user.division as OwnerDivision) || 'Umum',
       department: user.department || '',
       job_level_code: (user as any).job_level_code || '',
@@ -1536,7 +1536,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // ============ IMPORT MASSAL PEGAWAI (CSV/Excel) ============
-  const validImportRoles = [...PRIMARY_PROFILE_ROLES.map(r => r.value as string), 'Supply Chain', 'PIBC'];
+  const validImportRoles: string[] = []; // Profile labels are free-form; they do not grant application access.
   const validImportDivisions = divisions.map(d => String(d.code));
   const validImportJobLevels = jobLevels.filter(j => j.is_active).map(j => String(j.code));
   const validImportUnitIds = orgUnits.filter(u => u.is_active).map(u => String(u.id));
@@ -2137,19 +2137,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Label Profil Pegawai (bukan hak akses)</label>
-                      <select
+                      <input
+                        type="text"
+                        maxLength={120}
                         value={newUserData.role}
-                        onChange={e => {
-                          const r = e.target.value as UserRole;
-                          const found = PRIMARY_PROFILE_ROLES.find(x => x.value === r);
-                          setNewUserData({ ...newUserData, role: r, role_label: found?.label || r });
-                        }}
+                        onChange={e => setNewUserData({ ...newUserData, role: e.target.value as UserRole, role_label: e.target.value })}
+                        placeholder="Contoh: Pegawai, Admin ME, IT Support"
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
-                      >
-                        {PRIMARY_PROFILE_ROLES.map(r => (
-                          <option key={r.value} value={r.value}>{r.label}</option>
-                        ))}
-                      </select>
+                      />
                       <p className="mt-1 text-[10px] text-slate-500">Kolom ini hanya label profil kompatibilitas. Hak akses aplikasi ditentukan terpisah melalui penetapan Dynamic RBAC di bawah.</p>
                     </div>
                     <div>
@@ -2443,15 +2438,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-slate-700">Label Profil Pegawai (bukan hak akses)</label>
-                          <select
+                          <input
+                            type="text"
+                            maxLength={120}
                             value={editUserData.role}
                             onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
+                            placeholder="Contoh: Pegawai, Admin ME, IT Support"
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                          >
-                            {PRIMARY_PROFILE_ROLES.map(r => (
-                              <option key={r.value} value={r.value}>{r.label}</option>
-                            ))}
-                          </select>
+                          />
                           <p className="mt-1 text-[10px] text-slate-500">Label profil tidak memberikan izin. Hak akses diberikan melalui Dynamic RBAC dan dapat terdiri dari beberapa role.</p>
                         </div>
 
