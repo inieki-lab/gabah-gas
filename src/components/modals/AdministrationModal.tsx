@@ -467,13 +467,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   });
 
   // Role & Permissions State
-  const [permissions, setPermissions] = useState<RolePermissionRow[]>(() => {
-    const saved = localStorage.getItem('gabah_role_permissions');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return DEFAULT_PERMISSIONS;
-  });
+  // Legacy role matrix is retired. PostgreSQL Dynamic RBAC below is authoritative.
+  const [permissions] = useState<RolePermissionRow[]>([]);
   const [roleToEdit, setRoleToEdit] = useState<RolePermissionRow | null>(null);
   const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
   const [editRoleRow, setEditRoleRow] = useState<RolePermissionRow | null>(null);
@@ -1086,18 +1081,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const handleSaveRolePermissions = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editRoleRow) return;
-    const updated = permissions.map(p => p.role === editRoleRow.role ? editRoleRow : p);
-    setPermissions(updated);
-    localStorage.setItem('gabah_role_permissions', JSON.stringify(updated));
     setIsEditRoleOpen(false);
     setRoleToEdit(null);
-    showToast(`Matriks hak akses untuk peran "${editRoleRow.role}" berhasil diperbarui!`, 'success');
+    showToast('Matriks lama sudah dinonaktifkan. Kelola permission melalui Dynamic Role Management agar tersimpan di PostgreSQL.', 'info');
   };
 
   const handleResetRolePermissions = () => {
-    setPermissions(DEFAULT_PERMISSIONS);
-    localStorage.removeItem('gabah_role_permissions');
-    showToast('Matriks hak akses dikembalikan ke konfigurasi standar BUMD Food Station.', 'info');
+    showToast('Matriks lama sudah dinonaktifkan. Tidak ada permission PostgreSQL yang diubah.', 'info');
   };
 
   // Organization Handlers
@@ -1536,7 +1526,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       department: user.department || '',
       job_level_code: (user as any).job_level_code || '',
       unit_id: (user as any).unit_id || '',
-      office_location_id: (user as any).office_location_id || (user.role === 'Supply Chain' ? 'OFF-RPC' : user.role === 'PIBC' ? 'OFF-PIBC' : ''),
+      office_location_id: (user as any).office_location_id || '',
       phone: user.phone || '',
       is_active: user.is_active !== undefined ? user.is_active : true,
       telegram_chat_id: user.telegram_chat_id || '',
