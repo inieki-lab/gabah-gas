@@ -344,3 +344,32 @@ The repository contains a direct architecture/seed contradiction that must be re
 3. Finalkan lima persona UAT tanpa merusak referensi transaksi dan assignment aset.
 4. Rekonsiliasi owner domain SC/PIBC dan lokasi RPC/PIBC secara non-destruktif.
 5. Jalankan UAT browser, Docker fresh install + upgrade DB existing, backup/restore, dan deployment rehearsal.
+
+
+---
+
+## Update audit 17 November 2026 — continued endpoint/UI synchronization
+
+### Verified changes on `audit/dynamic-rbac-full-sync`
+- Ticket and loan workspaces, dashboard classification, room queues, header notifications, and sidebar indicators are progressively driven by effective permissions/capabilities rather than employee profile labels.
+- Auditor remains deny-write at the server middleware. UI checks now use `role_keys` as authoritative whenever supplied; the legacy profile-label fallback is used only when role keys are absent (file-store compatibility).
+- Asset catalogue navigation now accepts `assets.audit.read` directly, matching the API's Auditor read path; it no longer incorrectly requires `assets.read` as an additional prerequisite for that audit-only path.
+- Loan return API now allows the borrower to return their own loan without the separate owner-side `loans.return` permission. Other actors still require `loans.return` and matching owner scope in the domain service.
+- Dashboard loan/ticket metrics and attention items now require the corresponding `loans.read` / `tickets.read` permission in PostgreSQL mode, in addition to dashboard access and applicable data scopes.
+- Contract document upload now checks `contracts.documents.upload` consistently at middleware and handler level; it no longer accidentally imposes the unrelated `contracts.update` capability.
+- Administration role-scope editor's TypeScript state now includes `division_except` explicitly rather than narrowing it away with a cast.
+- Static regression assertions were added/updated for the above boundaries.
+
+### CI observations
+- CI run #1678 passed on commit `dda972e` (63/63 workflow steps).
+- CI run #1682 passed on commit `fa07904` (63/63 workflow steps).
+- CI run #1698 was started for commit `dea651f`; its final result must be checked before treating the latest audit changes as green. Later commits may have their own CI run.
+
+### Findings still open — do not silently normalize
+1. Ticket categories are still hard-coded as `IT`, `GA`, `SC`, and `PIBC`. The current organizational decision treats RPC/SC and PIBC as physical locations, not permanent roles/divisions. Ticket service ownership/queue taxonomy and the planned ME facility queue need an approved mapping before changing historical categories or notification routing.
+2. SC/PIBC remain in historical owner/category masters and transaction records. Do not bulk rewrite asset owners, category codes, loan approvals, or contracts until an owner-domain migration map and FK/report compatibility plan are approved.
+3. RBAC policy cache is process-local. `refreshRbacPolicy()` runs at startup and after mutations handled by that process; multi-instance deployments need cross-instance invalidation (e.g. PostgreSQL notification/version strategy). Current single-container topology reduces immediate exposure but does not prove multi-node safety.
+4. Canonical/demo users and GA staff/Karyawan UAT personas remain unresolved. Preserve transaction references and assigned PC assets; do not delete canonical users by name alone.
+5. Browser UAT on PostgreSQL, fresh-install/upgrade rehearsal, backup/restore drill, and target-environment TLS/secret/monitoring checks remain outstanding.
+
+**Readiness remains pre-UAT / staging candidate, not production-ready.** Keep PR #115 Draft and do not merge to `main` until the latest CI, full browser UAT, data mapping, and operational release gates pass.
