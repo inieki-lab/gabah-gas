@@ -2544,12 +2544,18 @@ async function startServer() {
   });
 
   app.get('/api/assets/:id', (req, res) => {
-    if (!requireRbacPermission(req, res, 'assets.read')) return;
     const actor = getActor(req);
-    // Apply the same legacy division/ownership scope as the catalogue endpoint;
-    // a direct ID lookup must not bypass list-level visibility.
+    const canReadAssets = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'assets.read');
+    const canReadLicenses = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'licenses.read');
+    if (isPostgresPersistenceActive() && !canReadAssets && !canReadLicenses) {
+      return res.status(403).json({ success: false, message: 'Permission assets.read atau licenses.read diperlukan.' });
+    }
+    // Match the collection endpoint: license-only readers can open visible
+    // license records, but cannot use a guessed asset ID to read other assets.
     const asset = GabahDomainService.getScopedAssets(actor).find(a => a.id === req.params.id);
-    if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan atau tidak berada dalam cakupan akses Anda.' });
+    if (!asset || (isPostgresPersistenceActive() && !canReadAssets && asset.category_type !== 'License')) {
+      return res.status(404).json({ success: false, message: 'Aset tidak ditemukan atau tidak berada dalam cakupan akses Anda.' });
+    }
     res.json({ success: true, data: asset });
   });
 
