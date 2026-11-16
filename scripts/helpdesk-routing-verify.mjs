@@ -70,6 +70,7 @@ assert.match(migrations.meAdmin, /UNIT-PIBC-ME/);
 assert.match(migrations.dispatch, /tickets\.assign/);
 assert.match(migrations.gaOperator, /ga_helpdesk_operator/);
 assert.match(migrations.gaOperator, /DELETE FROM gabah_role_permissions/);
+assert.match(migrations.gaOperator, /tickets\.close/);
 assert.match(migrations.requestPermissions, /tickets\.create\.ga/);
 assert.match(migrations.requestPermissions, /tickets\.create\.me/);
 assert.match(migrations.requesterRoles, /pemohon_tiket_ga/);
