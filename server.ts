@@ -2309,10 +2309,21 @@ async function startServer() {
 
   // Assets Management
   app.get('/api/assets', (req, res) => {
-    if (!requireRbacPermission(req, res, 'assets.read')) return;
     const actor = getActor(req);
+    if (isPostgresPersistenceActive()) {
+      const canReadAssets = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'assets.read');
+      const canReadLicenses = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'licenses.read');
+      if (!canReadAssets && !canReadLicenses) {
+        return res.status(403).json({ success: false, message: 'Permission assets.read atau licenses.read diperlukan.' });
+      }
+      const scopedAssets = GabahDomainService.getScopedAssets(actor);
+      const visible = canReadAssets
+        ? scopedAssets
+        : scopedAssets.filter(asset => asset.category_type === 'License');
+      return res.json({ success: true, data: visible });
+    }
     const scopedAssets = GabahDomainService.getScopedAssets(actor);
-    res.json({ success: true, data: scopedAssets });
+    return res.json({ success: true, data: scopedAssets });
   });
 
   app.post('/api/assets', async (req, res) => {
