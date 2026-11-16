@@ -10,9 +10,6 @@ const migration = fs.readFileSync(path.join(root, 'server/migrations/034_asset_n
 const css = fs.readFileSync(path.join(root, 'src/index.css'), 'utf8');
 
 AssetNumberingEngine._resetForTesting();
-AssetNumberingEngine.syncFromExistingAssets([
-  { asset_number: 'IT-HLT-2026-0007' },
-]);
 AssetNumberingEngine.configureRules([{
   id: 'rule-it-hlt',
   owner_division: 'IT',
@@ -21,10 +18,14 @@ AssetNumberingEngine.configureRules([{
   sequence_digits: 5,
   is_active: true,
 }]);
+AssetNumberingEngine.syncFromExistingAssets([
+  { asset_number: 'IT-HLT-2026-0007' },
+  { asset_number: 'IT_HLT_2026_0009' },
+]);
 assert.equal(
   AssetNumberingEngine.generateAssetNumber('IT', 'HLT', 2026),
-  'IT_HLT_2026_00008',
-  'format edits must affect future numbers while continuing above the existing sequence',
+  'IT_HLT_2026_00010',
+  'format edits must affect future numbers while resuming the maximum across old and new separators',
 );
 assert.throws(
   () => {
