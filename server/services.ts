@@ -1843,7 +1843,7 @@ export class GabahDomainService {
 
   static createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
     if (!hasRoomPermission(actor, 'meeting_types.manage')) {
-      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan. menambah tipe rapat.');
+      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama tipe rapat wajib diisi.');
     const newItem: ServerMeetingType = {
@@ -1864,7 +1864,7 @@ export class GabahDomainService {
 
   static updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
     if (!hasRoomPermission(actor, 'meeting_types.manage')) {
-      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan. mengubah tipe rapat.');
+      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
     const item = (db.meetingTypes || []).find(m => m.id === id);
     if (!item) throw new Error('Tipe rapat tidak ditemukan.');
@@ -1880,7 +1880,7 @@ export class GabahDomainService {
 
   static deleteMeetingType(id: string, actor: ServerUser): { success: boolean } {
     if (!hasRoomPermission(actor, 'meeting_types.manage')) {
-      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan. menghapus tipe rapat.');
+      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
     const idx = (db.meetingTypes || []).findIndex(m => m.id === id);
     if (idx === -1) throw new Error('Tipe rapat tidak ditemukan.');
