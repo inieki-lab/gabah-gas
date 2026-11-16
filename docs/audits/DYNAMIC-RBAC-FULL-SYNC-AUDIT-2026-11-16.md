@@ -397,3 +397,14 @@ The repository contains a direct architecture/seed contradiction that must be re
 - The current lifecycle action set has initiation actions (repair, damaged, cannibalize, propose disposal, auction) and Superadmin disposal approval, but no explicit repair-completion or auction-finalization transition.
 - Destructive actions such as cannibalization/disposal/auction should be reviewed for assigned-custodian handling; active-loan checks exist, but assignment/custody preconditions need explicit business approval.
 - Do not invent a completion workflow or silently unassign assets. Keep these as release-gate findings until the business process is confirmed.
+
+
+### Route inventory follow-up — 17 November 2026
+
+- Rechecked the exact branch head `493a9edd1c9b8352f4908eec31a92511159a3ae6`: GitHub Actions CI run #1685 (`43956715855`) completed with conclusion **SUCCESS**. The `verify` job completed successfully.
+- Performed a static inventory of 122 Express route declarations in `server.ts`. This is a source review, not a live HTTP penetration test. The inventory confirms the RBAC administration read endpoints call the Superadmin guard even though a simple lexical scan does not see the guard name in the route declaration itself. User create/import/update/delete/reset-password and numbering administration also remain Superadmin-only by explicit handler checks; these are governance controls, not grants derived from job title, division, or office location.
+- The module registry GET endpoint is used to discover active modules for authenticated clients; module mutation and module audit history remain Superadmin-controlled. It must not be mistaken for a permission grant to module data.
+- No blanket rewrite of these governance boundaries was made: delegating user administration or module administration to custom roles needs an explicit business/security decision and scope model first. Do not infer that every permission-catalogue entry is already enforced merely because it exists.
+- Static route inventory cannot prove record-level scope, attachment authorization, or behavior under malformed/direct-ID requests. Those still require live HTTP tests against PostgreSQL for each module.
+
+**Exact-head status:** CI green on `493a9edd`; product readiness remains **pre-UAT / staging candidate**, not production-ready. Open gates remain taxonomy/owner reconciliation, ticket category and ME routing design, browser UAT, lifecycle completion/asset custody rules, backup/restore, and deployment security/operations checks. PR #115 stays Draft; `main` remains untouched.
