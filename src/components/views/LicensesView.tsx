@@ -40,6 +40,8 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
   const totalSeats = licenseAssets.reduce((sum, a) => sum + (a.license_detail?.total_seats || 0), 0);
   const usedSeats = licenseAssets.reduce((sum, a) => sum + (a.license_detail?.used_seats || 0), 0);
 
+  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+
   return (
     <div className="space-y-6">
       
@@ -55,7 +57,7 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
           </p>
         </div>
 
-        {(currentUser.is_superadmin === true || currentUser.permission_keys?.includes('licenses.manage') === true || (currentUser.permission_keys === undefined && ['Admin GABAH', 'IT'].includes(currentUser.role))) && (
+        {!isAuditor && (currentUser.is_superadmin === true || currentUser.permission_keys?.includes('*') === true || currentUser.permission_keys?.includes('licenses.manage') === true || (currentUser.permission_keys === undefined && ['Admin GABAH', 'IT'].includes(currentUser.role))) && (
           <button
             onClick={handleOpenCreate}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
