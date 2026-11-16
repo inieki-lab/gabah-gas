@@ -306,12 +306,8 @@ export function parseUsersImportCsv(
   const valid: { name: string; email: string; role: string; division: string; department: string; phone: string; job_level_code?: string; unit_id?: string; office_location_id?: string }[] = [];
   const errors: string[] = [];
   const seenEmails = new Set<string>();
-  const normRole = (v: string) => {
-    const normalized = (v || '').trim().toLowerCase();
-    return validRoles.find(r => r.toLowerCase() === normalized)
-      || validRoles.find(r => r.toLowerCase().startsWith(normalized) && normalized.length >= 2)
-      || '';
-  };
+  // Employee profile labels are free-form and never map to application permissions.
+  const normRole = (v: string) => String(v || '').trim().slice(0, 120) || 'Pegawai';
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     const rowNo = i + 1;
@@ -322,11 +318,7 @@ export function parseUsersImportCsv(
     if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di file (${email}).`); continue; }
     seenEmails.add(email);
     const roleRaw = iRole !== -1 ? (r[iRole] || '').trim() : '';
-    const role = roleRaw ? normRole(roleRaw) : 'Karyawan';
-    if (roleRaw && !role) {
-      errors.push(`Baris ${rowNo}: Role utama "${roleRaw}" tidak valid. Pilihan: ${validRoles.join(', ')}. Role fungsi ditetapkan setelah akun dibuat.`);
-      continue;
-    }
+    const role = normRole(roleRaw);
     const divisionRaw = iDiv !== -1 ? (r[iDiv] || '').trim() : '';
     const division = validDivisions.find(d => d.toLowerCase() === divisionRaw.toLowerCase()) || divisionRaw || 'Umum';
     const jobLevelCode = iJobLevel !== -1 ? (r[iJobLevel] || '').trim().toUpperCase() : '';
