@@ -19,7 +19,7 @@ import {
   UserX,
   HelpCircle
 } from 'lucide-react';
-import { Asset, UserProfile, AssetCondition, AssetStatus } from '../../types';
+import { Asset, UserProfile, AssetCondition } from '../../types';
 import { GabahService } from '../../services/gabahService';
 import { gabahApi } from '../../services/gabahApi';
 
@@ -79,7 +79,6 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
     location: '',
     asset_location_id: '' as string,
     condition: 'good' as AssetCondition,
-    status: 'available' as AssetStatus,
     is_loanable: false,
     specifications: '',
     notes: '',
@@ -87,6 +86,8 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [assignmentReason, setAssignmentReason] = useState<string>('');
+  const [lifecycleAction, setLifecycleAction] = useState<'' | 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction'>('');
+  const [lifecycleNotes, setLifecycleNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -101,13 +102,14 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         location: asset.location || '',
         asset_location_id: asset.asset_location_id || '',
         condition: asset.condition || 'good',
-        status: (asset.status === 'in_use' ? 'assigned' : asset.status) || 'available',
         is_loanable: Boolean(asset.is_loanable),
         specifications: asset.specifications || '',
         notes: asset.notes || '',
       });
       setSelectedUserId(asset.assigned_to?.id || '');
       setAssignmentReason('');
+      setLifecycleAction('');
+      setLifecycleNotes('');
       setErrorMsg(null);
     }
   }, [asset, isOpen]);
@@ -121,6 +123,9 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   const canAssignThisAsset = GabahService.canAssignAsset(currentUser, asset);
   const canChangeAssetStatus = GabahService.canManageAssetLifecycle(currentUser, asset);
   const canManageThisAsset = canEditThisAsset || canAssignThisAsset || canChangeAssetStatus;
+  const canSaveAssetDetails = canEditThisAsset || canAssignThisAsset;
+  const isSuperAdmin = currentUser?.is_superadmin === true
+    || (currentUser?.permission_keys === undefined && currentUser?.role === 'Admin GABAH');
   const authorityWarning = canManageThisAsset
     ? ''
     : 'Permission assets.update atau assets.assign beserta scope owner aset belum diberikan kepada akun Anda.';
@@ -132,8 +137,8 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canManageThisAsset) {
-      setErrorMsg('Anda tidak memiliki wewenang mengubah data atau penugasan aset ini.');
+    if (!canSaveAssetDetails) {
+      setErrorMsg('Anda tidak memiliki wewenang mengubah informasi atau penugasan aset ini.');
       return;
     }
 
@@ -156,7 +161,6 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
           specifications: formData.specifications.trim(),
           notes: formData.notes.trim(),
         } : {}),
-        ...(canChangeAssetStatus ? { status: selectedUserId ? 'assigned' : formData.status } : {}),
       };
       const assignmentChanged = canAssignThisAsset
         && selectedUserId !== (asset.assigned_to?.id || '');
@@ -176,6 +180,22 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal menyimpan perubahan aset.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLifecycleSubmit = async () => {
+    if (!canChangeAssetStatus || !lifecycleAction || !lifecycleNotes.trim()) return;
+    setIsSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const updated = await gabahApi.mutateLifecycle(asset.id, lifecycleAction, lifecycleNotes.trim());
+      await onSaved?.(updated);
+      setLifecycleAction('');
+      setLifecycleNotes('');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Gagal menjalankan tindakan lifecycle aset.');
     } finally {
       setIsSubmitting(false);
     }
@@ -274,11 +294,6 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     value={selectedUserId}
                     onChange={(e) => {
                       setSelectedUserId(e.target.value);
-                      if (e.target.value) {
-                        setFormData(prev => ({ ...prev, status: 'assigned' }));
-                      } else {
-                        setFormData(prev => ({ ...prev, status: 'available' }));
-                      }
                     }}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
@@ -364,24 +379,52 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                 </p>
               </div>
 
-              {/* Status Operasional */}
-              <div>
+              {/* Lifecycle workflow uses the dedicated server state machine, never direct status PATCH. */}
+              <div className="md:col-span-2 border-t border-slate-200 pt-3">
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Status Operasional
+                  Tindakan Lifecycle Aset
                 </label>
-                <select
-                  disabled={!canChangeAssetStatus || isSubmitting || Boolean(selectedUserId)}
-                  value={formData.status}
-                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as AssetStatus }))}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                >
-                  <option value="available">Tersedia / Idle (Siap Digunakan)</option>
-                  <option value="assigned">Digunakan Pegawai (Assigned)</option>
-                  <option value="maintenance">Dalam Pemeliharaan / Servis (Maintenance)</option>
-                  <option value="retired">Afkir / Hapus Buku (Retired)</option>
-                </select>
+                {canChangeAssetStatus ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <select
+                      value={lifecycleAction}
+                      disabled={isSubmitting}
+                      onChange={(e) => setLifecycleAction(e.target.value as typeof lifecycleAction)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900"
+                    >
+                      <option value="">Pilih tindakan lifecycle...</option>
+                      <option value="repair">Kirim ke pemeliharaan / perbaikan</option>
+                      <option value="damaged">Tandai rusak</option>
+                      <option value="cannibalize">Kanibalisasi aset</option>
+                      <option value="propose_disposal">Usulkan penghapusan</option>
+                      <option value="auction">Ajukan proses lelang</option>
+                      {isSuperAdmin && <option value="approve_disposal">Setujui penghapusan</option>}
+                    </select>
+                    <input
+                      type="text"
+                      value={lifecycleNotes}
+                      disabled={isSubmitting}
+                      onChange={(e) => setLifecycleNotes(e.target.value)}
+                      maxLength={2000}
+                      placeholder="Catatan / alasan tindakan lifecycle"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleLifecycleSubmit}
+                      disabled={!lifecycleAction || !lifecycleNotes.trim() || isSubmitting}
+                      className="md:col-span-2 justify-self-start px-3 py-2 rounded-lg bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white text-xs font-bold"
+                    >
+                      Terapkan Tindakan Lifecycle
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-500">
+                    Status saat ini: <strong>{asset.status}</strong>. Perubahan lifecycle memerlukan permission assets.lifecycle.
+                  </p>
+                )}
                 <p className="text-[10px] text-slate-500 mt-1">
-                  {selectedUserId ? 'Otomatis diatur ke Assigned karena ada PIC.' : 'Pilih status ketersediaan barang di gudang.'}
+                  Perubahan status dilakukan melalui workflow lifecycle agar validasi transisi dan audit trail tetap terjaga.
                 </p>
               </div>
 
@@ -574,7 +617,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
             <button
               type="submit"
               form="edit-asset-form"
-              disabled={!canManageThisAsset || isSubmitting}
+              disabled={!canSaveAssetDetails || isSubmitting}
               className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs"
             >
               {isSubmitting ? (
