@@ -61,7 +61,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     checklistText: '',
   });
 
-  const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
+  const isAuditor = Array.isArray(currentUser?.role_keys) ? currentUser.role_keys.includes('auditor') : currentUser?.role === 'Auditor';
   const hasPermission = (key: string) => Array.isArray(currentUser?.permission_keys)
     ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key)
     : ['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
