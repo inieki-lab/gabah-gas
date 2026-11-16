@@ -1457,8 +1457,9 @@ async function startServer() {
         const uPrefix = uEmail.split('@')[0];
         return uPrefix === inPrefix;
       });
-      const user = exactUser ?? db.users.find(u => {
-        // Role-based Alias Matching (fallback only — e.g. `karyawan@`, `it@`, `sc@`)
+      const user = exactUser ?? (!isPostgresPersistenceActive() ? db.users.find(u => {
+        // File-store development compatibility only. Production login resolves
+        // exact account identity and never infers identity from an employee profile.
         if (u.role === 'Admin GABAH' && ['admin', 'admin.gabah', 'budi.santoso', 'superadmin'].includes(inPrefix)) return true;
         if (u.role === 'IT' && ['it', 'it.support', 'dani', 'dani.setiawan'].includes(inPrefix)) return true;
         if (u.role === 'GA' && ['ga', 'ga.officer', 'siti', 'siti.rahmawati'].includes(inPrefix)) return true;
@@ -1468,9 +1469,8 @@ async function startServer() {
         if (u.role === 'PIBC' && ['pibc', 'pibc.admin', 'pasar', 'bambang', 'bambang.h'].includes(inPrefix)) return true;
         if (u.role === 'Karyawan' && ['karyawan', 'pegawai', 'hendra', 'hendra.w'].includes(inPrefix)) return true;
         if (u.role === 'Auditor' && ['auditor', 'spi', 'maya', 'maya.indriani'].includes(inPrefix)) return true;
-
         return false;
-      });
+      }) : undefined);
 
       if (!user || !user.is_active) {
         const lock = recordFailedLogin(ip);
@@ -1652,21 +1652,19 @@ async function startServer() {
         });
       }
 
-      const { userId, role } = req.body || {};
-      if (!userId && !role) {
-        return res.status(400).json({ success: false, message: 'Target alih peran wajib diisi (userId atau role).' });
+      const { userId } = req.body || {};
+      if (typeof userId !== 'string' || !userId.trim()) {
+        return res.status(400).json({ success: false, message: 'Target alih akun wajib berupa userId.' });
       }
 
-      let targetUser = userId
-        ? db.users.find(u => u.id === userId || u.email?.toLowerCase() === String(userId).toLowerCase() || u.name?.toLowerCase() === String(userId).toLowerCase())
-        : null;
-
-      if (!targetUser && role) {
-        targetUser = db.users.find(u => u.role === role);
-      }
+      const targetUser = db.users.find(u =>
+        u.id === userId
+        || u.email?.toLowerCase() === userId.toLowerCase()
+        || u.name?.toLowerCase() === userId.toLowerCase()
+      );
 
       if (!targetUser) {
-        return res.status(404).json({ success: false, message: 'User atau role target tidak ditemukan.' });
+        return res.status(404).json({ success: false, message: 'Akun target tidak ditemukan.' });
       }
       if (!targetUser.is_active) {
         return res.status(403).json({ success: false, message: 'Akun target tidak aktif.' });
