@@ -19,6 +19,7 @@ import {
   Download,
   Upload,
   RefreshCw,
+  RotateCcw,
   ChevronRight,
   Activity,
   Check,
