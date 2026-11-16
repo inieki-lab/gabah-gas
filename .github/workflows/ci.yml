@@ -50,6 +50,9 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: Employee profile capability normalization regression
+        run: npm run test:employee-role-normalization
+
       - name: Branch migration non-destructive safety check
         run: npm run test:branch-migration-safety
 
