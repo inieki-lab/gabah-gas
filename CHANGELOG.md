@@ -1,3 +1,13 @@
+## [2026-11-16] — Green theme enforcement & asset numbering rule management
+
+- Extend the green enterprise palette across legacy Tailwind color utilities so administration, forms, cards, and neutral surfaces no longer retain the previous gray/teal appearance.
+- Add PostgreSQL-backed asset numbering rule catalog with Superadmin-only read/create/update/delete endpoints and audit entries.
+- Allow separator and sequence-width changes for rules already in use while preserving issued asset numbers; lock owner/code identity after use.
+- Block deletion if assets or sequence history exist; unused-rule deletion requires exact `DIV/CODE` confirmation and a reason of at least 20 characters.
+- Document the remaining numbering-engine limitation: sequence counters are currently process-memory based and reconstructed from saved assets at boot; PostgreSQL atomic multi-instance issuance remains a release-gate item.
+
+---
+
 ## [2026-11-16] — Normalize legacy Humas and Secretariat profiles
 
 - PostgreSQL startup now materializes user rows before inserting legacy Humas/Sekretariat secondary capability assignments, avoiding foreign-key failures on a fresh database.
