@@ -52,7 +52,7 @@ async function main(){
   const base=await make(karyawan,'Stage3 existing');rec('ordinary booking','201 pending',`${base.status} ${base.json?.data?.status}`,base.status===201&&base.json?.data?.status==='pending_approval');
   const docBooking=await make(karyawan,'Stage3 documentation brief',{start_time:'15:00',end_time:'16:00',documentation_requested:true,documentation_type:'foto',documentation_notes:'Public documentation brief',attendees_list:'PRIVATE attendee list',consumption_requested:true,consumption_type:'lunch_box',consumption_pax:10,consumption_notes:'PRIVATE consumption note',notes:'PRIVATE internal note'});
   rec('documentation booking creation','201','HTTP '+docBooking.status+' '+(docBooking.json?.message||''),docBooking.status===201);
-  const humasProfile=await req(b,'GET','/api/auth/me',{token:humas});
+  let humasProfile=await req(b,'GET','/api/auth/me',{token:humas});
   rec('Humas capability available','assigned Humas role','role='+(humasProfile.json?.data?.role||'-')+' roles='+((humasProfile.json?.data?.role_keys||[]).join(',')),humasProfile.status===200&&(humasProfile.json?.data?.role==='Humas'||(humasProfile.json?.data?.role_keys||[]).includes('humas')));
   rec('created documentation flag','true',String(docBooking.json?.data?.documentation_requested),docBooking.json?.data?.documentation_requested===true);
   const humasQueueResponse=await req(b,'GET','/api/room-reservations',{token:humas});
