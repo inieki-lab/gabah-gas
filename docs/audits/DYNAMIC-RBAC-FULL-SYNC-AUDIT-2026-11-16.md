@@ -284,3 +284,12 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Commits: `3c2bad1`, `b4bd170`, `c7047b2`, `0c02687`, `9b5efd8`, `eec4b3b`.
 - CI #1631 validates the dedicated contract sub-resource capabilities; CI #1633 validates the create-only permission tightening. Both were still running when this note was written. Do not mark these latest contract changes validated until both jobs complete successfully.
 - Remaining audit areas: exhaustive API matrix (including exports, search, notification reads, and all attachment/download paths), Administration UI with PostgreSQL, legacy taxonomy cleanup (Supply Chain → RPC; SC/PIBC are locations, not roles/divisions), and laptop browser UAT. PR #115 remains draft and unmerged.
+
+
+### Follow-up regression correction and reminder administration audit (16 November 2026)
+
+- CI #1631 completed with **SUCCESS** for contract milestone, renewal, and document upload capability separation.
+- CI #1633 and #1634 failed at one newly added static assertion: the assertion scanned beyond the `canManageContracts` function and incorrectly matched `contracts.update` in the next function. Runtime code and typecheck were not the failure. The assertion now extracts only the target function body before checking its permission. CI #1635 validates this corrected assertion.
+- Another endpoint review found manual contract reminder execution and scheduler-status routes checked `contracts.reminders.manage` and then redundantly required the Superadmin role. Removed the redundant role check: explicit permission is now authoritative for these administrative endpoints. Added a regression assertion. CI #1637 validates this latest reminder permission correction.
+- Taxonomy review confirmed the remaining legacy mismatch is broader than a label rename: `server/taxonomy.ts` still models SC/PIBC as asset owner divisions; `server/db.ts` still seeds SC/PIBC divisions and org units, while office locations already include RPC/SC and PIBC. Migration 026 is intentionally a no-op compatibility marker and warns against rewriting user roles or ownership from branch labels. Do not apply a blanket data migration. A separately reviewed ownership/location reconciliation is required before removing SC/PIBC owner values.
+- Latest CI runs #1635 and #1637 were still running when this note was written. Confirm exact-head success before treating these changes as validated.
