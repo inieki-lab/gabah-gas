@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { getAvailablePort } from './test-port.mjs';
 
 const results = [];
 function record(test, expected, actual, pass) {
@@ -63,7 +64,7 @@ async function main() {
     backupState = fs.readFileSync(stateFile, 'utf8');
     fs.rmSync(stateFile);
   }
-  const PORT = 39000 + Math.floor(Math.random() * 2000);
+  const PORT = await getAvailablePort();
   const base = `http://127.0.0.1:${PORT}`;
   const child = spawn(process.execPath, [serverPath], {
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'development' },
