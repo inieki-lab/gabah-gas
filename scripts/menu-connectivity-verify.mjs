@@ -9,7 +9,7 @@
  *
  * Requires `npm run build` first (dist/server.cjs).
  */
-process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+process.env.NODE_ENV = 'production'; // This verifies the compiled production server; Vite/HMR must not start in this test.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -68,7 +68,7 @@ async function main() {
     env: {
       ...process.env,
       PORT: String(PORT),
-      NODE_ENV: 'development',
+      NODE_ENV: 'production',
       GABAH_INITIAL_ADMIN_PASSWORD: adminPass,
       // Neutralize inherited workspace GABAH_TEST_PASSWORD (see .env.local)
       GABAH_TEST_PASSWORD: '',
