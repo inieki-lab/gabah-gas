@@ -61,9 +61,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isAuditor = hasRoleKey('auditor', 'Auditor');
   const isSuperAdmin = Boolean(currentUser.is_superadmin)
     || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
-  const isEmployee = currentUser.role_keys !== undefined
-    ? currentRoleKeys.includes('karyawan') || isHumas || isSekdir
-    : currentUser.role === 'Karyawan' || isHumas || isSekdir;
   const canPermission = (key: string) => {
     if (currentUser.permission_keys?.includes('*') === true) return true;
     if (Array.isArray(currentUser.permission_keys)) return currentUser.permission_keys.includes(key);
@@ -76,6 +73,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
     return (legacyGrants[key] || []).includes(currentUser.role);
   };
+  // Dashboard composition follows effective operational capabilities, not the
+  // primary employee profile or a hard-coded IT/GA role label. Custom roles
+  // with the same permissions therefore receive the operational workspace.
+  const operationalManagementPermissions = [
+    'assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign',
+    'assets.move', 'assets.lifecycle', 'loans.approve', 'loans.reject',
+    'loans.handover', 'tickets.assign', 'tickets.update', 'maintenances.create',
+    'maintenances.update', 'room_reservations.approve', 'room_reservations.reject',
+    'meeting_rooms.update', 'contracts.create', 'vendors.create',
+  ];
+  const hasOperationalManagementAccess = operationalManagementPermissions.some(canPermission);
+  const isEmployee = !isSuperAdmin && !isAuditor && !hasOperationalManagementAccess;
   const canCreateLoan = canPermission('loans.create');
   const canCreateTicket = canPermission('tickets.create');
   const canCreateAsset = canPermission('assets.create');
@@ -89,8 +98,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
   const isGlobalDashboard = isSuperAdmin || isAuditor;
-  const isDivisionDashboard = hasRoleKey('it', 'IT') || hasRoleKey('ga', 'GA');
-  const divisionLabel = hasRoleKey('it', 'IT') ? 'IT' : hasRoleKey('ga', 'GA') ? 'GA' : 'Unit kerja';
+  const isDivisionDashboard = hasOperationalManagementAccess;
+  const hasITRole = hasRoleKey('it', 'IT');
+  const hasGARole = hasRoleKey('ga', 'GA');
+  const divisionLabel = hasITRole && !hasGARole ? 'IT'
+    : hasGARole && !hasITRole ? 'GA'
+      : 'Operasional';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
