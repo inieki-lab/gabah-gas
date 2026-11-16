@@ -135,12 +135,17 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     }
   }
 
-  if (normalizedPath === '/api/audit-logs' && !isGlobalObserver(actor)) {
-    return res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });
+  if (normalizedPath === '/api/audit-logs') {
+    const hasExplicitAuditScope = isAuditorActor(actor)
+      && isPostgresPersistenceActive()
+      && hasRbacPermission(String(actor.id), 'audit.read')
+      && hasRbacScope(String(actor.id), 'all', null, 'audit');
+    if (!isGlobalObserver(actor) && !hasExplicitAuditScope) {
+      return res.status(403).json({ success: false, message: 'Audit log memerlukan permission audit.read dan scope audit eksplisit.' });
+    }
   }
-  if (normalizedPath === '/api/reconciliation' && !isGlobalObserver(actor)) {
-    return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
-  }
+  // Reconciliation is filtered by the caller's effective asset scopes after
+  // the reconciliation.read permission check; Auditor is not a global bypass.
 
   const assetMatch = req.path.match(/^\/api\/assets\/([^/]+)/i);
   // '/bulk-import' adalah operasi collection-level (bukan asset id);
