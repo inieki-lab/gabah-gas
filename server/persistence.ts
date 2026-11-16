@@ -584,40 +584,6 @@ async function backfillNormalizedTables(): Promise<void> {
   finally { client.release(); }
 }
 
-function collectLegacyEmployeeCapabilityAssignments(): Array<{ userId: string; roleKey: string }> {
-  return (db.users as any[])
-    .filter(user => ['Humas', 'Sekretaris Direksi'].includes(String(user.role || '').trim()))
-    .map(user => ({
-      userId: String(user.id),
-      roleKey: String(user.role).trim() === 'Humas' ? 'humas' : 'sekretaris_direksi',
-    }));
-}
-
-function normalizeLegacyEmployeeProfileRoles(): void {
-  for (const user of db.users as any[]) {
-    const legacyRole = String(user.role || '').trim();
-    if (!['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(legacyRole)) continue;
-
-    if (legacyRole === 'Humas') {
-      if (!user.role_label) user.role_label = 'Humas & Protokoler';
-    } else if (legacyRole === 'Sekretaris Direksi') {
-      if (!user.role_label) user.role_label = 'Sekretariat Direksi';
-    } else if (legacyRole === 'Supply Chain') {
-      if (!user.role_label) user.role_label = 'Karyawan — Lokasi RPC/SC';
-      if (!user.office_location_id && db.officeLocations.some(location => location.id === 'OFF-RPC')) {
-        user.office_location_id = 'OFF-RPC';
-      }
-    } else if (legacyRole === 'PIBC') {
-      if (!user.role_label) user.role_label = 'Karyawan — Lokasi PIBC';
-      if (!user.office_location_id && db.officeLocations.some(location => location.id === 'OFF-PIBC')) {
-        user.office_location_id = 'OFF-PIBC';
-      }
-    }
-
-    user.role = 'Karyawan';
-  }
-}
-
 async function ensureEmployeeCapabilityAssignments(assignments: Array<{ userId: string; roleKey: string }>): Promise<void> {
   if (assignments.length === 0) return;
   const client = await pool.connect();
@@ -753,9 +719,6 @@ export async function initializePersistence(): Promise<void> {
       // First materialize canonical users so FK-backed capability assignments
       // can be inserted safely. Only then normalize legacy profile labels.
       await backfillNormalizedTables();
-      const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments();
-      await ensureEmployeeCapabilityAssignments(legacyCapabilities);
-      normalizeLegacyEmployeeProfileRoles();
       saveStateToFile(createPayload());
 
       await persistPostgresState();
