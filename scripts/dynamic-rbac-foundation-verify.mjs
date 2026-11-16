@@ -27,6 +27,8 @@ const server = fs.readFileSync('server.ts', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
+const contractAccess = fs.readFileSync('server/contracts.ts', 'utf8');
+const auditorAuditScopeSeed = fs.readFileSync('server/migrations/091_dynamic_rbac_auditor_audit_scope.sql', 'utf8');
 const domainServices = fs.readFileSync('server/services.ts', 'utf8');
 const runtimeHardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
 const frontend = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
@@ -38,6 +40,8 @@ const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const effectivePermissionQuery = policy.slice(policy.indexOf('SELECT ur.user_id'), policy.indexOf('const scopes'));
 const checks = [
+  ['Auditor receives only an explicit module-scoped global audit read scope', auditorAuditScopeSeed.includes("SELECT r.id, 'audit', 'all', NULL") && auditorAuditScopeSeed.includes("r.role_key = 'auditor'") && /hasRbacScope\(String\(user\.id\), 'all', null, 'audit'\)/.test(contractAccess)],
+  ['Auditor cross-domain contract read requires both audit.read and audit scope', /const hasGlobalAuditRead = isAuditorActor\(user\)[\s\S]*hasRbacPermission\(String\(user\.id\), 'audit\.read'\)[\s\S]*hasRbacScope\(String\(user\.id\), 'all', null, 'audit'\)/.test(contractAccess) && /if \(hasGlobalAuditRead\) return true;/.test(contractAccess)],
   ['post-seed RBAC backfill runs only after canonical users are materialized', /async function ensureNormalizedSchema\(postSeedPhase = false\)/.test(persistence) && /isPostSeedMigration !== postSeedPhase/.test(persistence) && /await backfillNormalizedTables\(\);\s*await ensureNormalizedSchema\(true\)/.test(persistence)],
   ['post-seed RBAC backfill assigns canonical Superadmin/IT/GA and employee capabilities without deleting custom assignments', postSeedRbacMigration.includes("WHEN 'Admin GABAH' THEN 'superadmin'") && postSeedRbacMigration.includes("WHEN 'IT' THEN 'it'") && postSeedRbacMigration.includes("WHEN 'GA' THEN 'ga'") && /ON CONFLICT \(user_id, role_id\) DO NOTHING/.test(postSeedRbacMigration)],
   ['post-seed Humas and Sekretariat migration keeps function roles secondary and Karyawan primary', /role_key IN \('humas', 'sekretaris_direksi'\)/.test(postSeedRbacMigration) && /SET is_primary = FALSE/.test(postSeedRbacMigration) && /employee_role\.role_key = 'karyawan'[\s\S]*TRUE/.test(postSeedRbacMigration) && /UPDATE users\s+SET role = 'Karyawan'/.test(postSeedRbacMigration)],
