@@ -11,7 +11,8 @@ assert.match(server, /const recipientRoleKey = normalizeRoleKey\(notification\.r
 assert.match(server, /if \(notification\.recipient_division\) return notification\.recipient_division === actor\.division;/);
 assert.match(server, /const isRecipient = notif \? isNotificationRecipient\(actor, notif\) : false;/);
 assert.match(server, /const isRecipient = isNotificationRecipient\(actor, n\);/);
-assert.match(server, /const canReadDocumentationNotifications = isPostgresPersistenceActive\(\)[\\s\\S]*?hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\)[\\s\\S]*?hasApplicationRole\(actor, 'humas'\)/);\nassert.match(server, /if \(isPhotoNotification && !canReadDocumentationNotifications && !isSuperadminActor\(actor\)\) return false;/);
+assert.match(server, /const canReadDocumentationNotifications = isPostgresPersistenceActive\(\)[\\s\\S]*?hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\)[\\s\\S]*?hasApplicationRole\(actor, 'humas'\)/);
+assert.match(server, /if (isPhotoNotification && !canReadDocumentationNotifications && !isSuperadminActor\(actor\)\) return false;/);
 assert.match(server, /Production checks only explicit database role assignments/);
 assert.equal(packageJson.scripts['test:notification-recipient-rbac'], 'node scripts/notification-recipient-rbac-verify.mjs');
 assert.match(ci, /npm run test:notification-recipient-rbac/);
