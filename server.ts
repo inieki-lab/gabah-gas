@@ -3884,7 +3884,9 @@ async function startServer() {
         : actor.role === 'IT';
       const canReadDocumentationQueue = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.documentation.read')
-        : hasApplicationRole(actor, 'humas');
+        // File-store compatibility only: Humas is a legacy profile label here;
+        // PostgreSQL mode above remains strictly assignment/permission-driven.
+        : actor.role === 'Humas';
       if (isAuditorActor(actor)) {
         if (hasGlobalReservationAuditScope) {
           // Audit scope exposes schedule metadata only; personal/contact and operational notes stay private.
