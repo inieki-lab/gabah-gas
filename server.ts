@@ -2562,7 +2562,6 @@ async function startServer() {
   });
 
   app.patch('/api/assets/:id', (req, res) => {
-    if (!requireRbacPermission(req, res, 'assets.update')) return;
     const actor = getActor(req);
     const asset = db.assets.find(a => a.id === req.params.id);
     if (asset?.category_type === 'License' && isPostgresPersistenceActive()
@@ -2577,11 +2576,23 @@ async function startServer() {
     if (isAuditorActor(actor)) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
     }
-    if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.update')) {
-      return res.status(403).json({
-        success: false,
-        message: `Akses ditolak: permission assets.update dan scope owner "${asset.owner_division}" wajib dimiliki.`,
-      });
+    const generalAssetUpdateFields = [
+      'name', 'brand', 'model', 'serial_number', 'specifications', 'location',
+      'condition', 'notes', 'is_loanable', 'corporate_asset_number',
+      'managing_unit_id', 'asset_location_id',
+    ];
+    const hasGeneralAssetUpdate = generalAssetUpdateFields.some(key => req.body?.[key] !== undefined);
+    if (hasGeneralAssetUpdate) {
+      if (!requireRbacPermission(req, res, 'assets.update')) return;
+      if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.update')) {
+        return res.status(403).json({
+          success: false,
+          message: `Akses ditolak: permission assets.update dan scope owner "${asset.owner_division}" wajib dimiliki.`,
+        });
+      }
+    }
+    if (!hasGeneralAssetUpdate && !changesLifecycleStatus) {
+      return res.json({ success: true, data: asset });
     }
 
     // Check duplicate serial number
