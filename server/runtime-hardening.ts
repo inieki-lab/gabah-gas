@@ -26,7 +26,6 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   const ticket = db.tickets.find(t => t.id === ticketId);
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
-  if (isAuditorActor(actor)) return false;
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
   if (isPostgresPersistenceActive()) {
     // PostgreSQL RBAC is owner-code agnostic: custom operational functions
