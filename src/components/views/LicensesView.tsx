@@ -40,7 +40,7 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
   const totalSeats = licenseAssets.reduce((sum, a) => sum + (a.license_detail?.total_seats || 0), 0);
   const usedSeats = licenseAssets.reduce((sum, a) => sum + (a.license_detail?.used_seats || 0), 0);
 
-  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+  const isAuditor = Array.isArray(currentUser.role_keys) ? currentUser.role_keys.includes('auditor') : currentUser.role === 'Auditor';
 
   return (
     <div className="space-y-6">
