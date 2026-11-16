@@ -33,62 +33,67 @@
 ## 🚀 Panduan Menjalankan Sistem
 
 ### 1. Prasyarat Lingkungan
-- Node.js versi 20 atau lebih baru
-- npm versi 10 atau lebih baru (atau Docker & Docker Compose)
+- Docker Engine dengan Docker Compose v2
+- Port TCP 80 dan 5432 tersedia pada laptop/server (keduanya dapat diubah melalui `.env`)
 
-### 2. Mode Pengembangan (Development)
+**Aturan runtime tunggal:** development, UAT, dan deployment menjalankan aplikasi dan PostgreSQL melalui Docker Compose. Jangan menjalankan server TSX atau Node lokal; perintah `npm run dev` dan `npm start` diarahkan ke Docker Compose agar tidak tercipta dua instance dengan konfigurasi database berbeda.
+
+### 2. Konfigurasi dan Menjalankan GABAH
 ```bash
-# Salin konfigurasi environment
+# Siapkan konfigurasi satu kali
 cp .env.example .env
 ```
 
-#### Variabel Environment Utama (Ringkasan — lihat `.env.example` untuk daftar lengkap)
+Edit `.env` dan isi sekurang-kurangnya `PGPASSWORD`, `GABAH_INITIAL_ADMIN_PASSWORD`, serta `GABAH_INITIAL_USER_PASSWORD` dengan secret kuat dan unik. Jangan commit atau membagikan file ini.
 
-| Variabel | Fungsi |
-|---|---|
-| `DATABASE_URL` | PostgreSQL otoritatif (CR-04). Kosong = dev fallback file store; production fail-fast bila gagal. |
-| `GABAH_INITIAL_ADMIN_PASSWORD` / `GABAH_INITIAL_USER_PASSWORD` | Password awal akun kanonikal (CR-02); tanpa ini dev memakai CSPRNG. |
-| `GABAH_TEST_PASSWORD` | **UAT/dev saja** (diabaikan di production): memberi SEMUA akun kanonikal satu password uji seragam agar QA bisa mencoba 9 peran tanpa kelola kredensial. Contoh: `GABAH_TEST_PASSWORD=test123`. |
-| `GABAH_SMTP_HOST` + `GABAH_SMTP_FROM` (+ `GABAH_SMTP_PORT/SECURE/USER/PASSWORD/TLS_REJECT_UNAUTHORIZED`) | Relay SMTP pengiriman email reminder kontrak (CR-05); tanpa itu status email = `skipped`. |
-| `TELEGRAM_BOT_TOKEN` (+ `GABAH_TELEGRAM_TIMEOUT_MS/API_BASE`) | Bot API Telegram pengiriman reminder (CR-05); tanpa itu status = `skipped`. |
-| `GABAH_REMINDER_TIMEZONE` | Zona waktu due-day reminder (default `Asia/Jakarta`). |
-| `GABAH_REMINDER_INTERVAL_MS` | Interval scheduler reminder (default 1 jam, min 60 detik). |
-| `GABAH_REMINDER_SCHEDULER_DISABLED` | `true` = matikan scheduler internal. |
-| `GABAH_REMINDER_RUN_ON_BOOT` | `false` = jangan sweep saat boot.
+Konfigurasi koneksi internal sudah baku dan tidak perlu diubah:
+- App → PostgreSQL: hostname `database`, port container `5432`.
+- Browser → App: `http://localhost:80`.
+- Port database host hanya bind ke `127.0.0.1:5432` untuk administrasi lokal; aplikasi **tidak** menggunakan port host tersebut.
+- PostgreSQL adalah authoritative store. App menunggu healthcheck database sebelum start dan berjalan dalam mode production fail-fast, bukan file-store fallback.
 
-# Install dependensi
-npm install
-
-# Jalankan server fullstack development (port 3000)
-npm run dev
+Jalankan:
+```bash
+docker compose config
+docker compose up -d --build
+docker compose ps
+docker compose logs -f --tail=200 app
 ```
-Buka browser pada: `http://localhost:3000`.
 
-### 3. Pengecekan Kualitas Kode (Lint & Typecheck)
+Buka `http://localhost`. Jika port host 80 atau 5432 sudah dipakai, ubah hanya `GABAH_WEB_PORT` atau `GABAH_DB_PORT` di `.env`; jangan mengubah `PGHOST=database` dan `PGPORT=5432` pada konfigurasi container.
+
+### 3. Operasional Harian
+```bash
+# Start / rebuild
+npm run docker:up
+
+# Lihat status container
+npm run docker:ps
+
+# Lihat log aplikasi dan database
+npm run docker:logs
+
+# Stop tanpa menghapus data
+npm run docker:down
+```
+
+**Penting:** jangan gunakan `docker compose down -v` untuk operasional normal karena opsi tersebut menghapus volume database dan upload.
+
+### 4. Pengecekan Kualitas Kode
+Pengecekan statis dan test tetap dijalankan melalui script npm yang tersedia:
 ```bash
 npm run lint
-```
-
-### 4. Build untuk Lingkungan Produksi
-```bash
-# Kompilasi frontend (Vite) dan backend server (esbuild)
 npm run build
-
-# Menjalankan server hasil kompilasi (port 3000)
-npm start
 ```
+Build image runtime dilakukan dengan `docker compose up -d --build`. Migrasi SQL berjalan otomatis saat boot aplikasi, setelah PostgreSQL sehat.
 
-### 5. Menjalankan Menggunakan Docker Compose (Produksi)
-```bash
-# Menjalankan database PostgreSQL 17 dan aplikasi Node.js 20
-docker compose up -d --build
-```
-Aplikasi akan aktif pada: `http://localhost` (Port 80).  
-Tersedia juga skrip otomasi deployment:
+### 5. Deployment
+Deployment server Linux menggunakan konfigurasi Docker Compose yang sama:
 ```bash
 chmod +x deploy.sh
 ./deploy.sh
 ```
+Pastikan file `.env` server berisi secret production dan port publik diproteksi firewall/reverse proxy sesuai kebijakan jaringan.
 
 ---
 
