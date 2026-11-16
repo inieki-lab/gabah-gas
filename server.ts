@@ -1005,7 +1005,7 @@ async function startServer() {
         const hasFunctionLabel = /humas|sekretariat/i.test(existingFunctionLabel);
         (targetUser as any).role_label = hasFunctionLabel
           ? existingFunctionLabel
-          : (roleLabels[primaryRole] || primaryRole);
+          : (roleLabels[role.trim()] || role.trim());
       }
       if (normalizedDivision !== undefined) targetUser.division = normalizedDivision;
       if (normalizedDepartment !== undefined) targetUser.department = normalizedDepartment;
