@@ -33,6 +33,11 @@ const editAssetModal = fs.readFileSync('src/components/modals/EditAssetModal.tsx
 const assetDetailModal = fs.readFileSync('src/components/modals/AssetDetailModal.tsx', 'utf8');
 const assetsView = fs.readFileSync('src/components/views/AssetsView.tsx', 'utf8');
 const knowledgeView = fs.readFileSync('src/components/views/KnowledgeBaseView.tsx', 'utf8');
+const maintenanceView = fs.readFileSync('src/components/views/MaintenanceView.tsx', 'utf8');
+const vendorsView = fs.readFileSync('src/components/views/VendorsView.tsx', 'utf8');
+const createLoanModal = fs.readFileSync('src/components/modals/CreateLoanModal.tsx', 'utf8');
+const createContractModal = fs.readFileSync('src/components/modals/CreateContractModal.tsx', 'utf8');
+const createRoomReservationModal = fs.readFileSync('src/components/modals/CreateRoomReservationModal.tsx', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -208,6 +213,9 @@ const checks = [
   ['asset detail edit actions follow the same effective permission helper', (assetDetailModal.match(/onEditThisAsset && canEdit && \(/g) || []).length === 3 && !/onEditThisAsset && \(currentUser\?\.role ===/.test(assetDetailModal)],
   ['Superadmin wildcard permission exposes asset create and bulk import actions', /permission_keys\.includes\('\*'\) \|\| currentUser\.permission_keys\.includes\('assets\.create'\)/.test(assetsView) && /permission_keys\.includes\('\*'\) \|\| currentUser\.permission_keys\.includes\('assets\.bulk_import'\)/.test(assetsView)],
   ['Superadmin wildcard permission exposes knowledge create and update actions', /permission_keys\.includes\('\*'\) \|\| currentUser\.permission_keys\.includes\('knowledge\.create'\)/.test(knowledgeView) && /permission_keys\.includes\('\*'\) \|\| currentUser\.permission_keys\.includes\('knowledge\.update'\)/.test(knowledgeView)],
+  ['Auditor additional-role assignment remains read-only in shared UI capability helpers', /if \(!user \|\| !asset \|\| user\.role_keys\?\.includes\('auditor'\) === true \|\| user\.role === 'Auditor'\) return false/.test(gabahService) && /if \(!user \|\| user\.role_keys\?\.includes\('auditor'\) === true \|\| user\.role === 'Auditor'\) return false/.test(gabahService) && /if \(!user \|\| !ticket \|\| user\.role_keys\?\.includes\('auditor'\) === true \|\| user\.role === 'Auditor'\) return false/.test(gabahService)],
+  ['Auditor is excluded from asset, knowledge, license, vendor, maintenance, loan, contract and room-reservation write controls', /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(assetsView) && /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(knowledgeView) && /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(licensesView) && /const canCreate = !isAuditor/.test(vendorsView) && /const canUpdate = !isAuditor/.test(vendorsView) && /const canCreate = !isAuditor && hasPermission\('maintenances\.create'\)/.test(maintenanceView) && /const isAuditor = currentUser\?\.role_keys\?\.includes\('auditor'\)/.test(createLoanModal) && /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(createContractModal) && /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\)/.test(createRoomReservationModal)],
+  ['maintenance create and update actions use independent effective permissions', /const canCreate = !isAuditor && hasPermission\('maintenances\.create'\)/.test(maintenanceView) && /const canUpdate = !isAuditor && hasPermission\('maintenances\.update'\)/.test(maintenanceView) && /\{canCreate && \(/.test(maintenanceView) && /\{canUpdate && onUpdateScheduleStatus/.test(maintenanceView)],
 
 
 ];
