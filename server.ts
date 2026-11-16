@@ -540,7 +540,7 @@ async function startServer() {
         // Assignment set is explicit. Employee profile labels do not imply
         // a primary role or any permission.
         const assignmentIds = [...new Set((roleIds as number[]).map(Number))];
-        const primaryRoleId = assignmentIds[0] ?? null;
+        const primaryRoleId = null;
         const valid = await client.query('SELECT id, name, role_key, is_superadmin FROM gabah_roles WHERE is_active = TRUE AND id = ANY($1::bigint[])', [assignmentIds]);
         if (valid.rowCount !== assignmentIds.length) throw new Error('RBAC_ROLE_INVALID');
         // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
@@ -559,7 +559,7 @@ async function startServer() {
         for (const roleId of assignmentIds) {
           await client.query(
             'INSERT INTO gabah_user_roles (user_id, role_id, is_primary, assigned_by_user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = EXCLUDED.is_primary',
-            [userId, roleId, roleId === primaryRoleId, actor.id],
+            [userId, roleId, false, actor.id],
           );
         }
         return {
@@ -568,7 +568,7 @@ async function startServer() {
           user_email: String(user.email),
           role_ids: assignmentIds,
           role_names: valid.rows.map(row => String(row.name)),
-          primary_role_id: primaryRoleId,
+          primary_role_id: null,
         };
       });
       await refreshRbacPolicy();
