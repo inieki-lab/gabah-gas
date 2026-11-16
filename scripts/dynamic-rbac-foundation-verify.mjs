@@ -233,6 +233,7 @@ const checks = [
   ['Superadmin notification queues are counted once without duplicate badge totals', /const totalNotifications =\s*safeLoans\.length \+\s*safeTickets\.length \+\s*docReservations\.length \+\s*itFacilityReservations\.length \+\s*gaReservations\.length/.test(headerNavbar)],
   ['Superadmin wildcard does not mislabel the global sidebar as a department dashboard', /const isSuperAdmin = isSuperadminNavigationAllowed/.test(sidebar) && /const isHumas = !isSuperAdmin/.test(sidebar) && /const isSekdir = !isSuperAdmin/.test(sidebar) && /const isIT = !isSuperAdmin/.test(sidebar) && /const isGA = !isSuperAdmin/.test(sidebar)],
 
+  ['Humas/documentation notification routing uses effective capability in PostgreSQL, not fixed role key', /recipientRoleKey === 'humas' && isPostgresPersistenceActive\(\)[\s\S]*hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\)/.test(server) && /const canReadDocumentationNotifications = isPostgresPersistenceActive\(\)[\s\S]*hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\)/.test(server)],
 
 ];
 
