@@ -383,45 +383,49 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   <p className="text-[11px] text-slate-500 mt-0.5">Pilih akun terdaftar untuk berpindah sesi</p>
                 </div>
 
-                {/* Section 1: Registered Users in Database */}
-                <div className="mb-3">
-                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
-                    Akun Terdaftar ({(allUsers || []).length})
-                  </div>
-                  <div className="space-y-1">
-                    {(allUsers || []).map(user => {
-                      const isSelected = user.id === currentUser.id;
-                      return (
-                        <button
-                          key={user.id}
-                          onClick={() => {
-                            onSelectUser(user);
-                            setShowRoleDropdown(false);
-                          }}
-                          className={`w-full text-left p-2 rounded-xl flex items-center gap-2.5 transition-colors ${
-                            isSelected 
-                              ? 'bg-emerald-50 border border-emerald-300 text-emerald-900' 
-                              : 'hover:bg-slate-50 text-slate-700 hover:text-slate-900'
-                          }`}
-                        >
-                          <img src={user.avatar} alt={user.name} className="w-7 h-7 rounded-lg object-cover border border-slate-200 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold truncate text-slate-900">{user.name}</span>
-                              {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                {isSuperAdmin && (
+                  {/* Section 1: Registered Users in Database */}
+                  <div className="mb-3">
+                    <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
+                      Akun Terdaftar ({(allUsers || []).length})
+                    </div>
+                    <div className="space-y-1">
+                      {(allUsers || []).map(user => {
+                        const isSelected = user.id === currentUser.id;
+                        return (
+                          <button
+                            key={user.id}
+                            onClick={() => {
+                              onSelectUser(user);
+                              setShowRoleDropdown(false);
+                            }}
+                            className={`w-full text-left p-2 rounded-xl flex items-center gap-2.5 transition-colors ${
+                              isSelected 
+                                ? 'bg-emerald-50 border border-emerald-300 text-emerald-900' 
+                                : 'hover:bg-slate-50 text-slate-700 hover:text-slate-900'
+                            }`}
+                          >
+                            <img src={user.avatar} alt={user.name} className="w-7 h-7 rounded-lg object-cover border border-slate-200 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold truncate text-slate-900">{user.name}</span>
+                                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                                <span className="text-emerald-700 font-bold">{user.role}</span>
+                                <span>•</span>
+                                <span className="truncate">{user.department}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                              <span className="text-emerald-700 font-bold">{user.role}</span>
-                              <span>•</span>
-                              <span className="truncate">{user.department}</span>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-
+  
+  
+                )}
+ 
                 {/* Account actions */}
                 <div className="mt-2.5 pt-2 border-t border-slate-100">
                   <button
