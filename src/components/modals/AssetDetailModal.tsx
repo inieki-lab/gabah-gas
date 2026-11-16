@@ -100,6 +100,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const isGA = ownerDivision === 'GA' || (!isSC && !isPIBC && !isIT);
   const isLicense = asset.category_type === 'License' || asset.category_code === 'SLIC' || asset.asset_number?.includes('-SLIC-');
   const canEdit = currentUser ? GabahService.canEditAsset(currentUser, asset) : false;
+  const canAssign = currentUser ? GabahService.canAssignAsset(currentUser, asset) : false;
+  const canManage = canEdit || canAssign;
 
   let ownershipRuleText = '';
   if (asset.category_code === 'INV-F' || asset.asset_number?.includes('-INV-F-')) {
@@ -425,7 +427,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         <span>Cetak BAST</span>
                       </button>
                     )}
-                    {onEditThisAsset && canEdit && (
+                    {onEditThisAsset && canManage && (
                       <button
                         type="button"
                         onClick={() => onEditThisAsset(asset)}
@@ -449,7 +451,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <div className="text-[11px] text-slate-600">Aset siap ditugaskan secara manual ke karyawan Food Station.</div>
                     </div>
                   </div>
-                  {onEditThisAsset && canEdit && (
+                  {onEditThisAsset && canManage && (
                     <button
                       type="button"
                       onClick={() => onEditThisAsset(asset)}
@@ -715,7 +717,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 </button>
               )}
 
-              {onEditThisAsset && canEdit && (
+              {onEditThisAsset && canManage && (
                 <button
                   type="button"
                   onClick={() => {
