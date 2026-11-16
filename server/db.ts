@@ -714,7 +714,7 @@ const canonicalUsers = [
 ] satisfies Array<Omit<ServerUser, 'password_hash' | 'password_salt' | 'temp_password'>>;
 
 export const CANONICAL_USERS = canonicalUsers.filter(user =>
-  user.id !== 'USR-ME-ADMIN-001' || process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true'
+  user.id !== 'USR-ME-ADMIN-001' || (process.env.NODE_ENV !== 'production' && process.env.GABAH_ENABLE_ME_DUMMY_USER === 'true')
 );
 
 export function seedInitialData() {
