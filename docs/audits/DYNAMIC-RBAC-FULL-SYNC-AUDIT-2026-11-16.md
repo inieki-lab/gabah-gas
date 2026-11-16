@@ -83,3 +83,35 @@ Evaluasi pola visual Shadcn Dashboard / Tailwind Admin yang berlisensi MIT sebag
 ## Catatan CI yang diketahui pada saat audit
 
 GitHub Actions run 1509 pada commit `ecf0ccc56b6ec74084ec4828eb962882501c0222` gagal pada langkah `Asset numbering rule integrity and deletion safeguards`. Langkah-langkah sebelumnya, termasuk typecheck, Dynamic RBAC foundation, role navigation, dashboard scope, build, Docker smoke, PostgreSQL integration, P0 security, dan sebagian regression checks, lulus. Run 1508 sebelumnya sukses. Run 1509 perlu diperbaiki sebelum branch dijadikan basis rilis.
+
+## Progress implementasi branch audit/dynamic-rbac-full-sync
+
+Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah dibuat pada branch audit; statusnya belum lulus CI/UAT.
+
+### Perbaikan yang sudah diterapkan
+
+- UserRole frontend dan ServerUser.role sekarang menerima label profil bebas; katalog role statis di Administration dihapus.
+- Navigasi dan Sidebar memakai permission efektif ketika berjalan dengan PostgreSQL; label role bukan prasyarat untuk menu.
+- Form tambah/edit pegawai dan parser CSV menerima label profil dinamis.
+- Pembuatan, edit, dan impor pegawai tidak lagi otomatis membuat/mengubah assignment RBAC.
+- API assignment user menerima himpunan role eksplisit nol atau lebih; tidak memaksa role primer berdasarkan profil.
+- UI assignment mengizinkan seluruh role aktif dipilih/dilepas, termasuk mengosongkan assignment (kecuali perlindungan Super Admin aktif terakhir).
+- Proses penyimpanan PostgreSQL tidak lagi menjalankan rekonsiliasi role dari users.role pada setiap save.
+- Proses startup tidak lagi mengubah profil Humas/Sekretariat/RPC/PIBC atau menebak lokasi kantor berdasarkan label profil.
+- Policy cache hanya memuat assignment dari akun aktif.
+- Penghapusan akun mencabut assignment gabah_user_roles dan menonaktifkan row users untuk mempertahankan referensi historis/audit.
+- Resolusi penerima notifikasi role menggunakan role key/nama dari assignment dinamis pada PostgreSQL; fallback label legacy hanya berlaku untuk file-store.
+- Skrip regresi import, user administration, notification RBAC, profile/RBAC separation, dan Dynamic RBAC foundation diperbarui mengikuti kontrak baru.
+- CI workflow diperluas agar PR yang menargetkan preview/green-enterprise-theme-laptop juga dapat menjalankan suite yang sama.
+
+### Risiko/pekerjaan yang masih terbuka
+
+1. Validasi typecheck/build dan seluruh test suite belum dapat dinyatakan lulus; Actions belum mengembalikan run untuk head branch terbaru.
+2. Perlu review migrasi historis 011/030/031 dan role katalog lama (supply_chain, pibc) sebelum memutuskan migrasi assignment lama. Jangan hapus/mass-reassign role lama tanpa audit dampak permission/scope dan daftar user terdampak.
+3. Audit endpoint per modul belum selesai; masih ada cabang actor.role yang memang fallback file-store dan perlu dibuktikan seluruhnya berada di jalur non-PostgreSQL.
+4. Scope data list/detail/export/report/dashboard dan module lifecycle perlu regression matrix lengkap.
+5. Theme redesign belum diterapkan; masih perlu design tokens dan komponen shell konsisten setelah kontrak RBAC stabil.
+
+### Keputusan keselamatan data
+
+Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konversi data pegawai massal pada tahap ini. Assignment lama yang berasal dari migrasi historis dipertahankan sampai dampaknya dipetakan dan diuji.
