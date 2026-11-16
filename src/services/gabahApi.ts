@@ -9,6 +9,7 @@ export interface AssetNumberingRule {
   is_active: boolean;
   notes: string;
   usage_count: number;
+  sequence_current?: number;
   created_at?: string;
   updated_at?: string;
 }
