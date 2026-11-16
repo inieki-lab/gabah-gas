@@ -96,18 +96,18 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
     (currentUser.role === 'Admin GABAH' ? (docReservations.length + itFacilityReservations.length + gaReservations.length) : 0);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#DFDCE3] text-slate-800 shadow-xs">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#e1ebe4] text-slate-800 shadow-[0_1px_2px_rgba(20,60,35,0.04)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         
         {/* Brand Logo & Tagline */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-[#4ABDAC] flex items-center justify-center shadow-md shadow-[#4ABDAC]/25">
+          <div className="w-10 h-10 rounded-xl bg-[#176b45] flex items-center justify-center shadow-md shadow-[#176b45]/20">
             <Building2 className="w-6 h-6 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-black text-xl tracking-tight text-slate-900">GABAH</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[#4ABDAC]/15 text-[#2d7f74] border border-[#4ABDAC]/30">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[#e5f4eb] text-[#176b45] border border-[#cfe7d8]">
                 FOOD STATION
               </span>
             </div>
@@ -120,10 +120,10 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           <div className="flex-1 max-w-md mx-2 hidden md:block">
             <button
               onClick={onOpenGlobalSearch}
-              className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-slate-100/80 hover:bg-slate-100 border border-slate-200/80 text-xs text-slate-500 hover:text-slate-800 transition-all group shadow-2xs"
+              className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-[#f4f8f5] hover:bg-[#edf5ef] border border-[#e1ebe4] text-xs text-slate-500 hover:text-slate-800 transition-all group shadow-2xs"
             >
               <div className="flex items-center gap-2.5">
-                <Search className="w-4 h-4 text-slate-400 group-hover:text-[#4ABDAC] transition-colors" />
+                <Search className="w-4 h-4 text-slate-400 group-hover:text-[#218653] transition-colors" />
                 <span>Cari nomor aset, tiket, atau peminjaman...</span>
               </div>
               <div className="flex items-center gap-1 font-mono text-[10px] font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-600">
@@ -141,10 +141,10 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           <button
             id="btn-scan-qr-header"
             onClick={onOpenScannerModal}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#4ABDAC]/10 hover:bg-[#4ABDAC]/20 text-[#206f65] border border-[#4ABDAC]/30 text-xs font-semibold transition-all shadow-xs group"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#eaf5ed] hover:bg-[#dff0e5] text-[#176b45] border border-[#cfe7d8] text-xs font-semibold transition-all shadow-xs group"
             title="Scan Label Barcode / QR Code Aset"
           >
-            <ScanLine className="w-4 h-4 text-[#4ABDAC] group-hover:scale-110 transition-transform" />
+            <ScanLine className="w-4 h-4 text-[#218653] group-hover:scale-110 transition-transform" />
             <span className="hidden lg:inline">Scan Barcode</span>
           </button>
 
@@ -153,7 +153,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             <button
               id="btn-notifications"
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+              className="relative p-2 rounded-lg bg-[#f1f6f2] hover:bg-[#e7f0e9] text-slate-700 transition-colors"
               aria-label="Notifications"
             >
               <Bell className="w-5 h-5" />
