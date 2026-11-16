@@ -17,17 +17,17 @@ const csv = [
 ].join('\n');
 
 const parsed = parseUsersImportCsv(csv, roles, divisions, jobLevels, units, offices);
-assert.equal(parsed.valid.length, 3);
-assert.equal(parsed.errors.length, 2);
+assert.equal(parsed.valid.length, 5, 'custom employee profile labels are accepted without becoming access roles');
+assert.equal(parsed.errors.length, 0);
 assert.equal(parsed.valid[0].role, 'Karyawan');
 assert.equal(parsed.valid[0].job_level_code, 'STAF');
 assert.equal(parsed.valid[0].unit_id, undefined);
-assert.equal(parsed.valid[1].role, 'Supply Chain', 'legacy SC alias is retained for server-side mapping');
+assert.equal(parsed.valid[1].role, 'Supply Chain', 'legacy SC profile label is retained without permission mapping');
 assert.equal(parsed.valid[1].office_location_id, 'OFF-RPC');
-assert.equal(parsed.valid[2].role, 'PIBC', 'legacy PIBC alias is retained for server-side mapping');
+assert.equal(parsed.valid[2].role, 'PIBC', 'legacy PIBC profile label is retained without permission mapping');
 assert.equal(parsed.valid[2].unit_id, undefined);
-assert.ok(parsed.errors.some(error => error.includes('Humas')));
-assert.ok(parsed.errors.some(error => error.includes('Peran Ngawur')));
+assert.equal(parsed.valid[3].role, 'Humas', 'function profile labels are accepted');
+assert.equal(parsed.valid[4].role, 'Peran Ngawur', 'custom profile labels are accepted');
 
 const invalidMasterCsv = [
   'Nama,Email,Role Utama,Divisi Referensi,Departemen,Telepon,Kode Jabatan,ID Unit,ID Lokasi Kantor',
@@ -37,4 +37,4 @@ const invalidMaster = parseUsersImportCsv(invalidMasterCsv, roles, divisions, jo
 assert.equal(invalidMaster.valid.length, 0);
 assert.ok(invalidMaster.errors.some(error => error.includes('UNIT-NOT-FOUND')));
 
-console.log('User import parser: 12 assertions passed');
+console.log('User import parser: dynamic profile label assertions passed');
