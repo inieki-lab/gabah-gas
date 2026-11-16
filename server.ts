@@ -2608,6 +2608,17 @@ async function startServer() {
     if (req.body.status !== undefined && !validAssetStatuses.includes(String(req.body.status))) {
       return res.status(400).json({ success: false, message: 'Status aset tidak valid.' });
     }
+    const changesLifecycleStatus = req.body.status !== undefined
+      && String(req.body.status) !== String(asset.status);
+    if (changesLifecycleStatus) {
+      if (!requireRbacPermission(req, res, 'assets.lifecycle')) return;
+      if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.lifecycle')) {
+        return res.status(403).json({
+          success: false,
+          message: `Akses ditolak: permission assets.lifecycle dan scope owner "${asset.owner_division}" wajib dimiliki untuk mengubah status aset.`,
+        });
+      }
+    }
     if (req.body.condition !== undefined && !validAssetConditions.includes(String(req.body.condition))) {
       return res.status(400).json({ success: false, message: 'Kondisi aset tidak valid.' });
     }
