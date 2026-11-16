@@ -6,13 +6,12 @@ import {
   Clock, 
   Laptop, 
   Car, 
-  KeyRound, 
   Package,
-  Store,
   Info 
 } from 'lucide-react';
 import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
+import { hasPermission, isAuditor } from '../../utils/access';
 
 interface CreateTicketModalProps {
   isOpen: boolean;
@@ -47,7 +46,14 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
 
-  const isAuditor = currentUser?.role === 'Auditor';
+  const isAuditorUser = isAuditor(currentUser);
+  const canCreateCategory = (target: TicketCategory): boolean => {
+    if (isAuditorUser) return false;
+    if (target === 'IT') return hasPermission(currentUser, 'tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC']);
+    if (target === 'GA') return hasPermission(currentUser, 'tickets.create.ga', ['Admin GABAH', 'GA']);
+    if (target === 'ME') return hasPermission(currentUser, 'tickets.create.me', ['Admin GABAH', 'PIBC']);
+    return false;
+  };
 
   // Freshservice-inspired Quick Service Catalog Templates
   const serviceCatalogTemplates = [
@@ -79,12 +85,12 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       icon: '❄️',
     },
     {
-      id: 'sc-weighbridge',
-      label: 'Timbangan & Mesin Pabrik',
-      category: 'SC' as TicketCategory,
-      priority: 'urgent' as TicketPriority,
-      title: 'Kendala Mesin Pabrik Beras / Jembatan Timbang Truk',
-      desc: 'Sensor jembatan timbang atau conveyor penggilingan beras mengalami deviasi/error butuh kalibrasi darurat.',
+      id: 'me-maintenance',
+      label: 'Mesin & Kelistrikan (ME)',
+      category: 'ME' as TicketCategory,
+      priority: 'medium' as TicketPriority,
+      title: 'Kendala Mesin / Kelistrikan / Perawatan',
+      desc: 'Jelaskan mesin, instalasi listrik, pompa, genset, AC teknis, atau fasilitas mekanikal yang memerlukan pemeriksaan Tim Perawatan (ME).',
       icon: '🌾',
     },
     {
@@ -97,6 +103,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       icon: '🚨',
     },
   ];
+
+  const visibleServiceCatalogTemplates = serviceCatalogTemplates.filter(tpl => canCreateCategory(tpl.category));
 
   const applyCatalogTemplate = (tpl: typeof serviceCatalogTemplates[0]) => {
     setCategory(tpl.category);
@@ -169,13 +177,12 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       const selected = safeAssets.find(a => a.id === assetId);
       if (selected) {
         // License/SaaS is an IT domain: software & license tickets route to IT
-        if (selected.owner_division === 'SC') {
-          setCategory('SC');
-        } else if (selected.owner_division === 'PIBC') {
-          setCategory('PIBC');
-        } else if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
-          setCategory('GA');
+        if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
+          if (canCreateCategory('GA')) setCategory('GA');
+          else { setRelatedAssetId(''); setCategory('IT'); }
         } else {
+          // IT remains the company-wide channel; asset location/owner does not
+          // create a helpdesk category. ME is selected explicitly by capability.
           setCategory('IT');
         }
       }
@@ -184,6 +191,10 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   React.useEffect(() => {
     if (isOpen) {
+      if (!canCreateCategory(category)) {
+        const fallbackCategory = (['IT', 'GA', 'ME'] as TicketCategory[]).find(canCreateCategory);
+        if (fallbackCategory) setCategory(fallbackCategory);
+      }
       if (preselectedAssetId) {
         handleAssetSelect(preselectedAssetId);
       } else {
@@ -195,13 +206,14 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         setDescription(
           `Tiket kerja terkait kontrak ${linkedContract.contract_number} (${linkedContract.title}) dengan vendor ${linkedContract.vendor_name}. Divisi pemilik: ${linkedContract.owner_division}.`
         );
-        setCategory((linkedContract.owner_division === 'IT' ? 'IT'
-          : linkedContract.owner_division === 'SC' ? 'SC'
-          : linkedContract.owner_division === 'PIBC' ? 'PIBC'
-          : 'GA') as TicketCategory);
+        if (linkedContract.owner_division === 'IT' || linkedContract.owner_division === 'GA') {
+          if (canCreateCategory(linkedContract.owner_division as TicketCategory)) {
+            setCategory(linkedContract.owner_division as TicketCategory);
+          }
+        }
       }
     }
-  }, [isOpen, preselectedAssetId, linkedContract]);
+  }, [isOpen, preselectedAssetId, linkedContract, category, currentUser]);
 
   if (!isOpen) return null;
 
@@ -209,7 +221,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor || !title.trim() || !description.trim()) return;
+    if (isAuditorUser || !canCreateCategory(category) || !title.trim() || !description.trim()) return;
 
     onCreateTicket({
       title,
@@ -266,7 +278,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               <span className="text-[10px] text-slate-500 font-normal">Klik untuk auto-fill standar ITSM</span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              {serviceCatalogTemplates.map(tpl => (
+              {visibleServiceCatalogTemplates.map(tpl => (
                 <button
                   key={tpl.id}
                   type="button"
@@ -283,62 +295,40 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           {/* Category */}
           <div className="space-y-1.5">
             <label className="text-slate-700 font-bold">Departemen Penanganan:</label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-              <button
-                type="button"
-                onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'IT'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Laptop className="w-4 h-4" /> IT / Lisensi
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('General'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'GA' 
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Car className="w-4 h-4" /> General Affair (GA)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'IT' && title.toLowerCase().includes('lisensi')
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <KeyRound className="w-4 h-4" /> Lisensi (IT)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('SC'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'SC' 
-                    ? 'bg-orange-600 text-white border-orange-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Package className="w-4 h-4" /> Supply Chain
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('PIBC'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'PIBC' 
-                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Store className="w-4 h-4" /> PIBC
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {canCreateCategory('IT') && (
+                <button
+                  type="button"
+                  onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
+                  className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
+                    category === 'IT' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Laptop className="w-4 h-4" /> IT / Lisensi
+                </button>
+              )}
+              {canCreateCategory('GA') && (
+                <button
+                  type="button"
+                  onClick={() => { setCategory('GA'); setRelatedAssetId(''); }}
+                  className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
+                    category === 'GA' ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Car className="w-4 h-4" /> General Affair (GA)
+                </button>
+              )}
+              {canCreateCategory('ME') && (
+                <button
+                  type="button"
+                  onClick={() => { setCategory('ME'); setRelatedAssetId(''); }}
+                  className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
+                    category === 'ME' ? 'bg-orange-600 text-white border-orange-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <Package className="w-4 h-4" /> Tim Perawatan (ME)
+                </button>
+              )}
             </div>
           </div>
 
@@ -432,7 +422,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           </div>
 
           {/* Auditor Warning */}
-          {isAuditor && (
+          {isAuditorUser && (
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>Akun Auditor berstatus <strong>Read-Only</strong> untuk kepatuhan SPI. Anda tidak dapat membuat tiket baru.</span>
@@ -450,7 +440,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isAuditor}
+              disabled={isAuditorUser}
               className={`px-5 py-2 rounded-xl font-bold transition-all shadow-xs ${
                 isAuditor 
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
