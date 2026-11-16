@@ -56,15 +56,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     currentUser.role_keys !== undefined
       ? currentRoleKeys.includes(key)
       : currentUser.role === legacyLabel;
-  const isHumas = hasRoleKey('humas', 'Humas');
-  const isSekdir = hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi');
   const isAuditor = hasRoleKey('auditor', 'Auditor');
   const isSuperAdmin = Boolean(currentUser.is_superadmin)
     || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
+  const hasEffectivePermission = (key: string): boolean | undefined => Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key)
+    : undefined;
   const canPermission = (key: string) => {
-    if (currentUser.permission_keys?.includes('*') === true) return true;
-    if (Array.isArray(currentUser.permission_keys)) return currentUser.permission_keys.includes(key);
     if (isAuditor) return false;
+    const effective = hasEffectivePermission(key);
+    if (effective !== undefined) return effective;
     const legacyGrants: Record<string, string[]> = {
       'loans.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Supply Chain', 'PIBC', 'Humas', 'Sekretaris Direksi'],
       'tickets.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Supply Chain', 'PIBC', 'Humas', 'Sekretaris Direksi'],
@@ -73,6 +74,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
     return (legacyGrants[key] || []).includes(currentUser.role);
   };
+  const isHumas = !isSuperAdmin && (hasEffectivePermission('room_reservations.documentation.read') ?? hasRoleKey('humas', 'Humas'));
+  const isSekdir = !isSuperAdmin && (hasEffectivePermission('room_reservations.override_priority') ?? hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi'));
   // Dashboard composition follows effective operational capabilities, not the
   // primary employee profile or a hard-coded IT/GA role label. Custom roles
   // with the same permissions therefore receive the operational workspace.
@@ -102,8 +105,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
   const isGlobalDashboard = isSuperAdmin || isAuditor;
   const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess;
-  const hasITRole = hasRoleKey('it', 'IT');
-  const hasGARole = hasRoleKey('ga', 'GA');
+  const hasITRole = !isSuperAdmin && (hasEffectivePermission('room_reservations.it_facilities.read') ?? hasRoleKey('it', 'IT'));
+  const hasGARole = !isSuperAdmin && (hasEffectivePermission('room_reservations.approve') ?? hasRoleKey('ga', 'GA'));
   const divisionLabel = hasITRole && !hasGARole ? 'IT'
     : hasGARole && !hasITRole ? 'GA'
       : 'Operasional';
