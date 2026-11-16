@@ -112,6 +112,13 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 - Skrip regresi import, user administration, notification RBAC, profile/RBAC separation, dan Dynamic RBAC foundation diperbarui mengikuti kontrak baru.
 - CI workflow diperluas agar PR yang menargetkan preview/green-enterprise-theme-laptop juga dapat menjalankan suite yang sama.
 
+### Hasil inventaris route API (review statis awal)
+
+- Inventaris statis menemukan beberapa endpoint GET yang belum memperlihatkan guard permission eksplisit di dalam handler, antara lain `/api/taxonomy/categories`, master locations/divisions/job-levels/org-units/office-locations, serta `/api/modules`. Sebagian endpoint memang memerlukan autentikasi atau mungkin merupakan master data referensi; tetapi perlu keputusan permission baca yang eksplisit dan uji direct API agar tidak bergantung hanya pada visibilitas menu.
+- `/api/health`, login, logout, dan endpoint autentikasi memiliki alasan khusus dan tidak diperlakukan sebagai endpoint data bisnis biasa.
+- Inventaris ini berbasis pencarian pola statis pada deklarasi route, bukan bukti bahwa endpoint pasti rentan. Perlu inspeksi handler, middleware global, klasifikasi sensitivitas data, dan tes akses tanpa permission sebelum perubahan.
+- Middleware deny-write Auditor kini melindungi seluruh metode mutasi API pada mode PostgreSQL, dengan pengecualian login/logout/perubahan password sendiri. Ini menjadi lapisan pertahanan tambahan, bukan pengganti guard permission per endpoint.
+
 ### Risiko/pekerjaan yang masih terbuka
 
 1. Validasi typecheck/build dan seluruh test suite belum dapat dinyatakan lulus; Actions belum mengembalikan run untuk head branch terbaru.
