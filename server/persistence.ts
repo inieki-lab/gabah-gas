@@ -184,9 +184,9 @@ function hydrateDbFromState(state: any): void {
         authVersion: 1,
       });
     } else {
-      // Sync canonical role and label if needed
-      mergedUsers[foundIndex].role = cu.role;
-      mergedUsers[foundIndex].role_label = cu.role_label || mergedUsers[foundIndex].role_label;
+      // Canonical account identity does not overwrite the employee profile.
+      if (!mergedUsers[foundIndex].role) mergedUsers[foundIndex].role = cu.role;
+      if (!mergedUsers[foundIndex].role_label) mergedUsers[foundIndex].role_label = cu.role_label;
       if (typeof mergedUsers[foundIndex].authVersion !== 'number') mergedUsers[foundIndex].authVersion = 1;
     }
   }
@@ -426,8 +426,8 @@ async function ensureNormalizedSchema(): Promise<void> {
 function ensureCanonicalAdministrator(): void {
   const legacy = db.users.find(u => u.id === 'USR-01');
   if (legacy) {
-    (legacy as any).role = 'Admin GABAH';
-    (legacy as any).role_label = 'Admin GABAH';
+    if (!(legacy as any).role) (legacy as any).role = 'Pegawai';
+    if (!(legacy as any).role_label) (legacy as any).role_label = 'Super Admin';
   }
 }
 
@@ -642,8 +642,9 @@ export async function initializePersistence(): Promise<void> {
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
 
-      // First materialize canonical users so FK-backed capability assignments
-      // can be inserted safely. Only then normalize legacy profile labels.
+      // Materialize canonical user records before syncing normalized domain tables.
+      // Dynamic RBAC assignments are migration/admin-managed and are never inferred
+      // or rewritten from employee profile fields during persistence.
       await backfillNormalizedTables();
       saveStateToFile(createPayload());
 
