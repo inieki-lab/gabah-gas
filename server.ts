@@ -2881,7 +2881,9 @@ async function startServer() {
           : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
         : (ticket.assigned_unit_id
           ? ticket.assigned_unit_id === actor.unit_id && /admin tiket me/i.test(String(actor.role_label || ''))
-          : ticket.category !== 'ME' && actor.role === getTicketOwnerDivision(ticket.category));
+          : ticket.category === 'GA'
+            ? /petugas helpdesk ga/i.test(String(actor.role_label || ''))
+            : ticket.category !== 'ME' && actor.role === getTicketOwnerDivision(ticket.category));
       if (!isSuperadminActor(actor) && !ticketScopeAllowed) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: tiket berada di luar scope unit/divisi Anda.' });
       }
