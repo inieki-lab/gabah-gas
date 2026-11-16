@@ -34,6 +34,7 @@
     "test:vendor-contract-count": "node scripts/vendor-contract-count-verify.mjs",
     "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
     "test:movement-scope": "node scripts/movement-scope-verify.mjs",
+    "test:employee-role-normalization": "node scripts/employee-role-normalization-verify.mjs",
     "test:module-lifecycle-registry": "node scripts/module-lifecycle-registry-verify.mjs",
     "test:module-lifecycle-api": "node scripts/module-lifecycle-api-verify.mjs",
     "test:module-lifecycle-ui": "node scripts/module-lifecycle-ui-verify.mjs",
