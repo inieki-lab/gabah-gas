@@ -217,10 +217,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const visibleSections = sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => activeRole
-        ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions)
-          && (activeModuleKeys === undefined || activeModuleKeys.includes(item.id))
-        : false),
+      items: section.items.filter(item =>
+        isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions)
+        && (activeModuleKeys === undefined || activeModuleKeys.includes(item.id))),
     }))
     .filter(section => section.items.length > 0);
 
