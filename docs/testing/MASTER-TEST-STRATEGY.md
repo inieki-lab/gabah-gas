@@ -65,7 +65,7 @@ Gunakan akun yang memang disediakan oleh seed/provisioning aplikasi. Email di ba
 | Pegawai umum | `hendra.w@foodstation.co.id` | layanan mandiri, aset milik sendiri, tiket, permohonan |
 | Auditor | `auditor@foodstation.co.id` | baca sesuai scope audit; seluruh mutasi ditolak |
 
-Password tidak boleh dicantumkan di dokumen, log, screenshot, atau commit. Gunakan kredensial lokal UAT yang diterbitkan melalui mekanisme resmi. Password seragam hanya boleh digunakan pada environment dev/UAT yang terisolasi dan tidak boleh aktif di production. Jangan menyalin akun/password production ke UAT.
+Password tidak boleh dicantumkan di dokumen, log, screenshot, atau commit. Pada Docker Compose, app berjalan dengan `NODE_ENV=production`; karena itu `GABAH_TEST_PASSWORD` memang diabaikan dan tidak boleh dijadikan cara login UAT. Untuk database UAT baru, isi `GABAH_INITIAL_ADMIN_PASSWORD` dan `GABAH_INITIAL_USER_PASSWORD` sebelum boot pertama. Password awal hanya mengisi akun yang belum punya hash dan tidak mereset akun lama. Untuk database UAT yang sudah berisi akun, login dengan kredensial yang berlaku lalu gunakan fitur reset password resmi dari Superadmin untuk menyiapkan password UAT bagi akun uji. Jangan hapus volume atau menimpa kredensial tanpa backup dan persetujuan. Jangan menyalin akun/password production ke UAT.
 
 ## 4. Model organisasi yang harus dipertahankan saat tes
 
