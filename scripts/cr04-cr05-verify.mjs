@@ -206,6 +206,10 @@ async function main() {
     const health = await req(base, 'GET', '/api/health');
     const persistence = health.json?.persistence;
     record('CR-04 /api/health reports postgresql persistence (no silent JSON fallback)', 'postgresql', persistence, persistence === 'postgresql');
+
+    const mig = new pg.Client({ connectionString: TEST_DB_URL });
+    mig.on('error', e => console.error('[pg ledger async error]', e.message));
+    await mig.connect();
     // Legacy function profiles must become Karyawan primary plus a secondary
     // capability assignment, and the authoritative JSON state must agree.
     const capabilityRows = await mig.query(
@@ -235,11 +239,6 @@ async function main() {
       return user?.role === 'Karyawan' && Boolean(user?.role_label);
     });
     record('Authoritative JSON state retains normalized employee profiles and function labels', true, stateRolesNormalized, stateRolesNormalized);
-
-
-    const mig = new pg.Client({ connectionString: TEST_DB_URL });
-    mig.on('error', e => console.error('[pg ledger async error]', e.message));
-    await mig.connect();
     let ledger, ownerDivCol, uqIdx;
     try {
       ledger = await mig.query('SELECT version, name FROM schema_migrations ORDER BY applied_at, version');
