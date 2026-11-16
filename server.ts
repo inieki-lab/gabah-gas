@@ -3422,7 +3422,11 @@ async function startServer() {
     if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
     // A user may hold additional RBAC roles beyond the primary profile role.
     if (notification.recipient_role) {
-      return hasApplicationRole(actor, normalizeRoleKey(notification.recipient_role));
+      const recipientRoleKey = normalizeRoleKey(notification.recipient_role);
+      if (recipientRoleKey === 'humas' && isPostgresPersistenceActive()) {
+        return hasRbacPermission(String(actor.id), 'room_reservations.documentation.read');
+      }
+      return hasApplicationRole(actor, recipientRoleKey);
     }
     if (notification.recipient_division) return notification.recipient_division === actor.division;
     return false;
@@ -3436,7 +3440,10 @@ async function startServer() {
       const isPhotoNotification = n.recipient_role === 'Humas' ||
         (n.title && (n.title.toLowerCase().includes('foto') || n.title.toLowerCase().includes('dokumentasi humas') || n.title.toLowerCase().includes('liputan foto'))) ||
         (n.message && (n.message.toLowerCase().includes('peliputan foto') || n.message.toLowerCase().includes('dokumentasi foto')));
-      if (isPhotoNotification && !hasApplicationRole(actor, 'humas') && !isSuperadminActor(actor)) return false;
+      const canReadDocumentationNotifications = isPostgresPersistenceActive()
+        ? hasRbacPermission(String(actor.id), 'room_reservations.documentation.read')
+        : hasApplicationRole(actor, 'humas');
+      if (isPhotoNotification && !canReadDocumentationNotifications && !isSuperadminActor(actor)) return false;
       return isNotificationRecipient(actor, n);
     });
     res.json({ success: true, data: filtered });
