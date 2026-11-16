@@ -22,13 +22,15 @@ JOIN gabah_roles r ON r.role_key = CASE u.role
   ELSE NULL
 END
 WHERE r.is_active = TRUE
-ON CONFLICT (user_id, role_id) DO UPDATE
-SET is_primary = CASE
-  WHEN EXCLUDED.role_id IN (
-    SELECT id FROM gabah_roles WHERE role_key IN ('humas', 'sekretaris_direksi')
-  ) THEN FALSE
-  ELSE gabah_user_roles.is_primary
-END;
+ON CONFLICT (user_id, role_id) DO NOTHING;
+
+-- The two function roles must remain secondary even if an older assignment
+-- had previously been marked primary.
+UPDATE gabah_user_roles ur
+SET is_primary = FALSE
+FROM gabah_roles r
+WHERE r.id = ur.role_id
+  AND r.role_key IN ('humas', 'sekretaris_direksi');
 
 -- Humas and Sekretariat Direksi are employee profiles with independent
 -- additional function capabilities: Karyawan is their primary baseline,
