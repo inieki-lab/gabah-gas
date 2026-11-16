@@ -1110,6 +1110,7 @@ export class GabahDomainService {
       const targetDivision = payload.category;
       const eligibleAgents = db.users.filter(user =>
         user.is_active !== false
+        && !isSuperadminActor(user)
         && String(user.division || '').toUpperCase() === targetDivision
         && hasRbacPermission(String(user.id), 'tickets.update')
         && hasRbacScope(String(user.id), 'division', targetDivision, 'tickets')
@@ -1135,8 +1136,8 @@ export class GabahDomainService {
     const targetDivision = getTicketOwnerDivision(payload.category);
     this.notify({
       recipient_user_id: newTicket.assigned_agent_id || undefined,
-      recipient_role: payload.category === 'ME' ? undefined : (newTicket.assigned_agent_id ? undefined : targetDivision),
-      recipient_division: payload.category === 'ME' || newTicket.assigned_agent_id ? undefined : targetDivision,
+      recipient_role: payload.category === 'ME' || newTicket.assigned_agent_id ? undefined : (payload.category === 'GA' ? 'ga_helpdesk_operator' : targetDivision),
+      recipient_division: payload.category === 'IT' && !newTicket.assigned_agent_id ? 'IT' : undefined,
       recipient_unit_id: payload.category === 'ME' ? 'UNIT-PIBC-ME' : undefined,
       title: `Tiket Baru: [${payload.priority.toUpperCase()}] ${ticketNumber}`,
       message: `${actor.name} (${actor.department}) melaporkan: ${payload.title}`,
