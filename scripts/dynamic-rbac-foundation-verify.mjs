@@ -27,6 +27,7 @@ const branchLocationMigration = fs.readFileSync('server/migrations/026_map_branc
 const server = fs.readFileSync('server.ts', 'utf8');
 const licensesView = fs.readFileSync('src/components/views/LicensesView.tsx', 'utf8');
 const ticketsView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
+const loansView = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -195,6 +196,8 @@ const checks = [
   ['license creation UI uses licenses.manage alone and does not require unrelated assets.create', /currentUser\.permission_keys\?\.includes\('licenses\.manage'\) === true/.test(licensesView) && !/licenses\.manage'\) === true && currentUser\.permission_keys\?\.includes\('assets\.create'/.test(licensesView)],
   ['ticket creation UI requires effective tickets.create in PostgreSQL and does not rely on Auditor label', /const canCreateTicket = hasEffectivePermission\('tickets\.create'\)/.test(ticketsView) && /\{canCreateTicket && \(/.test(ticketsView) && /\{isSelfTicketsOnly && canCreateTicket && \(/.test(ticketsView)],
   ['ticket queue UI does not infer SC/PIBC queues from profile labels', !/Supply Chain|Helpdesk & Tiket PIBC|currentUser\?\.role === 'IT'/.test(ticketsView)],
+  ['loan creation UI requires effective loans.create and is not inferred from employee profile labels', /const canCreateLoan = hasEffectivePermission\('loans\.create'\)/.test(loansView) && /\{canCreateLoan && \(/.test(loansView) && /\{isEmployee && canCreateLoan && \(/.test(loansView)],
+  ['loan approval workspace is capability-driven in PostgreSQL mode', /const hasLoanQueueCapability = \['loans\.approve', 'loans\.reject', 'loans\.handover'\]/.test(loansView) && /const isEmployee = !isAuditor && !hasLoanQueueCapability/.test(loansView)],
 
 
 ];
