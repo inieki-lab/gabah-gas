@@ -207,3 +207,12 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Added static regression assertions to `scripts/dynamic-rbac-foundation-verify.mjs` for all three grants and the migration version separation.
 - Commits: `52e7fd2` (initial draft 091, subsequently removed), `41109d9` (remove duplicate 091), `aee547a` (create migration 092), `13b91ff` and `91d56d7` (test coverage). The migration runner applies `_post_seed_` migrations after normalized users and canonical roles are materialized.
 - Verification status: source and test changes are committed; CI execution on the latest head remains pending.
+
+### CI run #1602 — temuan lanjutan pada Humas fixture (16 November 2026)
+
+- Setelah grant permission diperbaiki, CI #1602 masih gagal pada tiga assertion antrean dokumentasi Humas. Log menunjukkan profil Humas berhasil login (`role=Humas`) tetapi `role_keys` kosong; karena itu antrean operasional tetap tidak terbuka.
+- Root cause kedua: database/fixture yang sudah mencatat migration 090 sebelum akun canonical dimaterialisasi tidak hanya kehilangan role-permission grant, tetapi juga dapat kehilangan backfill assignment Humas/Sekretariat Direksi. Migration 092 sebelumnya hanya mengulang grant capability, belum mengulang assignment pengguna.
+- Migration 092 diperluas untuk mengulang backfill canonical role dari label profil legacy secara additive/idempotent, memastikan Humas/Sekretariat Direksi menjadi role sekunder dan Karyawan menjadi role primer, lalu mengulang tiga role-permission grant ruang rapat. Assignment custom tidak dihapus.
+- Regression static check diperluas untuk memverifikasi backfill Humas/Sekdir pada migration upgrade dan diperbaiki regex whitespace-nya.
+- Commit migration: `04f305b`; test: `b5fd42e`, `bb6945a`.
+- Status: akar masalah dan perbaikan sudah dikomit; CI baru setelah commit `bb6945a` masih harus diverifikasi. CI #1602 tetap FAIL dan tidak boleh dianggap lulus.
