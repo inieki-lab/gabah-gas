@@ -3806,9 +3806,6 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'contracts.reminders.manage')) return;
     const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat menjalankan reminder sweep manual.' });
-      }
       const result = await ContractDomainService.runReminderSweep(actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
@@ -3821,10 +3818,6 @@ async function startServer() {
     try {
       
     if (!requireRbacPermission(req, res, 'contracts.reminders.manage')) return;
-    const actor = getActor(req);
-      if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat melihat status scheduler.' });
-      }
       res.json({ success: true, data: getSchedulerStatus() });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
