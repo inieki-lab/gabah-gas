@@ -10,9 +10,10 @@
 
 ## 1. Lingkungan Pengujian (Test Environment)
 
-- **Development Port**: `http://localhost:3000` (dijalankan via `npm run dev`)
-- **Docker local test default**: `http://localhost:8080` (host port configurable via `GABAH_WEB_PORT`)
-- **Office VM default**: `http://localhost:80` (set `GABAH_WEB_PORT=80` in the VM `.env`)
+- **Runtime tunggal (laptop/UAT/server)**: Docker Compose, browser `http://localhost` (host port default 80; configurable via `GABAH_WEB_PORT`).
+- **App → PostgreSQL**: service DNS `database:5432` di jaringan Compose; tidak menggunakan localhost atau host-mapped port.
+- **Database host port**: `127.0.0.1:5432` untuk administrasi lokal saja (configurable via `GABAH_DB_PORT`).
+- **Startup contract**: app menunggu PostgreSQL healthy dan berjalan fail-fast jika database tidak tersedia; tidak ada file-store fallback pada runtime Compose.
 - **Database Engine**: PostgreSQL 17 (driver `pg`)
 - **Token Format**: Bearer Token pada header `Authorization`
 - **Metode Pengujian**: Manual UI end-to-end melalui browser dan verifikasi otomatis via API client.
