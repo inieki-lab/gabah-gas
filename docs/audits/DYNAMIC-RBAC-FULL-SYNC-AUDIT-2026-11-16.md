@@ -262,3 +262,13 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Added static regression assertions in `scripts/dashboard-scope-verify.ts` for custom permission-driven roles, management capabilities, and global dashboard separation.
 - Commits: `b1e3750`, `6914c1e`, `0bb20f8` (dashboard implementation); `9a25f75`, `05a49ff`, `abf34ff` (tests).
 - CI on this final dashboard refinement is pending; do not treat CI #1612/#1613 as validating these later commits.
+
+
+### Final dashboard CI and meeting administration permission audit (16 November 2026)
+
+- CI #1621 and #1622 completed with **SUCCESS**. Both validate the final permission-driven dashboard refinement; #1622 also validates the audit-documentation follow-up.
+- Continued endpoint/service review found meeting-type and meeting-facility service methods still repeated primary-role checks after the HTTP routes had already checked the dynamic permission keys. In PostgreSQL mode this incorrectly denied custom roles that were explicitly granted `meeting_types.manage` or `meeting_facilities.manage`.
+- Updated all three meeting-type mutation methods to enforce `meeting_types.manage` through the shared effective-permission helper. Updated all three meeting-facility mutation methods to enforce `meeting_facilities.manage` in PostgreSQL mode; legacy GA/IT fallback remains limited to file-store mode.
+- Added static regression checks for all six service methods to `scripts/dynamic-rbac-foundation-verify.mjs`.
+- Commits: `e9aebc0` (service authorization correction), `e14393f` (regression checks). CI for the latest head must complete before this change is considered validated.
+- This closes one identified custom-role authorization mismatch; it does not certify the entire endpoint matrix. Remaining work includes reviewing every mutation/read/export/attachment path, the Administration UI against PostgreSQL, and laptop browser UAT. PR #115 remains draft and unmerged.
