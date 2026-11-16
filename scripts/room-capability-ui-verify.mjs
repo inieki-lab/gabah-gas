@@ -19,7 +19,7 @@ assert.doesNotMatch(rooms, /currentUser\.role === 'Humas' &&/);
 assert.doesNotMatch(rooms, /currentUser\.role === 'Sekretaris Direksi' &&/);
 
 // Override UI is permission-first in PostgreSQL and keeps a narrow file-store fallback.
-assert.match(form, /const isAuditor = currentUser\.role_keys\?\.includes\('auditor'\) === true \|\| currentUser\.role === 'Auditor'/);
+assert.match(form, /const isAuditor = Array\.isArray\(currentUser\.role_keys\) \? currentUser\.role_keys\.includes\('auditor'\) : currentUser\.role === 'Auditor'/);
 assert.match(form, /const canOverride = useMemo\(\(\) => !isAuditor && \([\s\S]*currentUser\.is_superadmin === true[\s\S]*currentUser\.permission_keys\?\.includes\('\*'\) === true[\s\S]*currentUser\.permission_keys\?\.includes\('room_reservations\.override_priority'\) === true[\s\S]*currentUser\.permission_keys === undefined && currentUser\.role === 'Sekretaris Direksi'/);
 assert.match(form, /const isSekdir = canOverride/);
 assert.match(form, /if \(isSekdir \|\| meetingType === 'direksi'\)/);
