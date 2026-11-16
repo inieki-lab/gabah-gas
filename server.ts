@@ -2858,9 +2858,13 @@ async function startServer() {
 
   app.post('/api/loans/:id/return', async (req, res) => {
     try {
-      
-    if (!requireRbacPermission(req, res, 'loans.return')) return;
-    const actor = getActor(req);
+      const actor = getActor(req);
+      const loan = db.loans.find(item => item.id === req.params.id);
+      if (!loan) return res.status(404).json({ success: false, message: 'Data pinjaman tidak ditemukan' });
+      // The borrower may return their own loan without being granted the
+      // owner-side loans.return capability. Other actors still need that
+      // capability and the domain service enforces matching owner scope.
+      if (loan.borrower_id !== actor.id && !requireRbacPermission(req, res, 'loans.return')) return;
       const { condition, returnNotes } = req.body;
       const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
       await persistDataStore();
