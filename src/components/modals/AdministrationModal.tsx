@@ -1939,9 +1939,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     onChange={e => setUserRoleFilter(e.target.value)}
                     className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#4ABDAC]"
                   >
-                    <option value="all">Semua Peran ({SYSTEM_ROLES.length})</option>
-                    {SYSTEM_ROLES.map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                    <option value="all">Semua profil ({new Set(userList.map(user => user.role || 'Pegawai')).size})</option>
+                    {[...new Set(userList.map(user => String(user.role || 'Pegawai')))].sort().map(role => (
+                      <option key={role} value={role}>{role}</option>
                     ))}
                   </select>
                   {isCurrentUserAdmin ? (
@@ -2136,7 +2136,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Role Primer</label>
+                      <label className="block text-slate-600 mb-1 font-medium">Label Profil Pegawai (bukan hak akses)</label>
                       <select
                         value={newUserData.role}
                         onChange={e => {
@@ -2150,7 +2150,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           <option key={r.value} value={r.value}>{r.label}</option>
                         ))}
                       </select>
-                      <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
+                      <p className="mt-1 text-[10px] text-slate-500">Kolom ini hanya label profil kompatibilitas. Hak akses aplikasi ditentukan terpisah melalui penetapan Dynamic RBAC di bawah.</p>
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
@@ -2442,7 +2442,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Peran Akses (Role) *</label>
+                          <label className="text-xs font-bold text-slate-700">Label Profil Pegawai (bukan hak akses)</label>
                           <select
                             value={editUserData.role}
                             onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
@@ -2452,7 +2452,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>
-                          <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat ditetapkan sebagai role fungsi. RPC/SC dan PIBC dicatat melalui unit serta lokasi kantor.</p>
+                          <p className="mt-1 text-[10px] text-slate-500">Label profil tidak memberikan izin. Hak akses diberikan melalui Dynamic RBAC dan dapat terdiri dari beberapa role.</p>
                         </div>
 
                         <div className="space-y-1.5">
