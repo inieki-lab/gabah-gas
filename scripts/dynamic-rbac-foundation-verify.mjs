@@ -26,6 +26,7 @@ const employeeCapabilityMigration = fs.readFileSync('server/migrations/031_emplo
 const branchLocationMigration = fs.readFileSync('server/migrations/026_map_branch_accounts_to_employee_location.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const licensesView = fs.readFileSync('src/components/views/LicensesView.tsx', 'utf8');
+const ticketsView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -192,6 +193,8 @@ const checks = [
   ['contract creation service requires contracts.create only and cannot inherit create authority from contracts.update', (() => { const start = contractAccess.indexOf('export function canManageContracts('); const end = contractAccess.indexOf('// SEC-08', start); const body = contractAccess.slice(start, end); return start >= 0 && body.includes("hasRbacPermission(String(user.id), 'contracts.create')") && !body.includes("hasRbacPermission(String(user.id), 'contracts.update')"); })()],
   ['contract reminder execution and scheduler status are controlled by explicit contracts.reminders.manage permission, not hard-coded Superadmin role', (() => { const start = server.indexOf("app.post('/api/contracts/reminders/run'"); const end = server.indexOf("app.get('/api/contracts/:id/notification-logs'", start); const body = server.slice(start, end); return start >= 0 && body.includes("requireRbacPermission(req, res, 'contracts.reminders.manage')") && !body.includes('isSuperadminActor(actor)'); })()],
   ['license creation UI uses licenses.manage alone and does not require unrelated assets.create', /currentUser\.permission_keys\?\.includes\('licenses\.manage'\) === true/.test(licensesView) && !/licenses\.manage'\) === true && currentUser\.permission_keys\?\.includes\('assets\.create'/.test(licensesView)],
+  ['ticket creation UI requires effective tickets.create in PostgreSQL and does not rely on Auditor label', /const canCreateTicket = hasEffectivePermission\('tickets\.create'\)/.test(ticketsView) && /\{canCreateTicket && \(/.test(ticketsView) && /\{isSelfTicketsOnly && canCreateTicket && \(/.test(ticketsView)],
+  ['ticket queue UI does not infer SC/PIBC queues from profile labels', !/Supply Chain|Helpdesk & Tiket PIBC|currentUser\?\.role === 'IT'/.test(ticketsView)],
 
 
 ];
