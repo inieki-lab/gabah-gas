@@ -118,6 +118,12 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 - Skrip regresi import, user administration, notification RBAC, profile/RBAC separation, dan Dynamic RBAC foundation diperbarui mengikuti kontrak baru.
 - CI workflow diperluas agar PR yang menargetkan preview/green-enterprise-theme-laptop juga dapat menjalankan suite yang sama.
 
+### Sidebar: capability Humas dan Sekretariat Direksi (16 November 2026)
+
+- CI berikutnya telah lulus P0 **45/45**, integrasi PostgreSQL **84/84**, dan bulk import **22/22**. Tes primary-role/profile separation juga sudah lulus setelah UI menjelaskan bahwa label profil bukan role akses.
+- Satu kontrak UI module lifecycle menemukan Sidebar mengenali Humas melalui helper role-key, tetapi belum menampilkan konteks khusus Sekretariat Direksi. Sidebar kini mengenali `sekretaris_direksi` dari effective assigned role keys dan memberi label workspace/agenda yang sesuai; menu tetap disaring oleh permission dan module status, bukan oleh label profil.
+- Tes UI diperbarui agar memeriksa helper role-key bersama, bukan mengharuskan akses langsung ke array role keys.
+
 ### Pemisahan label profil dari role assignment pada UI (16 November 2026)
 
 - Tes bulk-import terbaru lulus **22/22** setelah assertion dibetulkan untuk membedakan email invalid dari kesalahan label profil.
