@@ -3,7 +3,7 @@
 - New tickets use IT (company-wide), GA (explicit requester capability), or ME (PIBC Tim Perawatan unit); historical SC/PIBC ticket records remain readable.
 - ME tickets are unit-routed and unit-notified; IT/GA auto-assignment occurs only when exactly one active, authorized frontline operator is found.
 - GA dispatch is separated from generic GA permissions through the explicit Helpdesk Operator capability; ME dispatch uses a dedicated unit-scoped Admin Tiket ME role.
-- Add scoped assignee lookup/delegation endpoints and UI, plus persistence for assigned unit and unit notifications.
+- Add scoped assignee lookup/delegation endpoints and UI, enforce object-level scope on ticket status changes, and persist assigned unit plus unit notifications.
 - Add migrations and static/fresh-PostgreSQL regression coverage, including a gated optional ME UAT account.
 
 ---
