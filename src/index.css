@@ -73,3 +73,82 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #8eae99;
 }
+
+/*
+ * Theme enforcement layer.
+ * Tailwind utility colors were previously hard-coded across legacy screens,
+ * leaving many cards/forms in the old neutral palette. These semantic utility
+ * selectors apply the same green enterprise tokens consistently without
+ * changing component behavior or status colors (amber/red/blue).
+ */
+:root {
+  --gabah-control-bg: #fbfdfb;
+  --gabah-control-border: #cbded0;
+  --gabah-control-focus: #2d9b63;
+}
+
+body,
+#root {
+  background: var(--gabah-canvas);
+  color: var(--gabah-text);
+}
+
+#root [class~="bg-slate-50"],
+#root [class~="bg-gray-50"] {
+  background-color: var(--gabah-green-50);
+}
+
+#root [class~="border-slate-100"],
+#root [class~="border-slate-200"],
+#root [class~="border-gray-100"],
+#root [class~="border-gray-200"] {
+  border-color: var(--gabah-border);
+}
+
+#root [class~="text-slate-900"],
+#root [class~="text-gray-900"] {
+  color: var(--gabah-text);
+}
+
+#root [class~="text-slate-800"],
+#root [class~="text-slate-700"],
+#root [class~="text-gray-800"],
+#root [class~="text-gray-700"] {
+  color: #254a35;
+}
+
+#root [class~="text-slate-500"],
+#root [class~="text-slate-400"],
+#root [class~="text-gray-500"],
+#root [class~="text-gray-400"] {
+  color: var(--gabah-muted);
+}
+
+#root [class~="bg-emerald-600"],
+#root [class~="bg-emerald-700"] {
+  background-color: var(--gabah-green-800);
+}
+
+#root [class~="hover:bg-emerald-700"]:hover,
+#root [class~="hover:bg-emerald-800"]:hover {
+  background-color: var(--gabah-green-950);
+}
+
+#root input:not([type="checkbox"]):not([type="radio"]),
+#root select,
+#root textarea {
+  border-color: var(--gabah-control-border);
+  background-color: #fff;
+}
+
+#root input:focus,
+#root select:focus,
+#root textarea:focus {
+  border-color: var(--gabah-control-focus);
+  outline-color: var(--gabah-control-focus);
+}
+
+#root button:focus-visible,
+#root a:focus-visible {
+  outline-color: var(--gabah-control-focus);
+}
