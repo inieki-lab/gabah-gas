@@ -109,6 +109,18 @@ export function canEditContract(user: ServerUser, contract: ServerContract): boo
   return user.role === owner;
 }
 
+/** Contract sub-resources use their own capability plus record-level ownership/scope. */
+function canManageContractCapability(user: ServerUser, contract: ServerContract, permissionKey: 'contracts.milestones.manage' | 'contracts.renewal.decide'): boolean {
+  if (isSuperadminActor(user)) return true;
+  const owner = String(contract.owner_division || '').trim().toUpperCase();
+  if (!owner) return false;
+  if (isPostgresPersistenceActive()) {
+    return hasRbacPermission(String(user.id), permissionKey)
+      && (contract.pic_user_id === user.id || hasRbacScope(String(user.id), 'division', owner, 'contracts'));
+  }
+  return user.role === owner;
+}
+
 function recordContractAudit(action: string, details: string, actor: ServerUser, contractId: string) {
   // Shape MUST match the canonical ServerAuditLog (recordAudit in services.ts):
   // the PostgreSQL audit_logs table enforces entity/user_name/user_role NOT NULL,
@@ -271,7 +283,7 @@ export const ContractDomainService = {
   addMilestone(contractId: string, milestone: Omit<ServerContractMilestone, 'id' | 'status'>, actor: ServerUser): ServerContract {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
-    if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
+    if (!canManageContractCapability(actor, contract, 'contracts.milestones.manage')) throw new Error('Akses ditolak: permission contracts.milestones.manage atau scope kontrak tidak diberikan.');
 
     contract.milestones.push({ ...milestone, id: `CMS-${Date.now()}`, status: 'pending' });
     contract.updated_at = new Date().toISOString();
@@ -282,7 +294,7 @@ export const ContractDomainService = {
   decideRenewal(contractId: string, outcome: RenewalOutcome, notes: string, replacementContractId: string | null, actor: ServerUser): ServerContract {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
-    if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
+    if (!canManageContractCapability(actor, contract, 'contracts.renewal.decide')) throw new Error('Akses ditolak: permission contracts.renewal.decide atau scope kontrak tidak diberikan.');
 
     const allowedOutcomes: RenewalOutcome[] = [
       'pending_decision',
