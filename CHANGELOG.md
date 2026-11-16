@@ -1,3 +1,10 @@
+## [2026-11-16] — Primary-role policy regression hardening
+
+- Make route-boundary checks independent of source declaration order so test failures identify policy regressions rather than route layout.
+- Strengthen assertions that Supply Chain/PIBC are import-only location aliases, Humas/Sekretariat are not primary profile roles, and employee unit/location/job-level attributes remain distinct.
+
+---
+
 ## [2026-11-16] — Module lifecycle administration UI
 
 - Add a Superadmin Administration panel to activate/deactivate modules with a required reason and view append-only status history.
