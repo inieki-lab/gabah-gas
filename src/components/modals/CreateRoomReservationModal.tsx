@@ -113,14 +113,12 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const [serverConflictData, setServerConflictData] = useState<any | null>(null);
 
   // Sekretariat Direksi is an additional capability, not a primary profile role.
-  const isSekdir = currentUser.role_keys !== undefined
-    ? currentUser.role_keys.includes('sekretaris_direksi')
-    : currentUser.role === 'Sekretaris Direksi';
   const canOverride = useMemo(() => (
     currentUser.is_superadmin === true
     || currentUser.permission_keys?.includes('room_reservations.override_priority') === true
     || (currentUser.permission_keys === undefined && currentUser.role === 'Sekretaris Direksi')
   ), [currentUser.is_superadmin, currentUser.permission_keys, currentUser.role]);
+  const isSekdir = canOverride;
 
   // Load master types and facilities
   useEffect(() => {
