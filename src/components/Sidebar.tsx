@@ -91,10 +91,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     currentUserRoleKeys !== undefined
       ? currentUserRoleKeys.includes(key)
       : activeRole === legacyLabel;
-  const isHumas = hasRoleKey('humas', 'Humas');
-  const isSekdir = hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi');
-  const isIT = hasRoleKey('it', 'IT');
-  const isGA = hasRoleKey('ga', 'GA');
+  const hasPermission = (key: string) => currentUserPermissions !== undefined
+    ? currentUserPermissions.includes('*') || currentUserPermissions.includes(key)
+    : undefined;
+  const isHumas = hasPermission('room_reservations.documentation.read') ?? hasRoleKey('humas', 'Humas');
+  const isSekdir = hasPermission('room_reservations.override_priority') ?? hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi');
+  const isIT = hasPermission('room_reservations.it_facilities.read') ?? hasRoleKey('it', 'IT');
+  const isGA = (currentUserPermissions !== undefined
+    ? currentUserPermissions.includes('*')
+      || currentUserPermissions.includes('room_reservations.approve')
+      || currentUserPermissions.includes('room_reservations.reject')
+    : hasRoleKey('ga', 'GA'));
   const isSuperAdmin = isSuperadminNavigationAllowed(activeRole, currentUserIsSuperAdmin, currentUserPermissions);
   const [showAdministration, setShowAdministration] = useState(false);
 
