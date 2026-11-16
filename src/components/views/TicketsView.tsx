@@ -59,23 +59,30 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     'Dokumen BAST serah terima perangkat pengganti telah diterbitkan secara resmi melalui GABAH.',
   ];
 
-  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
-  const isIT = currentUser?.role === 'IT';
-  const isGA = currentUser?.role === 'GA';
-  const isSC = currentUser?.role === 'Supply Chain';
-  const isPIBC = currentUser?.role === 'PIBC';
-  const isAuditor = currentUser?.role === 'Auditor';
-  // Self-service roles see their own submissions; operating divisions see the
-  // tickets already authorized for their division by GabahService.
+  const hasEffectivePermission = (key: string) => Array.isArray(currentUser?.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key)
+    : undefined;
+  const hasLegacyRole = (key: string, label: string) => currentUser?.role_keys !== undefined
+    ? currentUser.role_keys.includes(key)
+    : currentUser?.role === label;
+  const isSuperAdmin = currentUser?.is_superadmin === true
+    || (currentUser?.permission_keys === undefined && currentUser?.role === 'Admin GABAH');
+  const isIT = hasLegacyRole('it', 'IT');
+  const isGA = hasLegacyRole('ga', 'GA');
+  const isSC = false;
+  const isPIBC = false;
+  const isAuditor = hasLegacyRole('auditor', 'Auditor');
+  const canCreateTicket = hasEffectivePermission('tickets.create')
+    ?? (currentUser?.role !== 'Auditor');
+  // The API supplies permission- and scope-filtered tickets in PostgreSQL mode.
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const baseTickets = safeTickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
-  // In Dynamic RBAC mode the API has already scoped this list. A Karyawan
-  // baseline may also hold an explicitly assigned operational queue role.
   const hasScopedQueueTickets = Array.isArray(currentUser?.permission_keys) && baseTickets.some(t =>
     t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
   );
-  const isSelfTicketsOnly = !hasScopedQueueTickets
-    && ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
+  const hasQueueCapability = ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => hasEffectivePermission(key) === true)
+    || (currentUser?.permission_keys === undefined && ['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || ''));
+  const isSelfTicketsOnly = !isAuditor && !hasQueueCapability && !hasScopedQueueTickets;
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
   const defaultCategories = isSelfTicketsOnly
@@ -153,7 +160,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateTicket && (
             <button
               id="btn-create-ticket"
               onClick={handleOpenCreate}
