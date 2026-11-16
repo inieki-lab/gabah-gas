@@ -81,7 +81,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     'assets.move', 'assets.lifecycle', 'loans.approve', 'loans.reject',
     'loans.handover', 'tickets.assign', 'tickets.update', 'maintenances.create',
     'maintenances.update', 'room_reservations.approve', 'room_reservations.reject',
-    'meeting_rooms.update', 'contracts.create', 'vendors.create',
+    'meeting_rooms.update', 'meeting_types.manage', 'meeting_facilities.manage',
+    'licenses.manage', 'knowledge.create', 'knowledge.update',
+    'contracts.create', 'contracts.update', 'contracts.documents.upload',
+    'vendors.create', 'vendors.update', 'organization.manage', 'master_data.manage',
   ];
   const hasOperationalManagementAccess = operationalManagementPermissions.some(canPermission);
   const isEmployee = !isSuperAdmin && !isAuditor && !hasOperationalManagementAccess;
