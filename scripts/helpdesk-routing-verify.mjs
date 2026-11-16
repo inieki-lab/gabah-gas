@@ -76,4 +76,4 @@ assert.match(migrations.requestPermissions, /tickets\.create\.me/);
 assert.match(migrations.requesterRoles, /pemohon_tiket_ga/);
 assert.match(migrations.requesterRoles, /pemohon_tiket_me/);
 
-console.log('Helpdesk IT/GA/ME routing: 44 checks passed');
+console.log('Helpdesk IT/GA/ME routing: 45 checks passed');
