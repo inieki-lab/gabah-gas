@@ -2371,7 +2371,7 @@ async function startServer() {
       const VALID_ASSET_STATUSES = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive', 'in_use', 'loaned', 'maintenance'];
       const VALID_DIVISIONS = (db.divisions || []).map(d => String(d.code).trim().toUpperCase());
       // CR-06: allowlist identik dengan PATCH /api/assets/:id
-      const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
+      const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
 
       let created = 0;
       let updated = 0;
@@ -2441,6 +2441,10 @@ async function startServer() {
           }
           if (!allowUpdate) {
             errors.push(`Baris ${rowNo}: ${serial ? `Serial "${serial}"` : `Nomor Accurate "${corp}"`} sudah terdaftar pada aset ${existing.asset_number} (${existing.name}). Aktifkan opsi perbarui bila ingin memperbarui.`);
+            continue;
+          }
+          if (requestedStatus !== undefined && requestedStatus !== existing.status) {
+            errors.push(`Baris ${rowNo}: Status aset tidak dapat diubah melalui impor massal. Gunakan workflow penugasan, peminjaman, atau lifecycle.`);
             continue;
           }
           // Bulk UPDATE uses the same owner-domain authorization as PATCH.
