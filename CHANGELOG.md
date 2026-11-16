@@ -3,7 +3,7 @@
 - PostgreSQL startup now materializes user rows before inserting legacy Humas/Sekretariat secondary capability assignments, avoiding foreign-key failures on a fresh database.
 - Normalize legacy Humas/Sekretariat/SC/PIBC primary labels to Karyawan only after capability assignment succeeds; preserve display labels and map SC/PIBC office locations.
 - Reconcile the PostgreSQL primary-role mirror to Karyawan while retaining Humas/Sekretariat as non-primary assignments.
-- Dashboard employee/function summaries now recognize Dynamic RBAC capability keys as well as legacy file-store profiles.
+- Dashboard and notification header recognize Dynamic RBAC Humas/Sekretariat capability keys as well as legacy file-store profiles.
 - Add source and fresh-PostgreSQL integration regressions for role/capability persistence.
 
 ---
