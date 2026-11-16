@@ -17,14 +17,13 @@ import {
   CalendarClock,
   KeyRound
 } from 'lucide-react';
-import { UserProfile, UserRole, Ticket, Loan, RoomReservation } from '../types';
+import { UserProfile, Ticket, Loan, RoomReservation } from '../types';
 import { GabahService } from '../services/gabahService';
 
 interface HeaderNavbarProps {
   currentUser: UserProfile;
   allUsers?: UserProfile[];
   onSelectUser: (user: UserProfile) => void;
-  onSwitchRoleSimulation?: (role: UserRole) => void;
   onOpenScannerModal: () => void;
   onOpenGlobalSearch: () => void;
   onLogout: () => void;
@@ -41,7 +40,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   currentUser,
   allUsers = [],
   onSelectUser,
-  onSwitchRoleSimulation,
   onOpenScannerModal,
   onOpenGlobalSearch,
   onLogout,
