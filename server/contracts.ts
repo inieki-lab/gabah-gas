@@ -67,6 +67,13 @@ export function canSeeContract(user: ServerUser, contract: ServerContract): bool
   if (isSuperadminActor(user)) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
   if (isPostgresPersistenceActive()) {
+    // Auditor's explicit audit.read + global audit scope grants cross-domain
+    // read visibility for audit work. The global security middleware still
+    // denies every write, even when Auditor is an additional assigned role.
+    const hasGlobalAuditRead = isAuditorActor(user)
+      && hasRbacPermission(String(user.id), 'audit.read')
+      && hasRbacScope(String(user.id), 'all', null, 'audit');
+    if (hasGlobalAuditRead) return true;
     if (!hasRbacPermission(String(user.id), 'contracts.read')) return false;
     if (contract.pic_user_id === user.id) return true;
     return Boolean(owner) && hasRbacScope(String(user.id), 'division', owner, 'contracts');
