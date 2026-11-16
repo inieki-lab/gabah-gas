@@ -50,7 +50,7 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Dynamic RBAC is authoritative when permission_keys are present; legacy role fallback is file-store only.
-  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+  const isAuditor = Array.isArray(currentUser.role_keys) ? currentUser.role_keys.includes('auditor') : currentUser.role === 'Auditor';
   const canCreate = !isAuditor && (Array.isArray(currentUser.permission_keys)
     ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('knowledge.create')
     : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role));
