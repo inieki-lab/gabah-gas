@@ -94,7 +94,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     : !isSuperAdmin && !isAuditor && !['IT', 'GA'].includes(currentUser?.role || '');
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
-  const canAssignTickets = hasPermission('tickets.assign');
+  const canAssignTickets = hasPermission('tickets.assign')
+    || (!Array.isArray(currentUser?.permission_keys) && /petugas helpdesk ga|admin tiket me/i.test(String(currentUser?.role_label || '')));
   const defaultCategories = isSelfTicketsOnly
     ? ['ALL', ...Array.from(baseCategorySet)]
     : [
