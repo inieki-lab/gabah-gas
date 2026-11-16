@@ -35,6 +35,7 @@ assert.match(server, /requestedCategory !== 'IT' && !requireRbacPermission/);
 assert.match(server, /isAuditorActor\(actor\)/);
 assert.match(server, /app\.get\('\/api\/tickets\/:id\/assignees'/);
 assert.match(server, /app\.patch\('\/api\/tickets\/:id\/assign'/);
+assert.match(server, /app\.patch\('\/api\/tickets\/:id\/status'[\s\S]*?ticketScopeAllowed[\s\S]*?hasRbacScope/);
 assert.match(server, /ticket\.assigned_unit_id === actor\.unit_id/);
 assert.match(server, /!ticket\.assigned_unit_id && canReadTicketOwner\(ticket\.category\)/);
 assert.match(server, /target\.unit_id === ticket\.assigned_unit_id/);
