@@ -245,3 +245,11 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Meeting-room regression passed `38/38`, including Humas queue visibility, private-field redaction, and documentation brief retention. The UI static test now validates the permission-first `hasRoleKey`/`override_priority` implementation.
 - CI #1613 was triggered by the subsequent audit-documentation-only commit `c9bc6f9`; it is separate from the code validation above.
 - Release remains gated by browser UAT, complete endpoint/scope review, and integration with the stacked theme/numbering PR #114. Neither PR is merged.
+
+### Permission-driven dashboard workspace correction (16 November 2026)
+
+- CI #1612 passed the full workflow, including meeting-room regression `38/38` and the updated room-capability UI assertions. CI #1613 also passed on the subsequent documentation-only commit.
+- A final UI review found DashboardView still classified the employee-vs-operational workspace using the presence of the `karyawan`/IT/GA role keys. A custom role with operational permissions but without those canonical role keys could receive the wrong landing/dashboard composition.
+- Dashboard classification now derives operational workspace access from effective permissions (`assets.*`, loan approval/handover, ticket assignment/update, maintenance management, room operations, contract/vendor creation). Superadmin and Auditor remain separate global/read-only dashboards. IT/GA labels are presentation hints only; they no longer determine workspace access.
+- Added regression assertions to `scripts/dashboard-scope-verify.ts` for permission-driven classification.
+- Commits: `b1e3750` (dashboard fix), `9a25f75` (regression test). CI on this latest code change is pending.
