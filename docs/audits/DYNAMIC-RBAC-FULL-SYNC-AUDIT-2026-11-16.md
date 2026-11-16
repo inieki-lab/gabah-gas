@@ -190,3 +190,11 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 ### Keputusan keselamatan data
 
 Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konversi data pegawai massal pada tahap ini. Assignment lama yang berasal dari migrasi historis dipertahankan sampai dampaknya dipetakan dan diuji.
+
+### Perbaikan fresh-database grant capability ruang rapat (16 November 2026)
+
+- CI run #1594 mengungkap tiga kegagalan pada antrean dokumentasi Humas: item tidak terlihat dan tiga pemeriksaan redaksi data privat ikut gagal karena fixture tidak menerima data antrean.
+- Root cause ditelusuri ke urutan migrasi: migration `034_dynamic_rbac_room_reservation_capabilities.sql` dapat berjalan sebelum role canonical dibuat pada fresh database. Permission berhasil tercatat, tetapi INSERT grant ke role IT/Humas/Sekretariat Direksi tidak menemukan baris role dan tidak pernah diulang.
+- Migration post-seed `090_post_seed_dynamic_rbac_assignment_backfill.sql` kini mengulang grant secara additive/idempotent setelah role tersedia: IT facility queue, Humas documentation queue, dan Sekretariat Direksi priority override. Tidak ada grant berdasarkan jabatan/lokasi dan tidak mengubah assignment kustom.
+- Skrip numbering di branch preview juga diselaraskan ke migration aset `043_asset_numbering_rules.sql`; commit perbaikan: `dd93eaa`. Perbaikan grant post-seed pada branch audit: `fb8ed91`.
+- Status verifikasi: perbaikan sudah dikomit dan isi file diverifikasi dari GitHub; CI fresh-database/meeting-room setelah commit terbaru masih menunggu. PR #115 tetap draft dan tidak boleh merge sampai CI penuh serta audit endpoint/scope selesai.
