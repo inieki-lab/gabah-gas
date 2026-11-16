@@ -119,12 +119,13 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
     });
   }, [safeAssets, selectedDivision, selectedCategory, selectedStatus, searchQuery]);
 
-  const canCreateAsset = Array.isArray(currentUser.permission_keys)
+  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+  const canCreateAsset = !isAuditor && (Array.isArray(currentUser.permission_keys)
     ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('assets.create')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const canImportAssets = Array.isArray(currentUser.permission_keys)
+    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role));
+  const canImportAssets = !isAuditor && (Array.isArray(currentUser.permission_keys)
     ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('assets.bulk_import')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role));
 
   return (
     <div className="space-y-6">
@@ -453,7 +454,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
-                        {onReportAsset && currentUser?.role !== 'Auditor' && (
+                        {onReportAsset && !isAuditor && (
                           <button
                             onClick={() => onReportAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
