@@ -33,6 +33,13 @@
 
 Warna teal Food Station lama (`#4ABDAC`, `#206F65`) dipertahankan sebagai compatibility tokens selama migrasi bertahap. Jangan mengganti warna status semantik (success, warning, danger, info) dengan hijau; status harus tetap dapat dibedakan.
 
+## 2.1 Penerapan Konsisten pada Komponen Legacy
+
+- `src/index.css` menyediakan enforcement layer untuk utilitas warna legacy Tailwind: permukaan slate/gray menjadi green-50/canvas, border slate/gray memakai border token, teks netral memakai text/muted token, dan aksi emerald memakai green-800.
+- Enforcement dibatasi di dalam `#root`; warna status semantik (amber, rose/red, blue/info) tetap dipertahankan.
+- Kontrol form, focus-visible, login/loading shell, sidebar, header, dan workspace harus mengikuti token yang sama.
+- Perubahan visual dinyatakan selesai hanya setelah build dan pemeriksaan browser pada halaman login, dashboard, katalog aset, dan seluruh panel Administration.
+
 ## 3. Tipografi
 
 Gunakan **Plus Jakarta Sans**. Hierarki:
