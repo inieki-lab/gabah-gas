@@ -9,6 +9,13 @@ import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
 
+/** Resolve a Helpdesk category to its owner domain; ME is the PIBC maintenance unit. */
+export function getTicketOwnerDivision(category: string | null | undefined): string {
+  const normalized = String(category || '').trim().toUpperCase();
+  return normalized === 'ME' ? 'PIBC' : normalized;
+}
+
+
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
 const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
 
@@ -227,6 +234,7 @@ export class GabahDomainService {
     recipient_role?: string;
     recipient_division?: string;
     recipient_user_id?: string;
+    recipient_unit_id?: string;
     title: string;
     message: string;
     severity: 'critical' | 'action_required' | 'warning' | 'info' | 'success';
@@ -239,6 +247,7 @@ export class GabahDomainService {
       recipient_role: data.recipient_role,
       recipient_division: data.recipient_division,
       recipient_user_id: data.recipient_user_id,
+      recipient_unit_id: data.recipient_unit_id,
       title: data.title,
       message: data.message,
       severity: data.severity,
@@ -1014,7 +1023,7 @@ export class GabahDomainService {
   static createTicket(payload: {
     title: string;
     description: string;
-    category: 'IT' | 'GA' | 'SC' | 'PIBC';
+    category: 'IT' | 'GA' | 'ME';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
     contract_id?: string;
@@ -1024,7 +1033,7 @@ export class GabahDomainService {
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
     // ticket: notification goes to a role that does not exist and nobody ever
     // picks it up.
-    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'SC', 'PIBC'] as const;
+    const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'ME'] as const;
     if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
       throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
     }
@@ -1083,6 +1092,7 @@ export class GabahDomainService {
       reporter_id: actor.id,
       reporter_name: actor.name,
       reporter_department: actor.department,
+      assigned_unit_id: payload.category === 'ME' ? 'UNIT-PIBC-ME' : undefined,
       related_asset_id: relatedAssetId,
       related_asset_name: relatedAssetName,
       related_asset_number: relatedAssetNumber,
@@ -1093,6 +1103,24 @@ export class GabahDomainService {
       updated_at: new Date().toISOString(),
     };
 
+    // IT and GA may be auto-assigned only when exactly one active frontline
+    // operator has tickets.update plus the matching division scope. Otherwise
+    // leave the ticket in its queue; never guess a technician.
+    if (['IT', 'GA'].includes(payload.category) && isPostgresPersistenceActive()) {
+      const targetDivision = payload.category;
+      const eligibleAgents = db.users.filter(user =>
+        user.is_active !== false
+        && String(user.division || '').toUpperCase() === targetDivision
+        && hasRbacPermission(String(user.id), 'tickets.update')
+        && hasRbacScope(String(user.id), 'division', targetDivision, 'tickets')
+      );
+      if (eligibleAgents.length === 1) {
+        newTicket.assigned_agent_id = eligibleAgents[0].id;
+        newTicket.assigned_agent_name = eligibleAgents[0].name;
+        newTicket.status = 'assigned';
+      }
+    }
+
     db.tickets.unshift(newTicket);
 
     // Contract linkage was validated before ticket creation.
@@ -1101,11 +1129,15 @@ export class GabahDomainService {
       this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id);
     }
 
-    // Notify respective division (IT covers software/license/SaaS)
-    const targetDivision = payload.category;
+    // IT/GA tickets notify an assigned frontline operator when uniquely
+    // eligible, otherwise the division queue. ME tickets go to the dedicated
+    // PIBC maintenance unit, never to all PIBC employees.
+    const targetDivision = getTicketOwnerDivision(payload.category);
     this.notify({
-      recipient_role: targetDivision,
-      recipient_division: targetDivision,
+      recipient_user_id: newTicket.assigned_agent_id || undefined,
+      recipient_role: payload.category === 'ME' ? undefined : (newTicket.assigned_agent_id ? undefined : targetDivision),
+      recipient_division: payload.category === 'ME' || newTicket.assigned_agent_id ? undefined : targetDivision,
+      recipient_unit_id: payload.category === 'ME' ? 'UNIT-PIBC-ME' : undefined,
       title: `Tiket Baru: [${payload.priority.toUpperCase()}] ${ticketNumber}`,
       message: `${actor.name} (${actor.department}) melaporkan: ${payload.title}`,
       severity: payload.priority === 'urgent' ? 'critical' : payload.priority === 'high' ? 'action_required' : 'info',
