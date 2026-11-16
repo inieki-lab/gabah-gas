@@ -2740,7 +2740,9 @@ async function startServer() {
       const ownerScope = getTicketOwnerDivision(owner);
       return isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerScope, 'tickets')
-        : actor.role === ownerScope;
+        : ownerScope === 'GA'
+          ? /petugas helpdesk ga/i.test(String(actor.role_label || ''))
+          : actor.role === ownerScope;
     };
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
@@ -2785,19 +2787,31 @@ async function startServer() {
     const actor = getActor(req);
     const ticket = db.tickets.find(item => item.id === req.params.id);
     if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
-    const inScope = ticket.assigned_unit_id
-      ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
-      : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets');
+    const inScope = isPostgresPersistenceActive()
+      ? (ticket.assigned_unit_id
+        ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
+        : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
+      : (ticket.assigned_unit_id
+        ? ticket.assigned_unit_id === actor.unit_id && /admin tiket me/i.test(String(actor.role_label || ''))
+        : ticket.category === 'GA'
+          ? /petugas helpdesk ga/i.test(String(actor.role_label || ''))
+          : actor.role === getTicketOwnerDivision(ticket.category));
     if (!isSuperadminActor(actor) && !inScope) {
       return res.status(403).json({ success: false, message: 'Anda tidak berwenang melihat petugas untuk antrean ini.' });
     }
     const eligible = db.users.filter(user =>
       user.is_active !== false
-      && hasRbacPermission(String(user.id), 'tickets.update')
-      && (ticket.assigned_unit_id
-        ? user.unit_id === ticket.assigned_unit_id && hasRbacScope(String(user.id), 'unit', ticket.assigned_unit_id, 'tickets')
-        : String(user.division || '').toUpperCase() === getTicketOwnerDivision(ticket.category)
-          && hasRbacScope(String(user.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
+      && (isPostgresPersistenceActive()
+        ? hasRbacPermission(String(user.id), 'tickets.update')
+          && (ticket.assigned_unit_id
+            ? user.unit_id === ticket.assigned_unit_id && hasRbacScope(String(user.id), 'unit', ticket.assigned_unit_id, 'tickets')
+            : String(user.division || '').toUpperCase() === getTicketOwnerDivision(ticket.category)
+              && hasRbacScope(String(user.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
+        : (ticket.assigned_unit_id
+          ? user.unit_id === ticket.assigned_unit_id && /admin tiket me/i.test(String(user.role_label || ''))
+          : ticket.category === 'GA'
+            ? String(user.division || '').toUpperCase() === 'GA' && /petugas helpdesk ga/i.test(String(user.role_label || ''))
+            : String(user.division || '').toUpperCase() === getTicketOwnerDivision(ticket.category)))
     ).map(user => ({ id: user.id, name: user.name, department: user.department }));
     return res.json({ success: true, data: eligible });
   });
@@ -2811,9 +2825,15 @@ async function startServer() {
       if (['resolved', 'closed'].includes(ticket.status)) {
         return res.status(409).json({ success: false, message: 'Tiket sudah selesai. Buka kembali tiket sebelum mengubah penugasannya.' });
       }
-      const ticketScopeAllowed = ticket.assigned_unit_id
-        ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
-        : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets');
+      const ticketScopeAllowed = isPostgresPersistenceActive()
+        ? (ticket.assigned_unit_id
+          ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
+          : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
+        : (ticket.assigned_unit_id
+          ? ticket.assigned_unit_id === actor.unit_id && /admin tiket me/i.test(String(actor.role_label || ''))
+          : ticket.category === 'GA'
+            ? /petugas helpdesk ga/i.test(String(actor.role_label || ''))
+            : actor.role === getTicketOwnerDivision(ticket.category));
       if (!isSuperadminActor(actor) && !ticketScopeAllowed) {
         return res.status(403).json({ success: false, message: 'Anda tidak memiliki kewenangan mendelegasikan tiket pada unit/kategori ini.' });
       }
@@ -2822,11 +2842,17 @@ async function startServer() {
       if (!targetId) return res.status(400).json({ success: false, message: 'Petugas tujuan wajib dipilih.' });
       const target = db.users.find(user => user.id === targetId && user.is_active !== false);
       if (!target) return res.status(400).json({ success: false, message: 'Petugas tujuan tidak ditemukan atau tidak aktif.' });
-      const targetCanWorkQueue = hasRbacPermission(String(target.id), 'tickets.update')
-        && (ticket.assigned_unit_id
-          ? target.unit_id === ticket.assigned_unit_id && hasRbacScope(String(target.id), 'unit', ticket.assigned_unit_id, 'tickets')
-          : String(target.division || '').toUpperCase() === getTicketOwnerDivision(ticket.category)
-            && hasRbacScope(String(target.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'));
+      const targetCanWorkQueue = isPostgresPersistenceActive()
+        ? hasRbacPermission(String(target.id), 'tickets.update')
+          && (ticket.assigned_unit_id
+            ? target.unit_id === ticket.assigned_unit_id && hasRbacScope(String(target.id), 'unit', ticket.assigned_unit_id, 'tickets')
+            : String(target.division || '').toUpperCase() === getTicketOwnerDivision(ticket.category)
+              && hasRbacScope(String(target.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
+        : (ticket.assigned_unit_id
+          ? target.unit_id === ticket.assigned_unit_id && /admin tiket me/i.test(String(target.role_label || ''))
+          : ticket.category === 'GA'
+            ? String(target.division || '').toUpperCase() === 'GA' && /petugas helpdesk ga/i.test(String(target.role_label || ''))
+            : String(target.division || '').toUpperCase() === getTicketOwnerDivision(ticket.category));
       if (!targetCanWorkQueue) {
         return res.status(400).json({ success: false, message: 'Petugas tujuan belum memiliki permission dan scope untuk menangani tiket ini.' });
       }
