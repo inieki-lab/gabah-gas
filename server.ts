@@ -1252,9 +1252,10 @@ async function startServer() {
           `SELECT COUNT(*)::text AS count
            FROM assets a
            JOIN divisions d ON d.id = a.owner_division_id
-           JOIN asset_categories c ON c.id = a.category_id
-           WHERE UPPER(d.code) = UPPER($1) AND UPPER(c.code) = UPPER($2)`,
-          [rule.owner_division, rule.asset_code]
+           LEFT JOIN asset_categories c ON c.id = a.category_id
+           WHERE UPPER(d.code) = UPPER($1)
+             AND (UPPER(c.code) = UPPER($2) OR a.asset_number LIKE $3)`,
+          [rule.owner_division, rule.asset_code, `${rule.owner_division}-${rule.asset_code}-%`]
         );
         const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
           s.division === rule.owner_division && s.code === rule.asset_code
@@ -1321,7 +1322,7 @@ async function startServer() {
          JOIN divisions d ON d.id = a.owner_division_id
          JOIN asset_categories c ON c.id = a.category_id
          WHERE UPPER(d.code) = UPPER($1) AND UPPER(c.code) = UPPER($2)`,
-        [current.owner_division, current.asset_code]
+        [current.owner_division, current.asset_code, `${current.owner_division}-${current.asset_code}-%`]
       );
       const usageCount = Number(usageResult.rows[0]?.count || 0);
       // Once a rule has issued numbers, its identity (owner + asset code) is immutable.
@@ -1390,7 +1391,7 @@ async function startServer() {
          JOIN divisions d ON d.id = a.owner_division_id
          JOIN asset_categories c ON c.id = a.category_id
          WHERE UPPER(d.code) = UPPER($1) AND UPPER(c.code) = UPPER($2)`,
-        [rule.owner_division, rule.asset_code]
+        [rule.owner_division, rule.asset_code, `${rule.owner_division}-${rule.asset_code}-%`]
       );
       const usageCount = Number(usageResult.rows[0]?.count || 0);
       const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
