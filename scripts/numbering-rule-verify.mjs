@@ -6,7 +6,7 @@ import { AssetNumberingEngine } from '../server/numbering.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
-const migration = fs.readFileSync(path.join(root, 'server/migrations/034_asset_numbering_rules.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(root, 'server/migrations/043_asset_numbering_rules.sql'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src/index.css'), 'utf8');
 
 AssetNumberingEngine._resetForTesting();
