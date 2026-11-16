@@ -63,7 +63,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
       ? currentUser.role_keys.includes(key)
       : currentUser.role === legacyLabel;
   const isSuperAdmin = currentUser.is_superadmin === true
-    || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
+    || (currentUser.role_keys === undefined && isSuperAdmin);
   const isHumas = hasRoleKey('humas', 'Humas');
   const isIT = hasRoleKey('it', 'IT') || isSuperAdmin;
   const isGA = hasRoleKey('ga', 'GA') || isSuperAdmin;
@@ -265,7 +265,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   })}
 
                   {/* Photo / Documentation Requests - Strictly for Humas employees only (or Admin GABAH) */}
-                  {(isHumas || currentUser.role === 'Admin GABAH') && docReservations.map(res => (
+                  {(isHumas || isSuperAdmin) && docReservations.map(res => (
                     <div 
                       key={`doc-${res.id}`}
                       onClick={() => {
