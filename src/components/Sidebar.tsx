@@ -85,64 +85,68 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const isHumas = activeRole === 'Humas' || currentUserRoleKeys?.includes('humas') === true;
-  const isSekdir = activeRole === 'Sekretaris Direksi' || currentUserRoleKeys?.includes('sekretaris_direksi') === true;
-  const isStaff = activeRole
-    ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) || isSekdir || isHumas
-    : isSekdir || isHumas;
+  // PostgreSQL mode uses assigned role keys only. Employee profile labels are
+  // never used to infer staff, Humas, IT, or GA capabilities.
+  const hasRoleKey = (key: string, legacyLabel: string) =>
+    currentUserRoleKeys !== undefined
+      ? currentUserRoleKeys.includes(key)
+      : activeRole === legacyLabel;
+  const isHumas = hasRoleKey('humas', 'Humas');
+  const isIT = hasRoleKey('it', 'IT');
+  const isGA = hasRoleKey('ga', 'GA');
   const isSuperAdmin = isSuperadminNavigationAllowed(activeRole, currentUserIsSuperAdmin, currentUserPermissions);
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
     {
-      title: isStaff ? 'Layanan & Tugas Staf' : 'Operasional Utama',
+      title: 'Workspace & Operasional',
       items: [
         {
           id: 'dashboard',
-          label: isHumas ? 'Dashboard Humas' : isStaff ? 'Dashboard Staf' : 'Dashboard KPI',
-          description: isHumas ? 'Ringkasan & Request Foto' : isStaff ? 'Ringkasan & Status' : 'Overview SLA & Aset',
+          label: isHumas ? 'Dashboard Humas' : 'Dashboard',
+          description: isHumas ? 'Ringkasan & permintaan dokumentasi' : 'Ringkasan aktivitas sesuai hak akses',
           icon: LayoutDashboard,
           badge: null,
         },
         {
           id: 'my_assets',
           label: 'Aset Saya',
-          description: isStaff ? 'Perangkat Kerja Anda' : 'Aset Ditugaskan',
+          description: 'Aset yang ditugaskan kepada Anda',
           icon: Laptop,
           badge: null,
         },
         {
           id: 'meeting_rooms',
-          label: isHumas ? 'Ruang Rapat & Liputan' : isStaff ? 'Ruang Rapat' : 'Reservasi Ruangan',
-          description: isHumas ? 'Jadwal & Request Liputan' : isStaff ? 'Jadwal & Booking Ruang' : 'Jadwal & Fasilitas GA/IT',
+          label: isHumas ? 'Ruang Rapat & Liputan' : 'Reservasi Ruangan',
+          description: isHumas ? 'Jadwal & permintaan dokumentasi' : 'Jadwal dan fasilitas ruang rapat',
           icon: isHumas ? Camera : Building2,
           badge: isHumas
             ? (documentationRequestsCount > 0 ? `${documentationRequestsCount} Foto` : null)
-            : (activeRole === 'IT' && itFacilitiesCount > 0)
+            : isIT && itFacilitiesCount > 0
             ? `${itFacilitiesCount} IT`
-            : (activeRole === 'GA' || activeRole === 'Admin GABAH') && (gaRequestsCount > 0 || pendingReservationsCount > 0)
+            : (isGA || isSuperAdmin) && (gaRequestsCount > 0 || pendingReservationsCount > 0)
             ? (gaRequestsCount || pendingReservationsCount)
             : null,
           badgeColor: isHumas 
             ? 'bg-sky-600 text-white' 
-            : activeRole === 'IT'
+            : isIT
             ? 'bg-sky-600 text-white'
             : 'bg-emerald-600 text-white',
         },
         {
           id: 'loans',
-          label: isStaff ? 'Pinjam Barang' : 'Peminjaman Barang',
+          label: 'Peminjaman Barang',
           description: 'Sirkulasi & BAST',
           icon: CalendarClock,
-          badge: pendingLoansCount > 0 && !isStaff ? pendingLoansCount : null,
+          badge: pendingLoansCount > 0 ? pendingLoansCount : null,
           badgeColor: 'bg-[#F7B733] text-slate-900',
         },
         {
           id: 'tickets',
-          label: isStaff ? 'Tiket Helpdesk' : 'Helpdesk & Tiket',
-          description: isStaff ? 'Bantuan Kendala' : 'Insiden & SLA',
+          label: 'Helpdesk & Tiket',
+          description: 'Laporan kendala, penugasan, dan SLA',
           icon: LifeBuoy,
-          badge: openTicketsCount > 0 && !isStaff ? openTicketsCount : null,
+          badge: openTicketsCount > 0 ? openTicketsCount : null,
           badgeColor: 'bg-[#FC4A1A] text-white',
         },
       ],
@@ -175,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      title: isStaff ? 'Informasi & Panduan' : 'Tata Kelola & Rekanan',
+      title: 'Informasi & Rekanan',
       items: [
         {
           id: 'vendors',
