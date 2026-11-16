@@ -1480,3 +1480,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Docker PostgreSQL port now binds to 127.0.0.1 only, not all VM interfaces. Initial admin/user provisioning secrets are passed from .env to the app container.
 - CI now validates docker compose config and bash -n deploy.sh.
 - Replaced OFFICE-VM-RUNBOOK's destructive reset --hard/clean instructions with a release-gated update, PostgreSQL backup, health verification, rollback and restore procedure. It explicitly marks current release NO-GO.
+
+## 2026-11-16 — Green Enterprise UI Theme
+- Menetapkan arah visual gratis berbasis referensi Shadcn Dashboard (React + Vite, MIT) dengan palet hijau Food Station.
+- Memperbarui design tokens global, header, sidebar aktif, dan canvas workspace.
+- Tidak mengganti stack, menambah dependency UI, atau mengubah RBAC, API, route, workflow, maupun data.
+- Perlu verifikasi lint/build dan UAT visual lintas role sebelum merge.

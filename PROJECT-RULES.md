@@ -73,10 +73,10 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
    - Menggunakan Tailwind CSS v4 (impor global `@import "tailwindcss";` di `src/index.css`).
    - Font tipografi kanonikal: `Plus Jakarta Sans`.
    - Warna tema identitas korporat Food Station Tjipinang Jaya:
-     - Primary Teal: `#4ABDAC` / `#206f65`
-     - Secondary Accent Peach: `#FC4A1A`
+     - Primary Green: `#176B45` / `#218653` (Green Enterprise theme)
+     - Secondary Accent Coral: `#FC4A1A`
      - Warning Yellow Gold: `#F7B733`
-     - Clean Slate Base: `#DFDCE3` / `slate-50` s/d `slate-900`
+     - Clean Green-Slate Base: `#F4F8F5` canvas / `#E1EBE4` border / `slate-50` s/d `slate-900`
 3. **Verifikasi Build Sebelum Rilis**:
    - Build produksi wajib dipastikan sukses: `npm run build` menghasilkan bundle frontend di `dist/` dan bundle backend di `dist/server.cjs`.
 
