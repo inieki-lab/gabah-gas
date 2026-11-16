@@ -40,6 +40,7 @@ const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const effectivePermissionQuery = policy.slice(policy.indexOf('SELECT ur.user_id'), policy.indexOf('const scopes'));
 const checks = [
+  ['reconciliation read guard uses canonicalized paths and explicit read permission', /normalizedPath === '\/api\/reconciliation'/.test(runtimeHardening) && /hasRbacPermission\(String\(actor\.id\), 'reconciliation\.read'\)/.test(runtimeHardening) && /isAuditorActor\(actor\)/.test(runtimeHardening)],
   ['Auditor receives only an explicit module-scoped global audit read scope', auditorAuditScopeSeed.includes("SELECT r.id, 'audit', 'all', NULL") && auditorAuditScopeSeed.includes("r.role_key = 'auditor'") && /hasRbacScope\(String\(user\.id\), 'all', null, 'audit'\)/.test(contractAccess)],
   ['Auditor cross-domain contract read requires both audit.read and audit scope', /const hasGlobalAuditRead = isAuditorActor\(user\)[\s\S]*hasRbacPermission\(String\(user\.id\), 'audit\.read'\)[\s\S]*hasRbacScope\(String\(user\.id\), 'all', null, 'audit'\)/.test(contractAccess) && /if \(hasGlobalAuditRead\) return true;/.test(contractAccess)],
   ['post-seed RBAC backfill runs only after canonical users are materialized', /async function ensureNormalizedSchema\(postSeedPhase = false\)/.test(persistence) && /isPostSeedMigration !== postSeedPhase/.test(persistence) && /await backfillNormalizedTables\(\);\s*await ensureNormalizedSchema\(true\)/.test(persistence)],
