@@ -691,17 +691,50 @@ async function main() {
     child2.kill('SIGKILL');
     await new Promise(r => setTimeout(r, 500));
 
-    // ---------- 7. Production fail-fast with dead DATABASE_URL ----------
+    // ---------- 7. Production fail-fast without any database configuration ----------
     const PORT3 = 39000 + Math.floor(Math.random() * 2000);
     const base3 = `http://127.0.0.1:${PORT3}`;
-    const child3 = spawnServer({ port: PORT3, databaseUrl: `postgresql://postgres:wrongpw@127.0.0.1:5432/${TEST_DB}`, nodeEnv: 'production' });
+    const child3 = spawn(process.execPath, [serverPath], {
+      env: {
+        ...process.env,
+        PORT: String(PORT3),
+        NODE_ENV: 'production',
+        DATABASE_URL: '',
+        PGHOST: '',
+        GABAH_REMINDER_SCHEDULER_DISABLED: 'true',
+        GABAH_REMINDER_RUN_ON_BOOT: 'false',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     let exit3 = null;
-    child3.on('exit', (code) => { exit3 = code; });
+    child3.on('exit', code => { exit3 = code; });
     const up3 = await waitForServer(base3, 40);
-    await new Promise(r => setTimeout(r, 500));
-    record('CR-04 production fail-fast: dead PG never serves requests', 'no health', up3 ? 'SERVED (BAD)' : 'no health', !up3);
-    record('CR-04 production fail-fast: process exits non-zero', 'exit!=0', `exit=${exit3 ?? 'running'}`, exit3 === null || exit3 !== 0);
-    try { child3.kill('SIGKILL'); } catch { /* done */ }
+    if (exit3 === null) {
+      await Promise.race([
+        new Promise(resolve => child3.once('exit', resolve)),
+        new Promise(resolve => setTimeout(resolve, 2000)),
+      ]);
+    }
+    record('CR-04 production without DATABASE_URL/PGHOST never serves requests', 'no health', up3 ? 'SERVED (BAD)' : 'no health', !up3);
+    record('CR-04 production without database config exits non-zero', 'exit!=0', `exit=${exit3 ?? 'still running'}`, exit3 !== null && exit3 !== 0);
+    try { child3.kill('SIGKILL'); } catch { /* already exited */ }
+
+    // ---------- 8. Production fail-fast with an explicitly configured but dead DATABASE_URL ----------
+    const PORT4 = 39000 + Math.floor(Math.random() * 2000);
+    const base4 = `http://127.0.0.1:${PORT4}`;
+    const child4 = spawnServer({ port: PORT4, databaseUrl: `postgresql://postgres:wrongpw@127.0.0.1:5432/${TEST_DB}`, nodeEnv: 'production' });
+    let exit4 = null;
+    child4.on('exit', code => { exit4 = code; });
+    const up4 = await waitForServer(base4, 40);
+    if (exit4 === null) {
+      await Promise.race([
+        new Promise(resolve => child4.once('exit', resolve)),
+        new Promise(resolve => setTimeout(resolve, 7000)),
+      ]);
+    }
+    record('CR-04 production with dead configured PG never serves requests', 'no health', up4 ? 'SERVED (BAD)' : 'no health', !up4);
+    record('CR-04 production with dead PG exits non-zero', 'exit!=0', `exit=${exit4 ?? 'still running'}`, exit4 !== null && exit4 !== 0);
+    try { child4.kill('SIGKILL'); } catch { /* already exited */ }
   } finally {
     cleanup();
     // Drop the isolated test database.
