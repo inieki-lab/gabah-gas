@@ -452,7 +452,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <div className="text-[11px] text-slate-600">Aset siap ditugaskan secara manual ke karyawan Food Station.</div>
                     </div>
                   </div>
-                  {onEditThisAsset && canManage && (
+                  {onEditThisAsset && canAssign && (
                     <button
                       type="button"
                       onClick={() => onEditThisAsset(asset)}
