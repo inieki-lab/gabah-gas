@@ -3457,17 +3457,21 @@ async function startServer() {
     const loanableAssets = assets.filter(a => a.is_loanable && a.status === 'available').length;
     const inRepairAssets = assets.filter(a => a.status === 'in_repair').length;
 
+    const canReadLoans = !isPostgresPersistenceActive()
+      || hasRbacPermission(String(actor.id), 'loans.read');
+    const canReadTickets = !isPostgresPersistenceActive()
+      || hasRbacPermission(String(actor.id), 'tickets.read');
     const canReadOwnerScope = (owner: string, module: 'loans' | 'tickets') =>
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, module)
         : actor.role === owner;
-    const visibleLoans = isSuperadminActor(actor)
+    const visibleLoans = !canReadLoans ? [] : isSuperadminActor(actor)
       ? db.loans
       : db.loans.filter(loan =>
         loan.borrower_id === actor.id
         || canReadOwnerScope(loan.owner_division, 'loans')
       );
-    const visibleTickets = isSuperadminActor(actor)
+    const visibleTickets = !canReadTickets ? [] : isSuperadminActor(actor)
       ? db.tickets
       : db.tickets.filter(ticket =>
         ticket.reporter_id === actor.id
@@ -3503,13 +3507,17 @@ async function startServer() {
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, module)
         : actor.role === owner;
+    const canReadLoans = !isPostgresPersistenceActive()
+      || hasRbacPermission(String(actor.id), 'loans.read');
+    const canReadTickets = !isPostgresPersistenceActive()
+      || hasRbacPermission(String(actor.id), 'tickets.read');
     const visibleItems = filterDashboardAttentionItems(items, {
       actorId: String(actor.id),
       actorName: String(actor.name || ''),
       isGlobalReader,
       visibleAssetIds: new Set(visibleAssets.map(asset => asset.id)),
-      loans: db.loans,
-      tickets: db.tickets,
+      loans: canReadLoans ? db.loans : [],
+      tickets: canReadTickets ? db.tickets : [],
       canReadOwnerScope,
     });
     res.json({ success: true, data: visibleItems });
