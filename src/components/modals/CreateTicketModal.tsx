@@ -440,9 +440,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isAuditorUser}
+              disabled={isAuditorUser || !canCreateCategory(category) || !title.trim() || !description.trim()}
               className={`px-5 py-2 rounded-xl font-bold transition-all shadow-xs ${
-                isAuditor 
+                isAuditorUser 
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
                   : 'bg-rose-600 hover:bg-rose-700 text-white'
               }`}
