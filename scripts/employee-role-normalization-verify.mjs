@@ -16,5 +16,5 @@ assert.match(migration, /UPDATE users\s+SET role = 'Karyawan'/);
 assert.match(dashboard, /currentRoleKeys\.includes\('humas'\)/);
 assert.match(dashboard, /currentRoleKeys\.includes\('sekretaris_direksi'\)/);
 assert.match(header, /currentUser\.role_keys\?\.includes\('humas'\)/);
-assert.match(dynamic, /Legacy function roles are assigned after normalized user rows exist/);
+assert.match(dynamic, /one-time migration preserves Humas and Secretariat function assignments/);
 console.log('Employee profile and RBAC persistence separation: PASS');
