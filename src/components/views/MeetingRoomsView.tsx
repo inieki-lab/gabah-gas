@@ -1075,23 +1075,23 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             </button>
 
                             {/* GA / Admin Approve / Reject */}
-                            {(canApproveReservations || canRejectReservations) && r.status === 'pending_approval' && (
-                              <>
-                                <button
-                                  disabled={isLoading}
-                                  onClick={() => handleApprove(r.id)}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
-                                >
-                                  Setujui
-                                </button>
-                                <button
-                                  disabled={isLoading}
-                                  onClick={() => setRejectReasonPromptId(r.id)}
-                                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
-                                >
-                                  Tolak
-                                </button>
-                              </>
+                                            {canApproveReservations && r.status === 'pending_approval' && (
+                              <button
+                                disabled={isLoading}
+                                onClick={() => handleApprove(r.id)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
+                              >
+                                Setujui
+                              </button>
+                            )}
+                            {canRejectReservations && r.status === 'pending_approval' && (
+                              <button
+                                disabled={isLoading}
+                                onClick={() => setRejectReasonPromptId(r.id)}
+                                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
+                              >
+                                Tolak
+                              </button>
                             )}
 
                             {/* Check-In / Check-Out */}
