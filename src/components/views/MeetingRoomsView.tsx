@@ -67,8 +67,27 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   initialCategoryFilter,
 }) => {
   const [activeTab, setActiveTab] = useState<SubTab>(initialCategoryFilter ? 'reservations' : 'calendar');
-  const isHumas = currentUser.role === 'Humas' || currentUser.role_keys?.includes('humas') === true;
-  const isSekdir = currentUser.role === 'Sekretaris Direksi' || currentUser.role_keys?.includes('sekretaris_direksi') === true;
+  const hasRoleKey = (key: string, legacyLabel: string) =>
+    currentUser.role_keys !== undefined
+      ? currentUser.role_keys.includes(key)
+      : currentUser.role === legacyLabel;
+  const hasPermission = (key: string) =>
+    currentUser.permission_keys?.includes('*') === true
+    || currentUser.permission_keys?.includes(key) === true
+    || (currentUser.permission_keys === undefined && !hasRoleKey('auditor', 'Auditor'));
+  const isHumas = hasRoleKey('humas', 'Humas');
+  const isSekdir = hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi');
+  const isSuperAdmin = currentUser.is_superadmin === true
+    || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
+  const isAuditor = hasRoleKey('auditor', 'Auditor');
+  const canCreateReservation = hasPermission('room_reservations.create');
+  const canManageRoomMasters = isSuperAdmin || hasPermission('meeting_types.manage') || hasPermission('meeting_facilities.manage');
+  const canUpdateRooms = isSuperAdmin || hasPermission('meeting_rooms.update');
+  const canApproveReservations = isSuperAdmin || hasPermission('room_reservations.approve');
+  const canRejectReservations = isSuperAdmin || hasPermission('room_reservations.reject');
+  const canCheckinReservations = isSuperAdmin || hasPermission('room_reservations.checkin');
+  const canCheckoutReservations = isSuperAdmin || hasPermission('room_reservations.checkout');
+  const canCancelReservations = isSuperAdmin || hasPermission('room_reservations.cancel');
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -93,8 +112,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
     }
   }, [initialCategoryFilter]);
 
-  const isGAOrAdmin = currentUser.role === 'Admin GABAH' || currentUser.role === 'GA';
-  const isAuditor = currentUser.role === 'Auditor';
+  const isGAOrAdmin = canApproveReservations || canRejectReservations;
 
   // Stats
   const stats = useMemo(() => {
@@ -267,7 +285,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          {isGAOrAdmin && (
+          {canManageRoomMasters && (
             <button
               onClick={() => setIsMasterSettingsModalOpen(true)}
               className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center gap-2"
@@ -278,7 +296,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             </button>
           )}
 
-          {!isAuditor && (
+          {canCreateReservation && !isAuditor && (
             <button
               onClick={() => {
                 setSelectedRoomForBooking(undefined);
@@ -314,7 +332,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               Akses Humas: Memantau & menangani order dokumentasi liputan foto/video rapat perusahaan.
             </span>
           )}
-          {currentUser.role === 'GA' && (
+          {hasRoleKey('ga', 'GA') && (
             <span className="text-emerald-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Building2 className="w-3.5 h-3.5 text-emerald-400" />
               Akses GA Sarpras: Verifikasi ruangan, sarana IT/audio-visual, dan layanan pantry konsumsi.
@@ -712,7 +730,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                 {/* Footer Actions */}
                 <div className="p-5 pt-0 flex items-center justify-between gap-2 border-t border-slate-100 mt-4">
-                  {isGAOrAdmin && onUpdateRoomStatus && (
+                  {canUpdateRooms && onUpdateRoomStatus && (
                     <button
                       onClick={() => onUpdateRoomStatus(room.id, isMnt ? 'available' : 'maintenance')}
                       className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${
@@ -725,7 +743,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                     </button>
                   )}
 
-                  {!isAuditor && (
+                  {canCreateReservation && !isAuditor && (
                     <button
                       disabled={isMnt}
                       onClick={() => {
@@ -1010,12 +1028,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                           {/* Status */}
                           <td className="py-3.5 px-4">
-                            {r.status === 'approved' && (
+                            {canCheckinReservations && r.status === 'approved' && (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                 Disetujui GA
                               </span>
                             )}
-                            {r.status === 'in_use' && (
+                            {canCheckoutReservations && r.status === 'in_use' && (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1 w-fit">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping" />
                                 Sedang Dipakai
@@ -1057,7 +1075,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             </button>
 
                             {/* GA / Admin Approve / Reject */}
-                            {isGAOrAdmin && r.status === 'pending_approval' && (
+                            {(canApproveReservations || canRejectReservations) && r.status === 'pending_approval' && (
                               <>
                                 <button
                                   disabled={isLoading}
@@ -1100,7 +1118,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             )}
 
                             {/* Cancel Reservation */}
-                            {['pending_approval', 'approved'].includes(r.status) && (isGAOrAdmin || isOwner) && (
+                            {canCancelReservations && ['pending_approval', 'approved'].includes(r.status) && (isGAOrAdmin || isOwner) && (
                               <button
                                 disabled={isLoading}
                                 onClick={() => setCancelConfirmId(r.id)}
