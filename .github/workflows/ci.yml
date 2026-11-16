@@ -160,6 +160,9 @@ jobs:
       - name: Ticket resolution notes validation
         run: npm run test:ticket-resolution-notes
 
+      - name: Helpdesk IT/GA/ME routing and dispatch regression
+        run: npm run test:helpdesk-routing
+
       - name: Telegram chat ID response redaction
         run: npm run test:telegram-chat-id-redaction
 
