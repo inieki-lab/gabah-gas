@@ -36,6 +36,7 @@ assert.match(server, /isAuditorActor\(actor\)/);
 assert.match(server, /app\.get\('\/api\/tickets\/:id\/assignees'/);
 assert.match(server, /app\.patch\('\/api\/tickets\/:id\/assign'/);
 assert.match(server, /ticket\.assigned_unit_id === actor\.unit_id/);
+assert.match(server, /!ticket\.assigned_unit_id && canReadTicketOwner\(ticket\.category\)/);
 assert.match(server, /target\.unit_id === ticket\.assigned_unit_id/);
 assert.match(server, /notification\.recipient_unit_id === actor\.unit_id/);
 
@@ -74,4 +75,4 @@ assert.match(migrations.requestPermissions, /tickets\.create\.me/);
 assert.match(migrations.requesterRoles, /pemohon_tiket_ga/);
 assert.match(migrations.requesterRoles, /pemohon_tiket_me/);
 
-console.log('Helpdesk IT/GA/ME routing: 43 checks passed');
+console.log('Helpdesk IT/GA/ME routing: 44 checks passed');
