@@ -3,7 +3,18 @@
  * Asset: {OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}
  * Asset sequence resets yearly per owner division + asset code.
  */
+export interface AssetNumberingRuleConfig {
+  id: string;
+  owner_division: string;
+  asset_code: string;
+  separator: string;
+  sequence_digits: number;
+  is_active: boolean;
+  notes?: string;
+}
+
 export class AssetNumberingEngine {
+  private static rules = new Map<string, AssetNumberingRuleConfig>();
   private static sequenceStore = new Map<string, number>();
   private static ticketSeq = new Map<number, number>();
   private static loanSeq = new Map<number, number>();
@@ -41,14 +52,64 @@ export class AssetNumberingEngine {
     }
   }
 
+  static configureRules(rules: AssetNumberingRuleConfig[]): void {
+    this.rules.clear();
+    for (const rule of rules) {
+      const division = String(rule.owner_division || '').trim().toUpperCase();
+      const code = String(rule.asset_code || '').trim().toUpperCase();
+      if (!division || !code) continue;
+      this.rules.set(`${division}:${code}`, {
+        ...rule,
+        owner_division: division,
+        asset_code: code,
+        separator: rule.separator || '-',
+        sequence_digits: Math.min(8, Math.max(3, Number(rule.sequence_digits) || 4)),
+        is_active: rule.is_active !== false,
+      });
+    }
+  }
+
+  static upsertRule(rule: AssetNumberingRuleConfig): void {
+    const division = rule.owner_division.trim().toUpperCase();
+    const code = rule.asset_code.trim().toUpperCase();
+    this.rules.set(`${division}:${code}`, {
+      ...rule,
+      owner_division: division,
+      asset_code: code,
+      sequence_digits: Math.min(8, Math.max(3, Number(rule.sequence_digits) || 4)),
+    });
+  }
+
+  static removeRule(ownerDivision: string, assetCode: string): void {
+    this.rules.delete(`${ownerDivision.trim().toUpperCase()}:${assetCode.trim().toUpperCase()}`);
+  }
+
+  static previewAssetNumber(ownerDivision: string, assetCode: string, targetYear?: number, override?: Partial<AssetNumberingRuleConfig>): string {
+    const year = targetYear || new Date().getFullYear();
+    const div = ownerDivision.trim().toUpperCase();
+    const code = assetCode.trim().toUpperCase();
+    const key = `${div}:${code}:${year}`;
+    const rule = { ...this.rules.get(`${div}:${code}`), ...override };
+    const separator = rule.separator || '-';
+    const digits = Math.min(8, Math.max(3, Number(rule.sequence_digits) || 4));
+    const nextSeq = (this.sequenceStore.get(key) || 0) + 1;
+    return [div, code, String(year), String(nextSeq).padStart(digits, '0')].join(separator);
+  }
+
   static generateAssetNumber(ownerDivision?: string, assetCode?: string, targetYear?: number): string {
     const year = targetYear || new Date().getFullYear();
     const div = (ownerDivision || 'IT').trim().toUpperCase();
     const code = (assetCode || 'GEN').trim().toUpperCase();
+    const rule = this.rules.get(`${div}:${code}`);
+    if (rule && !rule.is_active) {
+      throw new Error(`Aturan penomoran ${div}/${code} sedang nonaktif. Aktifkan kembali melalui Administration Control Panel.`);
+    }
     const key = `${div}:${code}:${year}`;
     const nextSeq = (this.sequenceStore.get(key) || 0) + 1;
     this.sequenceStore.set(key, nextSeq);
-    return `${div}-${code}-${year}-${String(nextSeq).padStart(4, '0')}`;
+    const separator = rule?.separator || '-';
+    const digits = rule?.sequence_digits || 4;
+    return [div, code, String(year), String(nextSeq).padStart(digits, '0')].join(separator);
   }
 
   static generateTicketNumber(targetYear?: number): string {
@@ -88,6 +149,7 @@ export class AssetNumberingEngine {
   }
 
   static _resetForTesting() {
+    this.rules.clear();
     this.sequenceStore.clear();
     this.ticketSeq.clear();
     this.loanSeq.clear();
