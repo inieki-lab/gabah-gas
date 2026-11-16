@@ -80,9 +80,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || isAuditor;
-  const isDivisionDashboard = hasRoleKey('it', 'IT') || currentUser.role === 'GA';
-  const divisionLabel = isDivisionDashboard ? currentUser.role : 'Unit kerja';
+  const isGlobalDashboard = isSuperAdmin || isAuditor;
+  const isDivisionDashboard = hasRoleKey('it', 'IT') || hasRoleKey('ga', 'GA');
+  const divisionLabel = hasRoleKey('it', 'IT') ? 'IT' : hasRoleKey('ga', 'GA') ? 'GA' : 'Unit kerja';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
@@ -197,13 +197,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <LifeBuoy className="w-4 h-4 text-rose-600" />
                 Buat Tiket Kendala
               </button>
-            ) : (
+            ) : isAuditor ? (
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs font-semibold" title="Auditor berstatus Read-Only">
                 <LifeBuoy className="w-4 h-4 text-slate-400" />
                 <span>Tiket (Read-Only)</span>
               </div>
-            )}
-            {!isEmployee && currentUser?.role !== 'Auditor' && (
+            ) : null}
+            {canCreateAsset && !isEmployee && !isAuditor && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
