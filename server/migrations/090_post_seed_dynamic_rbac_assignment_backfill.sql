@@ -45,3 +45,19 @@ ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE;
 UPDATE users
 SET role = 'Karyawan'
 WHERE role IN ('Humas', 'Sekretaris Direksi');
+
+-- Re-apply capability grants after canonical roles have been materialized.
+-- The regular migration phase can run before role seeding on a fresh database;
+-- the original capability migration therefore may insert permissions while
+-- its role-grant SELECTs match zero rows. This post-seed phase closes that gap.
+INSERT INTO gabah_role_permissions (role_id, permission_key)
+SELECT r.id, p.permission_key
+FROM gabah_roles r
+JOIN (VALUES
+  ('it', 'room_reservations.it_facilities.read'),
+  ('humas', 'room_reservations.documentation.read'),
+  ('sekretaris_direksi', 'room_reservations.override_priority')
+) AS p(role_key, permission_key) ON p.role_key = r.role_key
+JOIN gabah_permissions permission ON permission.permission_key = p.permission_key AND permission.is_active = TRUE
+WHERE r.is_active = TRUE
+ON CONFLICT (role_id, permission_key) DO NOTHING;
