@@ -101,7 +101,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const isLicense = asset.category_type === 'License' || asset.category_code === 'SLIC' || asset.asset_number?.includes('-SLIC-');
   const canEdit = currentUser ? GabahService.canEditAsset(currentUser, asset) : false;
   const canAssign = currentUser ? GabahService.canAssignAsset(currentUser, asset) : false;
-  const canManage = canEdit || canAssign;
+  const canChangeStatus = currentUser ? GabahService.canManageAssetLifecycle(currentUser, asset) : false;
+  const canManage = canEdit || canAssign || canChangeStatus;
 
   let ownershipRuleText = '';
   if (asset.category_code === 'INV-F' || asset.asset_number?.includes('-INV-F-')) {
