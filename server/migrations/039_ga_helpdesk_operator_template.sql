@@ -3,7 +3,7 @@ DELETE FROM gabah_role_permissions rp
 USING gabah_roles r
 WHERE rp.role_id = r.id
   AND r.role_key = 'ga'
-  AND rp.permission_key IN ('tickets.update', 'tickets.assign');
+  AND rp.permission_key IN ('tickets.update', 'tickets.assign', 'tickets.close');
 
 INSERT INTO gabah_roles (role_key, name, description, is_superadmin, is_active)
 VALUES (
