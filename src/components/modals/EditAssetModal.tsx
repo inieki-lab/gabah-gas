@@ -116,6 +116,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
   // The API is authoritative for owner scope. The UI follows effective
   // permissions and never infers write authority from job title or profile label.
+  const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
   const canEditThisAsset = GabahService.canEditAsset(currentUser, asset);
   const authorityWarning = canEditThisAsset
     ? ''
