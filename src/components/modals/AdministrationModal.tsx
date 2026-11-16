@@ -134,24 +134,6 @@ export interface NotificationRule {
   warningHours?: number;
 }
 
-export const SYSTEM_ROLES: { value: UserRole; label: string; desc: string }[] = [
-  { value: 'Admin GABAH', label: 'Admin GABAH (Super Admin)', desc: 'Kendali Penuh Seluruh Sistem & Konfigurasi' },
-  { value: 'IT', label: 'IT (Infrastruktur & Jaringan)', desc: 'Pengelola Aset TI, Komputasi & Lisensi' },
-  { value: 'GA', label: 'GA (General Affairs & Fasilitas)', desc: 'Pengelola Fasilitas, Gedung & Ruang Rapat' },
-  { value: 'Sekretaris Direksi', label: 'Sekretaris Direksi', desc: 'Reservasi VIP Ruang Rapat & Notifikasi Agenda' },
-  { value: 'Humas', label: 'Humas & Protokoler', desc: 'Dokumentasi Acara & Rapat di Semua Ruangan' },
-  { value: 'Supply Chain', label: 'Supply Chain & Pergudangan', desc: 'Pengelola Armada Truk & Pabrik Beras' },
-  { value: 'PIBC', label: 'PIBC (Pasar Induk Cipinang)', desc: 'Operasional Kawasan Pasar & Retribusi' },
-  { value: 'Karyawan', label: 'Karyawan (Pegawai Umum)', desc: 'Peminjaman Aset & Pengajuan Tiket' },
-  { value: 'Auditor', label: 'Auditor (Satuan Pengawas Internal)', desc: 'Audit Trail & Rekonsiliasi PSAK 16 Read-Only' },
-];
-
-// Primary employee profiles only. Function capabilities (Humas/Sekretariat)
-// and branch work locations are assigned independently in the Role dialog
-// and Office Location master; they are not primary employee roles.
-export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES.filter(role =>
-  !['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(role.value)
-);
 
 // T2B-3 — MASTER KATEGORI & ASET TETAP
 // Domain `main_type` kini diseragamkan dengan kode kanonikal di
