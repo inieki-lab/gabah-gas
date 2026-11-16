@@ -239,6 +239,53 @@ async function main() {
       return user?.role === 'Karyawan' && Boolean(user?.role_label);
     });
     record('Authoritative JSON state retains normalized employee profiles and function labels', true, stateRolesNormalized, stateRolesNormalized);
+    const queueColumns = await mig.query(
+      `SELECT table_name, column_name FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND ((table_name = 'tickets' AND column_name = 'assigned_unit_id')
+           OR (table_name = 'notifications' AND column_name = 'recipient_unit_id'))`,
+    );
+    const hasUnitQueueColumns = queueColumns.rows.some(row => row.table_name === 'tickets' && row.column_name === 'assigned_unit_id')
+      && queueColumns.rows.some(row => row.table_name === 'notifications' && row.column_name === 'recipient_unit_id');
+    record('ME ticket and notification unit columns are migrated', 'both columns present', hasUnitQueueColumns, hasUnitQueueColumns);
+
+    const meUnit = await mig.query("SELECT id FROM org_units WHERE id = 'UNIT-PIBC-ME' AND is_active = TRUE");
+    record('PIBC Tim Perawatan ME queue exists as an active org unit', 'UNIT-PIBC-ME', meUnit.rows[0]?.id || 'missing', meUnit.rows.length === 1);
+
+    const helpdeskGrants = await mig.query(
+      `SELECT r.role_key, p.permission_key
+       FROM gabah_roles r
+       JOIN gabah_role_permissions rp ON rp.role_id = r.id
+       JOIN gabah_permissions p ON p.permission_key = rp.permission_key
+       WHERE r.role_key = ANY($1::text[])`,
+      [['admin_tiket_me', 'ga_helpdesk_operator', 'pemohon_tiket_ga', 'pemohon_tiket_me', 'ga']],
+    );
+    const hasGrant = (role, permission) => helpdeskGrants.rows.some(row => row.role_key === role && row.permission_key === permission);
+    record('Admin Tiket ME receives read/update/assign capabilities', 'read+update+assign',
+      ['tickets.read', 'tickets.update', 'tickets.assign'].every(permission => hasGrant('admin_tiket_me', permission)),
+      ['tickets.read', 'tickets.update', 'tickets.assign'].every(permission => hasGrant('admin_tiket_me', permission)));
+    record('GA dispatcher capability is an explicit additional role', 'ga_helpdesk_operator read/update/assign',
+      ['tickets.read', 'tickets.update', 'tickets.assign'].every(permission => hasGrant('ga_helpdesk_operator', permission)),
+      ['tickets.read', 'tickets.update', 'tickets.assign'].every(permission => hasGrant('ga_helpdesk_operator', permission)));
+    record('GA requester template only grants GA ticket creation', 'tickets.create.ga',
+      hasGrant('pemohon_tiket_ga', 'tickets.create.ga'), hasGrant('pemohon_tiket_ga', 'tickets.create.ga'));
+    record('ME requester template only grants ME ticket creation', 'tickets.create.me',
+      hasGrant('pemohon_tiket_me', 'tickets.create.me'), hasGrant('pemohon_tiket_me', 'tickets.create.me'));
+    record('Generic GA role does not automatically dispatch tickets', 'no tickets.update/assign',
+      !hasGrant('ga', 'tickets.update') && !hasGrant('ga', 'tickets.assign'),
+      !hasGrant('ga', 'tickets.update') && !hasGrant('ga', 'tickets.assign'));
+
+    const queueScopes = await mig.query(
+      `SELECT r.role_key, s.scope_type, s.scope_value
+       FROM gabah_roles r
+       JOIN gabah_role_division_scopes s ON s.role_id = r.id
+       WHERE r.role_key = ANY($1::text[]) AND s.module = 'tickets'`,
+      [['admin_tiket_me', 'ga_helpdesk_operator']],
+    );
+    const meScope = queueScopes.rows.some(row => row.role_key === 'admin_tiket_me' && row.scope_type === 'unit' && row.scope_value === 'UNIT-PIBC-ME');
+    const gaScope = queueScopes.rows.some(row => row.role_key === 'ga_helpdesk_operator' && row.scope_type === 'division' && row.scope_value === 'GA');
+    record('ME dispatcher is scoped to ME unit and GA dispatcher to GA division', 'ME unit + GA division', meScope && gaScope, meScope && gaScope);
+
     let ledger, ownerDivCol, uqIdx;
     try {
       ledger = await mig.query('SELECT version, name FROM schema_migrations ORDER BY applied_at, version');
