@@ -2875,10 +2875,14 @@ async function startServer() {
       const ticket = db.tickets.find(t => t.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
 
-      const ticketScopeAllowed = ticket.assigned_unit_id
-        ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
-        : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets');
-      if (isPostgresPersistenceActive() && !isSuperadminActor(actor) && !ticketScopeAllowed) {
+      const ticketScopeAllowed = isPostgresPersistenceActive()
+        ? (ticket.assigned_unit_id
+          ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
+          : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets'))
+        : (ticket.assigned_unit_id
+          ? ticket.assigned_unit_id === actor.unit_id && /admin tiket me/i.test(String(actor.role_label || ''))
+          : ticket.category !== 'ME' && actor.role === getTicketOwnerDivision(ticket.category));
+      if (!isSuperadminActor(actor) && !ticketScopeAllowed) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: tiket berada di luar scope unit/divisi Anda.' });
       }
 
