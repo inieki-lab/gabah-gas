@@ -2875,6 +2875,13 @@ async function startServer() {
       const ticket = db.tickets.find(t => t.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
 
+      const ticketScopeAllowed = ticket.assigned_unit_id
+        ? hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')
+        : hasRbacScope(String(actor.id), 'division', getTicketOwnerDivision(ticket.category), 'tickets');
+      if (isPostgresPersistenceActive() && !isSuperadminActor(actor) && !ticketScopeAllowed) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: tiket berada di luar scope unit/divisi Anda.' });
+      }
+
       const { status, resolutionNotes } = req.body || {};
       if (resolutionNotes !== undefined
         && (typeof resolutionNotes !== 'string' || resolutionNotes.length > 4000)) {
@@ -2897,8 +2904,7 @@ async function startServer() {
         });
       }
 
-      // Object-level authorization already enforced by middleware for scoped
-      // roles; Admin GABAH handles everything.
+      // Object-level queue scope is checked above; Admin GABAH bypasses scope.
       ticket.status = nextStatus as any;
       if (resolutionNotes !== undefined) ticket.resolution_notes = resolutionNotes.trim();
       if (nextStatus === 'resolved' || nextStatus === 'closed') {
