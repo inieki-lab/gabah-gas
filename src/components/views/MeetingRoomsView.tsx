@@ -76,7 +76,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
     || currentUser.permission_keys?.includes(key) === true
     || (currentUser.permission_keys === undefined && !hasRoleKey('auditor', 'Auditor'));
   const isHumas = hasRoleKey('humas', 'Humas');
-  const isSekdir = hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi');
+  const isSekdir = currentUser.is_superadmin === true || currentUser.permission_keys?.includes('room_reservations.override_priority') === true || (currentUser.permission_keys === undefined && currentUser.role === 'Sekretaris Direksi');
   const isSuperAdmin = currentUser.is_superadmin === true
     || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
   const isAuditor = hasRoleKey('auditor', 'Auditor');
