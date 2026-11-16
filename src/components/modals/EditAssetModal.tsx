@@ -119,6 +119,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
   const canEditThisAsset = GabahService.canEditAsset(currentUser, asset);
   const canAssignThisAsset = GabahService.canAssignAsset(currentUser, asset);
+  const canChangeAssetStatus = GabahService.canManageAssetLifecycle(currentUser, asset);
   const canManageThisAsset = canEditThisAsset || canAssignThisAsset;
   const authorityWarning = canManageThisAsset
     ? ''
@@ -153,7 +154,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         is_loanable: formData.is_loanable,
         specifications: formData.specifications.trim(),
         notes: formData.notes.trim(),
-        status: selectedUserId ? 'assigned' : formData.status,
+        ...(canChangeAssetStatus ? { status: selectedUserId ? 'assigned' : formData.status } : {}),
       } : {};
       const assignmentChanged = canAssignThisAsset
         && selectedUserId !== (asset.assigned_to?.id || '');
@@ -367,7 +368,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   Status Operasional
                 </label>
                 <select
-                  disabled={!canEditThisAsset || isSubmitting || Boolean(selectedUserId)}
+                  disabled={!canChangeAssetStatus || isSubmitting || Boolean(selectedUserId)}
                   value={formData.status}
                   onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as AssetStatus }))}
                   className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
