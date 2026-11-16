@@ -3654,7 +3654,7 @@ async function startServer() {
       fieldSize: 1024,
       fieldNestingDepth: 1,
       fieldArrayIndexLimit: 1,
-    } as multer.Options['limits']),
+    } as multer.Options['limits'] & { fieldNestingDepth: number; fieldArrayIndexLimit: number }),
     fileFilter: (req, file, cb) => {
       const mimeByExtension: Record<string, string> = {
         '.pdf': 'application/pdf',
