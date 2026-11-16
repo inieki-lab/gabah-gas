@@ -627,7 +627,7 @@ export class GabahService {
     // scope. The client checks the effective permission only; it must not
     // reconstruct ownership authority from a legacy branch-role label.
     if (Array.isArray(user.permission_keys)) {
-      return user.permission_keys.includes('assets.update');
+      return user.permission_keys.includes('*') || user.permission_keys.includes('assets.update');
     }
     // File-store compatibility only. This fallback is not an authorization
     // boundary; production authorization is enforced by the API.
@@ -640,7 +640,7 @@ export class GabahService {
   static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
     if (!user) return false;
     if (Array.isArray(user.permission_keys)) {
-      return user.permission_keys.includes('loans.approve');
+      return user.permission_keys.includes('*') || user.permission_keys.includes('loans.approve');
     }
     if (user.role === 'Admin GABAH') return true;
     if (!loan) return false;
@@ -653,7 +653,7 @@ export class GabahService {
   static canManageTickets(user?: UserProfile): boolean {
     if (!user) return false;
     if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+      return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
     return ['Admin GABAH', 'IT', 'GA'].includes(user.role);
   }
@@ -705,7 +705,7 @@ export class GabahService {
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
     if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+      return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
     if (user.role === 'Admin GABAH' || user.role === 'IT') return true;
     if (user.role === 'GA' && ticket.category === 'GA') return true;
