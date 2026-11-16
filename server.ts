@@ -1247,12 +1247,19 @@ async function startServer() {
       const result = await queryRbac<any>(
         'SELECT id, owner_division, asset_code, separator, sequence_digits, is_active, notes, created_at, updated_at FROM asset_numbering_rules ORDER BY owner_division, asset_code'
       );
-      const data = result.rows.map(rule => ({
-        ...rule,
-        usage_count: db.assets.filter(asset =>
-          String(asset.owner_division).toUpperCase() === String(rule.owner_division).toUpperCase() &&
-          String(asset.category_code).toUpperCase() === String(rule.asset_code).toUpperCase()
-        ).length,
+      const data = await Promise.all(result.rows.map(async rule => {
+        const usage = await queryRbac<{ count: string }>(
+          `SELECT COUNT(*)::text AS count
+           FROM assets a
+           JOIN divisions d ON d.id = a.owner_division_id
+           JOIN asset_categories c ON c.id = a.category_id
+           WHERE UPPER(d.code) = UPPER($1) AND UPPER(c.code) = UPPER($2)`,
+          [rule.owner_division, rule.asset_code]
+        );
+        const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
+          s.division === rule.owner_division && s.code === rule.asset_code
+        );
+        return { ...rule, usage_count: Number(usage.rows[0]?.count || 0), sequence_current: sequence?.current || 0 };
       }));
       res.json({ success: true, data });
     } catch (err: any) {
@@ -1308,10 +1315,15 @@ async function startServer() {
       );
       const current = currentResult.rows[0];
       if (!current) return res.status(404).json({ success: false, message: 'Aturan penomoran tidak ditemukan.' });
-      const usageCount = db.assets.filter(asset =>
-        String(asset.owner_division).toUpperCase() === String(current.owner_division).toUpperCase() &&
-        String(asset.category_code).toUpperCase() === String(current.asset_code).toUpperCase()
-      ).length;
+      const usageResult = await queryRbac<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+         FROM assets a
+         JOIN divisions d ON d.id = a.owner_division_id
+         JOIN asset_categories c ON c.id = a.category_id
+         WHERE UPPER(d.code) = UPPER($1) AND UPPER(c.code) = UPPER($2)`,
+        [current.owner_division, current.asset_code]
+      );
+      const usageCount = Number(usageResult.rows[0]?.count || 0);
       // Once a rule has issued numbers, its identity (owner + asset code) is immutable.
       // Formatting may still be changed; existing asset numbers are never rewritten.
       if (req.body?.owner_division || req.body?.asset_code) {
@@ -1372,10 +1384,15 @@ async function startServer() {
       );
       const rule = result.rows[0];
       if (!rule) return res.status(404).json({ success: false, message: 'Aturan penomoran tidak ditemukan.' });
-      const usageCount = db.assets.filter(asset =>
-        String(asset.owner_division).toUpperCase() === String(rule.owner_division).toUpperCase() &&
-        String(asset.category_code).toUpperCase() === String(rule.asset_code).toUpperCase()
-      ).length;
+      const usageResult = await queryRbac<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+         FROM assets a
+         JOIN divisions d ON d.id = a.owner_division_id
+         JOIN asset_categories c ON c.id = a.category_id
+         WHERE UPPER(d.code) = UPPER($1) AND UPPER(c.code) = UPPER($2)`,
+        [rule.owner_division, rule.asset_code]
+      );
+      const usageCount = Number(usageResult.rows[0]?.count || 0);
       const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
         s.division === rule.owner_division && s.code === rule.asset_code
       );
