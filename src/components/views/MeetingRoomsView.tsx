@@ -75,19 +75,23 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
     currentUser.permission_keys?.includes('*') === true
     || currentUser.permission_keys?.includes(key) === true
     || (currentUser.permission_keys === undefined && !hasRoleKey('auditor', 'Auditor'));
-  const isHumas = hasRoleKey('humas', 'Humas');
-  const isSekdir = currentUser.is_superadmin === true || currentUser.permission_keys?.includes('room_reservations.override_priority') === true || (currentUser.permission_keys === undefined && currentUser.role === 'Sekretaris Direksi');
   const isSuperAdmin = currentUser.is_superadmin === true
     || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
   const isAuditor = hasRoleKey('auditor', 'Auditor');
-  const canCreateReservation = hasPermission('room_reservations.create');
-  const canManageRoomMasters = isSuperAdmin || hasPermission('meeting_types.manage') || hasPermission('meeting_facilities.manage');
-  const canUpdateRooms = isSuperAdmin || hasPermission('meeting_rooms.update');
-  const canApproveReservations = isSuperAdmin || hasPermission('room_reservations.approve');
-  const canRejectReservations = isSuperAdmin || hasPermission('room_reservations.reject');
-  const canCheckinReservations = isSuperAdmin || hasPermission('room_reservations.checkin');
-  const canCheckoutReservations = isSuperAdmin || hasPermission('room_reservations.checkout');
-  const canCancelReservations = isSuperAdmin || hasPermission('room_reservations.cancel');
+  const isHumas = !isSuperAdmin && !isAuditor && (currentUser.permission_keys !== undefined
+    ? currentUser.permission_keys.includes('room_reservations.documentation.read')
+    : hasRoleKey('humas', 'Humas'));
+  const isSekdir = !isSuperAdmin && !isAuditor && (currentUser.permission_keys !== undefined
+    ? currentUser.permission_keys.includes('room_reservations.override_priority')
+    : currentUser.role === 'Sekretaris Direksi');
+  const canCreateReservation = !isAuditor && hasPermission('room_reservations.create');
+  const canManageRoomMasters = !isAuditor && (isSuperAdmin || hasPermission('meeting_types.manage') || hasPermission('meeting_facilities.manage'));
+  const canUpdateRooms = !isAuditor && (isSuperAdmin || hasPermission('meeting_rooms.update'));
+  const canApproveReservations = !isAuditor && (isSuperAdmin || hasPermission('room_reservations.approve'));
+  const canRejectReservations = !isAuditor && (isSuperAdmin || hasPermission('room_reservations.reject'));
+  const canCheckinReservations = !isAuditor && (isSuperAdmin || hasPermission('room_reservations.checkin'));
+  const canCheckoutReservations = !isAuditor && (isSuperAdmin || hasPermission('room_reservations.checkout'));
+  const canCancelReservations = !isAuditor && (isSuperAdmin || hasPermission('room_reservations.cancel'));
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
