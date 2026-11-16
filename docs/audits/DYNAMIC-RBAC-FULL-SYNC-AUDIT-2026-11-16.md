@@ -230,3 +230,10 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Added an explicit read-only exception in the canonical asset resolver: an active PostgreSQL Auditor assignment plus `assets.audit.read` exposes the full asset catalogue. The global Auditor middleware continues to deny all non-GET operations, so this does not grant asset mutation authority.
 - Added static regression coverage tying the explicit audit permission to the canonical resolver and the global read-only guard.
 - Commits: `6da79c4` (fix), `ead2952` (test). CI on the latest branch head is pending.
+
+### CI run #1607 — Humas queue fixed; stale UI assertion exposed (16 November 2026)
+
+- The explicit file-store Humas fallback correction worked: meeting-room reservation regression passed **38/38**, including Humas queue visibility, privacy redaction, and documentation brief retention.
+- CI #1607 then stopped at `Meeting room additional-role UI regression`. Its static assertions expected an older inline `currentUser.role`/`role_keys` expression and an obsolete GA override fallback, while the current UI correctly uses a shared `hasRoleKey` resolver and the explicit `room_reservations.override_priority` permission.
+- Updated `scripts/room-capability-ui-verify.mjs` to assert the current permission-first implementation and the narrow file-store fallback, rather than reverting working UI code to satisfy stale assertions.
+- Commit: `5e5ce49`. CI #1607 remains failed because it ran before this test correction; new CI on the updated head is pending.
