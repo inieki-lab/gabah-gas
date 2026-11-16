@@ -53,6 +53,23 @@ async function main(){
   const docBooking=await make(karyawan,'Stage3 documentation brief',{start_time:'15:00',end_time:'16:00',documentation_requested:true,documentation_type:'foto',documentation_notes:'Public documentation brief',attendees_list:'PRIVATE attendee list',consumption_requested:true,consumption_type:'lunch_box',consumption_pax:10,consumption_notes:'PRIVATE consumption note',notes:'PRIVATE internal note'});
   rec('documentation booking creation','201','HTTP '+docBooking.status+' '+(docBooking.json?.message||''),docBooking.status===201);
   let humasProfile=await req(b,'GET','/api/auth/me',{token:humas});
+  // In PostgreSQL mode, role labels do not grant access. Provision the
+  // Humas capability explicitly for this isolated integration-test account.
+  if (humasProfile.status===200 && !(humasProfile.json?.data?.role_keys||[]).includes('humas')) {
+    const rolesResponse=await req(b,'GET','/api/admin/rbac/roles',{token:admin});
+    const assignmentsResponse=await req(b,'GET','/api/admin/rbac/user-assignments',{token:admin});
+    const humasRole=(rolesResponse.json?.data||[]).find(x=>x.role_key==='humas');
+    const current=(assignmentsResponse.json?.data||[]).find(x=>x.user_id===humasProfile.json?.data?.id);
+    if (rolesResponse.status===200 && assignmentsResponse.status===200 && humasRole && current) {
+      const roleIds=[...new Set([...(current.role_ids||[]),Number(humasRole.id)])];
+      const target='/api/admin/rbac/users/'+encodeURIComponent(humasProfile.json.data.id)+'/roles';
+      const assigned=await req(b,'PUT',target,{token:admin,body:{role_ids:roleIds}});
+      humasProfile=await req(b,'GET','/api/auth/me',{token:humas});
+      rec('Humas fixture explicit role assignment','200','HTTP '+assigned.status+' roles='+((humasProfile.json?.data?.role_keys||[]).join(',')),assigned.status===200&&(humasProfile.json?.data?.role_keys||[]).includes('humas'));
+    } else {
+      rec('Humas fixture explicit role assignment','roles and user assignment available','roles='+rolesResponse.status+' assignments='+assignmentsResponse.status,false);
+    }
+  }
   rec('Humas capability available','assigned Humas role','role='+(humasProfile.json?.data?.role||'-')+' roles='+((humasProfile.json?.data?.role_keys||[]).join(',')),humasProfile.status===200&&(humasProfile.json?.data?.role==='Humas'||(humasProfile.json?.data?.role_keys||[]).includes('humas')));
   rec('created documentation flag','true',String(docBooking.json?.data?.documentation_requested),docBooking.json?.data?.documentation_requested===true);
   const humasQueueResponse=await req(b,'GET','/api/room-reservations',{token:humas});
