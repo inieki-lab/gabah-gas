@@ -760,6 +760,26 @@ export async function initializePersistence(): Promise<void> {
 
       await persistPostgresState();
       await backfillNormalizedTables();
+
+      // Materialize one default editable rule for every existing owner/category
+      // combination. Existing asset numbers remain unchanged; defaults preserve
+      // the canonical hyphen + four-digit format.
+      const numberingRuleKeys = new Set<string>();
+      for (const asset of db.assets || []) {
+        const owner = String(asset.owner_division || '').trim().toUpperCase();
+        const code = String(asset.category_code || '').trim().toUpperCase();
+        if (!owner || !code) continue;
+        const key = `${owner}:${code}`;
+        if (numberingRuleKeys.has(key)) continue;
+        numberingRuleKeys.add(key);
+        await pool.query(
+          `INSERT INTO asset_numbering_rules (id, owner_division, asset_code, separator, sequence_digits, is_active, notes)
+           VALUES ($1, $2, $3, '-', 4, TRUE, 'Aturan awal hasil sinkronisasi aset yang sudah ada')
+           ON CONFLICT (owner_division, asset_code) DO NOTHING`,
+          [crypto.randomUUID(), owner, code]
+        );
+      }
+
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
       const numberingRules = await pool.query(
         'SELECT id, owner_division, asset_code, separator, sequence_digits, is_active, notes FROM asset_numbering_rules ORDER BY owner_division, asset_code'
