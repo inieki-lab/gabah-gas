@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 
 const migration = fs.readFileSync('server/migrations/010_dynamic_rbac_foundation.sql', 'utf8');
+const postSeedRbacMigration = fs.readFileSync('server/migrations/090_post_seed_dynamic_rbac_assignment_backfill.sql', 'utf8');
 const backfill = fs.readFileSync('server/migrations/011_dynamic_rbac_legacy_backfill.sql', 'utf8');
 const catalogExpansion = fs.readFileSync('server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql', 'utf8');
 const dashboardPermissionSeed = fs.readFileSync('server/migrations/013_dynamic_rbac_dashboard_permission_seed.sql', 'utf8');
@@ -37,6 +38,9 @@ const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const effectivePermissionQuery = policy.slice(policy.indexOf('SELECT ur.user_id'), policy.indexOf('const scopes'));
 const checks = [
+  ['post-seed RBAC backfill runs only after canonical users are materialized', /async function ensureNormalizedSchema\(postSeedPhase = false\)/.test(persistence) && /isPostSeedMigration !== postSeedPhase/.test(persistence) && /await backfillNormalizedTables\(\);\s*await ensureNormalizedSchema\(true\)/.test(persistence)],
+  ['post-seed RBAC backfill assigns canonical Superadmin/IT/GA and employee capabilities without deleting custom assignments', postSeedRbacMigration.includes("WHEN 'Admin GABAH' THEN 'superadmin'") && postSeedRbacMigration.includes("WHEN 'IT' THEN 'it'") && postSeedRbacMigration.includes("WHEN 'GA' THEN 'ga'") && /ON CONFLICT \(user_id, role_id\) DO NOTHING/.test(postSeedRbacMigration)],
+  ['post-seed Humas and Sekretariat migration keeps function roles secondary and Karyawan primary', /role_key IN \('humas', 'sekretaris_direksi'\)/.test(postSeedRbacMigration) && /SET is_primary = FALSE/.test(postSeedRbacMigration) && /employee_role\.role_key = 'karyawan'[\s\S]*TRUE/.test(postSeedRbacMigration) && /UPDATE users\s+SET role = 'Karyawan'/.test(postSeedRbacMigration)],
   ['startup persistence never rewrites user profiles or RBAC assignments', /await backfillNormalizedTables\(\);/.test(persistence) && !/collectLegacyEmployeeCapabilityAssignments|normalizeLegacyEmployeeProfileRoles|backfillDynamicRbacUserRoles/.test(persistence)],
   ['one-time migration preserves Humas and Secretariat function assignments independently from employee profile normalization', employeeCapabilityMigration.includes("WHEN 'Humas' THEN 'humas'") && employeeCapabilityMigration.includes("WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi'") && employeeCapabilityMigration.includes("SET role = 'Karyawan'")],
   ['runtime effective permissions ignore inactive permission catalogue entries', effectivePermissionQuery.includes('p.permission_key') && effectivePermissionQuery.includes('LEFT JOIN gabah_permissions p') && effectivePermissionQuery.includes('p.is_active = TRUE') && !effectivePermissionQuery.includes('rp.permission_key FROM')],
