@@ -26,9 +26,11 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 
 ### 2.1 Penomoran Aset (Asset Numbering)
 - Format resmi: `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` (Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`).
-- Penomoran di-generate secara atomik oleh backend melalui `AssetNumberingEngine.generateAssetNumber()`.
+- Penomoran dibuat oleh backend melalui `AssetNumberingEngine.generateAssetNumber()`; counter runtime saat ini disinkronkan dari aset tersimpan saat boot, belum atomik lintas instance PostgreSQL. Dilarang mengklaim concurrency-safe sampai jalur sequence DB atomik selesai diuji.
 - Urutan sequence nomor mereset per tahun per kombinasi divisi pemilik dan kode aset.
 - Frontend dilarang meng-generate atau meng-hardcode nomor aset secara manual saat create asset.
+- Aturan format disimpan di PostgreSQL (`asset_numbering_rules`) dan hanya dapat dikelola Superadmin. Aturan yang sudah dipakai boleh mengubah format penerbitan berikutnya, tetapi identitas divisi/kode dikunci dan nomor historis tidak boleh ditulis ulang.
+- Penghapusan hanya untuk aturan tanpa aset/sequence, wajib konfirmasi kode `DIV/CODE` dan alasan minimal 20 karakter; aturan terpakai harus dinonaktifkan, bukan dihapus.
 - Nomor ERP Accurate disimpan secara terpisah di kolom `corporate_asset_number` dan tidak boleh menimpa nomor kanonikal.
 
 ### 2.2 Pencegahan Tabrakan Peminjaman (Loan Anti-Collision)
