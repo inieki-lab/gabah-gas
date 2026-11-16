@@ -638,7 +638,7 @@ export class GabahService {
   }
 
   static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
-    if (!user || user.role_keys?.includes('auditor') === true || user.role === 'Auditor') return false;
+    if (!user || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     if (Array.isArray(user.permission_keys)) {
       return user.permission_keys.includes('*') || user.permission_keys.includes('loans.approve');
     }
@@ -651,7 +651,7 @@ export class GabahService {
   }
 
   static canManageTickets(user?: UserProfile): boolean {
-    if (!user || user.role_keys?.includes('auditor') === true || user.role === 'Auditor') return false;
+    if (!user || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     if (Array.isArray(user.permission_keys)) {
       return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
@@ -703,7 +703,7 @@ export class GabahService {
   }
 
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
-    if (!user || !ticket || user.role_keys?.includes('auditor') === true || user.role === 'Auditor') return false;
+    if (!user || !ticket || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     if (Array.isArray(user.permission_keys)) {
       return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
