@@ -54,7 +54,10 @@ async function main(){
   rec('documentation booking creation','201','HTTP '+docBooking.status+' '+(docBooking.json?.message||''),docBooking.status===201);
   const humasProfile=await req(b,'GET','/api/auth/me',{token:humas});
   rec('Humas capability available','assigned Humas role','role='+(humasProfile.json?.data?.role||'-')+' roles='+((humasProfile.json?.data?.role_keys||[]).join(',')),humasProfile.status===200&&(humasProfile.json?.data?.role==='Humas'||(humasProfile.json?.data?.role_keys||[]).includes('humas')));
-  const humasQueue=(await req(b,'GET','/api/room-reservations',{token:humas})).json?.data||[];
+  rec('created documentation flag','true',String(docBooking.json?.data?.documentation_requested),docBooking.json?.data?.documentation_requested===true);
+  const humasQueueResponse=await req(b,'GET','/api/room-reservations',{token:humas});
+  const humasQueue=humasQueueResponse.json?.data||[];
+  rec('Humas queue API','200 + array','HTTP '+humasQueueResponse.status+' count='+humasQueue.length,humasQueueResponse.status===200&&Array.isArray(humasQueue));
   const humasItem=humasQueue.find(x=>x.id===docBooking.json?.data?.id);
   rec('Humas documentation queue','requested item visible',humasItem?'visible':'missing',Boolean(docBooking.status===201&&humasItem));
   rec('Humas queue redacts attendee/contact/consumption/internal notes','private fields absent',JSON.stringify({phone:humasItem?.organizer_phone,attendees:humasItem?.attendees_list,consumption:humasItem?.consumption_notes,notes:humasItem?.notes,facilities:humasItem?.facilities_requested}),Boolean(humasItem&&humasItem.organizer_phone===''&&humasItem.attendees_list===undefined&&humasItem.consumption_notes===undefined&&humasItem.notes===undefined&&(humasItem.facilities_requested||[]).length===0));
