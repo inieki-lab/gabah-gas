@@ -31,6 +31,8 @@ const loansView = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
 const gabahService = fs.readFileSync('src/services/gabahService.ts', 'utf8');
 const editAssetModal = fs.readFileSync('src/components/modals/EditAssetModal.tsx', 'utf8');
 const assetDetailModal = fs.readFileSync('src/components/modals/AssetDetailModal.tsx', 'utf8');
+const assetsView = fs.readFileSync('src/components/views/AssetsView.tsx', 'utf8');
+const knowledgeView = fs.readFileSync('src/components/views/KnowledgeBaseView.tsx', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
@@ -204,6 +206,8 @@ const checks = [
   ['Superadmin wildcard permission is honored by asset, loan, and ticket UI capability helpers', /permission_keys\.includes\('\*'\) \|\| user\.permission_keys\.includes\('assets\.update'\)/.test(gabahService) && /permission_keys\.includes\('\*'\) \|\| user\.permission_keys\.includes\('loans\.approve'\)/.test(gabahService) && (gabahService.match(/permission_keys\.includes\('\*'\) \|\| \['tickets\.update', 'tickets\.assign', 'tickets\.close'\]/g) || []).length >= 2],
   ['asset edit modal follows effective assets.update permission instead of hard-coded role names', /GabahService\.canEditAsset\(currentUser, asset\)/.test(editAssetModal) && !/currentUser\?\.role === 'IT'|currentUser\?\.role === 'GA'|currentUser\?\.role === 'Supply Chain'/.test(editAssetModal)],
   ['asset detail edit actions follow the same effective permission helper', (assetDetailModal.match(/onEditThisAsset && canEdit && \(/g) || []).length === 3 && !/onEditThisAsset && \(currentUser\?\.role ===/.test(assetDetailModal)],
+  ['Superadmin wildcard permission exposes asset create and bulk import actions', /permission_keys\.includes\('\*'\) \|\| currentUser\.permission_keys\.includes\('assets\.create'\)/.test(assetsView) && /permission_keys\.includes\('\*'\) \|\| currentUser\.permission_keys\.includes\('assets\.bulk_import'\)/.test(assetsView)],
+  ['Superadmin wildcard permission exposes knowledge create and update actions', /permission_keys\.includes\('\*'\) \|\| currentUser\.permission_keys\.includes\('knowledge\.create'\)/.test(knowledgeView) && /permission_keys\.includes\('\*'\) \|\| currentUser\.permission_keys\.includes\('knowledge\.update'\)/.test(knowledgeView)],
 
 
 ];
