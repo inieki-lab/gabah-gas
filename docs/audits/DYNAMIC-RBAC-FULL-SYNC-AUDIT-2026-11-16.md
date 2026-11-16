@@ -198,3 +198,12 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Migration post-seed `090_post_seed_dynamic_rbac_assignment_backfill.sql` kini mengulang grant secara additive/idempotent setelah role tersedia: IT facility queue, Humas documentation queue, dan Sekretariat Direksi priority override. Tidak ada grant berdasarkan jabatan/lokasi dan tidak mengubah assignment kustom.
 - Skrip numbering di branch preview juga diselaraskan ke migration aset `043_asset_numbering_rules.sql`; commit perbaikan: `dd93eaa`. Perbaikan grant post-seed pada branch audit: `fb8ed91`.
 - Status verifikasi: perbaikan sudah dikomit dan isi file diverifikasi dari GitHub; CI fresh-database/meeting-room setelah commit terbaru masih menunggu. PR #115 tetap draft dan tidak boleh merge sampai CI penuh serta audit endpoint/scope selesai.
+
+### Upgrade-path correction (16 November 2026)
+
+- A second review identified that editing migration `090` does not repair databases where version `090` is already recorded in `schema_migrations`; the runner correctly skips already-applied versions.
+- Added new additive/idempotent post-seed migration `092_post_seed_room_reservation_capability_grants.sql` so existing PostgreSQL installations also receive the IT, Humas, and Sekretariat Direksi room-queue capability grants.
+- Avoided a migration-ledger collision: `091_dynamic_rbac_auditor_audit_scope.sql` already owns version `091`, so the upgrade migration uses `092`.
+- Added static regression assertions to `scripts/dynamic-rbac-foundation-verify.mjs` for all three grants and the migration version separation.
+- Commits: `52e7fd2` (initial draft 091, subsequently removed), `41109d9` (remove duplicate 091), `aee547a` (create migration 092), `13b91ff` and `91d56d7` (test coverage). The migration runner applies `_post_seed_` migrations after normalized users and canonical roles are materialized.
+- Verification status: source and test changes are committed; CI execution on the latest head remains pending.
