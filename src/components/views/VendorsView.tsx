@@ -50,7 +50,7 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
     });
     return () => { active = false; };
   }, []);
-  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
+  const isAuditor = Array.isArray(currentUser.role_keys) ? currentUser.role_keys.includes('auditor') : currentUser.role === 'Auditor';
   const legacyVendorManager = currentUser.permission_keys === undefined
     && ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
   const canCreate = !isAuditor && (currentUser.is_superadmin === true
