@@ -86,8 +86,7 @@ export function canSeeContract(user: ServerUser, contract: ServerContract): bool
 export function canManageContracts(user: ServerUser): boolean {
   if (isSuperadminActor(user)) return true;
   if (isPostgresPersistenceActive()) {
-    return hasRbacPermission(String(user.id), 'contracts.create')
-      || hasRbacPermission(String(user.id), 'contracts.update');
+    return hasRbacPermission(String(user.id), 'contracts.create');
   }
   return user.role === 'IT' || user.role === 'GA';
 }
