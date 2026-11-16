@@ -89,9 +89,10 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const hasScopedQueueTickets = Array.isArray(currentUser?.permission_keys) && baseTickets.some(t =>
     t.reporter_id !== currentUser?.id
   );
+  const isLegacyQueueOperator = /petugas helpdesk ga|admin tiket me/i.test(String(currentUser?.role_label || ''));
   const isSelfTicketsOnly = Array.isArray(currentUser?.permission_keys)
     ? !hasScopedQueueTickets && !hasPermission('tickets.assign') && !hasPermission('tickets.update')
-    : !isSuperAdmin && !isAuditor && !['IT', 'GA'].includes(currentUser?.role || '');
+    : !isSuperAdmin && !isAuditor && !isLegacyQueueOperator && !['IT', 'GA'].includes(currentUser?.role || '');
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
   const canAssignTickets = hasPermission('tickets.assign')
