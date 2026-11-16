@@ -3833,10 +3833,6 @@ async function startServer() {
       const hasGlobalReservationAuditScope = isAuditorActor(actor)
         && isPostgresPersistenceActive()
         && hasRbacScope(String(actor.id), 'all', null, 'room_reservations');
-      if (isAuditorActor(actor) && !hasGlobalReservationAuditScope) {
-        // Without an explicit module-wide audit scope, only own reservations are visible.
-        data = data.filter(item => item.organizer_id === actor.id);
-      }
       const canOperateRooms = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.approve')
           || hasRbacPermission(String(actor.id), 'room_reservations.reject')
@@ -3847,21 +3843,25 @@ async function startServer() {
       const canReadDocumentationQueue = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.documentation.read')
         : hasApplicationRole(actor, 'humas');
-      if (isAuditorActor(actor) && hasGlobalReservationAuditScope) {
-        // Audit scope exposes schedule metadata only; personal/contact and operational notes stay private.
-        data = data.map(item => item.organizer_id === actor.id ? item : ({
-          ...item,
-          title: 'Reservasi ruang rapat',
-          description: undefined,
-          attendees_list: undefined,
-          organizer_phone: '',
-          consumption_notes: undefined,
-          documentation_type: undefined,
-          documentation_notes: undefined,
-          notes: undefined,
-          rejection_reason: undefined,
-          interruption_reason: undefined,
-        }));
+      if (isAuditorActor(actor)) {
+        if (hasGlobalReservationAuditScope) {
+          // Audit scope exposes schedule metadata only; personal/contact and operational notes stay private.
+          data = data.map(item => item.organizer_id === actor.id ? item : ({
+            ...item,
+            title: 'Reservasi ruang rapat',
+            description: undefined,
+            attendees_list: undefined,
+            organizer_phone: '',
+            consumption_notes: undefined,
+            documentation_type: undefined,
+            documentation_notes: undefined,
+            notes: undefined,
+            rejection_reason: undefined,
+            interruption_reason: undefined,
+          }));
+        } else {
+          data = data.filter(item => item.organizer_id === actor.id);
+        }
       } else if (canOperateRooms) {
         data = data.map(item => item.organizer_id === actor.id ? item : ({
           ...item,
