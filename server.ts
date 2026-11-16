@@ -2748,7 +2748,7 @@ async function startServer() {
       || (ticket.assigned_unit_id
         && ticket.assigned_unit_id === actor.unit_id
         && (!isPostgresPersistenceActive() || hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets')))
-      || canReadTicketOwner(ticket.category)
+      || (!ticket.assigned_unit_id && canReadTicketOwner(ticket.category))
     );
     return res.json({ success: true, data });
   });
