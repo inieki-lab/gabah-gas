@@ -272,3 +272,15 @@ Tidak ada penghapusan massal assignment lama, perubahan owner aset, atau konvers
 - Added static regression checks for all six service methods to `scripts/dynamic-rbac-foundation-verify.mjs`.
 - Commits: `e9aebc0` (service authorization correction), `e14393f` (regression checks). CI for the latest head must complete before this change is considered validated.
 - This closes one identified custom-role authorization mismatch; it does not certify the entire endpoint matrix. Remaining work includes reviewing every mutation/read/export/attachment path, the Administration UI against PostgreSQL, and laptop browser UAT. PR #115 remains draft and unmerged.
+
+
+### Contract capability separation and service-layer RBAC audit (16 November 2026)
+
+- CI #1626 completed with **SUCCESS** on commit `4f09a47`, validating the meeting administration permission correction and the full existing workflow.
+- Further review of contract mutations found a service-layer mismatch: API routes required dedicated permissions for milestone management, renewal decisions, and document uploads, but the domain service reused `contracts.update`. Users granted only the dedicated capability were incorrectly denied.
+- Added `canManageContractCapability`: each sub-resource now requires its own permission plus record-level authority (PIC or matching contracts division scope); Superadmin remains global. Applied to milestone creation, renewal decision, and document metadata/upload checks at both route and service layers.
+- Tightened contract creation so the service requires `contracts.create` only; `contracts.update` no longer implicitly grants create authority.
+- Added static regression assertions covering dedicated milestone, renewal, document upload, and create permissions.
+- Commits: `3c2bad1`, `b4bd170`, `c7047b2`, `0c02687`, `9b5efd8`, `eec4b3b`.
+- CI #1631 validates the dedicated contract sub-resource capabilities; CI #1633 validates the create-only permission tightening. Both were still running when this note was written. Do not mark these latest contract changes validated until both jobs complete successfully.
+- Remaining audit areas: exhaustive API matrix (including exports, search, notification reads, and all attachment/download paths), Administration UI with PostgreSQL, legacy taxonomy cleanup (Supply Chain → RPC; SC/PIBC are locations, not roles/divisions), and laptop browser UAT. PR #115 remains draft and unmerged.
