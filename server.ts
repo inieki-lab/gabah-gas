@@ -3679,8 +3679,8 @@ async function startServer() {
       if (!contract) {
         return res.status(404).json({ success: false, message: 'Kontrak tidak ditemukan.' });
       }
-      if (!canEditContract(actor, contract)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: bukan PIC/divisi pemilik kontrak.' });
+      if (!canManageContractCapability(actor, contract, 'contracts.documents.upload')) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: permission contracts.documents.upload atau scope kontrak tidak diberikan.' });
       }
 
       const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 180) || 'document';
