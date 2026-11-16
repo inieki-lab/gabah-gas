@@ -112,12 +112,15 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [serverConflictData, setServerConflictData] = useState<any | null>(null);
 
+  // Auditor remains read-only even when other operational roles are assigned.
+  const isAuditor = currentUser.role_keys?.includes('auditor') === true || currentUser.role === 'Auditor';
   // Sekretariat Direksi is an additional capability, not a primary profile role.
-  const canOverride = useMemo(() => (
+  const canOverride = useMemo(() => !isAuditor && (
     currentUser.is_superadmin === true
+    || currentUser.permission_keys?.includes('*') === true
     || currentUser.permission_keys?.includes('room_reservations.override_priority') === true
     || (currentUser.permission_keys === undefined && currentUser.role === 'Sekretaris Direksi')
-  ), [currentUser.is_superadmin, currentUser.permission_keys, currentUser.role]);
+  ), [currentUser.is_superadmin, currentUser.permission_keys, currentUser.role, currentUser.role_keys, isAuditor]);
   const isSekdir = canOverride;
 
   // Load master types and facilities
