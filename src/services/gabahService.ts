@@ -622,7 +622,7 @@ export class GabahService {
 
   // RBAC Permission helpers
   static canEditAsset(user?: UserProfile, asset?: Asset | null): boolean {
-    if (!user || !asset || user.role_keys?.includes('auditor') === true || user.role === 'Auditor') return false;
+    if (!user || !asset || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     // PostgreSQL/Dynamic RBAC: the API has already applied the object's owner
     // scope. The client checks the effective permission only; it must not
     // reconstruct ownership authority from a legacy branch-role label.
