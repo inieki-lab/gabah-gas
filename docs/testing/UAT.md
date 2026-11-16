@@ -10,11 +10,14 @@
 
 ## 1. Lingkungan Pengujian (Test Environment)
 
-- **Development Port**: `http://localhost:3000` (dijalankan via `npm run dev`)
-- **Docker Production Port**: `http://localhost:80` (dijalankan via `docker compose up -d`)
-- **Database Engine**: PostgreSQL 17 (driver `pg`)
-- **Token Format**: Bearer Token pada header `Authorization`
-- **Metode Pengujian**: Manual UI end-to-end melalui browser dan verifikasi otomatis via API client.
+- **Runtime tunggal Development/UAT**: Docker Compose (app + PostgreSQL 17).
+- **URL browser default**: `http://localhost` (host port 80; dapat diubah melalui `GABAH_WEB_PORT`).
+- **Aplikasi**: container `gabah_app`, port internal 3000.
+- **Database**: container `gabah_database`; aplikasi selalu menggunakan `PGHOST=database` dan `PGPORT=5432` pada jaringan Compose.
+- **Token Format**: Bearer Token pada header `Authorization`.
+- **Metode Pengujian**: UI end-to-end melalui browser, API assertions, regression scripts, serta CI. Jangan menjalankan server Node/TSX host bersamaan dengan database Docker.
+- **Standar utama**: ikuti [MASTER-TEST-STRATEGY.md](./MASTER-TEST-STRATEGY.md). Jalankan `docker compose config --quiet`, `docker compose up -d --build`, periksa `docker compose ps` dan `docker compose logs --tail=200 app`, lalu akses `http://localhost`.
+- **Peringatan data**: jangan gunakan `docker compose down -v` pada environment yang datanya ingin dipertahankan.
 
 ---
 
