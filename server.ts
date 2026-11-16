@@ -2307,11 +2307,12 @@ async function startServer() {
     if (isPostgresPersistenceActive()) {
       const canReadAssets = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'assets.read');
       const canReadLicenses = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'licenses.read');
-      if (!canReadAssets && !canReadLicenses) {
-        return res.status(403).json({ success: false, message: 'Permission assets.read atau licenses.read diperlukan.' });
+      const canReadAuditAssets = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'assets.audit.read');
+      if (!canReadAssets && !canReadLicenses && !canReadAuditAssets) {
+        return res.status(403).json({ success: false, message: 'Permission assets.read, assets.audit.read, atau licenses.read diperlukan.' });
       }
       const scopedAssets = GabahDomainService.getScopedAssets(actor);
-      const visible = canReadAssets
+      const visible = canReadAssets || canReadAuditAssets
         ? scopedAssets
         : scopedAssets.filter(asset => asset.category_type === 'License');
       return res.json({ success: true, data: visible });
@@ -2547,13 +2548,14 @@ async function startServer() {
     const actor = getActor(req);
     const canReadAssets = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'assets.read');
     const canReadLicenses = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'licenses.read');
-    if (isPostgresPersistenceActive() && !canReadAssets && !canReadLicenses) {
-      return res.status(403).json({ success: false, message: 'Permission assets.read atau licenses.read diperlukan.' });
+    const canReadAuditAssets = isSuperadminActor(actor) || hasRbacPermission(String(actor.id), 'assets.audit.read');
+    if (isPostgresPersistenceActive() && !canReadAssets && !canReadLicenses && !canReadAuditAssets) {
+      return res.status(403).json({ success: false, message: 'Permission assets.read, assets.audit.read, atau licenses.read diperlukan.' });
     }
-    // Match the collection endpoint: license-only readers can open visible
-    // license records, but cannot use a guessed asset ID to read other assets.
+    // License-only readers cannot use a guessed asset ID to read other assets.
+    // Auditor read access is explicit and remains constrained by getScopedAssets().
     const asset = GabahDomainService.getScopedAssets(actor).find(a => a.id === req.params.id);
-    if (!asset || (isPostgresPersistenceActive() && !canReadAssets && asset.category_type !== 'License')) {
+    if (!asset || (isPostgresPersistenceActive() && !canReadAssets && !canReadAuditAssets && asset.category_type !== 'License')) {
       return res.status(404).json({ success: false, message: 'Aset tidak ditemukan atau tidak berada dalam cakupan akses Anda.' });
     }
     res.json({ success: true, data: asset });
