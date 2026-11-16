@@ -856,7 +856,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     timestamp: string;
     isChecking: boolean;
     persistence?: string;
-    scheduler?: { enabled?: boolean; running?: boolean; intervalMs?: number; timezone?: string; lastRun?: string | null };
+    scheduler?: { enabled?: boolean; running?: boolean; intervalMs?: number; timezone?: string; lastRun?: string | { at?: string; ok?: boolean; summary?: string } | null };
   }>({
     // Status awal: BELUM diperiksa — jangan mengarang angka latency/status.
     status: 'Belum Diperiksa',
@@ -5066,7 +5066,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                   <div className="text-[11px] text-slate-400 mt-1">
                     {healthStatus.scheduler
-                      ? `Interval ${(healthStatus.scheduler.intervalMs ?? 0) / 60000 || '?'} menit · ${healthStatus.scheduler.timezone || '-'} · Run terakhir: ${healthStatus.scheduler.lastRun || '—'}${healthStatus.scheduler.lastRun ? '' : ' (menunggu jadwal pertama)'}`
+                      ? `Interval ${(healthStatus.scheduler.intervalMs ?? 0) / 60000 || '?'} menit · ${healthStatus.scheduler.timezone || '-'} · Run terakhir: ${typeof healthStatus.scheduler.lastRun === 'string' ? healthStatus.scheduler.lastRun : healthStatus.scheduler.lastRun?.at ? new Date(healthStatus.scheduler.lastRun.at).toLocaleString('id-ID') : 'Belum pernah berjalan'}`
                       : 'Status dari /api/health'}
                   </div>
                 </div>
