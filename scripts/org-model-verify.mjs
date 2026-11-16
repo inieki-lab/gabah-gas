@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { getAvailablePort } from './test-port.mjs';
 
 const R = []; const rec = (n, e, a, p) => R.push({ n, e, a, p });
 const req = async (b, m, p, o = {}) => {
@@ -23,7 +24,7 @@ async function main() {
   if (!fs.existsSync(sp)) { console.error('run npm run build first'); process.exit(1) }
   const sf = path.resolve('server/data/gabah_state.json'); let old = null;
   if (fs.existsSync(sf)) { old = fs.readFileSync(sf, 'utf8'); fs.rmSync(sf) }
-  const port = 39000 + Math.floor(Math.random() * 2000), b = `http://127.0.0.1:${port}`, ap = crypto.randomBytes(12).toString('base64url'), up = crypto.randomBytes(12).toString('base64url');
+  const port = await getAvailablePort(), b = `http://127.0.0.1:${port}`, ap = crypto.randomBytes(12).toString('base64url'), up = crypto.randomBytes(12).toString('base64url');
   const c = spawn(process.execPath, [sp], { env: { ...process.env, PORT: String(port), NODE_ENV: 'development', GABAH_INITIAL_ADMIN_PASSWORD: ap, GABAH_INITIAL_USER_PASSWORD: up, GABAH_TEST_PASSWORD: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = ''; c.stdout.on('data', x => log += x); c.stderr.on('data', x => log += x);
   const clean = () => { try { c.kill('SIGKILL') } catch { } if (old !== null) fs.writeFileSync(sf, old) }; process.on('exit', clean);
