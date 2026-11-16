@@ -379,7 +379,7 @@ function createPayload() {
  * - Migration files are expected to be idempotent (IF NOT EXISTS / ALTER guards)
  *   so re-running them on an already-migrated database is a safe no-op.
  */
-async function ensureNormalizedSchema(): Promise<void> {
+async function ensureNormalizedSchema(postSeedPhase = false): Promise<void> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version VARCHAR(16) PRIMARY KEY,
@@ -392,6 +392,11 @@ async function ensureNormalizedSchema(): Promise<void> {
   if (!fs.existsSync(migrationsDir)) return;
   const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
   for (const file of files) {
+    // Post-seed migrations run only after canonical users have been materialized
+    // into the normalized PostgreSQL tables. This is required for one-time
+    // identity/assignment backfills that cannot see users during schema boot.
+    const isPostSeedMigration = file.includes('_post_seed_');
+    if (isPostSeedMigration !== postSeedPhase) continue;
     const version = file.match(/^(\d+)/)?.[1] || file;
     const applied = await pool.query('SELECT 1 FROM schema_migrations WHERE version = $1', [version]);
     if (applied.rowCount && applied.rowCount > 0) continue;
@@ -642,10 +647,22 @@ export async function initializePersistence(): Promise<void> {
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
 
-      // Materialize canonical user records before syncing normalized domain tables.
-      // Dynamic RBAC assignments are migration/admin-managed and are never inferred
-      // or rewritten from employee profile fields during persistence.
+      // Materialize canonical user records before post-seed migrations. The
+      // ordinary schema migrations run before users exist on a fresh database;
+      // therefore the explicit post-seed migration phase is where the one-time
+      // legacy RBAC assignment backfill can safely see those users.
       await backfillNormalizedTables();
+      await ensureNormalizedSchema(true);
+
+      // PostgreSQL is authoritative for the normalized employee profile. Apply
+      // one-time migration results to the in-memory snapshot before it is saved
+      // or synchronized again; preserve role_label and all other profile fields.
+      const normalizedUsers = await pool.query<{ id: string; role: string }>('SELECT id::text AS id, role FROM users');
+      const normalizedRoles = new Map(normalizedUsers.rows.map(row => [String(row.id), String(row.role)]));
+      for (const user of db.users) {
+        const normalizedRole = normalizedRoles.get(String(user.id));
+        if (normalizedRole) user.role = normalizedRole;
+      }
       saveStateToFile(createPayload());
 
       await persistPostgresState();
