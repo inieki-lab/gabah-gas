@@ -114,43 +114,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
   if (!isOpen || !asset) return null;
 
-  // Role authority check
-  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
-  const isITUser = currentUser?.role === 'IT';
-  const isGAUser = currentUser?.role === 'GA';
-  const isSCUser = currentUser?.role === 'Supply Chain';
-
-  const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
-  const isGAAsset = asset.owner_division === 'GA' || asset.category_type === 'General';
-  const isSCAsset = asset.owner_division === 'SC';
-
-  let canEditThisAsset = false;
-  let authorityWarning = '';
-
-  if (isSuperAdmin) {
-    canEditThisAsset = true;
-  } else if (isITUser) {
-    if (isITAsset) {
-      canEditThisAsset = true;
-    } else {
-      canEditThisAsset = false;
-      authorityWarning = 'Personel IT hanya berwenang mengedit aset IT (Hardware/Software). Aset GA dan Supply Chain berstatus Read-Only.';
-    }
-  } else if (isGAUser) {
-    if (isGAAsset && !isITAsset) {
-      canEditThisAsset = true;
-    } else {
-      canEditThisAsset = false;
-      authorityWarning = 'Semua perangkat IT & Lisensi adalah milik IT. Divisi GA hanya memiliki izin lihat (read-only).';
-    }
-  } else if (isSCUser) {
-    if (isSCAsset) {
-      canEditThisAsset = true;
-    } else {
-      canEditThisAsset = false;
-      authorityWarning = 'Personel Supply Chain hanya berwenang mengedit aset Supply Chain (Logistik & Pabrik Cipinang).';
-    }
-  }
+  // The API is authoritative for owner scope. The UI follows effective
+  // permissions and never infers write authority from job title or profile label.
+  const canEditThisAsset = GabahService.canEditAsset(currentUser, asset);
+  const authorityWarning = canEditThisAsset
+    ? ''
+    : 'Hak assets.update atau scope pengelolaan aset ini belum diberikan kepada akun Anda.';
 
   const handleAutoGenerateFst = () => {
     const auto = GabahService.generateCorporateAssetNumber(allAssets);
