@@ -392,7 +392,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
                             Pool / Belum Di-assign
                           </span>
-                          {onEditAsset && canManageAsset(asset) && (
+                          {onEditAsset && GabahService.canAssignAsset(currentUser, asset) && (
                             <button
                               type="button"
                               onClick={(e) => {
