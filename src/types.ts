@@ -20,7 +20,8 @@ export type AssetStatus =
 
 export type AssetCondition = 'new' | 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged';
 
-export type OwnerDivision = 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum' | string;
+/** Owner domain is configurable master data; office/location codes are not divisions. */
+export type OwnerDivision = string;
 
 export interface LicenseDetail {
   license_key?: string;
