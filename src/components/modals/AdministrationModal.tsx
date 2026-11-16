@@ -4533,13 +4533,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             <span className="font-mono text-xs font-extrabold text-slate-900">{rule.owner_division}{rule.separator}{rule.asset_code}{rule.separator}{new Date().getFullYear()}{rule.separator}{String(1).padStart(rule.sequence_digits, '0')}</span>
                             <span className={`text-[9px] font-bold rounded-full px-2 py-0.5 ${rule.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>{rule.is_active ? 'Aktif' : 'Nonaktif'}</span>
                           </div>
-                          <div className="mt-1 text-[10px] text-slate-500">{rule.usage_count} aset memakai kombinasi ini · {rule.sequence_digits} digit · pemisah "{rule.separator}"</div>
+                          <div className="mt-1 text-[10px] text-slate-500">{rule.usage_count} aset memakai kombinasi ini · counter {rule.sequence_current || 0} · {rule.sequence_digits} digit · pemisah "{rule.separator}"</div>
                           {rule.notes && <div className="mt-1 text-[10px] text-slate-400">{rule.notes}</div>}
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <button type="button" onClick={() => { setEditingNumberingRuleId(rule.id); setNumberingRuleForm({ owner_division: rule.owner_division, asset_code: rule.asset_code, separator: rule.separator, sequence_digits: rule.sequence_digits, notes: rule.notes || '' }); setNumberingRuleDeleteTarget(null); }} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-50"><Pencil className="w-3 h-3" />Edit</button>
                           <button type="button" onClick={() => handleToggleNumberingRule(rule)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50"><Power className="w-3 h-3" />{rule.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
-                          {rule.usage_count === 0 ? (
+                          {rule.usage_count === 0 && (rule.sequence_current || 0) === 0 ? (
                             <button type="button" onClick={() => { setNumberingRuleDeleteTarget(rule); setNumberingRuleDeleteCode(''); setNumberingRuleDeleteReason(''); }} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="w-3 h-3" />Hapus</button>
                           ) : (
                             <span className="text-[10px] text-slate-400 px-2">Tidak dapat dihapus: sudah dipakai</span>
