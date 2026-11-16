@@ -2,12 +2,12 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
-import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
+import { isSuperadminActor, isAuditorActor, hasRbacScope, hasRbacPermission } from './rbac-policy';
 import { GabahDomainService } from './services';
 import { extractClientIp } from './requestContext';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
-const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || isAuditorActor(actor);
+const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor);
 
 export function actorFor(req: Request): ServerUser | null {
   if ((req as any).user) return (req as any).user as ServerUser;
