@@ -17,6 +17,7 @@ const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
 const ticketUi = read('src/components/views/TicketsView.tsx');
+const adminUi = read('src/components/modals/AdministrationModal.tsx');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC[/]SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
@@ -51,6 +52,7 @@ const checks = [
   ['Owner exclusion cannot be bypassed by unit/location scope', /const excluded = scopes\.some\(scope => scope\.type === 'division_except'[\s\S]*const explicitOwnerGrant = scopes\.some\(scope => scope\.type === 'division'[\s\S]*otherScopedGrant = !excluded/.test(services)],
   ['Owner exclusions are a first-class dynamic scope and preserve explicit owner grants', /division_except/.test(policy) && /division_except/.test(services) && /result\.all = true;[\s\S]*result\.excludedDivisions\.add\(value\)/.test(services) && /authority\.excludedDivisions\.has\(owner\)/.test(services) && /scope_type IN \('all', 'own', 'division', 'division_except', 'unit', 'location'\)/.test(read('server/migrations/032_rbac_owner_scope_exclusions.sql'))],
   ['Superadmin can configure all-owner-except scopes in the role editor and API', /option value="division_except">Semua owner kecuali/.test(read('src/components/modals/AdministrationModal.tsx')) && /'division_except'/.test(server)],
+  ['Administration owner-exclusion scope is represented in the UI state type without unsafe type narrowing', /useState<'all' \| 'own' \| 'division' \| 'division_except' \| 'unit' \| 'location'>\('division'\)/.test(adminUi) && /type: 'all' \| 'own' \| 'division' \| 'division_except' \| 'unit' \| 'location'/.test(adminUi)],
   ['Dynamic asset visibility is owner-code agnostic and scope-driven', /const owner = String\(asset\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\);\s*if \(!owner\) return false;/.test(services) && /case 'division':[\s\S]*textEquals\(asset\.owner_division, scope\.value\)/.test(services) && /assetMatchesAssetScope\(asset, scope, user\)/.test(services)],
   ['GA and additional capabilities retain explicitly scoped owner domains', /filterAssetsByDynamicScopes\(db\.assets\.filter\(asset => asset\.category_type !== 'License'\), user, 'assets'\)/.test(services) && /filterAssetsByDynamicScopes\(db\.assets\.filter\(asset => asset\.category_type === 'License'\), user, 'licenses'\)/.test(services) && /\.\.\.dynamicAssets, \.\.\.readOnlyItWorkstations/.test(services)],
   ['GA IT read scope memerlukan permission khusus', /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)],
