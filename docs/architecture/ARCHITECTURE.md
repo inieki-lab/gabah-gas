@@ -19,7 +19,7 @@ Sistem tidak lagi menggunakan arsitektur warisan (legacy) PHP/Laravel. Seluruh k
 
 ```
 +-----------------------------------------------------------------------------------+
-|                            CLIENT BROWSER (PORT 3000 / 80)                        |
+|                            CLIENT BROWSER (HOST PORT 80)                        |
 |   +---------------------------------------------------------------------------+   |
 |   |                          React 19 SPA (Vite 6)                            |   |
 |   |   - Tailwind CSS v4             - Plus Jakarta Sans Typography            |   |
@@ -31,11 +31,11 @@ Sistem tidak lagi menggunakan arsitektur warisan (legacy) PHP/Laravel. Seluruh k
                                            | HTTP REST API (Bearer Token)
                                            v
 +-----------------------------------------------------------------------------------+
-|                        APPLICATION SERVER (Node.js 20 Alpine)                     |
+|                        APPLICATION SERVER (Node.js 22 Alpine)                     |
 |                                                                                   |
 |   [ Entry Point: server.ts ]                                                      |
 |   - Express 4.21 Application Server                                               |
-|   - Vite Middleware (Dev) / Static Asset Server (Prod: dist/)                     |
+|   - Static Asset Server (Docker runtime: dist/)                     |
 |                                                                                   |
 |   [ Security & Hardening Middleware: server/runtime-hardening.ts ]                |
 |   - API Rate Limiter (200 req/min per IP)                                         |
@@ -85,8 +85,8 @@ NOTIFICATION & SCHEDULER LAYER (CR-05):
       (GABAH_REMINDER_INTERVAL_MS, default 1 jam), leader-lock
       pg_try_advisory_lock(842201) untuk multi-instance, error containment
 PERSISTENCE (CR-04): migration runner berbasis ledger schema_migrations;
-production fail-fast bila PostgreSQL gagal (tanpa fallback file senyap);
-/api/health mengekspos persistence=postgresql|file-store (development fallback).
+Compose app menunggu database healthy; production fail-fast bila PostgreSQL gagal;
+/api/health mengekspos status persistence aktual.
 ```
 
 ---
@@ -144,8 +144,7 @@ production fail-fast bila PostgreSQL gagal (tanpa fallback file senyap);
    - Migrasi DDL dijalankan otomatis pada saat booting server (`ensureNormalizedSchema`) dari folder `server/migrations/`.
 2. **Dual-Persistence Resilience Manager**:
    - Setiap mutasi data langsung dicatat ke cache/memory snapshot dan disinkronkan ke file `server/data/gabah_state.json`.
-   - Jika koneksi PostgreSQL host terhubung, data disinkronkan secara transaksional ke tabel ternormalisasi PostgreSQL (`backfillNormalizedTables`).
-   - Mekanisme ini menjamin sistem tetap dapat beroperasi (resilient) tanpa kehilangan data operasional bahkan dalam kondisi infrastruktur basis data host sedang cold-booting.
+   - Pada runtime Docker (NODE_ENV=production), PostgreSQL adalah authoritative store dan startup fail-fast jika koneksi/migrasi gagal. File snapshot bukan fallback operasional pada production.
 
 ---
 
@@ -153,7 +152,7 @@ production fail-fast bila PostgreSQL gagal (tanpa fallback file senyap);
 
 1. **Docker Compose (`docker-compose.yml`)**:
    - Layanan `database`: Image `postgres:17-alpine`, volume data persisten `postgres_data` dimount ke `/var/lib/postgresql/data`.
-   - Layanan `app`: Image `node:20-alpine`, port mapping `80:3000`, terhubung via bridge network `gabah_network`.
-   - Perintah build aplikasi: `npm install && npm run build && npm start`.
+   - Layanan `app`: Image `node:22-alpine`, port mapping `${GABAH_WEB_PORT:-80}:3000`, terhubung via bridge network `gabah_network`.
+   - Build image memakai `npm ci` dari lockfile, `npm run build`, lalu runtime menjalankan `node dist/server.cjs`.
 2. **Kompilasi Server Produksi (`scripts/build-server.cjs`)**:
    - Menggunakan `esbuild` untuk mem-bundle `server.ts` dan seluruh dependensinya menjadi satu file mandiri `dist/server.cjs` yang siap dieksekusi oleh runtime Node.js.

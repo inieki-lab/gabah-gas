@@ -33,65 +33,50 @@
 ## 🚀 Panduan Menjalankan Sistem
 
 ### 1. Prasyarat Lingkungan
-- Node.js versi 20 atau lebih baru
-- npm versi 10 atau lebih baru (atau Docker & Docker Compose)
+- Docker Engine / Docker Desktop dan Docker Compose v2.
+- Port host 80 (web) dan 5432 (PostgreSQL admin lokal); keduanya dapat diubah di `.env`.
 
-### 2. Mode Pengembangan (Development)
+### 2. Runtime tunggal: Docker Compose
+Development, UAT, dan deployment menggunakan arsitektur yang sama: app + PostgreSQL berjalan di Docker Compose. Jangan menjalankan server TSX/Node langsung di host; `npm run dev` dan `npm start` juga diarahkan ke Docker Compose agar tidak ada dua instance dengan konfigurasi database berbeda.
+
 ```bash
-# Salin konfigurasi environment
 cp .env.example .env
+# Isi PGPASSWORD, GABAH_INITIAL_ADMIN_PASSWORD, dan GABAH_INITIAL_USER_PASSWORD di .env
+docker compose config
+docker compose up -d --build
+docker compose ps
+docker compose logs -f --tail=200 app
 ```
 
-#### Variabel Environment Utama (Ringkasan — lihat `.env.example` untuk daftar lengkap)
+Buka `http://localhost` (host port default 80).
 
-| Variabel | Fungsi |
-|---|---|
-| `DATABASE_URL` | PostgreSQL otoritatif (CR-04). Kosong = dev fallback file store; production fail-fast bila gagal. |
-| `GABAH_INITIAL_ADMIN_PASSWORD` / `GABAH_INITIAL_USER_PASSWORD` | Password awal akun kanonikal (CR-02); tanpa ini dev memakai CSPRNG. |
-| `GABAH_TEST_PASSWORD` | **UAT/dev saja** (diabaikan di production): memberi SEMUA akun kanonikal satu password uji seragam agar QA bisa mencoba 9 peran tanpa kelola kredensial. Contoh: `GABAH_TEST_PASSWORD=test123`. |
-| `GABAH_SMTP_HOST` + `GABAH_SMTP_FROM` (+ `GABAH_SMTP_PORT/SECURE/USER/PASSWORD/TLS_REJECT_UNAUTHORIZED`) | Relay SMTP pengiriman email reminder kontrak (CR-05); tanpa itu status email = `skipped`. |
-| `TELEGRAM_BOT_TOKEN` (+ `GABAH_TELEGRAM_TIMEOUT_MS/API_BASE`) | Bot API Telegram pengiriman reminder (CR-05); tanpa itu status = `skipped`. |
-| `GABAH_REMINDER_TIMEZONE` | Zona waktu due-day reminder (default `Asia/Jakarta`). |
-| `GABAH_REMINDER_INTERVAL_MS` | Interval scheduler reminder (default 1 jam, min 60 detik). |
-| `GABAH_REMINDER_SCHEDULER_DISABLED` | `true` = matikan scheduler internal. |
-| `GABAH_REMINDER_RUN_ON_BOOT` | `false` = jangan sweep saat boot.
+Kontrak koneksi internal:
+- Browser → host port `GABAH_WEB_PORT` (default 80) → app container port 3000.
+- App → PostgreSQL melalui hostname service `database:5432` di jaringan Compose.
+- PostgreSQL host port `127.0.0.1:GABAH_DB_PORT` (default 5432) hanya untuk administrasi; app tidak menggunakannya.
+- App menunggu healthcheck PostgreSQL dan berjalan fail-fast jika database/migrasi gagal. Tidak ada file-store fallback pada runtime Compose.
+- Jika port host bentrok, ubah `GABAH_WEB_PORT` atau `GABAH_DB_PORT`; jangan ubah `PGHOST=database` / `PGPORT=5432` internal.
 
-# Install dependensi
-npm install
-
-# Jalankan server fullstack development (port 3000)
-npm run dev
+### 3. Operasional Harian
+```bash
+npm run docker:up     # start / rebuild
+npm run docker:ps     # status container
+npm run docker:logs   # log app + database
+npm run docker:down   # stop; named volumes tetap tersimpan
 ```
-Buka browser pada: `http://localhost:3000`.
 
-### 3. Pengecekan Kualitas Kode (Lint & Typecheck)
+**Jangan** gunakan `docker compose down -v` untuk operasional normal karena menghapus volume database dan uploads.
+
+### 4. Pengecekan Kualitas Kode
 ```bash
 npm run lint
-```
-
-### 4. Build untuk Lingkungan Produksi
-```bash
-# Kompilasi frontend (Vite) dan backend server (esbuild)
 npm run build
-
-# Menjalankan server hasil kompilasi (port 3000)
-npm start
 ```
 
-### 5. Menjalankan Menggunakan Docker Compose (Produksi)
-```bash
-# Menjalankan database PostgreSQL 17 dan aplikasi Node.js 20
-docker compose up -d --build
-```
-Aplikasi akan aktif pada: `http://localhost` (Port 80).  
-Tersedia juga skrip otomasi deployment:
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
+### 5. Deployment
+Server Linux menggunakan Docker Compose yang sama. Jalankan `chmod +x deploy.sh && ./deploy.sh` setelah `.env` production disiapkan.
 
 ---
-
 ## 📁 Struktur Direktori Utama
 
 ```text
