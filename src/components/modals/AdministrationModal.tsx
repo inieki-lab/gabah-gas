@@ -585,7 +585,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  // Dynamic per-user role assignment. The profile role remains the primary role;
+  // Dynamic per-user role assignment. Profile labels are descriptive metadata only;
   // additional capabilities are assigned independently and persisted in PostgreSQL.
   const [userAssignments, setUserAssignments] = useState<Record<string, number[]>>({});
   const [roleAssignmentTarget, setRoleAssignmentTarget] = useState<UserProfile | null>(null);
@@ -2718,7 +2718,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <div className="p-5 border-b border-slate-100">
                       <h3 className="font-black text-slate-900">Penetapan Role Pegawai</h3>
                       <p className="text-xs text-slate-500 mt-1">{roleAssignmentTarget.name} · {roleAssignmentTarget.email}</p>
-                      <p className="text-[11px] text-slate-500 mt-2">Role utama mengikuti profil pegawai. Pilih role tambahan hanya jika pegawai memang memiliki tanggung jawab lintas fungsi.</p>
+                      <p className="text-[11px] text-slate-500 mt-2">Label profil pegawai hanya metadata. Pilih nol atau beberapa role dinamis sesuai tanggung jawab aktual; permission dan scope mengikuti role yang ditetapkan.</p>
                       <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mt-2">Penting: jika Auditor dipilih sebagai role tambahan, akun menjadi read-only untuk seluruh operasi tulis, meskipun role lain memiliki hak mutasi.</p>
                     </div>
                     <div className="p-4 overflow-y-auto space-y-2">
