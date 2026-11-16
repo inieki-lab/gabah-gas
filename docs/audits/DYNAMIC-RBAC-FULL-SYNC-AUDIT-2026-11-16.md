@@ -310,3 +310,37 @@ The repository contains a direct architecture/seed contradiction that must be re
 **Conclusion:** account role/location backfill is already partly normalized, but the asset owner/org-unit model is not. Do not drop SC/PIBC division rows or mass-rewrite `assets.owner_division`, `managing_unit_id`, category owner mappings, or historical asset numbers yet. A safe follow-up requires an approved owner-domain mapping for each asset class and a compatibility plan for existing foreign keys, reports, imports, loan approvals, and category filters. Preserve the established rule that IT and GA ownership follows the owning function across all locations.
 
 **Safe next implementation boundary:** first make the code and database schema consistently treat office location, employee org assignment, and asset owner domain as separate dimensions; then provide an explicit, reviewable mapping for legacy owner values. No destructive taxonomy migration is included in this PR.
+
+
+## Pemeriksaan lanjutan dan readiness produksi — 17 November 2026
+
+### Status CI head yang diperiksa
+- Head PR #115: `11f559b258d724329d32cee8cc3cd2c36cee865f`.
+- GitHub Actions CI run #1639 (`43921705489`) berstatus **SUCCESS**.
+- Job `verify` menyelesaikan 59 langkah, termasuk typecheck, Dynamic RBAC contract, migration safety, asset scope/assignment, navigation/dashboard, production build, Docker runtime smoke, PostgreSQL 17 fresh database/persistence integration, P0 live-HTTP security checks, loan authorization, meeting-room regression, maintenance authorization, dan regression master data.
+- Hasil ini membuktikan rangkaian pemeriksaan CI yang terdaftar lulus pada head tersebut; bukan bukti bahwa seluruh endpoint, browser workflow, backup/restore, atau kesiapan operasional sudah diuji.
+
+### Temuan tambahan yang diverifikasi langsung di source
+1. **Seed akun belum disederhanakan.** `server/db.ts` masih mendefinisikan sepuluh canonical users: Superadmin, GA, Sekretariat Direksi, Humas, IT, beberapa Karyawan lokasi/unit, dan Auditor. Pembersihan belum dilakukan karena aset, kontrak, reservasi, loan, notifikasi, dan histori dapat merujuk ID tersebut. Jangan menghapus hanya dari daftar seed sebelum semua referensi direkonsiliasi.
+2. **Akun staf GA dan persona Karyawan UAT belum difinalkan.** Akun GA yang ada belum membuktikan pemisahan pengelola GA dan staf GA. Penetapan persona staf GA dan satu Karyawan dengan PC assignment perlu diputuskan sebelum fixture UAT dirapikan.
+3. **Taxonomy organisasi/aset belum selesai.** `server/taxonomy.ts` masih menyatakan SC dan PIBC sebagai owner divisions; `server/db.ts` masih memiliki union division yang memuat SC/PIBC. Ini bertentangan dengan target bisnis terbaru bahwa RPC/SC dan PIBC adalah lokasi, bukan divisi/role. Migrasi data historis tidak boleh dilakukan secara massal sebelum owner domain dan mapping aset disepakati.
+4. **Label UI User Management masih berpotensi membingungkan.** Tabel menampilkan `user.role` (label profil/metadata) bersama assignment role dinamis, tetapi header kolom masih bertuliskan “Peran (Role)”. Filter sudah menyebut “profil”. Header/penyajian perlu diperjelas agar operator tidak mengira label profil adalah hak akses.
+5. **Kebijakan Auditor masih memiliki stable key khusus.** `isAuditorActor()` menerapkan deny-write ketika effective role key `auditor` terpasang. Ini aman sebagai kebijakan sistem yang eksplisit dan sudah diuji di CI, tetapi belum menjadi access-mode/deny-write generik yang dapat dikonfigurasi untuk role kustom lain. Pertahankan Auditor read-only sampai desain policy generik tersedia.
+6. **Fallback label role tetap ada pada mode file-store.** Beberapa cabang `actor.role` di service/runtime masih dipertahankan untuk kompatibilitas file-store. PostgreSQL adalah mode produksi yang harus menjadi satu-satunya mode live; deployment tidak boleh diam-diam jatuh ke file-store bila koneksi database gagal.
+7. **Konteks sidebar memakai role keys untuk label/badge tertentu.** Permission tetap menyaring menu, sehingga ini bukan sumber otorisasi. Namun label workspace dan indikator Humas/Sekdir/IT/GA masih mengenali role key khusus; perlu dievaluasi apakah diganti metadata/capability agar UI sepenuhnya generik.
+
+### Penilaian readiness saat ini
+- **CI/build:** lulus untuk head yang diperiksa.
+- **Fondasi Dynamic RBAC:** sebagian besar kontrak inti sudah diuji, tetapi audit seluruh endpoint dan scope belum ditutup.
+- **Data organisasi dan aset:** belum siap dibekukan untuk produksi karena SC/PIBC dan owner-domain historis belum direkonsiliasi.
+- **Administration UI + browser UAT:** belum ada bukti UAT menyeluruh pada PostgreSQL dengan persona final.
+- **Operasional produksi:** backup/restore drill, observability/alerting, kebijakan secret, TLS/reverse proxy, retensi audit, dan prosedur rollback masih harus diverifikasi pada lingkungan target.
+
+**Kesimpulan:** status saat ini adalah *pre-UAT / kandidat staging*, bukan production-ready. CI hijau tidak boleh ditafsirkan sebagai izin live. PR #115 tetap draft dan tidak boleh digabung ke `main` sebelum seluruh release gate, UAT, dan operasi produksi diverifikasi.
+
+### Urutan tindak lanjut
+1. Tutup audit permission + scope per endpoint, termasuk direct-ID, export, attachment/download, dashboard, notifikasi, dan pencarian.
+2. Rapikan UI User Management agar profil pegawai dan role akses dinamis terlihat terpisah.
+3. Finalkan lima persona UAT tanpa merusak referensi transaksi dan assignment aset.
+4. Rekonsiliasi owner domain SC/PIBC dan lokasi RPC/PIBC secara non-destruktif.
+5. Jalankan UAT browser, Docker fresh install + upgrade DB existing, backup/restore, dan deployment rehearsal.
