@@ -373,3 +373,12 @@ The repository contains a direct architecture/seed contradiction that must be re
 5. Browser UAT on PostgreSQL, fresh-install/upgrade rehearsal, backup/restore drill, and target-environment TLS/secret/monitoring checks remain outstanding.
 
 **Readiness remains pre-UAT / staging candidate, not production-ready.** Keep PR #115 Draft and do not merge to `main` until the latest CI, full browser UAT, data mapping, and operational release gates pass.
+
+
+### CI follow-up and additional UI audit — 17 November 2026
+- CI #1698/#1699 exposed a regression assertion that did not allow a multiline asset-navigation condition. The assertion was corrected; the implementation matched the intended Auditor path.
+- CI #1700 then exposed an outdated navigation test expecting audit-only asset access to be false. The expected result was corrected to true because the API explicitly permits `assets.audit.read`.
+- CI #1704 passed (63/63 steps) on commit `3737dd5`.
+- Further source audit found shared frontend helpers still had three remaining Auditor checks that combined `role_keys` with a profile-label fallback using OR. All four shared helper guards now use effective `role_keys` whenever supplied.
+- `CreateTicketModal` now follows the same effective-role rule. Asset issue-report action now also requires `tickets.create` when dynamic permissions are available.
+- Latest observed head before this note: `80cb358`; CI #1707 was running. Check the latest head's workflow result before treating these additional changes as green.
