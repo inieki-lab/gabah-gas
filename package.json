@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "docker compose up --build",
     "build": "vite build && node scripts/build-server.cjs",
-    "start": "node dist/server.cjs",
+    "start": "docker compose up -d --build",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test:loan-authz": "node scripts/loan-authz-verify.mjs",
@@ -37,7 +37,11 @@
     "test:audit-append-only": "node scripts/audit-append-only-verify.mjs",
     "test:audit-identity": "node scripts/audit-identity-verify.mjs",
     "test:password-hash-security": "node scripts/password-hash-security-verify.mjs",
-    "test:business-date": "node scripts/business-date-verify.mjs"
+    "test:business-date": "node scripts/business-date-verify.mjs",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f --tail=200",
+    "docker:ps": "docker compose ps"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
