@@ -700,15 +700,17 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
     [userIds],
   );
 
-  // Optional ME UAT identity: the employee stays Karyawan primary; only the
-  // additive Admin Tiket ME role is attached when the gated dummy account exists.
+}
+
+async function ensureMeDummyRoleAssignment(): Promise<void> {
+  if (process.env.GABAH_ENABLE_ME_DUMMY_USER !== 'true') return;
   await pool.query(
     `INSERT INTO gabah_user_roles (user_id, role_id, is_primary)
      SELECT u.id::text, r.id, FALSE
      FROM users u
      JOIN gabah_roles r ON r.role_key = 'admin_tiket_me' AND r.is_active = TRUE
      WHERE u.id = 'USR-ME-ADMIN-001'
-     ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = FALSE`,
+     ON CONFLICT (user_id, role_id) DO NOTHING`,
   );
 }
 
@@ -771,6 +773,7 @@ export async function initializePersistence(): Promise<void> {
 
       await persistPostgresState();
       await backfillNormalizedTables();
+      await ensureMeDummyRoleAssignment();
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
