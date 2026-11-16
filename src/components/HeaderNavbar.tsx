@@ -58,7 +58,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
 
   const safeLoans = Array.isArray(pendingLoans) ? pendingLoans : [];
   const safeTickets = Array.isArray(urgentTickets) ? urgentTickets : [];
-  const isHumas = currentUser.role === 'Humas';
+  const isHumas = currentUser.role_keys?.includes('humas') === true || currentUser.role === 'Humas';
   const isIT = currentUser.role === 'IT' || currentUser.role === 'Admin GABAH';
   const isGA = currentUser.role === 'GA' || currentUser.role === 'Admin GABAH';
 
