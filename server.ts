@@ -533,12 +533,10 @@ async function startServer() {
         const target = await client.query('SELECT id, name, email, role FROM users WHERE id = $1', [userId]);
         const user = target.rows[0];
         if (!user) throw new Error('RBAC_USER_NOT_FOUND');
-        const uniqueIds = [...new Set((roleIds as number[]).map(Number))];
-        const primaryKey = primaryRoleKey(String(user.role || 'Karyawan'));
-        const primaryResult = await client.query('SELECT id FROM gabah_roles WHERE is_active = TRUE AND (role_key = $1 OR name = $2) ORDER BY CASE WHEN role_key = $1 THEN 0 ELSE 1 END LIMIT 1', [primaryKey, String(user.role || 'Karyawan')]);
-        const primaryRoleId = Number(primaryResult.rows[0]?.id);
-        if (!Number.isSafeInteger(primaryRoleId) || primaryRoleId < 1) throw new Error('RBAC_PRIMARY_ROLE_NOT_FOUND');
-        const assignmentIds = [...new Set([...uniqueIds, primaryRoleId])];
+        // Assignment set is explicit. Employee profile labels do not imply
+        // a primary role or any permission.
+        const assignmentIds = [...new Set((roleIds as number[]).map(Number))];
+        const primaryRoleId = assignmentIds[0] ?? null;
         const valid = await client.query('SELECT id, name, role_key, is_superadmin FROM gabah_roles WHERE is_active = TRUE AND id = ANY($1::bigint[])', [assignmentIds]);
         if (valid.rowCount !== assignmentIds.length) throw new Error('RBAC_ROLE_INVALID');
         // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
