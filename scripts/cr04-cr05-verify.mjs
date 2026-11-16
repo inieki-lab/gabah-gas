@@ -26,6 +26,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { getAvailablePort } from './test-port.mjs';
 import pg from 'pg';
 
 // Admin connection to the PostgreSQL TEST instance. No credentials are
@@ -179,7 +180,7 @@ async function main() {
     fs.rmSync(stateFile);
   }
 
-  const PORT = 39000 + Math.floor(Math.random() * 2000);
+  const PORT = await getAvailablePort();
   const base = `http://127.0.0.1:${PORT}`;
   const child = spawnServer({ port: PORT, databaseUrl: TEST_DB_URL, nodeEnv: 'production' });
   let exited = null;
@@ -692,7 +693,7 @@ async function main() {
     await new Promise(r => setTimeout(r, 500));
 
     // ---------- 7. Production fail-fast without any database configuration ----------
-    const PORT3 = 39000 + Math.floor(Math.random() * 2000);
+    const PORT3 = await getAvailablePort();
     const base3 = `http://127.0.0.1:${PORT3}`;
     const child3 = spawn(process.execPath, [serverPath], {
       env: {
@@ -720,7 +721,7 @@ async function main() {
     try { child3.kill('SIGKILL'); } catch { /* already exited */ }
 
     // ---------- 8. Production fail-fast with an explicitly configured but dead DATABASE_URL ----------
-    const PORT4 = 39000 + Math.floor(Math.random() * 2000);
+    const PORT4 = await getAvailablePort();
     const base4 = `http://127.0.0.1:${PORT4}`;
     const child4 = spawnServer({ port: PORT4, databaseUrl: `postgresql://postgres:wrongpw@127.0.0.1:5432/${TEST_DB}`, nodeEnv: 'production' });
     let exit4 = null;
