@@ -637,6 +637,15 @@ export class GabahService {
     return false;
   }
 
+  static canManageAssetLifecycle(user?: UserProfile, asset?: Asset | null): boolean {
+    if (!user || !asset || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
+    if (Array.isArray(user.permission_keys)) {
+      return (user.permission_keys.includes('*') || user.permission_keys.includes('assets.update'))
+        && (user.permission_keys.includes('*') || user.permission_keys.includes('assets.lifecycle'));
+    }
+    return this.canEditAsset(user, asset);
+  }
+
   static canAssignAsset(user?: UserProfile, asset?: Asset | null): boolean {
     if (!user || !asset || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     if (Array.isArray(user.permission_keys)) {
