@@ -1,173 +1,103 @@
-# Runbook: Setup & Testing GABAH di Server Dev Lokal (Laptop/PC)
+# Runbook: Setup & Testing GABAH di Laptop (Docker Compose)
 
-**Target:** Laptop/PC pribadi (Windows/macOS/Linux) untuk testing harian.
-**Repo:** `https://github.com/inieki-lab/gabah-gas.git` (branch `main`).
-**Pendamping:** untuk VM kantor/produksi, lihat [OFFICE-VM-RUNBOOK.md](./OFFICE-VM-RUNBOOK.md).
+**Target:** Laptop/PC Windows, macOS, atau Linux untuk pengujian harian.
+**Runtime resmi:** Docker Compose — sama dengan arsitektur deployment server.
 
-> **Jawaban singkat:** TIDAK perlu aplikasi khusus. Wajib hanya **Node.js 20+** dan **Git**.
-> **Docker Desktop = opsional**, hanya dipakai jika ingin database PostgreSQL lokal (Opsi B).
-> Data sync antar tempat = lewat **git push/pull** (kode) + database permanen (data).
-
----
+> Tidak ada mode file-store atau server Node lokal untuk UAT. App dan PostgreSQL selalu dijalankan bersama di Docker Compose. Jangan mencampur npm run dev lokal dengan PostgreSQL container.
 
 ## 0. Instalasi sekali saja
 
 | Kebutuhan | Cara install | Cek |
 |---|---|---|
-| **Node.js 20+** (WAJIB) | Unduh LTS dari https://nodejs.org (Windows/macOS) atau `sudo apt install nodejs npm` (Ubuntu) | `node -v` → v20 atau lebih |
-| **Git** (WAJIB) | https://git-scm.com/downloads | `git --version` |
-| **Docker Desktop** (OPSIONAL, hanya Opsi B) | https://www.docker.com/products/docker-desktop/ | `docker compose version` |
+| Docker Desktop (Windows/macOS) atau Docker Engine (Linux) | https://www.docker.com/products/docker-desktop/ | docker --version |
+| Docker Compose v2 | Termasuk Docker Desktop / Compose Plugin | docker compose version |
+| Git | https://git-scm.com/downloads | git --version |
 
-> Windows: pakai **Git Bash** (ikut installer Git) untuk menjalankan semua perintah di bawah.
+Windows: jalankan perintah berikut dari PowerShell atau Git Bash.
 
----
-
-## 1. Ambil kode dari GitHub (pertama kali)
+## 1. Ambil kode
 
 ```bash
-# Pilih folder kerja, lalu clone
 git clone https://github.com/inieki-lab/gabah-gas.git
 cd gabah-gas
-
-# Install dependensi (sekali, ulangi hanya jika package.json berubah)
-npm install
+git checkout fix/docker-canonical-runtime
 ```
 
-> Repo privat? Login sekali via browser: `gh auth login` → GitHub.com → HTTPS → Login with a web browser → `gh auth setup-git`.
-> Tanpa `gh`, install dari https://cli.github.com atau biarkan Git meminta kredensial saat clone.
+Jika repo sudah ada, pindah ke folder repo dan lakukan pull branch kerja yang telah disepakati. Jangan melakukan commit langsung ke main.
 
----
-
-## 2. Konfigurasi `.env` (sekali saja)
+## 2. Konfigurasi environment (sekali saja)
 
 ```bash
 cp .env.example .env
 ```
 
-Lalu edit `.env`, isi minimal:
+Edit .env dan isi PGPASSWORD, GABAH_INITIAL_ADMIN_PASSWORD, dan GABAH_INITIAL_USER_PASSWORD dengan secret kuat dan unik. Untuk database laptop yang benar-benar baru, dua password awal boleh disamakan sementara. Jangan gunakan password uji ini di production.
 
-```env
-NODE_ENV=development
+Password awal hanya mengisi akun yang belum mempunyai hash. Mengubah nilai .env tidak mereset password akun yang sudah ada.
 
-# UAT: semua 9 akun kanonik pakai 1 password sama (HANYA untuk dev/test)
-GABAH_TEST_PASSWORD=GABAH2026
-```
-
-**Pilihan penyimpanan data:**
-
-- **Tanpa database** (tercepat): tidak perlu apa-apa lagi. Data tersimpan di file
-  `server/data/gabah_state.json` — cukup untuk testing fungsional harian.
-- **Dengan PostgreSQL lokal** (Opsi B di bawah): tambahkan `DATABASE_URL=...`
-  sesuai kredensial database lokal Anda.
-
-> Untuk pemakaian nyata (bukan testing), ganti `GABAH_TEST_PASSWORD` dengan
-> `GABAH_INITIAL_ADMIN_PASSWORD` + `GABAH_INITIAL_USER_PASSWORD` yang kuat.
-
----
+Jangan ubah PGHOST=database atau PGPORT=5432. Keduanya adalah alamat internal antar-container.
 
 ## 3. Jalankan aplikasi
 
 ```bash
-npm run dev
+docker compose config
+docker compose up -d --build
+docker compose ps
+docker compose logs -f --tail=200 app
 ```
 
-Buka browser: **http://localhost:3000**
+Buka browser: http://localhost (host port 80).
 
-Login (password = isi `GABAH_TEST_PASSWORD`, default di atas: `GABAH2026`):
+Arsitektur koneksi:
+- Browser → localhost:80 → app container :3000.
+- App container → database:5432 melalui jaringan Compose.
+- PostgreSQL host port 127.0.0.1:5432 hanya untuk administrasi; app tidak menggunakannya.
+- Database harus healthy sebelum app start. App berjalan fail-fast jika PostgreSQL tidak tersedia.
 
-| Email (@foodstation.co.id) | Peran |
-|---|---|
-| admin@ | Admin GABAH (semua menu + Administrasi) |
-| it.support@ | IT |
-| ga@ | GA |
-| sc.warehouse@ | Supply Chain |
-| pibc.admin@ | PIBC |
-| sekretariat.direksi@ | Sekretaris Direksi |
-| humas@ | Humas |
-| auditor@ | Auditor (read-only) |
-| karyawan@ | Karyawan |
+Jika port 80 atau 5432 sudah dipakai, ubah GABAH_WEB_PORT atau GABAH_DB_PORT di .env. Jangan mengubah port internal container.
 
----
+## 4. Akun pengujian
 
-## 4. Opsi B — dengan PostgreSQL lokal via Docker (persisten & mirip produksi)
+Gunakan akun/persona yang tercantum di docs/testing/UAT.md. Password berasal dari proses provisioning awal atau reset resmi oleh Superadmin. Untuk akun yang sudah pernah login, gunakan password tersimpan saat ini; initial password tidak menimpa hash lama.
+
+## 5. Rutinitas harian
 
 ```bash
-# 1. Nyalakan HANYA database-nya (tidak perlu build app)
-PGPASSWORD=passku123 docker compose up -d database
-
-# 2. Tambahkan ke .env:
-#    DATABASE_URL=postgresql://gabah_user:passku123@127.0.0.1:15432/gabah_db
-#    PGUSER=gabah_user
-#    PGPASSWORD=passku123
-#    PGDATABASE=gabah_db
-#    GABAH_DB_PORT=15432
-
-# 3. Jalankan app seperti biasa
-npm run dev
+git pull
+docker compose up -d --build
+docker compose ps
 ```
 
-Migrasi skema jalan **otomatis** saat boot. Data aman di Docker volume
-`postgres_data` walau container di-restart. Port host PostgreSQL adalah **15432**
-(default; bisa diubah lewat `GABAH_DB_PORT`), sedangkan port internal container tetap
-5432. Untuk menjalankan seluruh aplikasi melalui Docker Compose:
-`docker compose up -d --build`, lalu buka **http://localhost:8080**
-(default; bisa diubah lewat `GABAH_WEB_PORT`).
-
----
-
-## 5. Rutinitas harian — selalu sync dengan GitHub
-
-**Sebelum mulai kerja di lokal:**
-
+Setelah selesai:
 ```bash
-git pull origin main
-npm install          # hanya jika ada perubahan package.json
-npm run dev
+docker compose logs --tail=200 app database
+docker compose down
 ```
 
-**Setelah selesai testing / ada perubahan kode (dua arah):**
-
-```bash
-git add <file-yang-diubah>
-git commit -m "deskripsi perubahan"
-git pull --rebase origin main   # ambil perubahan lain dulu, hindari konflik
-git push origin main
-```
-
-**Aturan main biar tidak kacau:**
-
-1. **Kode selalu lewat git** — jangan salin file manual antar mesin.
-2. **Data bukan lewat git** — `server/data/gabah_state.json` sengaja di-gitignore;
-   tiap mesin punya data testingnya sendiri. Data "resmi" taruh di database
-   (Opsi B) atau di server kantor (lihat OFFICE-VM-RUNBOOK.md).
-3. Satu orang satu topik satu branch bila kerja tim; langsung di `main` boleh
-   kalau memang satu penjaga.
-
----
+docker compose down mempertahankan named volumes. Jangan gunakan docker compose down -v karena menghapus database dan file upload.
 
 ## 6. Perintah berguna
 
 | Tujuan | Perintah |
 |---|---|
-| Cek kualitas kode | `npm run lint` (harus 0 error) |
-| Build produksi lokal | `npm run build` lalu `npm start` |
-| Verifikasi semua menu terkoneksi data | `npm run build` dulu, lalu `node scripts/menu-connectivity-verify.mjs` |
-| Verifikasi import massal pegawai | `node scripts/bulk-import-verify.mjs` |
-| Uji keamanan P0 | `node scripts/p0-security-verify.mjs` |
-| Reset data file-store ke seed awal | hapus `server/data/gabah_state.json` saat server mati |
+| Start / rebuild | npm run docker:up |
+| Status container | npm run docker:ps |
+| Log app + database | npm run docker:logs |
+| Stop tanpa menghapus data | npm run docker:down |
+| Typecheck | npm run lint |
+| Build frontend/backend | npm run build |
 
----
+## 7. Troubleshooting
 
-## 7. Troubleshooting cepat
-
-| Gejala | Solusi |
+| Gejala | Tindakan |
 |---|---|
-| `npm run dev` gagal port terpakai | matikan proses lain di port 3000, atau `PORT=3001 npm run dev` |
-| Tidak bisa login | `GABAH_INITIAL_ADMIN_PASSWORD` / `GABAH_INITIAL_USER_PASSWORD` hanya mengisi password akun kanonik yang belum punya hash; keduanya tidak mereset password akun lama. Pada `npm run dev` non-production, `GABAH_TEST_PASSWORD` justru memprovision ulang semua akun kanonik setiap boot. Image Docker menetapkan `NODE_ENV=production`, sehingga mengabaikan `GABAH_TEST_PASSWORD`. Untuk akun lama di PostgreSQL, gunakan reset password resmi melalui panel Super Admin; jangan berharap mengubah initial password akan mereset hash yang sudah tersimpan. |
-| Halaman putih / error JS | `npm run lint` — biasanya ada file belum ter-pull; `git status` |
-| Data hilang setelah restart (mode file) | normal bila file state dihapus; pakai Opsi B untuk data permanen |
-| `git pull` konflik | `git stash` → `git pull` → `git stash pop`, selesaikan konflik lalu commit |
+| App tidak start | docker compose ps, lalu docker compose logs --tail=200 app database |
+| Database belum healthy | Periksa log database dan nilai PG* di .env; jangan reset volume |
+| Port 80/5432 sudah dipakai | Ubah GABAH_WEB_PORT / GABAH_DB_PORT; jangan ubah PGHOST=database |
+| Menu RBAC menyebut PostgreSQL tidak aktif | Pastikan gabah_database dan gabah_app healthy; cek log boot app untuk PostgreSQL persistence ready |
+| Tidak bisa login | Password awal tidak menimpa akun yang sudah punya hash. Gunakan password akun saat ini atau reset resmi; jangan hapus database |
+| Halaman putih / error JS | docker compose up -d --build, lalu cek log app dan npm run lint |
 
 ---
 
-*PT Food Station Tjipinang Jaya (Perseroda) — GABAH Local Dev Runbook*
+*PT Food Station Tjipinang Jaya (Perseroda) — GABAH Local UAT Runbook*
