@@ -118,6 +118,14 @@ Pembaruan terakhir: 16 November 2026. Bagian ini mencatat perubahan yang sudah d
 - Skrip regresi import, user administration, notification RBAC, profile/RBAC separation, dan Dynamic RBAC foundation diperbarui mengikuti kontrak baru.
 - CI workflow diperluas agar PR yang menargetkan preview/green-enterprise-theme-laptop juga dapat menjalankan suite yang sama.
 
+### Root cause integrasi PostgreSQL: urutan seed user dan migrasi RBAC (16 November 2026)
+
+- Uji PostgreSQL fresh database menunjukkan migration 010/011/031 dijalankan sebelum `backfillNormalizedTables()` membuat baris user. Akibatnya backfill role yang membaca tabel `users` tidak menemukan akun; migration tercatat selesai, tetapi assignment Superadmin/IT/GA/Karyawan/Auditor tidak terbentuk. Ini menjelaskan gelombang HTTP 403, termasuk Superadmin, pada uji integrasi.
+- Ditambahkan fase migrasi `post_seed` yang hanya menjalankan berkas dengan penanda `_post_seed_` setelah user canonical dimaterialisasi.
+- Migration `090_post_seed_dynamic_rbac_assignment_backfill.sql` menambahkan assignment awal canonical berdasarkan kolom profil legacy yang tersimpan, tanpa menghapus assignment kustom. Humas dan Sekretariat Direksi dipertahankan sebagai role fungsi sekunder dengan Karyawan sebagai role baseline primer; label profil lain tidak diubah menjadi otorisasi baru.
+- Hasil normalisasi role dari PostgreSQL disalin kembali ke state runtime sebelum snapshot disimpan, sehingga sinkronisasi berikutnya tidak mengembalikan label profil lama.
+- Perbaikan type annotation pada sinkronisasi profil juga sudah dilakukan. CI terbaru sedang menguji ulang typecheck, migrasi post-seed, dan integrasi HTTP. Belum dinyatakan lulus sampai pengujian fresh-database selesai.
+
 ### Konsistensi pembacaan aset dan lisensi (16 November 2026)
 
 - Ditemukan perbedaan antara endpoint koleksi `GET /api/assets` dan detail `GET /api/assets/:id`: koleksi mengizinkan pembaca dengan `licenses.read` saja untuk melihat aset kategori License, sedangkan detail sebelumnya mensyaratkan `assets.read`.
