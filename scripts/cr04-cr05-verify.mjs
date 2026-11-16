@@ -258,7 +258,7 @@ async function main() {
        JOIN gabah_role_permissions rp ON rp.role_id = r.id
        JOIN gabah_permissions p ON p.permission_key = rp.permission_key
        WHERE r.role_key = ANY($1::text[])`,
-      [['admin_tiket_me', 'ga_helpdesk_operator', 'pemohon_tiket_ga', 'pemohon_tiket_me', 'ga']],
+      [['admin_tiket_me', 'petugas_me', 'ga_helpdesk_operator', 'petugas_ga', 'pemohon_tiket_ga', 'pemohon_tiket_me', 'ga']],
     );
     const hasGrant = (role, permission) => helpdeskGrants.rows.some(row => row.role_key === role && row.permission_key === permission);
     record('Admin Tiket ME receives read/update/assign capabilities', 'read+update+assign',
@@ -271,6 +271,13 @@ async function main() {
       hasGrant('pemohon_tiket_ga', 'tickets.create.ga'), hasGrant('pemohon_tiket_ga', 'tickets.create.ga'));
     record('ME requester template only grants ME ticket creation', 'tickets.create.me',
       hasGrant('pemohon_tiket_me', 'tickets.create.me'), hasGrant('pemohon_tiket_me', 'tickets.create.me'));
+
+    record('Petugas ME receives read/update but not dispatch authority', 'read+update only',
+      hasGrant('petugas_me', 'tickets.read') && hasGrant('petugas_me', 'tickets.update') && !hasGrant('petugas_me', 'tickets.assign'),
+      hasGrant('petugas_me', 'tickets.read') && hasGrant('petugas_me', 'tickets.update') && !hasGrant('petugas_me', 'tickets.assign'));
+    record('Petugas GA receives read/update but not dispatch authority', 'read+update only',
+      hasGrant('petugas_ga', 'tickets.read') && hasGrant('petugas_ga', 'tickets.update') && !hasGrant('petugas_ga', 'tickets.assign'),
+      hasGrant('petugas_ga', 'tickets.read') && hasGrant('petugas_ga', 'tickets.update') && !hasGrant('petugas_ga', 'tickets.assign'));
     record('Generic GA role does not automatically dispatch tickets', 'no tickets.update/assign',
       !hasGrant('ga', 'tickets.update') && !hasGrant('ga', 'tickets.assign') && !hasGrant('ga', 'tickets.close'),
       !hasGrant('ga', 'tickets.update') && !hasGrant('ga', 'tickets.assign'));
@@ -280,11 +287,13 @@ async function main() {
        FROM gabah_roles r
        JOIN gabah_role_division_scopes s ON s.role_id = r.id
        WHERE r.role_key = ANY($1::text[]) AND s.module = 'tickets'`,
-      [['admin_tiket_me', 'ga_helpdesk_operator']],
+      [['admin_tiket_me', 'petugas_me', 'ga_helpdesk_operator', 'petugas_ga']],
     );
     const meScope = queueScopes.rows.some(row => row.role_key === 'admin_tiket_me' && row.scope_type === 'unit' && row.scope_value === 'UNIT-PIBC-ME');
+    const meTechScope = queueScopes.rows.some(row => row.role_key === 'petugas_me' && row.scope_type === 'unit' && row.scope_value === 'UNIT-PIBC-ME');
     const gaScope = queueScopes.rows.some(row => row.role_key === 'ga_helpdesk_operator' && row.scope_type === 'division' && row.scope_value === 'GA');
-    record('ME dispatcher is scoped to ME unit and GA dispatcher to GA division', 'ME unit + GA division', meScope && gaScope, meScope && gaScope);
+    const gaTechScope = queueScopes.rows.some(row => row.role_key === 'petugas_ga' && row.scope_type === 'division' && row.scope_value === 'GA');
+    record('Dispatchers and technicians are scoped to their own unit/division', 'ME unit + GA division for both roles', meScope && meTechScope && gaScope && gaTechScope, meScope && meTechScope && gaScope && gaTechScope);
 
     let ledger, ownerDivCol, uqIdx;
     try {
