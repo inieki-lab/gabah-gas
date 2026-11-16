@@ -772,11 +772,29 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   // Notification Rules State
   const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => {
-    const saved = localStorage.getItem('gabah_notification_rules');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
+    // Browser storage is untrusted input: old versions may contain malformed
+    // JSON, a non-array value, or incomplete rule objects. Never let it crash
+    // the Administration modal during render.
+    try {
+      const saved = window.localStorage.getItem('gabah_notification_rules');
+      if (!saved) return DEFAULT_NOTIFICATION_RULES;
+      const parsed: unknown = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return DEFAULT_NOTIFICATION_RULES;
+      const validRules = parsed.filter((rule): rule is NotificationRule =>
+        !!rule &&
+        typeof rule === 'object' &&
+        typeof rule.id === 'string' &&
+        typeof rule.title === 'string' &&
+        typeof rule.trigger === 'string' &&
+        typeof rule.target === 'string' &&
+        (rule.status === 'Aktif' || rule.status === 'Nonaktif') &&
+        (rule.severity === 'warning' || rule.severity === 'critical' || rule.severity === 'info')
+      );
+      return validRules.length > 0 ? validRules : DEFAULT_NOTIFICATION_RULES;
+    } catch (error) {
+      console.warn('[GABAH Administration] Notification rules storage unavailable; using defaults.', error);
+      return DEFAULT_NOTIFICATION_RULES;
     }
-    return DEFAULT_NOTIFICATION_RULES;
   });
 
   // Audit Search & Filter State
@@ -1220,7 +1238,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       return r;
     });
     setNotificationRules(updated);
-    localStorage.setItem('gabah_notification_rules', JSON.stringify(updated));
+    try {
+      window.localStorage.setItem('gabah_notification_rules', JSON.stringify(updated));
+    } catch (error) {
+      console.error('[GABAH Administration] Failed to persist notification rules locally:', error);
+      showToast('Perubahan hanya berlaku sementara di browser ini; penyimpanan lokal tidak tersedia.', 'warning');
+      return;
+    }
     const target = updated.find(r => r.id === id);
     showToast(`Aturan "${target?.title}" diubah menjadi: ${target?.status}`, 'info');
   };
