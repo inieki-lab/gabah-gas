@@ -953,6 +953,7 @@ export default function App() {
               tickets={visibleTickets}
               auditLogs={auditLogs}
               maintenanceSchedules={visibleMaintenanceSchedules}
+              auditorMode={currentUser.role_keys?.includes('auditor') === true || (currentUser.role_keys === undefined && currentUser.role === 'Auditor')}
             />
           )}
 
