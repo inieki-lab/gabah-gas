@@ -61,7 +61,8 @@
     "test:room-reservation-exclusion": "node scripts/room-reservation-exclusion-verify.mjs",
     "test:contract-numbering-atomic": "node scripts/contract-numbering-atomic-verify.mjs",
     "test:ticket-contract-audit-persistence": "node scripts/ticket-contract-audit-persistence-verify.mjs",
-    "test:room-domain-persistence": "node scripts/room-domain-persistence-verify.mjs"
+    "test:room-domain-persistence": "node scripts/room-domain-persistence-verify.mjs",
+    "test:contract-domain-persistence": "node scripts/contract-domain-persistence-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
