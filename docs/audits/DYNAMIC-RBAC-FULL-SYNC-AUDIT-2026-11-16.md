@@ -418,3 +418,12 @@ The repository contains a direct architecture/seed contradiction that must be re
 - Commits: `fa1d5f9` (server authorization), `66e4ac8` (regression assertion).
 - CI for commit `66e4ac8` had not yet been reported when this note was written. Do not treat this change as validated until the exact-head workflow completes successfully.
 
+
+
+### Dashboard analytics and responsive modal hardening — 17 November 2026
+
+- Added a management analytics section to `DashboardView`: asset-condition distribution, loan-status distribution, and helpdesk-ticket status distribution, including counts and asset book-value summary.
+- The charts are derived only from the dashboard collections already supplied by the server. The dashboard API remains responsible for permission and scope filtering; the UI does not issue a separate global analytics request or widen the user's data scope.
+- Added a responsive modal safety layer in `src/index.css`: safe-area-aware vertical spacing, viewport-bounded dialog content, scroll containment, and narrow-screen width constraints for legacy forms and administration dialogs.
+- This is a layout safety net, not a substitute for visual UAT. Each modal/form still needs browser verification at desktop and mobile viewport sizes, especially nested Administration dialogs.
+- Commit sequence: `297c737` (dashboard analytics), `0770636` and `72e470d` (responsive modal hardening). Verify CI on the final branch head before treating these changes as green.
