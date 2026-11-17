@@ -25,8 +25,12 @@ const persist = persistence.slice(
 );
 assert.match(persist, /if \(dbConfig\.isConfigured\)[\s\S]*Promise\.reject/,
   'Configured-but-unavailable PostgreSQL must reject instead of using file storage');
-assert.match(persist, /await persistPostgresState\(payload\);[\s\S]*saveStateToFile\(payload\);/,
-  'Recovery snapshot must be written only after authoritative PostgreSQL persistence');
+assert.match(persist, /const write = persistQueue\.then\(async \(\) => \{[\s\S]*const payload = createPayload\(\);[\s\S]*await persistPostgresState\(\);[\s\S]*saveStateToFile\(payload\);/,
+  'Recovery snapshot must be captured inside the serialized write and published only after PostgreSQL succeeds');
+assert.match(persist, /saveStateToFile\(createPayload\(\)\)/,
+  'Standalone file-store mode must still persist the current state immediately');
+assert.doesNotMatch(persist, /const payload = createPayload\(\);\s*\/\/ File storage/,
+  'PostgreSQL mode must not capture a stale snapshot before entering the write queue');
 assert.doesNotMatch(persist, /isPostgresAvailable\s*=\s*false/,
   'A transient write failure must not downgrade the process to file-store mode');
 const catchBlock = persist.slice(persist.indexOf('} catch (error: any)'));
