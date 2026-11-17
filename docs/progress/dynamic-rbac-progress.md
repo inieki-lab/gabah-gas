@@ -709,3 +709,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The previous deploy.sh auto-installed Docker from get.docker.com, shut down the existing Compose project with --remove-orphans, and printed success without verifying health. Replaced with fail-fast preflight, .env/PGPASSWORD validation, Compose config check, app-only recreation, health polling, and failure diagnostics. It no longer stops the DB first or claims success without health.
 - PostgreSQL host port now binds only to loopback. Compose now passes GABAH_INITIAL_ADMIN_PASSWORD and GABAH_INITIAL_USER_PASSWORD into the application container (previously documented in runbook but not passed by Compose).
 - CI checks Compose configuration and shell syntax. VM runbook now requires clean main, fast-forward-only update, database backup, health verification, and explicit rollback/restore safeguards. Production deploy remains NO-GO pending merge, UAT, restore rehearsal, TLS, and sign-off.
+
+
+### Follow-up audit fixes — 2026-11-17
+- `PATCH /api/tickets/:id/status` now awaits `persistDataStore()` before returning success. If persistence fails, the route restores the previous ticket status, resolution notes, completion timestamp, and update timestamp, removes the corresponding audit event, and returns HTTP 500 instead of a false success.
+- Binary contract document uploads now create a `CONTRACT_DOCUMENT_UPLOADED` audit event with contract ID, document kind, safe filename, file size, and authenticated actor. The route persists both document metadata and audit event before success; failed persistence rolls back metadata, audit event, and uploaded file.
+- Added `scripts/ticket-contract-audit-persistence-verify.mjs` and registered it in `package.json` and CI.
+- CI pull-request triggers now include `audit/**` base branches so follow-up audit PRs receive the same verification gate.
+- Validation status at commit time: source-level regression checks added; CI execution and runtime fault-injection remain pending.
