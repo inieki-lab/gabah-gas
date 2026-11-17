@@ -14,7 +14,7 @@ const mustNotSee: Record<string, string[]> = {
   'Sekretaris Direksi': ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Humas: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Karyawan: ['assets', 'maintenance', 'meeting_rooms', 'licenses', 'contracts', 'vendors', 'reports'],
-  Auditor: ['my_assets', 'meeting_rooms'],
+  Auditor: ['my_assets', 'meeting_rooms', 'maintenance', 'loans', 'tickets', 'licenses', 'knowledge'],
 };
 for (const [role, tabs] of Object.entries(mustNotSee)) {
   for (const tab of tabs) assert.equal(isNavTabAllowedForRole(role as keyof typeof ROLE_NAVIGATION, tab as any), false);
@@ -28,6 +28,7 @@ assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance'), false);
 assert.ok(isNavTabAllowedForRole('Karyawan', 'tickets'));
 assert.ok(isNavTabAllowedForRole('Sekretaris Direksi', 'my_assets'));
 assert.ok(isNavTabAllowedForRole('Auditor', 'reports'));
+assert.deepEqual(ROLE_NAVIGATION.Auditor, ['dashboard', 'assets', 'contracts', 'vendors', 'reports']);
 assert.equal(isNavTabAllowedForRole(undefined, 'dashboard'), false);
 
 // PostgreSQL navigation must require read permission for every endpoint the page loads.
