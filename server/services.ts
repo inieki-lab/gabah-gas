@@ -455,6 +455,7 @@ export class GabahDomainService {
     // PostgreSQL is the cross-process sequence authority. File-store mode
     // retains the legacy in-memory allocator only for local compatibility.
     const numberingYear = new Date().getFullYear();
+    AssetNumberingEngine.assertRuleActive(resolvedOwnerDivision, taxonomy.code);
     const assetNumber = isPostgresPersistenceActive()
       ? AssetNumberingEngine.formatAssetNumber(
         resolvedOwnerDivision,
