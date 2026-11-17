@@ -122,7 +122,7 @@ const STATE_FILE = path.join(DATA_DIR, 'gabah_state.json');
  */
 function backfillManagingUnits(tag: string): void {
   const s = normalizeAssetManagingUnits();
-  console.log(`[GABAH Persistence] T2B-1 managing unit (${tag}): total=${s.total}, backfilled=${s.assigned}, unresolved=${s.unresolved}, preserved=${s.preserved}`);
+  console.log(`[GABAH Persistence] T2B-1 managing unit (${tag}): total=${s.total}, backfilled=${s.assigned}, unresolved=${s.unresolved}, explicitly_unassigned=${s.explicitlyUnassigned}, preserved=${s.preserved}`);
 }
 
 /**
