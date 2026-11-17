@@ -123,20 +123,32 @@ export class AssetNumberingEngine {
     return [div, code, String(year), String(nextSeq).padStart(digits, '0')].join(separator);
   }
 
-  static generateAssetNumber(ownerDivision?: string, assetCode?: string, targetYear?: number): string {
-    const year = targetYear || new Date().getFullYear();
-    const div = (ownerDivision || 'IT').trim().toUpperCase();
-    const code = (assetCode || 'GEN').trim().toUpperCase();
+  /** Format a DB-allocated sequence without making the DB sequence local-authoritative. */
+  static formatAssetNumber(ownerDivision: string, assetCode: string, targetYear: number, sequence: number): string {
+    const div = String(ownerDivision || '').trim().toUpperCase();
+    const code = String(assetCode || '').trim().toUpperCase();
+    if (!div || !code || !Number.isInteger(targetYear) || !Number.isInteger(sequence) || sequence < 1) {
+      throw new Error('Data sequence penomoran aset tidak valid.');
+    }
     const rule = this.rules.get(`${div}:${code}`);
     if (rule && !rule.is_active) {
       throw new Error(`Aturan penomoran ${div}/${code} sedang nonaktif. Aktifkan kembali melalui Administration Control Panel.`);
     }
-    const key = `${div}:${code}:${year}`;
-    const nextSeq = (this.sequenceStore.get(key) || 0) + 1;
-    this.sequenceStore.set(key, nextSeq);
+    const key = `${div}:${code}:${targetYear}`;
+    this.sequenceStore.set(key, Math.max(this.sequenceStore.get(key) || 0, sequence));
     const separator = rule?.separator || '-';
     const digits = rule?.sequence_digits || 4;
-    return [div, code, String(year), String(nextSeq).padStart(digits, '0')].join(separator);
+    return [div, code, String(targetYear), String(sequence).padStart(digits, '0')].join(separator);
+  }
+
+  /** File-store compatibility only. PostgreSQL callers must use allocateAssetSequence(). */
+  static generateAssetNumber(ownerDivision?: string, assetCode?: string, targetYear?: number): string {
+    const year = targetYear || new Date().getFullYear();
+    const div = (ownerDivision || 'IT').trim().toUpperCase();
+    const code = (assetCode || 'GEN').trim().toUpperCase();
+    const key = `${div}:${code}:${year}`;
+    const nextSeq = (this.sequenceStore.get(key) || 0) + 1;
+    return this.formatAssetNumber(div, code, year, nextSeq);
   }
 
   static generateTicketNumber(targetYear?: number): string {
