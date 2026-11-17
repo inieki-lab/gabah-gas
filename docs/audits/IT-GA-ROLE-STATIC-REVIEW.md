@@ -29,7 +29,7 @@ Status: STATIC REVIEW — not an automated or PostgreSQL-backed UAT pass.
 
 ## Findings / gaps
 
-1. **Dashboard persona classification is not fully domain-native.** `DashboardView` currently infers the IT and GA dashboard labels from room/facility permissions (`room_reservations.it_facilities.read` and `room_reservations.approve`). A custom IT/GA asset operator without those room capabilities may be labelled only as generic “Operasional”. This is a workspace/UX issue, not evidence of an authorization bypass. Resolve the dashboard model using explicit asset/maintenance/ticket capabilities and scoped data rather than adding room permissions merely to force a label.
+1. **Dashboard persona classification — FIXED in follow-up.** The IT/GA labels now follow assigned IT/GA application role keys rather than unrelated room-facility queue permissions. Custom operational roles without IT/GA assignment remain labelled “Operasional”; no unrelated permission is granted to influence dashboard appearance. A dedicated Sekdir high-priority reservation card was also added, using only reservations returned by the scoped API.
 2. **Legacy file-store mode remains a compatibility path.** Its role-label fallback is narrower than PostgreSQL RBAC but is not proof of production authorization. Production acceptance must use PostgreSQL.
 3. **Runtime evidence is outstanding.** Static source assertions do not prove effective assignments in the target database, migration state, direct-ID API behavior, or browser rendering.
 
