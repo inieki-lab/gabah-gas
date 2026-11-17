@@ -152,3 +152,38 @@ body,
 #root a:focus-visible {
   outline-color: var(--gabah-control-focus);
 }
+
+
+/* Responsive modal safety net for legacy forms and administration dialogs.
+   Dialog content must remain scrollable on short screens and narrow devices. */
+#root .fixed.inset-0 {
+  box-sizing: border-box;
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
+}
+
+#root .fixed.inset-0 > :first-child {
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(100dvh - max(1.5rem, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+}
+
+#root .fixed.inset-0 input,
+#root .fixed.inset-0 select,
+#root .fixed.inset-0 textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  #root .fixed.inset-0 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  #root .fixed.inset-0 > :first-child {
+    width: 100%;
+    border-radius: 1rem;
+  }
+}
