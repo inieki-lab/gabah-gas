@@ -497,3 +497,29 @@ The latest inspected Actions job for run `44191172144` confirms that `Dependency
 The five contract mutation routes now preserve the domain service's HTTP 503 status when durable persistence fails. This prevents the new rollback path from being misreported as an ordinary client validation error (400). The regression script now checks this route-level failure contract as well.
 
 **Latest implementation/test commit:** `98a7faddacf10afbbc5fae1b9ab647067d3bfa15`
+
+
+## 16. CI Dependency Gate — Advisory Identified (2026-11-18)
+
+**Branch:** `audit/runtime-persistence-fail-closed`
+
+### Verified CI evidence
+
+- Workflow run `44192402218` completed with failure in job `verify`.
+- The first failing step is `Dependency vulnerability gate`, executing `npm audit --audit-level=high`.
+- npm reports **4 high severity vulnerability paths**. The reported root advisory is **GHSA-fc5q-39xc-vjpf / CVE-2026-112366**, a ReDoS issue in `picomatch` affecting versions through `4.0.7`; the lockfile currently resolves `picomatch@4.0.7`, with transitive paths through `fdir` and `tinyglobby`.
+- The package registry page currently lists `4.0.7` as latest; the GitHub advisory does not state a patched version. Therefore, there is no verified safe version to pin or force at this time.
+
+### Decision
+
+- Do **not** run a blind `npm audit fix`, add an unverified override, downgrade the audit threshold, or suppress the finding. Such changes would not demonstrate remediation and could introduce dependency breakage.
+- Keep the dependency gate blocking CI until upstream publishes a verified fix or a reviewed mitigation is implemented and justified.
+- The CI failure occurs before typecheck, build, PostgreSQL integration, security verification, and the rest of the regression suite; those skipped jobs must not be interpreted as passing.
+
+### Next actions
+
+1. Monitor the upstream `picomatch` advisory/release for a version beyond the affected range and verify the exact transitive dependency tree before updating the lockfile.
+2. Once a verified fix exists, update the lockfile, run the full regression/build/security workflow, and inspect the complete npm audit output again.
+3. Continue domain audit durability and rollback remediation independently; this dependency finding does not explain or close those application-level risks.
+
+**Release gate remains: NOT READY. No merge to `main`; do not pull this branch for UAT while CI is blocked.**
