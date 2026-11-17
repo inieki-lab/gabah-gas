@@ -498,8 +498,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Management analytics: data is pre-scoped by the server for this user. */}
-      {!isEmployee && (
+      {/* Operational analytics visibility is controlled by an explicit Dynamic RBAC role permission. */}
+      {canPermission('analytics.operational.read') && (
         <section className="space-y-3" aria-label="Analitik manajemen">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
             <div>
