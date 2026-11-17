@@ -297,7 +297,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { setCategory('General'); setRelatedAssetId(''); }}
+                onClick={() => { setCategory('GA'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'GA' 
                     ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
