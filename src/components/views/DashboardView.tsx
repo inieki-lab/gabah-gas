@@ -150,10 +150,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Management charts use only the collections already returned by the
   // permission- and scope-filtered dashboard API. No client-side global fetch.
   const assetConditionRows = [
-    { label: 'Baik / tersedia', value: dashboardAssets.filter(a => ['available', 'good', 'in_use', 'assigned'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-emerald-600' },
-    { label: 'Perbaikan', value: dashboardAssets.filter(a => ['in_repair', 'maintenance', 'under_maintenance'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-amber-500' },
-    { label: 'Rusak', value: dashboardAssets.filter(a => ['damaged', 'broken'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-rose-500' },
-    { label: 'Hilang', value: dashboardAssets.filter(a => ['lost', 'missing'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-slate-500' },
+    { label: 'Sangat baik / baru', value: dashboardAssets.filter(a => ['excellent', 'new'].includes(String(a.condition || '').toLowerCase())).length, color: 'bg-emerald-700' },
+    { label: 'Baik', value: dashboardAssets.filter(a => ['good'].includes(String(a.condition || '').toLowerCase())).length, color: 'bg-emerald-500' },
+    { label: 'Cukup', value: dashboardAssets.filter(a => ['fair'].includes(String(a.condition || '').toLowerCase())).length, color: 'bg-sky-500' },
+    { label: 'Kurang baik', value: dashboardAssets.filter(a => ['poor'].includes(String(a.condition || '').toLowerCase())).length, color: 'bg-amber-500' },
+    { label: 'Rusak', value: dashboardAssets.filter(a => ['broken', 'damaged'].includes(String(a.condition || '').toLowerCase())).length, color: 'bg-rose-500' },
+    { label: 'Belum dinilai', value: dashboardAssets.filter(a => !['excellent', 'new', 'good', 'fair', 'poor', 'broken', 'damaged'].includes(String(a.condition || '').toLowerCase())).length, color: 'bg-slate-400' },
   ];
   const assetConditionTotal = assetConditionRows.reduce((sum, row) => sum + row.value, 0);
   const loanStatusRows = [
@@ -508,11 +510,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <div className="min-w-0 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
               <div className="flex items-center justify-between gap-3 mb-1">
-                <h3 className="font-bold text-sm text-slate-900">Kondisi Aset</h3>
+                <h3 className="font-bold text-sm text-slate-900">Kondisi Fisik Aset</h3>
                 <Package className="w-4 h-4 text-emerald-700" />
               </div>
               <p className="text-2xl font-black text-slate-900 tabular-nums">{assetConditionTotal.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">unit terpantau</span></p>
-              <div className="flex h-3 overflow-hidden rounded-full bg-slate-100 mt-4" role="img" aria-label="Proporsi kondisi aset">
+              <div className="flex h-3 overflow-hidden rounded-full bg-slate-100 mt-4" role="img" aria-label="Proporsi kondisi fisik aset">
                 {assetConditionRows.map(row => row.value > 0 ? <div key={row.label} className={row.color} style={{ width: `${assetConditionTotal ? (row.value / assetConditionTotal) * 100 : 0}%` }} title={`${row.label}: ${row.value}`} /> : null)}
               </div>
               <div className="space-y-3 mt-4">
