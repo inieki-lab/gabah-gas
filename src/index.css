@@ -167,6 +167,8 @@ body,
   min-width: 0;
   max-width: 100%;
   max-height: calc(100dvh - max(1.5rem, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 #root .fixed.inset-0 input,
