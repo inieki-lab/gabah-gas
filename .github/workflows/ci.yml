@@ -47,6 +47,9 @@ jobs:
       - name: Dependency vulnerability gate
         run: npm audit --audit-level=high
 
+      - name: Runtime PostgreSQL fail-closed regression
+        run: npm run test:runtime-persistence-fail-closed
+
       - name: Typecheck (lint)
         run: npm run lint
 
