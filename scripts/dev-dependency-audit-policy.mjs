@@ -47,7 +47,7 @@ for (const name of names) {
     }
   }
   for (const node of vulnerability.nodes || []) {
-    const entry = lock.packages?.[node.replace(/^node_modules\\//, '')] || lock.packages?.[node];
+    const entry = lock.packages?.[node];
     assert.ok(entry?.dev === true, `${name}: vulnerable node is not confirmed dev-only: ${node}`);
   }
 }
