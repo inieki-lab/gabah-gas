@@ -66,3 +66,13 @@ Dokumen ini adalah checklist kerja berjalan. Item hanya dicentang jika ada imple
 - PR #116 persistence hardening adalah lead audit terpisah, bukan bukti rollback lengkap. Temuan bahwa mutasi in-memory belum universal di-rollback tetap terbuka.
 
 **Aturan status:** centang implementasi tidak otomatis berarti pengujian browser/produksi lulus. Catat SHA dan run CI exact-head sebelum memindahkan status menjadi verified.
+
+## 7. Temuan lanjutan — persistensi domain service (17 November 2026)
+
+- [ ] **Audit trail masih memiliki jalur fire-and-forget:** `GabahDomainService.recordAudit()` menambahkan event ke `db.auditLogs`, lalu memanggil `persistDataStore().catch(...)` tanpa menunggu hasil. Pemanggil tidak dapat mengetahui apakah audit event durable.
+- [ ] **Reservasi ruang dan master fasilitas/rapat** pada branch PR #119 masih memiliki beberapa pemanggilan `persistDataStore().catch(...)` sebelum mengembalikan hasil: create/approve/reject/check-in/check-out/cancel reservasi, update room, serta CRUD meeting type/facility. Ini berisiko mengembalikan sukses sebelum write PostgreSQL selesai.
+- [ ] PR #116 memiliki implementasi lanjutan yang mengubah sebagian domain mutation menjadi async/await dan menunggu persistensi. Namun PR #116 adalah jalur branch terpisah; perubahan itu belum boleh dianggap sudah masuk ke PR #119. Rekonsiliasi diff wajib dilakukan agar tidak menimpa perbaikan security di PR #118.
+- [ ] Perbaikan harus mengikat perubahan data + audit event dalam satu persistensi yang ditunggu, dengan pemulihan state/file bila write gagal. Jangan sekadar mengganti `.catch()` menjadi `await` tanpa rollback atau strategi transaksi.
+- [ ] Regression test harus membuktikan: (a) API tidak merespons sukses sebelum write selesai, (b) write gagal menghasilkan error yang tepat, (c) state in-memory dan audit log tidak tertinggal berubah setelah kegagalan, dan (d) tidak ada duplikasi audit akibat persistensi ganda.
+
+**Bukti inspeksi:** `server/services.ts` pada branch `audit/runtime-persistence-fail-closed` (17 Nov 2026) masih memuat fire-and-forget pada `recordAudit` dan beberapa metode reservasi/room/meeting type/facility. Versi `server/services.ts` pada commit PR #116 `a2901a0635b47e2d5e797d1a6dc327ce57038508` sudah mengurangi pola tersebut di sebagian besar metode, tetapi tetap menyisakan fire-and-forget di `recordAudit`. Status ini adalah temuan audit, bukan klaim bahwa seluruh jalur sudah diperbaiki.
