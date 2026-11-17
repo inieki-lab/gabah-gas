@@ -210,6 +210,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
   });
 
+  if (isAuditor) {
+    const recentAuditLogs = [...(Array.isArray(auditLogs) ? auditLogs : [])]
+      .sort((a, b) => Date.parse(b.timestamp || '') - Date.parse(a.timestamp || ''))
+      .slice(0, 8);
+    return (
+      <div className="space-y-6">
+        <header>
+          <h2 className="text-xl font-black text-slate-900">Dashboard Auditor</h2>
+          <p className="mt-1 text-sm text-slate-600">Pemantauan aset dan aktivitas perubahan secara read-only sesuai cakupan audit.</p>
+        </header>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-5"><div className="text-xs font-semibold text-slate-500">Aset dalam cakupan</div><div className="mt-2 text-3xl font-black text-slate-900">{dashboardAssets.length}</div></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5"><div className="text-xs font-semibold text-slate-500">Aset perlu perhatian</div><div className="mt-2 text-3xl font-black text-amber-700">{attentionAssets.length}</div></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5"><div className="text-xs font-semibold text-slate-500">Aktivitas audit tersedia</div><div className="mt-2 text-3xl font-black text-slate-900">{auditLogs.length}</div></div>
+        </div>
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="font-bold text-slate-900">Aktivitas terbaru</h3>
+          {recentAuditLogs.length === 0 ? <p className="mt-3 text-sm text-slate-500">Belum ada catatan audit pada cakupan yang dapat diakses.</p> : (
+            <ul className="mt-3 divide-y divide-slate-100">
+              {recentAuditLogs.map(log => <li key={log.id} className="py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-slate-800">{log.action} · {log.auditable_type || log.module}</span><time className="text-xs text-slate-500">{formatDateTime(log.timestamp)}</time></div>
+                <p className="mt-1 text-sm text-slate-600">{log.details || 'Perubahan tercatat'}</p>
+                <p className="mt-1 text-xs text-slate-500">{log.user_name || 'Pengguna tidak diketahui'}</p>
+              </li>)}
+            </ul>
+          )}
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       
