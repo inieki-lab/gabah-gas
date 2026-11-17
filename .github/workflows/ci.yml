@@ -44,8 +44,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Dependency vulnerability gate
-        run: npm audit --audit-level=high
+      - name: Production dependency vulnerability gate
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Development tooling vulnerability policy (temporary scoped advisory)
+        run: node scripts/dev-dependency-audit-policy.mjs
 
       - name: Runtime PostgreSQL fail-closed regression
         run: npm run test:runtime-persistence-fail-closed

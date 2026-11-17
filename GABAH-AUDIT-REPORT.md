@@ -523,3 +523,13 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 3. Continue domain audit durability and rollback remediation independently; this dependency finding does not explain or close those application-level risks.
 
 **Release gate remains: NOT READY. No merge to `main`; do not pull this branch for UAT while CI is blocked.**
+
+
+## 17. Dependency risk containment — development tooling only (2026-11-18)
+
+- Moved `vite`, `@tailwindcss/vite`, and `@vitejs/plugin-react` from production dependencies to `devDependencies`; these are build-time tools, not application runtime dependencies.
+- Regenerated the lockfile's dependency classification so the `vite → tinyglobby/fdir → picomatch` chain is marked development-only. The production dependency graph does not include these packages.
+- CI now runs a blocking `npm audit --omit=dev --audit-level=high` against production dependencies.
+- A separate, narrow development-tool policy checks the exact GHSA `GHSA-fc5q-39xc-vjpf` only, verifies every affected node remains `dev: true`, and fails on any additional advisory, unexpected package path, severity change, or production dependency exposure.
+- This is **risk containment, not an upstream patch**. The advisory still describes a ReDoS in picomatch through 4.0.7; no patched release is assumed. Vite/build tooling is used in trusted CI/build operations, not shipped as the application runtime. Keep the exception temporary and remove it when upstream resolution is verified.
+- Validation: awaiting the full CI run after this commit. `npm ci`, production audit, build, runtime, PostgreSQL, and regression checks must all pass before release.
