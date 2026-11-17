@@ -3,7 +3,7 @@ import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByH
 import { AssetNumberingEngine } from './numbering';
 import { resolveManagingUnitForOwnerDivision, validateManagingUnit } from './managing-unit';
 import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-location';
-import { persistDataStore } from './persistence';
+import { allocateAssetSequence, persistDataStore } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
@@ -307,7 +307,7 @@ export class GabahDomainService {
   /**
    * Authoritative Asset Creation
    */
-  static createAsset(payload: {
+  static async createAsset(payload: {
     category_name_or_code?: string;
     category_code?: string;
     category_name?: string;
@@ -334,7 +334,7 @@ export class GabahDomainService {
     assigned_to_user_id?: string;
     license_detail?: any;
     notes?: string;
-  }, actor: ServerUser): ServerAsset {
+  }, actor: ServerUser): Promise<ServerAsset> {
     // Initial custody is a relational assignment, not a best-effort label.
     // Validate it before numbering or mutating any asset data.
     const assignedToId = payload.assigned_to_user_id == null ? '' : String(payload.assigned_to_user_id).trim();
@@ -412,9 +412,6 @@ export class GabahDomainService {
       }
     }
 
-    // 3. Atomically generate official asset number
-    const assetNumber = AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code);
-
     // T2B-1: managing unit operasional — divalidasi terhadap master org_units
     // (harus ada & aktif). Jika tidak dispesifikasikan, diisi hasil resolusi
     // berbasis ownership (owner_division), BUKAN lokasi. owner_division, RBAC,
@@ -454,6 +451,18 @@ export class GabahDomainService {
       };
       initialStatus = 'assigned';
     }
+
+    // PostgreSQL is the cross-process sequence authority. File-store mode
+    // retains the legacy in-memory allocator only for local compatibility.
+    const numberingYear = new Date().getFullYear();
+    const assetNumber = isPostgresPersistenceActive()
+      ? AssetNumberingEngine.formatAssetNumber(
+        resolvedOwnerDivision,
+        taxonomy.code,
+        numberingYear,
+        await allocateAssetSequence(resolvedOwnerDivision, taxonomy.code, numberingYear),
+      )
+      : AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code, numberingYear);
 
     const newAsset: ServerAsset = {
       id: `AST-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
