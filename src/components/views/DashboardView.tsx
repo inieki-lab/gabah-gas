@@ -137,6 +137,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const docReservations = safeReservations.filter(
     r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
   );
+  const directorPriorityReservations = safeReservations.filter(
+    r => r.priority === 'high' && !['cancelled', 'rejected'].includes(r.status)
+  );
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const todayMeetings = safeReservations.filter(r => r.date === todayStr && !['cancelled', 'rejected'].includes(r.status));
@@ -308,7 +311,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: If Humas -> Request Foto Dokumentasi; If other staff -> Aset Saya */}
           {isHumas ? (
-            <div 
+            <div
               onClick={() => onNavigate('meeting_rooms')}
               className="p-5 rounded-2xl bg-white border border-sky-200 hover:border-sky-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
             >
@@ -322,7 +325,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="text-2xl font-black text-slate-900">{docReservations.length} Permintaan</div>
                 <div className="text-xs text-sky-700 mt-1 flex items-center gap-1.5 font-bold">
                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
-                  Bebas Ruangan Mana Saja
+                  Sesuai penugasan dokumentasi
                 </div>
                 <div className="text-[11px] text-sky-700 font-bold mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
                   <span>Lihat Agenda Liputan</span>
@@ -330,8 +333,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
             </div>
+          ) : isSekdir ? (
+            <div
+              onClick={() => onNavigate('meeting_rooms')}
+              className="p-5 rounded-2xl bg-white border border-violet-200 hover:border-violet-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-violet-700">Agenda Prioritas Direksi</span>
+                <div className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <CalendarClock className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl font-black text-slate-900">{directorPriorityReservations.length} Agenda</div>
+                <div className="text-xs text-violet-700 mt-1 flex items-center gap-1.5 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-violet-600" />
+                  Prioritas tinggi yang masih aktif
+                </div>
+                <div className="text-[11px] text-violet-700 font-bold mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span>Lihat Reservasi Direksi</span>
+                  <ArrowRight className="w-3 h-3 text-violet-600" />
+                </div>
+              </div>
+            </div>
           ) : (
-            <div 
+            <div
               onClick={() => onNavigate('my_assets')}
               className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
             >
