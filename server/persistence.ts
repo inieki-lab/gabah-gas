@@ -879,3 +879,47 @@ export async function allocateAssetSequence(ownerDivision: string, assetCode: st
     return next;
   });
 }
+
+/**
+ * Allocate global CTR-YYYY-NNNN contract numbers under a PostgreSQL row lock.
+ * The sequence is independent of the process-local legacy counter.
+ */
+export async function allocateContractSequence(year: number): Promise<number> {
+  if (!Number.isInteger(year) || year < 2000 || year > 9999) {
+    throw new Error('Tahun penomoran kontrak tidak valid.');
+  }
+
+  return withRbacTransaction(async client => {
+    await client.query(
+      'INSERT INTO contract_number_sequences (sequence_year, last_sequence) VALUES ($1, 0) ON CONFLICT (sequence_year) DO NOTHING',
+      [year],
+    );
+    const locked = await client.query(
+      'SELECT last_sequence FROM contract_number_sequences WHERE sequence_year = $1 FOR UPDATE',
+      [year],
+    );
+    if (!locked.rows.length) throw new Error('Sequence nomor kontrak gagal dikunci.');
+
+    let current = Math.max(0, Number(locked.rows[0].last_sequence) || 0);
+    if (current === 0) {
+      const existing = await client.query(
+        'SELECT contract_number FROM contracts WHERE UPPER(contract_number) LIKE UPPER($1)',
+        ['CTR-' + year + '-%'],
+      );
+      const prefix = 'CTR-' + year + '-';
+      for (const row of existing.rows) {
+        const number = String(row.contract_number || '').trim().toUpperCase();
+        if (!number.startsWith(prefix)) continue;
+        const suffix = number.slice(prefix.length);
+        if (/^\d+$/.test(suffix)) current = Math.max(current, Number(suffix));
+      }
+    }
+
+    const next = current + 1;
+    await client.query(
+      'UPDATE contract_number_sequences SET last_sequence = $2, updated_at = NOW() WHERE sequence_year = $1',
+      [year, next],
+    );
+    return next;
+  });
+}
