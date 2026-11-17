@@ -744,8 +744,6 @@ export async function initializePersistence(): Promise<void> {
 }
 
 export function persistDataStore(): Promise<void> {
-  const payload = createPayload();
-
   // File storage is an explicit startup mode only when no PostgreSQL endpoint
   // was configured. If a configured PostgreSQL authority is unavailable,
   // mutations must fail closed; never convert a transient DB outage into a
@@ -754,7 +752,7 @@ export function persistDataStore(): Promise<void> {
     if (dbConfig.isConfigured) {
       return Promise.reject(new Error('PostgreSQL tidak aktif; perubahan ditolak dan tidak dialihkan ke file-store.'));
     }
-    saveStateToFile(payload);
+    saveStateToFile(createPayload());
     return persistQueue;
   }
 
@@ -763,7 +761,12 @@ export function persistDataStore(): Promise<void> {
       throw new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.');
     }
     try {
-      await persistPostgresState(payload);
+      // Capture the recovery snapshot only when this queued write starts.
+      // Capturing before enqueue lets a later write publish an older in-memory
+      // snapshot after an earlier write, silently regressing the local recovery
+      // copy even though PostgreSQL itself is serialized and authoritative.
+      const payload = createPayload();
+      await persistPostgresState();
       // The local snapshot is a recovery copy, not an alternate authority.
       // Publish it only after PostgreSQL has committed successfully.
       saveStateToFile(payload);
