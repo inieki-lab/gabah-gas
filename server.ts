@@ -50,6 +50,16 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
 
+  // Await authoritative writes before returning a successful mutation response.
+  const persistMutationOrRespond = async (res: express.Response): Promise<boolean> => {
+    try { await persistDataStore(); return true; }
+    catch (error: any) {
+      console.error('[GABAH API] Mutation persistence failed:', error?.message || error);
+      if (!res.headersSent) res.status(503).json({ success: false, code: 'PERSISTENCE_UNAVAILABLE', message: 'Penyimpanan utama sedang bermasalah. Perubahan belum dapat dipastikan tersimpan; periksa ulang data sebelum mencoba kembali.' });
+      return false;
+    }
+  };
+
   app.use(express.json());
 
   // Per-request audit context: carry the client IP through the async chain so
@@ -1558,7 +1568,7 @@ async function startServer() {
   // Self-service password change (P1): the CURRENT user rotates their own
   // password. Requires the current password; revokes all other sessions but
   // issues a fresh token for THIS device so the user is not logged out.
-  app.post('/api/auth/change-password', (req, res) => {
+  app.post('/api/auth/change-password', async (req, res) => {
     try {
       const actor = getActor(req);
       const { currentPassword, newPassword } = req.body;
@@ -1580,14 +1590,20 @@ async function startServer() {
         return res.status(401).json({ success: false, message: 'Kata sandi lama tidak cocok.' });
       }
 
+      const previousCredentials = { password_hash: user.password_hash, password_salt: user.password_salt, temp_password: user.temp_password, authVersion: user.authVersion };
       const { hash, salt } = hashPassword(newPassword);
       user.password_hash = hash;
       user.password_salt = salt;
       delete user.temp_password;
       if (typeof user.authVersion === 'number') user.authVersion += 1;
-
-      // SECURITY (CR-03 §3.4): rotate credentials ⇒ revoke ALL sessions, then
-      // re-issue one session for the calling device so it stays signed in.
+      if (!await persistMutationOrRespond(res)) {
+        user.password_hash = previousCredentials.password_hash;
+        user.password_salt = previousCredentials.password_salt;
+        if (previousCredentials.temp_password === undefined) delete user.temp_password; else user.temp_password = previousCredentials.temp_password;
+        if (previousCredentials.authVersion === undefined) delete user.authVersion; else user.authVersion = previousCredentials.authVersion;
+        return;
+      }
+      // Revoke sessions only after the credential change is durably persisted.
       revokeUserSessions(user.id);
       const session = createSession(user.id, req);
 
@@ -1598,8 +1614,6 @@ async function startServer() {
         actor,
         user.id
       );
-      persistDataStore().catch(() => {});
-
       res.json({
         success: true,
         data: { user: sanitizeUser(user), token: session.token, expires_at: session.expires_at },
@@ -2571,7 +2585,7 @@ async function startServer() {
     res.json({ success: true, data: asset });
   });
 
-  app.patch('/api/assets/:id', (req, res) => {
+  app.patch('/api/assets/:id', async (req, res) => {
     const actor = getActor(req);
     const asset = db.assets.find(a => a.id === req.params.id);
     if (asset?.category_type === 'License' && isPostgresPersistenceActive()
@@ -2691,7 +2705,7 @@ async function startServer() {
     asset.updated_at = new Date().toISOString();
 
     GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
 
     res.json({ success: true, data: asset });
   });
@@ -3134,7 +3148,7 @@ async function startServer() {
     return { valid: true as const, vendor, clear: false };
   };
 
-  app.post('/api/maintenances', (req, res) => {
+  app.post('/api/maintenances', async (req, res) => {
     const actor = getActor(req);
     // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
     // GA) secara eksplisit; mode PostgreSQL beralih ke permission dinamis
@@ -3190,11 +3204,11 @@ async function startServer() {
     };
     db.maintenances.push(newSchedule);
     GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: newSchedule });
   });
 
-  app.patch('/api/maintenances/:id', (req, res) => {
+  app.patch('/api/maintenances/:id', async (req, res) => {
     const actor = getActor(req);
     // RBAC: file-store mempertahankan allowlist legacy; PostgreSQL beralih ke
     // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
@@ -3243,7 +3257,7 @@ async function startServer() {
       schedule.last_completed_at = new Date().toISOString();
     }
     GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: schedule });
   });
 
@@ -3288,7 +3302,7 @@ async function startServer() {
     return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
   });
 
-  app.post('/api/vendors', (req, res) => {
+  app.post('/api/vendors', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
@@ -3335,11 +3349,11 @@ async function startServer() {
     };
     db.vendors.push(vendor);
     GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: vendor });
   });
 
-  app.patch('/api/vendors/:id', (req, res) => {
+  app.patch('/api/vendors/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.update')) return;
@@ -3394,7 +3408,7 @@ async function startServer() {
     vendor.rating = requestedRating;
     vendor.active_contracts_count = getActiveVendorContractCount(vendor.name);
     GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: vendor });
   });
 
@@ -3407,7 +3421,7 @@ async function startServer() {
     res.json({ success: true, data: db.knowledgeArticles });
   });
 
-  app.post('/api/knowledge', (req, res) => {
+  app.post('/api/knowledge', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.create')) return;
@@ -3432,11 +3446,11 @@ async function startServer() {
     };
     db.knowledgeArticles.push(article);
     GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: article });
   });
 
-  app.patch('/api/knowledge/:id', (req, res) => {
+  app.patch('/api/knowledge/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.update')) return;
@@ -3452,25 +3466,25 @@ async function startServer() {
     }
     article.updated_at = new Date().toISOString();
     GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
-  app.post('/api/knowledge/:id/vote', (req, res) => {
+  app.post('/api/knowledge/:id/vote', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.vote')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.helpful_votes += 1;
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
-  app.post('/api/knowledge/:id/view', (req, res) => {
+  app.post('/api/knowledge/:id/view', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.read')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.view_count += 1;
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
