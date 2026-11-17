@@ -77,7 +77,7 @@ const durableRoutes = [
 for (const route of durableRoutes) {
   const index = server.indexOf(route);
   assert.notEqual(index, -1, route + ' must exist');
-  const next = server.indexOf('\\n  app.', index + 1);
+  const next = server.indexOf('\n  app.', index + 1);
   const block = server.slice(index, next === -1 ? undefined : next);
   assert.match(block, /await persistMutationOrRespond\\(res\\)/, route + ' must await durable persistence');
 }
