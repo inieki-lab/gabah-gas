@@ -1508,3 +1508,8 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Memperbarui design tokens global, header, sidebar aktif, dan canvas workspace.
 - Tidak mengganti stack, menambah dependency UI, atau mengubah RBAC, API, route, workflow, maupun data.
 - Perlu verifikasi lint/build dan UAT visual lintas role sebelum merge.
+
+## 2026-11-17 — Persistence failure handling
+- Await authoritative persistence before returning success for password, asset, ticket, maintenance, vendor, knowledge-base, room reservation, and meeting-facility mutations.
+- Return HTTP 503 when an authoritative write fails; password sessions rotate only after successful persistence.
+- Add CI regression checks for swallowed persistence failures and asynchronous room/facility mutation routes.
