@@ -160,8 +160,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const assetConditionTotal = assetConditionRows.reduce((sum, row) => sum + row.value, 0);
   const loanStatusRows = [
     { label: 'Menunggu', value: dashboardLoans.filter(l => ['pending', 'pending_approval'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-amber-500' },
-    { label: 'Aktif', value: dashboardLoans.filter(l => ['active', 'approved', 'overdue'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-emerald-600' },
-    { label: 'Selesai', value: dashboardLoans.filter(l => ['returned', 'completed', 'closed'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-sky-600' },
+    { label: 'Aktif / dipinjam', value: dashboardLoans.filter(l => ['active', 'approved', 'overdue'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-emerald-600' },
+    { label: 'Dikembalikan', value: dashboardLoans.filter(l => ['returned', 'completed', 'closed'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-sky-600' },
+    { label: 'Ditolak', value: dashboardLoans.filter(l => String(l.status || '').toLowerCase() === 'rejected').length, color: 'bg-rose-500' },
   ];
   const loanStatusTotal = loanStatusRows.reduce((sum, row) => sum + row.value, 0);
   const ticketStatusRows = [
