@@ -3807,8 +3807,6 @@ async function startServer() {
       });
       previousContractUpdatedAt = contract.updated_at;
       contract.updated_at = new Date().toISOString();
-      await persistDataStore();
-
       savedAuditLog = GabahDomainService.recordAudit(
         'CONTRACT_DOCUMENT_UPLOADED',
         'Contracts',
@@ -3816,6 +3814,8 @@ async function startServer() {
         actor,
         contract.id,
       );
+      // Persist the document metadata and its audit event together. A single
+      // durable write avoids a crash window with an unaudited document.
       await persistDataStore();
 
       return res.json({
