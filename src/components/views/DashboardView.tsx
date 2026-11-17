@@ -147,6 +147,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
+  // Management charts use only the collections already returned by the
+  // permission- and scope-filtered dashboard API. No client-side global fetch.
+  const assetConditionRows = [
+    { label: 'Baik / tersedia', value: dashboardAssets.filter(a => ['available', 'good', 'in_use', 'assigned'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-emerald-600' },
+    { label: 'Perbaikan', value: dashboardAssets.filter(a => ['in_repair', 'maintenance', 'under_maintenance'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-amber-500' },
+    { label: 'Rusak', value: dashboardAssets.filter(a => ['damaged', 'broken'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-rose-500' },
+    { label: 'Hilang', value: dashboardAssets.filter(a => ['lost', 'missing'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-slate-500' },
+  ];
+  const assetConditionTotal = assetConditionRows.reduce((sum, row) => sum + row.value, 0);
+  const loanStatusRows = [
+    { label: 'Menunggu', value: dashboardLoans.filter(l => ['pending', 'pending_approval'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-amber-500' },
+    { label: 'Aktif', value: dashboardLoans.filter(l => ['active', 'approved', 'overdue'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-emerald-600' },
+    { label: 'Selesai', value: dashboardLoans.filter(l => ['returned', 'completed', 'closed'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-sky-600' },
+  ];
+  const loanStatusTotal = loanStatusRows.reduce((sum, row) => sum + row.value, 0);
+  const ticketStatusRows = [
+    { label: 'Terbuka', value: dashboardTickets.filter(t => ['open', 'new'].includes(String(t.status || '').toLowerCase())).length, color: 'bg-rose-500' },
+    { label: 'Diproses', value: dashboardTickets.filter(t => ['in_progress', 'pending_vendor', 'assigned'].includes(String(t.status || '').toLowerCase())).length, color: 'bg-amber-500' },
+    { label: 'Selesai', value: dashboardTickets.filter(t => ['resolved', 'closed'].includes(String(t.status || '').toLowerCase())).length, color: 'bg-emerald-600' },
+  ];
+  const ticketStatusTotal = ticketStatusRows.reduce((sum, row) => sum + row.value, 0);
+
   const pendingLoans = dashboardLoans.filter(l => l.status === 'pending');
   const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
 
@@ -471,6 +493,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
         </div>
+      )}
+
+      {/* Management analytics: data is pre-scoped by the server for this user. */}
+      {!isEmployee && (
+        <section className="space-y-3" aria-label="Analitik manajemen">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-900">Analitik Operasional</h2>
+              <p className="text-xs text-slate-500">Ringkasan berdasarkan data yang berada dalam cakupan akses Anda.</p>
+            </div>
+            <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1 w-fit">Data aktual • cakupan akses</span>
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="min-w-0 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <h3 className="font-bold text-sm text-slate-900">Kondisi Aset</h3>
+                <Package className="w-4 h-4 text-emerald-700" />
+              </div>
+              <p className="text-2xl font-black text-slate-900 tabular-nums">{assetConditionTotal.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">unit terpantau</span></p>
+              <div className="flex h-3 overflow-hidden rounded-full bg-slate-100 mt-4" role="img" aria-label="Proporsi kondisi aset">
+                {assetConditionRows.map(row => row.value > 0 ? <div key={row.label} className={row.color} style={{ width: `${assetConditionTotal ? (row.value / assetConditionTotal) * 100 : 0}%` }} title={`${row.label}: ${row.value}`} /> : null)}
+              </div>
+              <div className="space-y-3 mt-4">
+                {assetConditionRows.map(row => (
+                  <div key={row.label} className="space-y-1">
+                    <div className="flex justify-between gap-3 text-xs"><span className="text-slate-600">{row.label}</span><strong className="text-slate-900 tabular-nums">{row.value.toLocaleString('id-ID')}</strong></div>
+                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className={`h-full rounded-full ${row.color}`} style={{ width: `${assetConditionTotal ? (row.value / assetConditionTotal) * 100 : 0}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-4">Nilai aset terdata: {formatRupiah(totalAssetValue)}</p>
+            </div>
+            <div className="min-w-0 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <h3 className="font-bold text-sm text-slate-900">Sirkulasi Peminjaman</h3>
+                <CalendarClock className="w-4 h-4 text-amber-600" />
+              </div>
+              <p className="text-2xl font-black text-slate-900 tabular-nums">{loanStatusTotal.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">pengajuan / transaksi</span></p>
+              <div className="space-y-4 mt-5">
+                {loanStatusRows.map(row => (
+                  <div key={row.label} className="space-y-1.5">
+                    <div className="flex justify-between gap-3 text-xs"><span className="text-slate-600">{row.label}</span><strong className="text-slate-900 tabular-nums">{row.value.toLocaleString('id-ID')}</strong></div>
+                    <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div className={`h-full rounded-full ${row.color}`} style={{ width: `${loanStatusTotal ? (row.value / loanStatusTotal) * 100 : 0}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-4">{pendingLoans.length} menunggu persetujuan • {activeLoans.length} masih berjalan</p>
+            </div>
+            <div className="min-w-0 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <h3 className="font-bold text-sm text-slate-900">Kinerja Helpdesk</h3>
+                <LifeBuoy className="w-4 h-4 text-rose-600" />
+              </div>
+              <p className="text-2xl font-black text-slate-900 tabular-nums">{ticketStatusTotal.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">tiket terpantau</span></p>
+              <div className="space-y-4 mt-5">
+                {ticketStatusRows.map(row => (
+                  <div key={row.label} className="space-y-1.5">
+                    <div className="flex justify-between gap-3 text-xs"><span className="text-slate-600">{row.label}</span><strong className="text-slate-900 tabular-nums">{row.value.toLocaleString('id-ID')}</strong></div>
+                    <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div className={`h-full rounded-full ${row.color}`} style={{ width: `${ticketStatusTotal ? (row.value / ticketStatusTotal) * 100 : 0}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-4">{urgentTickets.length} tiket prioritas darurat belum selesai</p>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* Main Content Layout */}
