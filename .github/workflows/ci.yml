@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'audit/**']
   pull_request:
     branches: [main, preview/green-enterprise-theme-laptop]
 
