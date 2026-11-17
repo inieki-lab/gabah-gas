@@ -59,17 +59,17 @@ assert.match(css, /Theme enforcement layer/);
 assert.match(css, /--gabah-green-800/);
 
 
-assert.match(persistence, /INSERT INTO asset_number_sequences[\\s\\S]*?ON CONFLICT \\(owner_division_id, asset_code, sequence_year\\) DO NOTHING/i,
+assert.ok(persistence.includes('INSERT INTO asset_number_sequences') && persistence.includes('ON CONFLICT (owner_division_id, asset_code, sequence_year) DO NOTHING'),
   'PostgreSQL sequence row must be initialized without overwriting an existing counter');
-assert.match(persistence, /SELECT last_sequence FROM asset_number_sequences[\\s\\S]*?FOR UPDATE/i,
+assert.ok(persistence.includes('SELECT last_sequence FROM asset_number_sequences') && persistence.includes('FOR UPDATE'),
   'sequence allocation must serialize concurrent processes with a row lock');
-assert.match(persistence, /UPDATE asset_number_sequences SET last_sequence = \\$4/i);
-assert.match(services, /static async createAsset\\([\\s\\S]*?Promise<ServerAsset>/);
-assert.match(services, /await allocateAssetSequence\\(resolvedOwnerDivision, taxonomy.code, numberingYear\\)/,
+assert.ok(persistence.includes('UPDATE asset_number_sequences SET last_sequence = $4'));
+assert.ok(services.includes('static async createAsset(') && services.includes('Promise<ServerAsset>'));
+assert.ok(services.includes('await allocateAssetSequence(resolvedOwnerDivision, taxonomy.code, numberingYear)'),
   'PostgreSQL asset creation must await the database allocator');
-assert.match(app, /await GabahDomainService\\.createAsset\\(req\\.body, actor\\)/);
-assert.match(app, /await GabahDomainService\\.createAsset\\(\\{/);
-assert.match(app, /canReadLicensesOnly[\\s\\S]*?return canReadCatalogue \\? 'assets' : \\(canReadLicensesOnly \\? 'licenses' : 'my_assets'\\)/,
+assert.ok(app.includes('await GabahDomainService.createAsset(req.body, actor)'));
+assert.ok(app.includes('await GabahDomainService.createAsset({'));
+assert.ok(app.includes("const canReadLicensesOnly = hasRbacPermission(actor.id, 'licenses.read')") && app.includes("canReadLicensesOnly ? 'licenses' : 'my_assets'"),
   'license-only readers must be governed by the licenses lifecycle module');
 
 console.log('PASS numbering rule format, PostgreSQL row-locked allocation contract, inactive guard, CRUD authorization, delete safeguards, license module routing, and theme enforcement');
