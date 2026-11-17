@@ -8,6 +8,7 @@ import fs from 'node:fs';
 const migration = fs.readFileSync('server/migrations/010_dynamic_rbac_foundation.sql', 'utf8');
 const postSeedRbacMigration = fs.readFileSync('server/migrations/090_post_seed_dynamic_rbac_assignment_backfill.sql', 'utf8');
 const roomCapabilityUpgradeMigration = fs.readFileSync('server/migrations/092_post_seed_room_reservation_capability_grants.sql', 'utf8');
+const employeeMenuCleanupMigration = fs.readFileSync('server/migrations/094_employee_self_service_menu_cleanup.sql', 'utf8');
 const backfill = fs.readFileSync('server/migrations/011_dynamic_rbac_legacy_backfill.sql', 'utf8');
 const catalogExpansion = fs.readFileSync('server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql', 'utf8');
 const dashboardPermissionSeed = fs.readFileSync('server/migrations/013_dynamic_rbac_dashboard_permission_seed.sql', 'utf8');
@@ -59,6 +60,7 @@ const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const effectivePermissionQuery = policy.slice(policy.indexOf('SELECT ur.user_id'), policy.indexOf('const scopes'));
 const checks = [
+  ['Karyawan baseline no longer receives maintenance or room reservation permissions', employeeMenuCleanupMigration.includes("r.role_key = 'karyawan'") && employeeMenuCleanupMigration.includes("'maintenances.read'") && employeeMenuCleanupMigration.includes("'meeting_rooms.read'") && employeeMenuCleanupMigration.includes("'room_reservations.read'") && /DELETE FROM gabah_role_permissions/.test(employeeMenuCleanupMigration)],
   ['reconciliation read guard uses canonicalized paths and explicit read permission', /normalizedPath === '\/api\/reconciliation'/.test(runtimeHardening) && /hasRbacPermission\(String\(actor\.id\), 'reconciliation\.read'\)/.test(runtimeHardening) && /isAuditorActor\(actor\)/.test(runtimeHardening)],
   ['Auditor receives only an explicit module-scoped global audit read scope', auditorAuditScopeSeed.includes("SELECT r.id, 'audit', 'all', NULL") && auditorAuditScopeSeed.includes("r.role_key = 'auditor'") && /hasRbacScope\(String\(user\.id\), 'all', null, 'audit'\)/.test(contractAccess)],
   ['Auditor cross-domain contract read requires both audit.read and audit scope', /const hasGlobalAuditRead = isAuditorActor\(user\)[\s\S]*hasRbacPermission\(String\(user\.id\), 'audit\.read'\)[\s\S]*hasRbacScope\(String\(user\.id\), 'all', null, 'audit'\)/.test(contractAccess) && /if \(hasGlobalAuditRead\) return true;/.test(contractAccess)],
