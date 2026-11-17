@@ -820,3 +820,62 @@ export async function withRbacTransaction<T>(work: (client: PoolClient) => Promi
     client.release();
   }
 }
+
+/**
+ * Allocate an asset number sequence under a PostgreSQL row lock.
+ * The sequence row is the cross-process authority; the in-memory numbering
+ * engine is only responsible for formatting and legacy file-store fallback.
+ */
+export async function allocateAssetSequence(ownerDivision: string, assetCode: string, year: number): Promise<number> {
+  const division = String(ownerDivision || '').trim().toUpperCase();
+  const code = String(assetCode || '').trim().toUpperCase();
+  if (!division || !code || !Number.isInteger(year) || year < 2000 || year > 9999) {
+    throw new Error('Kunci penomoran aset tidak valid.');
+  }
+
+  return withRbacTransaction(async client => {
+    const owner = await client.query(
+      'SELECT id FROM divisions WHERE UPPER(code) = UPPER($1) AND is_active = TRUE ORDER BY id LIMIT 1',
+      [division],
+    );
+    if (!owner.rows.length) throw new Error(`Owner aset "${division}" tidak ditemukan pada master PostgreSQL.`);
+    const ownerId = owner.rows[0].id;
+
+    await client.query(
+      'INSERT INTO asset_number_sequences (owner_division_id, asset_code, sequence_year, last_sequence) VALUES ($1, $2, $3, 0) ON CONFLICT (owner_division_id, asset_code, sequence_year) DO NOTHING',
+      [ownerId, code, year],
+    );
+    const locked = await client.query(
+      'SELECT last_sequence FROM asset_number_sequences WHERE owner_division_id = $1 AND asset_code = $2 AND sequence_year = $3 FOR UPDATE',
+      [ownerId, code, year],
+    );
+    if (!locked.rows.length) throw new Error('Sequence penomoran aset gagal dikunci.');
+
+    let current = Math.max(0, Number(locked.rows[0].last_sequence) || 0);
+    if (current === 0) {
+      // One-time bootstrap for legacy numbers issued before the DB allocator.
+      // This scan occurs only while the sequence row is locked and only until
+      // its first value is written.
+      const existing = await client.query(
+        'SELECT asset_number FROM assets WHERE owner_division_id = $1',
+        [ownerId],
+      );
+      for (const row of existing.rows) {
+        const number = String(row.asset_number || '').trim().toUpperCase();
+        for (const separator of ['-', '_', '/']) {
+          const prefix = `${division}${separator}${code}${separator}${year}${separator}`;
+          if (!number.startsWith(prefix)) continue;
+          const suffix = number.slice(prefix.length);
+          if (/^\\d+$/.test(suffix)) current = Math.max(current, Number(suffix));
+        }
+      }
+    }
+
+    const next = current + 1;
+    await client.query(
+      'UPDATE asset_number_sequences SET last_sequence = $4 WHERE owner_division_id = $1 AND asset_code = $2 AND sequence_year = $3',
+      [ownerId, code, year, next],
+    );
+    return next;
+  });
+}
