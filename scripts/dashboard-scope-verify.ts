@@ -96,7 +96,11 @@ assert.deepEqual(filterContractsForRole(contracts, user).map(x => x.id), ['pic-c
 assert.equal(filterContractsForRole(contracts, { ...user, role: 'Auditor' } as UserProfile).length, contracts.length);
 
 const dashboardView = fs.readFileSync('src/components/views/DashboardView.tsx', 'utf8');
+const operationalAnalyticsMigration = fs.readFileSync('server/migrations/093_dynamic_rbac_operational_analytics_permission.sql', 'utf8');
 assert.match(dashboardView, /const hasOperationalManagementAccess = operationalManagementPermissions\.some\(canPermission\)/);
+assert.match(dashboardView, /canPermission\('analytics\.operational\.read'\) && \(/, 'operational analytics is shown only with the dedicated role permission');
+assert.match(operationalAnalyticsMigration, /'analytics\.operational\.read'/, 'migration registers the analytics permission in the dynamic role catalogue');
+assert.doesNotMatch(operationalAnalyticsMigration, /INSERT INTO gabah_role_permissions/i, 'analytics permission is not granted to any role by default');
 assert.match(dashboardView, /const isEmployee = !isSuperAdmin && !isAuditor && !hasOperationalManagementAccess/);
 assert.match(dashboardView, /const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess/);
 assert.match(dashboardView, /'licenses\.manage'[\s\S]*'knowledge\.create'[\s\S]*'contracts\.update'[\s\S]*'vendors\.update'/);
