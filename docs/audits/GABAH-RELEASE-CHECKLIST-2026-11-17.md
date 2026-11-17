@@ -70,9 +70,11 @@ Dokumen ini adalah checklist kerja berjalan. Item hanya dicentang jika ada imple
 ## 7. Temuan lanjutan — persistensi domain service (17 November 2026)
 
 - [ ] **Audit trail masih memiliki jalur fire-and-forget:** `GabahDomainService.recordAudit()` menambahkan event ke `db.auditLogs`, lalu memanggil `persistDataStore().catch(...)` tanpa menunggu hasil. Pemanggil tidak dapat mengetahui apakah audit event durable.
+- [x] **10 route mutasi lain** kini menunggu `persistMutationOrRespond()`: ganti kata sandi sendiri (termasuk rollback kredensial dan pencabutan sesi setelah persistensi), update aset, create/update maintenance, create/update vendor, serta create/update/vote/view knowledge base.
+- [x] Background post-response persistence safety-net kini menangani rejection secara eksplisit; tidak lagi menghasilkan unhandled rejection.
+- [ ] Rollback in-memory untuk update aset, maintenance, vendor, knowledge base, dan room/facility saat write gagal masih terbuka. Password change sudah memulihkan credential fields sebelum merespons kegagalan.
 - [x] **13 mutasi domain ruang/fasilitas** (request/approve/reject/check-in/check-out/cancel reservasi, update room, CRUD meeting type/facility) kini menggunakan service async dan menunggu `persistDomainMutation()`; seluruh 13 route API juga `await` service dan meneruskan kegagalan persistensi sebagai HTTP 503.
 - [ ] Rollback in-memory untuk 13 mutasi tersebut saat PostgreSQL gagal masih belum diterapkan. Implementasi sekarang menolak respons sukses, tetapi objek `db` yang sudah berubah perlu dipulihkan agar GET dalam proses yang sama tidak membaca perubahan yang belum durable.
-- [ ] PR #116 memiliki implementasi lanjutan yang mengubah sebagian domain mutation menjadi async/await dan menunggu persistensi. Namun PR #116 adalah jalur branch terpisah; perubahan itu belum boleh dianggap sudah masuk ke PR #119. Rekonsiliasi diff wajib dilakukan agar tidak menimpa perbaikan security di PR #118.
 - [ ] Perbaikan lanjutan harus mengikat perubahan data + audit event dalam satu persistensi yang ditunggu, dengan pemulihan state/file bila write gagal. `recordAudit()` masih menjalankan best-effort persistensi sendiri; perlu dirapikan agar tidak terjadi write ganda dan audit event tetap satu kesatuan dengan mutasi.
 - [ ] Regression test harus membuktikan: (a) API tidak merespons sukses sebelum write selesai, (b) write gagal menghasilkan error yang tepat, (c) state in-memory dan audit log tidak tertinggal berubah setelah kegagalan, dan (d) tidak ada duplikasi audit akibat persistensi ganda.
 
