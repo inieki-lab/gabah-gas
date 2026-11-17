@@ -3217,6 +3217,15 @@ async function startServer() {
     if (isSuperadminActor(actor)) {
       return res.json({ success: true, data: db.vendors.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
     }
+    // Keep Auditor's cross-domain read model consistent with Contract Management:
+    // an explicit global audit scope grants vendor visibility, but never write access.
+    const hasGlobalAuditRead = isAuditorActor(actor)
+      && isPostgresPersistenceActive()
+      && hasRbacPermission(String(actor.id), 'audit.read')
+      && hasRbacScope(String(actor.id), 'all', null, 'audit');
+    if (hasGlobalAuditRead) {
+      return res.json({ success: true, data: db.vendors.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
+    }
     const data = db.vendors.filter(v => {
       const owner = String(v.owner_division || '').trim();
       // Legacy records without an explicit owner are visible only to global readers
