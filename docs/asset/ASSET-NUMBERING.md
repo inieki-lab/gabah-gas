@@ -83,9 +83,11 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 
 ### 4.1 Siklus & Reset Sequence
 - Kunci sequence runtime: `OWNER_DIVISION:ASSET_CODE:YEAR`.
-- Sequence saat ini disinkronkan kembali dari nomor aset yang telah tersimpan ketika server melakukan boot.
-- Tahun menjadi bagian dari kunci sehingga counter per tahun dimulai dari nomor pertama untuk kombinasi divisi dan kode aset tersebut.
-- **Batasan yang masih harus ditutup sebelum klaim production-ready:** counter generator masih berada di memori proses. Tabel `asset_number_sequences` tersedia pada skema, tetapi belum menjadi jalur atomik yang dipakai `generateAssetNumber()`. Karena itu, multi-instance/concurrent issuance belum dijamin atomik oleh PostgreSQL. Jangan mengklaim concurrency-safe sampai generator dipindahkan ke transaksi/UPSERT database dan diuji lintas proses.
+- Pada mode PostgreSQL, alokasi sequence menggunakan tabel `asset_number_sequences` di dalam transaksi dan `SELECT ... FOR UPDATE`; row lock menjadi otoritas lintas proses/instance.
+- Pada bootstrap pertama kombinasi owner/kode/tahun, counter dimulai dari nomor historis tertinggi yang ditemukan di tabel `assets`, termasuk separator historis `-`, `_`, dan `/`.
+- Tahun menjadi bagian dari kunci sehingga sequence di-reset per tahun untuk setiap kombinasi divisi pemilik dan kode aset.
+- Mode file-store non-PostgreSQL tetap memakai counter in-memory untuk kompatibilitas lokal.
+- **Status verifikasi:** implementasi allocator PostgreSQL dan regression contract telah ditambahkan; klaim aman untuk concurrent multi-instance tetap menunggu CI PostgreSQL dan pengujian concurrency aktual lulus.
 
 ### 4.2 Master Aturan Penomoran
 - Aturan tersimpan di tabel `asset_numbering_rules` (Migration 034) dan dikelola melalui Administration Control Panel oleh Superadmin.
