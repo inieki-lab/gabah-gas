@@ -724,3 +724,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added explicit object-level authorization matching the ticket-list visibility boundary: Superadmin, ticket reporter (stable reporter ID; legacy name fallback only when reporter ID is absent), assigned agent, or user with the matching tickets division scope. Unrelated tickets now return HTTP 403 before state mutation.
 - Extended scripts/ticket-reporter-ownership-verify.mjs with source regression assertions for the PATCH authorization boundary. CI execution is pending.
 - This corrects an earlier cross-check note that had incorrectly treated the middleware comment as proof of object-level enforcement.
+
+
+### Login brute-force protection follow-up — 2026-11-17
+- Replaced IP-wide login lockout keys with a composite client-IP + normalized-email key. This prevents five failed attempts against one account from locking out every employee sharing the office NAT address.
+- Brute-force lockout now remains enabled in development and UAT by default. An explicit GABAH_DISABLE_LOGIN_LOCKOUT=true opt-out is honored only outside production for isolated local testing; production cannot disable it through this flag.
+- Login input is type-checked before normalization and lockout lookup. Successful authentication clears only the matching account/IP counter.
+- Extended the live HTTP regression to prove the 5-attempt lockout is active in development, another account from the same IP can still log in, and the locked account remains blocked. CI execution is pending.
