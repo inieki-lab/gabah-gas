@@ -2,6 +2,7 @@
 
 - Replace process-local asset sequence issuance in PostgreSQL mode with a transactionally allocated `asset_number_sequences` row protected by `SELECT ... FOR UPDATE`; bootstrap legacy counters from persisted asset numbers.
 - Keep in-memory numbering only for file-store compatibility; the admin sequence snapshot is updated from DB-allocated values.
+- Contract numbering (`CTR-YYYY-NNNN`) now uses its own PostgreSQL per-year row-locked sequence, bootstrapped from existing contract records; file-store mode retains the legacy counter.
 - Add migration 096 with a partial GiST exclusion constraint for overlapping active room reservations, including `pending_approval`; migration preflights existing overlaps and fails with an actionable diagnostic instead of silently changing bookings.
 - Route license-only asset reads through the `licenses` module lifecycle switch; the API already filters those readers to License-category assets.
 - Add regression checks to CI for the PostgreSQL allocator contract and room reservation exclusion constraint.
