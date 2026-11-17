@@ -1,7 +1,7 @@
 import { db, ServerUser, ServerContract, ServerContractDocument, ServerContractMilestone, ServerContractNotificationLog, ContractStatus, RenewalOutcome, ContractReminderConfig } from './db';
 import { AssetNumberingEngine } from './numbering';
 import { queueNotification, summarize, SCHEDULER_ACTOR } from './notifications/notificationService';
-import { persistDataStore } from './persistence';
+import { allocateContractSequence, persistDataStore } from './persistence';
 import { isPostgresPersistenceActive } from './persistence';
 import { hasRbacPermission, hasRbacScope, isSuperadminActor, isAuditorActor } from './rbac-policy';
 
@@ -155,7 +155,7 @@ export const ContractDomainService = {
     return contract;
   },
 
-  createContract(payload: Partial<ServerContract> & { end_date: string; start_date: string; title: string; vendor_name: string; owner_division: string; pic_user_id: string }, actor: ServerUser): ServerContract {
+  async createContract(payload: Partial<ServerContract> & { end_date: string; start_date: string; title: string; vendor_name: string; owner_division: string; pic_user_id: string }, actor: ServerUser): Promise<ServerContract> {
     if (!canManageContracts(actor)) {
       throw new Error('Akses ditolak: permission contracts.create tidak diberikan.');
     }
@@ -176,10 +176,18 @@ export const ContractDomainService = {
       reminder3_days: payload.reminder_config?.reminder3_days ?? DEFAULT_REMINDER_CONFIG.reminder3_days,
     };
 
+    const contractYear = new Date().getFullYear();
+    const contractSequence = isPostgresPersistenceActive()
+      ? await allocateContractSequence(contractYear)
+      : null;
+    const contractNumber = contractSequence === null
+      ? AssetNumberingEngine.generateContractNumber(contractYear)
+      : AssetNumberingEngine.formatContractNumber(contractYear, contractSequence);
+
     const nowIso = new Date().toISOString();
     const contract: ServerContract = {
       id: `CTR-${Date.now()}`,
-      contract_number: AssetNumberingEngine.generateContractNumber(),
+      contract_number: contractNumber,
       contract_type: (payload.contract_type || 'Umum').trim(),
       title: payload.title.trim(),
       vendor_name: payload.vendor_name.trim(),
