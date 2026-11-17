@@ -61,4 +61,34 @@ for (const route of routeNames) {
   assert.match(block, /statusCode === 'number' \? err\.statusCode : 400/);
 }
 
-console.log('Room/facility durable-mutation contract: PASS');
+
+const durableRoutes = [
+  "app.post('/api/auth/change-password'",
+  "app.patch('/api/assets/:id'",
+  "app.post('/api/maintenances'",
+  "app.patch('/api/maintenances/:id'",
+  "app.post('/api/vendors'",
+  "app.patch('/api/vendors/:id'",
+  "app.post('/api/knowledge'",
+  "app.patch('/api/knowledge/:id'",
+  "app.post('/api/knowledge/:id/vote'",
+  "app.post('/api/knowledge/:id/view'",
+];
+for (const route of durableRoutes) {
+  const index = server.indexOf(route);
+  assert.notEqual(index, -1, route + ' must exist');
+  const next = server.indexOf('\\n  app.', index + 1);
+  const block = server.slice(index, next === -1 ? undefined : next);
+  assert.match(block, /await persistMutationOrRespond\\(res\\)/, route + ' must await durable persistence');
+}
+const passwordRoute = server.slice(
+  server.indexOf("app.post('/api/auth/change-password'"),
+  server.indexOf("app.get('/api/auth/me'"),
+);
+assert.ok(
+  passwordRoute.indexOf('persistMutationOrRespond(res)') < passwordRoute.indexOf('revokeUserSessions(user.id)'),
+  'Password sessions must be revoked only after durable credential persistence',
+);
+assert.match(server, /void persistDataStore\\(\\)\\.catch\\(/, 'Background retry must handle rejected persistence');
+
+console.log('Domain durable-mutation contract: PASS');
