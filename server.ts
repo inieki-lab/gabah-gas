@@ -76,7 +76,7 @@ async function startServer() {
     if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
     res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 400) {
-        void persistDataStore();
+        void persistDataStore().catch(error => console.error('[GABAH API] Background persistence retry failed:', error?.message || error));
       }
     });
     next();
