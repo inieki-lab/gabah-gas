@@ -106,10 +106,11 @@ let persistQueue: Promise<void> = Promise.resolve();
 
 // Prevent unhandled error crashes from pg pool background events
 pool.on('error', (err) => {
-  if (isPostgresAvailable) {
-    console.log('[GABAH Persistence] PostgreSQL pool status changed:', err.message);
-    isPostgresAvailable = false;
-  }
+  // An idle-client error is not proof that PostgreSQL authority has been
+  // intentionally disabled. Keep PostgreSQL mode active so operations either
+  // reconnect or fail closed with HTTP 503; never silently downgrade a
+  // configured database to the JSON snapshot.
+  console.warn('[GABAH Persistence] PostgreSQL pool client error:', err.message);
 });
 
 const DATA_DIR = path.resolve(process.cwd(), 'server/data');
@@ -671,8 +672,8 @@ export async function initializePersistence(): Promise<void> {
         const normalizedRole = normalizedRoles.get(String(user.id));
         if (normalizedRole) user.role = normalizedRole;
       }
-      saveStateToFile(createPayload());
-
+      // Do not publish a local snapshot until the authoritative PostgreSQL
+      // state and normalized tables have both been synchronized successfully.
       await persistPostgresState();
       await backfillNormalizedTables();
 
@@ -744,26 +745,30 @@ export async function initializePersistence(): Promise<void> {
 
 export function persistDataStore(): Promise<void> {
   const payload = createPayload();
-  // Always persist immediately to local storage file
-  saveStateToFile(payload);
 
-  // PostgreSQL is authoritative whenever it is active. Do not swallow a
-  // failed database write: callers must not return a success response when
-  // the authoritative store did not persist the change.
-  if (!isPostgresAvailable) return persistQueue;
+  // File storage is an explicit startup mode only when no PostgreSQL endpoint
+  // was configured. If a configured PostgreSQL authority is unavailable,
+  // mutations must fail closed; never convert a transient DB outage into a
+  // silent file-store mode.
+  if (!isPostgresAvailable) {
+    if (dbConfig.isConfigured) {
+      return Promise.reject(new Error('PostgreSQL tidak aktif; perubahan ditolak dan tidak dialihkan ke file-store.'));
+    }
+    saveStateToFile(payload);
+    return persistQueue;
+  }
 
   const write = persistQueue.then(async () => {
     if (!isPostgresAvailable) {
       throw new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.');
     }
     try {
-      await persistPostgresState();
+      await persistPostgresState(payload);
+      // The local snapshot is a recovery copy, not an alternate authority.
+      // Publish it only after PostgreSQL has committed successfully.
+      saveStateToFile(payload);
     } catch (error: any) {
-      // In development, preserve the historical file-store fallback, but
-      // reject THIS write so the API caller can report the persistence failure.
-      // Production remains PostgreSQL-only and never silently degrades.
-      if (process.env.NODE_ENV !== 'production') isPostgresAvailable = false;
-      console.warn('[GABAH Persistence] PostgreSQL write failed:', error.message || error);
+      console.warn('[GABAH Persistence] PostgreSQL write failed; remaining fail-closed:', error.message || error);
       throw new Error('Gagal menyimpan perubahan ke PostgreSQL: ' + (error.message || String(error)));
     }
   });
