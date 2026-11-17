@@ -866,7 +866,7 @@ export async function allocateAssetSequence(ownerDivision: string, assetCode: st
           const prefix = `${division}${separator}${code}${separator}${year}${separator}`;
           if (!number.startsWith(prefix)) continue;
           const suffix = number.slice(prefix.length);
-          if (/^\\d+$/.test(suffix)) current = Math.max(current, Number(suffix));
+          if (/^\d+$/.test(suffix)) current = Math.max(current, Number(suffix));
         }
       }
     }
