@@ -45,6 +45,10 @@ assert.ok(isNavTabAllowedForRole('GA', 'assets', ['assets.catalog.read', 'assets
 assert.equal(isNavTabAllowedForRole('IT', 'meeting_rooms', ['room_reservations.create']), false);
 assert.equal(isNavTabAllowedForRole('Humas', 'meeting_rooms', ['room_reservations.read']), false);
 assert.ok(isNavTabAllowedForRole('Humas', 'meeting_rooms', ['meeting_rooms.read', 'room_reservations.read']));
+assert.equal(isNavTabAllowedForRole('Karyawan', 'meeting_rooms', ['meeting_rooms.read']), false);
+assert.ok(isNavTabAllowedForRole('Karyawan', 'meeting_rooms', ['meeting_rooms.read', 'room_reservations.read']));
+assert.equal(isNavTabAllowedForRole('Karyawan', 'maintenance', ['assets.read']), false);
+assert.ok(isNavTabAllowedForRole('Karyawan', 'maintenance', ['maintenances.read']));
 assert.equal(isNavTabAllowedForRole('GA', 'licenses', ['dashboard.read', 'assets.update']), false);
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'reports', ['reports.read']));
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
