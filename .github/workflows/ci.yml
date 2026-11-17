@@ -47,6 +47,9 @@ jobs:
       - name: Dependency vulnerability gate
         run: npm audit --audit-level=high
 
+      - name: Persistence failure response contract
+        run: npm run test:persistence-failure-guard
+
       - name: Typecheck (lint)
         run: npm run lint
 
