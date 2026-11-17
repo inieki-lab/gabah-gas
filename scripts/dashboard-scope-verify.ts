@@ -105,5 +105,9 @@ assert.match(dashboardView, /const isEmployee = !isSuperAdmin && !isAuditor && !
 assert.match(dashboardView, /const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess/);
 assert.match(dashboardView, /'licenses\.manage'[\s\S]*'knowledge\.create'[\s\S]*'contracts\.update'[\s\S]*'vendors\.update'/);
 assert.doesNotMatch(dashboardView, /const isDivisionDashboard = hasRoleKey\('it', 'IT'\) \|\| hasRoleKey\('ga', 'GA'\)/);
+assert.match(dashboardView, /const hasITRole = !isSuperAdmin && hasRoleKey\('it', 'IT'\)/, 'IT dashboard label follows the assigned IT application role');
+assert.match(dashboardView, /const hasGARole = !isSuperAdmin && hasRoleKey\('ga', 'GA'\)/, 'GA dashboard label follows the assigned GA application role');
+assert.doesNotMatch(dashboardView, /const hasITRole[\\s\\S]{0,180}room_reservations\.it_facilities\.read/, 'IT asset dashboard label must not depend on room-facility queue permission');
+assert.doesNotMatch(dashboardView, /const hasGARole[\\s\\S]{0,180}room_reservations\.approve/, 'GA asset dashboard label must not depend on room-reservation approval permission');
 
 console.log('Role dashboard scope: PASS (division, personal, maintenance, contract, and exact identity scopes)');
