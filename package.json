@@ -55,7 +55,8 @@
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f --tail=200",
-    "docker:ps": "docker compose ps"
+    "docker:ps": "docker compose ps",
+    "test:room-reservation-exclusion": "node scripts/room-reservation-exclusion-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
