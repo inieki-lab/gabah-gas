@@ -89,6 +89,6 @@ assert.ok(
   passwordRoute.indexOf('persistMutationOrRespond(res)') < passwordRoute.indexOf('revokeUserSessions(user.id)'),
   'Password sessions must be revoked only after durable credential persistence',
 );
-assert.match(server, /void persistDataStore\\(\\)\\.catch\\(/, 'Background retry must handle rejected persistence');
+assert.match(server, /void persistDataStore\(\)\.catch\(/, 'Background retry must handle rejected persistence');
 
 console.log('Domain durable-mutation contract: PASS');
