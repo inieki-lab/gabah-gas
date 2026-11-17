@@ -505,10 +505,10 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 
 ### Verified CI evidence
 
-- Workflow run `44192402218` completed with failure in job `verify`.
+- Workflow run `44193696971` completed with failure in job `verify` (exact PR #119 head `13cd75dd29c3d1a6cd4fc65bb3f3a2d817039a61`).
 - The first failing step is `Dependency vulnerability gate`, executing `npm audit --audit-level=high`.
 - npm reports **4 high severity dependency paths** for the advisory **GHSA-fc5q-39xc-vjpf**: ReDoS in `picomatch`. The lockfile resolves `picomatch@4.0.7`; npm's report shows transitive paths through `fdir`, `tinyglobby`, and `vite`.
-- The CI log says `npm audit fix` is available. The exact patched package version and resulting dependency tree have **not** yet been verified, so no version is pinned or forced in this change. The previously recorded CVE identifier and claim about the registry's latest version are withdrawn because they were not supported by the captured CI log.
+- The CI log says `npm audit fix` is available. The advisory is identified as **CVE-2026-112366**. GitHub Advisory Database lists the affected range as through `4.0.7` and leaves the patched version **Unknown**; npm currently lists `4.0.7` as the latest release. These are external advisory/registry facts, separate from the CI log. npm's generic `npm audit fix` hint is not proof that a safe patched release exists. Sources: https://github.com/advisories/GHSA-fc5q-39xc-vjpf and https://www.npmjs.com/package/picomatch?activeTab=versions.
 
 ### Decision
 
