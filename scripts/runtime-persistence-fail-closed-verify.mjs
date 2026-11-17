@@ -19,6 +19,22 @@ assert.ok(firstPgWrite >= 0, 'Startup must persist authoritative PostgreSQL stat
 assert.ok(firstSnapshot < 0 || firstSnapshot > firstPgWrite,
   'Startup snapshot must not be published before PostgreSQL succeeds');
 
+const normalizedSync = persistence.slice(
+  persistence.indexOf('async function backfillNormalizedTables('),
+  persistence.indexOf('export async function initializePersistence()'),
+);
+assert.match(normalizedSync, /existingClient\?: PoolClient/,
+  'Normalized-table synchronization must accept the caller transaction');
+assert.match(normalizedSync, /const ownsTransaction = !existingClient/,
+  'Standalone normalized backfills must retain their own transaction lifecycle');
+assert.match(normalizedSync, /await backfillNormalizedTables\(client\)/,
+  'State persistence must run normalized synchronization on the same transaction client');
+const postgresWrite = normalizedSync.slice(normalizedSync.indexOf('async function persistPostgresState()'));
+assert.match(postgresWrite, /BEGIN[\s\S]*gabah_state[\s\S]*backfillNormalizedTables\(client\)[\s\S]*COMMIT/,
+  'gabah_state and normalized tables must commit in one PostgreSQL transaction');
+assert.match(postgresWrite, /catch \(error\)[\s\S]*ROLLBACK/,
+  'A normalized-table failure must roll back the gabah_state update too');
+
 const persist = persistence.slice(
   persistence.indexOf('export function persistDataStore()'),
   persistence.indexOf('export function getDbPool()'),
