@@ -32,9 +32,10 @@ interface ReportsViewProps {
   loans: Loan[];
   maintenanceSchedules?: MaintenanceSchedule[];
   auditLogs?: any[];
+  auditorMode?: boolean;
 }
 
-export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans, maintenanceSchedules = [] }) => {
+export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans, maintenanceSchedules = [], auditLogs = [], auditorMode = false }) => {
   const safeAssets = Array.isArray(assets) ? assets : [];
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeTickets = Array.isArray(tickets) ? tickets : [];
@@ -178,6 +179,35 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const totalAccumulatedDepreciation = depreciations.reduce((sum, d) => sum + d.accumulatedDepreciation, 0);
   const totalNetBookValue = depreciations.reduce((sum, d) => sum + d.netBookValue, 0);
   const totalMonthlyDepreciation = depreciations.reduce((sum, d) => sum + d.monthlyDepreciation, 0);
+
+  if (auditorMode) {
+    const recentAuditLogs = [...(Array.isArray(auditLogs) ? auditLogs : [])]
+      .sort((a, b) => Date.parse(b.timestamp || '') - Date.parse(a.timestamp || ''));
+    const conditionCounts = safeAssets.reduce((counts, asset) => {
+      const key = String(asset.condition || 'Belum dinilai');
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {} as Record<string, number>);
+    const assetValue = safeAssets.reduce((sum, asset) => sum + (asset.purchase_price || asset.price || 0), 0);
+    return (
+      <div className="space-y-6">
+        <header><h2 className="text-xl font-black text-slate-900">Laporan & Audit</h2><p className="mt-1 text-sm text-slate-600">Ringkasan aset dan jejak aktivitas yang tersedia untuk pemeriksaan. Seluruh tampilan bersifat read-only.</p></header>
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-5"><div className="text-xs font-semibold text-slate-500">Jumlah aset dalam cakupan</div><div className="mt-2 text-2xl font-black">{safeAssets.length}</div></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5"><div className="text-xs font-semibold text-slate-500">Nilai perolehan tercatat</div><div className="mt-2 text-xl font-black">{formatRupiah(assetValue)}</div></div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5"><div className="text-xs font-semibold text-slate-500">Catatan audit</div><div className="mt-2 text-2xl font-black">{recentAuditLogs.length}</div></div>
+        </section>
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="font-bold text-slate-900">Kondisi aset</h3>
+          {Object.keys(conditionCounts).length === 0 ? <p className="mt-3 text-sm text-slate-500">Tidak ada data aset pada cakupan audit.</p> : <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">{Object.entries(conditionCounts).sort(([a],[b]) => a.localeCompare(b)).map(([condition,count]) => <li key={condition} className="flex justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"><span>{condition}</span><strong>{count}</strong></li>)}</ul>}
+        </section>
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="font-bold text-slate-900">Audit Trail</h3>
+          {recentAuditLogs.length === 0 ? <p className="mt-3 text-sm text-slate-500">Belum ada catatan audit yang dapat ditampilkan pada cakupan ini.</p> : <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b text-xs text-slate-500"><th className="py-2 pr-3">Waktu</th><th className="py-2 pr-3">Pengguna</th><th className="py-2 pr-3">Aktivitas</th><th className="py-2">Detail</th></tr></thead><tbody>{recentAuditLogs.slice(0,100).map(log => <tr key={log.id} className="border-b border-slate-100 align-top"><td className="py-3 pr-3 whitespace-nowrap">{log.timestamp ? new Date(log.timestamp).toLocaleString('id-ID') : '—'}</td><td className="py-3 pr-3">{log.user_name || '—'}</td><td className="py-3 pr-3">{log.action} · {log.auditable_type || log.module}</td><td className="py-3">{log.details || '—'}</td></tr>)}</tbody></table></div>}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
