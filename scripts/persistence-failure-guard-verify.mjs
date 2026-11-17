@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
+const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
+assert.match(
+  persistence,
+  /async function persistPostgresState\(payload: ReturnType<typeof createPayload> = createPayload\(\)\)/,
+  'PostgreSQL persistence must write the captured mutation snapshot',
+);
+assert.match(
+  persistence,
+  /try\s*\{\s*await persistPostgresState\(payload\);\s*saveStateToFile\(payload\);/,
+  'Local snapshot must be written only after the authoritative PostgreSQL write succeeds',
+);
+
 const server = fs.readFileSync('server.ts', 'utf8');
 assert.equal(
   (server.match(/persistDataStore\(\)\.catch\(\(\)\s*=>\s*\{\s*\}\)/g) || []).length,
