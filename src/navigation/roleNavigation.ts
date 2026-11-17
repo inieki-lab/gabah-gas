@@ -17,7 +17,7 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
   // Legacy labels retained only for file-store compatibility.
   'Supply Chain': ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
   PIBC: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
-  Karyawan: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  Karyawan: ['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge'],
   Auditor: ['dashboard', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
 };
 
