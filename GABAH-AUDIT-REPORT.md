@@ -404,3 +404,40 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 ---
 
 *Akhir laporan — dibuat untuk review pemilik repository sebelum keputusan perbaikan. Tidak ada perubahan kode yang dilakukan dalam audit ini.*
+
+
+---
+
+# 13. Follow-up Audit — Runtime Persistence PR #119 (2026-11-18)
+
+**Branch:** `audit/runtime-persistence-fail-closed`  
+**Latest reviewed commit:** `372be247e0a4da97496839e85745761614d4755a`  
+**Release gate:** **NOT READY — CI blocked**
+
+## Verified changes in this follow-up
+
+1. Recovery snapshot creation now occurs inside the serialized persistence queue and is published only after PostgreSQL persistence succeeds.
+2. `gabah_state` JSONB and normalized-table synchronization now share one PostgreSQL transaction in `persistPostgresState()`. A failure in normalized synchronization rolls back the state-row update as well.
+3. `backfillNormalizedTables(existingClient?)` reuses the caller's transaction client, while standalone backfills retain their own transaction lifecycle.
+4. Regression assertions were added for queued snapshot ordering and shared transaction/rollback structure.
+
+## Current blockers and risks
+
+| Item | Evidence | Status |
+|---|---|---|
+| CI dependency gate | Latest checked CI run for commit `372be247` fails at **Dependency vulnerability gate** (`npm audit --audit-level=high`); subsequent tests are skipped | BLOCKED |
+| Runtime transaction integration | Current regression is source-contract/static verification; live PostgreSQL fault-injection proving rollback is still required | NEEDS INTEGRATION TEST |
+| Audit durability | `GabahDomainService.recordAudit()` starts `persistDataStore()` and handles rejection with a warning, without awaiting persistence. Audit writes can therefore fail after the caller has continued | OPEN |
+| In-memory rollback | Persistence failure does not generically restore mutated in-memory domain objects | OPEN |
+| Audit immutability | Append-only enforcement at the PostgreSQL table level remains unverified | OPEN |
+| Full role UAT | Browser/API end-to-end tests for all operational roles remain incomplete | OPEN |
+
+## Next required work
+
+1. Obtain the exact package/advisory details from the failing npm audit output; do not suppress the gate or upgrade dependencies blindly.
+2. Add a live PostgreSQL integration test that injects a failure during normalized-table synchronization and proves the `gabah_state` update is rolled back.
+3. Define and implement an awaited audit-persistence contract for successful state-changing operations, including failure behavior and transaction boundaries. Do not convert the existing synchronous service methods mechanically without mapping their callers.
+4. Add an append-only database policy for audit logs, with explicit retention/administrative handling.
+5. Continue failure-path rollback and multi-role UAT.
+
+**Important:** This follow-up does not declare PR #119 or the release ready. No merge to `main` is authorized by this report.
