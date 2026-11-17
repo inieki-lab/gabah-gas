@@ -441,3 +441,29 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 5. Continue failure-path rollback and multi-role UAT.
 
 **Important:** This follow-up does not declare PR #119 or the release ready. No merge to `main` is authorized by this report.
+
+
+## 14. Follow-up Audit — Audit Event Durability Call-Path Review (2026-11-18)
+
+**Branch:** `audit/runtime-persistence-fail-closed`
+
+### Verified source findings
+
+1. `GabahDomainService.recordAudit()` in `server/services.ts` is synchronous, pushes the event into `db.auditLogs`, then starts `persistDataStore()` without awaiting it. A persistence rejection is reduced to a console warning. The method therefore cannot guarantee that the audit event is durable before its caller proceeds.
+2. The same helper is used by synchronous domain mutations (for example asset create/assign/move) and by HTTP routes. Several routes explicitly call `await persistDataStore()` after recording the event, but this is not universal: RBAC role/permission/scope routes write RBAC tables in their own transaction and then call the non-awaited helper.
+3. `recordContractAudit()` in `server/contracts.ts` only appends to the in-memory audit list. Contract-domain methods (create/update/document/milestone/renewal) do not themselves persist the event; durability depends on the calling route's later persistence boundary. This coupling needs route-by-route verification.
+4. The existing `test:ticket-contract-audit-persistence` covers ticket status and binary contract upload rollback, but it does not prove durability for the full set of contract-domain operations or RBAC routes.
+5. The service layer's `persistDomainMutation()` awaits `persistDataStore()` for several meeting-room operations. This is the safer pattern, but the audit event is still added before persistence and the mutated in-memory object is not generally restored if persistence rejects.
+
+### Required remediation (not yet implemented)
+
+- Introduce an explicit awaited persistence boundary for every successful state-changing route/domain operation; do not rely on a fire-and-forget write inside a synchronous audit helper.
+- For operations already using a PostgreSQL transaction (notably RBAC), write the audit row in that same transaction rather than separately serializing the entire in-memory snapshot after commit.
+- For in-memory domain mutations, capture/restore the affected entity and audit-list state on persistence failure, or migrate the mutation itself into a database transaction. Returning HTTP success after failed persistence is prohibited.
+- Extend regression coverage across RBAC, asset, loan, ticket, maintenance, meeting-room, vendor, and contract mutations, including failure injection and verification that neither domain state nor audit state is partially committed.
+
+### CI status recheck
+
+The latest inspected Actions job for run `44191172144` confirms that `Dependency vulnerability gate` is the failing step and all subsequent verification/build/security/UAT jobs were skipped. The GitHub integration does not expose that job's log archive or Dependabot alert endpoint in this session, so the exact package/advisory is **not yet verified**. No dependency version or audit threshold was changed.
+
+**Release gate remains: NOT READY. No merge to `main`.**
