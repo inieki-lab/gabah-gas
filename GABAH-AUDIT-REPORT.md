@@ -490,3 +490,10 @@ The latest inspected Actions job for run `44191172144` confirms that `Dependency
 - The dependency vulnerability gate remains unresolved until the exact advisory can be obtained from CI output.
 
 **Release gate remains: NOT READY. No merge to `main`.**
+
+
+### Follow-up correction — HTTP failure semantics
+
+The five contract mutation routes now preserve the domain service's HTTP 503 status when durable persistence fails. This prevents the new rollback path from being misreported as an ordinary client validation error (400). The regression script now checks this route-level failure contract as well.
+
+**Latest implementation/test commit:** `98a7faddacf10afbbc5fae1b9ab647067d3bfa15`
