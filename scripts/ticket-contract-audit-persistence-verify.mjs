@@ -18,7 +18,8 @@ const uploadEnd = source.indexOf('// Documents are never exposed as a public sta
 assert.ok(uploadStart >= 0 && uploadEnd > uploadStart, 'Contract upload route must exist');
 const uploadRoute = source.slice(uploadStart, uploadEnd);
 assert.match(uploadRoute, /CONTRACT_DOCUMENT_UPLOADED/, 'Binary contract upload must create an audit event');
-assert.match(uploadRoute, /await persistDataStore\(\)[\s\S]*CONTRACT_DOCUMENT_UPLOADED[\s\S]*await persistDataStore\(\)/, 'Document and audit event must both be persisted before success');
+assert.match(uploadRoute, /CONTRACT_DOCUMENT_UPLOADED[\s\S]*await persistDataStore\(\)/, 'Document and audit event must be created before the same durable write');
+assert.equal((uploadRoute.match(/await persistDataStore\(\)/g) || []).length, 2, 'Upload route should have one primary persist and one best-effort rollback persist');
 assert.match(uploadRoute, /db\.auditLogs = db\.auditLogs\.filter\(log => log\.id !== savedAuditLog\.id\)/, 'Failed upload must remove its audit event');
 assert.match(uploadRoute, /await fs\.rm\(savedFilePath, \{ force: true \}\)/, 'Failed upload must remove the orphaned file');
 
