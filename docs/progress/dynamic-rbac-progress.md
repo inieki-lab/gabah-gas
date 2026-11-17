@@ -717,3 +717,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added `scripts/ticket-contract-audit-persistence-verify.mjs` and registered it in `package.json` and CI.
 - CI pull-request triggers now include `audit/**` base branches so follow-up audit PRs receive the same verification gate.
 - Validation status at commit time: source-level regression checks added; CI execution and runtime fault-injection remain pending.
+
+
+### Ticket object-level authorization follow-up — 2026-11-17
+- Re-audit against the Hermes ticket finding confirmed that PATCH /api/tickets/:id/status checked only the broad tickets.update permission; the nearby comment claiming middleware enforced object-level scope was inaccurate.
+- Added explicit object-level authorization matching the ticket-list visibility boundary: Superadmin, ticket reporter (stable reporter ID; legacy name fallback only when reporter ID is absent), assigned agent, or user with the matching tickets division scope. Unrelated tickets now return HTTP 403 before state mutation.
+- Extended scripts/ticket-reporter-ownership-verify.mjs with source regression assertions for the PATCH authorization boundary. CI execution is pending.
+- This corrects an earlier cross-check note that had incorrectly treated the middleware comment as proof of object-level enforcement.
