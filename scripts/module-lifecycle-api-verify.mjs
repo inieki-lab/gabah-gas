@@ -17,7 +17,7 @@ const checks = [
   ['Change reason is bounded', /reason\.trim\(\)\.length < 5 \|\| reason\.trim\(\)\.length > 500/.test(server)],
   ['Status and audit are written in one transaction', /withRbacTransaction\(async client =>[\s\S]*INSERT INTO gabah_module_status_audit/.test(server)],
   ['Audit table is append-only in PostgreSQL', /CREATE TRIGGER gabah_module_status_audit_no_row_mutation[\s\S]*CREATE TRIGGER gabah_module_status_audit_no_truncate/.test(migration)],
-  ['Asset reads select the correct module by RBAC capability', /assets\.catalog\.read[\s\S]*return canReadCatalogue \? 'assets' : 'my_assets'/.test(server)],
+  ['Asset reads select Assets, Licenses, or My Assets module by effective RBAC capability', /assets\.catalog\.read[\s\S]*const canReadLicensesOnly = hasRbacPermission\(actor\.id, 'licenses\.read'\)[\s\S]*return canReadCatalogue \? 'assets' : \(canReadLicensesOnly \? 'licenses' : 'my_assets'\)/.test(server)],
 ];
 let failed = 0;
 for (const [name, pass] of checks) {
