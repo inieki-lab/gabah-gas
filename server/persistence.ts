@@ -589,8 +589,7 @@ async function backfillNormalizedTables(): Promise<void> {
   finally { client.release(); }
 }
 
-async function persistPostgresState(): Promise<void> {
-  const payload = createPayload();
+async function persistPostgresState(payload: ReturnType<typeof createPayload> = createPayload()): Promise<void> {
   await pool.query(
     `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
     [JSON.stringify(payload)],
@@ -744,25 +743,35 @@ export async function initializePersistence(): Promise<void> {
 
 export function persistDataStore(): Promise<void> {
   const payload = createPayload();
-  // Always persist immediately to local storage file
-  saveStateToFile(payload);
 
-  // PostgreSQL is authoritative whenever it is active. Do not swallow a
-  // failed database write: callers must not return a success response when
-  // the authoritative store did not persist the change.
-  if (!isPostgresAvailable) return persistQueue;
+  // Standalone/file-store mode has no PostgreSQL authority.
+  if (!isPostgresAvailable) {
+    saveStateToFile(payload);
+    return persistQueue;
+  }
 
+  // PostgreSQL is authoritative whenever active. Never publish a local snapshot
+  // before the database write succeeds; otherwise a failed write could survive
+  // a restart and masquerade as committed data.
   const write = persistQueue.then(async () => {
     if (!isPostgresAvailable) {
-      throw new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.');
+      // A preceding development write may have switched the process to the
+      // explicit file-store fallback. Persist this queued snapshot there.
+      saveStateToFile(payload);
+      return;
     }
     try {
-      await persistPostgresState();
+      await persistPostgresState(payload);
+      saveStateToFile(payload);
     } catch (error: any) {
-      // In development, preserve the historical file-store fallback, but
-      // reject THIS write so the API caller can report the persistence failure.
-      // Production remains PostgreSQL-only and never silently degrades.
-      if (process.env.NODE_ENV !== 'production') isPostgresAvailable = false;
+      // Development retains its documented file-store fallback, but the write
+      // that failed against PostgreSQL still rejects so its API returns 503.
+      // Production stays PostgreSQL-only and does not write an uncommitted
+      // local snapshot.
+      if (process.env.NODE_ENV !== 'production') {
+        isPostgresAvailable = false;
+        saveStateToFile(payload);
+      }
       console.warn('[GABAH Persistence] PostgreSQL write failed:', error.message || error);
       throw new Error('Gagal menyimpan perubahan ke PostgreSQL: ' + (error.message || String(error)));
     }
