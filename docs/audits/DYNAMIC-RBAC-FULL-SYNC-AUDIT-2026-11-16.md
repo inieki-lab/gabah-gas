@@ -427,3 +427,12 @@ The repository contains a direct architecture/seed contradiction that must be re
 - Added a responsive modal safety layer in `src/index.css`: safe-area-aware vertical spacing, viewport-bounded dialog content, scroll containment, and narrow-screen width constraints for legacy forms and administration dialogs.
 - This is a layout safety net, not a substitute for visual UAT. Each modal/form still needs browser verification at desktop and mobile viewport sizes, especially nested Administration dialogs.
 - Commit sequence: `297c737` (dashboard analytics), `0770636` and `72e470d` (responsive modal hardening). Verify CI on the final branch head before treating these changes as green.
+
+
+### Follow-up validation — 17 November 2026
+
+- CI run #1763 (`43991651002`) completed **SUCCESS, 64/64 steps** for dashboard analytics commit `297c737`. This included dependency audit, TypeScript/lint, production build, Docker image/runtime smoke, PostgreSQL integration, and the existing authorization/security regression suite.
+- Subsequent UI hardening commits `0770636` and `72e470d` and condition-chart correction `1a693d1` were added after that CI run. Static regression assertions for condition-field usage, scope-preserving dashboard aggregation, and modal viewport/scroll safety were added in `539ffcc`.
+- **Important:** CI #1763 does not validate commits added after `297c737`. The final branch head must receive a fresh complete CI run; no claim is made that those later commits are green yet.
+- The asset chart now uses the canonical `Asset.condition` field (excellent/new/good/fair/poor/broken/damaged) and explicitly counts records with missing/unrecognized condition as “Belum dinilai”; operational `Asset.status` is not misrepresented as physical condition.
+- Browser UAT remains outstanding for modal/form clipping, nested Administration dialogs, mobile viewports, and chart rendering with real role-scoped PostgreSQL data.
