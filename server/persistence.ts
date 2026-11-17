@@ -437,10 +437,11 @@ function ensureCanonicalAdministrator(): void {
   }
 }
 
-async function backfillNormalizedTables(): Promise<void> {
-  const client = await pool.connect();
+async function backfillNormalizedTables(existingClient?: PoolClient): Promise<void> {
+  const client = existingClient || await pool.connect();
+  const ownsTransaction = !existingClient;
   try {
-    await client.query('BEGIN');
+    if (ownsTransaction) await client.query('BEGIN');
     // Division codes are the extensible owner-domain master used by assets,
     // categories, loans, and module data scopes. Sync them before any FK-backed
     // user/category/asset rows so a newly configured owner works in PostgreSQL.
@@ -585,18 +586,35 @@ async function backfillNormalizedTables(): Promise<void> {
         [log.id,log.action,log.entity,log.entity_id || null,user?.id || null,log.user_name,log.user_role,log.details,log.timestamp],
       );
     }
-    await client.query('COMMIT');
-  } catch (error) { await client.query('ROLLBACK'); throw error; }
-  finally { client.release(); }
+    if (ownsTransaction) await client.query('COMMIT');
+  } catch (error) {
+    if (ownsTransaction) await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    if (ownsTransaction) client.release();
+  }
 }
 
 async function persistPostgresState(): Promise<void> {
-  const payload = createPayload();
-  await pool.query(
-    `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
-    [JSON.stringify(payload)],
-  );
-  await backfillNormalizedTables();
+  // The JSONB recovery/state record and normalized domain tables represent one
+  // logical snapshot. Commit them together so a normalized-table failure cannot
+  // leave gabah_state ahead of the authoritative relational data (or vice versa).
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const payload = createPayload();
+    await client.query(
+      `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
+      [JSON.stringify(payload)],
+    );
+    await backfillNormalizedTables(client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function initializePersistence(): Promise<void> {
