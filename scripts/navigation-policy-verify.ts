@@ -13,7 +13,7 @@ for (const role of expectedRoles) {
 const mustNotSee: Record<string, string[]> = {
   'Sekretaris Direksi': ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Humas: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
-  Karyawan: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
+  Karyawan: ['assets', 'maintenance', 'meeting_rooms', 'licenses', 'contracts', 'vendors', 'reports'],
   Auditor: ['my_assets', 'meeting_rooms'],
 };
 for (const [role, tabs] of Object.entries(mustNotSee)) {
