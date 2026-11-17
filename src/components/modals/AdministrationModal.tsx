@@ -2920,8 +2920,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
                             <div className="flex items-center justify-between gap-2">
                               <div>
-                                <h4 className="font-extrabold text-sm text-slate-900">Permission per Modul</h4>
-                                <p className="text-[11px] text-slate-500">Pilih tindakan yang diizinkan untuk role ini.</p>
+                                <h4 className="font-extrabold text-sm text-slate-900">Menu Sidebar & Permission per Modul</h4>
+                                <p className="text-[11px] text-slate-500">Centang permission baca (read) untuk menampilkan menu pada sidebar role ini. Menu otomatis hilang jika syarat permission bacanya tidak terpenuhi. Permission tambah, ubah, hapus, setujui, dan ekspor tetap diatur terpisah di bawah modul masing-masing.</p>
                               </div>
                               <span className="text-[11px] text-slate-500">{rbacSelectedPermissionKeys.length} dipilih</span>
                             </div>
