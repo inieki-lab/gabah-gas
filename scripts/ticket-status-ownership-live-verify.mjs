@@ -79,9 +79,21 @@ async function main() {
       });
       return { status: result.status, token: result.json?.data?.token || result.json?.token || '' };
     };
+    const badLoginStatuses = [];
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const failedLogin = await request(base, 'POST', '/api/auth/login', {
+        body: { email: 'auditor@foodstation.co.id', password: 'intentionally-wrong-password' },
+      });
+      badLoginStatuses.push(failedLogin.status);
+    }
+    record('Login lockout activates after five failures in development/UAT', '401,401,401,401,429', badLoginStatuses.join(','), badLoginStatuses.join(',') === '401,401,401,401,429');
+
     const admin = await login('admin@foodstation.co.id');
     const reporter = await login('hendra.w@foodstation.co.id');
     const unrelated = await login('humas@foodstation.co.id');
+    const unrelatedAccountLogin = await login('auditor@foodstation.co.id');
+    record('One account lockout does not block a different account behind the same IP', 'Humas login succeeds', unrelated.token ? 'Humas login succeeds' : `HTTP ${unrelated.status}`, Boolean(unrelated.token));
+    record('Locked account remains blocked until timeout', 'HTTP 429', String(unrelatedAccountLogin.status), unrelatedAccountLogin.status === 429);
     if (!admin.token || !reporter.token || !unrelated.token) {
       throw new Error(`Fixture login failed: admin=${admin.status}, reporter=${reporter.status}, unrelated=${unrelated.status}`);
     }
