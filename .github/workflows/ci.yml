@@ -145,6 +145,9 @@ jobs:
       - name: Ticket persistence and contract document audit regression
         run: npm run test:ticket-contract-audit-persistence
 
+      - name: Contract domain audit durability and rollback regression
+        run: npm run test:contract-domain-persistence
+
       - name: Module lifecycle registry contract
         run: npm run test:module-lifecycle-registry
 
