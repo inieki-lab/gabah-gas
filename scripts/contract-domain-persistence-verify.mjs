@@ -39,6 +39,8 @@ const routeCases = [
 for (const [name, pattern] of routeCases) {
   assert.match(server, pattern, 'HTTP route must await ' + name);
 }
+assert.equal((server.match(/res\.status\(typeof err\?\.statusCode === 'number' \? err\.statusCode : 400\)\.json/g) || []).length >= 5, true,
+  'All five contract mutation routes must preserve HTTP 503 for persistence failures');
 
 console.log('PASS | contract mutation persistence is awaited');
 console.log('PASS | failed contract mutations restore in-memory domain state');
