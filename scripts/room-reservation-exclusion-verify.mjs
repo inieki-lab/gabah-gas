@@ -15,7 +15,7 @@ assert.match(migration, /ADD CONSTRAINT room_reservations_no_overlap[\s\S]*?EXCL
   'a real PostgreSQL exclusion constraint must reject overlapping reservations');
 assert.match(migration, /room_id WITH =/i);
 assert.match(migration, /tstzrange\(start_datetime, end_datetime, '\[\)'\)\) WITH &&/i);
-assert.match(migration, /WHERE \(status IN \('pending', 'approved', 'in_use', 'checked_in'\)\)/i);
+assert.match(migration, /WHERE \(status IN \('pending', 'pending_approval', 'approved', 'in_use', 'checked_in'\)\)/i);
 assert.match(migration, /existing active room reservations overlap/i,
   'migration must stop safely with an explicit diagnostic if existing data conflicts');
 assert.match(persistence, /readdirSync\(migrationsDir\)[\s\S]*?\.sort\(\)/,
