@@ -3693,7 +3693,6 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'contracts.create')) return;
     const actor = getActor(req);
       const created = await ContractDomainService.createContract(req.body, actor);
-      await persistDataStore();
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -3705,8 +3704,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'contracts.update')) return;
     const actor = getActor(req);
-      const updated = ContractDomainService.updateContract(req.params.id, req.body, actor);
-      await persistDataStore();
+      const updated = await ContractDomainService.updateContract(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -3901,8 +3899,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
     const actor = getActor(req);
-      const updated = ContractDomainService.addDocument(req.params.id, req.body, actor);
-      await persistDataStore();
+      const updated = await ContractDomainService.addDocument(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -3914,8 +3911,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'contracts.milestones.manage')) return;
     const actor = getActor(req);
-      const updated = ContractDomainService.addMilestone(req.params.id, req.body, actor);
-      await persistDataStore();
+      const updated = await ContractDomainService.addMilestone(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
@@ -3928,8 +3924,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'contracts.renewal.decide')) return;
     const actor = getActor(req);
       const { outcome, notes, replacement_contract_id } = req.body;
-      const updated = ContractDomainService.decideRenewal(req.params.id, outcome, notes, replacement_contract_id || null, actor);
-      await persistDataStore();
+      const updated = await ContractDomainService.decideRenewal(req.params.id, outcome, notes, replacement_contract_id || null, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
