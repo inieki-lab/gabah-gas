@@ -50,21 +50,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewAssetModal,
 }) => {
   const currentRoleKeys = currentUser?.role_keys || [];
-  const isHumas = currentRoleKeys.includes('humas') || currentUser?.role === 'Humas';
-  const isSekdir = currentRoleKeys.includes('sekretaris_direksi') || currentUser?.role === 'Sekretaris Direksi';
-  const isStaff = currentUser?.role === 'Karyawan' || isHumas || isSekdir;
-  const isEmployee = isStaff;
-  const roleDescriptions: Record<UserRole, string> = {
-    'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
-    IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
-    GA: 'Pantau fasilitas kantor, kendaraan dinas, ruang rapat, peminjaman, dan layanan umum.',
-    'Sekretaris Direksi': 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan fasilitas kegiatan Direksi.',
-    Humas: 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat sesuai penugasan.',
-    'Supply Chain': 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
-    PIBC: 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
-    Karyawan: 'Akses layanan mandiri untuk aset yang ditugaskan, peminjaman, tiket bantuan, dan reservasi ruang.',
-    Auditor: 'Pemantauan read-only atas aset, peminjaman, tiket, laporan, dan jejak audit.',
+  // PostgreSQL identity is capability-based. Legacy profile labels are used only
+  // when role_keys are absent in file-store compatibility mode.
+  const hasRoleKey = (key: string, legacyLabel: string) =>
+    currentUser.role_keys !== undefined
+      ? currentRoleKeys.includes(key)
+      : currentUser.role === legacyLabel;
+  const isAuditor = hasRoleKey('auditor', 'Auditor');
+  const isSuperAdmin = Boolean(currentUser.is_superadmin)
+    || (currentUser.role_keys === undefined && currentUser.role === 'Admin GABAH');
+  const hasEffectivePermission = (key: string): boolean | undefined => Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key)
+    : undefined;
+  const canPermission = (key: string) => {
+    if (isAuditor) return false;
+    const effective = hasEffectivePermission(key);
+    if (effective !== undefined) return effective;
+    const legacyGrants: Record<string, string[]> = {
+      'loans.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Supply Chain', 'PIBC', 'Humas', 'Sekretaris Direksi'],
+      'tickets.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Supply Chain', 'PIBC', 'Humas', 'Sekretaris Direksi'],
+      'assets.create': ['Admin GABAH', 'IT', 'GA'],
+      'licenses.read': ['Admin GABAH', 'IT'],
+    };
+    return (legacyGrants[key] || []).includes(currentUser.role);
   };
+  const isHumas = !isSuperAdmin && (hasEffectivePermission('room_reservations.documentation.read') ?? hasRoleKey('humas', 'Humas'));
+  const isSekdir = !isSuperAdmin && (hasEffectivePermission('room_reservations.override_priority') ?? hasRoleKey('sekretaris_direksi', 'Sekretaris Direksi'));
+  // Dashboard composition follows effective operational capabilities, not the
+  // primary employee profile or a hard-coded IT/GA role label. Custom roles
+  // with the same permissions therefore receive the operational workspace.
+  const operationalManagementPermissions = [
+    'assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign',
+    'assets.move', 'assets.lifecycle', 'loans.approve', 'loans.reject',
+    'loans.handover', 'tickets.assign', 'tickets.update', 'maintenances.create',
+    'maintenances.update', 'room_reservations.approve', 'room_reservations.reject',
+    'meeting_rooms.update', 'meeting_types.manage', 'meeting_facilities.manage',
+    'licenses.manage', 'knowledge.create', 'knowledge.update',
+    'contracts.create', 'contracts.update', 'contracts.documents.upload',
+    'vendors.create', 'vendors.update', 'organization.manage', 'master_data.manage',
+  ];
+  const hasOperationalManagementAccess = operationalManagementPermissions.some(canPermission);
+  const isEmployee = !isSuperAdmin && !isAuditor && !hasOperationalManagementAccess;
+  const canCreateLoan = canPermission('loans.create');
+  const canCreateTicket = canPermission('tickets.create');
+  const canCreateAsset = canPermission('assets.create');
 
   // All collections arrive pre-scoped by backend permissions and module scope.
   // Do not re-filter them by a single legacy role name in the browser.
@@ -74,18 +103,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || currentUser.role === 'Auditor';
-  const isDivisionDashboard = currentUser.role === 'IT' || currentUser.role === 'GA';
-  const divisionLabel = isDivisionDashboard ? currentUser.role : 'Unit kerja';
+  const isGlobalDashboard = isSuperAdmin || isAuditor;
+  const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess;
+  const hasITRole = !isSuperAdmin && (hasEffectivePermission('room_reservations.it_facilities.read') ?? hasRoleKey('it', 'IT'));
+  const hasGARole = !isSuperAdmin && (hasEffectivePermission('room_reservations.approve') ?? hasRoleKey('ga', 'GA'));
+  const divisionLabel = hasITRole && !hasGARole ? 'IT'
+    : hasGARole && !hasITRole ? 'GA'
+      : 'Operasional';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
-  const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
-  const roleDescription = currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
-    ? roleDescriptions.Humas
-    : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
-      ? roleDescriptions['Sekretaris Direksi']
-      : roleDescriptions[currentUser.role];
+  const isLicenseDashboard = isGlobalDashboard || canPermission('licenses.read');
+  const roleDescription = isHumas
+    ? 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat sesuai penugasan.'
+    : isSekdir
+      ? 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan fasilitas kegiatan Direksi.'
+      : isAuditor
+        ? 'Pemantauan read-only sesuai permission dan cakupan audit.'
+        : isSuperAdmin
+          ? 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional.'
+          : 'Ringkasan pekerjaan dan layanan sesuai permission serta cakupan data Anda.';
   const expiringLicenses = dashboardAssets.filter(asset => {
     const expiry = asset.license_detail?.expiration_date;
     if (!expiry) return false;
@@ -109,6 +146,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const licenseAssets = dashboardAssets.filter(a => a.category_type === 'License');
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
+
+  // Management charts use only the collections already returned by the
+  // permission- and scope-filtered dashboard API. No client-side global fetch.
+  const assetConditionRows = [
+    { label: 'Baik / tersedia', value: dashboardAssets.filter(a => ['available', 'good', 'in_use', 'assigned'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-emerald-600' },
+    { label: 'Perbaikan', value: dashboardAssets.filter(a => ['in_repair', 'maintenance', 'under_maintenance'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-amber-500' },
+    { label: 'Rusak', value: dashboardAssets.filter(a => ['damaged', 'broken'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-rose-500' },
+    { label: 'Hilang', value: dashboardAssets.filter(a => ['lost', 'missing'].includes(String(a.status || '').toLowerCase())).length, color: 'bg-slate-500' },
+  ];
+  const assetConditionTotal = assetConditionRows.reduce((sum, row) => sum + row.value, 0);
+  const loanStatusRows = [
+    { label: 'Menunggu', value: dashboardLoans.filter(l => ['pending', 'pending_approval'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-amber-500' },
+    { label: 'Aktif', value: dashboardLoans.filter(l => ['active', 'approved', 'overdue'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-emerald-600' },
+    { label: 'Selesai', value: dashboardLoans.filter(l => ['returned', 'completed', 'closed'].includes(String(l.status || '').toLowerCase())).length, color: 'bg-sky-600' },
+  ];
+  const loanStatusTotal = loanStatusRows.reduce((sum, row) => sum + row.value, 0);
+  const ticketStatusRows = [
+    { label: 'Terbuka', value: dashboardTickets.filter(t => ['open', 'new'].includes(String(t.status || '').toLowerCase())).length, color: 'bg-rose-500' },
+    { label: 'Diproses', value: dashboardTickets.filter(t => ['in_progress', 'pending_vendor', 'assigned'].includes(String(t.status || '').toLowerCase())).length, color: 'bg-amber-500' },
+    { label: 'Selesai', value: dashboardTickets.filter(t => ['resolved', 'closed'].includes(String(t.status || '').toLowerCase())).length, color: 'bg-emerald-600' },
+  ];
+  const ticketStatusTotal = ticketStatusRows.reduce((sum, row) => sum + row.value, 0);
 
   const pendingLoans = dashboardLoans.filter(l => l.status === 'pending');
   const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
@@ -168,7 +227,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {currentUser.role !== 'Auditor' && (
+            {canCreateLoan && !isAuditor && (
               <button
                 id="btn-quick-loan"
                 onClick={onOpenNewLoanModal}
@@ -178,7 +237,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Pinjam Aset
               </button>
             )}
-            {currentUser?.role !== 'Auditor' ? (
+            {canCreateTicket && !isAuditor ? (
               <button
                 id="btn-quick-ticket"
                 onClick={onOpenNewTicketModal}
@@ -187,13 +246,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <LifeBuoy className="w-4 h-4 text-rose-600" />
                 Buat Tiket Kendala
               </button>
-            ) : (
+            ) : isAuditor ? (
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs font-semibold" title="Auditor berstatus Read-Only">
                 <LifeBuoy className="w-4 h-4 text-slate-400" />
                 <span>Tiket (Read-Only)</span>
               </div>
-            )}
-            {!isEmployee && currentUser?.role !== 'Auditor' && (
+            ) : null}
+            {canCreateAsset && !isEmployee && !isAuditor && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
@@ -436,6 +495,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
+      {/* Management analytics: data is pre-scoped by the server for this user. */}
+      {!isEmployee && (
+        <section className="space-y-3" aria-label="Analitik manajemen">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-900">Analitik Operasional</h2>
+              <p className="text-xs text-slate-500">Ringkasan berdasarkan data yang berada dalam cakupan akses Anda.</p>
+            </div>
+            <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1 w-fit">Data aktual • cakupan akses</span>
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="min-w-0 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <h3 className="font-bold text-sm text-slate-900">Kondisi Aset</h3>
+                <Package className="w-4 h-4 text-emerald-700" />
+              </div>
+              <p className="text-2xl font-black text-slate-900 tabular-nums">{assetConditionTotal.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">unit terpantau</span></p>
+              <div className="flex h-3 overflow-hidden rounded-full bg-slate-100 mt-4" role="img" aria-label="Proporsi kondisi aset">
+                {assetConditionRows.map(row => row.value > 0 ? <div key={row.label} className={row.color} style={{ width: `${assetConditionTotal ? (row.value / assetConditionTotal) * 100 : 0}%` }} title={`${row.label}: ${row.value}`} /> : null)}
+              </div>
+              <div className="space-y-3 mt-4">
+                {assetConditionRows.map(row => (
+                  <div key={row.label} className="space-y-1">
+                    <div className="flex justify-between gap-3 text-xs"><span className="text-slate-600">{row.label}</span><strong className="text-slate-900 tabular-nums">{row.value.toLocaleString('id-ID')}</strong></div>
+                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className={`h-full rounded-full ${row.color}`} style={{ width: `${assetConditionTotal ? (row.value / assetConditionTotal) * 100 : 0}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-4">Nilai aset terdata: {formatRupiah(totalAssetValue)}</p>
+            </div>
+            <div className="min-w-0 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <h3 className="font-bold text-sm text-slate-900">Sirkulasi Peminjaman</h3>
+                <CalendarClock className="w-4 h-4 text-amber-600" />
+              </div>
+              <p className="text-2xl font-black text-slate-900 tabular-nums">{loanStatusTotal.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">pengajuan / transaksi</span></p>
+              <div className="space-y-4 mt-5">
+                {loanStatusRows.map(row => (
+                  <div key={row.label} className="space-y-1.5">
+                    <div className="flex justify-between gap-3 text-xs"><span className="text-slate-600">{row.label}</span><strong className="text-slate-900 tabular-nums">{row.value.toLocaleString('id-ID')}</strong></div>
+                    <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div className={`h-full rounded-full ${row.color}`} style={{ width: `${loanStatusTotal ? (row.value / loanStatusTotal) * 100 : 0}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-4">{pendingLoans.length} menunggu persetujuan • {activeLoans.length} masih berjalan</p>
+            </div>
+            <div className="min-w-0 rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <h3 className="font-bold text-sm text-slate-900">Kinerja Helpdesk</h3>
+                <LifeBuoy className="w-4 h-4 text-rose-600" />
+              </div>
+              <p className="text-2xl font-black text-slate-900 tabular-nums">{ticketStatusTotal.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">tiket terpantau</span></p>
+              <div className="space-y-4 mt-5">
+                {ticketStatusRows.map(row => (
+                  <div key={row.label} className="space-y-1.5">
+                    <div className="flex justify-between gap-3 text-xs"><span className="text-slate-600">{row.label}</span><strong className="text-slate-900 tabular-nums">{row.value.toLocaleString('id-ID')}</strong></div>
+                    <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div className={`h-full rounded-full ${row.color}`} style={{ width: `${ticketStatusTotal ? (row.value / ticketStatusTotal) * 100 : 0}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-4">{urgentTickets.length} tiket prioritas darurat belum selesai</p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Main Content Layout */}
       {isEmployee ? (
         /* Employee View: Shows only user's loans & user's tickets, or Humas photo requests */
@@ -619,7 +744,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Tiket Kendala Saya
               </h3>
               <div className="flex items-center gap-2">
-                {currentUser?.role !== 'Auditor' && (
+                {canCreateTicket && !isAuditor && (
                   <button
                     onClick={onOpenNewTicketModal}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -689,9 +814,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <CalendarClock className="w-4 h-4 text-emerald-600" />
-                  {isDivisionDashboard ? `Jadwal Peminjaman ${divisionLabel}` : currentUser.role === 'Auditor' ? 'Pemantauan Peminjaman Lintas Divisi' : 'Jadwal Peminjaman Aset Terintegrasi'}
+                  {isDivisionDashboard ? `Jadwal Peminjaman ${divisionLabel}` : isAuditor ? 'Pemantauan Peminjaman Lintas Divisi' : 'Jadwal Peminjaman Aset Terintegrasi'}
                 </h3>
-                <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : currentUser.role === 'Auditor' ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
+                <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : isAuditor ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
               </div>
               <button
                 onClick={() => onNavigate('loans')}
@@ -757,10 +882,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <LifeBuoy className="w-4 h-4 text-rose-600" />
-                  {currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : currentUser.role === 'Auditor' ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
+                  {hasRoleKey('it', 'IT') ? 'Antrean Helpdesk TI' : isAuditor ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
-                  {currentUser?.role !== 'Auditor' && (
+                  {canCreateTicket && !isAuditor && (
                     <button
                       onClick={onOpenNewTicketModal}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -807,7 +932,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
               <h3 className="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                {currentUser.role === 'Auditor' ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
+                {isAuditor ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
               </h3>
               <div className="space-y-2.5 text-xs">
                 {auditLogs.slice(0, 4).map((log) => (

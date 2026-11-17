@@ -2,12 +2,12 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
-import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
+import { isSuperadminActor, isAuditorActor, hasRbacScope, hasRbacPermission } from './rbac-policy';
 import { GabahDomainService } from './services';
 import { extractClientIp } from './requestContext';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
-const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor) || isAuditorActor(actor);
+const isGlobalObserver = (actor: ServerUser) => isSuperadmin(actor);
 
 export function actorFor(req: Request): ServerUser | null {
   if ((req as any).user) return (req as any).user as ServerUser;
@@ -26,7 +26,6 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   const ticket = db.tickets.find(t => t.id === ticketId);
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
-  if (isAuditorActor(actor)) return false;
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
   if (isPostgresPersistenceActive()) {
     // PostgreSQL RBAC is owner-code agnostic: custom operational functions
@@ -136,12 +135,27 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     }
   }
 
-  if (normalizedPath === '/api/audit-logs' && !isGlobalObserver(actor)) {
-    return res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });
+  if (normalizedPath === '/api/reconciliation') {
+    const canReadReconciliation = isGlobalObserver(actor)
+      || (isPostgresPersistenceActive()
+        ? hasRbacPermission(String(actor.id), 'reconciliation.read')
+        : isAuditorActor(actor));
+    if (!canReadReconciliation) {
+      return res.status(403).json({ success: false, message: 'Rekonsiliasi memerlukan permission reconciliation.read.' });
+    }
   }
-  if (normalizedPath === '/api/reconciliation' && !isGlobalObserver(actor)) {
-    return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
+
+  if (normalizedPath === '/api/audit-logs') {
+    const hasExplicitAuditScope = isAuditorActor(actor)
+      && isPostgresPersistenceActive()
+      && hasRbacPermission(String(actor.id), 'audit.read')
+      && hasRbacScope(String(actor.id), 'all', null, 'audit');
+    if (!isGlobalObserver(actor) && !hasExplicitAuditScope) {
+      return res.status(403).json({ success: false, message: 'Audit log memerlukan permission audit.read dan scope audit eksplisit.' });
+    }
   }
+  // Reconciliation is filtered by the caller's effective asset scopes after
+  // the reconciliation.read permission check; Auditor is not a global bypass.
 
   const assetMatch = req.path.match(/^\/api\/assets\/([^/]+)/i);
   // '/bulk-import' adalah operasi collection-level (bukan asset id);

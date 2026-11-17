@@ -19,6 +19,7 @@ import {
   Download,
   Upload,
   RefreshCw,
+  RotateCcw,
   ChevronRight,
   Activity,
   Check,
@@ -32,7 +33,6 @@ import {
   UserCheck,
   UserX,
   Pencil,
-  RotateCcw,
   FileText,
   Sliders,
   Info,
@@ -75,18 +75,6 @@ interface AdministrationModalProps {
   showToast: (text: string, type?: 'success' | 'warning' | 'info') => void;
   onRefreshData?: () => Promise<void>;
   onModulesChanged?: () => Promise<void> | void;
-}
-
-export interface RolePermissionRow {
-  role: string;
-  desc: string;
-  assets: string;
-  loans: string;
-  tickets: string;
-  licenses: string;
-  reports: string;
-  audit: string;
-  admin: string;
 }
 
 export interface OrgDivision {
@@ -134,24 +122,6 @@ export interface NotificationRule {
   warningHours?: number;
 }
 
-export const SYSTEM_ROLES: { value: UserRole; label: string; desc: string }[] = [
-  { value: 'Admin GABAH', label: 'Admin GABAH (Super Admin)', desc: 'Kendali Penuh Seluruh Sistem & Konfigurasi' },
-  { value: 'IT', label: 'IT (Infrastruktur & Jaringan)', desc: 'Pengelola Aset TI, Komputasi & Lisensi' },
-  { value: 'GA', label: 'GA (General Affairs & Fasilitas)', desc: 'Pengelola Fasilitas, Gedung & Ruang Rapat' },
-  { value: 'Sekretaris Direksi', label: 'Sekretaris Direksi', desc: 'Reservasi VIP Ruang Rapat & Notifikasi Agenda' },
-  { value: 'Humas', label: 'Humas & Protokoler', desc: 'Dokumentasi Acara & Rapat di Semua Ruangan' },
-  { value: 'Supply Chain', label: 'Supply Chain & Pergudangan', desc: 'Pengelola Armada Truk & Pabrik Beras' },
-  { value: 'PIBC', label: 'PIBC (Pasar Induk Cipinang)', desc: 'Operasional Kawasan Pasar & Retribusi' },
-  { value: 'Karyawan', label: 'Karyawan (Pegawai Umum)', desc: 'Peminjaman Aset & Pengajuan Tiket' },
-  { value: 'Auditor', label: 'Auditor (Satuan Pengawas Internal)', desc: 'Audit Trail & Rekonsiliasi PSAK 16 Read-Only' },
-];
-
-// Primary employee profiles only. Function capabilities (Humas/Sekretariat)
-// and branch work locations are assigned independently in the Role dialog
-// and Office Location master; they are not primary employee roles.
-export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES.filter(role =>
-  !['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(role.value)
-);
 
 // T2B-3 — MASTER KATEGORI & ASET TETAP
 // Domain `main_type` kini diseragamkan dengan kode kanonikal di
@@ -176,37 +146,7 @@ export const GABAH_TAXONOMY_TYPES: { value: 'IT' | 'License' | 'General'; label:
   { value: 'General', label: 'General (Modul Inventaris Fisik / Fasilitas)', desc: 'Pengelolaan sarpras, mebel, kendaraan operasional, dan gedung dengan pelacakan fisik BAST' },
 ];
 
-const DEFAULT_PERMISSIONS: RolePermissionRow[] = [
-  { role: 'Admin GABAH', desc: 'Super Administrator', assets: 'Full Access', loans: 'Approve & Handover', tickets: 'All Categories', licenses: 'Full', reports: 'Full', audit: 'Full', admin: 'Full Control' },
-  { role: 'IT', desc: 'Teknologi Informasi & Sistem', assets: 'Divisi IT', loans: 'Approve IT Aset', tickets: 'IT & License', licenses: 'Manage', reports: 'Divisi IT', audit: 'View IT', admin: 'No' },
-  { role: 'GA', desc: 'General Affairs & Fasilitas', assets: 'Divisi GA', loans: 'Approve GA Aset', tickets: 'Fasilitas GA', licenses: 'Read', reports: 'Divisi GA', audit: 'View GA', admin: 'No' },
-  { role: 'Sekretaris Direksi', desc: 'Sekretariat Direksi & Komisaris', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
-  { role: 'Humas', desc: 'Humas & Protokoler Perusahaan', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
-  { role: 'Supply Chain', desc: 'Armada & Pergudangan Beras', assets: 'Divisi SC', loans: 'Approve Truk/SC', tickets: 'Logistik SC', licenses: 'Read', reports: 'Divisi SC', audit: 'View SC', admin: 'No' },
-  { role: 'PIBC', desc: 'Pasar Induk Beras Cipinang', assets: 'Divisi PIBC', loans: 'Approve Pasar', tickets: 'Operasional', licenses: 'Read', reports: 'Divisi PIBC', audit: 'View', admin: 'No' },
-  { role: 'Karyawan', desc: 'Pegawai Operasional BUMD', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket Sendiri', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
-  { role: 'Auditor', desc: 'Satuan Pengawas Internal / BPKP', assets: 'Audit Only', loans: 'Audit History', tickets: 'Audit Trail', licenses: 'Audit', reports: 'Rekonsiliasi', audit: 'Full Read', admin: 'No' },
-];
-
-/**
- * Vocabulary otorisasi standar (template) per kolom matriks, diturunkan dari
- * DEFAULT_PERMISSIONS. Modal "Ubah Otorisasi" HARUS memakai dropdown dari
- * daftar ini (bukan input bebas) agar nilai matriks konsisten dan tidak
- * merusak tampilan/pemetaan hak akses.
- */
-const PERMISSION_TEMPLATE_FIELDS: Record<keyof Omit<RolePermissionRow, 'role' | 'desc'>, string[]> = {
-  assets: ['Full Access', 'Divisi IT', 'Divisi GA', 'Divisi SC', 'Divisi PIBC', 'Aset Pribadi', 'Audit Only', 'No'],
-  loans: ['Approve & Handover', 'Approve IT Aset', 'Approve GA Aset', 'Approve Truk/SC', 'Approve Pasar', 'Request Pinjam', 'Audit History', 'No'],
-  tickets: ['All Categories', 'IT & License', 'Fasilitas GA', 'Logistik SC', 'Operasional', 'Buat Tiket', 'Buat Tiket Sendiri', 'Audit Trail', 'No'],
-  licenses: ['Full', 'Manage', 'Read', 'Audit', 'No'],
-  reports: ['Full', 'Divisi IT', 'Divisi GA', 'Divisi SC', 'Divisi PIBC', 'Rekonsiliasi', 'No'],
-  audit: ['Full', 'Full Read', 'View IT', 'View GA', 'View SC', 'View', 'No'],
-  admin: ['Full Control', 'No'],
-};
-
 const DEFAULT_DIVISIONS: OrgDivision[] = [
-  { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
-  { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
   { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
   { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
 ];
@@ -243,7 +183,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   onModulesChanged
 }) => {
   // Hak akses administrasi dibatasi HANYA untuk Super Admin ('Admin GABAH')
-  const isCurrentUserAdmin = (activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH');
+  const isCurrentUserAdmin = currentUser?.is_superadmin === true
+    || (currentUser?.permission_keys === undefined && currentUser?.role === 'Admin GABAH');
   const currentRoleName = activeRole || currentUser?.role || 'Admin GABAH';
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 
@@ -466,18 +407,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     is_loanable_by_default: true,
   });
 
-  // Role & Permissions State
-  const [permissions, setPermissions] = useState<RolePermissionRow[]>(() => {
-    const saved = localStorage.getItem('gabah_role_permissions');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return DEFAULT_PERMISSIONS;
-  });
-  const [roleToEdit, setRoleToEdit] = useState<RolePermissionRow | null>(null);
-  const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
-  const [editRoleRow, setEditRoleRow] = useState<RolePermissionRow | null>(null);
-
   // Dynamic RBAC state — persisted in PostgreSQL through the authenticated API.
   const [rbacRoles, setRbacRoles] = useState<any[]>([]);
   const [rbacPermissions, setRbacPermissions] = useState<any[]>([]);
@@ -493,7 +422,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [rbacSelectedPermissionKeys, setRbacSelectedPermissionKeys] = useState<string[]>([]);
   const [rbacScopes, setRbacScopes] = useState<Array<{ module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null }>>([]);
   const [rbacScopeModule, setRbacScopeModule] = useState('assets');
-  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'unit' | 'location'>('division');
+  const [rbacScopeType, setRbacScopeType] = useState<'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'>('division');
   const [rbacScopeValue, setRbacScopeValue] = useState('');
 
   const refreshRbac = async () => {
@@ -619,7 +548,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Isi nilai owner/divisi, unit, atau lokasi untuk scope ini.', 'warning');
       return;
     }
-    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'unit' | 'location'; value?: string | null };
+    const scope = { module: rbacScopeModule, type: rbacScopeType, value: ['all', 'own'].includes(rbacScopeType) ? null : value } as { module: string; type: 'all' | 'own' | 'division' | 'division_except' | 'unit' | 'location'; value?: string | null };
     if (!rbacScopes.some(item => (item.module || '*') === scope.module && item.type === scope.type && (item.value || null) === (scope.value || null))) {
       setRbacScopes(current => [...current, scope]);
     }
@@ -656,10 +585,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  // Dynamic per-user role assignment. The profile role remains the primary role;
+  // Dynamic per-user role assignment. Profile labels are descriptive metadata only;
   // additional capabilities are assigned independently and persisted in PostgreSQL.
   const [userAssignments, setUserAssignments] = useState<Record<string, number[]>>({});
-  const [primaryRoleIds, setPrimaryRoleIds] = useState<Record<string, number>>({});
   const [roleAssignmentTarget, setRoleAssignmentTarget] = useState<UserProfile | null>(null);
   const [roleAssignmentDraft, setRoleAssignmentDraft] = useState<number[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
@@ -670,14 +598,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     try {
       const assignments = await gabahApi.getRbacUserAssignments();
       const next: Record<string, number[]> = {};
-      const primary: Record<string, number> = {};
       for (const item of Array.isArray(assignments) ? assignments : []) {
         const userId = String(item.user_id);
         next[userId] = Array.isArray(item.role_ids) ? item.role_ids.map(Number) : [];
-        if (item.primary_role_id != null) primary[userId] = Number(item.primary_role_id);
       }
       setUserAssignments(next);
-      setPrimaryRoleIds(primary);
     } catch (error: any) {
       showToast(error?.message || 'Gagal memuat assignment role pegawai.', 'warning');
     } finally {
@@ -691,7 +616,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   const toggleRoleAssignment = (roleId: number, checked: boolean) => {
-    if (roleAssignmentTarget && primaryRoleIds[String(roleAssignmentTarget.id)] === roleId) return;
     setRoleAssignmentDraft(current => checked
       ? [...new Set([...current, roleId])]
       : current.filter(id => id !== roleId));
@@ -1082,24 +1006,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  // Role Permissions Handlers
-  const handleSaveRolePermissions = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editRoleRow) return;
-    const updated = permissions.map(p => p.role === editRoleRow.role ? editRoleRow : p);
-    setPermissions(updated);
-    localStorage.setItem('gabah_role_permissions', JSON.stringify(updated));
-    setIsEditRoleOpen(false);
-    setRoleToEdit(null);
-    showToast(`Matriks hak akses untuk peran "${editRoleRow.role}" berhasil diperbarui!`, 'success');
-  };
-
-  const handleResetRolePermissions = () => {
-    setPermissions(DEFAULT_PERMISSIONS);
-    localStorage.removeItem('gabah_role_permissions');
-    showToast('Matriks hak akses dikembalikan ke konfigurasi standar BUMD Food Station.', 'info');
-  };
-
   // Organization Handlers
   const handleAddDivisionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1425,7 +1331,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         categories,
         locations,
         divisions,
-        permissions,
+        rbac_roles: rbacRoles,
+        rbac_permissions: rbacPermissions,
         numbering_config: numberingConfig,
         notification_rules: notificationRules,
         settings: settingsForm,
@@ -1531,12 +1438,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     setEditUserData({
       name: user.name || '',
       email: user.email || '',
-      role: PRIMARY_PROFILE_ROLES.some(r => r.value === user.role) ? user.role : 'Karyawan',
+      role: user.role || 'Pegawai',
       division: (user.division as OwnerDivision) || 'Umum',
       department: user.department || '',
       job_level_code: (user as any).job_level_code || '',
       unit_id: (user as any).unit_id || '',
-      office_location_id: (user as any).office_location_id || (user.role === 'Supply Chain' ? 'OFF-RPC' : user.role === 'PIBC' ? 'OFF-PIBC' : ''),
+      office_location_id: (user as any).office_location_id || '',
       phone: user.phone || '',
       is_active: user.is_active !== undefined ? user.is_active : true,
       telegram_chat_id: user.telegram_chat_id || '',
@@ -1546,7 +1453,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // ============ IMPORT MASSAL PEGAWAI (CSV/Excel) ============
-  const validImportRoles = [...PRIMARY_PROFILE_ROLES.map(r => r.value as string), 'Supply Chain', 'PIBC'];
+  const validImportRoles: string[] = []; // Profile labels are free-form; they do not grant application access.
   const validImportDivisions = divisions.map(d => String(d.code));
   const validImportJobLevels = jobLevels.filter(j => j.is_active).map(j => String(j.code));
   const validImportUnitIds = orgUnits.filter(u => u.is_active).map(u => String(u.id));
@@ -1949,9 +1856,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     onChange={e => setUserRoleFilter(e.target.value)}
                     className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#4ABDAC]"
                   >
-                    <option value="all">Semua Peran ({SYSTEM_ROLES.length})</option>
-                    {SYSTEM_ROLES.map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                    <option value="all">Semua profil ({new Set(userList.map(user => user.role || 'Pegawai')).size})</option>
+                    {[...new Set(userList.map(user => String(user.role || 'Pegawai')))].sort().map(role => (
+                      <option key={role} value={role}>{role}</option>
                     ))}
                   </select>
                   {isCurrentUserAdmin ? (
@@ -2146,21 +2053,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Role Primer</label>
-                      <select
+                      <label className="block text-slate-600 mb-1 font-medium">Label Profil Pegawai (bukan hak akses)</label>
+                      <input
+                        type="text"
+                        maxLength={120}
                         value={newUserData.role}
-                        onChange={e => {
-                          const r = e.target.value as UserRole;
-                          const found = PRIMARY_PROFILE_ROLES.find(x => x.value === r);
-                          setNewUserData({ ...newUserData, role: r, role_label: found?.label || r });
-                        }}
+                        onChange={e => setNewUserData({ ...newUserData, role: e.target.value as UserRole, role_label: e.target.value })}
+                        placeholder="Contoh: Pegawai, Admin ME, IT Support"
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
-                      >
-                        {PRIMARY_PROFILE_ROLES.map(r => (
-                          <option key={r.value} value={r.value}>{r.label}</option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
+                      />
+                      <p className="mt-1 text-[10px] text-slate-500">Kolom ini hanya label profil kompatibilitas. Hak akses aplikasi ditentukan terpisah melalui penetapan Dynamic RBAC di bawah.</p>
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
@@ -2274,7 +2176,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold">
                     <tr>
                       <th className="px-4 py-3">Nama & Profil</th>
-                      <th className="px-4 py-3">Peran (Role)</th>
+                      <th className="px-4 py-3">Profil (metadata) & Role Akses</th>
                       <th className="px-4 py-3">Divisi & Departemen</th>
                       <th className="px-4 py-3">Sandi Sementara</th>
                       <th className="px-4 py-3 text-right">Aksi</th>
@@ -2323,10 +2225,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   ? 'bg-pink-50 text-pink-700 border-pink-200'
                                   : 'bg-slate-100 text-slate-700 border-slate-200'
                               }`}>
-                                {user.role}
+                                Profil: {user.role || 'Pegawai'}
                               </span>
                               {(userAssignments[String(user.id)] || [])
-                                .filter(roleId => roleId !== primaryRoleIds[String(user.id)])
                                 .map(roleId => {
                                   const assignedRole = rbacRoles.find((role: any) => Number(role.id) === Number(roleId));
                                   return assignedRole ? (
@@ -2452,17 +2353,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Peran Akses (Role) *</label>
-                          <select
+                          <label className="text-xs font-bold text-slate-700">Label Profil Pegawai (bukan hak akses)</label>
+                          <input
+                            type="text"
+                            maxLength={120}
                             value={editUserData.role}
                             onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
+                            placeholder="Contoh: Pegawai, Admin ME, IT Support"
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                          >
-                            {PRIMARY_PROFILE_ROLES.map(r => (
-                              <option key={r.value} value={r.value}>{r.label}</option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat ditetapkan sebagai role fungsi. RPC/SC dan PIBC dicatat melalui unit serta lokasi kantor.</p>
+                          />
+                          <p className="mt-1 text-[10px] text-slate-500">Label profil tidak memberikan izin. Hak akses diberikan melalui Dynamic RBAC dan dapat terdiri dari beberapa role.</p>
                         </div>
 
                         <div className="space-y-1.5">
@@ -2633,7 +2533,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   a => a.assigned_to?.id === userToDelete.id && a.status === 'assigned'
                 ).length;
                 const hasBlockers = activeLoansCount > 0 || assignedAssetsCount > 0;
-                const isOnlySuperAdmin = userToDelete.role === 'Admin GABAH' && userList.filter(u => u.role === 'Admin GABAH').length <= 1;
+                const isTargetSuperAdmin = rbacRoles.some(role => role.is_superadmin && (userAssignments[String(userToDelete.id)] || []).includes(Number(role.id)));
+                const activeSuperadminCount = userList.filter(user => user.is_active && rbacRoles.some(role => role.is_superadmin && (userAssignments[String(user.id)] || []).includes(Number(role.id)))).length;
+                const isOnlySuperAdmin = isTargetSuperAdmin && activeSuperadminCount <= 1;
 
                 return (
                   <div className="fixed inset-0 z-[90] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -2816,7 +2718,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <div className="p-5 border-b border-slate-100">
                       <h3 className="font-black text-slate-900">Penetapan Role Pegawai</h3>
                       <p className="text-xs text-slate-500 mt-1">{roleAssignmentTarget.name} · {roleAssignmentTarget.email}</p>
-                      <p className="text-[11px] text-slate-500 mt-2">Role utama mengikuti profil pegawai. Pilih role tambahan hanya jika pegawai memang memiliki tanggung jawab lintas fungsi.</p>
+                      <p className="text-[11px] text-slate-500 mt-2">Label profil pegawai hanya metadata. Pilih nol atau beberapa role dinamis sesuai tanggung jawab aktual; permission dan scope mengikuti role yang ditetapkan.</p>
                       <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mt-2">Penting: jika Auditor dipilih sebagai role tambahan, akun menjadi read-only untuk seluruh operasi tulis, meskipun role lain memiliki hak mutasi.</p>
                     </div>
                     <div className="p-4 overflow-y-auto space-y-2">
@@ -2824,21 +2726,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <p className="text-sm text-slate-500 text-center py-6">Memuat assignment role...</p>
                       ) : rbacRoles.filter((role: any) => role.is_active).map((role: any) => {
                         const roleId = Number(role.id);
-                        const isPrimary = primaryRoleIds[String(roleAssignmentTarget.id)] === roleId;
                         const checked = roleAssignmentDraft.includes(roleId);
                         return (
                           <label key={roleId} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
                             <input
                               type="checkbox"
                               checked={checked}
-                              disabled={assignmentsSaving || isPrimary}
+                              disabled={assignmentsSaving}
                               onChange={e => toggleRoleAssignment(roleId, e.target.checked)}
                               className="mt-0.5"
                             />
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-bold text-slate-800">{role.name}</span>
-                                {isPrimary && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">Role utama</span>}
                                 {role.is_superadmin && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">Superadmin</span>}
                               </span>
                               <span className="block text-[11px] text-slate-500">{role.description || role.role_key}</span>
@@ -2852,7 +2752,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </div>
                     <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
                       <button type="button" onClick={() => setRoleAssignmentTarget(null)} disabled={assignmentsSaving} className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">Batal</button>
-                      <button type="button" onClick={() => void saveRoleAssignment()} disabled={assignmentsSaving || assignmentsLoading || !primaryRoleIds[String(roleAssignmentTarget.id)]} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
+                      <button type="button" onClick={() => void saveRoleAssignment()} disabled={assignmentsSaving || assignmentsLoading} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
                         {assignmentsSaving ? 'Menyimpan...' : 'Simpan Role'}
                       </button>
                     </div>
@@ -3101,196 +3001,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </div>
                   )}
                 </>
-              )}
-            </div>
-          )}
-
-          {false && activeSection === 'roles' && (
-            <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h3 className="text-base font-black text-slate-900">Role &amp; Permission Matrix</h3>
-                  <p className="text-xs text-slate-500">
-                    Matriks otorisasi hak akses modul dan pembatasan scope divisi untuk tata kelola BUMD
-                  </p>
-                </div>
-                {isCurrentUserAdmin && (
-                  <button
-                    type="button"
-                    onClick={handleResetRolePermissions}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Reset Default Matriks</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
-                <table className="w-full text-left text-xs min-w-[760px]">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-extrabold">
-                    <tr>
-                      <th className="px-4 py-3">Peran (Role)</th>
-                      <th className="px-3 py-3 text-center">Aset Fisik</th>
-                      <th className="px-3 py-3 text-center">Peminjaman</th>
-                      <th className="px-3 py-3 text-center">Tiket Helpdesk</th>
-                      <th className="px-3 py-3 text-center">Lisensi &amp; SLA</th>
-                      <th className="px-3 py-3 text-center">Laporan PSAK 16</th>
-                      <th className="px-3 py-3 text-center">Audit Trail</th>
-                      <th className="px-3 py-3 text-center">Admin Plane</th>
-                      <th className="px-3 py-3 text-right">Otorisasi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
-                    {permissions.map((row) => (
-                      <tr key={row.role} className="hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <div className="font-bold text-slate-800">{row.role}</div>
-                          <div className="text-[11px] text-slate-400">{row.desc}</div>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">{row.assets}</span>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">{row.loans}</span>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">{row.tickets}</span>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">{row.licenses}</span>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">{row.reports}</span>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700">{row.audit}</span>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            row.admin === 'Full Control' ? 'bg-rose-100 text-rose-800 font-black' : 'text-slate-400'
-                          }`}>
-                            {row.admin}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          {isCurrentUserAdmin ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setRoleToEdit(row);
-                                setEditRoleRow({ ...row });
-                                setIsEditRoleOpen(true);
-                              }}
-                              className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold whitespace-nowrap transition-colors flex items-center gap-1 ml-auto cursor-pointer"
-                            >
-                              <Pencil className="w-3 h-3 text-emerald-600" />
-                              <span>Ubah Otorisasi</span>
-                            </button>
-                          ) : (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 inline-flex items-center gap-1">
-                              <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
-                              <span>Terkunci</span>
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Edit Role Permission Modal */}
-              {isEditRoleOpen && editRoleRow && (
-                <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                          <LockKeyhole className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Ubah Otorisasi Peran: {editRoleRow.role}</h4>
-                          <p className="text-xs text-slate-500">Sesuaikan lingkup hak akses per modul GABAH Enterprise</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsEditRoleOpen(false)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <form onSubmit={handleSaveRolePermissions} className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi Peran</label>
-                        <input
-                          type="text"
-                          value={editRoleRow.desc}
-                          onChange={e => setEditRoleRow({ ...editRoleRow, desc: e.target.value })}
-                          list="role-desc-suggestions"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
-                        />
-                        <datalist id="role-desc-suggestions">
-                          {DEFAULT_PERMISSIONS.map(p => (
-                            <option key={p.role} value={p.desc} />
-                          ))}
-                        </datalist>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        {(
-                          [
-                            ['assets', 'Modul Aset Fisik'],
-                            ['loans', 'Peminjaman & BAST'],
-                            ['tickets', 'Tiket Helpdesk'],
-                            ['licenses', 'Lisensi & SLA'],
-                            ['reports', 'Laporan PSAK 16'],
-                            ['audit', 'Audit Trail'],
-                            ['admin', 'Admin Plane'],
-                          ] as Array<[keyof typeof PERMISSION_TEMPLATE_FIELDS, string]>
-                        ).map(([field, label]) => (
-                          <div key={field}>
-                            <label className="block font-bold text-slate-700 mb-1">{label}</label>
-                            <select
-                              value={editRoleRow[field]}
-                              onChange={e => setEditRoleRow({ ...editRoleRow, [field]: e.target.value })}
-                              className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-medium cursor-pointer"
-                            >
-                              {/* Nilai tersimpan di luar template tetap ditampilkan agar tidak hilang diam-diam. */}
-                              {!PERMISSION_TEMPLATE_FIELDS[field].includes(editRoleRow[field]) && (
-                                <option value={editRoleRow[field]}>{editRoleRow[field]} (non-standar)</option>
-                              )}
-                              {PERMISSION_TEMPLATE_FIELDS[field].map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800 leading-relaxed">
-                        <strong>Catatan tata kelola:</strong> matriks ini adalah referensi hak akses pada panel administrasi. Penegakan akses aktual (RBAC) tetap ditegakkan oleh server terhadap 9 peran resmi GABAH — perubahan di sini tidak memperluas atau membatasi hak akses riil pengguna.
-                      </div>
-
-                      <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
-                        <button
-                          type="button"
-                          onClick={() => setIsEditRoleOpen(false)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
-                        >
-                          Batal
-                        </button>
-                        <button
-                          type="submit"
-                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-sm shadow-emerald-600/20"
-                        >
-                          Simpan Otorisasi
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
               )}
             </div>
           )}

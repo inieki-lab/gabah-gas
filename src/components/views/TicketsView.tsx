@@ -59,34 +59,27 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     'Dokumen BAST serah terima perangkat pengganti telah diterbitkan secara resmi melalui GABAH.',
   ];
 
-  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
-  const isIT = currentUser?.role === 'IT';
-  const isGA = currentUser?.role === 'GA';
-  const isSC = currentUser?.role === 'Supply Chain';
-  const isPIBC = currentUser?.role === 'PIBC';
-  const isAuditor = currentUser?.role === 'Auditor';
-  // Self-service roles see their own submissions; operating divisions see the
-  // tickets already authorized for their division by GabahService.
+  const hasEffectivePermission = (key: string) => Array.isArray(currentUser?.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key)
+    : undefined;
+  const hasLegacyRole = (key: string, label: string) => currentUser?.role_keys !== undefined
+    ? currentUser.role_keys.includes(key)
+    : currentUser?.role === label;
+  const isAuditor = hasLegacyRole('auditor', 'Auditor');
+  const canCreateTicket = !isAuditor && (hasEffectivePermission('tickets.create')
+    ?? (currentUser?.role !== 'Auditor'));
+  // The API supplies permission- and scope-filtered tickets in PostgreSQL mode.
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const baseTickets = safeTickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
-  // In Dynamic RBAC mode the API has already scoped this list. A Karyawan
-  // baseline may also hold an explicitly assigned operational queue role.
   const hasScopedQueueTickets = Array.isArray(currentUser?.permission_keys) && baseTickets.some(t =>
     t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
   );
-  const isSelfTicketsOnly = !hasScopedQueueTickets
-    && ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
+  const hasQueueCapability = ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => hasEffectivePermission(key) === true)
+    || (currentUser?.permission_keys === undefined && ['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || ''));
+  const isSelfTicketsOnly = !isAuditor && !hasQueueCapability && !hasScopedQueueTickets;
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
-  const defaultCategories = isSelfTicketsOnly
-    ? ['ALL', ...Array.from(baseCategorySet)]
-    : isGA
-    ? ['ALL', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'GA')]
-    : isSC
-    ? ['ALL', 'SC', ...Array.from(baseCategorySet).filter(c => c !== 'SC')]
-    : isPIBC
-    ? ['ALL', 'PIBC', ...Array.from(baseCategorySet).filter(c => c !== 'PIBC')]
-    : ['ALL', 'IT', 'GA', 'SC', 'PIBC'];
+  const defaultCategories = ['ALL', ...Array.from(baseCategorySet).sort()];
   const availableCategories = Array.from(new Set(defaultCategories));
 
   const filteredTickets = baseTickets.filter((t) => {
@@ -104,8 +97,6 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     return true;
   });
 
-  const canManage = GabahService.canManageTickets(currentUser);
-
   // SLA logic moved to reusable <SlaTimer /> component (live countdown, 30s refresh)
 
   return (
@@ -118,28 +109,16 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <LifeBuoy className="w-5 h-5 text-rose-600" />
             {isSelfTicketsOnly
               ? 'Tiket Helpdesk Saya'
-              : isGA
-              ? 'Helpdesk & Tiket Layanan GA'
-              : isSC
-              ? 'Helpdesk & Tiket Supply Chain'
-              : isPIBC
-              ? 'Helpdesk & Tiket PIBC'
               : isAuditor
               ? 'Pemantauan Tiket Helpdesk (Read-Only)'
-              : 'Helpdesk & Tiket Layanan Internal'}
+              : 'Helpdesk & Antrean Tiket Layanan Internal'}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
             {isSelfTicketsOnly
               ? 'Daftar pengajuan kendala teknis, kerusakan fasilitas, dan permohonan bantuan Anda.'
-              : isGA
-              ? 'Daftar tiket kendala fasilitas gedung & sarana GA, serta tiket kendala yang Anda ajukan.'
-              : isSC
-              ? 'Daftar kendala operasional Supply Chain dan tiket yang Anda ajukan.'
-              : isPIBC
-              ? 'Daftar kendala operasional PIBC dan tiket yang Anda ajukan.'
               : isAuditor
-              ? 'Pemantauan read-only tiket helpdesk lintas divisi untuk kebutuhan audit.'
-              : 'Laporan insiden, kerusakan perangkat IT, pemeliharaan fasilitas GA, dan permintaan lisensi software.'}
+              ? 'Pemantauan read-only tiket helpdesk sesuai ruang lingkup akses audit.'
+              : 'Daftar tiket pada antrean dan ruang lingkup yang diberikan melalui permission dan scope Anda.'}
           </p>
         </div>
 
@@ -153,7 +132,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateTicket && (
             <button
               id="btn-create-ticket"
               onClick={handleOpenCreate}
@@ -452,20 +431,16 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <div className="text-center py-12 rounded-2xl bg-white border border-slate-200 p-8 space-y-3 shadow-xs">
               <LifeBuoy className="w-12 h-12 mx-auto text-slate-300" />
               <h4 className="font-bold text-slate-800 text-sm">
-                {isSelfTicketsOnly 
-                  ? 'Belum Ada Tiket Kendala dari Anda' 
-                  : isGA 
-                  ? 'Belum Ada Tiket Layanan GA'
+                {isSelfTicketsOnly
+                  ? 'Belum Ada Tiket Kendala dari Anda'
                   : 'Tidak Ada Tiket Ditemukan'}
               </h4>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                {isSelfTicketsOnly 
-                  ? 'Anda belum memiliki riwayat pengajuan tiket kendala. Klik "Buat Tiket Baru" jika Anda mengalami gangguan IT atau fasilitas kantor.'
-                  : isGA
-                  ? 'Tidak ada tiket kendala fasilitas GA yang menunggu penanganan.'
+                {isSelfTicketsOnly
+                  ? 'Anda belum memiliki riwayat pengajuan tiket kendala. Klik "Buat Tiket Baru" jika Anda mengalami gangguan atau membutuhkan bantuan.'
                   : 'Tidak ada tiket yang cocok dengan pencarian atau filter status yang dipilih.'}
               </p>
-              {isSelfTicketsOnly && (
+              {isSelfTicketsOnly && canCreateTicket && (
                 <button
                   onClick={handleOpenCreate}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs"

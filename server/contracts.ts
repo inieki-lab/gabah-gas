@@ -64,24 +64,29 @@ export function getReminderLevel(contract: ServerContract): { level: 'normal' | 
 }
 
 export function canSeeContract(user: ServerUser, contract: ServerContract): boolean {
-  if (isSuperadminActor(user) || isAuditorActor(user)) return true;
-  if (contract.pic_user_id === user.id) return true;
+  if (isSuperadminActor(user)) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
-  if (!owner) return false;
-
   if (isPostgresPersistenceActive()) {
-    return hasRbacPermission(String(user.id), 'contracts.read')
-      && hasRbacScope(String(user.id), 'division', owner, 'contracts');
+    // Auditor's explicit audit.read + global audit scope grants cross-domain
+    // read visibility for audit work. The global security middleware still
+    // denies every write, even when Auditor is an additional assigned role.
+    const hasGlobalAuditRead = isAuditorActor(user)
+      && hasRbacPermission(String(user.id), 'audit.read')
+      && hasRbacScope(String(user.id), 'all', null, 'audit');
+    if (hasGlobalAuditRead) return true;
+    if (!hasRbacPermission(String(user.id), 'contracts.read')) return false;
+    if (contract.pic_user_id === user.id) return true;
+    return Boolean(owner) && hasRbacScope(String(user.id), 'division', owner, 'contracts');
   }
-
-  return user.role === owner;
+  if (isAuditorActor(user)) return true;
+  if (contract.pic_user_id === user.id) return true;
+  return Boolean(owner) && user.role === owner;
 }
 
 export function canManageContracts(user: ServerUser): boolean {
   if (isSuperadminActor(user)) return true;
   if (isPostgresPersistenceActive()) {
-    return hasRbacPermission(String(user.id), 'contracts.create')
-      || hasRbacPermission(String(user.id), 'contracts.update');
+    return hasRbacPermission(String(user.id), 'contracts.create');
   }
   return user.role === 'IT' || user.role === 'GA';
 }
@@ -99,6 +104,18 @@ export function canEditContract(user: ServerUser, contract: ServerContract): boo
   if (isPostgresPersistenceActive()) {
     return hasRbacPermission(String(user.id), 'contracts.update')
       && hasRbacScope(String(user.id), 'division', owner, 'contracts');
+  }
+  return user.role === owner;
+}
+
+/** Contract sub-resources use their own capability plus record-level ownership/scope. */
+export function canManageContractCapability(user: ServerUser, contract: ServerContract, permissionKey: 'contracts.documents.upload' | 'contracts.milestones.manage' | 'contracts.renewal.decide'): boolean {
+  if (isSuperadminActor(user)) return true;
+  const owner = String(contract.owner_division || '').trim().toUpperCase();
+  if (!owner) return false;
+  if (isPostgresPersistenceActive()) {
+    return hasRbacPermission(String(user.id), permissionKey)
+      && (contract.pic_user_id === user.id || hasRbacScope(String(user.id), 'division', owner, 'contracts'));
   }
   return user.role === owner;
 }
@@ -245,7 +262,7 @@ export const ContractDomainService = {
   addDocument(contractId: string, doc: { kind: ServerContractDocument['kind']; file_name: string; file_ref: string }, actor: ServerUser): ServerContract {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
-    if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
+    if (!canManageContractCapability(actor, contract, 'contracts.documents.upload')) throw new Error('Akses ditolak: permission contracts.documents.upload atau scope kontrak tidak diberikan.');
 
     // Versioning-ready: documents are appended, never overwritten
     contract.documents.push({
@@ -265,7 +282,7 @@ export const ContractDomainService = {
   addMilestone(contractId: string, milestone: Omit<ServerContractMilestone, 'id' | 'status'>, actor: ServerUser): ServerContract {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
-    if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
+    if (!canManageContractCapability(actor, contract, 'contracts.milestones.manage')) throw new Error('Akses ditolak: permission contracts.milestones.manage atau scope kontrak tidak diberikan.');
 
     contract.milestones.push({ ...milestone, id: `CMS-${Date.now()}`, status: 'pending' });
     contract.updated_at = new Date().toISOString();
@@ -276,7 +293,7 @@ export const ContractDomainService = {
   decideRenewal(contractId: string, outcome: RenewalOutcome, notes: string, replacementContractId: string | null, actor: ServerUser): ServerContract {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
-    if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
+    if (!canManageContractCapability(actor, contract, 'contracts.renewal.decide')) throw new Error('Akses ditolak: permission contracts.renewal.decide atau scope kontrak tidak diberikan.');
 
     const allowedOutcomes: RenewalOutcome[] = [
       'pending_decision',
@@ -393,7 +410,7 @@ export const ContractDomainService = {
 
   getNotificationLogs(user: ServerUser, contractId?: string): ServerContractNotificationLog[] {
     const logs = contractId ? db.contractNotificationLogs.filter(l => l.contract_id === contractId) : db.contractNotificationLogs;
-    if (user.role === 'Admin GABAH' || isAuditorActor(user)) return logs;
+    if (isSuperadminActor(user)) return logs;
     const visibleContracts = new Set(this.listContracts(user).map(c => c.id));
     return logs.filter(l => visibleContracts.has(l.contract_id));
   },

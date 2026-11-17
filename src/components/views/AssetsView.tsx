@@ -119,12 +119,17 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
     });
   }, [safeAssets, selectedDivision, selectedCategory, selectedStatus, searchQuery]);
 
-  const canCreateAsset = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('assets.create')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const canImportAssets = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('assets.bulk_import')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const isAuditor = Array.isArray(currentUser.role_keys) ? currentUser.role_keys.includes('auditor') : currentUser.role === 'Auditor';
+  const canReportAsset = !isAuditor && (Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('tickets.create')
+    : true);
+  const canCreateAsset = !isAuditor && (Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('assets.create')
+    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role));
+  const canImportAssets = !isAuditor && (Array.isArray(currentUser.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes('assets.bulk_import')
+    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role));
+  const canManageAsset = (asset: Asset) => GabahService.canEditAsset(currentUser, asset) || GabahService.canAssignAsset(currentUser, asset) || GabahService.canManageAssetLifecycle(currentUser, asset);
 
   return (
     <div className="space-y-6">
@@ -387,7 +392,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
                             Pool / Belum Di-assign
                           </span>
-                          {onEditAsset && GabahService.canEditAsset(currentUser, asset) && (
+                          {onEditAsset && GabahService.canAssignAsset(currentUser, asset) && (
                             <button
                               type="button"
                               onClick={(e) => {
@@ -437,7 +442,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                     {/* Actions */}
                     <td className="px-4 py-3.5 align-top text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
-                        {onEditAsset && GabahService.canEditAsset(currentUser, asset) && (
+                        {onEditAsset && canManageAsset(asset) && (
                           <button
                             onClick={() => onEditAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
@@ -453,7 +458,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
-                        {onReportAsset && currentUser?.role !== 'Auditor' && (
+                        {onReportAsset && canReportAsset && (
                           <button
                             onClick={() => onReportAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"

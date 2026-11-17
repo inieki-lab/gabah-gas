@@ -59,8 +59,15 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
   const [returnNotes, setReturnNotes] = useState<string>('');
 
-  const isEmployee = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
-  const isAuditor = currentUser?.role === 'Auditor';
+  const hasEffectivePermission = (key: string) => Array.isArray(currentUser?.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key)
+    : undefined;
+  const isAuditor = currentUser?.role_keys !== undefined
+    ? currentUser.role_keys.includes('auditor')
+    : currentUser?.role === 'Auditor';
+  const hasLoanQueueCapability = ['loans.approve', 'loans.reject', 'loans.handover'].some(key => hasEffectivePermission(key) === true);
+  const isEmployee = !isAuditor && !hasLoanQueueCapability;
+  const canCreateLoan = hasEffectivePermission('loans.create') ?? !isAuditor;
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeAssets = Array.isArray(assets) ? assets : [];
   const currentUserId = currentUser?.id || '';
@@ -112,7 +119,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateLoan && (
             <button
               id="btn-create-loan"
               onClick={handleOpenCreate}
@@ -342,7 +349,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 ? 'Anda belum memiliki riwayat pengajuan peminjaman barang. Klik tombol "Ajukan Peminjaman Baru" untuk meminjam mobil operasional atau laptop cadangan.'
                 : 'Tidak ada data peminjaman untuk filter status ini.'}
             </p>
-            {isEmployee && (
+            {isEmployee && canCreateLoan && (
               <button
                 onClick={handleOpenCreate}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"

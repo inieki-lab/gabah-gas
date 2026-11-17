@@ -5,7 +5,8 @@ export interface ServerUser {
   id: string;
   name: string;
   email: string;
-  role: 'Admin GABAH' | 'IT' | 'GA' | 'Supply Chain' | 'PIBC' | 'Karyawan' | 'Auditor' | 'Sekretaris Direksi' | 'Humas';
+  /** Legacy employee profile label only; never an authorization source. */
+  role: string;
   role_label?: string;
   division: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
   department: string;

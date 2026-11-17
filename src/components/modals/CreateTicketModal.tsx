@@ -47,7 +47,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
 
-  const isAuditor = currentUser?.role === 'Auditor';
+  const isAuditor = Array.isArray(currentUser?.role_keys) ? currentUser?.role_keys?.includes('auditor') === true : currentUser?.role === 'Auditor';
 
   // Freshservice-inspired Quick Service Catalog Templates
   const serviceCatalogTemplates = [

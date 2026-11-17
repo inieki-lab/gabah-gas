@@ -100,6 +100,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const isGA = ownerDivision === 'GA' || (!isSC && !isPIBC && !isIT);
   const isLicense = asset.category_type === 'License' || asset.category_code === 'SLIC' || asset.asset_number?.includes('-SLIC-');
   const canEdit = currentUser ? GabahService.canEditAsset(currentUser, asset) : false;
+  const canAssign = currentUser ? GabahService.canAssignAsset(currentUser, asset) : false;
+  const canChangeStatus = currentUser ? GabahService.canManageAssetLifecycle(currentUser, asset) : false;
+  const canManage = canEdit || canAssign || canChangeStatus;
 
   let ownershipRuleText = '';
   if (asset.category_code === 'INV-F' || asset.asset_number?.includes('-INV-F-')) {
@@ -425,7 +428,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         <span>Cetak BAST</span>
                       </button>
                     )}
-                    {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                    {onEditThisAsset && canManage && (
                       <button
                         type="button"
                         onClick={() => onEditThisAsset(asset)}
@@ -449,7 +452,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <div className="text-[11px] text-slate-600">Aset siap ditugaskan secara manual ke karyawan Food Station.</div>
                     </div>
                   </div>
-                  {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                  {onEditThisAsset && canAssign && (
                     <button
                       type="button"
                       onClick={() => onEditThisAsset(asset)}
@@ -715,7 +718,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 </button>
               )}
 
-              {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+              {onEditThisAsset && canManage && (
                 <button
                   type="button"
                   onClick={() => {

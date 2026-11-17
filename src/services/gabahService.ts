@@ -306,12 +306,8 @@ export function parseUsersImportCsv(
   const valid: { name: string; email: string; role: string; division: string; department: string; phone: string; job_level_code?: string; unit_id?: string; office_location_id?: string }[] = [];
   const errors: string[] = [];
   const seenEmails = new Set<string>();
-  const normRole = (v: string) => {
-    const normalized = (v || '').trim().toLowerCase();
-    return validRoles.find(r => r.toLowerCase() === normalized)
-      || validRoles.find(r => r.toLowerCase().startsWith(normalized) && normalized.length >= 2)
-      || '';
-  };
+  // Employee profile labels are free-form and never map to application permissions.
+  const normRole = (v: string) => String(v || '').trim().slice(0, 120) || 'Pegawai';
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     const rowNo = i + 1;
@@ -322,11 +318,7 @@ export function parseUsersImportCsv(
     if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di file (${email}).`); continue; }
     seenEmails.add(email);
     const roleRaw = iRole !== -1 ? (r[iRole] || '').trim() : '';
-    const role = roleRaw ? normRole(roleRaw) : 'Karyawan';
-    if (roleRaw && !role) {
-      errors.push(`Baris ${rowNo}: Role utama "${roleRaw}" tidak valid. Pilihan: ${validRoles.join(', ')}. Role fungsi ditetapkan setelah akun dibuat.`);
-      continue;
-    }
+    const role = normRole(roleRaw);
     const divisionRaw = iDiv !== -1 ? (r[iDiv] || '').trim() : '';
     const division = validDivisions.find(d => d.toLowerCase() === divisionRaw.toLowerCase()) || divisionRaw || 'Umum';
     const jobLevelCode = iJobLevel !== -1 ? (r[iJobLevel] || '').trim().toUpperCase() : '';
@@ -630,12 +622,12 @@ export class GabahService {
 
   // RBAC Permission helpers
   static canEditAsset(user?: UserProfile, asset?: Asset | null): boolean {
-    if (!user || !asset) return false;
+    if (!user || !asset || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     // PostgreSQL/Dynamic RBAC: the API has already applied the object's owner
     // scope. The client checks the effective permission only; it must not
     // reconstruct ownership authority from a legacy branch-role label.
     if (Array.isArray(user.permission_keys)) {
-      return user.permission_keys.includes('assets.update');
+      return user.permission_keys.includes('*') || user.permission_keys.includes('assets.update');
     }
     // File-store compatibility only. This fallback is not an authorization
     // boundary; production authorization is enforced by the API.
@@ -645,10 +637,28 @@ export class GabahService {
     return false;
   }
 
-  static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
-    if (!user) return false;
+  static canManageAssetLifecycle(user?: UserProfile, asset?: Asset | null): boolean {
+    if (!user || !asset || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     if (Array.isArray(user.permission_keys)) {
-      return user.permission_keys.includes('loans.approve');
+      return user.permission_keys.includes('*') || user.permission_keys.includes('assets.lifecycle');
+    }
+    return this.canEditAsset(user, asset);
+  }
+
+  static canAssignAsset(user?: UserProfile, asset?: Asset | null): boolean {
+    if (!user || !asset || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
+    if (Array.isArray(user.permission_keys)) {
+      return user.permission_keys.includes('*') || user.permission_keys.includes('assets.assign');
+    }
+    return user.role === 'Admin GABAH'
+      || (user.role === 'IT' && asset.owner_division === 'IT')
+      || (user.role === 'GA' && asset.owner_division === 'GA');
+  }
+
+  static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
+    if (!user || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
+    if (Array.isArray(user.permission_keys)) {
+      return user.permission_keys.includes('*') || user.permission_keys.includes('loans.approve');
     }
     if (user.role === 'Admin GABAH') return true;
     if (!loan) return false;
@@ -659,9 +669,9 @@ export class GabahService {
   }
 
   static canManageTickets(user?: UserProfile): boolean {
-    if (!user) return false;
+    if (!user || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+      return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
     return ['Admin GABAH', 'IT', 'GA'].includes(user.role);
   }
@@ -711,9 +721,9 @@ export class GabahService {
   }
 
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
-    if (!user || !ticket) return false;
+    if (!user || !ticket || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+      return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
     if (user.role === 'Admin GABAH' || user.role === 'IT') return true;
     if (user.role === 'GA' && ticket.category === 'GA') return true;

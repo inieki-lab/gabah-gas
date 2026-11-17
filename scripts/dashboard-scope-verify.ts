@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import type { Asset, Loan, Ticket, UserProfile } from '../src/types';
 import { filterDashboardAssets, filterDashboardLoans, filterDashboardTickets, filterPersonalAssets, filterPersonalLoans, filterMaintenanceForRole, filterContractsForRole } from '../src/dashboard/roleDashboardScope';
 import { isExactIdentityNameMatch } from '../src/utils/identityMatching';
@@ -93,5 +94,12 @@ const gaUser = { ...user, role: 'GA' } as UserProfile;
 assert.deepEqual(filterContractsForRole(contracts, gaUser).map(x => x.id), ['ga-contract', 'pic-contract'], 'division owners and assigned PICs can view their contracts');
 assert.deepEqual(filterContractsForRole(contracts, user).map(x => x.id), ['pic-contract']);
 assert.equal(filterContractsForRole(contracts, { ...user, role: 'Auditor' } as UserProfile).length, contracts.length);
+
+const dashboardView = fs.readFileSync('src/components/views/DashboardView.tsx', 'utf8');
+assert.match(dashboardView, /const hasOperationalManagementAccess = operationalManagementPermissions\.some\(canPermission\)/);
+assert.match(dashboardView, /const isEmployee = !isSuperAdmin && !isAuditor && !hasOperationalManagementAccess/);
+assert.match(dashboardView, /const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess/);
+assert.match(dashboardView, /'licenses\.manage'[\s\S]*'knowledge\.create'[\s\S]*'contracts\.update'[\s\S]*'vendors\.update'/);
+assert.doesNotMatch(dashboardView, /const isDivisionDashboard = hasRoleKey\('it', 'IT'\) \|\| hasRoleKey\('ga', 'GA'\)/);
 
 console.log('Role dashboard scope: PASS (division, personal, maintenance, contract, and exact identity scopes)');

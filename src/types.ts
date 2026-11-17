@@ -20,7 +20,8 @@ export type AssetStatus =
 
 export type AssetCondition = 'new' | 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged';
 
-export type OwnerDivision = 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum' | string;
+/** Owner domain is configurable master data; office/location codes are not divisions. */
+export type OwnerDivision = string;
 
 export interface LicenseDetail {
   license_key?: string;
@@ -244,16 +245,11 @@ export interface KnowledgeArticle {
   updated_at: string;
 }
 
-export type UserRole =
-  | 'Admin GABAH'
-  | 'IT'
-  | 'GA'
-  | 'Sekretaris Direksi'
-  | 'Humas'
-  | 'Supply Chain'
-  | 'PIBC'
-  | 'Karyawan'
-  | 'Auditor';
+/**
+ * Role names are database-managed and may be created by Superadmin.
+ * Legacy labels remain accepted for compatibility with older records only.
+ */
+export type UserRole = string;
 
 export interface UserProfile {
   id: string;

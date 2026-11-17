@@ -29,7 +29,7 @@ export async function refreshRbacPolicy(): Promise<void> {
 
   const roles = await queryRbac<any>(
     'SELECT ur.user_id, r.role_key, r.name AS role_name, r.is_superadmin, r.is_active, p.permission_key ' +
-    'FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id ' +
+    'FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id JOIN users u ON u.id::text = ur.user_id AND u.is_active = TRUE ' +
     'LEFT JOIN gabah_role_permissions rp ON rp.role_id = r.id ' +
     'LEFT JOIN gabah_permissions p ON p.permission_key = rp.permission_key AND p.is_active = TRUE ' +
     'WHERE r.is_active = TRUE ORDER BY ur.user_id, r.role_key, p.permission_key',
@@ -78,7 +78,7 @@ export function isRbacSuperadmin(userId: string): boolean {
 
 /** Preserve local file-store development while making PostgreSQL role identity authoritative. */
 export function isSuperadminActor(actor: { id: string; role?: string }): boolean {
-  return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : actor.role === 'Admin GABAH';
+  return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : (actor.id === 'USR-01' || actor.role === 'Admin GABAH');
 }
 
 /** Auditor is a deny-write capability: assigning it as an additional role must not bypass read-only enforcement. */

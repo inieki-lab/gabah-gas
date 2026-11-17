@@ -234,7 +234,7 @@ class GabahApiClient {
     return this.request<any>('/api/auth/me');
   }
 
-  async switchRole(target: string | { userId?: string; role?: string }): Promise<any> {
+  async switchRole(target: string | { userId: string }): Promise<any> {
     const payload = typeof target === 'string' ? { userId: target } : target;
     const data = await this.request<any>('/api/auth/switch-role', {
       method: 'POST',

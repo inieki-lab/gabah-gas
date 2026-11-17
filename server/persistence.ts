@@ -184,9 +184,9 @@ function hydrateDbFromState(state: any): void {
         authVersion: 1,
       });
     } else {
-      // Sync canonical role and label if needed
-      mergedUsers[foundIndex].role = cu.role;
-      mergedUsers[foundIndex].role_label = cu.role_label || mergedUsers[foundIndex].role_label;
+      // Canonical account identity does not overwrite the employee profile.
+      if (!mergedUsers[foundIndex].role) mergedUsers[foundIndex].role = cu.role;
+      if (!mergedUsers[foundIndex].role_label) mergedUsers[foundIndex].role_label = cu.role_label;
       if (typeof mergedUsers[foundIndex].authVersion !== 'number') mergedUsers[foundIndex].authVersion = 1;
     }
   }
@@ -379,7 +379,7 @@ function createPayload() {
  * - Migration files are expected to be idempotent (IF NOT EXISTS / ALTER guards)
  *   so re-running them on an already-migrated database is a safe no-op.
  */
-async function ensureNormalizedSchema(): Promise<void> {
+async function ensureNormalizedSchema(postSeedPhase = false): Promise<void> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version VARCHAR(16) PRIMARY KEY,
@@ -392,6 +392,11 @@ async function ensureNormalizedSchema(): Promise<void> {
   if (!fs.existsSync(migrationsDir)) return;
   const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
   for (const file of files) {
+    // Post-seed migrations run only after canonical users have been materialized
+    // into the normalized PostgreSQL tables. This is required for one-time
+    // identity/assignment backfills that cannot see users during schema boot.
+    const isPostSeedMigration = file.includes('_post_seed_');
+    if (isPostSeedMigration !== postSeedPhase) continue;
     const version = file.match(/^(\d+)/)?.[1] || file;
     const applied = await pool.query('SELECT 1 FROM schema_migrations WHERE version = $1', [version]);
     if (applied.rowCount && applied.rowCount > 0) continue;
@@ -426,8 +431,8 @@ async function ensureNormalizedSchema(): Promise<void> {
 function ensureCanonicalAdministrator(): void {
   const legacy = db.users.find(u => u.id === 'USR-01');
   if (legacy) {
-    (legacy as any).role = 'Admin GABAH';
-    (legacy as any).role_label = 'Admin GABAH';
+    if (!(legacy as any).role) (legacy as any).role = 'Pegawai';
+    if (!(legacy as any).role_label) (legacy as any).role_label = 'Super Admin';
   }
 }
 
@@ -584,68 +589,6 @@ async function backfillNormalizedTables(): Promise<void> {
   finally { client.release(); }
 }
 
-function collectLegacyEmployeeCapabilityAssignments(): Array<{ userId: string; roleKey: string }> {
-  return (db.users as any[])
-    .filter(user => ['Humas', 'Sekretaris Direksi'].includes(String(user.role || '').trim()))
-    .map(user => ({
-      userId: String(user.id),
-      roleKey: String(user.role).trim() === 'Humas' ? 'humas' : 'sekretaris_direksi',
-    }));
-}
-
-function normalizeLegacyEmployeeProfileRoles(): void {
-  for (const user of db.users as any[]) {
-    const legacyRole = String(user.role || '').trim();
-    if (!['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(legacyRole)) continue;
-
-    if (legacyRole === 'Humas') {
-      if (!user.role_label) user.role_label = 'Humas & Protokoler';
-    } else if (legacyRole === 'Sekretaris Direksi') {
-      if (!user.role_label) user.role_label = 'Sekretariat Direksi';
-    } else if (legacyRole === 'Supply Chain') {
-      if (!user.role_label) user.role_label = 'Karyawan — Lokasi RPC/SC';
-      if (!user.office_location_id && db.officeLocations.some(location => location.id === 'OFF-RPC')) {
-        user.office_location_id = 'OFF-RPC';
-      }
-    } else if (legacyRole === 'PIBC') {
-      if (!user.role_label) user.role_label = 'Karyawan — Lokasi PIBC';
-      if (!user.office_location_id && db.officeLocations.some(location => location.id === 'OFF-PIBC')) {
-        user.office_location_id = 'OFF-PIBC';
-      }
-    }
-
-    user.role = 'Karyawan';
-  }
-}
-
-async function ensureEmployeeCapabilityAssignments(assignments: Array<{ userId: string; roleKey: string }>): Promise<void> {
-  if (assignments.length === 0) return;
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    for (const assignment of assignments) {
-      const role = await client.query(
-        'SELECT id FROM gabah_roles WHERE role_key = $1 AND is_active = TRUE LIMIT 1',
-        [assignment.roleKey],
-      );
-      const roleId = Number(role.rows[0]?.id);
-      if (!Number.isSafeInteger(roleId) || roleId < 1) {
-        throw new Error('Capability role "' + assignment.roleKey + '" belum tersedia/aktif saat normalisasi profil pegawai.');
-      }
-      await client.query(
-        'INSERT INTO gabah_user_roles (user_id, role_id, is_primary, assigned_by_user_id) VALUES ($1, $2, FALSE, NULL) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = FALSE',
-        [assignment.userId, roleId],
-      );
-    }
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
 async function persistPostgresState(): Promise<void> {
   const payload = createPayload();
   await pool.query(
@@ -653,56 +596,17 @@ async function persistPostgresState(): Promise<void> {
     [JSON.stringify(payload)],
   );
   await backfillNormalizedTables();
-  await backfillDynamicRbacUserRoles();
-}
-
-async function backfillDynamicRbacUserRoles(): Promise<void> {
-  // Do not wipe assignments if the in-memory user store is unexpectedly empty.
-  const userIds = db.users.map(user => String(user.id));
-  if (userIds.length === 0) return;
-
-  // Remove assignments for deleted application users. This prevents a deleted
-  // Superadmin's role assignment from being inherited if an ID is reused later.
-  await pool.query(
-    'DELETE FROM gabah_user_roles WHERE NOT (user_id = ANY($1::text[]))',
-    [userIds],
-  );
-
-  // Reconcile only the primary role mirror from users.role. Additional dynamic
-  // role assignments are preserved and remain additive.
-  await pool.query(
-    "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
-    "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
-    "AND ur.is_primary = TRUE " +
-    "AND assigned_role.role_key IS DISTINCT FROM CASE u.role " +
-    "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
-    "WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan' " +
-    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END",
-    [userIds],
-  );
-  // The users.role field is the primary application role; additional roles
-  // remain assigned but are never marked primary by this compatibility bridge.
-  await pool.query(
-    'UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = ANY($1::text[])',
-    [userIds],
-  );
-  await pool.query(
-    "INSERT INTO gabah_user_roles (user_id, role_id, is_primary) " +
-    "SELECT u.id::text, r.id, TRUE FROM users u " +
-    "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
-    "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
-    "WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan' " +
-    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END OR r.name = u.role) " +
-    "WHERE u.id::text = ANY($1::text[]) " +
-    "ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE",
-    [userIds],
-  );
 }
 
 export async function initializePersistence(): Promise<void> {
-  // If PostgreSQL is not configured with an external address, operate standalone with local persistent file store
+  // Production must always have an explicitly configured PostgreSQL authority.
+  // An empty DATABASE_URL/PGHOST must never activate the standalone JSON store.
+  if (process.env.NODE_ENV === 'production' && !dbConfig.isConfigured) {
+    isPostgresAvailable = false;
+    throw new Error('[GABAH Persistence] FATAL: DATABASE_URL or PGHOST is required in production. Refusing to start with the file store.');
+  }
+
+  // Development and test environments may operate standalone with local persistent file store.
   if (!dbConfig.isConfigured) {
     isPostgresAvailable = false;
     console.log('[GABAH Persistence] Standalone environment active. Utilizing resilient local file storage.');
@@ -750,12 +654,23 @@ export async function initializePersistence(): Promise<void> {
       ensureCanonicalAdministrator();
       provisionCanonicalUserPasswords();
 
-      // First materialize canonical users so FK-backed capability assignments
-      // can be inserted safely. Only then normalize legacy profile labels.
+      // Materialize canonical user records before post-seed migrations. The
+      // ordinary schema migrations run before users exist on a fresh database;
+      // therefore the explicit post-seed migration phase is where the one-time
+      // legacy RBAC assignment backfill can safely see those users.
       await backfillNormalizedTables();
-      const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments();
-      await ensureEmployeeCapabilityAssignments(legacyCapabilities);
-      normalizeLegacyEmployeeProfileRoles();
+      await ensureNormalizedSchema(true);
+
+      // PostgreSQL is authoritative for the normalized employee profile. Apply
+      // one-time migration results to the in-memory snapshot before it is saved
+      // or synchronized again; preserve role_label and all other profile fields.
+      const normalizedUsers = await pool.query<{ id: string; role: string }>('SELECT id::text AS id, role FROM users');
+      const normalizedRoles = new Map<string, string>();
+      for (const row of normalizedUsers.rows) normalizedRoles.set(String(row.id), String(row.role));
+      for (const user of db.users) {
+        const normalizedRole = normalizedRoles.get(String(user.id));
+        if (normalizedRole) user.role = normalizedRole;
+      }
       saveStateToFile(createPayload());
 
       await persistPostgresState();

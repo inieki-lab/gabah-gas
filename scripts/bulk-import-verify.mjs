@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { getAvailablePort } from './test-port.mjs';
 
 const results = [];
 function record(test, expected, actual, pass) {
@@ -61,7 +62,7 @@ async function main() {
     fs.rmSync(stateFile);
   }
 
-  const PORT = 39000 + Math.floor(Math.random() * 2000);
+  const PORT = await getAvailablePort();
   const base = `http://127.0.0.1:${PORT}`;
   const adminPass = crypto.randomBytes(12).toString('base64url');
   const child = spawn(process.execPath, [serverPath], {
@@ -109,17 +110,17 @@ async function main() {
     // NOTE: /api/auth/switch-role ROTATES the session (old token destroyed).
     // The non-admin guard test therefore runs LAST, after all admin-token tests.
 
-    // ---------- Canonical primary-role and legacy-location mapping matrix ----------
-    const invalidPrimaryCreate = await req(base, 'POST', '/api/users', {
+    // ---------- Profile labels are descriptive only; they never grant RBAC roles ----------
+    const customProfile = await req(base, 'POST', '/api/users', {
       token: adminToken,
-      body: { name: 'Primary Role Humas', email: `primary.humas.${crypto.randomBytes(3).toString('hex')}@foodstation.co.id`, role: 'Humas' },
+      body: { name: 'Profile Admin ME', email: `profile.me.${crypto.randomBytes(3).toString('hex')}@foodstation.co.id`, role: 'Admin ME' },
     });
-    record('Create user rejects function role as primary profile', '400', `HTTP ${invalidPrimaryCreate.status}`, invalidPrimaryCreate.status === 400);
-    const invalidBranchCreate = await req(base, 'POST', '/api/users', {
+    record('Create user accepts a custom employee profile label', '201', `HTTP ${customProfile.status}`, customProfile.status === 201 && customProfile.json?.data?.role === 'Admin ME');
+    const functionProfile = await req(base, 'POST', '/api/users', {
       token: adminToken,
-      body: { name: 'Primary Role SC', email: `primary.sc.${crypto.randomBytes(3).toString('hex')}@foodstation.co.id`, role: 'Supply Chain' },
+      body: { name: 'Profile Humas', email: `profile.humas.${crypto.randomBytes(3).toString('hex')}@foodstation.co.id`, role: 'Humas' },
     });
-    record('Create user rejects location label as primary profile', '400', `HTTP ${invalidBranchCreate.status}`, invalidBranchCreate.status === 400);
+    record('Create user accepts function profile label without permission assignment', '201', `HTTP ${functionProfile.status}`, functionProfile.status === 201 && functionProfile.json?.data?.role === 'Humas');
 
     // ---------- Happy path: 2 new users + invalid rows ----------
     const suffix = crypto.randomBytes(3).toString('hex');
@@ -133,10 +134,11 @@ async function main() {
       body: { users: [...batch1, { name: 'Email Rusak', email: 'bukan-email', role: 'Karyawan' }] },
     });
     const d1 = r1.json?.data || {};
-    record('Bulk import creates only canonical primary-role row', 'created=1', `created=${d1.created}`, d1.created === 1);
-    record('Invalid email, unknown role, and function role rows rejected', 'failed=3', `failed=${d1.failed}`, d1.failed === 3);
-    record('Unknown/function primary roles are returned as row errors', 'errors=3', `errors=${(d1.errors || []).length}`, (d1.errors || []).length === 3);
-    record('Humas is rejected as primary role', 'Humas row rejected with additional-role guidance', (d1.errors || []).some(e => e.includes('role tambahan')), (d1.errors || []).some(e => e.includes('role tambahan')));
+    record('Bulk import accepts custom/function profile labels', 'created=3', `created=${d1.created}`, d1.created === 3);
+    record('Only invalid email row is rejected', 'failed=1', `failed=${d1.failed}`, d1.failed === 1);
+    const profileLabelErrors = (d1.errors || []).filter(error => /role|peran|label profil/i.test(String(error)));
+    record('No profile-label validation errors', 'errors=0', `errors=${profileLabelErrors.length}`, profileLabelErrors.length === 0);
+    record('Humas is stored as a profile label', 'Humas profile', (d1.users || []).find(u => u.email === `impor.humas.${suffix}@foodstation.co.id`)?.role, (d1.users || []).some(u => u.email === `impor.humas.${suffix}@foodstation.co.id` && u.role === 'Humas'));
     record('No password echoed in response', 'no password fields', JSON.stringify(r1.json).includes('password') ? 'found password key' : 'clean',
       !/temp_password|password_hash/.test(JSON.stringify(r1.json)));
 
@@ -153,8 +155,8 @@ async function main() {
     });
     const d2 = r2.json?.data || {};
     record('Second import updates existing email', 'updated=1', `updated=${d2.updated}`, d2.updated === 1);
-    record('Second import creates new accounts for legacy location aliases', 'created=2', `created=${d2.created}`, d2.created === 2);
-    record('Legacy branch role mapping is disclosed', 'warning explains Karyawan + office location', (d2.warnings || []).join(' | '), (d2.warnings || []).some(w => w.includes('dipetakan sebagai Karyawan dengan lokasi kantor')));
+    record('Second import creates new accounts for profile labels', 'created=2', `created=${d2.created}`, d2.created === 2);
+    record('Legacy location labels do not infer office location', 'warning asks explicit office_location_id', (d2.warnings || []).join(' | '), (d2.warnings || []).some(w => w.includes('lokasi kantor tidak ditebak')));
 
     // ---------- Verify persisted state ----------
     const list = await req(base, 'GET', '/api/users', { token: adminToken });
@@ -167,19 +169,17 @@ async function main() {
       token: adminToken,
       body: { role: 'Supply Chain' },
     });
-    record('Update user rejects branch label as primary profile', '400', `HTTP ${invalidPrimaryUpdate.status}`, invalidPrimaryUpdate.status === 400);
+    record('Update user accepts profile label without changing RBAC assignment', '200', `HTTP ${invalidPrimaryUpdate.status}`, invalidPrimaryUpdate.status === 200);
     record('No duplicate account after re-import', 'single account', `count=${users.filter(u => u.email === `impor.dua.${suffix}@foodstation.co.id`).length}`,
       users.filter(u => u.email === `impor.dua.${suffix}@foodstation.co.id`).length === 1);
     const unknownRoleUser = users.find(u => u.email === `impor.tiga.${suffix}@foodstation.co.id`);
-    record('Unknown primary role was not created', 'no account', unknownRoleUser ? unknownRoleUser.role : 'not created', !unknownRoleUser);
+    record('Custom profile label is retained', 'Peran Ngawur', unknownRoleUser?.role || 'not created', unknownRoleUser?.role === 'Peran Ngawur');
     const branchUser = users.find(u => u.email === `impor.empat.${suffix}@foodstation.co.id`);
-    record('Legacy PIBC role maps to Karyawan + office location (unit stays independent)', 'Karyawan / OFF-PIBC', `${branchUser?.role} / unit=${branchUser?.unit_id || 'none'} / ${branchUser?.office_location_id}`,
-      branchUser?.role === 'Karyawan' && !branchUser?.unit_id && branchUser?.office_location_id === 'OFF-PIBC');
+    record('PIBC profile does not infer office location', 'PIBC / no office assignment', `${branchUser?.role} / ${branchUser?.office_location_id || 'none'}`, branchUser?.role === 'PIBC' && !branchUser?.office_location_id);
     const rpcUser = users.find(u => u.email === `impor.lima.${suffix}@foodstation.co.id`);
-    record('Legacy Supply Chain role maps to Karyawan + RPC office location (unit stays independent)', 'Karyawan / OFF-RPC', `${rpcUser?.role} / unit=${rpcUser?.unit_id || 'none'} / ${rpcUser?.office_location_id}`,
-      rpcUser?.role === 'Karyawan' && !rpcUser?.unit_id && rpcUser?.office_location_id === 'OFF-RPC');
+    record('Supply Chain profile does not infer office location', 'Supply Chain / no office assignment', `${rpcUser?.role} / ${rpcUser?.office_location_id || 'none'}`, rpcUser?.role === 'Supply Chain' && !rpcUser?.office_location_id);
     const functionRoleUser = users.find(u => u.email === `impor.humas.${suffix}@foodstation.co.id`);
-    record('Function role was not created as primary profile', 'no Humas user', functionRoleUser ? functionRoleUser.role : 'not created', !functionRoleUser);
+    record('Function profile is retained without access-role implication', 'Humas', functionRoleUser?.role || 'not created', functionRoleUser?.role === 'Humas');
 
     // ---------- Empty batch rejected ----------
     const r3 = await req(base, 'POST', '/api/users/bulk-import', { token: adminToken, body: { users: [] } });

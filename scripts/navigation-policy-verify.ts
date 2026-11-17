@@ -38,7 +38,7 @@ assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance', ['dashboard.read', 'a
 assert.equal(isNavTabAllowedForRole('IT', 'assets', ['assets.update']), false);
 assert.equal(isNavTabAllowedForRole('GA', 'assets', ['assets.create']), false);
 assert.ok(isNavTabAllowedForRole('Auditor', 'assets', ['assets.read', 'assets.audit.read']));
-assert.equal(isNavTabAllowedForRole('Auditor', 'assets', ['assets.audit.read']), false);
+assert.ok(isNavTabAllowedForRole('Auditor', 'assets', ['assets.audit.read']));
 assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'assets', ['assets.catalog.read']), false);
 assert.ok(isNavTabAllowedForRole('IT', 'assets', ['assets.catalog.read', 'assets.read']));
 assert.ok(isNavTabAllowedForRole('GA', 'assets', ['assets.catalog.read', 'assets.read']));
@@ -54,6 +54,14 @@ assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'r
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loans.read']), 'tickets');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), null);
+
+
+// PostgreSQL permissions work without a primary/legacy role label.
+assert.ok(isNavTabAllowedForRole(undefined, 'reports', ['reports.read']));
+assert.ok(isNavTabAllowedForRole(null, 'tickets', ['tickets.read']));
+assert.equal(isNavTabAllowedForRole(undefined, 'reports', []), false);
+assert.equal(getDefaultNavTabForRole(undefined, ['reports.read']), 'reports');
+assert.equal(getDefaultNavTabForRole(null, []), null);
 
 // Administration visibility follows effective Superadmin capability, not a legacy label.
 assert.equal(isSuperadminNavigationAllowed('Admin GABAH', false, ['dashboard.read']), false);

@@ -146,10 +146,10 @@ function assetMatchesAssetScope(asset: ServerAsset, scope: AssetScopeSpec, user:
  * dinamis dari gabah_role_division_scopes dengan semantik sisi baca yang dapat
  * dipakai ulang oleh modul lain (mis. Maintenance) tanpa mengubah perilaku.
  */
-export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAsset): boolean {
+export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAsset, module = 'assets'): boolean {
   const owner = String(asset.owner_division || '').trim().toUpperCase();
   if (!owner) return false;
-  const scopes = dynamicScopesForUser(user);
+  const scopes = dynamicScopesForUser(user, module);
   if (scopes == null) return false; // tanpa policy/scope: deny-by-default
   const excluded = scopes.some(scope => scope.type === 'division_except' && textEquals(asset.owner_division, scope.value));
   const explicitOwnerGrant = scopes.some(scope => scope.type === 'division' && assetMatchesAssetScope(asset, scope, user));
@@ -163,9 +163,9 @@ export function assetVisibleUnderDynamicScopes(user: ServerUser, asset: ServerAs
   ));
 }
 
-function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser): ServerAsset[] {
+function filterAssetsByDynamicScopes(assets: ServerAsset[], user: ServerUser, module = 'assets'): ServerAsset[] {
   if (getUserRbacPolicies(String(user.id)).some(policy => policy.isSuperadmin)) return assets;
-  const scopes = dynamicScopesForUser(user);
+  const scopes = dynamicScopesForUser(user, module);
   if (scopes == null) return [];
   const classifiedOwnerAssets = assets.filter(asset => String(asset.owner_division || '').trim().length > 0);
   return classifiedOwnerAssets.filter(asset => {
@@ -256,12 +256,20 @@ export class GabahDomainService {
    * Filter assets based on user's role and division scope
    */
   static getScopedAssets(user: ServerUser): ServerAsset[] {
-    if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
+    if (isSuperadminActor(user)) return db.assets;
+    // Auditor receives cross-domain asset visibility only when the explicit
+    // audit catalogue capability is assigned. Global middleware enforces
+    // read-only behavior for every principal holding the Auditor role.
+    if (isPostgresPersistenceActive()
+      && isAuditorActor(user)
+      && hasRbacPermission(String(user.id), 'assets.audit.read')) return db.assets;
 
-    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
-    const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
-
+    // File-store compatibility only. Historical persona defaults are not
+    // evaluated in PostgreSQL mode.
     if (!isPostgresPersistenceActive()) {
+      if (isAuditorActor(user)) return db.assets;
+      const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+      const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
       if (isEmployeeBaseline) {
         return db.assets.filter(asset => asset.assigned_to?.id === user.id || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())));
       }
@@ -269,9 +277,6 @@ export class GabahDomainService {
         return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
       }
       if (user.role === 'GA') {
-        // File-store compatibility mirrors the conservative legacy default:
-        // GA owns GA assets and may read IT laptops/desktops only. PostgreSQL
-        // deployments use the explicit assets.read.it_workstations capability.
         return db.assets.filter(asset =>
           String(asset.owner_division || '').toUpperCase() === 'GA'
           || (String(asset.owner_division || '').toUpperCase() === 'IT'
@@ -281,33 +286,21 @@ export class GabahDomainService {
       return [];
     }
 
-    // PostgreSQL: combine employee personal baseline with every explicitly
-    // assigned dynamic role scope. A Karyawan can receive extra job-function
-    // roles without changing employee identity or office location.
-    const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
-    if (user.role === 'GA') {
-      const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
-      const isItWorkstation = (asset: ServerAsset) =>
-        ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
-      // GA's writable inventory follows its explicit dynamic owner scope.
-      // The optional IT workstation exception is strictly read-only and limited
-      // to laptop/desktop categories, independent of the GA owner scope.
-      // Keep every explicitly scoped owner domain, including additional
-      // operational capabilities assigned to a GA employee. The IT workstation
-      // exception remains a separate read-only addition.
-      const readOnlyItWorkstations = canReadItWorkstations
-        ? db.assets.filter(asset =>
-          String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
-        )
-        : [];
-      const visibleIds = new Set([...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
-      return db.assets.filter(asset => visibleIds.has(asset.id));
-    }
-
-    const personalAssets = isEmployeeBaseline
-      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
+    // PostgreSQL: every employee and auditor is limited to explicit scopes.
+    // Profile labels, office location, and job title never grant asset visibility.
+    const dynamicAssets = [
+      ...filterAssetsByDynamicScopes(db.assets.filter(asset => asset.category_type !== 'License'), user, 'assets'),
+      ...filterAssetsByDynamicScopes(db.assets.filter(asset => asset.category_type === 'License'), user, 'licenses'),
+    ];
+    const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
+    const isItWorkstation = (asset: ServerAsset) =>
+      ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+    const readOnlyItWorkstations = canReadItWorkstations
+      ? db.assets.filter(asset =>
+        String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
+      )
       : [];
-    const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
+    const visibleIds = new Set([...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
     return db.assets.filter(asset => visibleIds.has(asset.id));
   }
 
@@ -1849,8 +1842,8 @@ export class GabahDomainService {
   }
 
   static createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
-    if (!isSuperadminActor(actor)) {
-      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menambah tipe rapat.');
+    if (!hasRoomPermission(actor, 'meeting_types.manage')) {
+      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama tipe rapat wajib diisi.');
     const newItem: ServerMeetingType = {
@@ -1870,8 +1863,8 @@ export class GabahDomainService {
   }
 
   static updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
-    if (!isSuperadminActor(actor)) {
-      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang mengubah tipe rapat.');
+    if (!hasRoomPermission(actor, 'meeting_types.manage')) {
+      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
     const item = (db.meetingTypes || []).find(m => m.id === id);
     if (!item) throw new Error('Tipe rapat tidak ditemukan.');
@@ -1886,8 +1879,8 @@ export class GabahDomainService {
   }
 
   static deleteMeetingType(id: string, actor: ServerUser): { success: boolean } {
-    if (!isSuperadminActor(actor)) {
-      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menghapus tipe rapat.');
+    if (!hasRoomPermission(actor, 'meeting_types.manage')) {
+      throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
     const idx = (db.meetingTypes || []).findIndex(m => m.id === id);
     if (idx === -1) throw new Error('Tipe rapat tidak ditemukan.');
@@ -1904,7 +1897,9 @@ export class GabahDomainService {
   }
 
   static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
+    if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
+      : actor.role === 'GA' || actor.role === 'IT'))) {
       throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menambah fasilitas.');
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
@@ -1924,7 +1919,9 @@ export class GabahDomainService {
   }
 
   static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
+    if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
+      : actor.role === 'GA' || actor.role === 'IT'))) {
       throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang mengubah fasilitas.');
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
@@ -1939,7 +1936,9 @@ export class GabahDomainService {
   }
 
   static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
+    if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
+      : actor.role === 'GA' || actor.role === 'IT'))) {
       throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menghapus fasilitas.');
     }
     const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);

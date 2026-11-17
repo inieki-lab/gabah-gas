@@ -9,11 +9,12 @@
  *
  * Requires `npm run build` first (dist/server.cjs).
  */
-process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+process.env.NODE_ENV = 'test'; // Isolated API connectivity test; production PostgreSQL fail-fast is covered by CR-04.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import net from 'node:net';
 import { spawn } from 'node:child_process';
 
 const results = [];
@@ -46,6 +47,22 @@ async function waitForServer(base, tries = 60) {
   return false;
 }
 
+async function getAvailablePort() {
+  const probe = net.createServer();
+  await new Promise((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', resolve);
+  });
+  const address = probe.address();
+  if (!address || typeof address === 'string') {
+    await new Promise(resolve => probe.close(resolve));
+    throw new Error('Could not allocate an ephemeral TCP port for menu connectivity test.');
+  }
+  const port = address.port;
+  await new Promise((resolve, reject) => probe.close(error => error ? reject(error) : resolve()));
+  return port;
+}
+
 async function main() {
   const serverPath = path.resolve(process.cwd(), 'dist/server.cjs');
   if (!fs.existsSync(serverPath)) {
@@ -61,14 +78,14 @@ async function main() {
     fs.rmSync(stateFile);
   }
 
-  const PORT = 39000 + Math.floor(Math.random() * 2000);
+  const PORT = await getAvailablePort();
   const base = `http://127.0.0.1:${PORT}`;
   const adminPass = crypto.randomBytes(12).toString('base64url');
   const child = spawn(process.execPath, [serverPath], {
     env: {
       ...process.env,
       PORT: String(PORT),
-      NODE_ENV: 'development',
+      NODE_ENV: 'test',
       GABAH_INITIAL_ADMIN_PASSWORD: adminPass,
       // Neutralize inherited workspace GABAH_TEST_PASSWORD (see .env.local)
       GABAH_TEST_PASSWORD: '',

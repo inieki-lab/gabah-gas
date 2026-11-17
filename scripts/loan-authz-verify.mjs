@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { getAvailablePort } from './test-port.mjs';
 
 const results = [];
 function record(test, expected, actual, pass) {
@@ -77,7 +78,7 @@ async function main() {
     fs.rmSync(stateFile);
   }
 
-  const PORT = 39000 + Math.floor(Math.random() * 2000);
+  const PORT = await getAvailablePort();
   const base = `http://127.0.0.1:${PORT}`;
   const adminPass = crypto.randomBytes(12).toString('base64url');
   const userPass = crypto.randomBytes(12).toString('base64url');
@@ -192,9 +193,14 @@ async function main() {
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].every(a => a.id));
 
     const patchAsset = (assetId, body) => req(base, 'PATCH', `/api/assets/${assetId}`, { token: admin.token, body });
-    const setAssetStatus = (assetId, status) => patchAsset(assetId, { status });
+    // Status changes use the domain workflows, never generic asset PATCH.
+    const setAssetStatus = (assetId, status) => status === 'damaged'
+      ? req(base, 'POST', `/api/assets/${assetId}/lifecycle`, { token: admin.token, body: { action: 'damaged', notes: 'Loan authorization verification fixture' } })
+      : status === 'available'
+        ? req(base, 'POST', `/api/assets/${assetId}/assign`, { token: admin.token, body: { targetUserId: '', reason: 'Return test asset to pool' } })
+        : patchAsset(assetId, { status });
     const invalidAssetStatus = await setAssetStatus(itAsset5.id, 'not-a-real-status');
-    record('Asset update rejects unknown status values', '400', `HTTP ${invalidAssetStatus.status}`, invalidAssetStatus.status === 400);
+    record('Generic asset PATCH rejects direct status changes', '409', `HTTP ${invalidAssetStatus.status}`, invalidAssetStatus.status === 409);
     const invalidLoanableType = await patchAsset(itAsset5.id, { is_loanable: 'false' });
     record('Asset update requires boolean is_loanable', '400', `HTTP ${invalidLoanableType.status}`, invalidLoanableType.status === 400);
     await setAssetStatus(itAsset5.id, 'damaged');
@@ -222,7 +228,7 @@ async function main() {
       ? await req(base, 'POST', `/api/loans/${approvalLoanId}/approve`, { token: it.token, body: {} })
       : { status: 0 };
     record('Approval succeeds after asset is restored to available', '200', `HTTP ${approvalAfterRestore.status}`, approvalAfterRestore.status === 200);
-    const statusEditApproved = await setAssetStatus(itAsset6.id, 'damaged');
+    const statusEditApproved = await patchAsset(itAsset6.id, { status: 'damaged' });
     record('Manual status change is blocked while loan is approved', '409', `HTTP ${statusEditApproved.status}`, statusEditApproved.status === 409);
     const handoverRechecked = approvalLoanId
       ? await req(base, 'POST', `/api/loans/${approvalLoanId}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan setelah approval' } })
@@ -230,7 +236,7 @@ async function main() {
     record('Handover succeeds only after valid approval and reserved asset', '200 + borrowed',
       `HTTP ${handoverRechecked.status} + ${handoverRechecked.json?.data?.status}`,
       handoverRechecked.status === 200 && handoverRechecked.json?.data?.status === 'borrowed');
-    const statusEditBorrowed = await setAssetStatus(itAsset6.id, 'damaged');
+    const statusEditBorrowed = await patchAsset(itAsset6.id, { status: 'damaged' });
     record('Manual status change is blocked while loan is borrowed', '409', `HTTP ${statusEditBorrowed.status}`, statusEditBorrowed.status === 409);
     const returnRechecked = approvalLoanId
       ? await req(base, 'POST', `/api/loans/${approvalLoanId}/return`, { token: karyawan.token, body: { condition: 'good', returnNotes: 'Returned after lifecycle test' } })
@@ -369,7 +375,7 @@ async function main() {
         && assetAfterBlockedMutations?.status === assetBeforeBlockedMutations?.status
         && assetAfterBlockedMutations?.assigned_to?.id === assetBeforeBlockedMutations?.assigned_to?.id
         && loanAfterBlockedMutations === 'borrowed');
-    const statusEditBorrowedL2 = await setAssetStatus(itAsset2.id, 'damaged');
+    const statusEditBorrowedL2 = await patchAsset(itAsset2.id, { status: 'damaged' });
     const loanAfterStatusEditL2 = await loanStatus(L2.id);
     record('Manual asset status edit is blocked during borrowed loan L2', '409 + borrowed',
       `HTTP ${statusEditBorrowedL2.status} + ${loanAfterStatusEditL2}`,

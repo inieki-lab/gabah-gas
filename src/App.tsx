@@ -14,7 +14,6 @@ import {
   MaintenanceStatus,
   MeetingRoom,
   RoomReservation,
-  UserRole,
   Contract,
   AssetMovement
 } from './types';
@@ -246,36 +245,6 @@ export default function App() {
       setIsGlobalSearchOpen(false);
       setIsAdministrationModalOpen(false);
       showToast(`Berpindah akun aktif: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
-      await refreshData();
-    } catch (err: any) {
-      showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
-    }
-  };
-
-  const handleSwitchRoleSimulation = async (role: UserRole) => {
-    try {
-      const res = await gabahApi.switchRole({ role });
-      const targetUser = res?.user || res?.data?.user;
-      if (!targetUser) {
-        showToast('Alih peran ditolak oleh server.', 'warning');
-        return;
-      }
-      setCurrentUser(targetUser);
-      setCurrentTab('dashboard');
-      setMeetingCategoryFilter('all');
-      setSelectedAssetForDetail(null);
-      setSelectedAssetForEdit(null);
-      setSelectedAssetForQr(null);
-      setSelectedLoanForBast(null);
-      setPreselectedTicketAssetId(undefined);
-      setContractForLinkedTicket(null);
-      setLinkedTicketContractId(undefined);
-      setIsCreateAssetModalOpen(false);
-      setIsCreateLoanModalOpen(false);
-      setIsCreateTicketModalOpen(false);
-      setIsGlobalSearchOpen(false);
-      setIsAdministrationModalOpen(false);
-      showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
       showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
@@ -744,7 +713,6 @@ export default function App() {
         currentUser={currentUser}
         allUsers={allUsers}
         onSelectUser={handleSelectUser}
-        onSwitchRoleSimulation={handleSwitchRoleSimulation}
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
         onChangePassword={() => setIsChangePasswordOpen(true)}
@@ -1129,7 +1097,7 @@ export default function App() {
       />
 
       <AdministrationModal
-        isOpen={isAdministrationModalOpen && Boolean(currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH')}
+        isOpen={isAdministrationModalOpen && Boolean(currentUser?.is_superadmin || (currentUser?.permission_keys === undefined && currentUser?.role === 'Admin GABAH'))}
         onClose={() => setIsAdministrationModalOpen(false)}
         users={allUsers}
         auditLogs={auditLogs}
@@ -1166,16 +1134,21 @@ export default function App() {
       <GlobalSearchModal
         isOpen={isGlobalSearchOpen}
         onClose={() => setIsGlobalSearchOpen(false)}
-        assets={isNavTabAllowedForRole(currentUser.role, 'assets') || isNavTabAllowedForRole(currentUser.role, 'my_assets') ? visibleAssets : []}
-        loans={isNavTabAllowedForRole(currentUser.role, 'loans') ? visibleLoans : []}
-        tickets={isNavTabAllowedForRole(currentUser.role, 'tickets') ? visibleTickets : []}
+        assets={isNavTabAllowedForRole(currentUser.role, 'assets', currentUser.permission_keys) || isNavTabAllowedForRole(currentUser.role, 'my_assets', currentUser.permission_keys) || currentUser.permission_keys?.includes('licenses.read') === true ? visibleAssets : []}
+        loans={isNavTabAllowedForRole(currentUser.role, 'loans', currentUser.permission_keys) ? visibleLoans : []}
+        tickets={isNavTabAllowedForRole(currentUser.role, 'tickets', currentUser.permission_keys) ? visibleTickets : []}
         onSelectAsset={(ast) => {
-          if (!isNavTabAllowedForRole(currentUser.role, 'assets') && !isNavTabAllowedForRole(currentUser.role, 'my_assets')) {
-            showToast('Akses pencarian aset tidak tersedia untuk peran Anda.', 'warning');
+          const canReadAssets = isNavTabAllowedForRole(currentUser.role, 'assets', currentUser.permission_keys);
+          const canReadMyAssets = isNavTabAllowedForRole(currentUser.role, 'my_assets', currentUser.permission_keys);
+          const canReadLicenses = currentUser.permission_keys?.includes('licenses.read') === true;
+          if (!canReadAssets && !canReadMyAssets && !canReadLicenses) {
+            showToast('Akses pencarian aset tidak tersedia untuk akun ini.', 'warning');
             return;
           }
           setSelectedAssetForDetail(ast);
-          navigateToTab(isNavTabAllowedForRole(currentUser.role, 'assets') ? 'assets' : 'my_assets');
+          navigateToTab(ast.category_type === 'License' && canReadLicenses && !canReadAssets
+            ? 'licenses'
+            : canReadAssets ? 'assets' : 'my_assets');
         }}
         onSelectLoan={(_loan) => {
           navigateToTab('loans');
