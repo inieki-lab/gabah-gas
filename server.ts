@@ -3695,7 +3695,7 @@ async function startServer() {
       const created = await ContractDomainService.createContract(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3707,7 +3707,7 @@ async function startServer() {
       const updated = await ContractDomainService.updateContract(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3902,7 +3902,7 @@ async function startServer() {
       const updated = await ContractDomainService.addDocument(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3914,7 +3914,7 @@ async function startServer() {
       const updated = await ContractDomainService.addMilestone(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3927,7 +3927,7 @@ async function startServer() {
       const updated = await ContractDomainService.decideRenewal(req.params.id, outcome, notes, replacement_contract_id || null, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
