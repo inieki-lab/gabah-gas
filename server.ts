@@ -2950,7 +2950,7 @@ async function startServer() {
     closed: ['open'],
   };
 
-  app.patch('/api/tickets/:id/status', (req, res) => {
+  app.patch('/api/tickets/:id/status', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'tickets.update')) return;
@@ -2983,8 +2983,14 @@ async function startServer() {
         });
       }
 
-      // Object-level authorization already enforced by middleware for scoped
-      // roles; Admin GABAH handles everything.
+      // Object-level authorization is enforced by middleware for scoped
+      // roles; Admin GABAH handles everything. Persist before reporting success.
+      const previous = {
+        status: ticket.status,
+        resolution_notes: ticket.resolution_notes,
+        resolved_at: ticket.resolved_at,
+        updated_at: ticket.updated_at,
+      };
       ticket.status = nextStatus as any;
       if (resolutionNotes !== undefined) ticket.resolution_notes = resolutionNotes.trim();
       if (nextStatus === 'resolved' || nextStatus === 'closed') {
@@ -2996,12 +3002,31 @@ async function startServer() {
       }
       ticket.updated_at = new Date().toISOString();
 
-      GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
-      persistDataStore().catch(() => {});
+      const auditLog = GabahDomainService.recordAudit(
+        'TICKET_STATUS_UPDATED',
+        'Tickets',
+        `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`,
+        actor,
+        ticket.id,
+      );
+      try {
+        await persistDataStore();
+      } catch (persistenceError: any) {
+        ticket.status = previous.status;
+        ticket.resolution_notes = previous.resolution_notes;
+        ticket.resolved_at = previous.resolved_at;
+        ticket.updated_at = previous.updated_at;
+        db.auditLogs = db.auditLogs.filter(log => log.id !== auditLog.id);
+        await persistDataStore().catch(() => undefined);
+        return res.status(500).json({
+          success: false,
+          message: 'Perubahan status tiket gagal disimpan. Tidak ada perubahan yang diterapkan.',
+        });
+      }
 
-      res.json({ success: true, data: ticket });
+      return res.json({ success: true, data: ticket });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      return res.status(400).json({ success: false, message: err.message });
     }
   });
 
@@ -3710,6 +3735,8 @@ async function startServer() {
     let savedFilePath: string | null = null;
     let savedContract: any = null;
     let savedDocumentId: string | null = null;
+    let savedAuditLog: any = null;
+    let previousContractUpdatedAt: string | undefined;
     try {
       if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
       const actor = getActor(req);
@@ -3756,7 +3783,17 @@ async function startServer() {
         uploaded_by_name: actor.name,
         uploaded_at: new Date().toISOString(),
       });
+      previousContractUpdatedAt = contract.updated_at;
       contract.updated_at = new Date().toISOString();
+      await persistDataStore();
+
+      savedAuditLog = GabahDomainService.recordAudit(
+        'CONTRACT_DOCUMENT_UPLOADED',
+        'Contracts',
+        `Mengunggah dokumen '${fileKind}' pada kontrak ${contract.contract_number}: ${safeFilename} (${file.size} byte)`,
+        actor,
+        contract.id,
+      );
       await persistDataStore();
 
       return res.json({
@@ -3772,11 +3809,16 @@ async function startServer() {
     } catch (err: any) {
       if (savedContract && savedDocumentId) {
         savedContract.documents = savedContract.documents.filter((document: any) => document.id !== savedDocumentId);
+        if (previousContractUpdatedAt !== undefined) savedContract.updated_at = previousContractUpdatedAt;
+      }
+      if (savedAuditLog) {
+        db.auditLogs = db.auditLogs.filter(log => log.id !== savedAuditLog.id);
       }
       if (savedFilePath) {
         await fs.rm(savedFilePath, { force: true }).catch(() => undefined);
       }
-      return res.status(400).json({ success: false, message: err.message });
+      await persistDataStore().catch(() => undefined);
+      return res.status(500).json({ success: false, message: 'Dokumen gagal disimpan secara konsisten. Silakan coba kembali.' });
     }
   });
 
