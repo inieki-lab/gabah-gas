@@ -47,6 +47,9 @@ jobs:
       - name: Production dependency vulnerability gate
         run: npm audit --omit=dev --audit-level=high
 
+      - name: Production build dependency boundary regression
+        run: npm run test:runtime-build-dependency-boundary
+
       - name: Development tooling vulnerability policy (temporary scoped advisory)
         run: node scripts/dev-dependency-audit-policy.mjs
 
