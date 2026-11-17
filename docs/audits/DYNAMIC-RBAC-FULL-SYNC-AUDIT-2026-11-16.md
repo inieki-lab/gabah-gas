@@ -458,3 +458,11 @@ The repository contains a direct architecture/seed contradiction that must be re
 - Komponen grafik hanya dirender bila permission efektif tersedia. Kumpulan aset, pinjaman, dan tiket tetap mengikuti permission baca serta scope data masing-masing; permission analitik tidak memperluas akses data.
 - Regression check pada `scripts/dashboard-scope-verify.ts` memverifikasi gate UI, pendaftaran permission, dan tidak adanya grant otomatis.
 - Perlu verifikasi CI pada exact head dan UAT browser: role tanpa permission tidak melihat bagian analitik; role yang diberi permission melihat hanya agregat dari data dalam scope. Tidak ada perubahan data operasional.
+
+
+### Koreksi menu baseline Karyawan — 17 November 2026
+- Menu **Manajemen Inventaris → Maintenance / Jadwal Servis & Maintenance Berkala** dan **Reservasi Ruang Rapat** tidak lagi diberikan otomatis kepada role Karyawan.
+- Migration `094_employee_self_service_menu_cleanup.sql` mencabut grant `maintenances.read`, `meeting_rooms.read`, dan `room_reservations.read` dari role `karyawan`. Endpoint tetap memeriksa permission backend; menyembunyikan menu bukan satu-satunya kontrol.
+- Legacy file-store navigation juga menghapus `meeting_rooms` dari role Karyawan. Menu Aset/Manajemen Inventaris memang tidak termasuk baseline Karyawan.
+- Akses kedua modul tetap dapat diaktifkan secara eksplisit melalui Administration → Role & Hak Akses pada role yang membutuhkan fungsi tersebut. Tidak ada override per-user.
+- Tidak ada data jadwal, aset, ruang, atau reservasi yang dihapus; migration hanya mengubah assignment permission role Karyawan.
