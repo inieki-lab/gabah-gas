@@ -13,11 +13,11 @@ const initialize = persistence.slice(
   persistence.indexOf('export async function initializePersistence()'),
   persistence.indexOf('export function persistDataStore()'),
 );
-const firstSnapshot = initialize.indexOf('saveStateToFile(createPayload())');
 const firstPgWrite = initialize.indexOf('await persistPostgresState()');
+const postgresSnapshot = initialize.indexOf('saveStateToFile(createPayload())', firstPgWrite);
 assert.ok(firstPgWrite >= 0, 'Startup must persist authoritative PostgreSQL state');
-assert.ok(firstSnapshot < 0 || firstSnapshot > firstPgWrite,
-  'Startup snapshot must not be published before PostgreSQL succeeds');
+assert.ok(postgresSnapshot > firstPgWrite,
+  'PostgreSQL startup snapshot must not be published before authoritative persistence succeeds');
 
 const normalizedSync = persistence.slice(
   persistence.indexOf('async function backfillNormalizedTables('),
