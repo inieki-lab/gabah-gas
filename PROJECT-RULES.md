@@ -26,7 +26,7 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 
 ### 2.1 Penomoran Aset (Asset Numbering)
 - Format resmi: `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` (Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`).
-- Penomoran dibuat oleh backend melalui `AssetNumberingEngine.generateAssetNumber()`; counter runtime saat ini disinkronkan dari aset tersimpan saat boot, belum atomik lintas instance PostgreSQL. Dilarang mengklaim concurrency-safe sampai jalur sequence DB atomik selesai diuji.
+- Mode PostgreSQL mengalokasikan nomor melalui `allocateAssetSequence()` di `server/persistence.ts` menggunakan transaksi dan row lock pada `asset_number_sequences`; `AssetNumberingEngine` hanya memformat nomor. Mode file-store memakai allocator in-memory untuk kompatibilitas. Klaim concurrency-safe lintas instance tetap menunggu CI PostgreSQL dan pengujian concurrency aktual.
 - Urutan sequence nomor mereset per tahun per kombinasi divisi pemilik dan kode aset.
 - Frontend dilarang meng-generate atau meng-hardcode nomor aset secara manual saat create asset.
 - Aturan format disimpan di PostgreSQL (`asset_numbering_rules`) dan hanya dapat dikelola Superadmin. Aturan yang sudah dipakai boleh mengubah format penerbitan berikutnya, tetapi identitas divisi/kode dikunci dan nomor historis tidak boleh ditulis ulang.
