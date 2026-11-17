@@ -448,3 +448,13 @@ The repository contains a direct architecture/seed contradiction that must be re
 - This is an observability/diagnostic correction, not a bulk data reassignment. Any remaining genuinely unresolved owner mapping requires an approved business mapping before data is changed.
 - Commits: `6056628` (normalizer stats), `f184d98` (startup diagnostics).
 - Exact-head CI has not yet been confirmed. PR #115 remains Draft; do not treat this change as production-ready until CI and browser UAT pass.
+
+
+### Analitik Operasional dikendalikan oleh permission role (17 November 2026)
+
+- Grafik Analitik Operasional pada dashboard tidak lagi ditampilkan berdasarkan klasifikasi karyawan/non-karyawan atau nama jabatan/role.
+- Migration `093_dynamic_rbac_operational_analytics_permission.sql` menambahkan katalog permission `analytics.operational.read` tanpa grant default ke role mana pun.
+- Superadmin mengatur akses melalui Administration → Role & Hak Akses dengan mencentang permission pada role yang dituju. Seluruh user dengan role tersebut mengikuti grant role; tidak ada override per-user pada tahap ini.
+- Komponen grafik hanya dirender bila permission efektif tersedia. Kumpulan aset, pinjaman, dan tiket tetap mengikuti permission baca serta scope data masing-masing; permission analitik tidak memperluas akses data.
+- Regression check pada `scripts/dashboard-scope-verify.ts` memverifikasi gate UI, pendaftaran permission, dan tidak adanya grant otomatis.
+- Perlu verifikasi CI pada exact head dan UAT browser: role tanpa permission tidak melihat bagian analitik; role yang diberi permission melihat hanya agregat dari data dalam scope. Tidak ada perubahan data operasional.
