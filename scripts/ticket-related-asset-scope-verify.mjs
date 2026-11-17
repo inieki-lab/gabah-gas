@@ -5,6 +5,7 @@ import { GabahDomainService } from '../server/services.ts';
 
 const serviceSource = fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8');
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const ticketModalSource = fs.readFileSync(new URL('../src/components/modals/CreateTicketModal.tsx', import.meta.url), 'utf8');
 const start = serviceSource.indexOf('static createTicket(');
 const end = serviceSource.indexOf('\n  /**', start + 1);
 assert.ok(start >= 0 && end > start, 'createTicket domain method must exist');
@@ -22,6 +23,8 @@ const checks = [
   ['Blank supplied contract IDs are rejected', /if \(!linkedContractId\)[\s\S]*statusCode: 400/.test(method)],
   ['Unknown or out-of-scope contract links are rejected before ticket creation', /const linkedContract = db\.contracts\.find[\s\S]*!linkedContract \|\| !canSeeContract\(actor, linkedContract\)[\s\S]*statusCode: 404/.test(method)],
   ['Validated contract ID is stored on the ticket', /contract_id: linkedContractId/.test(method)],
+  ['GA request button uses canonical TicketCategory value instead of legacy General', /setCategory\('GA'\)/.test(ticketModalSource) && !/setCategory\('General'\)/.test(ticketModalSource)],
+  ['Ticket category selector exposes only supported canonical IT, GA, SC and PIBC categories', ['IT', 'GA', 'SC', 'PIBC'].every(category => ticketModalSource.includes(`setCategory('${category}')`)) && /TicketCategory/.test(ticketModalSource)],
   ['HTTP route preserves domain status codes', /res\.status\(typeof err\?\.statusCode === 'number' \? err\.statusCode : 400\)/.test(route)],
   ['Route no longer performs a second contract lookup', !/db\.contracts\.find/.test(route)],
 ];
