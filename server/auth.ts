@@ -19,6 +19,10 @@ let loginAttemptCleanupCounter = 0;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
+function isLoginLockoutDisabled(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.GABAH_DISABLE_LOGIN_LOCKOUT === 'true';
+}
+
 // Rate limiting state for general API endpoints
 interface ApiRateLimitRecord {
   count: number;
@@ -96,6 +100,7 @@ export function recordFailedLogin(identifier: string): { isLocked: boolean; rema
 
   if (record.attempts >= MAX_ATTEMPTS) {
     record.lockedUntil = now + LOCKOUT_MS;
+    if (isLoginLockoutDisabled()) return { isLocked: false };
     return {
       isLocked: true,
       remainingLockoutSeconds: Math.ceil(LOCKOUT_MS / 1000),
@@ -112,7 +117,7 @@ export function isLoginLocked(identifier: string): { isLocked: boolean; remainin
   pruneExpiredLoginAttempts(Date.now());
   // Keep brute-force protection enabled in development/UAT by default.
   // A developer may opt out only in non-production, isolated local testing.
-  if (process.env.NODE_ENV !== 'production' && process.env.GABAH_DISABLE_LOGIN_LOCKOUT === 'true') {
+  if (isLoginLockoutDisabled()) {
     return { isLocked: false };
   }
   const record = loginAttempts.get(identifier);
