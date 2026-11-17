@@ -79,7 +79,7 @@ for (const route of durableRoutes) {
   assert.notEqual(index, -1, route + ' must exist');
   const next = server.indexOf('\n  app.', index + 1);
   const block = server.slice(index, next === -1 ? undefined : next);
-  assert.match(block, /await persistMutationOrRespond\\(res\\)/, route + ' must await durable persistence');
+  assert.match(block, /await persistMutationOrRespond\(res\)/, route + ' must await durable persistence');
 }
 const passwordRoute = server.slice(
   server.indexOf("app.post('/api/auth/change-password'"),
