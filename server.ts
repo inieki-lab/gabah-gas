@@ -1479,7 +1479,7 @@ async function startServer() {
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
-            message: `Terlalu banyak percobaan login gagal. akun ini dikunci selama ${lock.remainingLockoutSeconds} detik.`,
+            message: `Terlalu banyak percobaan login gagal. Akun ini dikunci selama ${lock.remainingLockoutSeconds} detik.`,
           });
         }
         return res.status(401).json({ success: false, message: 'Email atau kata sandi tidak valid.' });
@@ -1502,7 +1502,7 @@ async function startServer() {
       }
 
       if (!isValidPassword) {
-        const lock = recordFailedLogin(ip);
+        const lock = recordFailedLogin(loginAttemptKey);
         GabahDomainService.recordAudit(
           'AUTH_LOGIN_FAILED',
           'Auth',
@@ -1512,7 +1512,7 @@ async function startServer() {
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
-            message: `Terlalu banyak percobaan login gagal. IP dikunci selama ${lock.remainingLockoutSeconds} detik.`,
+            message: `Terlalu banyak percobaan login gagal untuk akun ini. Silakan coba lagi selama ${lock.remainingLockoutSeconds} detik.`,
           });
         }
         return res.status(401).json({ success: false, message: 'Email atau kata sandi tidak valid.' });
