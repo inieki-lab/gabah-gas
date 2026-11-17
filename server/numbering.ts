@@ -172,11 +172,19 @@ export class AssetNumberingEngine {
     return `LOAN-${year}-${String(next).padStart(4, '0')}`;
   }
 
+  static formatContractNumber(targetYear: number, sequence: number): string {
+    if (!Number.isInteger(targetYear) || !Number.isInteger(sequence) || sequence < 1) {
+      throw new Error('Data sequence nomor kontrak tidak valid.');
+    }
+    this.contractSeq.set(targetYear, Math.max(this.contractSeq.get(targetYear) || 0, sequence));
+    return `CTR-${targetYear}-${String(sequence).padStart(4, '0')}`;
+  }
+
+  /** File-store compatibility only. PostgreSQL callers must use allocateContractSequence(). */
   static generateContractNumber(targetYear?: number): string {
     const year = targetYear || new Date().getFullYear();
     const next = (this.contractSeq.get(year) || 0) + 1;
-    this.contractSeq.set(year, next);
-    return `CTR-${year}-${String(next).padStart(4, '0')}`;
+    return this.formatContractNumber(year, next);
   }
 
   private static contractSeq = new Map<number, number>();
