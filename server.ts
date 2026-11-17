@@ -1430,20 +1430,23 @@ async function startServer() {
   app.post('/api/auth/login', (req, res) => {
     try {
       const ip = extractClientIp(req) || 'unknown';
-      const lockCheck = isLoginLocked(ip);
-      if (lockCheck.isLocked) {
-        return res.status(429).json({
-          success: false,
-          message: `Terlalu banyak percobaan login gagal. Silakan coba lagi dalam ${lockCheck.remainingLockoutSeconds} detik.`,
-        });
-      }
-
-      const { email, password } = req.body;
-      if (!email || !password) {
+      const { email, password } = req.body || {};
+      if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
         return res.status(400).json({ success: false, message: 'Email dan password wajib diisi.' });
       }
 
       const inputEmail = email.trim().toLowerCase();
+      // Scope the lockout to the client IP + normalized account identifier.
+      // A failed-login burst against one account must not lock every employee
+      // behind the same office NAT address.
+      const loginAttemptKey = `${ip}:${inputEmail}`;
+      const lockCheck = isLoginLocked(loginAttemptKey);
+      if (lockCheck.isLocked) {
+        return res.status(429).json({
+          success: false,
+          message: `Terlalu banyak percobaan login gagal untuk akun ini. Silakan coba lagi dalam ${lockCheck.remainingLockoutSeconds} detik.`,
+        });
+      }
       const inPrefix = inputEmail.split('@')[0];
 
       // Robust Enterprise User Resolver with Alias Mapping.
@@ -1472,11 +1475,11 @@ async function startServer() {
       }) : undefined);
 
       if (!user || !user.is_active) {
-        const lock = recordFailedLogin(ip);
+        const lock = recordFailedLogin(loginAttemptKey);
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
-            message: `Terlalu banyak percobaan login gagal. IP dikunci selama ${lock.remainingLockoutSeconds} detik.`,
+            message: `Terlalu banyak percobaan login gagal. akun ini dikunci selama ${lock.remainingLockoutSeconds} detik.`,
           });
         }
         return res.status(401).json({ success: false, message: 'Email atau kata sandi tidak valid.' });
@@ -1516,7 +1519,7 @@ async function startServer() {
       }
 
       // Reset lockout counter on success
-      clearFailedLogins(ip);
+      clearFailedLogins(loginAttemptKey);
 
       // Create persistent session
       const session = createSession(user.id, req);
