@@ -154,6 +154,9 @@ jobs:
       - name: Ticket reporter ownership regression
         run: npm run test:ticket-reporter-ownership
 
+      - name: Ticket status object-level authorization live HTTP regression
+        run: npm run test:ticket-status-ownership-live
+
       - name: Ticket related-asset visibility regression
         run: npm run test:ticket-related-asset-scope
 
