@@ -50,6 +50,9 @@ jobs:
       - name: Runtime PostgreSQL fail-closed regression
         run: npm run test:runtime-persistence-fail-closed
 
+      - name: Room and facility durable-mutation regression
+        run: npm run test:room-domain-persistence
+
       - name: Typecheck (lint)
         run: npm run lint
 
