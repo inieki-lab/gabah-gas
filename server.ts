@@ -111,7 +111,10 @@ async function startServer() {
         // module enabled; a self-service reader uses the My Assets module.
         const canReadCatalogue = hasRbacPermission(actor.id, 'assets.catalog.read')
           || hasRbacPermission(actor.id, 'assets.audit.read');
-        return canReadCatalogue ? 'assets' : 'my_assets';
+        const canReadLicensesOnly = hasRbacPermission(actor.id, 'licenses.read')
+          && !hasRbacPermission(actor.id, 'assets.read')
+          && !canReadCatalogue;
+        return canReadCatalogue ? 'assets' : (canReadLicensesOnly ? 'licenses' : 'my_assets');
       }
       return 'assets';
     }
@@ -2336,7 +2339,7 @@ async function startServer() {
       }
       // Effective permission and explicit owner-domain scope are enforced by
       // createAsset() for every user, regardless of job title or work location.
-      const newAsset = GabahDomainService.createAsset(req.body, actor);
+      const newAsset = await GabahDomainService.createAsset(req.body, actor);
       await persistDataStore();
       res.status(201).json({ success: true, data: newAsset });
     } catch (err: any) {
@@ -2504,7 +2507,7 @@ async function startServer() {
         const priceRaw = String(row.purchase_price ?? '').replace(/[^0-9.-]/g, '');
         const priceNum = Number(priceRaw);
         try {
-          const asset = GabahDomainService.createAsset({
+          const asset = await GabahDomainService.createAsset({
             category_name_or_code: String(row.category_name_or_code || row.category || '').trim() || undefined,
             name,
             owner_division: (division || undefined) as any,
