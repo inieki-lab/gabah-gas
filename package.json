@@ -56,7 +56,8 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f --tail=200",
     "docker:ps": "docker compose ps",
-    "test:room-reservation-exclusion": "node scripts/room-reservation-exclusion-verify.mjs"
+    "test:room-reservation-exclusion": "node scripts/room-reservation-exclusion-verify.mjs",
+    "test:contract-numbering-atomic": "node scripts/contract-numbering-atomic-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
