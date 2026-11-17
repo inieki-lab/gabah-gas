@@ -466,3 +466,14 @@ The repository contains a direct architecture/seed contradiction that must be re
 - Legacy file-store navigation juga menghapus `meeting_rooms` dari role Karyawan. Menu Aset/Manajemen Inventaris memang tidak termasuk baseline Karyawan.
 - Akses kedua modul tetap dapat diaktifkan secara eksplisit melalui Administration → Role & Hak Akses pada role yang membutuhkan fungsi tersebut. Tidak ada override per-user.
 - Tidak ada data jadwal, aset, ruang, atau reservasi yang dihapus; migration hanya mengubah assignment permission role Karyawan.
+
+
+### Baseline menu Auditor — 17 November 2026
+
+- Sidebar baseline role Auditor dibatasi menjadi lima menu: Dashboard, Aset, Vendor, Contract Management, dan Laporan & Audit.
+- Menu operasional Maintenance, Peminjaman, Helpdesk/Tiket, Reservasi Ruang, Lisensi, dan Knowledge Base tidak lagi diberikan secara default kepada role Auditor.
+- Migration `095_auditor_menu_baseline.sql` mencabut permission baca yang sebelumnya diwariskan dari seed lama. Data transaksi tidak dihapus.
+- File-store fallback `ROLE_NAVIGATION.Auditor` dan regression test navigasi diselaraskan dengan lima menu tersebut.
+- Kebijakan Auditor read-only tetap ditegakkan di middleware backend; perubahan menu bukan pengganti kontrol API.
+- Scope lintas lokasi dan kelengkapan Audit Trail tetap perlu diuji melalui UAT. Permission tambahan yang diberikan Superadmin melalui role lain tetap bersifat additive, sehingga akun multi-role dapat melihat menu tambahan sesuai assignment-nya.
+- Perubahan sudah dikomit pada branch audit; belum dinyatakan lulus CI atau UAT sampai workflow untuk commit terbaru selesai.
