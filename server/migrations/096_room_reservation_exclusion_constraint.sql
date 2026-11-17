@@ -12,8 +12,8 @@ BEGIN
     JOIN room_reservations b
       ON a.room_id = b.room_id
      AND a.id < b.id
-     AND a.status IN ('pending', 'approved', 'in_use', 'checked_in')
-     AND b.status IN ('pending', 'approved', 'in_use', 'checked_in')
+     AND a.status IN ('pending', 'pending_approval', 'approved', 'in_use', 'checked_in')
+     AND b.status IN ('pending', 'pending_approval', 'approved', 'in_use', 'checked_in')
      AND tstzrange(a.start_datetime, a.end_datetime, '[)')
          && tstzrange(b.start_datetime, b.end_datetime, '[)')
   ) THEN
@@ -33,7 +33,7 @@ BEGIN
         room_id WITH =,
         (tstzrange(start_datetime, end_datetime, '[)')) WITH &&
       )
-      WHERE (status IN ('pending', 'approved', 'in_use', 'checked_in'));
+      WHERE (status IN ('pending', 'pending_approval', 'approved', 'in_use', 'checked_in'));
   END IF;
 END
 $$;
