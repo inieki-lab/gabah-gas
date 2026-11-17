@@ -438,3 +438,13 @@ The repository contains a direct architecture/seed contradiction that must be re
 - Browser UAT remains outstanding for modal/form clipping, nested Administration dialogs, mobile viewports, and chart rendering with real role-scoped PostgreSQL data.
 
 - Additional dashboard correctness fix: rejected loan requests now have their own chart segment so the circulation chart accounts for every canonical `LoanStatus` value; a static regression assertion was added. Commits: `ae6c3ee` and `3e57926`. These commits are also after CI #1763 and require exact-head CI validation.
+
+
+### Managing-unit backfill diagnostics — 17 November 2026
+
+- Laptop PostgreSQL startup reported `total=17, backfilled=0, unresolved=3, preserved=14`. The source review confirms that `managing_unit_id` is a nullable relation to `org_units.id`; it is not a `managing_units` table.
+- The previous counter treated every explicit `NULL` as `unresolved`. That is misleading: explicit `NULL` values are intentionally preserved when ownership-to-unit mapping is ambiguous or has not been assigned. In particular, GA has two seeded managing-unit candidates (`UNIT-GA-SARPRAS` and `UNIT-GA-UMUM`), so code must not guess which unit manages an asset.
+- Updated the backfill statistics to distinguish `explicitlyUnassigned` from genuinely unresolved mapping/invalid-reference cases. Startup logs now emit `explicitly_unassigned` separately. Existing owner division, asset number, physical location, and assignments remain untouched.
+- This is an observability/diagnostic correction, not a bulk data reassignment. Any remaining genuinely unresolved owner mapping requires an approved business mapping before data is changed.
+- Commits: `6056628` (normalizer stats), `f184d98` (startup diagnostics).
+- Exact-head CI has not yet been confirmed. PR #115 remains Draft; do not treat this change as production-ready until CI and browser UAT pass.
