@@ -59,7 +59,10 @@ export interface ManagingUnitBackfillStats {
   /** Aset yang belum punya nilai → diisi hasil resolusi ownership. */
   assigned: number;
   /** Hasil resolusi ambigu / sengaja kosong / referensi asing → null. */
+  /** Mapping yang belum dapat ditentukan (ambigu/tidak ada) atau referensi asing. */
   unresolved: number;
+  /** NULL eksplisit yang sengaja dipertahankan; bukan kegagalan backfill. */
+  explicitlyUnassigned: number;
   /** Nilai eksplisit valid yang dipertahankan (tidak ditimpa). */
   preserved: number;
 }
@@ -75,7 +78,7 @@ export interface ManagingUnitBackfillStats {
 export function normalizeAssetManagingUnits(): ManagingUnitBackfillStats {
   const units: OrgUnit[] = Array.isArray(db.orgUnits) ? db.orgUnits : [];
   const knownIds = new Set(units.filter(u => u && typeof u.id === 'string').map(u => u.id));
-  const stats: ManagingUnitBackfillStats = { total: 0, assigned: 0, unresolved: 0, preserved: 0 };
+  const stats: ManagingUnitBackfillStats = { total: 0, assigned: 0, unresolved: 0, explicitlyUnassigned: 0, preserved: 0 };
 
   for (const a of db.assets as any[]) {
     if (!a) continue;
@@ -87,7 +90,10 @@ export function normalizeAssetManagingUnits(): ManagingUnitBackfillStats {
       if (resolved) stats.assigned++;
       else stats.unresolved++;
     } else if (current === null) {
-      stats.unresolved++;
+      // NULL eksplisit adalah keputusan data yang dipertahankan (mis. GA
+      // memiliki lebih dari satu kandidat managing unit). Jangan dilabeli
+      // sebagai kegagalan backfill dan jangan menebak unit secara otomatis.
+      stats.explicitlyUnassigned++;
     } else if (typeof current === 'string' && knownIds.has(current)) {
       stats.preserved++;
     } else {
