@@ -26,3 +26,6 @@
 
 ## Keputusan rilis
 Branch ini tetap untuk audit/perbaikan. Jangan merge ke `main` dan jangan menyatakan GABAH production-ready sampai rollback/transaction semantics, kegagalan PostgreSQL live, dan seluruh CI/UAT lulus.
+
+## Follow-up verification
+The regression contract was added to the CI workflow. The workflow has not yet reported a run for the current audit-branch head at the time this note was written.
