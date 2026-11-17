@@ -105,8 +105,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
   const isGlobalDashboard = isSuperAdmin || isAuditor;
   const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess;
-  const hasITRole = !isSuperAdmin && (hasEffectivePermission('room_reservations.it_facilities.read') ?? hasRoleKey('it', 'IT'));
-  const hasGARole = !isSuperAdmin && (hasEffectivePermission('room_reservations.approve') ?? hasRoleKey('ga', 'GA'));
+  // Dashboard ownership labels follow the assigned application role, not unrelated room-facility queue permissions.
+  // A custom role with selected operational capabilities stays labelled Operasional unless it also carries IT/GA.
+  const hasITRole = !isSuperAdmin && hasRoleKey('it', 'IT');
+  const hasGARole = !isSuperAdmin && hasRoleKey('ga', 'GA');
   const divisionLabel = hasITRole && !hasGARole ? 'IT'
     : hasGARole && !hasITRole ? 'GA'
       : 'Operasional';
