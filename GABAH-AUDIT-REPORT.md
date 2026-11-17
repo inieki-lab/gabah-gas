@@ -467,3 +467,26 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 The latest inspected Actions job for run `44191172144` confirms that `Dependency vulnerability gate` is the failing step and all subsequent verification/build/security/UAT jobs were skipped. The GitHub integration does not expose that job's log archive or Dependabot alert endpoint in this session, so the exact package/advisory is **not yet verified**. No dependency version or audit threshold was changed.
 
 **Release gate remains: NOT READY. No merge to `main`.**
+
+
+## 15. Contract Domain Mutation Durability — Implementation Added (2026-11-18)
+
+**Latest implementation commit:** `3b42fc71da4645932b2c59f796fc29cb0965e317`
+
+### Changes made
+
+- Contract create, update, legacy document metadata, milestone, and renewal-decision mutations now await durable persistence inside the domain service.
+- Each operation captures its prior in-memory state and audit-log identity. If the authoritative write fails, the changed contract (or newly created contract) and its corresponding uncommitted audit event are removed/restored before the error is returned.
+- Persistence failures are surfaced as HTTP 503 through the existing route error handling rather than returning a successful response.
+- The five HTTP routes now await their domain methods and no longer perform a redundant second persistence write.
+- Added `test:contract-domain-persistence` and registered it in CI to assert awaited persistence, in-memory rollback, audit-event rollback, and awaited route calls.
+
+### Verification status
+
+- Implementation is committed to the working audit branch.
+- CI for the latest commit has been triggered; results are pending at the time this report was updated.
+- The new regression is a source-contract test, not a substitute for live PostgreSQL fault injection. Runtime failure injection and full endpoint regression remain required.
+- The general `GabahDomainService.recordAudit()` fire-and-forget behavior remains OPEN outside the contract-domain operations addressed above.
+- The dependency vulnerability gate remains unresolved until the exact advisory can be obtained from CI output.
+
+**Release gate remains: NOT READY. No merge to `main`.**
