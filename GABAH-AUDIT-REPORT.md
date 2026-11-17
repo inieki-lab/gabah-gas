@@ -532,7 +532,7 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - CI now runs a blocking `npm audit --omit=dev --audit-level=high` against production dependencies.
 - A separate, narrow development-tool policy checks the exact GHSA `GHSA-fc5q-39xc-vjpf` only, verifies every affected node remains `dev: true`, and fails on any additional advisory, unexpected package path, severity change, or production dependency exposure.
 - This is **risk containment, not an upstream patch**. The advisory still describes a ReDoS in picomatch through 4.0.7; no patched release is assumed. Vite/build tooling is used in trusted CI/build operations, not shipped as the application runtime. Keep the exception temporary and remove it when upstream resolution is verified.
-- Validation: awaiting the full CI run after this commit. `npm ci`, production audit, build, runtime, PostgreSQL, and regression checks must all pass before release.
+- Validation: code commit `44f93f8ebfee817ff5d63980dcb43b2fb8438568` passed CI run `44196100292` (all steps successful), including `npm ci`, production audit, Docker build/runtime smoke, PostgreSQL 17 integration, live P0 security, and the complete regression suite. A later documentation-only commit will trigger another CI run.
 
 
 ### Production runtime dependency boundary follow-up — 2026-11-18
@@ -541,3 +541,13 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Changed the server to dynamically import Vite only inside the development branch. This makes moving Vite and its plugins to `devDependencies` compatible with the Docker runtime stage's `npm ci --omit=dev`.
 - Added `test:runtime-build-dependency-boundary` and a CI step to guard against reintroducing a static Vite import.
 - Runtime image smoke and production boot checks remain mandatory; source-level checks do not replace them.
+
+
+## 18. CI regression-suite repair and release-chain status — 2026-11-18
+
+- The first complete run exposed stale source-contract assertions after earlier safe refactors: meeting-room service methods had become `async`, persistence now passes the active PostgreSQL client into `backfillNormalizedTables(client)`, and knowledge vote/view routes had become `async` to await persistence. Updated the affected tests to assert the current contract instead of the old syntax.
+- Corrected the room/facility persistence test's malformed regular-expression escapes and its durable-route matcher.
+- Latest code validation: commit `44f93f8ebfee817ff5d63980dcb43b2fb8438568`, CI run `44196100292`, conclusion **success**. All workflow steps passed, including P0 live HTTP security, PostgreSQL 17 fresh-database/persistence integration, production image runtime smoke, tickets, loans, meeting rooms, contracts, maintenance, asset scope, role navigation, and dashboard scope.
+- Release-chain review: PR #119 and PR #118 currently report clean mergeability against their respective parent branches. Their parent PR #115 is **dirty/conflicted** against `main`; GitHub compare reports the dynamic RBAC branch diverged from `main` (459 commits ahead, 1 behind). Do not merge #119 or #118 until PR #115 is reconciled and the full ordered stack is revalidated.
+- PR #116 is a separate open WIP based on the dynamic RBAC branch and is not silently included in the #115 → #118 → #119 chain. Its changes require independent review before release.
+- UAT status: **not yet authorized**. Green CI for the #119 head is necessary but not sufficient while the parent branch conflict and stacked PR integration remain unresolved.
