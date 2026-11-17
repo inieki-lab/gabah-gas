@@ -157,6 +157,9 @@ jobs:
       - name: Meeting room reservation regression
         run: npm run test:meeting-room
 
+      - name: PostgreSQL room reservation exclusion constraint regression
+        run: npm run test:room-reservation-exclusion
+
       - name: Meeting room additional-role UI regression
         run: npm run test:room-capability-ui
 
