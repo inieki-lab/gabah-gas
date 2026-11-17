@@ -29,6 +29,7 @@ const licensesView = fs.readFileSync('src/components/views/LicensesView.tsx', 'u
 const ticketsView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
 const loansView = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
 const dashboardView = fs.readFileSync('src/components/views/DashboardView.tsx', 'utf8');
+const globalStyles = fs.readFileSync('src/index.css', 'utf8');
 const gabahService = fs.readFileSync('src/services/gabahService.ts', 'utf8');
 const editAssetModal = fs.readFileSync('src/components/modals/EditAssetModal.tsx', 'utf8');
 const assetDetailModal = fs.readFileSync('src/components/modals/AssetDetailModal.tsx', 'utf8');
@@ -232,6 +233,11 @@ const checks = [
   ['dashboard loan and ticket metrics/attention require the corresponding module read permission in PostgreSQL mode', (server.match(/hasRbacPermission\(String\(actor\.id\), 'loans\.read'\)/g) || []).length >= 2 && (server.match(/hasRbacPermission\(String\(actor\.id\), 'tickets\.read'\)/g) || []).length >= 2 && /loans: canReadLoans \? db\.loans : \[\]/.test(server) && /tickets: canReadTickets \? db\.tickets : \[\]/.test(server)],
   ['Superadmin notification queues are counted once without duplicate badge totals', /const totalNotifications =\s*safeLoans\.length \+\s*safeTickets\.length \+\s*docReservations\.length \+\s*itFacilityReservations\.length \+\s*gaReservations\.length/.test(headerNavbar)],
   ['Superadmin wildcard does not mislabel the global sidebar as a department dashboard', /const isSuperAdmin = isSuperadminNavigationAllowed/.test(sidebar) && /const isHumas = !isSuperAdmin/.test(sidebar) && /const isSekdir = !isSuperAdmin/.test(sidebar) && /const isIT = !isSuperAdmin/.test(sidebar) && /const isGA = !isSuperAdmin/.test(sidebar)],
+
+  ['management asset-condition chart uses the canonical physical condition field and accounts for unclassified records', /a\.condition/.test(dashboardView) && /'excellent', 'new', 'good', 'fair', 'poor', 'broken', 'damaged'/.test(dashboardView) && /Belum dinilai/.test(dashboardView)],
+  ['management analytics use already scoped dashboard collections and do not fetch global datasets', /dashboardAssets\.filter/.test(dashboardView) && /dashboardLoans\.filter/.test(dashboardView) && /dashboardTickets\.filter/.test(dashboardView) && !/fetch\(['"]\/api\/(?:assets|loans|tickets)/.test(dashboardView)],
+  ['legacy modal containers are viewport-bounded and scrollable with safe-area support', /#root \.fixed\.inset-0 > :first-child[\s\S]*max-height: calc\(100dvh/.test(globalStyles) && /overflow-y: auto/.test(globalStyles) && /env\(safe-area-inset-top\)/.test(globalStyles)],
+
 
   ['Humas/documentation notification routing uses effective capability in PostgreSQL, not fixed role key', /recipientRoleKey === 'humas' && isPostgresPersistenceActive\(\)[\s\S]*hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\)/.test(server) && /const canReadDocumentationNotifications = isPostgresPersistenceActive\(\)[\s\S]*hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\)/.test(server)],
 
