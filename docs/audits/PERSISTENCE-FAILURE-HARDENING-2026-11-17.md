@@ -19,7 +19,7 @@
 
 ## Batasan yang masih terbuka — jangan dianggap selesai
 - **Rollback state belum atomik.** Banyak service mengubah objek in-memory sebelum memanggil persist. Jika PostgreSQL gagal, route kini mengembalikan 503, tetapi objek in-memory yang sudah berubah belum otomatis dipulihkan. Perbaikan transaksional/rollback yang aman perlu dirancang tanpa menimpa perubahan request lain yang berjalan bersamaan.
-- `persistDataStore()` masih membuat snapshot dan menulis file lokal sebelum penulisan PostgreSQL selesai. Perilaku ini perlu ditinjau bersama strategi file-store fallback dan pemulihan state.
+- Urutan snapshot lokal sudah diperbaiki: pada mode PostgreSQL, file lokal baru ditulis setelah penulisan state PostgreSQL berhasil. Jika PostgreSQL gagal di development, fallback file-store tetap diaktifkan secara eksplisit; request yang gagal tetap menerima HTTP 503.
 - Middleware persist setelah respons masih menjadi safety-net dan dapat menyebabkan write tambahan. Perlu audit seluruh route mutasi sebelum middleware itu dapat dihapus dengan aman.
 - Pemeriksaan baru bersifat kontrak statis; hasil typecheck, build, PostgreSQL integration, dan runtime harus menunggu CI untuk commit branch ini.
 - Belum dilakukan browser UAT, pengujian kegagalan PostgreSQL secara live, maupun uji request paralel.
@@ -29,3 +29,9 @@ Branch ini tetap untuk audit/perbaikan. Jangan merge ke `main` dan jangan menyat
 
 ## Follow-up verification
 The regression contract passed in CI run #1786. The first typecheck then found 13 route handlers that needed to be marked async after their domain calls became awaitable; those handlers were corrected in a follow-up commit. A fresh exact-head CI run is pending.
+
+## Validasi terbaru — 17 November 2026
+- Branch: `audit/persistence-failure-hardening-2026-11-17`.
+- CI: [run #1793 — PASS](https://github.com/inieki-lab/gabah-gas/actions/runs/44079493968).
+- PR: [#116 — Draft, belum merge](https://github.com/inieki-lab/gabah-gas/pull/116).
+- Catatan penting: CI PASS tidak menggantikan uji injeksi kegagalan PostgreSQL dan rollback state in-memory. Risiko tersebut tetap terbuka dan menjadi penghalang merge/produksi.
