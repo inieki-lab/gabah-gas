@@ -436,3 +436,5 @@ The repository contains a direct architecture/seed contradiction that must be re
 - **Important:** CI #1763 does not validate commits added after `297c737`. The final branch head must receive a fresh complete CI run; no claim is made that those later commits are green yet.
 - The asset chart now uses the canonical `Asset.condition` field (excellent/new/good/fair/poor/broken/damaged) and explicitly counts records with missing/unrecognized condition as “Belum dinilai”; operational `Asset.status` is not misrepresented as physical condition.
 - Browser UAT remains outstanding for modal/form clipping, nested Administration dialogs, mobile viewports, and chart rendering with real role-scoped PostgreSQL data.
+
+- Additional dashboard correctness fix: rejected loan requests now have their own chart segment so the circulation chart accounts for every canonical `LoanStatus` value; a static regression assertion was added. Commits: `ae6c3ee` and `3e57926`. These commits are also after CI #1763 and require exact-head CI validation.
