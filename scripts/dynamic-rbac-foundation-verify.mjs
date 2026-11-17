@@ -235,6 +235,7 @@ const checks = [
   ['Superadmin wildcard does not mislabel the global sidebar as a department dashboard', /const isSuperAdmin = isSuperadminNavigationAllowed/.test(sidebar) && /const isHumas = !isSuperAdmin/.test(sidebar) && /const isSekdir = !isSuperAdmin/.test(sidebar) && /const isIT = !isSuperAdmin/.test(sidebar) && /const isGA = !isSuperAdmin/.test(sidebar)],
 
   ['management asset-condition chart uses the canonical physical condition field and accounts for unclassified records', /a\.condition/.test(dashboardView) && /'excellent', 'new', 'good', 'fair', 'poor', 'broken', 'damaged'/.test(dashboardView) && /Belum dinilai/.test(dashboardView)],
+  ['management loan chart accounts for rejected transactions as a distinct state', /label: 'Ditolak'[\s\S]*status \|\| ''\)\.toLowerCase\(\) === 'rejected'/.test(dashboardView)],
   ['management analytics use already scoped dashboard collections and do not fetch global datasets', /dashboardAssets\.filter/.test(dashboardView) && /dashboardLoans\.filter/.test(dashboardView) && /dashboardTickets\.filter/.test(dashboardView) && !/fetch\(['"]\/api\/(?:assets|loans|tickets)/.test(dashboardView)],
   ['legacy modal containers are viewport-bounded and scrollable with safe-area support', /#root \.fixed\.inset-0 > :first-child[\s\S]*max-height: calc\(100dvh/.test(globalStyles) && /overflow-y: auto/.test(globalStyles) && /env\(safe-area-inset-top\)/.test(globalStyles)],
 
