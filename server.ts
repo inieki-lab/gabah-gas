@@ -4,7 +4,7 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs/promises';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
+
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
@@ -4263,6 +4263,9 @@ async function startServer() {
   // VITE MIDDLEWARE (DEVELOPMENT vs PRODUCTION)
   // ==========================================
   if (process.env.NODE_ENV !== 'production') {
+    // Vite is a build/development dependency only. Load it lazily so the
+    // production server bundle can run after npm ci --omit=dev.
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
