@@ -1,3 +1,14 @@
+## [2026-11-17] — PostgreSQL concurrency safeguards and license module routing
+
+- Replace process-local asset sequence issuance in PostgreSQL mode with a transactionally allocated `asset_number_sequences` row protected by `SELECT ... FOR UPDATE`; bootstrap legacy counters from persisted asset numbers.
+- Keep in-memory numbering only for file-store compatibility; the admin sequence snapshot is updated from DB-allocated values.
+- Add migration 096 with a partial GiST exclusion constraint for overlapping active room reservations, including `pending_approval`; migration preflights existing overlaps and fails with an actionable diagnostic instead of silently changing bookings.
+- Route license-only asset reads through the `licenses` module lifecycle switch; the API already filters those readers to License-category assets.
+- Add regression checks to CI for the PostgreSQL allocator contract and room reservation exclusion constraint.
+- Exact-head PostgreSQL CI and live multi-process concurrency verification are still required before treating these protections as release-verified.
+
+---
+
 ## [2026-11-16] — Green theme enforcement & asset numbering rule management
 
 - Extend the green enterprise palette across legacy Tailwind color utilities so administration, forms, cards, and neutral surfaces no longer retain the previous gray/teal appearance.
