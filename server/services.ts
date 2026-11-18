@@ -1127,6 +1127,7 @@ export class GabahDomainService {
     // authorized IT support agent exists. Zero or multiple candidates remain queued.
     if (payload.category === 'IT' && isPostgresPersistenceActive()) {
       const eligibleAgents = db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
+        && hasRbacPermission(String(user.id), 'tickets.read')
         && hasRbacPermission(String(user.id), 'tickets.update')
         && hasRbacScope(String(user.id), 'division', 'IT', 'tickets'));
       if (eligibleAgents.length === 1) {
@@ -1149,10 +1150,12 @@ export class GabahDomainService {
     const notificationTargets = payload.category === 'ME'
       ? db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
         && user.unit_id === 'UNIT-PIBC-ME'
+        && hasRbacPermission(String(user.id), 'tickets.read')
         && hasRbacPermission(String(user.id), 'tickets.assign')
         && hasRbacScope(String(user.id), 'unit', 'UNIT-PIBC-ME', 'tickets'))
       : payload.category === 'GA'
         ? db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
+          && hasRbacPermission(String(user.id), 'tickets.read')
           && hasRbacPermission(String(user.id), 'tickets.assign')
           && hasRbacScope(String(user.id), 'division', 'GA', 'tickets'))
         : newTicket.assigned_agent_id
