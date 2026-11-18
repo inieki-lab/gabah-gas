@@ -197,16 +197,19 @@ export function filterMaintenanceSchedulesByDynamicScopes(schedules: ServerMaint
   });
 }
 
-async function persistDomainMutation(): Promise<void> {
+async function persistDomainMutation(rollback?: () => void): Promise<void> {
   try { await persistDataStore(); }
-  catch (error: any) { throw Object.assign(new Error(error?.message || 'Gagal menyimpan perubahan.'), { statusCode: 503 }); }
+  catch (error: any) {
+    rollback?.();
+    throw Object.assign(new Error(error?.message || 'Gagal menyimpan perubahan.'), { statusCode: 503 });
+  }
 }
 
 export class GabahDomainService {
   /**
    * Log action to immutable audit trail
    */
-  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string) {
+  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string, persist = true) {
     const log: ServerAuditLog = {
       id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       action,
@@ -221,7 +224,7 @@ export class GabahDomainService {
       timestamp: new Date().toISOString(),
     };
     db.auditLogs.unshift(log);
-    persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
+    if (persist) persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
     return log;
   }
 
@@ -509,7 +512,7 @@ export class GabahDomainService {
   /**
    * Asset Assignment Mutation
    */
-  static assignAsset(assetId: string, targetUserId: string, reason: string, actor: ServerUser): ServerAsset {
+  static async assignAsset(assetId: string, targetUserId: string, reason: string, actor: ServerUser): Promise<ServerAsset> {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -531,6 +534,7 @@ export class GabahDomainService {
 
     const normalizedTargetUserId = String(targetUserId ?? '').trim();
     const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
+    const previousAsset = JSON.parse(JSON.stringify(asset)) as ServerAsset;
 
     // Support Unassign (Return to Pool/Warehouse as available/idle)
     if (!normalizedTargetUserId) {
@@ -553,7 +557,12 @@ export class GabahDomainService {
         created_at: new Date().toISOString(),
       };
       db.movements.unshift(movement);
-      this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id);
+      const auditLog = this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id, false);
+      await persistDomainMutation(() => {
+        Object.assign(asset, previousAsset);
+        db.movements = db.movements.filter(item => item.id !== movement.id);
+        db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
+      });
       return asset;
     }
 
@@ -589,14 +598,19 @@ export class GabahDomainService {
     };
     db.movements.unshift(movement);
 
-    this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id);
+    const auditLog = this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id, false);
+    await persistDomainMutation(() => {
+      Object.assign(asset, previousAsset);
+      db.movements = db.movements.filter(item => item.id !== movement.id);
+      db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
+    });
     return asset;
   }
 
   /**
    * Asset Location Movement Mutation
    */
-  static moveAsset(assetId: string, newLocation: string, reason: string, actor: ServerUser): ServerAsset {
+  static async moveAsset(assetId: string, newLocation: string, reason: string, actor: ServerUser): Promise<ServerAsset> {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -612,6 +626,7 @@ export class GabahDomainService {
       throw Object.assign(new Error('Alasan perpindahan maksimal 1.000 karakter.'), { statusCode: 400 });
     }
 
+    const previousAsset = JSON.parse(JSON.stringify(asset)) as ServerAsset;
     const oldLocation = asset.location;
     asset.location = normalizedLocation;
     // T2B-2: reolusi deterministik relasi lokasi fisik dari teks baru
@@ -632,7 +647,12 @@ export class GabahDomainService {
     };
     db.movements.unshift(movement);
 
-    this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id);
+    const auditLog = this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id, false);
+    await persistDomainMutation(() => {
+      Object.assign(asset, previousAsset);
+      db.movements = db.movements.filter(item => item.id !== movement.id);
+      db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
+    });
 
     return asset;
   }
@@ -640,7 +660,7 @@ export class GabahDomainService {
   /**
    * Asset Lifecycle Mutation (Repair, Damaged, Cannibalize, Disposal, Auction)
    */
-  static mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser): ServerAsset {
+  static async mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser): Promise<ServerAsset> {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -665,6 +685,7 @@ export class GabahDomainService {
       );
     }
 
+    const previousAsset = JSON.parse(JSON.stringify(asset)) as ServerAsset;
     switch (action) {
       case 'repair':
         asset.status = 'in_repair';
@@ -692,7 +713,11 @@ export class GabahDomainService {
     }
 
     asset.updated_at = new Date().toISOString();
-    this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id);
+    const auditLog = this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id, false);
+    await persistDomainMutation(() => {
+      Object.assign(asset, previousAsset);
+      db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
+    });
 
     return asset;
   }
