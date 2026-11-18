@@ -701,22 +701,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   });
   const [newDeptInput, setNewDeptInput] = useState('');
 
-  // Asset Numbering State
-  const [numberingConfig, setNumberingConfig] = useState(() => {
-    const saved = localStorage.getItem('gabah_numbering_config');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return {
-      prefixCorp: 'FS',
-      format: '{DIV}-{CODE}-{YEAR}-{SEQ}',
-      separator: '-',
-      paddingDigits: 4,
-      autoResetYearly: true
-    };
-  });
-  const [isEditingNumbering, setIsEditingNumbering] = useState(false);
-  const [tempNumberingConfig, setTempNumberingConfig] = useState(numberingConfig);
+  // Number preview inputs; actual rules and sequence counters are loaded from PostgreSQL.
   const [testDiv, setTestDiv] = useState<OwnerDivision>('IT');
   const [testCode, setTestCode] = useState('HLT');
   const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0005');
@@ -1238,17 +1223,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast('Struktur divisi dikembalikan ke standar organisasi BUMD.', 'info');
   };
 
-  // Numbering Config Handlers
-  const handleSaveNumberingConfig = () => {
-    setNumberingConfig(tempNumberingConfig);
-    localStorage.setItem('gabah_numbering_config', JSON.stringify(tempNumberingConfig));
-    setIsEditingNumbering(false);
-    // Update live simulated number
-    const seqPadded = String(5).padStart(tempNumberingConfig.paddingDigits, '0');
-    setSimulatedNumber(`${testDiv}${tempNumberingConfig.separator}${testCode}${tempNumberingConfig.separator}2026${tempNumberingConfig.separator}${seqPadded}`);
-    showToast('Format dan parameter sequence penomoran aset berhasil disimpan!', 'success');
-  };
-
   // Notification rule status is committed by the API before the UI is updated.
   const handleToggleNotificationRule = async (id: string) => {
     const target = notificationRules.find(rule => rule.id === id);
@@ -1367,7 +1341,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         divisions,
         rbac_roles: rbacRoles,
         rbac_permissions: rbacPermissions,
-        numbering_config: numberingConfig,
+        numbering_rules: numberingRules || [],
+        numbering_sequences: liveSequences || [],
         notification_rules: notificationRules,
         settings: settingsForm,
         audit_logs_count: auditLogs.length
@@ -1413,7 +1388,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { id: 'organization' as AdminSection, label: 'Owner Domain', description: 'Daftar fungsi pemilik aset dan struktur divisi/departemen terkait.', dataSource: 'Perlu konsolidasi dengan master unit', icon: Building2, badge: `${divisions.length} divisi` },
     { id: 'org_masters' as AdminSection, label: 'Struktur Pegawai', description: 'Master jabatan/level, unit organisasi, dan lokasi kantor pegawai.', dataSource: 'Database master', icon: Network, badge: `${jobLevels.length} jabatan` },
     { id: 'master_data' as AdminSection, label: 'Referensi Aset & Layanan', description: 'Kategori aset, lokasi fasilitas, dan parameter layanan yang dipakai form operasional.', dataSource: 'Campuran: database dan lokal', icon: Database, badge: `${categories.length} kategori` },
-    { id: 'numbering' as AdminSection, label: 'Penomoran Aset', description: 'Format nomor aset dan pemantauan sequence nomor yang diterbitkan server.', dataSource: 'Format masih lokal; sequence dari API', icon: Hash, badge: liveSequences === null ? 'Sequence belum tersedia' : `${liveSequences.length} sequence` },
+    { id: 'numbering' as AdminSection, label: 'Penomoran Aset', description: 'Format nomor aset dan pemantauan sequence nomor yang diterbitkan server.', dataSource: 'PostgreSQL registry', icon: Hash, badge: numberingRules === null ? 'Aturan belum tersedia' : `${numberingRules.length} aturan` },
     { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'PostgreSQL', icon: Bell, badge: 'Database' },
     { id: 'audit_log' as AdminSection, label: 'Riwayat Aktivitas', description: 'Catatan perubahan dan aktivitas yang direkam sistem.', dataSource: 'Database / API', icon: ScrollText, badge: `${auditLogs.length} catatan` },
     { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Profil perusahaan, standar akuntansi, mata uang, dan tahun buku.', dataSource: 'PostgreSQL', icon: Settings2, badge: 'Database' },
