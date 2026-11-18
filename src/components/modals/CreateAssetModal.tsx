@@ -397,7 +397,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !masterCategories || !isCodeSelectable(subCode)) return;
 
     const newAsset: Partial<Asset> = {
       name: name.trim(),
