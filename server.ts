@@ -2340,7 +2340,7 @@ async function startServer() {
     const categories = normalizeCategoryMaster(source).filter(category => {
       if (category.is_active === false) return false;
       const owner = String(category.owner_division || '').trim();
-      if (!owner) return false;
+      if (!owner || ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(owner.toUpperCase())) return false;
       const isSuperadmin = isSuperadminActor(actor);
       if (!isSuperadmin && !hasRbacScope(String(actor.id), 'division', owner, 'assets')) return false;
       if (category.category_type === 'License'
