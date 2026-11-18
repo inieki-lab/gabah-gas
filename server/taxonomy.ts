@@ -2,11 +2,10 @@
  * GABAH Authoritative Asset Taxonomy
  * Master Source of Truth for Asset Categories, Human-readable mapping, and Owner Divisions
  * 
- * Divisi / Departemen:
- * - SC: Tim Supply Chain
- * - PIBC: Tim Pasar Induk Beras Cipinang
- * - IT: Tim IT (IT Hardware IT-H, IT Software IT-S)
- * - GA: Tim General Affair (Furniture INV-F, Peralatan INV-P, Bangunan BGN, Tanah TNH, Kendaraan KDR)
+ * Owner domain aset:
+ * - IT dan GA: domain operasional aset yang sudah ditetapkan.
+ * - SC dan PIBC: kode owner legacy yang masih dibaca untuk histori; bukan role aplikasi
+ *   atau lokasi kantor. Klasifikasi asetnya harus direview per aset sebelum migrasi.
  *
  * Jenis Aset Tetap:
  * - TNH: Tanah
@@ -47,7 +46,7 @@ export const FIXED_ASSET_MAIN_TYPES = [
 ] as const;
 export type FixedAssetMainType = (typeof FIXED_ASSET_MAIN_TYPES)[number];
 
-// Initial owner-domain seeds only; the owner vocabulary is intentionally extensible.
+// Initial owner-domain vocabulary is extensible. SC/PIBC remain legacy values pending per-asset review.
 export const ASSET_OWNER_DIVISIONS = ['IT', 'GA', 'SC', 'PIBC'] as const;
 export const ASSET_CATEGORY_TYPES = ['IT', 'General', 'License'] as const;
 
@@ -101,7 +100,8 @@ export function normalizeCategoryMaster(list: unknown): AssetTaxonomyItem[] {
       code,
       name: String(raw.name || code).trim(),
       main_type: mainType,
-      owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'GA',
+      // Unknown ownership must remain unassigned; never silently classify it as GA.
+      owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED',
       category_type: isGabahCategoryType(raw.category_type)
         ? raw.category_type
         : (raw.owner_division === 'IT' ? 'IT' : 'General'),
