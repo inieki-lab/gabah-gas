@@ -104,6 +104,17 @@ const checks = [
   ['User-targeted notifications remain private and role recipients honor additional RBAC assignments', /if \(notification\.recipient_user_id\) return notification\.recipient_user_id === actor\.id;/.test(server) && /const recipientRoleKey = normalizeRoleKey\(notification\.recipient_role\);[\s\S]*?if \(recipientRoleKey === 'humas' && isPostgresPersistenceActive\(\)\) \{\s*return hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\);\s*\}[\s\S]*?return hasApplicationRole\(actor, recipientRoleKey\);/.test(server) && /const isRecipient = notif \? isNotificationRecipient\(actor, notif\) : false;/.test(server) && /const isRecipient = isNotificationRecipient\(actor, n\);/.test(server)],
 ];
 
+const assetPatchStart = server.indexOf("app.patch('/api/assets/:id'");
+const assetPatchEnd = server.indexOf("app.post('/api/assets/:id/assign'", assetPatchStart);
+const assetPatchRoute = server.slice(assetPatchStart, assetPatchEnd);
+checks.push([
+  'Asset PATCH waits for durable persistence and rolls back object plus audit on failure',
+  /app\\.patch\\('\\/api\\/assets\\/:id', async \\(req, res\\)/.test(assetPatchRoute)
+    && /const previousAsset = \\{ \\.\\.\\.asset \\}/.test(assetPatchRoute)
+    && /await persistDataStore\\(\\)[\\s\\S]*?Object\\.assign\\(asset, previousAsset\\)[\\s\\S]*?auditIndex/.test(assetPatchRoute)
+    && !/persistDataStore\\(\\)\\.catch\\(\\(\\) => \\{\\}\\)/.test(assetPatchRoute),
+]);
+
 let failed = 0;
 for (const [name, ok] of checks) {
   console.log(`${ok ? 'PASS' : 'FAIL'} | ${name}`);
