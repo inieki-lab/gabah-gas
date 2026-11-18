@@ -195,7 +195,7 @@ async function main() {
     const adminCategories = adminAssetOptions.json?.data?.categories || [];
     const adminOwnerCodes = new Set(adminOwners.map(owner => owner.code));
     record('P0 asset creation options expose only configured canonical owner domains', 'non-empty owner set without legacy SC/PIBC',
-      `HTTP ${adminAssetOptions.status}; owners=${Array.from(adminOwnerCodes).join(',') || '(none)'}`,
+      `HTTP ${adminAssetOptions.status}; message=${adminAssetOptions.json?.message || adminAssetOptions.json?.code || '(none)'}; owners=${Array.from(adminOwnerCodes).join(',') || '(none)'}`,
       adminAssetOptions.status === 200 && adminOwnerCodes.size > 0
         && !adminOwnerCodes.has('SC') && !adminOwnerCodes.has('PIBC')
         && adminCategories.every(category => adminOwnerCodes.has(category.owner_division)));
@@ -227,7 +227,7 @@ async function main() {
       const employeeOwners = employeeAssetOptions.json?.data?.owner_domains || [];
       const employeeCategories = employeeAssetOptions.json?.data?.categories || [];
       record('P0 asset creation options fail closed for employee without owner mutation authority', '200 + empty owner/category choices',
-        `HTTP ${employeeAssetOptions.status}; owners=${employeeOwners.length}; categories=${employeeCategories.length}`,
+        `HTTP ${employeeAssetOptions.status}; message=${employeeAssetOptions.json?.message || employeeAssetOptions.json?.code || '(none)'}; owners=${employeeOwners.length}; categories=${employeeCategories.length}`,
         employeeAssetOptions.status === 200 && employeeOwners.length === 0 && employeeCategories.length === 0);
     } else {
       record('P0 asset creation options setup (Karyawan token)', 'valid Karyawan session', 'token unavailable', false);
