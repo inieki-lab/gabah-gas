@@ -4,7 +4,7 @@
  *   A. Asset baru/bisa memiliki managing_unit_id (create eksplisit + default ownership).
  *   B. Referensi ke org_units valid: unit harus ada & aktif (invalid/nonaktif → 400),
  *      semua asset hanya merujuk unit yang dikenal atau null.
- *   C. Backfill memakai ownership mapping (owner_division), bukan lokasi.
+ *   C. Runtime default mapping hanya untuk owner domain operasional yang valid; SC/PIBC legacy tetap NULL.
  *   D. Asset owner=IT di lokasi PIBC tetap owner IT + unit IT.
  *   E. Asset number TIDAK berubah setelah create/patch/restart/backfill.
  *   F. JSON fallback tidak kehilangan managing_unit_id (roundtrip lewat restart).
@@ -91,7 +91,7 @@ async function main() {
       if (exp !== 'ANY' && a.managing_unit_id !== exp) cOk = false;
       if (exp === 'ANY' && a.managing_unit_id !== null) cOk = false;
     }
-    rec('C1: seed aset per divisi punya managing_unit_id (ownership mapping)',
+    rec('C1: default managing unit hanya untuk owner domain yang valid',
       `IT→UNIT-IT-MIS, SC/PIBC→null (legacy location), GA→null`,
       JSON.stringify(divCounts) + (cUndefined ? ` (${cUndefined} undefined!)` : ''),
       cOk && cUndefined === 0);
