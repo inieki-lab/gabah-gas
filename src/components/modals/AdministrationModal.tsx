@@ -4744,12 +4744,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
               )}
 
+              {settingsLoading && <div className="text-xs text-slate-500">Memuat pengaturan dari database...</div>}
+              {settingsError && <div role="alert" className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">{settingsError}</div>}
               <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">                    <div>
                       <label className="block text-slate-600 mb-1 font-semibold">Nama BUMD / Instansi</label>
                       <input
                         type="text"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving}
                         value={settingsForm.companyName}
                         onChange={e => setSettingsForm({ ...settingsForm, companyName: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
@@ -4759,7 +4761,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-slate-600 mb-1 font-semibold">Standar Akuntansi Aset Tetap</label>
                       <input
                         type="text"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving}
                         value={settingsForm.accountingStandard}
                         onChange={e => setSettingsForm({ ...settingsForm, accountingStandard: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
@@ -4769,7 +4771,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-slate-600 mb-1 font-semibold">Mata Uang Basis</label>
                       <input
                         type="text"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving}
                         value={settingsForm.baseCurrency}
                         onChange={e => setSettingsForm({ ...settingsForm, baseCurrency: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
@@ -4779,7 +4781,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-slate-600 mb-1 font-semibold">Tahun Buku Fiskal</label>
                       <input
                         type="text"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving}
                         value={settingsForm.fiscalYear}
                         onChange={e => setSettingsForm({ ...settingsForm, fiscalYear: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-mono font-medium"
@@ -4843,6 +4845,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   {isCurrentUserAdmin ? (
                     <button
                       onClick={handleSaveSettings}
+                      disabled={settingsLoading || !!settingsError || settingsSaving}
                       className="px-5 py-2 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold shadow-md shadow-[#4ABDAC]/20 hover:bg-[#3ba393] cursor-pointer"
                     >
                       {settingsSaving ? 'Menyimpan...' : 'Simpan Pengaturan Sistem'}
