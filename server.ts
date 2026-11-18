@@ -104,6 +104,8 @@ async function startServer() {
     const path = req.path;
     if (matchesApiPrefix(path, '/api/modules')) return null;
 
+    if (path === '/api/assets/create-options') return 'assets';
+
     if (matchesApiPrefix(path, '/api/assets')) {
       if (req.method === 'GET') {
         // My Assets and the full asset catalogue share the read endpoint.
