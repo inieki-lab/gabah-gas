@@ -715,15 +715,55 @@ export async function initializePersistence(): Promise<void> {
       await backfillNormalizedTables();
       await ensureNormalizedSchema(true);
 
+      // Post-seed migrations may append audit evidence (e.g. profile/location
+      // normalization). Re-read the normalized audit authority after that phase
+      // so those rows are present before the in-memory snapshot is saved.
+      const postSeedAuditRows = await pool.query(
+        'SELECT id, action, entity, entity_id, user_name, user_role, details, ip_address, timestamp FROM audit_logs ORDER BY timestamp DESC'
+      );
+      if (postSeedAuditRows.rows.length > 0) {
+        const auditById = new Map<string, any>();
+        for (const log of db.auditLogs || []) auditById.set(String(log.id), log);
+        for (const row of postSeedAuditRows.rows) {
+          const timestamp = row.timestamp instanceof Date
+            ? row.timestamp.toISOString()
+            : new Date(row.timestamp).toISOString();
+          auditById.set(String(row.id), {
+            ...(auditById.get(String(row.id)) || {}),
+            id: String(row.id),
+            action: String(row.action),
+            entity: String(row.entity),
+            entity_id: row.entity_id == null ? undefined : String(row.entity_id),
+            user_name: String(row.user_name),
+            user_role: String(row.user_role),
+            details: String(row.details),
+            ip_address: row.ip_address == null ? undefined : String(row.ip_address),
+            timestamp,
+          });
+        }
+        db.auditLogs = [...auditById.values()].sort((a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+      }
+
       // PostgreSQL is authoritative for the normalized employee profile. Apply
       // one-time migration results to the in-memory snapshot before it is saved
       // or synchronized again; preserve role_label and all other profile fields.
-      const normalizedUsers = await pool.query<{ id: string; role: string }>('SELECT id::text AS id, role FROM users');
-      const normalizedRoles = new Map<string, string>();
-      for (const row of normalizedUsers.rows) normalizedRoles.set(String(row.id), String(row.role));
+      const normalizedUsers = await pool.query<{ id: string; role: string; unit_id: string | null; office_location_id: string | null }>(
+        'SELECT id::text AS id, role, unit_id, office_location_id FROM users'
+      );
+      const normalizedProfiles = new Map(normalizedUsers.rows.map(row => [String(row.id), row]));
       for (const user of db.users) {
-        const normalizedRole = normalizedRoles.get(String(user.id));
-        if (normalizedRole) user.role = normalizedRole;
+        const profile = normalizedProfiles.get(String(user.id));
+        if (!profile) continue;
+        const previousRole = String(user.role || '');
+        user.role = String(profile.role);
+        user.unit_id = profile.unit_id || null;
+        user.office_location_id = profile.office_location_id || null;
+        if (['Supply Chain', 'PIBC'].includes(previousRole)
+          || /Karyawan — Lokasi (RPC\/SC|PIBC)/i.test(String(user.role_label || ''))) {
+          user.role_label = 'Karyawan';
+        }
       }
       saveStateToFile(createPayload());
 
