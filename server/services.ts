@@ -198,6 +198,21 @@ export function filterMaintenanceSchedulesByDynamicScopes(schedules: ServerMaint
   });
 }
 
+/** One queue-scope resolver shared by list/detail and mutation guards. */
+export function hasTicketQueueScope(actor: ServerUser, ticket: Pick<ServerTicket, 'category' | 'assigned_unit_id'>): boolean {
+  if (isSuperadminActor(actor)) return true;
+  if (ticket.assigned_unit_id) {
+    return isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets')
+      : String(actor.unit_id || '') === String(ticket.assigned_unit_id);
+  }
+  const category = String(ticket.category || '').trim().toUpperCase();
+  if (!category) return false;
+  return isPostgresPersistenceActive()
+    ? hasRbacScope(String(actor.id), 'division', category, 'tickets')
+    : ['IT', 'GA', 'SC', 'PIBC'].includes(category) && actor.role === category;
+}
+
 export class GabahDomainService {
   /**
    * Log action to immutable audit trail
