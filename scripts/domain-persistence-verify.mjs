@@ -16,6 +16,7 @@ const knowledgeCreate = route("app.post('/api/knowledge'", "app.patch('/api/know
 const knowledgeUpdate = route("app.patch('/api/knowledge/:id'", "app.post('/api/knowledge/:id/vote'");
 const knowledgeVote = route("app.post('/api/knowledge/:id/vote'", "app.post('/api/knowledge/:id/view'");
 const knowledgeView = route("app.post('/api/knowledge/:id/view'", "// Notifications");
+const passwordChange = route("app.post('/api/auth/change-password'", "app.get('/api/auth/me'");
 
 for (const [name, body] of [
   ['vendor create', vendorCreate],
@@ -36,5 +37,11 @@ assert.match(knowledgeCreate, /splice\(index, 1\)[\s\S]*?auditIndex/, 'knowledge
 assert.match(knowledgeUpdate, /Object\.assign\(article, previousArticle\)[\s\S]*?auditIndex/, 'knowledge update must restore record and audit');
 assert.match(knowledgeVote, /article\.helpful_votes = previousVotes/, 'knowledge vote counter must rollback');
 assert.match(knowledgeView, /article\.view_count = previousViews/, 'knowledge view counter must rollback');
+assert.match(passwordChange, /app\.post\('\/api\/auth\/change-password', async/);
+assert.match(passwordChange, /await persistDataStore\(\)[\s\S]*?revokeUserSessions\(user\.id\)[\s\S]*?createSession\(user\.id, req\)/,
+  'password change must persist before session revocation and reissue');
+assert.match(passwordChange, /password_hash = previousCredentials\.password_hash[\s\S]*?auditIndex/,
+  'password change must restore credentials and audit on persistence failure');
+assert.doesNotMatch(passwordChange, /persistDataStore\(\)\.catch\(\(\) => \{\}\)/);
 
-console.log('Vendor and Knowledge Base durable persistence checks: 18/18 passed');
+console.log('Vendor, Knowledge Base, and password durable persistence checks: 22/22 passed');
