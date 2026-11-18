@@ -26,7 +26,10 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   const ticket = db.tickets.find(t => t.id === ticketId);
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
-  if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+  // Reporting a ticket grants visibility, not authority to change its lifecycle.
+  // Status mutation still requires tickets.update at the route and either an
+  // explicit owner-domain scope or a trusted assignment to this agent.
+  if (ticket.assigned_agent_id === actor.id) return true;
   if (isPostgresPersistenceActive()) {
     // PostgreSQL RBAC is owner-code agnostic: custom operational functions
     // (e.g. RPC/SC) need the same explicit Tickets scope as IT/GA.
