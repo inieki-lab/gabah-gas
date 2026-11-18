@@ -97,6 +97,14 @@ async function main() {
     rec('3a: create unit resolves division code case-insensitively to canonical FK value', 'Umum', `${u1Case.status}:${u1Case.json?.data?.division_code}`, u1Case.status === 201 && u1Case.json?.data?.division_code === 'Umum');
     rec('3b: update unit resolves division code case-insensitively to canonical FK value', 'Audit', `${u1CasePatch.status}:${(await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data?.find(x => x.id === u1c.json?.data?.id)?.division_code}`, u1CasePatch.status === 200 && (await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data?.find(x => x.id === u1c.json?.data?.id)?.division_code === 'Audit');
     rec('3c: update rejects duplicate unit names without partial mutation', '400 + original name retained', `${duplicateUnitName.status} + unchanged=${duplicateUnitStillOriginal}`, duplicateUnitName.status === 400 && duplicateUnitStillOriginal);
+    const locationAsUnitParent = await req(b, 'POST', '/api/master/org-units', { token: admin, body: { name: 'Unit Tidak Valid', division_code: 'SC' } });
+    rec('3d: location legacy code cannot parent a new organizational unit', '400', `HTTP ${locationAsUnitParent.status}`, locationAsUnitParent.status === 400);
+    const locationAsUserDivision = await req(b, 'POST', '/api/users', { token: admin, body: {
+      name: 'Uji Divisi Lokasi', email: `uji.divisi.lokasi.${Date.now()}@foodstation.co.id`, role: 'Karyawan', division: 'PIBC',
+    } });
+    rec('3e: PIBC location cannot be saved as employee division', '400', `HTTP ${locationAsUserDivision.status}`, locationAsUserDivision.status === 400);
+    const locationAsPatchedDivision = await req(b, 'PATCH', `/api/users/${itUser.id}`, { token: admin, body: { division: 'SC' } });
+    rec('3f: RPC/SC location cannot be saved as employee division', '400', `HTTP ${locationAsPatchedDivision.status}`, locationAsPatchedDivision.status === 400);
 
     // Case 4: Admin CRUD/disable master Location
     const l1 = await req(b, 'POST', '/api/master/office-locations', { token: admin, body: { name: 'Kantor Uji Coba' } });
