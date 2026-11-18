@@ -126,7 +126,7 @@ async function main() {
     const suffix = crypto.randomBytes(3).toString('hex');
     const batch1 = [
       { name: 'Impor Dua', email: `impor.dua.${suffix}@foodstation.co.id`, role: 'GA', division: 'GA', department: 'Sarpras', phone: '081200000002' },
-      { name: 'Impor Tiga', email: `impor.tiga.${suffix}@foodstation.co.id`, role: 'Peran Ngawur', division: 'XX', department: 'Gudang', phone: '' },
+      { name: 'Impor Tiga', email: `impor.tiga.${suffix}@foodstation.co.id`, role: 'Peran Ngawur', division: 'Umum', department: 'Gudang', phone: '' },
       { name: 'Impor Humas', email: `impor.humas.${suffix}@foodstation.co.id`, role: 'Humas', division: 'Umum', department: 'Humas', phone: '' },
     ];
     const r1 = await req(base, 'POST', '/api/users/bulk-import', {
