@@ -3280,7 +3280,7 @@ async function startServer() {
     return { valid: true as const, vendor, clear: false };
   };
 
-  app.post('/api/maintenances', (req, res) => {
+  app.post('/api/maintenances', async (req, res) => {
     const actor = getActor(req);
     // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
     // GA) secara eksplisit; mode PostgreSQL beralih ke permission dinamis
@@ -3335,12 +3335,23 @@ async function startServer() {
       created_at: new Date().toISOString(),
     };
     db.maintenances.push(newSchedule);
-    GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
-    persistDataStore().catch(() => {});
-    res.status(201).json({ success: true, data: newSchedule });
+    const auditEntry = GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
+    try {
+      await persistDataStore();
+      return res.status(201).json({ success: true, data: newSchedule });
+    } catch (persistenceError) {
+      const scheduleIndex = db.maintenances.findIndex(item => item.id === newSchedule.id);
+      if (scheduleIndex >= 0) db.maintenances.splice(scheduleIndex, 1);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist maintenance-create rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Jadwal maintenance gagal disimpan. Tidak ada perubahan yang diterapkan.' });
+    }
   });
 
-  app.patch('/api/maintenances/:id', (req, res) => {
+  app.patch('/api/maintenances/:id', async (req, res) => {
     const actor = getActor(req);
     // RBAC: file-store mempertahankan allowlist legacy; PostgreSQL beralih ke
     // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
@@ -3360,6 +3371,23 @@ async function startServer() {
 
     const validationError = validateMaintenanceInput(req.body || {});
     if (validationError) return res.status(400).json({ success: false, message: validationError });
+
+    // Snapshot every field this handler may mutate so a failed durable write
+    // can restore the in-memory domain object and its audit trail.
+    const previous = {
+      title: schedule.title,
+      scheduled_date: schedule.scheduled_date,
+      frequency: schedule.frequency,
+      status: schedule.status,
+      technician_name: schedule.technician_name,
+      estimated_cost: schedule.estimated_cost,
+      actual_cost: schedule.actual_cost,
+      notes: schedule.notes,
+      checklist: schedule.checklist,
+      vendor_id: schedule.vendor_id,
+      vendor_name: schedule.vendor_name,
+      last_completed_at: schedule.last_completed_at,
+    };
 
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, schedule_code, asset_id, asset_name,
@@ -3388,9 +3416,19 @@ async function startServer() {
     if (req.body.status === 'completed') {
       schedule.last_completed_at = new Date().toISOString();
     }
-    GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: schedule });
+    const auditEntry = GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: schedule });
+    } catch (persistenceError) {
+      Object.assign(schedule, previous);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist maintenance-update rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Perubahan maintenance gagal disimpan. Perubahan dibatalkan.' });
+    }
   });
 
   // =========================
