@@ -31,7 +31,7 @@ const checks = [
   ['Fresh schema seeds Umum and Audit divisions before their org-unit foreign keys', /INSERT INTO divisions \(code, name\)[\s\S]*'Umum'[\s\S]*'Audit'[\s\S]*CREATE TABLE IF NOT EXISTS org_units/.test(orgMasterMigration)],
 
   ['Owner domains are synchronized from the configurable division master before PostgreSQL FK-backed data', /for \(const division of db\.divisions \|\| \[\]\)/.test(persistence) && /INSERT INTO divisions \(code,name,is_active\)/.test(persistence)],
-  ['Asset categories and new assets require owner codes from the configured master', /db\.divisions \|\| \[\]\)\.some\(d => String\(d\.code\)/.test(server) && /const configuredOwner = \(db\.divisions \|\| \[\]\)\.some/.test(services)],
+  ['Asset categories and new assets require active owner codes from the configured master', server.includes("String(d.code || '').trim().toUpperCase() === normalizedOwnerCode") && /const configuredOwner = \(db\.divisions \|\| \[\]\)\.some/.test(services)],
   ['Contract visibility and edits follow any explicit owner scope, not IT/GA whitelist', /if \(!owner\) return false;/.test(contracts) && !/owner !== 'IT' && owner !== 'GA'/.test(contracts) && /hasRbacScope\(String\(user\.id\), 'division', owner, 'contracts'\)/.test(contracts)],
   ['Vendor ownership is explicit and independent from category', /owner_division\?: string \| null/.test(read('server/db.ts')) && /owner_division\?: string \| null/.test(vendorTypes) && !/\['IT', 'License'\]\.includes\(String\(v\.category\)\)/.test(server)],
   ['Vendor list uses explicit owner scope and keeps unclassified legacy rows global-only', /const owner = String\(v\.owner_division \|\| ''\)\.trim\(\);[\s\S]*if \(!owner\) return false;[\s\S]*hasRbacScope\(String\(actor\.id\), 'division', owner, 'vendors'\)/.test(server)],
@@ -111,7 +111,7 @@ const checks = [
   ['Legacy SC/PIBC owner codes remain readable but cannot be mutated by non-Superadmins', services.includes("if (['SC', 'PIBC'].includes(owner)) return false") && services.includes('legacy office/location labels, not active owner domains')],
   ['New assets cannot be created under legacy SC/PIBC location codes even by direct API payloads', services.includes("if (['SC', 'PIBC'].includes(String(resolvedOwnerDivision || '').trim().toUpperCase()))") && services.includes('Owner SC/PIBC adalah kode lokasi legacy')],
   ['New assets cannot use categories with missing or UNASSIGNED owner domains', services.includes("String(taxonomy.owner_division).trim().toUpperCase() === 'UNASSIGNED'") && services.includes('Kategori belum memiliki owner domain aktif')],
-  ['New/updated category masters cannot use legacy SC/PIBC location codes as owner domains', server.includes("if (['SC', 'PIBC'].includes(normalizedOwnerCode))") && server.includes('kode lokasi legacy tidak dapat dipakai untuk kategori baru')],
+  ['New/updated category masters cannot use legacy SC/PIBC location codes as owner domains', (server.match(/\['SC', 'PIBC'\]\.includes\(normalizedOwnerCode\)/g) || []).length >= 2 && server.includes('SC/PIBC adalah kode lokasi legacy, bukan owner domain untuk kategori baru')],
   ['Managing-unit fallback does not infer a unit from legacy SC/PIBC owner codes', managingUnit.includes("if (['SC', 'PIBC'].includes(div)) return null") && managingUnit.includes('existing explicit historical')],
 
 
