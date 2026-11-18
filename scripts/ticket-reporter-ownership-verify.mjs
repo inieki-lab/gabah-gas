@@ -32,6 +32,7 @@ checks.push(
   ['Ticket status is restored when persistence fails', ['ticket.status = previousState.status','ticket.resolution_notes = previousState.resolution_notes','ticket.resolved_at = previousState.resolved_at','ticket.updated_at = previousState.updated_at'].every(fragment => statusRoute.includes(fragment))],
   ['Failed ticket status audit entry is removed from memory', statusRoute.includes('db.auditLogs.splice(auditIndex, 1)')],
   ['Ticket status route does not silently swallow persistence errors', !statusRoute.includes('persistDataStore().catch(() => {})')],
+  ['Ticket status rollback refreshes the local fallback snapshot', statusRoute.includes('await persistDataStore();') && statusRoute.includes('Failed to persist rollback snapshot')],
 );
 
 let failed = 0;
