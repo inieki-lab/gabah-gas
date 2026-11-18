@@ -162,7 +162,7 @@ const DEFAULT_NOTIFICATION_RULES: NotificationRule[] = [
   { id: 'rule-warranty', title: 'Peringatan Masa Garansi & Lisensi Expired', trigger: '30 hari & 7 hari sebelum tanggal kedaluwarsa', target: 'Admin GABAH & Divisi IT', status: 'Aktif', severity: 'warning', daysBefore: 30 },
   { id: 'rule-loan', title: 'Eskalasi Keterlambatan Peminjaman (Overdue Loan)', trigger: 'Melewati batas due date jam 17:00 WIB', target: 'Peminjam, Atasan, dan Admin Penanggung Jawab', status: 'Aktif', severity: 'critical', cutoffTime: '17:00' },
   { id: 'rule-sla', title: 'SLA Breach Warning Tiket Helpdesk', trigger: 'Sisa waktu SLA < 1 jam atau status open melebihi target', target: 'Teknisi yang ditugaskan & Koordinator IT/GA', status: 'Aktif', severity: 'critical', warningHours: 1 },
-  { id: 'rule-bast', title: 'Pemberitahuan BAST & Serah Terima Selesai', trigger: 'Saat serah terima fisik aset disetujui', target: 'Peminjam & Tim Inventaris BUMD', status: 'Aktif', severity: 'info' },
+  { id: 'rule-bast', title: 'Pemberitahuan BAST & Serah Terima Selesai', trigger: 'Saat serah terima fisik aset disetujui', target: 'Peminjam & Divisi Pemilik Aset', status: 'Aktif', severity: 'info' },
 ];
 
 export const AdministrationModal: React.FC<AdministrationModalProps> = ({
