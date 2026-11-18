@@ -513,7 +513,7 @@ export class GabahDomainService {
     db.assets.unshift(newAsset);
 
     // Record audit
-    this.recordAudit('ASSET_CREATED', 'Assets', `Mendaftarkan aset baru ${newAsset.asset_number} (${newAsset.name}) [Owner: ${newAsset.owner_division}]`, actor, newAsset.id);
+    this.recordAudit('ASSET_CREATED', 'Assets', `Mendaftarkan aset baru ${newAsset.asset_number} (${newAsset.name}) [Owner: ${newAsset.owner_division}]`, actor, newAsset.id, false);
 
     return newAsset;
   }
@@ -837,7 +837,7 @@ export class GabahDomainService {
       link_id: newLoan.id,
     });
 
-    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id);
+    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id, false);
 
     return newLoan;
   }
@@ -886,7 +886,7 @@ export class GabahDomainService {
     // Mark the already-validated asset as reserved.
     asset.status = 'reserved';
 
-    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id);
+    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id, false);
 
     this.notify({
       recipient_user_id: loan.borrower_id,
@@ -920,7 +920,7 @@ export class GabahDomainService {
     loan.rejection_reason = reason || 'Ditolak oleh divisi pemilik aset';
     loan.updated_at = new Date().toISOString();
 
-    this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id);
+    this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id, false);
 
     this.notify({
       recipient_user_id: loan.borrower_id,
@@ -992,7 +992,7 @@ export class GabahDomainService {
 
     asset.status = 'assigned';
 
-    this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id);
+    this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id, false);
 
     return loan;
   }
@@ -1045,7 +1045,7 @@ export class GabahDomainService {
     // Preserve the recorded physical location. Returning a loan changes custody/status,
     // not the asset's site; a real relocation must use the asset-mutation workflow.
 
-    this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id);
+    this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id, false);
 
     return loan;
   }
