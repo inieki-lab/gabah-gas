@@ -96,8 +96,10 @@ JOIN (VALUES
   ('admin_tiket_me', 'notifications.read'),
   ('admin_tiket_me', 'notifications.read_all'),
   ('pemohon_tiket_ga', 'tickets.read'),
+  ('pemohon_tiket_ga', 'notifications.read'),
   ('pemohon_tiket_ga', 'tickets.create.ga'),
   ('pemohon_tiket_me', 'tickets.read'),
+  ('pemohon_tiket_me', 'notifications.read'),
   ('pemohon_tiket_me', 'tickets.create.me')
 ) AS grants(role_key, permission_key) ON TRUE
 JOIN gabah_permissions p ON p.permission_key = grants.permission_key AND p.is_active = TRUE
