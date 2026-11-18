@@ -257,10 +257,15 @@ class GabahApiClient {
     return this.request<any[]>('/api/taxonomy/categories');
   }
 
-  // Categories the current actor may actually create, filtered by server-side
-  // assets.create + module-specific owner scope (and licenses.manage).
+  // Owner domains and categories the current actor may actually create.
+  // The server applies assets.create + exact owner scope and license permissions.
+  async getAssetCreateOptions(): Promise<{ owner_domains: Array<{ code: string; name: string }>; categories: any[] }> {
+    return this.request<{ owner_domains: Array<{ code: string; name: string }>; categories: any[] }>('/api/assets/creation-categories');
+  }
+
   async getAssetCreationCategories(): Promise<any[]> {
-    return this.request<any[]>('/api/assets/creation-categories');
+    const options = await this.getAssetCreateOptions();
+    return Array.isArray(options?.categories) ? options.categories : [];
   }
 
   async createCategory(payload: {
@@ -419,6 +424,13 @@ class GabahApiClient {
 
   async getAssetById(id: string): Promise<Asset> {
     return this.request<Asset>(`/api/assets/${id}`);
+  }
+
+  async reclassifyAssetOwner(id: string, payload: { new_owner_division: string; reason: string }): Promise<Asset> {
+    return this.request<Asset>(`/api/assets/${encodeURIComponent(id)}/reclassify-owner`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 
   async createAsset(payload: {
