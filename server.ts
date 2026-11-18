@@ -7,7 +7,7 @@ import path from 'path';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole, hasTicketQueueScope } from './server/services';
+import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, hasTicketQueueScope } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canManageContractCapability } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
