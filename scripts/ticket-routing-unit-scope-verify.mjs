@@ -13,7 +13,7 @@ const ticketView = read('src/components/views/TicketsView.tsx');
 const dashboardScope = read('server/dashboard-attention-scope.ts');
 const rbacPolicy = read('server/rbac-policy.ts');
 
-const ticketCreateStart = services.indexOf('static createTicket(');
+const ticketCreateStart = services.indexOf('static async createTicket(');
 const ticketCreateEnd = services.indexOf('\n  /**', ticketCreateStart);
 const ticketCreate = services.slice(ticketCreateStart, ticketCreateEnd);
 const listStart = server.indexOf("app.get('/api/tickets',");
