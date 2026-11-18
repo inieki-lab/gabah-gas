@@ -437,7 +437,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   )}
                 </div>
 
-                {canAssignTickets && onLoadTicketAssignees && onAssignTicket && !['resolved', 'closed'].includes(ticket.status) && (
+                {canAssignTickets && ticket.can_assign === true && onLoadTicketAssignees && onAssignTicket && !['resolved', 'closed'].includes(ticket.status) && (
                   <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
                     {!assigneesByTicket[ticket.id] ? (
                       <button type="button" disabled={loadingAssigneesFor === ticket.id} onClick={() => loadAssignees(ticket.id)} className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 font-semibold disabled:opacity-50">
