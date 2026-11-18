@@ -353,8 +353,11 @@ async function startServer() {
   // fixed in the UI; only Superadmin may change their enabled state.
   const NOTIFICATION_RULE_IDS = new Set(['rule-warranty', 'rule-loan', 'rule-sla', 'rule-bast']);
   app.get('/api/admin/notification-rules', async (req, res) => {
-    if (!requireRbacSuperadmin(req, res)) return;
     try {
+      getActor(req);
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi memerlukan PostgreSQL aktif.' });
+      }
       const result = await queryRbac<any>(
         'SELECT rule_id, is_active, updated_at, updated_by_user_id FROM gabah_notification_rule_settings ORDER BY rule_id',
       );
