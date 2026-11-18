@@ -72,8 +72,11 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
 export function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
   if (isSuperadminActor(actor)) return true;
   const owner = String(ownerDivision || '').trim().toUpperCase();
-  // Owner codes are configurable business domains (IT, GA, RPC/SC, PIBC,
-  // and future operational owners). A non-empty owner is never sufficient:
+  // SC and PIBC are legacy office/location labels, not active owner domains.
+  // Existing records remain readable; non-Superadmin mutation stays blocked
+  // until each affected asset is reviewed and reclassified by an administrator.
+  if (['SC', 'PIBC'].includes(owner)) return false;
+  // Owner codes are configurable business domains. A non-empty owner is never sufficient:
   // PostgreSQL mode still requires operation permission + matching owner scope.
   // File-store fallback remains IT/GA-only.
 
@@ -365,6 +368,14 @@ export class GabahDomainService {
       const alt = categoryCatalog.find(c => c && c.is_active !== false && c.owner_division === taxonomy.owner_division)
         || categoryCatalog.find(c => c && c.is_active !== false);
       if (alt) taxonomy = alt;
+    }
+
+    // SC/PIBC are legacy office/location labels, not owner domains for new assets.
+    // Keep historical rows untouched; require an administrator to review/reclassify
+    // category master ownership before any new asset can use a replacement owner code.
+    if (['SC', 'PIBC'].includes(String(taxonomy.owner_division || '').trim().toUpperCase())
+      && !payload.owner_division) {
+      throw Object.assign(new Error('Kategori ini masih memakai owner legacy SC/PIBC. Review master kategori dan tetapkan owner domain aktif sebelum mendaftarkan aset baru.'), { statusCode: 409 });
     }
 
     // Enforce Corporate Rules:
