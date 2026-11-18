@@ -3574,6 +3574,10 @@ async function startServer() {
       }
       return hasApplicationRole(actor, recipientRoleKey);
     }
+    if (notification.recipient_unit_id) {
+      return actor.unit_id === notification.recipient_unit_id
+        && hasRbacScope(String(actor.id), 'unit', notification.recipient_unit_id, 'tickets');
+    }
     if (notification.recipient_division) return notification.recipient_division === actor.division;
     return false;
   };
