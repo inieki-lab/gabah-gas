@@ -10,14 +10,6 @@ import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
 
-/** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
-const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
-
-/** Dibagikan agar guard rute (mis. Maintenance Stage 13F) memakai satu definisi. */
-export function isLegacyScopedRole(role: string): boolean {
-  return LEGACY_SCOPED_ROLES.has(String(role));
-}
-
 interface AssetScopeSpec { type: string; value: string | null }
 
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
