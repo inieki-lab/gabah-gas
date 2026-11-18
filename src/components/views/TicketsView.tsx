@@ -83,7 +83,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
   );
   const hasQueueCapability = ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => hasEffectivePermission(key) === true)
-    || (currentUser?.permission_keys === undefined && ['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || ''));
+    || (currentUser?.permission_keys === undefined && ['Admin GABAH', 'IT'].includes(currentUser?.role || ''));
   const isSelfTicketsOnly = !isAuditor && !hasQueueCapability && !hasScopedQueueTickets;
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
