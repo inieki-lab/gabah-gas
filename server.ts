@@ -3039,8 +3039,7 @@ async function startServer() {
         if (!legacyRequesterAllowed) return res.status(403).json({ success: false, message: 'Capability pemohon untuk antrean ini belum diberikan.' });
       }
       if (!requireRbacPermission(req, res, permission)) return;
-      const newTicket = GabahDomainService.createTicket({ ...req.body, category: requestedCategory as 'IT' | 'GA' | 'ME' }, actor);
-      await persistDataStore();
+      const newTicket = await GabahDomainService.createTicket({ ...req.body, category: requestedCategory as 'IT' | 'GA' | 'ME' }, actor);
       res.status(201).json({ success: true, data: newTicket });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
