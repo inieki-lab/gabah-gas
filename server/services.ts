@@ -2034,7 +2034,7 @@ export class GabahDomainService {
     return db.meetingTypes || [];
   }
 
-  static createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
+  static async createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): Promise<ServerMeetingType> {
     if (!hasRoomPermission(actor, 'meeting_types.manage')) {
       throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
@@ -2049,38 +2049,53 @@ export class GabahDomainService {
       is_system: false,
     };
     if (!db.meetingTypes) db.meetingTypes = [];
+    const previousTypes = db.meetingTypes.slice();
+    const previousAuditLogs = db.auditLogs.slice();
     db.meetingTypes.push(newItem);
     this.recordAudit('MEETING_TYPE_CREATED', 'MeetingRooms', `Menambah tipe rapat baru: ${newItem.name}`, actor, newItem.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await this.persistMutationWithRollback('Pembuatan tipe rapat', () => {
+      db.meetingTypes = previousTypes;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    });
     return newItem;
   }
 
-  static updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
+  static async updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): Promise<ServerMeetingType> {
     if (!hasRoomPermission(actor, 'meeting_types.manage')) {
       throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
     const item = (db.meetingTypes || []).find(m => m.id === id);
     if (!item) throw new Error('Tipe rapat tidak ditemukan.');
+    const previousItem = { ...item };
+    const previousAuditLogs = db.auditLogs.slice();
     if (payload.name) item.name = payload.name.trim();
     if (payload.code) item.code = payload.code.trim().toLowerCase();
     if (payload.description !== undefined) item.description = payload.description.trim();
     if (payload.priority_level) item.priority_level = payload.priority_level;
     if (payload.color) item.color = payload.color;
     this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await this.persistMutationWithRollback('Perubahan tipe rapat', () => {
+      Object.assign(item, previousItem);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    });
     return item;
   }
 
-  static deleteMeetingType(id: string, actor: ServerUser): { success: boolean } {
+  static async deleteMeetingType(id: string, actor: ServerUser): Promise<{ success: boolean }> {
     if (!hasRoomPermission(actor, 'meeting_types.manage')) {
       throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
     const idx = (db.meetingTypes || []).findIndex(m => m.id === id);
     if (idx === -1) throw new Error('Tipe rapat tidak ditemukan.');
+    const previousTypes = db.meetingTypes.slice();
+    const previousAuditLogs = db.auditLogs.slice();
     const removed = db.meetingTypes[idx];
     db.meetingTypes.splice(idx, 1);
     this.recordAudit('MEETING_TYPE_DELETED', 'MeetingRooms', `Menghapus tipe rapat: ${removed.name}`, actor, removed.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await this.persistMutationWithRollback('Penghapusan tipe rapat', () => {
+      db.meetingTypes = previousTypes;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    });
     return { success: true };
   }
 
@@ -2089,7 +2104,7 @@ export class GabahDomainService {
     return db.meetingFacilities || [];
   }
 
-  static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
+  static async createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): Promise<ServerMeetingFacility> {
     if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
       : actor.role === 'GA' || actor.role === 'IT'))) {
@@ -2105,13 +2120,18 @@ export class GabahDomainService {
       is_system: false,
     };
     if (!db.meetingFacilities) db.meetingFacilities = [];
+    const previousFacilities = db.meetingFacilities.slice();
+    const previousAuditLogs = db.auditLogs.slice();
     db.meetingFacilities.push(newFac);
     this.recordAudit('MEETING_FACILITY_CREATED', 'MeetingRooms', `Menambah fasilitas rapat [${newFac.category}]: ${newFac.name}`, actor, newFac.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await this.persistMutationWithRollback('Pembuatan fasilitas rapat', () => {
+      db.meetingFacilities = previousFacilities;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    });
     return newFac;
   }
 
-  static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
+  static async updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): Promise<ServerMeetingFacility> {
     if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
       : actor.role === 'GA' || actor.role === 'IT'))) {
@@ -2119,16 +2139,21 @@ export class GabahDomainService {
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
     if (!item) throw new Error('Fasilitas tidak ditemukan.');
+    const previousItem = { ...item };
+    const previousAuditLogs = db.auditLogs.slice();
     if (payload.name) item.name = payload.name.trim();
     if (payload.category) item.category = payload.category;
     if (payload.description !== undefined) item.description = payload.description.trim();
     if (payload.is_active !== undefined) item.is_active = payload.is_active;
     this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await this.persistMutationWithRollback('Perubahan fasilitas rapat', () => {
+      Object.assign(item, previousItem);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    });
     return item;
   }
 
-  static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
+  static async deleteMeetingFacility(id: string, actor: ServerUser): Promise<{ success: boolean }> {
     if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
       : actor.role === 'GA' || actor.role === 'IT'))) {
@@ -2136,10 +2161,15 @@ export class GabahDomainService {
     }
     const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);
     if (idx === -1) throw new Error('Fasilitas tidak ditemukan.');
+    const previousFacilities = db.meetingFacilities.slice();
+    const previousAuditLogs = db.auditLogs.slice();
     const removed = db.meetingFacilities[idx];
     db.meetingFacilities.splice(idx, 1);
     this.recordAudit('MEETING_FACILITY_DELETED', 'MeetingRooms', `Menghapus fasilitas rapat [${removed.category}]: ${removed.name}`, actor, removed.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await this.persistMutationWithRollback('Penghapusan fasilitas rapat', () => {
+      db.meetingFacilities = previousFacilities;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    });
     return { success: true };
   }
 }
