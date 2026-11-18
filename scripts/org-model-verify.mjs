@@ -57,18 +57,24 @@ async function main() {
     const activeOfficeNames = offices.filter(l => l.is_active !== false).map(l => l.name).sort();
     const expectedActiveOfficeNames = ['HO', 'Kantor Perawatan', 'PIBC', 'Pangsub', 'RPC/SC'].sort();
     rec('13: lima lokasi kantor aktif sesuai keputusan bisnis; Subang tidak aktif', expectedActiveOfficeNames.join('|') + ' (+future sites allowed)', activeOfficeNames.join('|'), expectedActiveOfficeNames.every(name => activeOfficeNames.includes(name)) && !activeOfficeNames.includes('Subang'));
-    const unitPIBC = units.find(u => u.name === 'PIBC');
-    const unitSC = units.find(u => u.name === 'Supply Chain');
+    const unitIT = units.find(u => u.id === 'UNIT-IT-MIS' && u.is_active);
+    const retiredLocationUnits = units.filter(u => ['UNIT-SC', 'UNIT-PIBC', 'UNIT-PANGSUB'].includes(u.id));
+    const retiredLocationUnitsInactive = retiredLocationUnits.length === 3 && retiredLocationUnits.every(u => u.is_active === false);
+    const meUnitAtPibc = units.find(u => u.id === 'UNIT-PIBC-ME' && u.is_active);
     const offPIBC = offices.find(l => l.name === 'PIBC');
     const offKP = offices.find(l => l.name === 'HO');
     const itUser = users.find(u => u.role === 'IT');
-    // Staf + IT + PIBC: role IT, jabatan Staf, unit PIBC, lokasi PIBC
-    const u1 = await req(b, 'PATCH', `/api/users/${itUser.id}`, { token: admin, body: { job_level_code: 'STAF', unit_id: unitPIBC?.id, office_location_id: offPIBC?.id } });
+    // Staf IT tetap pada unit IT-MIS; lokasi PIBC disimpan sebagai atribut terpisah.
+    const u1 = await req(b, 'PATCH', `/api/users/${itUser.id}`, { token: admin, body: { job_level_code: 'STAF', unit_id: unitIT?.id, office_location_id: offPIBC?.id } });
     const me1 = (await req(b, 'GET', '/api/auth/me', { token: it })).json?.data || {};
-    rec('1: role+jabatan+unit+lokasi independen (IT+Staf+PIBC+PIBC)',
-      'role IT tetap + STAF + PIBC + PIBC',
-      `${me1.role}+${me1.job_level_code}+${me1.unit_id === unitPIBC?.id ? 'PIBC-unit' : me1.unit_id}+${me1.office_location_id === offPIBC?.id ? 'PIBC-off' : me1.office_location_id}`,
-      u1.status === 200 && me1.role === 'IT' && me1.job_level_code === 'STAF' && me1.unit_id === unitPIBC?.id && me1.office_location_id === offPIBC?.id);
+    rec('1: role+jabatan+unit+lokasi independen (IT+Staf+IT-MIS+PIBC)',
+      'role IT tetap + STAF + IT-MIS + PIBC',
+      `${me1.role}+${me1.job_level_code}+${me1.unit_id === unitIT?.id ? 'IT-MIS' : me1.unit_id}+${me1.office_location_id === offPIBC?.id ? 'PIBC-off' : me1.office_location_id}`,
+      u1.status === 200 && me1.role === 'IT' && me1.job_level_code === 'STAF' && me1.unit_id === unitIT?.id && me1.office_location_id === offPIBC?.id);
+    rec('13a: lokasi kantor tidak menjadi unit/divisi aktif',
+      'legacy placeholders inactive; ME remains an operational unit at PIBC',
+      `legacyInactive=${retiredLocationUnitsInactive}; ME=${Boolean(meUnitAtPibc)}`,
+      retiredLocationUnitsInactive && Boolean(meUnitAtPibc));
 
     // Case 2: Admin CRUD/disable master Jabatan
     const j1 = await req(b, 'POST', '/api/master/job-levels', { token: admin, body: { code: 'MANAGER', label: 'Manajer Senior', order: 3 } });
