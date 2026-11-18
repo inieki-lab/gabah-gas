@@ -180,6 +180,9 @@ export interface Ticket {
   assigned_agent_name?: string;
   /** Operational queue unit (ME uses UNIT-PIBC-ME); legacy categories remain historical. */
   assigned_unit_id?: string;
+  /** Record-level capabilities calculated by the backend for the authenticated actor. */
+  can_manage?: boolean;
+  can_assign?: boolean;
   sla_hours: number; // e.g. Urgent: 4h, High: 8h, Medium: 24h, Low: 48h
   sla_response_deadline?: string;
   sla_resolution_deadline?: string;
