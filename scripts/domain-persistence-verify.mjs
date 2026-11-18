@@ -46,4 +46,4 @@ assert.doesNotMatch(passwordChange, /persistDataStore\(\)\.catch\(\(\) => \{\}\)
 assert.match(source, /void persistDataStore\(\)\.catch\(error =>/,
   'post-response compatibility safety net must catch persistence failures');
 
-console.log('Vendor, Knowledge Base, password, and persistence safety-net checks: 23/23 passed');
+console.log('Vendor, Knowledge Base, password, and persistence safety-net checks: 29/29 passed');
