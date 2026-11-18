@@ -1125,8 +1125,7 @@ export class GabahDomainService {
     // IT may be assigned automatically only when exactly one active, explicitly
     // authorized IT support agent exists. Zero or multiple candidates remain queued.
     if (payload.category === 'IT' && isPostgresPersistenceActive()) {
-      const eligibleAgents = db.users.filter(user => user.is_active !== false
-        && String(user.division || '').toUpperCase() === 'IT'
+      const eligibleAgents = db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
         && hasRbacPermission(String(user.id), 'tickets.update')
         && hasRbacScope(String(user.id), 'division', 'IT', 'tickets'));
       if (eligibleAgents.length === 1) {
