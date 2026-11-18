@@ -22,6 +22,18 @@ const checks = [
   ['Mutation helper excludes reporter-only ownership', !guard.includes('ticket.reporter_id === actor.id')],
 ];
 
+
+const statusRouteStart = source.indexOf("app.patch('/api/tickets/:id/status'");
+const statusRouteEnd = source.indexOf("\n  const validateMaintenanceInput", statusRouteStart);
+const statusRoute = source.slice(statusRouteStart, statusRouteEnd);
+checks.push(
+  ['Ticket status route awaits authoritative persistence', statusRoute.includes("app.patch('/api/tickets/:id/status', async") && statusRoute.includes('await persistDataStore();')],
+  ['Ticket status persistence failure returns HTTP 500', statusRoute.includes('return res.status(500).json(')],
+  ['Ticket status is restored when persistence fails', ['ticket.status = previousState.status','ticket.resolution_notes = previousState.resolution_notes','ticket.resolved_at = previousState.resolved_at','ticket.updated_at = previousState.updated_at'].every(fragment => statusRoute.includes(fragment))],
+  ['Failed ticket status audit entry is removed from memory', statusRoute.includes('db.auditLogs.splice(auditIndex, 1)')],
+  ['Ticket status route does not silently swallow persistence errors', !statusRoute.includes('persistDataStore().catch(() => {})')],
+);
+
 let failed = 0;
 for (const [name, pass] of checks) {
   console.log((pass ? 'PASS' : 'FAIL') + ' | ' + name);
