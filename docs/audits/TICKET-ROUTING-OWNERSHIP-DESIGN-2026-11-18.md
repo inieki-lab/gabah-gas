@@ -90,3 +90,21 @@ Pemeriksaan riwayat PR #36 (`fix/user-menu-location-rbac-audit`, head `2a83eae`)
 Keputusan tersebut terlihat pada deskripsi PR #36, tetapi branch implementasinya tidak boleh digabung mentah-mentah. Audit sebelumnya sudah menemukan migration 035 pada branch itu menyimpan `UNIT-PIBC-ME` dengan `division_code='PIBC'`, yang kembali mencampur fungsi ME dengan kode divisi/lokasi PIBC; migration 039 juga mengubah permission role GA dan perlu direkonsiliasi dengan matriks role terkini. Perlu port selektif ke head terbaru, migration additive setelah 097, dan regression tests baru.
 
 Satu keputusan operasional yang masih belum tersedia dari catatan sebelumnya: identitas akun aktif yang ditunjuk sebagai petugas IT Support tunggal. Sampai akun itu ditetapkan, tiket IT tetap di antrean IT dan tidak boleh dipilih otomatis secara acak.
+
+
+## 7. Implementation slice opened on 18 November 2026
+
+Branch: `fix/ticket-routing-me-unit-scope` (stacked on PR #120; not merged).
+
+Implemented in source for CI review:
+- Additive migration 098 adds a separate `office_location_id` to operational units, models `UNIT-PIBC-ME` as `division_code='Umum'` at `OFF-PIBC`, and adds unit targets to tickets/notifications.
+- Seed opt-in requester roles for GA/ME, a GA helpdesk operator role, and an Admin Tiket ME role with unit scope. Generic GA role no longer receives ticket update/dispatch grants; no operator/requester role is auto-assigned to a user.
+- New ticket categories are IT, GA, ME. SC/PIBC remain valid only for historical rows; the create endpoint rejects them.
+- IT auto-assignment occurs only for exactly one active user with `tickets.update` and explicit IT ticket scope; otherwise the ticket remains in queue.
+- GA and ME dispatch endpoints validate `tickets.assign`, target `tickets.update`, active status, and matching explicit scope. ME targets `UNIT-PIBC-ME`.
+- List, direct detail, status guard, and assignee routes share the queue-scope resolver. Reporter visibility does not grant status mutation.
+- Notification routing for ticket queues uses explicit authorized user recipients; ME unit-recipient support is also persisted.
+- Client form hides SC/PIBC for new requests, exposes IT/GA/ME only when requester capability is present, and blocks linking a new ticket to a legacy SC/PIBC-owned asset pending classification review.
+- Added a static regression contract and CI step; UAT scenarios now cover requester, dispatcher, assignee, location-only denial, and legacy-history preservation.
+
+**Not yet verified:** this implementation branch has not completed CI, fresh PostgreSQL migration, upgrade-from-legacy migration, or browser UAT. No merge or production readiness is claimed. Review the migration ordering and normalized persistence before approving.
