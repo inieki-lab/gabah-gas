@@ -361,6 +361,10 @@ export class GabahDomainService {
     // Kategori nonaktif ditolak sebagai pilihan BARU (400); input kosong tidak
     // ditolak (resolusi default) — lihat fallback aktif di bawah.
     assertCategoryUsableForNewAsset(taxonomy, rawCategory, categoryCatalog);
+    if (!String(taxonomy.owner_division || '').trim()
+      || String(taxonomy.owner_division).trim().toUpperCase() === 'UNASSIGNED') {
+      throw Object.assign(new Error('Kategori belum memiliki owner domain aktif. Superadmin harus melengkapi master kategori sebelum aset baru dapat didaftarkan.'), { statusCode: 409 });
+    }
     if (!rawCategory.trim() && taxonomy.is_active === false) {
       // Kategori default untuk divisi ini sedang nonaktif → gunakan kategori
       // aktif lain milik divisi yang sama (deterministik, tidak menebak di
