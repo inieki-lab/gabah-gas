@@ -68,9 +68,6 @@ jobs:
       - name: RBAC mutation and audit transaction regression
         run: npm run test:rbac-audit-transaction
 
-      - name: RBAC mutation and audit transaction regression
-        run: npm run test:rbac-audit-transaction
-
       - name: Employee profile capability normalization regression
         run: npm run test:employee-role-normalization
 
