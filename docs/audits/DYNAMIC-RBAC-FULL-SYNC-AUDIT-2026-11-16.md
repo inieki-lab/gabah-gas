@@ -477,3 +477,32 @@ The repository contains a direct architecture/seed contradiction that must be re
 - Kebijakan Auditor read-only tetap ditegakkan di middleware backend; perubahan menu bukan pengganti kontrol API.
 - Scope lintas lokasi dan kelengkapan Audit Trail tetap perlu diuji melalui UAT. Permission tambahan yang diberikan Superadmin melalui role lain tetap bersifat additive, sehingga akun multi-role dapat melihat menu tambahan sesuai assignment-nya.
 - Perubahan sudah dikomit pada branch audit; belum dinyatakan lulus CI atau UAT sampai workflow untuk commit terbaru selesai.
+
+
+### Rekonsiliasi temuan Helpdesk ME lintas branch — 18 November 2026
+
+Pemeriksaan lanjutan menemukan bahwa implementasi IT/GA/ME sebenarnya pernah dikembangkan pada branch terpisah `fix/helpdesk-it-ga-me-queue-mainline` (head `dc2dc71dc2380ee7d0ef72e85060987425f12a23`), bukan pada head PR #115. Karena itu, catatan ME sebagai blocker di atas perlu dibaca sebagai blocker pada branch audit utama saat ini, bukan berarti tidak ada implementasi kandidat di repository.
+
+**Komponen kandidat yang ditemukan:**
+- Kategori tiket baru IT/GA/ME; SC dan PIBC dipertahankan hanya untuk histori.
+- Unit operasional ME `UNIT-PIBC-ME`, assignment tiket melalui `assigned_unit_id`, dan notifikasi unit melalui `recipient_unit_id`.
+- Role template dispatcher `admin_tiket_me`, requester GA/ME, permission dispatch `tickets.assign`, serta template operator GA.
+- Aturan IT auto-assignment hanya jika tepat satu petugas aktif memiliki `tickets.update` dan scope IT; jika nol/ambigu, tiket tetap di antrean.
+- Endpoint lookup assignee dan delegasi; validasi ulang status aktif, permission, scope unit/divisi, serta audit/notification.
+- Dokumen routing dan checklist UAT khusus IT/GA/ME.
+- Script `scripts/helpdesk-routing-verify.mjs` berisi 45 assertion kontrak sumber.
+
+**Risiko integrasi yang terverifikasi:**
+1. Branch kandidat tidak sama dengan branch PR #115. Perbandingan `main...fix/helpdesk-it-ga-me-queue-mainline` menunjukkan 56 commit ahead dan 1 behind; tidak boleh cherry-pick atau merge seluruh branch tanpa rekonsiliasi migration dan perubahan domain.
+2. Branch kandidat membawa migration 035 dan 037–041 serta perubahan pada `server.ts`, `server/services.ts`, `server/db.ts`, `server/persistence.ts`, dan UI tiket. Mainline audit kini telah bergerak sampai migration 097. Nomor migration, asumsi schema, seed, dan kontrak persistence harus direview terhadap mainline sebelum port.
+3. Pemeriksaan commit terakhir kandidat menemukan fallback otorisasi berbasis `actor.role_label`/label role untuk status tiket dan kategori GA/ME. Ini bertentangan dengan prinsip Dynamic RBAC produksi. Port hanya boleh mempertahankan permission + scope PostgreSQL sebagai sumber otorisasi; fallback label hanya boleh hidup pada file-store non-production jika memang masih diperlukan.
+4. Workflow CI untuk exact head kandidat `dc2dc71...` tidak ditemukan. PR lama #36 pada head `2a83eae...` memiliki workflow gagal pada Docker runtime smoke. Dengan demikian 45 assertion statis bukan bukti bahwa integrasi PostgreSQL, migrasi fresh/upgrade, atau runtime kandidat telah lulus.
+5. Tidak ada perubahan data produksi yang dilakukan dan tidak ada PR/merge kandidat yang dibuat dalam pemeriksaan ini.
+
+**Keputusan tindak lanjut:**
+- Port secara selektif model unit ME, routing, permissions, endpoint, UI, dan tes ke branch audit terbaru; jangan merge branch lama secara utuh.
+- Sebelum port, bandingkan setiap migration 035/037–041 dengan schema/migration aktif dan buat migration baru dengan nomor berikutnya yang tersedia pada mainline, tanpa mengubah histori tiket SC/PIBC.
+- Hilangkan fallback label role pada jalur PostgreSQL; tambahkan tes negatif bahwa label profil/unit/lokasi tanpa permission + scope tidak dapat membaca, mengubah, atau mendelegasikan tiket.
+- Jalankan CI exact-head, fresh PostgreSQL, upgrade database existing, dan UAT semua persona sebelum menutup blocker ME.
+
+**Status:** kandidat implementasi ME ditemukan; integrasi ke branch rilis belum dilakukan dan belum tervalidasi. PR #115 tetap Draft; jangan merge ke `main`.
