@@ -63,3 +63,16 @@ Safe correction requires an explicit operational owner/routing model, not a labe
 5. Add positive and negative tests for reporter, assignee, location-only user, owner-scope user, and cross-location access.
 
 **Release status: BLOCKED** until the routing owner mapping is approved and the end-to-end change is implemented and tested. Do not infer that all RPC/SC or PIBC employees should see or manage one shared ticket queue.
+
+
+## Update 18 November 2026 — ticket routing implementation branch
+
+PR #121 / branch `fix/ticket-routing-me-unit-scope` now contains a selective implementation of the previously agreed IT/GA/ME queue model:
+- new ticket requests accept IT, GA, ME; SC/PIBC are preserved only as historical categories;
+- ME is routed to `UNIT-PIBC-ME` with `division_code='Umum'` and `office_location_id='OFF-PIBC'`;
+- GA and ME requester/operator capabilities are separate and must be assigned explicitly;
+- exact module `tickets` scope is required; ME also requires the user's `unit_id` to match the ME unit;
+- Auditor remains read-only, including assignee lookup and dispatch;
+- dashboard metrics/attention use the shared unit-aware ticket resolver.
+
+The older PR #36 branch is not merged or copied wholesale. Migration 098 is additive and corrects the old ME-unit/division conflation. **This is implementation in a draft PR, not verified release completion**: CI, PostgreSQL fresh/upgrade validation, and browser UAT must all pass before removing the release blocker.
