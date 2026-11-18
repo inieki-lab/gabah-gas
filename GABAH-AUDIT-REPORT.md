@@ -643,3 +643,28 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Exact code SHA `fec319a76fac2ce264d2ccabbd9a82d70464615c` passed workflow run `44218282571`; the `verify` job completed successfully with all 76 steps and no failures.
 
 **Checklist:** master location/division localStorage shadow = removed; fake client-only reset = removed; location create/edit/delete ID consistency = fixed; exact-head CI = PASS (76/76 steps); SC/PIBC owner-domain normalization remains OPEN as documented in section 25.
+
+## 27. Audit event durability — call-site verification (18 November 2026)
+
+### Verified source findings on the current branch
+
+- `GabahDomainService.recordAudit()` in `server/services.ts` appends the event to `db.auditLogs`, calls `persistDataStore()` without awaiting it, catches the rejection as a console warning, and returns the log synchronously. This API does not provide a durability guarantee to its caller.
+- Current source contains 31 call sites in `server/services.ts` (excluding the method definition) and 48 call sites in `server.ts`. These span asset, loan, ticket, room/facility, RBAC, user/authentication, numbering, taxonomy/master data, maintenance, vendor, knowledge-base, and reconciliation operations.
+- Several HTTP handlers do explicitly await `persistDataStore()` or `persistMutationOrRespond()` after recording an event. Those paths still depend on a second, implicit persistence boundary rather than an audit API that guarantees commit ordering and rollback.
+- The five PostgreSQL RBAC mutation routes for role create/update/delete, permission updates, scope updates, and user-role assignment execute their RBAC transaction and refresh policy, then call the synchronous fire-and-forget audit helper and immediately return success. The audit event is not inserted in the RBAC transaction and the route does not await its persistence.
+- Authentication paths also call the same helper for successful/failed login, self-service password change, and role-switch denial; not all of these paths have an explicit awaited persistence boundary. Login-failure audit writes should not be allowed to break authentication response handling, but their durability contract must be explicit.
+- The normalized PostgreSQL `audit_logs` table exists and persistence synchronizes it from the in-memory audit collection. The current source-level pattern is not equivalent to a transactionally coupled audit write for RBAC operations.
+
+### Remediation plan — deliberately not changed mechanically
+
+1. Do not simply change `recordAudit()` to return a Promise: there are many callers in synchronous domain methods and routes, and doing so without a complete call-graph migration would create un-awaited promises or break service contracts.
+2. Prioritize the six RBAC write routes: insert their audit rows through the same PostgreSQL transaction as the RBAC mutation, with a stable actor/user mapping and rollback on audit insert failure. Refresh policy only after commit, then return success.
+3. Define a separate explicit best-effort security-event path for login denials if required, distinct from mandatory transactional business audit events. Do not let an audit database outage silently turn a failed login into a successful login or leak authentication details.
+4. Migrate remaining domain mutation call sites to an awaited persistence contract with affected-entity rollback (or a database transaction), then add fault-injection tests proving neither business state nor audit state is partially committed.
+5. Add PostgreSQL append-only enforcement for `audit_logs` and a live integration test; source assertions alone are insufficient.
+
+### Current release status
+
+- This is a verified open finding, not a completed fix. No code was changed by this audit entry.
+- PR #119's latest inspected verify job completed successfully, but that does not close this audit durability issue or resolve the parent PR #115 conflict with `main`.
+- **Release gate remains OPEN. No merge to `main`; no laptop UAT authorization.**
