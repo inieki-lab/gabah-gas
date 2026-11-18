@@ -650,6 +650,37 @@ export async function initializePersistence(): Promise<void> {
           hydrateDbFromState(state);
         }
       }
+      // The normalized audit_logs table is the durable audit authority. Some
+      // transactional endpoints commit audit rows directly with their domain
+      // mutation, so merge those rows back into the in-memory snapshot before
+      // any startup sync can rewrite gabah_state from an older payload.
+      const persistedAuditRows = await pool.query(
+        'SELECT id, action, entity, entity_id, user_name, user_role, details, ip_address, timestamp FROM audit_logs ORDER BY timestamp DESC'
+      );
+      if (persistedAuditRows.rows.length > 0) {
+        const auditById = new Map<string, any>();
+        for (const log of db.auditLogs || []) auditById.set(String(log.id), log);
+        for (const row of persistedAuditRows.rows) {
+          const timestamp = row.timestamp instanceof Date
+            ? row.timestamp.toISOString()
+            : new Date(row.timestamp).toISOString();
+          auditById.set(String(row.id), {
+            ...(auditById.get(String(row.id)) || {}),
+            id: String(row.id),
+            action: String(row.action),
+            entity: String(row.entity),
+            entity_id: row.entity_id == null ? undefined : String(row.entity_id),
+            user_name: String(row.user_name),
+            user_role: String(row.user_role),
+            details: String(row.details),
+            ip_address: row.ip_address == null ? undefined : String(row.ip_address),
+            timestamp,
+          });
+        }
+        db.auditLogs = [...auditById.values()].sort((a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+      }
       if (!db.assets || db.assets.length === 0) {
         seedInitialData();
       }
