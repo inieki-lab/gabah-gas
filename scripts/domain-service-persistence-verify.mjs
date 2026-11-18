@@ -21,6 +21,11 @@ const serviceCases = [
   ['asset assign', 'static async assignAsset(', '/**\n   * Asset Location Movement Mutation'],
   ['asset move', 'static async moveAsset(', '/**\n   * Asset Lifecycle Mutation'],
   ['asset lifecycle', 'static async mutateLifecycle(', '/**\n   * Loan Request'],
+  ['loan request', 'static async requestLoan(', '/**\n   * Loan Approval'],
+  ['loan approve', 'static async approveLoan(', '/**\n   * Loan Rejection'],
+  ['loan reject', 'static async rejectLoan(', '/**\n   * Loan custody authority'],
+  ['loan handover', 'static async handoverLoan(', '/**\n   * Loan Return & Inspection'],
+  ['loan return', 'static async returnLoan(', '/**\n   * Helpdesk Ticket Creation'],
   ['room request', 'static async requestRoomReservation(', 'static async approveRoomReservation('],
   ['room approve', 'static async approveRoomReservation(', 'static async rejectRoomReservation('],
   ['room reject', 'static async rejectRoomReservation(', 'static async checkinRoomReservation('],
@@ -44,6 +49,11 @@ const routeCases = [
   ["app.post('/api/assets/:id/assign', async", "app.post('/api/assets/:id/move'", 'GabahDomainService.assignAsset'],
   ["app.post('/api/assets/:id/move', async", "app.post('/api/assets/:id/lifecycle'", 'GabahDomainService.moveAsset'],
   ["app.post('/api/assets/:id/lifecycle', async", '// Movements', 'GabahDomainService.mutateLifecycle'],
+  ["app.post('/api/loans', async", "app.post('/api/loans/:id/approve'", 'GabahDomainService.requestLoan'],
+  ["app.post('/api/loans/:id/approve', async", "app.post('/api/loans/:id/reject'", 'GabahDomainService.approveLoan'],
+  ["app.post('/api/loans/:id/reject', async", "app.post('/api/loans/:id/handover'", 'GabahDomainService.rejectLoan'],
+  ["app.post('/api/loans/:id/handover', async", "app.post('/api/loans/:id/return'", 'GabahDomainService.handoverLoan'],
+  ["app.post('/api/loans/:id/return', async", '// Ticket capabilities', 'GabahDomainService.returnLoan'],
   ["app.patch('/api/meeting-rooms/:id', async", "app.get('/api/room-reservations'", 'GabahDomainService.updateMeetingRoom'],
   ["app.post('/api/room-reservations', async", "app.post('/api/room-reservations/:id/approve'", 'GabahDomainService.requestRoomReservation'],
   ["app.post('/api/room-reservations/:id/approve', async", "app.post('/api/room-reservations/:id/reject'", 'GabahDomainService.approveRoomReservation'],
@@ -63,4 +73,4 @@ for (const [start, end, call] of routeCases) {
   assert.ok(body.includes('await ' + call + '('), call + ' route must await service persistence');
 }
 
-console.log('Asset, room reservation, meeting room/type/facility persistence checks: 36/36 passed');
+console.log('Asset, loan, room reservation, meeting room/type/facility persistence checks: 46/46 passed');
