@@ -552,6 +552,30 @@ async function main() {
       assignment.status === 200 && (persistedAssignment?.role_ids || []).includes(Number(gaRole?.id))
         && Number(persistedAssignment?.primary_role_id) === Number(assignment.json?.data?.primary_role_id));
 
+    const superadminRole = (roleCatalog.json?.data || []).find(role => role.is_superadmin === true && role.is_active);
+    const adminUser = (usersRes.json?.data || []).find(user => user.email === ADMIN_EMAIL);
+    const assignmentInventoryBeforeGuard = await req(base, 'GET', '/api/admin/rbac/user-assignments', { token: adminToken });
+    const superadminAssignmentsBefore = (assignmentInventoryBeforeGuard.json?.data || [])
+      .filter(item => (item.role_ids || []).includes(Number(superadminRole?.id)));
+    record('Fresh PostgreSQL test fixture has exactly one active Superadmin assignment', '1',
+      `count=${superadminAssignmentsBefore.length}`,
+      assignmentInventoryBeforeGuard.status === 200 && superadminAssignmentsBefore.length === 1
+        && superadminAssignmentsBefore[0].user_id === adminUser?.id);
+    const removeLastSuperadmin = await req(base, 'PUT', `/api/admin/rbac/users/${adminUser?.id}/roles`, {
+      token: adminToken,
+      body: { role_ids: [] },
+    });
+    record('Per-user role assignment cannot remove the last active Superadmin', '409',
+      `HTTP ${removeLastSuperadmin.status}`,
+      superadminAssignmentsBefore.length === 1 && removeLastSuperadmin.status === 409);
+    const assignmentInventoryAfterGuard = await req(base, 'GET', '/api/admin/rbac/user-assignments', { token: adminToken });
+    const adminAssignmentAfterGuard = (assignmentInventoryAfterGuard.json?.data || [])
+      .find(item => String(item.user_id) === String(adminUser?.id));
+    record('Rejected last-Superadmin assignment leaves the original role intact', 'superadmin role retained',
+      `roles=${(adminAssignmentAfterGuard?.role_ids || []).join(',')}`,
+      assignmentInventoryAfterGuard.status === 200
+        && (adminAssignmentAfterGuard?.role_ids || []).includes(Number(superadminRole?.id)));
+
     // Vendor ownership is independent from category and employee work location.
     const itVendor = await req(base, 'POST', '/api/vendors', {
       token: itToken,
