@@ -582,22 +582,37 @@ async function startServer() {
             [userId, roleId, false, actor.id],
           );
         }
+        const roleNames = valid.rows.map(row => String(row.name));
+        const auditDetails = 'Superadmin mengubah assignment role untuk user "' + String(user.name) + '" (' + String(user.email) + ') menjadi: ' + roleNames.join(', ') + '.';
+        const auditLog = {
+          id: `LOG-${crypto.randomUUID()}`,
+          action: 'RBAC_USER_ROLES_UPDATED',
+          entity: 'Administration',
+          entity_id: userId,
+          user_id: String(actor.id),
+          user_name: String(actor.name || 'System'),
+          user_role: String(actor.role || 'System'),
+          details: auditDetails,
+          timestamp: new Date().toISOString(),
+        };
+        // The assignment and its audit evidence share the same PostgreSQL
+        // transaction. A failed audit insert must roll back the role change.
+        await client.query(
+          'INSERT INTO audit_logs (id, action, entity, entity_id, user_id, user_name, user_role, details, timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+          [auditLog.id, auditLog.action, auditLog.entity, auditLog.entity_id, auditLog.user_id, auditLog.user_name, auditLog.user_role, auditLog.details, auditLog.timestamp],
+        );
         return {
           user_id: userId,
           user_name: String(user.name),
           user_email: String(user.email),
           role_ids: assignmentIds,
-          role_names: valid.rows.map(row => String(row.name)),
+          role_names: roleNames,
           primary_role_id: null,
+          audit_log: auditLog,
         };
       });
       await refreshRbacPolicy();
-     GabahDomainService.recordAudit(
-        'RBAC_USER_ROLES_UPDATED',
-        'Administration',
-        'Superadmin mengubah assignment role untuk user "' + result.user_name + '" (' + result.user_email + ') menjadi: ' + result.role_names.join(', ') + '.',
-        actor,
-      );
+      db.auditLogs.unshift(result.audit_log);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
