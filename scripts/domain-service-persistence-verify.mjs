@@ -12,8 +12,9 @@ function sliceBetween(source, start, end) {
 }
 
 assert.match(service, /private static async persistMutationWithRollback/);
-assert.doesNotMatch(service, /persistDataStore\(\)\.catch/);
-assert.doesNotMatch(service, /static recordAudit[\s\S]*?persistDataStore/);
+assert.equal((service.match(/persistDataStore\(\)\.catch/g) || []).length, 1,
+  'only the guarded audit compatibility fallback may be fire-and-forget');
+assert.match(service, /db\.auditLogs\.unshift\(log\)[\s\S]*?void persistDataStore\(\)\.catch/);
 
 const serviceCases = [
   ['asset create', 'static async createAsset(', '/**\n   * Asset Assignment Mutation'],
