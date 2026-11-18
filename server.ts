@@ -3484,7 +3484,7 @@ async function startServer() {
     return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
   });
 
-  app.post('/api/vendors', (req, res) => {
+  app.post('/api/vendors', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
@@ -3530,12 +3530,23 @@ async function startServer() {
       notes: req.body.notes || '',
     };
     db.vendors.push(vendor);
-    GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
-    res.status(201).json({ success: true, data: vendor });
+    const auditEntry = GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
+    try {
+      await persistDataStore();
+      return res.status(201).json({ success: true, data: vendor });
+    } catch (persistenceError) {
+      const index = db.vendors.findIndex(item => item.id === vendor.id);
+      if (index >= 0) db.vendors.splice(index, 1);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist vendor-create rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Vendor gagal disimpan. Tidak ada perubahan yang diterapkan.' });
+    }
   });
 
-  app.patch('/api/vendors/:id', (req, res) => {
+  app.patch('/api/vendors/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.update')) return;
@@ -3579,6 +3590,7 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor ini.' });
     }
     const vendor = existingVendor;
+    const previousVendor = { ...vendor };
     // SECURITY (CR-06): explicit allowlist — id is server-owned.
     const allowedVendorFields = ['name', 'category', 'owner_division', 'pic_name', 'pic_phone', 'pic_email', 'address', 'rating', 'notes'];
     for (const key of allowedVendorFields) {
@@ -3589,9 +3601,19 @@ async function startServer() {
     vendor.owner_division = requestedOwner;
     vendor.rating = requestedRating;
     vendor.active_contracts_count = getActiveVendorContractCount(vendor.name);
-    GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: vendor });
+    const auditEntry = GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: vendor });
+    } catch (persistenceError) {
+      Object.assign(vendor, previousVendor);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist vendor-update rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Perubahan vendor gagal disimpan. Perubahan dibatalkan.' });
+    }
   });
 
   // =========================
@@ -3603,7 +3625,7 @@ async function startServer() {
     res.json({ success: true, data: db.knowledgeArticles });
   });
 
-  app.post('/api/knowledge', (req, res) => {
+  app.post('/api/knowledge', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.create')) return;
@@ -3627,12 +3649,23 @@ async function startServer() {
       updated_at: new Date().toISOString(),
     };
     db.knowledgeArticles.push(article);
-    GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
-    res.status(201).json({ success: true, data: article });
+    const auditEntry = GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
+    try {
+      await persistDataStore();
+      return res.status(201).json({ success: true, data: article });
+    } catch (persistenceError) {
+      const index = db.knowledgeArticles.findIndex(item => item.id === article.id);
+      if (index >= 0) db.knowledgeArticles.splice(index, 1);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist knowledge-create rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Artikel gagal disimpan. Tidak ada perubahan yang diterapkan.' });
+    }
   });
 
-  app.patch('/api/knowledge/:id', (req, res) => {
+  app.patch('/api/knowledge/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.update')) return;
@@ -3642,32 +3675,61 @@ async function startServer() {
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     // SECURITY (CR-06): explicit allowlist — view_count/helpful_votes only via dedicated endpoints.
+    const previousArticle = { ...article };
     const allowedArticleFields = ['title', 'category', 'content', 'tags', 'author'];
     for (const key of allowedArticleFields) {
       if (req.body[key] !== undefined) (article as any)[key] = req.body[key];
     }
     article.updated_at = new Date().toISOString();
-    GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: article });
+    const auditEntry = GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: article });
+    } catch (persistenceError) {
+      Object.assign(article, previousArticle);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist knowledge-update rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Perubahan artikel gagal disimpan. Perubahan dibatalkan.' });
+    }
   });
 
-  app.post('/api/knowledge/:id/vote', (req, res) => {
+  app.post('/api/knowledge/:id/vote', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.vote')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
+    const previousVotes = article.helpful_votes;
     article.helpful_votes += 1;
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: article });
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: article });
+    } catch (persistenceError) {
+      article.helpful_votes = previousVotes;
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist knowledge-vote rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Vote gagal disimpan. Silakan coba kembali.' });
+    }
   });
 
-  app.post('/api/knowledge/:id/view', (req, res) => {
+  app.post('/api/knowledge/:id/view', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.read')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
+    const previousViews = article.view_count;
     article.view_count += 1;
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: article });
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: article });
+    } catch (persistenceError) {
+      article.view_count = previousViews;
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist knowledge-view rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Tampilan artikel gagal dicatat. Silakan coba kembali.' });
+    }
   });
 
   // Notifications
