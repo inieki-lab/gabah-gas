@@ -24,6 +24,7 @@ const checks = [
   ['BAST rule is checked before the physical handover mutation', server.includes("app.post('/api/loans/:id/handover', async") && server.includes("rule-bast") && server.includes('GabahDomainService.handoverLoan')],
   ['BAST completion creates borrower and owner-division notifications', server.includes('recipient_user_id: handedOver.borrower_id') && server.includes('recipient_division: handedOver.owner_division')],
 
+  ['UI does not show default Active states when server configuration is unavailable', modal.includes('useState<NotificationRule[]>([])') && modal.includes('setNotificationRules([]);')],
 ];
 let failed = 0;
 for (const [name, pass] of checks) {
