@@ -379,3 +379,9 @@ Source review found two operational edge cases and added regression coverage:
 - Ticket creation now awaits persistence and rolls back the new ticket, notifications, and audit trail if the write fails.
 - Express routes await these asynchronous domain services; duplicate post-service persistence calls were removed from the single-item paths.
 - Expanded `scripts/domain-service-persistence-verify.mjs` to cover asset, loan, ticket, room reservation, meeting room, meeting type, and facility service/route contracts.
+
+### Remaining direct mutation handlers
+- Login now awaits audit/credential persistence before issuing a session; failed persistence destroys the newly created session and restores any legacy temporary-password migration.
+- Individual and bulk notification-read mutations now await persistence and restore prior read state on failure.
+- Accurate reconciliation linking now awaits persistence and rolls back the asset reference and audit entry if the write fails.
+- Remaining mutating routes without a local snapshot commit are PostgreSQL transaction-backed RBAC/module registry handlers; taxonomy resolve is a read-only POST.
