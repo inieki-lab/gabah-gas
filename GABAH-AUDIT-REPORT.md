@@ -583,3 +583,17 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - The `verify` job completed with conclusion `success`; all 74 steps completed and no failed step was reported.
 - This confirms the Reminder Center malformed-payload guard and its regression check are included in a green full pipeline. It does not close Notification Rules persistence, system settings centralization, or numbering configuration parity.
 - PR #119 remains in its stacked release chain. No merge to `main` or laptop UAT authorization is implied by this CI result.
+
+
+## 22. Notification Rules PostgreSQL persistence — 18 November 2026
+
+- Added migration 098 with a PostgreSQL-authoritative row for each supported notification rule (warranty, loan, SLA, and BAST), seeded Active using conflict-safe inserts.
+- Added append-only `gabah_notification_rule_audit`; status changes are recorded in the same database transaction as the setting update.
+- Added Superadmin-only read and update APIs. The update accepts only a known rule ID and a strict boolean status; the row is locked with `FOR UPDATE` to serialize concurrent changes. No-op updates do not create false audit entries.
+- Replaced browser `localStorage` loading/saving in Administration with API reads and writes. UI state changes only after the server confirms persistence; failed reads disable toggles rather than silently falling back to browser state.
+- Wired the centrally stored warranty, loan, and SLA switches into the Dashboard Attention feed. If PostgreSQL is active but the required settings cannot be read, the feed returns 503 rather than displaying potentially incorrect alerts.
+- **Scope still open:** the BAST rule is stored and auditable but no BAST event producer/dispatch path has yet been wired to this switch. These switches currently govern the dashboard attention feed for warranty/loan/SLA; they do not yet claim to control all email, Telegram, or in-app notification producers.
+- Added `test:notification-rule-persistence` and a CI step covering Superadmin guards, strict input, row locking, atomic audit, migration seeding, no localStorage dependency, UI save ordering, and dashboard enforcement.
+- Validation for the newest branch head is **pending** GitHub Actions. Do not treat this change as green until the exact latest SHA completes the full workflow.
+
+**Checklist:** Notification Rules DB storage/API/audit = implemented; warranty/loan/SLA dashboard attention enforcement = implemented; BAST producer and outbound dispatch integration = OPEN; exact-head CI = PENDING.
