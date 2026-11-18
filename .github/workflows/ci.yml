@@ -59,6 +59,9 @@ jobs:
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
+      - name: Auditor additional-role deny-write runtime regression
+        run: npm run test:auditor-additional-role
+
       - name: Asset assignment active-user integrity
         run: npm run test:asset-assignment-active-user
 
