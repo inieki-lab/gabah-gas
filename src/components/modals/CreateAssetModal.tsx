@@ -433,7 +433,10 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
       };
     }
 
-    if (activeMainCat.categoryType === 'License') {
+    const selectedMasterCategory = masterByCode.get(String(subCode).toUpperCase());
+    const selectedCategoryType = selectedMasterCategory?.category_type || activeMainCat.categoryType;
+
+    if (selectedCategoryType === 'License') {
       newAsset.license_detail = {
         total_seats: totalSeats,
         used_seats: 0,
