@@ -233,8 +233,22 @@ export class GabahDomainService {
       timestamp: new Date().toISOString(),
     };
     db.auditLogs.unshift(log);
-    persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
     return log;
+  }
+
+  private static async persistMutationWithRollback(domain: string, rollback: () => void): Promise<void> {
+    try {
+      await persistDataStore();
+    } catch (error) {
+      console.error(`[GABAH] ${domain} persistence failed; rolling back in-memory state:`, error);
+      rollback();
+      try {
+        await persistDataStore();
+      } catch (rollbackError) {
+        console.error(`[GABAH] ${domain} rollback snapshot could not be persisted:`, rollbackError);
+      }
+      throw Object.assign(new Error(`${domain} gagal disimpan. Perubahan dibatalkan.`), { statusCode: 500 });
+    }
   }
 
   /**
@@ -523,10 +537,16 @@ export class GabahDomainService {
       updated_at: new Date().toISOString(),
     };
 
+    const previousAuditLogs = db.auditLogs.slice();
     db.assets.unshift(newAsset);
 
-    // Record audit
+    // Record audit and persist the asset + audit event before reporting success.
     this.recordAudit('ASSET_CREATED', 'Assets', `Mendaftarkan aset baru ${newAsset.asset_number} (${newAsset.name}) [Owner: ${newAsset.owner_division}]`, actor, newAsset.id);
+    await this.persistMutationWithRollback('Pembuatan aset', () => {
+      const index = db.assets.findIndex(item => item.id === newAsset.id);
+      if (index >= 0) db.assets.splice(index, 1);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    });
 
     return newAsset;
   }
@@ -534,7 +554,7 @@ export class GabahDomainService {
   /**
    * Asset Assignment Mutation
    */
-  static assignAsset(assetId: string, targetUserId: string, reason: string, actor: ServerUser): ServerAsset {
+  static async assignAsset(assetId: string, targetUserId: string, reason: string, actor: ServerUser): Promise<ServerAsset> {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -555,6 +575,14 @@ export class GabahDomainService {
     }
 
     const normalizedTargetUserId = String(targetUserId ?? '').trim();
+    const previousAsset = { ...asset };
+    const previousMovements = db.movements.slice();
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(asset, previousAsset);
+      db.movements.splice(0, db.movements.length, ...previousMovements);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
     const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
 
     // Support Unassign (Return to Pool/Warehouse as available/idle)
@@ -579,6 +607,7 @@ export class GabahDomainService {
       };
       db.movements.unshift(movement);
       this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id);
+      await this.persistMutationWithRollback('Pengembalian aset ke pool', rollback);
       return asset;
     }
 
@@ -615,13 +644,14 @@ export class GabahDomainService {
     db.movements.unshift(movement);
 
     this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id);
+    await this.persistMutationWithRollback('Penugasan aset', rollback);
     return asset;
   }
 
   /**
    * Asset Location Movement Mutation
    */
-  static moveAsset(assetId: string, newLocation: string, reason: string, actor: ServerUser): ServerAsset {
+  static async moveAsset(assetId: string, newLocation: string, reason: string, actor: ServerUser): Promise<ServerAsset> {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -637,6 +667,14 @@ export class GabahDomainService {
       throw Object.assign(new Error('Alasan perpindahan maksimal 1.000 karakter.'), { statusCode: 400 });
     }
 
+    const previousAsset = { ...asset };
+    const previousMovements = db.movements.slice();
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(asset, previousAsset);
+      db.movements.splice(0, db.movements.length, ...previousMovements);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
     const oldLocation = asset.location;
     asset.location = normalizedLocation;
     // T2B-2: reolusi deterministik relasi lokasi fisik dari teks baru
@@ -658,6 +696,7 @@ export class GabahDomainService {
     db.movements.unshift(movement);
 
     this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id);
+    await this.persistMutationWithRollback('Perpindahan aset', rollback);
 
     return asset;
   }
@@ -665,7 +704,7 @@ export class GabahDomainService {
   /**
    * Asset Lifecycle Mutation (Repair, Damaged, Cannibalize, Disposal, Auction)
    */
-  static mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser): ServerAsset {
+  static async mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser): Promise<ServerAsset> {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -689,6 +728,13 @@ export class GabahDomainService {
         { statusCode: 409 },
       );
     }
+
+    const previousAsset = { ...asset };
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(asset, previousAsset);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
 
     switch (action) {
       case 'repair':
@@ -718,6 +764,7 @@ export class GabahDomainService {
 
     asset.updated_at = new Date().toISOString();
     this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id);
+    await this.persistMutationWithRollback('Perubahan lifecycle aset', rollback);
 
     return asset;
   }
