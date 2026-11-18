@@ -372,3 +372,10 @@ Source review found two operational edge cases and added regression coverage:
 - Service audit events for these operations are included in the same awaited commit; the guarded audit fallback remains only for older handlers that have not yet been migrated.
 - Corresponding Express handlers now await the asynchronous service methods.
 - Added `scripts/domain-service-persistence-verify.mjs`; the existing asset assignment fixture was updated to await asynchronous service results.
+
+### Loan and helpdesk transaction durability
+- Loan request, approval, rejection, physical handover, and return now await durable persistence. A failed write restores loan state, linked asset state, notifications, and audit entries.
+- Bulk loan requests retain one atomic persistence boundary: each candidate is validated without an intermediate commit; the batch commits once, and a failed batch restores the complete pre-request snapshot.
+- Ticket creation now awaits persistence and rolls back the new ticket, notifications, and audit trail if the write fails.
+- Express routes await these asynchronous domain services; duplicate post-service persistence calls were removed from the single-item paths.
+- Expanded `scripts/domain-service-persistence-verify.mjs` to cover asset, loan, ticket, room reservation, meeting room, meeting type, and facility service/route contracts.
