@@ -16,6 +16,7 @@ const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
+const assetApi = read('src/services/gabahApi.ts');
 const ticketUi = read('src/components/views/TicketsView.tsx');
 const adminUi = read('src/components/modals/AdministrationModal.tsx');
 const dashboardUi = read('src/components/views/DashboardView.tsx');
@@ -114,6 +115,11 @@ const checks = [
   ['New/updated category masters cannot use legacy SC/PIBC location codes as owner domains', (server.match(/\['SC', 'PIBC'\]\.includes\(normalizedOwnerCode\)/g) || []).length >= 2 && server.includes('SC/PIBC adalah kode lokasi legacy, bukan owner domain untuk kategori baru')],
   ['Managing-unit fallback does not infer a unit from legacy SC/PIBC owner codes', managingUnit.includes("if (['SC', 'PIBC'].includes(div)) return null") && managingUnit.includes('existing explicit historical')],
 
+
+
+  ['Per-asset owner reclassification is Superadmin-only, reason-required, active-owner validated and audited', server.includes("app.post('/api/assets/:id/reclassify-owner'") && server.includes("if (!isSuperadminActor(actor))") && server.includes("reason.length < 10 || reason.length > 500") && server.includes("ASSET_OWNER_RECLASSIFIED") && server.includes("await persistDataStore()")],
+  ['Superadmin asset UI exposes legacy owner review and refreshes the list after successful reclassification', assetUi.includes('openOwnerReclassification') && assetUi.includes('submitOwnerReclassification') && assetUi.includes('onRefresh') && assetUi.includes('Review owner aset legacy')],
+  ['Asset API client exposes the audited owner reclassification endpoint', assetApi.includes('reclassifyAssetOwner(id: string') && assetApi.includes('/reclassify-owner')],
 
 ];
 
