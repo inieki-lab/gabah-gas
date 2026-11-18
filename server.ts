@@ -659,7 +659,7 @@ async function startServer() {
         || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
-      const primaryRole = profileLabel;
+      const primaryRole = ['Supply Chain', 'PIBC'].includes(profileLabel) ? 'Karyawan' : profileLabel;
       const requestedDivision = division === undefined || division === null || division === ''
         ? 'Umum' : (typeof division === 'string' ? division.trim() : '');
       const activeDivision = (db.divisions || []).find(item =>
@@ -688,12 +688,14 @@ async function startServer() {
         newUnitId = uid;
       }
       let newOfficeId: string | undefined;
-      if (req.body.office_location_id) {
-        const lid = String(req.body.office_location_id).trim();
-        if (!(db.officeLocations || []).some(x => x.id === lid && x.is_active)) {
-          return res.status(400).json({ success: false, message: `Lokasi kantor "${lid}" tidak terdaftar atau sedang nonaktif.` });
+      const requestedOfficeId = String(req.body.office_location_id || '').trim();
+      const mappedLegacyOfficeId = profileLabel === 'Supply Chain' ? 'OFF-RPC' : profileLabel === 'PIBC' ? 'OFF-PIBC' : '';
+      const officeIdToValidate = requestedOfficeId || mappedLegacyOfficeId;
+      if (officeIdToValidate) {
+        if (!(db.officeLocations || []).some(x => x.id === officeIdToValidate && x.is_active)) {
+          return res.status(400).json({ success: false, message: `Lokasi kantor "${officeIdToValidate}" tidak terdaftar atau sedang nonaktif.` });
         }
-        newOfficeId = lid;
+        newOfficeId = officeIdToValidate;
       }
       if (!name || !email) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi' });
