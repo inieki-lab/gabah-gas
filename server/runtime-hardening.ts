@@ -22,22 +22,30 @@ function canSeeAsset(actor: ServerUser, assetId: string): boolean {
   return GabahDomainService.getScopedAssets(actor).some(asset => asset.id === assetId);
 }
 
+function canSeeTicket(actor: ServerUser, ticketId: string): boolean {
+  const ticket = db.tickets.find(t => t.id === ticketId);
+  if (!ticket) return false;
+  if (isSuperadmin(actor)) return true;
+  if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+  if (isPostgresPersistenceActive()) {
+    const owner = String(ticket.category || '').trim();
+    return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'tickets');
+  }
+  if (actor.role === 'IT') return ticket.category === 'IT';
+  if (actor.role === 'GA') return ticket.category === 'GA';
+  return false;
+}
+
 function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   const ticket = db.tickets.find(t => t.id === ticketId);
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
-  // Reporting a ticket grants visibility, not authority to change its lifecycle.
-  // Status mutation still requires tickets.update at the route and either an
-  // explicit owner-domain scope or a trusted assignment to this agent.
+  // Reporter-only visibility must never imply lifecycle mutation authority.
   if (ticket.assigned_agent_id === actor.id) return true;
   if (isPostgresPersistenceActive()) {
-    // PostgreSQL RBAC is owner-code agnostic: custom operational functions
-    // (e.g. RPC/SC) need the same explicit Tickets scope as IT/GA.
     const owner = String(ticket.category || '').trim();
     return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'tickets');
   }
-  // File-store compatibility only. Production PostgreSQL never grants ticket
-  // authority from a legacy role label alone.
   if (actor.role === 'IT') return ticket.category === 'IT';
   if (actor.role === 'GA') return ticket.category === 'GA';
   return false;
@@ -59,7 +67,7 @@ function scopedAttention(actor: ServerUser, items: any[]) {
       // module scope, never a primary-role label, for owner-division visibility.
       return (actor.role === 'IT' || actor.role === 'GA') && loan.owner_division === actor.role;
     }
-    if (item.link_type === 'ticket') return canManageTicket(actor, item.link_id);
+    if (item.link_type === 'ticket') return canSeeTicket(actor, item.link_id);
     return false;
   });
 }
