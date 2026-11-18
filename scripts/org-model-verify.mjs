@@ -22,7 +22,8 @@ const req = async (b, m, p, o = {}) => {
 async function main() {
   const sp = path.resolve('dist/server.cjs');
   if (!fs.existsSync(sp)) { console.error('run npm run build first'); process.exit(1) }
-  const sf = path.resolve('server/data/gabah_state.json'); let old = null;
+  const adminModalSource = fs.readFileSync(path.resolve('src/components/modals/AdministrationModal.tsx'), 'utf8');
+const sf = path.resolve('server/data/gabah_state.json'); let old = null;
   if (fs.existsSync(sf)) { old = fs.readFileSync(sf, 'utf8'); fs.rmSync(sf) }
   const port = await getAvailablePort(), b = `http://127.0.0.1:${port}`, ap = crypto.randomBytes(12).toString('base64url'), up = crypto.randomBytes(12).toString('base64url');
   const c = spawn(process.execPath, [sp], { env: { ...process.env, PORT: String(port), NODE_ENV: 'development', GABAH_INITIAL_ADMIN_PASSWORD: ap, GABAH_INITIAL_USER_PASSWORD: up, GABAH_TEST_PASSWORD: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -48,6 +49,15 @@ async function main() {
     rec('12: SC/PIBC are employee locations/units, not seeded application roles', '7 canonical roles; SC/RPC + PIBC users are Karyawan with independent locations',
       `${presentRoles.length}/7; branchProfiles=${branchProfilesValid}; legacyBranchRoles=${noBranchRole}`,
       presentRoles.length === 7 && noBranchRole && branchProfilesValid);
+
+    const masterConfigServerAuthoritative = !adminModalSource.includes('gabah_master_locations')
+      && !adminModalSource.includes('gabah_org_divisions')
+      && !adminModalSource.includes('handleResetDivisions')
+      && adminModalSource.includes('if (Array.isArray(liveLocs)) setLocations(liveLocs);')
+      && adminModalSource.includes('if (Array.isArray(liveDivs)) setDivisions(liveDivs);');
+    rec('14: master lokasi fasilitas dan divisi hanya bersumber dari API server', 'no localStorage shadow; empty DB results remain empty',
+      `localShadow=${adminModalSource.includes('gabah_master_locations') || adminModalSource.includes('gabah_org_divisions')}; apiEmptyHandling=${masterConfigServerAuthoritative}`,
+      masterConfigServerAuthoritative);
 
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
