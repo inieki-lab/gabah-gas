@@ -157,6 +157,9 @@ jobs:
       - name: Loan authorization and state transitions
         run: npm run test:loan-authz
 
+      - name: Loanable asset pool UI eligibility regression
+        run: npm run test:loanable-pool-ui
+
       - name: Meeting room reservation regression
         run: npm run test:meeting-room
 
