@@ -850,6 +850,7 @@ export default function App() {
               }}
               onReportAsset={handleReportAssetTicket}
               onOpenImportModal={() => setIsAssetImportOpen(true)}
+              onRefresh={refreshData}
             />
           )}
 
