@@ -2303,6 +2303,27 @@ async function startServer() {
     }
   });
 
+  // Asset creation options are calculated from the authenticated user's effective
+  // permission + exact owner-domain scope. The browser must never infer write
+  // ownership from a primary role label, job title, or office location.
+  app.get('/api/assets/creation-categories', (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.create')) return;
+    const actor = getActor(req);
+    const source = (db.categories && db.categories.length > 0) ? db.categories : CANONICAL_TAXONOMY;
+    const categories = normalizeCategoryMaster(source).filter(category => {
+      if (category.is_active === false) return false;
+      const owner = String(category.owner_division || '').trim();
+      if (!owner) return false;
+      const isSuperadmin = isSuperadminActor(actor);
+      if (!isSuperadmin && !hasRbacScope(String(actor.id), 'division', owner, 'assets')) return false;
+      if (category.category_type === 'License'
+        && !isSuperadmin
+        && !hasRbacPermission(String(actor.id), 'licenses.manage')) return false;
+      return true;
+    });
+    res.json({ success: true, data: categories });
+  });
+
   // Assets Management
   app.get('/api/assets', (req, res) => {
     const actor = getActor(req);
