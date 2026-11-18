@@ -186,14 +186,18 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       if (owner === 'SC' || owner === 'PIBC') {
         setRelatedAssetId('');
         setAssetRoutingError('Aset ini masih memakai klasifikasi owner legacy SC/PIBC. Aset tidak ditautkan ke tiket baru sampai klasifikasinya direview Superadmin.');
-      } else if (owner === 'GA' || selected.category_type === 'GA') {
+      } else if (owner === 'GA' || (!owner && selected.category_type === 'GA')) {
         if (canCreateCategory('GA')) setCategory('GA');
         else {
           setRelatedAssetId('');
           setAssetRoutingError('Aset GA terdeteksi, tetapi akun ini belum memiliki capability untuk mengajukan tiket GA.');
         }
-      } else if (owner === 'IT') {
-        setCategory('IT');
+      } else if (owner === 'IT' || !owner) {
+        if (canCreateCategory('IT')) setCategory('IT');
+        else {
+          setRelatedAssetId('');
+          setAssetRoutingError('Akun ini belum memiliki capability untuk membuat tiket IT terkait aset tersebut.');
+        }
       }
     }
   };
