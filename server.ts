@@ -2897,6 +2897,19 @@ async function startServer() {
     }
   });
 
+  // Ticket capabilities are calculated per record by the backend; the client must
+  // not infer mutation/dispatch rights from a role label or a broad module permission.
+  const ticketCapabilitiesForActor = (actor: ServerUser, ticket: any) => {
+    const superadmin = isSuperadminActor(actor);
+    const queueScope = hasTicketQueueScope(actor, ticket);
+    const canUpdate = hasRbacPermission(String(actor.id), 'tickets.update');
+    const canAssign = hasRbacPermission(String(actor.id), 'tickets.assign');
+    return {
+      can_manage: superadmin || (canUpdate && (ticket.assigned_agent_id === actor.id || queueScope)),
+      can_assign: superadmin || (canAssign && queueScope),
+    };
+  };
+
   // Helpdesk Tickets
   app.get('/api/tickets', (req, res) => {
     
@@ -2917,7 +2930,10 @@ async function startServer() {
       || ticket.assigned_agent_id === actor.id
       || hasTicketQueueScope(actor, ticket)
     );
-    return res.json({ success: true, data });
+    const responseData = isPostgresPersistenceActive()
+      ? data.map(ticket => ({ ...ticket, ...ticketCapabilitiesForActor(actor, ticket) }))
+      : data;
+    return res.json({ success: true, data: responseData });
   });
 
   // Direct ticket reads use the same ownership/owner-domain rules as the collection endpoint.
@@ -2935,7 +2951,8 @@ async function startServer() {
       && ticket.assigned_agent_id !== actor.id && !hasQueueScope) {
       return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
     }
-    return res.json({ success: true, data: ticket });
+    const responseTicket = isPostgresPersistenceActive() ? { ...ticket, ...ticketCapabilitiesForActor(actor, ticket) } : ticket;
+    return res.json({ success: true, data: responseTicket });
   });
 
   app.post('/api/tickets', async (req, res) => {
