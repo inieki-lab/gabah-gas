@@ -199,7 +199,7 @@ export function filterMaintenanceSchedulesByDynamicScopes(schedules: ServerMaint
 }
 
 /** One queue-scope resolver shared by list/detail and mutation guards. */
-export function hasTicketQueueScope(actor: ServerUser, ticket: Pick<ServerTicket, 'category' | 'assigned_unit_id'>): boolean {
+export function hasTicketQueueScope(actor: ServerUser, ticket: { category: string; assigned_unit_id?: string | null }): boolean {
   if (isSuperadminActor(actor)) return true;
   if (ticket.assigned_unit_id) {
     return isPostgresPersistenceActive()
