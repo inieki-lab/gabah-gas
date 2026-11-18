@@ -108,3 +108,8 @@ Implemented in source for CI review:
 - Added a static regression contract and CI step; UAT scenarios now cover requester, dispatcher, assignee, location-only denial, and legacy-history preservation.
 
 **Not yet verified:** this implementation branch has not completed CI, fresh PostgreSQL migration, upgrade-from-legacy migration, or browser UAT. No merge or production readiness is claimed. Review the migration ordering and normalized persistence before approving.
+
+
+### Scope boundary for this implementation slice
+
+The current ticket schema does not yet capture a dedicated `request_location_id`. This slice deliberately uses the operational queue target for authorization and does not infer it from the reporter's office location. A later additive change may record the incident/request location as descriptive workflow data, but it must never be an authorization grant. Do not treat this PR as completion of location-based reporting or cross-location analytics.
