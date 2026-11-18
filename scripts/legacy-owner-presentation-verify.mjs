@@ -8,6 +8,11 @@ const contracts = fs.readFileSync('src/components/views/ContractsView.tsx', 'utf
 const dashboard = fs.readFileSync('src/components/views/DashboardView.tsx', 'utf8');
 const admin = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
 const roleNavigation = fs.readFileSync('src/navigation/roleNavigation.ts', 'utf8');
+const dbSeed = fs.readFileSync('server/db.ts', 'utf8');
+const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
+const retireLocations = fs.readFileSync('server/migrations/100_retire_location_labels_from_org_divisions.sql', 'utf8');
+const retireRoles = fs.readFileSync('server/migrations/101_retire_branch_location_roles.sql', 'utf8');
+const normalizeProfiles = fs.readFileSync('server/migrations/102_post_seed_normalize_branch_location_profiles.sql', 'utf8');
 const taxonomyCreateStart = server.indexOf("app.post('/api/taxonomy/categories'");
 const taxonomyPatchStart = server.indexOf("app.patch('/api/taxonomy/categories/:code'");
 const taxonomyCreate = server.slice(taxonomyCreateStart, taxonomyPatchStart);
@@ -49,4 +54,22 @@ assert.match(admin, /Legacy \{editUserData\.division\} — perlu normalisasi/);
 assert.match(admin, /Legacy \{editCategoryData\.owner_division\} — perlu review/);
 assert.match(admin, /Legacy \(perlu normalisasi\)/);
 
-console.log('Legacy owner / location separation checks: 23/23 passed');
+assert.match(dbSeed, /code: 'SC',[^\\n]*is_active: false/);
+assert.match(dbSeed, /code: 'PIBC',[^\\n]*is_active: false/);
+assert.match(dbSeed, /id: 'UNIT-SC',[^\\n]*is_active: false/);
+assert.match(dbSeed, /id: 'UNIT-PIBC',[^\\n]*is_active: false/);
+assert.match(dbSeed, /id: 'UNIT-PANGSUB',[^\\n]*is_active: false/);
+assert.match(dbSeed, /id: 'UNIT-PIBC-ME',[^\\n]*office_location_id: 'OFF-PIBC',[^\\n]*is_active: true/);
+assert.match(retireLocations, /UPDATE divisions[\\s\\S]*WHERE code IN \\('SC', 'PIBC'\\)/);
+assert.match(retireLocations, /UPDATE org_units[\\s\\S]*WHERE id IN \\('UNIT-SC', 'UNIT-PIBC', 'UNIT-PANGSUB'\\)/);
+assert.match(retireRoles, /role_key IN \\('supply_chain', 'pibc'\\)/);
+assert.match(retireRoles, /SET is_active = FALSE/);
+assert.match(normalizeProfiles, /role IN \\('Supply Chain', 'PIBC'\\)[\\s\\S]*'Karyawan'/);
+assert.match(normalizeProfiles, /WHEN u\\.role = 'PIBC' THEN 'OFF-PIBC'/);
+assert.match(normalizeProfiles, /WHEN u\\.role = 'Supply Chain' THEN 'OFF-RPC'/);
+assert.match(normalizeProfiles, /unit_id = CASE[\\s\\S]*'UNIT-SC', 'UNIT-PIBC', 'UNIT-PANGSUB'/);
+assert.match(normalizeProfiles, /USER_LOCATION_ROLE_NORMALIZED/);
+assert.match(persistence, /normalizeLegacyLocationProfilesInMemory/);
+assert.match(persistence, /SELECT id::text AS id, role, unit_id, office_location_id FROM users/);
+
+console.log('Legacy owner / location separation checks: 37/37 passed');
