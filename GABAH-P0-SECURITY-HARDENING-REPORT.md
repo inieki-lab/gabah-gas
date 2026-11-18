@@ -324,3 +324,24 @@ Alasan: seluruh empat temuan P0 (CR-01, CR-02, CR-03, CR-06) **selesai dan terve
 ---
 
 *Akhir laporan P0 — dibuat tanpa commit, tanpa push, tanpa rewrite Git history. Tidak ada secret/token asli di dalam dokumen ini.*
+
+---
+
+# 10. FOLLOW-UP STATUS — 18 NOVEMBER 2026
+
+Section ini supersedes the 30 September snapshot above. Evidence must be read together with `docs/ops/PRODUCTION-READINESS-GATES.md`.
+
+| Finding | Current status | Evidence / remaining condition |
+|---|---|---|
+| CR-04 PostgreSQL authority and migrations | **Verified in CI** | PostgreSQL 17 fresh database, migration runner, persistence/restart, and production fail-fast passed in CI #2319. Legacy snapshot upgrade and backup/restore remain untested. |
+| CR-05 reminders | **Partially verified** | Scheduler, idempotent reminder sweep, and honest in-app sent/skipped statuses are covered by CI. Email/Telegram remain skipped until transport credentials/configuration are provided. |
+| SEC-04 authorization / IDOR | **Regression suites pass** | Current CI covers notification recipient scoping, ticket reporter/assignee ownership, loan transitions, room reservations, asset scopes, and restricted contract linkage. Browser UAT remains outstanding. |
+| SEC-06 brute force / client IP | **Partially verified** | Production login lockout is active; API rate limiting keys on the transport peer address and does not trust client-supplied `X-Forwarded-For`. Alias/enumeration behavior still needs a focused review. |
+| SEC-07 room collision | **Regression suite passes** | Meeting-room reservation conflict/priority workflows and PostgreSQL persistence tests pass in CI. A production-like concurrency rehearsal remains outstanding. |
+| SEC-08 contract documents | **Verified in CI** | Physical file bytes, scoped download, and restart persistence are covered by PostgreSQL/Docker integration. Production backup of PostgreSQL and uploads volume together remains outstanding. |
+| SEC-09 contract numbering | **Verified in CI** | PostgreSQL contract numbering allocation regression passes; production-like concurrent multi-instance rehearsal remains outstanding. |
+| CR-06 initial password delivery | **Operational follow-up remains** | Password provisioning/reset is server-side; initial credential delivery to employees remains an out-of-band operator process. |
+| Git history / exposed historical credentials | **Operational blocker remains** | No automatic history rewrite or credential rotation was performed. Coordinate history purge and full secret/password rotation with repository owners before production. |
+| Audit log immutability | **New hardening in progress** | Migration 091 adds PostgreSQL UPDATE/DELETE/TRUNCATE rejection for `audit_logs`; CI #2323 is the exact-head verification run. Do not count it as verified until that run succeeds. |
+
+**Current release posture remains NO-GO.** Green CI does not replace browser UAT, legacy upgrade rehearsal, recovery rehearsal, staging controls, credential incident response, or business-owner sign-off.
