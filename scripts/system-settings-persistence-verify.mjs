@@ -9,7 +9,7 @@ const checks = [
   ['System settings read requires authentication', server.includes("app.get('/api/admin/system-settings', async") && server.includes('getActor(req);')],
   ['System settings mutation requires Superadmin', server.includes("app.patch('/api/admin/system-settings', async") && server.includes('const actor = requireRbacSuperadmin(req, res);')],
   ['Only the four approved company-profile fields are accepted', server.includes("['companyName', 'accountingStandard', 'baseCurrency', 'fiscalYear'] as const")],
-  ['Company profile fields and fiscal year are validated', server.includes('nextSettings.companyName.length < 3') && server.includes('! /^(20[0-9]{2}|2100)$/') === false && server.includes('/^(20[0-9]{2}|2100)$/')],
+  ['Company profile fields, strict string types, and fiscal year are validated', server.includes("SYSTEM_SETTING_KEYS.some(key => typeof body[key] !== 'string')") && server.includes('nextSettings.companyName.length < 3') && server.includes('/^(20[0-9]{2}|2100)$/')],
   ['Concurrent updates lock the singleton settings row', server.includes("WHERE settings_key = 'company_profile' FOR UPDATE")],
   ['Settings update and audit insert share one transaction', /withRbacTransaction\(async client =>[\s\S]*UPDATE gabah_system_settings[\s\S]*INSERT INTO gabah_system_settings_audit/.test(server)],
   ['No-op updates do not create fake audit events', server.includes('const unchanged = SYSTEM_SETTING_KEYS.every')],
