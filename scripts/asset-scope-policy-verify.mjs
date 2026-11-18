@@ -120,6 +120,9 @@ const checks = [
   ['Superadmin reclassification UI preserves metadata and refreshes scoped asset data', assetUi.includes('Review owner aset legacy') && assetUi.includes('Nomor aset, lokasi fisik, unit pengelola, PIC, dan histori tidak akan diubah.') && assetUi.includes('await onRefresh?.()')],
   ['Managing-unit default does not infer organizational unit from legacy location codes', managingUnit.includes("if (['SC', 'PIBC'].includes(div)) return null") && managingUnit.includes('existing explicit historical')],
 
+
+  ['Legacy SC/PIBC contracts remain readable but cannot be edited or receive document uploads by non-Superadmins', contracts.includes("['SC', 'PIBC', 'SUPPLY CHAIN'].includes(owner)") && contracts.includes("['SC', 'PIBC', 'SUPPLY CHAIN'].includes(ownerDivision)") && contractUi.includes('isLegacyContractOwner(contract)') && contractUi.includes('(!isLegacyContractOwner(contract) || isSuperadmin)')],
+
 ];
 
 const assetPatchStart = server.indexOf("app.patch('/api/assets/:id'");
