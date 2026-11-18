@@ -572,6 +572,14 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Added `scripts/reminder-failure-payload-verify.mjs`, registered it as `npm run test:reminder-failure-payload`, and added the check to CI.
 - This closes a frontend crash path when the reminder API returns a truthy non-array value (for example an object/string/null-like malformed payload).
 - **Not closed:** Notification Rules configuration still persists to browser `localStorage`, not a server-authoritative PostgreSQL setting. This remains a separate functional/data-consistency item; do not mark Notification Rules centrally persisted or production-complete.
-- Validation for commits `91ce063`, `57aea0c`, `0d4775f`, and `948ef57` is pending GitHub Actions. Do not mark this item green until the exact latest head completes CI.
+- Validation: the exact latest head `813d33c3f0cc1b8212be60c0b1ea0a8b3d2f0c96` completed GitHub Actions run `44211191175` successfully. All 74 steps passed, including live P0 HTTP security, PostgreSQL 17 persistence integration, Docker runtime smoke, and the full regression suite.
 
-**Checklist:** reminder failure payload crash guard = implemented, CI pending; Notification Rules central persistence = OPEN.
+**Checklist:** reminder failure payload crash guard = implemented and CI PASS; Notification Rules central persistence = OPEN.
+
+
+## 21. Reminder regression exact-head CI result — 18 November 2026
+
+- Exact branch head `813d33c3f0cc1b8212be60c0b1ea0a8b3d2f0c96` was verified against workflow run `44211191175`.
+- The `verify` job completed with conclusion `success`; all 74 steps completed and no failed step was reported.
+- This confirms the Reminder Center malformed-payload guard and its regression check are included in a green full pipeline. It does not close Notification Rules persistence, system settings centralization, or numbering configuration parity.
+- PR #119 remains in its stacked release chain. No merge to `main` or laptop UAT authorization is implied by this CI result.
