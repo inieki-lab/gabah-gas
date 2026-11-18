@@ -42,7 +42,7 @@ const checks = [
   ['New ticket creation accepts only IT, GA, and ME', /VALID_TICKET_CATEGORIES = \['IT', 'GA', 'ME'\]/.test(ticketCreate)],
   ['New ME tickets are assigned to UNIT-PIBC-ME', /assigned_unit_id: payload\.category === 'ME' \? 'UNIT-PIBC-ME'/.test(ticketCreate)],
   ['IT auto-assignment requires exactly one explicitly scoped operator', /eligibleAgents\.length === 1/.test(ticketCreate) && ticketCreate.includes("hasRbacPermission(String(user.id), 'tickets.update')") && ticketCreate.includes("hasRbacScope(String(user.id), 'division', 'IT', 'tickets')")],
-  ['Queue scope resolver uses unit scope for unit-targeted tickets', queueScope.includes("hasRbacScope(String(actor.id), 'unit'") && queueScope.includes("ticket.assigned_unit_id")],
+  ['Queue scope resolver uses unit scope for unit-targeted tickets', queueScope.includes("hasRbacScope(String(actor.id), 'unit'") && queueScope.includes("ticket.assigned_unit_id") && queueScope.includes('actor.unit_id')],
   ['ME without a unit target fails closed', /category === 'ME') return false/.test(queueScope)],
   ['List endpoint uses shared queue scope resolver', listRoute.includes('hasTicketQueueScope(actor, ticket)')],
   ['Direct detail endpoint uses the same queue scope resolver', detailRoute.includes('hasTicketQueueScope(actor, ticket)')],
