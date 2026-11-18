@@ -431,7 +431,8 @@ async function startServer() {
     const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
     const suppliedKeys = Object.keys(body).sort();
     const expectedKeys = [...SYSTEM_SETTING_KEYS].sort();
-    if (suppliedKeys.length !== expectedKeys.length || suppliedKeys.some((key, index) => key !== expectedKeys[index])) {
+    if (suppliedKeys.length !== expectedKeys.length || suppliedKeys.some((key, index) => key !== expectedKeys[index])
+      || SYSTEM_SETTING_KEYS.some(key => typeof body[key] !== 'string')) {
       return res.status(400).json({ success: false, message: 'Field pengaturan sistem tidak valid.' });
     }
     const nextSettings = {
