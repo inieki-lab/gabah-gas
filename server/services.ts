@@ -65,8 +65,11 @@ export function getDynamicAssetWriteAuthority(user: ServerUser): { all: boolean;
 export function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | null | undefined, permissionKey: string): boolean {
   if (isSuperadminActor(actor)) return true;
   const owner = String(ownerDivision || '').trim().toUpperCase();
-  // Owner codes are configurable business domains (IT, GA, RPC/SC, PIBC,
-  // and future operational owners). A non-empty owner is never sufficient:
+  // SC/PIBC are legacy office/location labels, not active owner domains.
+  // Existing records remain readable; non-Superadmin mutation stays blocked
+  // until each affected asset is reviewed and reclassified by an administrator.
+  if (['SC', 'PIBC', 'SUPPLY CHAIN'].includes(owner)) return false;
+  // Owner codes are configurable business domains. A non-empty owner is never sufficient:
   // PostgreSQL mode still requires operation permission + matching owner scope.
   // File-store fallback remains IT/GA-only.
 
@@ -389,6 +392,10 @@ export class GabahDomainService {
     // Kategori nonaktif ditolak sebagai pilihan BARU (400); input kosong tidak
     // ditolak (resolusi default) — lihat fallback aktif di bawah.
     assertCategoryUsableForNewAsset(taxonomy, rawCategory, categoryCatalog);
+    if (!String(taxonomy.owner_division || '').trim()
+      || String(taxonomy.owner_division).trim().toUpperCase() === 'UNASSIGNED') {
+      throw Object.assign(new Error('Kategori belum memiliki owner domain aktif. Superadmin harus melengkapi master kategori sebelum aset baru dapat didaftarkan.'), { statusCode: 409 });
+    }
     if (!rawCategory.trim() && taxonomy.is_active === false) {
       // Kategori default untuk divisi ini sedang nonaktif → gunakan kategori
       // aktif lain milik divisi yang sama (deterministik, tidak menebak di
