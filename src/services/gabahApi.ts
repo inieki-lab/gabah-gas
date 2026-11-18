@@ -257,6 +257,12 @@ class GabahApiClient {
     return this.request<any[]>('/api/taxonomy/categories');
   }
 
+  // Categories the current actor may actually create, filtered by server-side
+  // assets.create + module-specific owner scope (and licenses.manage).
+  async getAssetCreationCategories(): Promise<any[]> {
+    return this.request<any[]>('/api/assets/creation-categories');
+  }
+
   async createCategory(payload: {
     code: string;
     name: string;
