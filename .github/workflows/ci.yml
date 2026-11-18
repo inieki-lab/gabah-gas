@@ -65,6 +65,9 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: RBAC mutation and audit transaction regression
+        run: npm run test:rbac-audit-transaction
+
       - name: Employee profile capability normalization regression
         run: npm run test:employee-role-normalization
 
