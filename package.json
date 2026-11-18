@@ -65,7 +65,8 @@
     "test:contract-domain-persistence": "node scripts/contract-domain-persistence-verify.mjs",
     "test:runtime-build-dependency-boundary": "node scripts/runtime-build-dependency-boundary-verify.mjs",
     "test:reminder-failure-payload": "node scripts/reminder-failure-payload-verify.mjs",
-    "test:notification-rule-persistence": "node scripts/notification-rule-persistence-verify.mjs"
+    "test:notification-rule-persistence": "node scripts/notification-rule-persistence-verify.mjs",
+    "test:system-settings-persistence": "node scripts/system-settings-persistence-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
