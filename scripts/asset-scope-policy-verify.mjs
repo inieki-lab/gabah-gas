@@ -88,6 +88,8 @@ const checks = [
   ['Asset create-options mirrors IT hardware/software/license and INV-F corporate owner overrides before exposing categories', server.includes("['IT-H', 'IT-S'].includes(mainType) || ['IT', 'LICENSE'].includes(categoryType)") && server.includes("code === 'INV-F' ? 'GA' : masterOwner") && server.includes("masterOwner === effectiveOwner")],
 
   ['Asset create-options endpoint is gated by Assets module rather than My Assets', server.includes("matchesApiPrefix(path, '/api/assets/create-options')")],
+  ['Module lifecycle checks normalize API path case and trailing slashes before resolving managed modules', server.includes("const path = req.path.toLowerCase()") && server.includes("const requestPath = req.path.toLowerCase()") && server.includes("requestPath.startsWith('/api/')")],
+
   ['Asset creation form fails closed and derives owner/category choices from the server', assetCreateUi.includes("gabahApi.getAssetCreateOptions()") && assetCreateUi.includes("ownerDomains.map") && assetCreateUi.includes("Tidak ada owner aset yang dapat didaftarkan") && assetCreateUi.includes("Pilihan owner aset gagal dimuat")],
   ['Asset creation form no longer infers write authority from primary-role labels or hardcoded SC/PIBC options', !/userRole|resolvedUser|isSuperadmin/.test(assetCreateUi) && !assetCreateUi.includes('<option value="SC">') && !assetCreateUi.includes('<option value="PIBC">')],
   ['Asset API client exposes server-authorized creation choices', assetCreateApi.includes("getAssetCreateOptions()") && assetCreateApi.includes("'/api/assets/create-options'")],
