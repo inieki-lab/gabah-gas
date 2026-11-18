@@ -21,6 +21,7 @@ const checks = [
   ['Frontend no longer reads or writes notification rules in localStorage', !/localStorage\.(getItem|setItem)\(['"]gabah_notification_rules['"]/.test(modal)],
   ['UI loads server settings before allowing toggles', /notificationRulesLoading \|\| !!notificationRulesError \|\| savingNotificationRuleId !== null/.test(modal)],
   ['UI updates state only after API success', /await gabahApi\.updateNotificationRuleSetting\(id, nextStatus === 'Aktif'\);[\s\S]*setNotificationRules\(previous/.test(modal)],
+  ['Dashboard attention applies stored warranty, loan, and SLA switches', /app\\.get\\('\\/api\\/dashboard\\/attention', async[\\s\\S]*SELECT rule_id, is_active FROM gabah_notification_rule_settings[\\s\\S]*item\\.type === 'warranty_expiring'[\\s\\S]*item\\.type === 'loan_pending'[\\s\\S]*item\\.type === 'sla_breach'/.test(server)],
 ];
 let failed = 0;
 for (const [name, pass] of checks) {
