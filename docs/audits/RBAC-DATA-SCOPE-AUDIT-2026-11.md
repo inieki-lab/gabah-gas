@@ -274,3 +274,10 @@ Ini bukan bukti bahwa semua data SC/PIBC harus langsung dihapus atau dipindahkan
 5. Uji fresh database dan upgrade database berisi data legacy, termasuk list/detail/mutasi dan negative cross-scope tests.
 
 **Status: RELEASE BLOCKER.** Jangan menonaktifkan atau menghapus kode SC/PIBC sebelum mapping aset/transaksi historis disetujui. Jangan mengklaim model organisasi sudah sepenuhnya dinamis hanya berdasarkan CI hijau.
+
+
+## Update 18 November 2026 — ticket routing branch
+
+PR #121 (`fix/ticket-routing-me-unit-scope`) implements a first selective correction for the ticket-domain conflation recorded above. It introduces a separate ME operational unit at PIBC, exact ticket-module scope enforcement, explicit GA/ME requester and operator roles, scoped dispatch endpoints, and unit-aware dashboard filtering. Legacy SC/PIBC ticket categories and asset owners are retained without automatic migration.
+
+This does **not** resolve every SC/PIBC legacy asset/contract ownership record. It only prevents those labels/locations from becoming new ticket categories or implicit ticket queue grants. Full asset/contract classification remains a separate review. CI, fresh/upgrade database tests, and browser UAT are still required; do not mark the audit or release gate complete yet.
