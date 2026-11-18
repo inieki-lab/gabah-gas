@@ -2601,7 +2601,8 @@ async function startServer() {
     const ownerMaster = (db.divisions || []).find(item => item.is_active !== false
       && String(item.code || '').trim().toUpperCase() === requestedOwner);
     if (!ownerMaster) return res.status(400).json({ success: false, message: `Owner "${requestedOwner}" belum terdaftar atau tidak aktif.` });
-    const previousOwner = String(asset.owner_division || '').trim().toUpperCase();
+    const previousOwnerRaw = asset.owner_division;
+    const previousOwner = String(previousOwnerRaw || '').trim().toUpperCase();
     if (previousOwner === requestedOwner) return res.status(409).json({ success: false, message: 'Owner aset sudah menggunakan domain tersebut.' });
     const activeLoan = db.loans.find(loan => loan.asset_id === asset.id && ['approved', 'borrowed'].includes(String(loan.status || '').toLowerCase()));
     if (activeLoan) return res.status(409).json({ success: false, message: `Owner tidak dapat diubah selama pinjaman ${activeLoan.loan_number} masih aktif.` });
@@ -2614,7 +2615,7 @@ async function startServer() {
       await persistDataStore();
       return res.json({ success: true, data: asset });
     } catch (error: any) {
-      asset.owner_division = previousOwner;
+      asset.owner_division = previousOwnerRaw;
       db.auditLogs.splice(auditLength);
       return res.status(500).json({ success: false, message: error?.message || 'Gagal menyimpan reklasifikasi owner aset.' });
     }
