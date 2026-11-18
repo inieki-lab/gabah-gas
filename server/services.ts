@@ -218,7 +218,7 @@ export class GabahDomainService {
   /**
    * Log action to immutable audit trail
    */
-  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string) {
+  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string, persist = true) {
     const log: ServerAuditLog = {
       id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       action,
@@ -236,7 +236,9 @@ export class GabahDomainService {
     // Compatibility fallback for legacy handlers that still record audit
     // events without an explicit awaited domain commit. Core asset/room
     // mutations below also await persistence and perform rollback themselves.
-    void persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence fallback notice:', err.message));
+    if (persist) {
+      void persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence fallback notice:', err.message));
+    }
     return log;
   }
 
@@ -545,7 +547,7 @@ export class GabahDomainService {
     db.assets.unshift(newAsset);
 
     // Record audit and persist the asset + audit event before reporting success.
-    this.recordAudit('ASSET_CREATED', 'Assets', `Mendaftarkan aset baru ${newAsset.asset_number} (${newAsset.name}) [Owner: ${newAsset.owner_division}]`, actor, newAsset.id);
+    this.recordAudit('ASSET_CREATED', 'Assets', `Mendaftarkan aset baru ${newAsset.asset_number} (${newAsset.name}) [Owner: ${newAsset.owner_division}]`, actor, newAsset.id, false);
     await this.persistMutationWithRollback('Pembuatan aset', () => {
       const index = db.assets.findIndex(item => item.id === newAsset.id);
       if (index >= 0) db.assets.splice(index, 1);
@@ -610,7 +612,7 @@ export class GabahDomainService {
         created_at: new Date().toISOString(),
       };
       db.movements.unshift(movement);
-      this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id);
+      this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id, false);
       await this.persistMutationWithRollback('Pengembalian aset ke pool', rollback);
       return asset;
     }
@@ -647,7 +649,7 @@ export class GabahDomainService {
     };
     db.movements.unshift(movement);
 
-    this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id);
+    this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id, false);
     await this.persistMutationWithRollback('Penugasan aset', rollback);
     return asset;
   }
@@ -699,7 +701,7 @@ export class GabahDomainService {
     };
     db.movements.unshift(movement);
 
-    this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id);
+    this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id, false);
     await this.persistMutationWithRollback('Perpindahan aset', rollback);
 
     return asset;
@@ -767,7 +769,7 @@ export class GabahDomainService {
     }
 
     asset.updated_at = new Date().toISOString();
-    this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id);
+    this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id, false);
     await this.persistMutationWithRollback('Perubahan lifecycle aset', rollback);
 
     return asset;
@@ -1931,7 +1933,7 @@ export class GabahDomainService {
       room.status = 'in_use';
     }
 
-    this.recordAudit('ROOM_CHECKIN', 'MeetingRooms', `Check-in rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
+    this.recordAudit('ROOM_CHECKIN', 'MeetingRooms', `Check-in rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id, false);
     await this.persistMutationWithRollback('Check-in ruang rapat', rollback);
     return reservation;
   }
@@ -1965,7 +1967,7 @@ export class GabahDomainService {
       room.status = 'available';
     }
 
-    this.recordAudit('ROOM_CHECKOUT', 'MeetingRooms', `Check-out selesai rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
+    this.recordAudit('ROOM_CHECKOUT', 'MeetingRooms', `Check-out selesai rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id, false);
     await this.persistMutationWithRollback('Check-out ruang rapat', rollback);
     return reservation;
   }
@@ -1997,7 +1999,7 @@ export class GabahDomainService {
       room.status = 'available';
     }
 
-    this.recordAudit('ROOM_RESERVATION_CANCELLED', 'MeetingRooms', `Pembatalan reservasi ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
+    this.recordAudit('ROOM_RESERVATION_CANCELLED', 'MeetingRooms', `Pembatalan reservasi ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id, false);
     await this.persistMutationWithRollback('Pembatalan reservasi ruang rapat', rollback);
     return reservation;
   }
@@ -2028,7 +2030,7 @@ export class GabahDomainService {
         (room as any)[key] = updates[key];
       }
     }
-    this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
+    this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id, false);
     await this.persistMutationWithRollback('Perubahan master ruang rapat', rollback);
     return room;
   }
@@ -2056,7 +2058,7 @@ export class GabahDomainService {
     const previousTypes = db.meetingTypes.slice();
     const previousAuditLogs = db.auditLogs.slice();
     db.meetingTypes.push(newItem);
-    this.recordAudit('MEETING_TYPE_CREATED', 'MeetingRooms', `Menambah tipe rapat baru: ${newItem.name}`, actor, newItem.id);
+    this.recordAudit('MEETING_TYPE_CREATED', 'MeetingRooms', `Menambah tipe rapat baru: ${newItem.name}`, actor, newItem.id, false);
     await this.persistMutationWithRollback('Pembuatan tipe rapat', () => {
       db.meetingTypes = previousTypes;
       db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
@@ -2077,7 +2079,7 @@ export class GabahDomainService {
     if (payload.description !== undefined) item.description = payload.description.trim();
     if (payload.priority_level) item.priority_level = payload.priority_level;
     if (payload.color) item.color = payload.color;
-    this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id);
+    this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id, false);
     await this.persistMutationWithRollback('Perubahan tipe rapat', () => {
       Object.assign(item, previousItem);
       db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
@@ -2095,7 +2097,7 @@ export class GabahDomainService {
     const previousAuditLogs = db.auditLogs.slice();
     const removed = db.meetingTypes[idx];
     db.meetingTypes.splice(idx, 1);
-    this.recordAudit('MEETING_TYPE_DELETED', 'MeetingRooms', `Menghapus tipe rapat: ${removed.name}`, actor, removed.id);
+    this.recordAudit('MEETING_TYPE_DELETED', 'MeetingRooms', `Menghapus tipe rapat: ${removed.name}`, actor, removed.id, false);
     await this.persistMutationWithRollback('Penghapusan tipe rapat', () => {
       db.meetingTypes = previousTypes;
       db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
@@ -2127,7 +2129,7 @@ export class GabahDomainService {
     const previousFacilities = db.meetingFacilities.slice();
     const previousAuditLogs = db.auditLogs.slice();
     db.meetingFacilities.push(newFac);
-    this.recordAudit('MEETING_FACILITY_CREATED', 'MeetingRooms', `Menambah fasilitas rapat [${newFac.category}]: ${newFac.name}`, actor, newFac.id);
+    this.recordAudit('MEETING_FACILITY_CREATED', 'MeetingRooms', `Menambah fasilitas rapat [${newFac.category}]: ${newFac.name}`, actor, newFac.id, false);
     await this.persistMutationWithRollback('Pembuatan fasilitas rapat', () => {
       db.meetingFacilities = previousFacilities;
       db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
@@ -2149,7 +2151,7 @@ export class GabahDomainService {
     if (payload.category) item.category = payload.category;
     if (payload.description !== undefined) item.description = payload.description.trim();
     if (payload.is_active !== undefined) item.is_active = payload.is_active;
-    this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id);
+    this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id, false);
     await this.persistMutationWithRollback('Perubahan fasilitas rapat', () => {
       Object.assign(item, previousItem);
       db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
@@ -2169,7 +2171,7 @@ export class GabahDomainService {
     const previousAuditLogs = db.auditLogs.slice();
     const removed = db.meetingFacilities[idx];
     db.meetingFacilities.splice(idx, 1);
-    this.recordAudit('MEETING_FACILITY_DELETED', 'MeetingRooms', `Menghapus fasilitas rapat [${removed.category}]: ${removed.name}`, actor, removed.id);
+    this.recordAudit('MEETING_FACILITY_DELETED', 'MeetingRooms', `Menghapus fasilitas rapat [${removed.category}]: ${removed.name}`, actor, removed.id, false);
     await this.persistMutationWithRollback('Penghapusan fasilitas rapat', () => {
       db.meetingFacilities = previousFacilities;
       db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
