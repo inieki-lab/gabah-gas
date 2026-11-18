@@ -1576,27 +1576,49 @@ async function startServer() {
         return res.status(401).json({ success: false, message: 'Kata sandi lama tidak cocok.' });
       }
 
+      const previousCredentials = {
+        password_hash: user.password_hash,
+        password_salt: user.password_salt,
+        temp_password: user.temp_password,
+        authVersion: user.authVersion,
+      };
       const { hash, salt } = hashPassword(newPassword);
       user.password_hash = hash;
       user.password_salt = salt;
       delete user.temp_password;
       if (typeof user.authVersion === 'number') user.authVersion += 1;
 
-      // SECURITY (CR-03 §3.4): rotate credentials ⇒ revoke ALL sessions, then
-      // re-issue one session for the calling device so it stays signed in.
-      revokeUserSessions(user.id);
-      const session = createSession(user.id, req);
-
-      GabahDomainService.recordAudit(
+      const auditEntry = GabahDomainService.recordAudit(
         'USER_PASSWORD_SELF_CHANGED',
         'Auth',
         `Pengguna ${user.name} (${user.email}) mengganti kata sandinya sendiri; seluruh sesi lain dicabut`,
         actor,
         user.id
       );
-      persistDataStore().catch(() => {});
+      try {
+        // Commit the credential change before revoking sessions. A storage
+        // failure must leave the old password and existing sessions usable.
+        await persistDataStore();
+      } catch (persistenceError) {
+        user.password_hash = previousCredentials.password_hash;
+        user.password_salt = previousCredentials.password_salt;
+        if (previousCredentials.temp_password === undefined) delete user.temp_password;
+        else user.temp_password = previousCredentials.temp_password;
+        user.authVersion = previousCredentials.authVersion;
+        const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+        if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+        try { await persistDataStore(); } catch (rollbackError) {
+          console.error('[GABAH] Failed to persist password-change rollback snapshot:', rollbackError);
+        }
+        return res.status(500).json({ success: false, message: 'Perubahan kata sandi gagal disimpan. Kata sandi lama tetap berlaku.' });
+      }
 
-      res.json({
+      // SECURITY (CR-03 §3.4): only after durable credential persistence,
+      // revoke ALL sessions and issue one fresh session for this device.
+      revokeUserSessions(user.id);
+      const session = createSession(user.id, req);
+
+      return res.json({
         success: true,
         data: { user: sanitizeUser(user), token: session.token, expires_at: session.expires_at },
       });
