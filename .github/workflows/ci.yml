@@ -89,6 +89,9 @@ jobs:
       - name: Asset assignment, movement, and lifecycle persistence regression
         run: npm run test:asset-domain-persistence
 
+      - name: Asset and loan mutation rollback regression
+        run: npm run test:asset-loan-mutation-rollback
+
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
 
