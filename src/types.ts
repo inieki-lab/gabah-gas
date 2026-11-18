@@ -151,13 +151,13 @@ export interface Loan {
 }
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
-export type TicketStatus = 'open' | 'in_progress' | 'pending_vendor' | 'resolved' | 'closed';
+export type TicketStatus = 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'pending_vendor' | 'resolved' | 'closed';
 /**
  * Helpdesk Ticket Category — strictly divisional.
  * Contract Management is a separate domain and is NOT a ticket category.
  * Software/License/SaaS tickets belong to 'IT' (License is an asset domain, not a helpdesk category).
  */
-export type TicketCategory = 'IT' | 'GA' | 'SC' | 'PIBC';
+export type TicketCategory = 'IT' | 'GA' | 'ME' | 'SC' | 'PIBC';
 
 export interface Ticket {
   id: string;
@@ -178,6 +178,11 @@ export interface Ticket {
   related_asset_number?: string;
   assigned_agent_id?: string;
   assigned_agent_name?: string;
+  /** Operational queue unit (ME uses UNIT-PIBC-ME); legacy categories remain historical. */
+  assigned_unit_id?: string;
+  /** Record-level capabilities calculated by the backend for the authenticated actor. */
+  can_manage?: boolean;
+  can_assign?: boolean;
   sla_hours: number; // e.g. Urgent: 4h, High: 8h, Medium: 24h, Low: 48h
   sla_response_deadline?: string;
   sla_resolution_deadline?: string;

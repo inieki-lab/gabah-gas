@@ -3,7 +3,7 @@ import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
 import { isSuperadminActor, isAuditorActor, hasRbacScope, hasRbacPermission } from './rbac-policy';
-import { GabahDomainService } from './services';
+import { GabahDomainService, hasTicketQueueScope } from './services';
 import { extractClientIp } from './requestContext';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
@@ -22,22 +22,21 @@ function canSeeAsset(actor: ServerUser, assetId: string): boolean {
   return GabahDomainService.getScopedAssets(actor).some(asset => asset.id === assetId);
 }
 
-function canManageTicket(actor: ServerUser, ticketId: string): boolean {
+function canSeeTicket(actor: ServerUser, ticketId: string): boolean {
   const ticket = db.tickets.find(t => t.id === ticketId);
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
-  if (isPostgresPersistenceActive()) {
-    // PostgreSQL RBAC is owner-code agnostic: custom operational functions
-    // (e.g. RPC/SC) need the same explicit Tickets scope as IT/GA.
-    const owner = String(ticket.category || '').trim();
-    return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'tickets');
-  }
-  // File-store compatibility only. Production PostgreSQL never grants ticket
-  // authority from a legacy role label alone.
-  if (actor.role === 'IT') return ticket.category === 'IT';
-  if (actor.role === 'GA') return ticket.category === 'GA';
-  return false;
+  return hasTicketQueueScope(actor, ticket);
+}
+
+function canManageTicket(actor: ServerUser, ticketId: string): boolean {
+  const ticket = db.tickets.find(t => t.id === ticketId);
+  if (!ticket) return false;
+  if (isSuperadmin(actor)) return true;
+  // Reporter-only visibility must never imply lifecycle mutation authority.
+  if (ticket.assigned_agent_id === actor.id) return true;
+  return hasTicketQueueScope(actor, ticket);
 }
 
 function scopedAttention(actor: ServerUser, items: any[]) {
@@ -56,7 +55,7 @@ function scopedAttention(actor: ServerUser, items: any[]) {
       // module scope, never a primary-role label, for owner-division visibility.
       return (actor.role === 'IT' || actor.role === 'GA') && loan.owner_division === actor.role;
     }
-    if (item.link_type === 'ticket') return canManageTicket(actor, item.link_id);
+    if (item.link_type === 'ticket') return canSeeTicket(actor, item.link_id);
     return false;
   });
 }

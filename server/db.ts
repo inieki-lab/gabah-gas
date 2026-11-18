@@ -47,6 +47,8 @@ export interface OrgUnit {
   name: string;
   /** Divisi pemilik unit (IT/GA/SC/PIBC/Audit/Umum) — unit milik divisi, jabatan tidak. */
   division_code: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
+  /** Optional office assignment for operational sub-units; not an authorization grant. */
+  office_location_id?: string | null;
   is_active: boolean;
 }
 
@@ -193,7 +195,9 @@ export interface ServerTicket {
   ticket_code: string;
   title: string;
   description: string;
-  category: 'IT' | 'GA' | 'SC' | 'PIBC';
+  category: 'IT' | 'GA' | 'ME' | 'SC' | 'PIBC';
+  /** Operational queue target. ME uses UNIT-PIBC-ME; legacy SC/PIBC tickets remain unchanged. */
+  assigned_unit_id?: string | null;
   contract_id?: string | null; // Linked Contract (optional action linkage, Contract ≠ Ticket)
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
@@ -300,6 +304,8 @@ export interface ServerNotification {
   recipient_role?: string;
   recipient_division?: string;
   recipient_user_id?: string;
+  /** Unit-scoped notification recipient, separate from recipient division and role. */
+  recipient_unit_id?: string;
   title: string;
   message: string;
   severity: 'critical' | 'action_required' | 'warning' | 'info' | 'success';
@@ -510,16 +516,17 @@ export const db = {
   ] as OrgJobLevel[],
 
   // ORG-MODEL: Master Unit/Bagian — terpisah dari jabatan & lokasi.
-  // PIBC / Supply Chain / Pangsub adalah UNIT, bukan jabatan.
+  // Lokasi PIBC/RPC/SC/Pangsub bukan unit atau divisi. Placeholder lama dipertahankan nonaktif untuk menjaga referensi historis.
   orgUnits: [
     { id: 'UNIT-SEKDIR', name: 'Sekretariat Direksi', division_code: 'Umum', is_active: true },
     { id: 'UNIT-HUMAS', name: 'Humas & Protokoler', division_code: 'Umum', is_active: true },
     { id: 'UNIT-IT-MIS', name: 'IT & MIS', division_code: 'IT', is_active: true },
     { id: 'UNIT-GA-SARPRAS', name: 'GA / Sarpras', division_code: 'GA', is_active: true },
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
-    { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
-    { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
-    { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
+    { id: 'UNIT-PIBC-ME', name: 'Tim Perawatan (ME)', division_code: 'Umum', office_location_id: 'OFF-PIBC', is_active: true },
+    { id: 'UNIT-SC', name: 'Legacy location placeholder — RPC/SC', division_code: 'SC', is_active: false },
+    { id: 'UNIT-PIBC', name: 'Legacy location placeholder — PIBC', division_code: 'PIBC', is_active: false },
+    { id: 'UNIT-PANGSUB', name: 'Legacy location placeholder — Pangsub', division_code: 'SC', is_active: false },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
   ] as OrgUnit[],
 
@@ -543,8 +550,8 @@ export const db = {
   assetLocations: DEFAULT_ASSET_LOCATIONS,
 
   divisions: [
-    { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
-    { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
+    { code: 'SC', name: 'Legacy owner SC — lokasi RPC/SC', leader: 'Nonaktif — lokasi, bukan divisi', depts: [], is_active: false },
+    { code: 'PIBC', name: 'Legacy owner PIBC — lokasi PIBC', leader: 'Nonaktif — lokasi, bukan divisi', depts: [], is_active: false },
     { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
     { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
     { code: 'Audit', name: 'Satuan Pengawas Internal (SPI)', leader: 'Kepala SPI', depts: ['Audit Kepatuhan & PSAK 16', 'Tinjauan Tata Kelola Aset'] },

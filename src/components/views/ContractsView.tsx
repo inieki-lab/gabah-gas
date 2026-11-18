@@ -84,15 +84,21 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
     }
     return legacyRoles.includes(currentUser.role);
   };
-  const canManage = !isAuditor && hasPermission('contracts.create', ['IT', 'GA', 'Supply Chain', 'PIBC']);
-  const canUploadDocuments = !isAuditor && hasPermission('contracts.documents.upload', ['IT', 'GA', 'Supply Chain', 'PIBC']);
-
+  // SC/PIBC are historical owner values, not application roles or active divisions.
+  const canManage = !isAuditor && hasPermission('contracts.create', ['IT', 'GA']);
+  const canUploadDocuments = !isAuditor && hasPermission('contracts.documents.upload', ['IT', 'GA']);
 
   const vendors = useMemo(() => Array.from(new Set(contracts.map(c => c.vendor_name))).sort(), [contracts]);
   const types = useMemo(() => Array.from(new Set(contracts.map(c => c.contract_type))).sort(), [contracts]);
+  const ownerDomains = useMemo(() => Array.from(new Set(
+    contracts.map(c => String(c.owner_division || '').trim())
+      .filter(owner => owner && !['SC', 'PIBC', 'SUPPLY CHAIN'].includes(owner.toUpperCase()))
+  )).sort(), [contracts]);
 
   const filtered = contracts.filter(c => {
-    if (deptFilter !== 'ALL' && c.owner_division !== deptFilter) return false;
+    const owner = String(c.owner_division || '').trim().toUpperCase();
+    if (deptFilter === 'LEGACY' && !['SC', 'PIBC', 'SUPPLY CHAIN'].includes(owner)) return false;
+    if (deptFilter !== 'ALL' && deptFilter !== 'LEGACY' && c.owner_division !== deptFilter) return false;
     if (vendorFilter !== 'ALL' && c.vendor_name !== vendorFilter) return false;
     if (typeFilter !== 'ALL' && c.contract_type !== typeFilter) return false;
     if (statusFilter !== 'ALL' && c.status !== statusFilter) return false;
@@ -252,7 +258,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           />
         </div>
         {[
-          { value: deptFilter, set: setDeptFilter, options: ['ALL', 'GA', 'IT', 'SC', 'PIBC'], label: 'Divisi' },
+          { value: deptFilter, set: setDeptFilter, options: ['ALL', ...ownerDomains, 'LEGACY'], label: 'Owner' },
           { value: vendorFilter, set: setVendorFilter, options: ['ALL', ...vendors], label: 'Vendor' },
           { value: typeFilter, set: setTypeFilter, options: ['ALL', ...types], label: 'Tipe' },
           { value: statusFilter, set: setStatusFilter, options: ['ALL', 'draft', 'active', 'expiring', 'renewal_in_progress', 'renewed', 'terminated', 'expired'], label: 'Status' },
@@ -264,7 +270,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
             className="px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-emerald-500"
           >
             {f.options.map(o => (
-              <option key={o} value={o}>{o === 'ALL' ? `${f.label}: Semua` : o}</option>
+              <option key={o} value={o}>{o === 'ALL' ? `${f.label}: Semua` : o === 'LEGACY' ? 'Owner lama (perlu review)' : o}</option>
             ))}
           </select>
         ))}
@@ -279,7 +285,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           const rb = reminderBadge(contract);
           const st = STATUS_META[contract.status] || STATUS_META.active;
           const isOpen = expandedId === contract.id;
-          const canDecide = !isAuditor && hasPermission('contracts.renewal.decide', ['IT', 'GA', 'Supply Chain', 'PIBC']);
+          const canDecide = !isAuditor && hasPermission('contracts.renewal.decide', ['IT', 'GA']);
 
           return (
             <div key={contract.id} className="rounded-2xl bg-white border border-slate-200 shadow-xs overflow-hidden">
@@ -303,7 +309,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                     <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
                       <span className="flex items-center gap-1"><Building className="w-3 h-3" /> {contract.vendor_name}</span>
                       <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> {contract.contract_type}</span>
-                      <span>Divisi: <strong className="text-slate-700">{contract.owner_division}</strong></span>
+                      <span>Owner: <strong className="text-slate-700">{['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(contract.owner_division || '').trim().toUpperCase()) ? 'Legacy (perlu review)' : (contract.owner_division || 'Belum diklasifikasi')}</strong></span>
                       <span>PIC: <strong className="text-slate-700">{contract.pic_name}</strong></span>
                     </div>
                   </div>

@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, 'audit/**']
   pull_request:
-    branches: [main, preview/green-enterprise-theme-laptop]
+    branches: [main, 'audit/**', preview/green-enterprise-theme-laptop]
 
 jobs:
   verify:
@@ -29,7 +29,9 @@ jobs:
       - name: Validate Docker Compose configuration
         env:
           PGPASSWORD: ci-validation-only-not-a-secret
-        run: docker compose config --quiet
+        run: |
+          docker compose config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.rehearsal.yml config --quiet
 
       - name: Validate deployment shell script
         run: bash -n deploy.sh
@@ -45,7 +47,7 @@ jobs:
         run: npm ci
 
       - name: Dependency vulnerability gate
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Typecheck (lint)
         run: npm run lint
@@ -61,6 +63,18 @@ jobs:
 
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
+
+      - name: Asset creation effective owner-scope regression
+        run: npm run test:asset-creation-scope
+
+      - name: Vendor and Knowledge Base durable persistence regression
+        run: npm run test:domain-persistence
+
+      - name: Legacy owner and office-location separation regression
+        run: npm run test:legacy-owner-presentation
+
+      - name: Asset and meeting-room durable service persistence regression
+        run: npm run test:domain-service-persistence
 
       - name: Asset assignment active-user integrity
         run: npm run test:asset-assignment-active-user
@@ -150,6 +164,9 @@ jobs:
 
       - name: Ticket reporter ownership regression
         run: npm run test:ticket-reporter-ownership
+
+      - name: Ticket routing and ME unit-scope regression
+        run: npm run test:ticket-routing-unit-scope
 
       - name: Ticket related-asset visibility regression
         run: npm run test:ticket-related-asset-scope

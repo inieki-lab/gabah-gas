@@ -223,6 +223,12 @@ function hydrateDbFromState(state: any): void {
   );
   if (Array.isArray(state.locations) && state.locations.length > 0) db.locations = state.locations;
   if (Array.isArray(state.divisions) && state.divisions.length > 0) db.divisions = state.divisions;
+  // SC/PIBC are legacy location-owner labels, not active divisions. Preserve their rows for historical records only.
+  for (const division of db.divisions || []) {
+    const code = String(division.code || '').trim().toUpperCase();
+    if (code === 'SC') { division.name = 'Legacy owner SC — lokasi RPC/SC'; division.is_active = false; }
+    if (code === 'PIBC') { division.name = 'Legacy owner PIBC — lokasi PIBC'; division.is_active = false; }
+  }
 
   // =========================
   // ORG-MODEL migration (aman, idempoten):
@@ -252,9 +258,10 @@ function hydrateDbFromState(state: any): void {
     { id: 'UNIT-IT-MIS', name: 'IT & MIS', division_code: 'IT', is_active: true },
     { id: 'UNIT-GA-SARPRAS', name: 'GA / Sarpras', division_code: 'GA', is_active: true },
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
-    { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
-    { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
-    { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
+    { id: 'UNIT-PIBC-ME', name: 'Tim Perawatan (ME)', division_code: 'Umum', office_location_id: 'OFF-PIBC', is_active: true },
+    { id: 'UNIT-SC', name: 'Legacy location placeholder — RPC/SC', division_code: 'SC', is_active: false },
+    { id: 'UNIT-PIBC', name: 'Legacy location placeholder — PIBC', division_code: 'PIBC', is_active: false },
+    { id: 'UNIT-PANGSUB', name: 'Legacy location placeholder — Pangsub', division_code: 'SC', is_active: false },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
   ];
   const stateOrgUnits = Array.isArray(state.orgUnits) ? state.orgUnits : [];
@@ -262,6 +269,22 @@ function hydrateDbFromState(state: any): void {
     const existing = stateOrgUnits.find((u: any) => u && u.id === def.id);
     return existing ? { ...def, ...existing } : { ...def };
   }).concat(stateOrgUnits.filter((u: any) => u && !DEFAULT_ORG_UNITS.some(d => d.id === u.id)) as any[]);
+  // Historical location placeholders must never be reactivated by an old state snapshot.
+  const retiredLocationUnitLabels: Record<string, string> = {
+    'UNIT-SC': 'Legacy location placeholder — RPC/SC',
+    'UNIT-PIBC': 'Legacy location placeholder — PIBC',
+    'UNIT-PANGSUB': 'Legacy location placeholder — Pangsub',
+  };
+  for (const [id, name] of Object.entries(retiredLocationUnitLabels)) {
+    const legacyUnit = db.orgUnits.find(unit => unit.id === id);
+    if (legacyUnit) { legacyUnit.name = name; legacyUnit.is_active = false; }
+  }
+  // ME is an operational sub-unit at PIBC, never a PIBC division/owner domain.
+  const meOperationalUnit = db.orgUnits.find(unit => unit.id === 'UNIT-PIBC-ME');
+  if (meOperationalUnit) {
+    meOperationalUnit.division_code = 'Umum';
+    meOperationalUnit.office_location_id = 'OFF-PIBC';
+  }
 
   const DEFAULT_OFFICE_LOCATIONS = [
     { id: 'OFF-KP', name: 'HO', is_active: true },
@@ -451,16 +474,50 @@ async function backfillNormalizedTables(): Promise<void> {
         [String(division.code).trim(), String(division.name).trim(), division.is_active !== false],
       );
     }
+    for (const level of db.jobLevels || []) {
+      await client.query(
+        `INSERT INTO org_job_levels (code, label, order_num, is_active)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (code) DO UPDATE SET label=EXCLUDED.label, order_num=EXCLUDED.order_num, is_active=EXCLUDED.is_active`,
+        [level.code, level.label, Number(level.order ?? 0), level.is_active !== false],
+      );
+    }
+    for (const unit of db.orgUnits || []) {
+      await client.query(
+        `INSERT INTO org_units (id, name, division_code, is_active)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, division_code=EXCLUDED.division_code, is_active=EXCLUDED.is_active`,
+        [unit.id, unit.name, unit.division_code || 'Umum', unit.is_active !== false],
+      );
+    }
+    for (const location of db.officeLocations || []) {
+      await client.query(
+        `INSERT INTO org_office_locations (id, name, is_active)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, is_active=EXCLUDED.is_active`,
+        [location.id, location.name, location.is_active !== false],
+      );
+    }
     for (const u of db.users) {
       await client.query(
-        `INSERT INTO users (id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,updated_at)
-         VALUES ($1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),$6,$7,$8,$9,$10,NOW())
+        `INSERT INTO users (
+           id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,
+           job_level_code,unit_id,office_location_id,updated_at
+         )
+         VALUES (
+           $1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),$6,$7,$8,$9,$10,$11,$12,$13,NOW()
+         )
          ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,email=EXCLUDED.email,role=EXCLUDED.role,
            division_id=EXCLUDED.division_id,phone=EXCLUDED.phone,avatar=EXCLUDED.avatar,is_active=EXCLUDED.is_active,
            password_hash=COALESCE(EXCLUDED.password_hash, users.password_hash),
            password_salt=COALESCE(EXCLUDED.password_salt, users.password_salt),
-           updated_at=NOW()`,
-        [u.id,u.name,u.email,u.role,u.division,u.phone || null,u.avatar || null,u.is_active,u.password_hash || null,u.password_salt || null],
+           job_level_code=EXCLUDED.job_level_code, unit_id=EXCLUDED.unit_id,
+           office_location_id=EXCLUDED.office_location_id, updated_at=NOW()`,
+        [
+          u.id,u.name,u.email,u.role,u.division || 'Umum',u.phone || null,u.avatar || null,u.is_active,
+          u.password_hash || null,u.password_salt || null,u.job_level_code || null,u.unit_id || null,
+          u.office_location_id || null,
+        ],
       );
     }
     // SECURITY (CR-03): db.sessions are deliberately NOT backfilled into
@@ -537,13 +594,13 @@ async function backfillNormalizedTables(): Promise<void> {
       if (!reporterExists) continue;
       const agentId = (t.assigned_agent_id && db.users.some(u => u.id === t.assigned_agent_id)) ? t.assigned_agent_id : null;
       await client.query(
-        `INSERT INTO tickets (id,ticket_number,ticket_code,title,description,category,priority,status,reporter_id,assigned_agent_id,related_asset_id,sla_hours,sla_resolution_deadline,resolved_at,resolution_notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,assigned_agent_id=EXCLUDED.assigned_agent_id,resolved_at=EXCLUDED.resolved_at,resolution_notes=EXCLUDED.resolution_notes,updated_at=EXCLUDED.updated_at`,
-        [t.id,t.ticket_number,t.ticket_code,t.title,t.description,t.category,t.priority,t.status,t.reporter_id,agentId,t.related_asset_id || null,t.sla_hours,t.sla_resolution_deadline,t.resolved_at || null,t.resolution_notes || null,t.created_at,t.updated_at],
+        `INSERT INTO tickets (id,ticket_number,ticket_code,title,description,category,priority,status,reporter_id,assigned_agent_id,assigned_unit_id,related_asset_id,sla_hours,sla_resolution_deadline,resolved_at,resolution_notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,assigned_agent_id=EXCLUDED.assigned_agent_id,assigned_unit_id=EXCLUDED.assigned_unit_id,resolved_at=EXCLUDED.resolved_at,resolution_notes=EXCLUDED.resolution_notes,updated_at=EXCLUDED.updated_at`,
+        [t.id,t.ticket_number,t.ticket_code,t.title,t.description,t.category,t.priority,t.status,t.reporter_id,agentId,t.assigned_unit_id || null,t.related_asset_id || null,t.sla_hours,t.sla_resolution_deadline,t.resolved_at || null,t.resolution_notes || null,t.created_at,t.updated_at],
       );
     }
     for (const n of db.notifications) await client.query(
-      `INSERT INTO notifications (id,recipient_user_id,recipient_role,recipient_division_id,title,message,severity,category,link_type,link_id,is_read,created_at) VALUES ($1,$2,$3,(SELECT id FROM divisions WHERE code=$4),$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO UPDATE SET is_read=EXCLUDED.is_read`,
-      [n.id,n.recipient_user_id || null,n.recipient_role || null,n.recipient_division || null,n.title,n.message,n.severity,n.category,n.link_type || null,n.link_id || null,n.is_read,n.created_at],
+      `INSERT INTO notifications (id,recipient_user_id,recipient_role,recipient_division_id,recipient_unit_id,title,message,severity,category,link_type,link_id,is_read,created_at) VALUES ($1,$2,$3,(SELECT id FROM divisions WHERE code=$4),$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT (id) DO UPDATE SET is_read=EXCLUDED.is_read`,
+      [n.id,n.recipient_user_id || null,n.recipient_role || null,n.recipient_division || null,n.recipient_unit_id || null,n.title,n.message,n.severity,n.category,n.link_type || null,n.link_id || null,n.is_read,n.created_at],
     );
     // Contract Management (separate domain) — authoritative sync into PostgreSQL
     for (const c of (db as any).contracts || []) {
@@ -598,6 +655,47 @@ async function persistPostgresState(): Promise<void> {
   await backfillNormalizedTables();
 }
 
+function normalizeLegacyLocationProfilesInMemory(): void {
+  const legacyUnitLocations: Record<string, string> = {
+    'UNIT-SC': 'OFF-RPC',
+    'UNIT-PIBC': 'OFF-PIBC',
+    'UNIT-PANGSUB': 'OFF-PANGSUB',
+  };
+  for (const user of db.users || []) {
+    const previousRole = String(user.role || '');
+    const previousUnit = String(user.unit_id || '');
+    const isLegacyLocationRole = previousRole === 'Supply Chain' || previousRole === 'PIBC';
+    const inferredLocation = previousUnit === 'UNIT-PANGSUB'
+      ? 'OFF-PANGSUB'
+      : previousUnit === 'UNIT-PIBC' || previousRole === 'PIBC'
+        ? 'OFF-PIBC'
+        : previousUnit === 'UNIT-SC' || previousRole === 'Supply Chain'
+          ? 'OFF-RPC'
+          : undefined;
+    const isLegacyLocationUnit = Object.prototype.hasOwnProperty.call(legacyUnitLocations, previousUnit);
+    if (!isLegacyLocationRole && !isLegacyLocationUnit) continue;
+    if (!user.office_location_id && inferredLocation) user.office_location_id = inferredLocation;
+    if (isLegacyLocationUnit) user.unit_id = null;
+    if (isLegacyLocationRole) {
+      user.role = 'Karyawan';
+      user.role_label = 'Karyawan';
+    }
+    const auditId = `MIG-102-${String(user.id)}`.slice(0, 64);
+    if (!(db.auditLogs || []).some(log => String(log.id) === auditId)) {
+      db.auditLogs.unshift({
+        id: auditId,
+        action: 'USER_LOCATION_ROLE_NORMALIZED',
+        entity: 'Users',
+        entity_id: String(user.id),
+        user_name: String(user.name || 'Unknown user'),
+        user_role: 'System Migration',
+        details: `Legacy location profile normalized: role ${previousRole || '(unchanged)'}, unit ${previousUnit || '(none)'}, office location ${user.office_location_id || '(needs admin review)'}. Job level and unrelated capabilities were not inferred.`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+}
+
 export async function initializePersistence(): Promise<void> {
   // Production must always have an explicitly configured PostgreSQL authority.
   // An empty DATABASE_URL/PGHOST must never activate the standalone JSON store.
@@ -612,6 +710,7 @@ export async function initializePersistence(): Promise<void> {
     console.log('[GABAH Persistence] Standalone environment active. Utilizing resilient local file storage.');
 
     const loaded = loadStateFromFile();
+    normalizeLegacyLocationProfilesInMemory();
     // T2B-1: backfill managing_unit_id (ownership-based, idempoten) untuk aset
     // yang belum punya nilai — nilai eksplisit tidak pernah ditimpa.
     backfillManagingUnits('file store');
@@ -627,6 +726,7 @@ export async function initializePersistence(): Promise<void> {
     ensureCanonicalAdministrator();
     provisionCanonicalUserPasswords();
     AssetNumberingEngine.syncFromExistingAssets(db.assets);
+    saveStateToFile(createPayload());
     return;
   }
 
@@ -642,6 +742,37 @@ export async function initializePersistence(): Promise<void> {
         if (state && typeof state === 'object') {
           hydrateDbFromState(state);
         }
+      }
+      // The normalized audit_logs table is the durable audit authority. Some
+      // transactional endpoints commit audit rows directly with their domain
+      // mutation, so merge those rows back into the in-memory snapshot before
+      // any startup sync can rewrite gabah_state from an older payload.
+      const persistedAuditRows = await pool.query(
+        'SELECT id, action, entity, entity_id, user_name, user_role, details, ip_address, timestamp FROM audit_logs ORDER BY timestamp DESC'
+      );
+      if (persistedAuditRows.rows.length > 0) {
+        const auditById = new Map<string, any>();
+        for (const log of db.auditLogs || []) auditById.set(String(log.id), log);
+        for (const row of persistedAuditRows.rows) {
+          const timestamp = row.timestamp instanceof Date
+            ? row.timestamp.toISOString()
+            : new Date(row.timestamp).toISOString();
+          auditById.set(String(row.id), {
+            ...(auditById.get(String(row.id)) || {}),
+            id: String(row.id),
+            action: String(row.action),
+            entity: String(row.entity),
+            entity_id: row.entity_id == null ? undefined : String(row.entity_id),
+            user_name: String(row.user_name),
+            user_role: String(row.user_role),
+            details: String(row.details),
+            ip_address: row.ip_address == null ? undefined : String(row.ip_address),
+            timestamp,
+          });
+        }
+        db.auditLogs = [...auditById.values()].sort((a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
       }
       if (!db.assets || db.assets.length === 0) {
         seedInitialData();
@@ -661,15 +792,56 @@ export async function initializePersistence(): Promise<void> {
       await backfillNormalizedTables();
       await ensureNormalizedSchema(true);
 
+      // Post-seed migrations may append audit evidence (e.g. profile/location
+      // normalization). Re-read the normalized audit authority after that phase
+      // so those rows are present before the in-memory snapshot is saved.
+      const postSeedAuditRows = await pool.query(
+        'SELECT id, action, entity, entity_id, user_name, user_role, details, ip_address, timestamp FROM audit_logs ORDER BY timestamp DESC'
+      );
+      if (postSeedAuditRows.rows.length > 0) {
+        const auditById = new Map<string, any>();
+        for (const log of db.auditLogs || []) auditById.set(String(log.id), log);
+        for (const row of postSeedAuditRows.rows) {
+          const timestamp = row.timestamp instanceof Date
+            ? row.timestamp.toISOString()
+            : new Date(row.timestamp).toISOString();
+          auditById.set(String(row.id), {
+            ...(auditById.get(String(row.id)) || {}),
+            id: String(row.id),
+            action: String(row.action),
+            entity: String(row.entity),
+            entity_id: row.entity_id == null ? undefined : String(row.entity_id),
+            user_name: String(row.user_name),
+            user_role: String(row.user_role),
+            details: String(row.details),
+            ip_address: row.ip_address == null ? undefined : String(row.ip_address),
+            timestamp,
+          });
+        }
+        db.auditLogs = [...auditById.values()].sort((a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+      }
+
       // PostgreSQL is authoritative for the normalized employee profile. Apply
       // one-time migration results to the in-memory snapshot before it is saved
       // or synchronized again; preserve role_label and all other profile fields.
-      const normalizedUsers = await pool.query<{ id: string; role: string }>('SELECT id::text AS id, role FROM users');
-      const normalizedRoles = new Map<string, string>();
-      for (const row of normalizedUsers.rows) normalizedRoles.set(String(row.id), String(row.role));
+      const normalizedUsers = await pool.query<{ id: string; role: string; job_level_code: string | null; unit_id: string | null; office_location_id: string | null }>(
+        'SELECT id::text AS id, role, job_level_code, unit_id, office_location_id FROM users'
+      );
+      const normalizedProfiles = new Map<string, (typeof normalizedUsers.rows)[number]>(normalizedUsers.rows.map(row => [String(row.id), row]));
       for (const user of db.users) {
-        const normalizedRole = normalizedRoles.get(String(user.id));
-        if (normalizedRole) user.role = normalizedRole;
+        const profile = normalizedProfiles.get(String(user.id));
+        if (!profile) continue;
+        const previousRole = String(user.role || '');
+        user.role = String(profile.role);
+        user.job_level_code = profile.job_level_code || null;
+        user.unit_id = profile.unit_id || null;
+        user.office_location_id = profile.office_location_id || null;
+        if (['Supply Chain', 'PIBC'].includes(previousRole)
+          || /Karyawan — Lokasi (RPC\/SC|PIBC)/i.test(String(user.role_label || ''))) {
+          user.role_label = 'Karyawan';
+        }
       }
       saveStateToFile(createPayload());
 

@@ -6,7 +6,7 @@ import { GabahDomainService } from '../server/services.ts';
 const serviceSource = fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8');
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const ticketModalSource = fs.readFileSync(new URL('../src/components/modals/CreateTicketModal.tsx', import.meta.url), 'utf8');
-const start = serviceSource.indexOf('static createTicket(');
+const start = serviceSource.indexOf('static async createTicket(');
 const end = serviceSource.indexOf('\n  /**', start + 1);
 assert.ok(start >= 0 && end > start, 'createTicket domain method must exist');
 const method = serviceSource.slice(start, end);
@@ -24,7 +24,7 @@ const checks = [
   ['Unknown or out-of-scope contract links are rejected before ticket creation', /const linkedContract = db\.contracts\.find[\s\S]*!linkedContract \|\| !canSeeContract\(actor, linkedContract\)[\s\S]*statusCode: 404/.test(method)],
   ['Validated contract ID is stored on the ticket', /contract_id: linkedContractId/.test(method)],
   ['GA request button uses canonical TicketCategory value instead of legacy General', /setCategory\('GA'\)/.test(ticketModalSource) && !/setCategory\('General'\)/.test(ticketModalSource)],
-  ['Ticket category selector exposes only supported canonical IT, GA, SC and PIBC categories', ['IT', 'GA', 'SC', 'PIBC'].every(category => ticketModalSource.includes(`setCategory('${category}')`)) && /TicketCategory/.test(ticketModalSource)],
+  ['New ticket selector exposes IT, GA, and ME while retaining legacy categories only for history', ['IT', 'GA', 'ME'].every(category => ticketModalSource.includes(`setCategory('${category}')`)) && !ticketModalSource.includes("setCategory('SC')") && !ticketModalSource.includes("setCategory('PIBC')") && /TicketCategory/.test(ticketModalSource)],
   ['HTTP route preserves domain status codes', /res\.status\(typeof err\?\.statusCode === 'number' \? err\.statusCode : 400\)/.test(route)],
   ['Route no longer performs a second contract lookup', !/db\.contracts\.find/.test(route)],
 ];
@@ -37,27 +37,39 @@ seedInitialData();
 const admin = db.users.find(user => user.id === 'USR-01');
 assert.ok(admin);
 const initialCount = db.tickets.length;
-assert.throws(() => GabahDomainService.createTicket({
+await assert.rejects(() => GabahDomainService.createTicket({
   title: 'Fixture missing asset', description: 'Must not be created', category: 'IT', priority: 'low',
   related_asset_id: 'ASSET-NOT-FOUND',
-}, admin), /Aset terkait tidak ditemukan atau tidak dapat diakses/);
+}, admin, false), /Aset terkait tidak ditemukan atau tidak dapat diakses/);
 assert.equal(db.tickets.length, initialCount, 'Unknown asset must not create a ticket');
 
-assert.throws(() => GabahDomainService.createTicket({
+await assert.rejects(() => GabahDomainService.createTicket({
   title: 'Fixture missing contract', description: 'Must not be created', category: 'IT', priority: 'low',
   contract_id: 'CTR-NOT-FOUND',
-}, admin), /Kontrak terkait tidak ditemukan atau tidak dapat diakses/);
+}, admin, false), /Kontrak terkait tidak ditemukan atau tidak dapat diakses/);
 assert.equal(db.tickets.length, initialCount, 'Unknown contract must not create a ticket');
 
-const visibleAsset = GabahDomainService.getScopedAssets(admin)[0];
-assert.ok(visibleAsset, 'Admin fixture must have at least one visible asset');
-const linked = GabahDomainService.createTicket({
-  title: 'Fixture valid asset link', description: 'Valid link', category: 'IT', priority: 'low',
+const visibleAsset = GabahDomainService.getScopedAssets(admin).find(asset => ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase()));
+assert.ok(visibleAsset, 'Admin fixture must have a visible IT or GA owner asset for a canonical ticket link');
+const linkedCategory = String(visibleAsset.owner_division).toUpperCase();
+const linked = await GabahDomainService.createTicket({
+  title: 'Fixture valid asset link', description: 'Valid link', category: linkedCategory, priority: 'low',
   related_asset_id: visibleAsset.id,
-}, admin);
+}, admin, false);
 assert.equal(linked.related_asset_id, visibleAsset.id);
 assert.equal(linked.related_asset_name, visibleAsset.name);
 assert.equal(linked.related_asset_number, visibleAsset.asset_number);
 console.log('PASS | fixture rejects missing links without creating orphan tickets');
 console.log('PASS | fixture persists canonical asset ID and metadata');
+const legacyOwnerAsset = db.assets.find(asset => ['SC', 'PIBC'].includes(String(asset.owner_division || '').toUpperCase()));
+if (legacyOwnerAsset) {
+  await assert.rejects(() => GabahDomainService.createTicket({
+    title: 'Fixture legacy owner asset', description: 'Must be reviewed', category: 'ME', priority: 'low',
+    related_asset_id: legacyOwnerAsset.id,
+  }, admin, false), /owner legacy SC\/PIBC/);
+}
+await assert.rejects(() => GabahDomainService.createTicket({
+  title: 'Fixture legacy category', description: 'Must not be created', category: 'SC', priority: 'low',
+}, admin, false), /Kategori tiket/);
+console.log('PASS | new ticket categories reject legacy SC/PIBC and linked legacy assets');
 console.log('TOTAL: 10 source checks + 2 behavioral fixture groups | PASS');

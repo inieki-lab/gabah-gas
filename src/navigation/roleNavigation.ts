@@ -14,9 +14,8 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
   GA: ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'contracts', 'vendors', 'knowledge', 'reports'],
   'Sekretaris Direksi': ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
   Humas: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
-  // Legacy labels retained only for file-store compatibility.
-  'Supply Chain': ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
-  PIBC: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  // Historical Supply Chain/PIBC labels intentionally have no role navigation:
+  // they are office/location values, not application roles.
   Karyawan: ['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge'],
   Auditor: ['dashboard', 'assets', 'contracts', 'vendors', 'reports'],
 };

@@ -3,7 +3,7 @@ import { ROLE_NAVIGATION, getDefaultNavTabForRole, isNavTabAllowedForRole, isSup
 
 const expectedRoles = [
   'Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas',
-  'Supply Chain', 'PIBC', 'Karyawan', 'Auditor',
+  'Karyawan', 'Auditor',
 ];
 assert.deepEqual(Object.keys(ROLE_NAVIGATION).sort(), [...expectedRoles].sort());
 
@@ -21,8 +21,8 @@ for (const [role, tabs] of Object.entries(mustNotSee)) {
 }
 assert.ok(isNavTabAllowedForRole('IT', 'licenses'));
 assert.ok(isNavTabAllowedForRole('GA', 'meeting_rooms'));
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'my_assets'));
-assert.ok(isNavTabAllowedForRole('PIBC', 'my_assets'));
+assert.equal(isNavTabAllowedForRole('Supply Chain' as any, 'my_assets'), false);
+assert.equal(isNavTabAllowedForRole('PIBC' as any, 'my_assets'), false);
 assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets'), false);
 assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance'), false);
 assert.ok(isNavTabAllowedForRole('Karyawan', 'tickets'));
@@ -32,8 +32,8 @@ assert.deepEqual(ROLE_NAVIGATION.Auditor, ['dashboard', 'assets', 'contracts', '
 assert.equal(isNavTabAllowedForRole(undefined, 'dashboard'), false);
 
 // PostgreSQL navigation must require read permission for every endpoint the page loads.
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'dashboard', ['dashboard.read']));
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'my_assets', ['assets.read']));
+assert.ok(isNavTabAllowedForRole('Supply Chain' as any, 'dashboard', ['dashboard.read']));
+assert.ok(isNavTabAllowedForRole('Supply Chain' as any, 'my_assets', ['assets.read']));
 assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets', ['assets.read']), false);
 assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance', ['dashboard.read', 'assets.read']), false);
 assert.equal(isNavTabAllowedForRole('IT', 'assets', ['assets.update']), false);
@@ -74,4 +74,4 @@ assert.ok(isSuperadminNavigationAllowed('Admin GABAH', true, ['dashboard.read'])
 assert.ok(isSuperadminNavigationAllowed('Custom Role' as any, false, ['*']));
 assert.ok(isSuperadminNavigationAllowed('Admin GABAH', false, undefined));
 
-console.log('Role navigation policy: PASS (9 roles, effective permission and landing-page checks)');
+console.log('Role navigation policy: PASS (7 active role templates, effective permission and landing-page checks)');

@@ -257,6 +257,12 @@ class GabahApiClient {
     return this.request<any[]>('/api/taxonomy/categories');
   }
 
+  // Categories the current actor may actually create, filtered by server-side
+  // assets.create + module-specific owner scope (and licenses.manage).
+  async getAssetCreationCategories(): Promise<any[]> {
+    return this.request<any[]>('/api/assets/creation-categories');
+  }
+
   async createCategory(payload: {
     code: string;
     name: string;
@@ -558,6 +564,17 @@ class GabahApiClient {
     return this.request<Ticket>(`/api/tickets/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status, resolutionNotes }),
+    });
+  }
+
+  async getTicketAssignees(id: string): Promise<Array<{ id: string; name: string; department: string }>> {
+    return this.request<Array<{ id: string; name: string; department: string }>>(`/api/tickets/${id}/assignees`);
+  }
+
+  async assignTicket(id: string, assigned_agent_id: string): Promise<Ticket> {
+    return this.request<Ticket>(`/api/tickets/${id}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ assigned_agent_id }),
     });
   }
 

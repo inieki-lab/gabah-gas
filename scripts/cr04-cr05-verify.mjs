@@ -211,6 +211,51 @@ async function main() {
     const mig = new pg.Client({ connectionString: TEST_DB_URL });
     mig.on('error', e => console.error('[pg ledger async error]', e.message));
     await mig.connect();
+    // Authenticate before the organization persistence checks below, which create
+    // masters/users through authenticated API endpoints.
+    const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS } });
+    const adminToken = adminLogin.json?.data?.token || '';
+    record('login admin', '200 + token', `HTTP ${adminLogin.status}`, adminLogin.status === 200 && Boolean(adminToken));
+    if (!adminToken) throw new Error('cannot continue without admin token');
+
+    // Org masters and employee assignments must be durable in normalized PostgreSQL,
+    // not only in gabah_state. Create one isolated test job level/unit/user.
+    const customLevel = await req(base, 'POST', '/api/master/job-levels', {
+      token: adminToken, body: { code: 'CI', label: 'CI Verification', order: 99 },
+    });
+    const customUnit = await req(base, 'POST', '/api/master/org-units', {
+      token: adminToken, body: { name: 'Unit CI Persistence', division_code: 'IT' },
+    });
+    const customUserEmail = `org.persistence.${Date.now()}@foodstation.co.id`;
+    const customUser = await req(base, 'POST', '/api/users', {
+      token: adminToken,
+      body: {
+        name: 'Uji Persistensi Organisasi',
+        email: customUserEmail,
+        role: 'Karyawan',
+        division: 'IT',
+        password: ADMIN_PASS,
+        job_level_code: 'CI',
+        unit_id: customUnit.json?.data?.id,
+        office_location_id: 'OFF-PIBC',
+      },
+    });
+    const customUserId = customUser.json?.data?.id;
+    const normalizedOrgMasters = await mig.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM org_job_levels WHERE code = 'CI') AS job_level_count,
+         (SELECT COUNT(*)::int FROM org_units WHERE id = $1 AND division_code = 'IT' AND is_active = TRUE) AS unit_count,
+         (SELECT COUNT(*)::int FROM org_office_locations WHERE id = 'OFF-PIBC' AND is_active = TRUE) AS location_count,
+         (SELECT COUNT(*)::int FROM users WHERE id = $2 AND job_level_code = 'CI' AND unit_id = $1 AND office_location_id = 'OFF-PIBC') AS user_profile_count`,
+      [customUnit.json?.data?.id || '', customUserId || ''],
+    );
+    const orgMasterCounts = normalizedOrgMasters.rows[0] || {};
+    record('Custom job level, unit, office location and employee assignments persist to normalized PostgreSQL',
+      '1/1/1/1 rows',
+      `job=${orgMasterCounts.job_level_count} unit=${orgMasterCounts.unit_count} location=${orgMasterCounts.location_count} user=${orgMasterCounts.user_profile_count}`,
+      customLevel.status === 201 && customUnit.status === 201 && customUser.status === 201
+        && orgMasterCounts.job_level_count === 1 && orgMasterCounts.unit_count === 1
+        && orgMasterCounts.location_count === 1 && orgMasterCounts.user_profile_count === 1);
     // Legacy function profiles must become Karyawan primary plus a secondary
     // capability assignment, and the authoritative JSON state must agree.
     const capabilityRows = await mig.query(
@@ -325,13 +370,120 @@ async function main() {
       record('Module lifecycle registry + audit immutability integration',
         'migration 042, seeded modules, immutable audit', `error: ${err.message}`, false);
     }
+    // ---------- Immutable audit_logs table (migration 091) ----------
+    try {
+      const auditMigration = await mig.query(
+        "SELECT version FROM schema_migrations WHERE version = '091'",
+      );
+      record('Audit log immutability migration 091 applied on fresh PostgreSQL database',
+        'version 091 in schema_migrations', `rows=${auditMigration.rowCount}`, auditMigration.rowCount === 1);
+
+      const auditId = 'CI-AUDIT-APPENDONLY-VERIFY';
+      await mig.query(
+        `INSERT INTO audit_logs (id, action, entity, entity_id, user_id, user_name, user_role, details, timestamp)
+         VALUES ($1, 'CI_AUDIT_VERIFY', 'CI', NULL, NULL, 'CI Verification', 'CI', 'Append-only verification row', NOW())`,
+        [auditId],
+      );
+      async function assertAuditLogMutationBlocked(label, sql) {
+        await mig.query('BEGIN');
+        try {
+          await mig.query(sql);
+          await mig.query('ROLLBACK');
+          record(label, 'PostgreSQL error code 55000', 'mutation unexpectedly succeeded', false);
+        } catch (err) {
+          await mig.query('ROLLBACK');
+          record(label, 'PostgreSQL error code 55000', err.code || err.message,
+            err.code === '55000');
+        }
+      }
+      await assertAuditLogMutationBlocked(
+        'Audit log history rejects UPDATE at database level',
+        `UPDATE audit_logs SET details = 'tampered' WHERE id = '${auditId}'`,
+      );
+      await assertAuditLogMutationBlocked(
+        'Audit log history rejects DELETE at database level',
+        `DELETE FROM audit_logs WHERE id = '${auditId}'`,
+      );
+      await assertAuditLogMutationBlocked(
+        'Audit log history rejects TRUNCATE at database level',
+        'TRUNCATE TABLE audit_logs',
+      );
+      const auditLogSurvived = await mig.query(
+        'SELECT COUNT(*)::int AS count FROM audit_logs WHERE id = $1',
+        [auditId],
+      );
+      record('Audit log entry remains intact after rejected mutations',
+        '1 preserved row', `count=${auditLogSurvived.rows[0].count}`,
+        auditLogSurvived.rows[0].count === 1);
+    } catch (err) {
+      record('Audit log append-only integration',
+        'migration 091 and rejected UPDATE/DELETE/TRUNCATE', `error: ${err.message}`, false);
+    }
+    try {
+      const auditorScope = await mig.query(
+        `SELECT s.role_id FROM gabah_role_division_scopes s
+         JOIN gabah_roles r ON r.id = s.role_id
+         WHERE r.role_key = 'auditor' AND s.module = 'audit'
+           AND s.scope_type = 'all' AND s.scope_value IS NULL`,
+      );
+      const auditorScopeMigration = await mig.query(
+        "SELECT version FROM schema_migrations WHERE version = '099'",
+      );
+      record('Auditor global read scope is seeded only for audit module',
+        'migration 099 + one audit/all scope',
+        `migration=${auditorScopeMigration.rowCount} scope=${auditorScope.rowCount}`,
+        auditorScopeMigration.rowCount === 1 && auditorScope.rowCount === 1);
+    } catch (err) {
+      record('Auditor global audit scope migration',
+        'migration 099 and audit/all scope', `error: ${err.message}`, false);
+    }
+    try {
+      const legacyDivisions = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM divisions
+         WHERE code IN ('SC', 'PIBC') AND is_active = TRUE`,
+      );
+      const legacyUnits = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM org_units
+         WHERE id IN ('UNIT-SC', 'UNIT-PIBC', 'UNIT-PANGSUB') AND is_active = TRUE`,
+      );
+      const legacyRoles = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM gabah_roles
+         WHERE role_key IN ('supply_chain', 'pibc') AND is_active = TRUE`,
+      );
+      const legacyAssignments = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM gabah_user_roles ur
+         JOIN gabah_roles r ON r.id = ur.role_id
+         WHERE r.role_key IN ('supply_chain', 'pibc')`,
+      );
+      const locationMigrations = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM schema_migrations
+         WHERE version IN ('100', '101', '102', '103')`,
+      );
+      const meUnit = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM org_units
+         WHERE id = 'UNIT-PIBC-ME' AND is_active = TRUE`,
+      );
+      const unitDivisionCodeWidth = await mig.query(
+        `SELECT character_maximum_length FROM information_schema.columns
+         WHERE table_name = 'org_units' AND column_name = 'division_code'`,
+      );
+      record('SC/PIBC/Pangsub are not active divisions or location-shaped units',
+        'legacy divisions/units inactive; ME unit remains active',
+        `divisions=${legacyDivisions.rows[0].count}; units=${legacyUnits.rows[0].count}; ME=${meUnit.rows[0].count}`,
+        locationMigrations.rows[0].count === 4 && Number(unitDivisionCodeWidth.rows[0]?.character_maximum_length) === 20 && legacyDivisions.rows[0].count === 0
+          && legacyUnits.rows[0].count === 0 && meUnit.rows[0].count === 1);
+      record('SC/PIBC are no longer active application roles or user role grants',
+        'roles inactive; no legacy assignments',
+        `roles=${legacyRoles.rows[0].count}; assignments=${legacyAssignments.rows[0].count}`,
+        legacyRoles.rows[0].count === 0 && legacyAssignments.rows[0].count === 0);
+    } catch (err) {
+      record('Legacy location/role retirement migrations',
+        'migrations 100/101/102 and inactive legacy rows', `error: ${err.message}`, false);
+    }
     await mig.end();
 
     // ---------- 2. Logins (PBKDF2 path, env-provisioned passwords) ----------
-    const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS } });
-    const adminToken = adminLogin.json?.data?.token || '';
-    record('login admin', '200 + token', `HTTP ${adminLogin.status}`, adminLogin.status === 200 && Boolean(adminToken));
-
+    // adminToken was acquired before the first authenticated organization API call.
     const itLogin = await req(base, 'POST', '/api/auth/login', { body: { email: IT_EMAIL, password: USER_PASS } });
     const itToken = itLogin.json?.data?.token || '';
     record('login IT user', '200 + token', `HTTP ${itLogin.status}`, itLogin.status === 200 && Boolean(itToken));
@@ -484,6 +636,30 @@ async function main() {
       `roles=${(persistedAssignment?.role_ids || []).join(',')} primary=${persistedAssignment?.primary_role_id ?? 'none'}`,
       assignment.status === 200 && (persistedAssignment?.role_ids || []).includes(Number(gaRole?.id))
         && Number(persistedAssignment?.primary_role_id) === Number(assignment.json?.data?.primary_role_id));
+
+    const superadminRole = (roleCatalog.json?.data || []).find(role => role.is_superadmin === true && role.is_active);
+    const adminUser = (usersRes.json?.data || []).find(user => user.email === ADMIN_EMAIL);
+    const assignmentInventoryBeforeGuard = await req(base, 'GET', '/api/admin/rbac/user-assignments', { token: adminToken });
+    const superadminAssignmentsBefore = (assignmentInventoryBeforeGuard.json?.data || [])
+      .filter(item => (item.role_ids || []).includes(Number(superadminRole?.id)));
+    record('Fresh PostgreSQL test fixture has exactly one active Superadmin assignment', '1',
+      `count=${superadminAssignmentsBefore.length}`,
+      assignmentInventoryBeforeGuard.status === 200 && superadminAssignmentsBefore.length === 1
+        && superadminAssignmentsBefore[0].user_id === adminUser?.id);
+    const removeLastSuperadmin = await req(base, 'PUT', `/api/admin/rbac/users/${adminUser?.id}/roles`, {
+      token: adminToken,
+      body: { role_ids: [] },
+    });
+    record('Per-user role assignment cannot remove the last active Superadmin', '409',
+      `HTTP ${removeLastSuperadmin.status}`,
+      superadminAssignmentsBefore.length === 1 && removeLastSuperadmin.status === 409);
+    const assignmentInventoryAfterGuard = await req(base, 'GET', '/api/admin/rbac/user-assignments', { token: adminToken });
+    const adminAssignmentAfterGuard = (assignmentInventoryAfterGuard.json?.data || [])
+      .find(item => String(item.user_id) === String(adminUser?.id));
+    record('Rejected last-Superadmin assignment leaves the original role intact', 'superadmin role retained',
+      `roles=${(adminAssignmentAfterGuard?.role_ids || []).join(',')}`,
+      assignmentInventoryAfterGuard.status === 200
+        && (adminAssignmentAfterGuard?.role_ids || []).includes(Number(superadminRole?.id)));
 
     // Vendor ownership is independent from category and employee work location.
     const itVendor = await req(base, 'POST', '/api/vendors', {
@@ -667,6 +843,22 @@ async function main() {
 
     const adminLogin2 = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS } });
     const adminToken2 = adminLogin2.json?.data?.token || '';
+
+    const assignmentsAfterRestart = await req(base, 'GET', '/api/admin/rbac/user-assignments', { token: adminToken2 });
+    const karyawanAssignmentAfterRestart = (assignmentsAfterRestart.json?.data || [])
+      .find(item => String(item.user_id) === String(karyawanUser?.id));
+    record('Dynamic additional role and primary marker survive application restart', 'GA role + same primary marker',
+      `HTTP ${assignmentsAfterRestart.status} roles=${(karyawanAssignmentAfterRestart?.role_ids || []).join(',')} primary=${karyawanAssignmentAfterRestart?.primary_role_id ?? 'none'}`,
+      assignmentsAfterRestart.status === 200
+        && (karyawanAssignmentAfterRestart?.role_ids || []).includes(Number(gaRole?.id))
+        && Number(karyawanAssignmentAfterRestart?.primary_role_id) === Number(persistedAssignment?.primary_role_id));
+
+    const auditAfterRestart = await req(base, 'GET', '/api/audit-logs', { token: adminToken2 });
+    const assignmentAuditAfterRestart = (auditAfterRestart.json?.data || []).find(log =>
+      log.action === 'RBAC_USER_ROLES_UPDATED' && String(log.entity_id) === String(karyawanUser?.id));
+    record('Role assignment audit evidence survives application restart', 'RBAC_USER_ROLES_UPDATED present',
+      `HTTP ${auditAfterRestart.status} event=${assignmentAuditAfterRestart?.action || 'missing'}`,
+      auditAfterRestart.status === 200 && Boolean(assignmentAuditAfterRestart));
 
     const afterRestart = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken2 });
     record('CR-04 contract persists across restart (PostgreSQL authoritative)', '200 + updated notes', `HTTP ${afterRestart.status} notes=${afterRestart.json?.data?.notes || '-'}`,

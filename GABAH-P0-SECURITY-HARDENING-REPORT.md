@@ -2,9 +2,9 @@
 
 **Repository:** `inieki-lab/gabah-gas` — GABAH (General Asset, Business & Automated Helpdesk)
 **Basis audit:** `GABAH-AUDIT-REPORT.md` (HEAD `610c899`)
-**Tanggal hardening:** 30 September 2026
+**Tanggal hardening:** 30 September 2026 (snapshot historis)
 **Scope tahap ini:** HANYA **CR-01**, **CR-02**, **CR-03**, **CR-06** (P0 Security Hardening)
-**Di luar scope (dibiarkan):** CR-04 (PostgreSQL/migrasi), CR-05 (reminder/email/telegram), seluruh temuan HIGH lainnya — lihat §8.
+**Catatan status:** §8–9 di bawah merekam temuan pada 30 September 2026 dan telah disupersede oleh verifikasi lanjutan. Status rilis terkini ada di `docs/ops/PRODUCTION-READINESS-GATES.md` dan catatan audit 18 November 2026.
 **Larangan yang dipatuhi:** tanpa commit, tanpa push, tanpa rewrite Git history (tidak ada `git filter-repo`/BFG/`push --force`), tanpa menampilkan secret/token asli di kode, log, test, maupun laporan ini.
 
 ---
@@ -291,7 +291,7 @@ Catatan: skrip verifikasi sengaja mengosongkan snapshot `sessions` saat menyalin
 
 ---
 
-# 8. REMAINING FINDINGS (belum diperbaiki — tahap berikutnya)
+# 8. HISTORICAL FINDINGS — 30 SEPTEMBER 2026 (SUPERSEDED)
 
 | ID | Severity | Ringkasan |
 |---|---|---|
@@ -309,7 +309,7 @@ Catatan: skrip verifikasi sengaja mengosongkan snapshot `sessions` saat menyalin
 
 ---
 
-# 9. RELEASE GATE
+# 9. HISTORICAL RELEASE GATE — 30 SEPTEMBER 2026 (SUPERSEDED)
 
 # **PASS WITH CONDITIONS**
 
@@ -324,3 +324,26 @@ Alasan: seluruh empat temuan P0 (CR-01, CR-02, CR-03, CR-06) **selesai dan terve
 ---
 
 *Akhir laporan P0 — dibuat tanpa commit, tanpa push, tanpa rewrite Git history. Tidak ada secret/token asli di dalam dokumen ini.*
+
+---
+
+# 10. FOLLOW-UP STATUS — 18 NOVEMBER 2026
+
+Section ini supersedes the 30 September snapshot above. Evidence must be read together with `docs/ops/PRODUCTION-READINESS-GATES.md`.
+
+| Finding | Current status | Evidence / remaining condition |
+|---|---|---|
+| CR-04 PostgreSQL authority and migrations | **Verified in CI** | PostgreSQL 17 fresh database, migration runner, persistence/restart, production fail-fast, append-only audit log triggers, and Auditor additional-role scope checks passed in CI #2329. Legacy snapshot upgrade and backup/restore remain untested. |
+| CR-05 reminders | **Partially verified** | Scheduler, idempotent reminder sweep, and honest in-app sent/skipped statuses are covered by CI. Email/Telegram remain skipped until transport credentials/configuration are provided. |
+| SEC-04 authorization / IDOR | **Regression suites pass** | CI #2329 covers notification recipient scoping, ticket reporter/assignee ownership, loan transitions, room reservations, asset scopes, restricted contract linkage, and Auditor additional-role read/write boundaries. Browser UAT remains outstanding. |
+| SEC-06 brute force / client IP | **Partially verified** | Production login lockout is active; API rate limiting keys on the transport peer address and does not trust client-supplied `X-Forwarded-For`. Alias/enumeration behavior still needs a focused review. |
+| SEC-07 room collision | **Regression suite passes** | Meeting-room reservation conflict/priority workflows and PostgreSQL persistence tests pass in CI. A production-like concurrency rehearsal remains outstanding. |
+| SEC-08 contract documents | **Verified in CI** | Physical file bytes, scoped download, and restart persistence are covered by PostgreSQL/Docker integration. Production backup of PostgreSQL and uploads volume together remains outstanding. |
+| SEC-09 contract numbering | **Verified in CI** | PostgreSQL contract numbering allocation regression passes; production-like concurrent multi-instance rehearsal remains outstanding. |
+| CR-06 initial password delivery | **Operational follow-up remains** | Password provisioning/reset is server-side; initial credential delivery to employees remains an out-of-band operator process. |
+| Git history / exposed historical credentials | **Operational blocker remains** | No automatic history rewrite or credential rotation was performed. Coordinate history purge and full secret/password rotation with repository owners before production. |
+| Audit log immutability | **Verified in CI** | Migration 091 rejects PostgreSQL UPDATE/DELETE/TRUNCATE against `audit_logs`; fresh-database integration verifies all three operations return SQLSTATE 55000 and preserves the row (CI #2332). |
+| Auditor cross-domain audit read | **Verified in CI** | Migration 099 grants an explicit `all` scope only for module `audit`; Auditor additional-role can read an authorized cross-domain contract/document while write attempts remain 403 (CI #2329). |
+| RBAC assignment protection | **Partially verified** | Assignment and audit insert share one PostgreSQL transaction; additional role and audit survive restart; live removal of the only active Superadmin returns 409 and preserves the assignment (CI #2332). |
+
+**Current release posture remains NO-GO.** Green CI does not replace browser UAT, legacy upgrade rehearsal, recovery rehearsal, staging controls, credential incident response, or business-owner sign-off.

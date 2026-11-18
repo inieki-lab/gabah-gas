@@ -2,11 +2,11 @@
  * GABAH Authoritative Asset Taxonomy
  * Master Source of Truth for Asset Categories, Human-readable mapping, and Owner Divisions
  * 
- * Divisi / Departemen:
- * - SC: Tim Supply Chain
- * - PIBC: Tim Pasar Induk Beras Cipinang
- * - IT: Tim IT (IT Hardware IT-H, IT Software IT-S)
- * - GA: Tim General Affair (Furniture INV-F, Peralatan INV-P, Bangunan BGN, Tanah TNH, Kendaraan KDR)
+ * Owner domain aktif:
+ * - IT: perangkat keras dan lisensi teknologi informasi
+ * - GA: furniture, peralatan umum, bangunan, tanah, dan kendaraan GA
+ * - SC/PIBC hanya dipertahankan sebagai nilai owner historis untuk membaca data lama;
+ *   keduanya adalah lokasi/unit kerja, bukan role atau owner default aset baru.
  *
  * Jenis Aset Tetap:
  * - TNH: Tanah
@@ -47,8 +47,9 @@ export const FIXED_ASSET_MAIN_TYPES = [
 ] as const;
 export type FixedAssetMainType = (typeof FIXED_ASSET_MAIN_TYPES)[number];
 
-// Initial owner-domain seeds only; the owner vocabulary is intentionally extensible.
-export const ASSET_OWNER_DIVISIONS = ['IT', 'GA', 'SC', 'PIBC'] as const;
+// Initial active owner-domain seeds only. Historical SC/PIBC values remain readable
+// in existing rows, but the create-asset domain service rejects them for new assets.
+export const ASSET_OWNER_DIVISIONS = ['IT', 'GA'] as const;
 export const ASSET_CATEGORY_TYPES = ['IT', 'General', 'License'] as const;
 
 export function isFixedAssetMainType(v: unknown): v is FixedAssetMainType {
@@ -137,11 +138,11 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
   // General Affairs: Peralatan (INV-P)
   { code: 'INV-P', name: 'Inventaris Peralatan & Perlengkapan', main_type: 'INV-P', owner_division: 'GA', category_type: 'General', description: 'Kompor, dispenser, AC, microwave, vacuum cleaner, APAR (Milik GA)', is_loanable_by_default: true },
 
-  // Kendaraan (KDR) - GA atau SC
+  // Kendaraan (KDR) — kategori owner SC lama dipertahankan hanya untuk histori.
   { code: 'KDR', name: 'Kendaraan Dinas & Operasional', main_type: 'KDR', owner_division: 'GA', category_type: 'General', description: 'Mobil dinas, minibus operasional, sepeda motor (Milik GA)', is_loanable_by_default: true },
   { code: 'KDR-SC', name: 'Kendaraan Logistik / Truk Beras', main_type: 'KDR', owner_division: 'SC', category_type: 'General', description: 'Truk wingbox, colt diesel muatan beras (Milik SC)', is_loanable_by_default: true },
 
-  // Mesin (MSN) - SC atau PIBC
+  // Mesin (MSN) — kategori owner SC/PIBC lama dipertahankan hanya untuk histori.
   { code: 'MSN', name: 'Mesin Produksi & Forklift', main_type: 'MSN', owner_division: 'SC', category_type: 'General', description: 'Forklift, rice milling plant, conveyor packaging (Milik SC)', is_loanable_by_default: false },
   { code: 'MSN-PIBC', name: 'Mesin Jembatan Timbang & Tera PIBC', main_type: 'MSN', owner_division: 'PIBC', category_type: 'General', description: 'Jembatan timbang 60 ton & alat ukur kawasan pasar (Milik PIBC)', is_loanable_by_default: false },
 

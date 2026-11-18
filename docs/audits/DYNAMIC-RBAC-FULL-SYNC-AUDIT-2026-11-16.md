@@ -525,3 +525,30 @@ Pemeriksaan source dan migration kandidat dilakukan lebih rinci sebelum port ke 
 - Kategori tiket ME tidak boleh otomatis membuka seluruh tiket PIBC. Reporter dan assignee tetap dapat melihat tiket miliknya sesuai kebijakan, sedangkan antrean ME memerlukan permission dan scope ME eksplisit.
 
 **Keputusan:** belum aman melakukan port kode kandidat apa adanya. Langkah yang benar adalah mendefinisikan owner domain ME sebagai domain operasional terpisah dari lokasi PIBC, mempertahankan histori SC/PIBC tanpa rewrite, merancang migration baru non-destructive di atas 097, lalu mengadaptasi resolver list/detail/status/assignment/notifikasi/dashboard ke domain tersebut. Uji fresh DB dan upgrade DB existing wajib dilakukan sebelum fitur dinyatakan selesai.
+
+
+## 2026-11-18 — Pendalaman workflow Helpdesk setelah CR ticket reporter-scope
+
+### Hasil pemeriksaan implementasi pada head `bdf90c72a87aba4933edfd1fe10864cbd5a1d7d0`
+
+Pemeriksaan lintas route, domain service, model, persistence, dan UI mengonfirmasi bahwa workflow penugasan tiket belum selesai:
+
+- API yang ditemukan hanya `GET /api/tickets`, `POST /api/tickets`, dan `PATCH /api/tickets/:id/status`. Belum ada `PATCH /api/tickets/:id/assignment` maupun `GET /api/tickets/:id`.
+- Permission `tickets.assign` sudah ada di katalog RBAC, tetapi belum ditemukan route yang menegakkannya. UI `TicketsView` hanya menerima callback `onUpdateTicketStatus`; belum ada kontrol assignment atau callback penugasan.
+- Model tiket sudah memiliki `assigned_agent_id` dan `assigned_agent_name`. Sinkronisasi PostgreSQL menyimpan `assigned_agent_id`, dan memvalidasi bahwa user penerima masih ada, tetapi tidak memvalidasi status aktif, permission, atau scope penerima.
+- Notifikasi mendukung `recipient_user_id` dan `link_type='ticket'`; fondasi ini dapat dipakai untuk notifikasi assignment langsung kepada petugas yang dituju.
+- Kategori tiket saat ini tetap `IT | GA | SC | PIBC`. Jangan menambahkan ME dengan memetakan ME ke PIBC: lokasi PIBC bukan owner-domain ME.
+
+### Persyaratan implementasi sebelum assignment dinyatakan selesai
+
+1. Route assignment wajib mensyaratkan `tickets.assign`; `tickets.update` saja tidak cukup.
+2. Actor harus memiliki akses ke tiket melalui owner-domain scope `tickets`, kecuali Superadmin.
+3. Target harus merupakan user aktif, memiliki permission operasional tiket yang sesuai, dan memiliki scope owner-domain yang sama dengan tiket. Jangan menyimpulkan hak dari nama role, jabatan, department, atau lokasi.
+4. Perubahan `assigned_agent_id` dan `assigned_agent_name` harus atomik secara logis, mencatat audit log, dan mengirim notifikasi privat ke `recipient_user_id` target dengan tautan tiket.
+5. Kegagalan persistensi tidak boleh disembunyikan sebagai respons sukses. Assignment harus menunggu hasil persistensi atau menggunakan transaksi domain yang setara.
+6. Tambahkan UI assignment hanya setelah API dan policy siap; daftar kandidat petugas harus difilter server-side, bukan mengirim seluruh direktori user ke browser.
+7. Uji positif dan negatif: Superadmin, dispatcher sesuai scope, dispatcher lintas scope, target nonaktif, target tanpa permission, target beda owner-domain, reporter biasa, Auditor, ID tiket tidak ada, persistensi gagal, notifikasi tidak bocor, serta fresh DB dan upgrade DB.
+
+### Status release
+
+Belum ada GitHub Actions run untuk head PR #120 `bdf90c7` pada saat pemeriksaan 2026-11-18. Regression script yang ditambahkan belum terbukti berjalan. PR #120 tetap draft, base `audit/dynamic-rbac-full-sync`, dan tidak boleh dianggap lulus CI atau digabung ke `main` sebelum tes runtime dan seluruh gate UAT terpenuhi.

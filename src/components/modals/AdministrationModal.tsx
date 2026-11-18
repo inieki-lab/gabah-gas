@@ -231,7 +231,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     name: '',
     email: '',
     role: 'Karyawan',
-    division: 'SC',
+    division: '' as OwnerDivision,
     department: '',
     job_level_code: '',
     unit_id: '',
@@ -663,6 +663,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     return DEFAULT_DIVISIONS;
   });
+  const activeOwnerDivisions = React.useMemo(
+    () => divisions.filter(d => !['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(d.code || '').trim().toUpperCase())),
+    [divisions],
+  );
   const [divisionToEdit, setDivisionToEdit] = useState<OrgDivision | null>(null);
   const [isEditDivisionOpen, setIsEditDivisionOpen] = useState(false);
   const [isAddDivisionOpen, setIsAddDivisionOpen] = useState(false);
@@ -2072,7 +2076,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
                         <option value="">— Pilih divisi —</option>
-                        {divisions.map(d => (
+                        {activeOwnerDivisions.map(d => (
                           <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                         ))}
                       </select>
@@ -2213,19 +2217,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   ? 'bg-blue-50 text-blue-700 border-blue-200'
                                   : user.role === 'GA'
                                   ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                  : user.role === 'Supply Chain'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : user.role === 'Auditor'
                                   ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : user.role === 'PIBC'
-                                  ? 'bg-teal-50 text-teal-700 border-teal-200'
                                   : user.role === 'Sekretaris Direksi'
                                   ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                                   : user.role === 'Humas'
                                   ? 'bg-pink-50 text-pink-700 border-pink-200'
                                   : 'bg-slate-100 text-slate-700 border-slate-200'
                               }`}>
-                                Profil: {user.role || 'Pegawai'}
+                                Profil: {['Supply Chain', 'PIBC'].includes(String(user.role || '')) ? 'Legacy (perlu normalisasi)' : (user.role || 'Pegawai')}
                               </span>
                               {(userAssignments[String(user.id)] || [])
                                 .map(roleId => {
@@ -2372,9 +2372,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditUserData(prev => ({ ...prev, division: e.target.value as OwnerDivision }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
-                            {divisions.map(d => (
+                            {activeOwnerDivisions.map(d => (
                               <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                             ))}
+                            {['SC', 'PIBC'].includes(String(editUserData.division || '').toUpperCase()) && (
+                              <option value={editUserData.division}>Legacy {editUserData.division} — perlu normalisasi</option>
+                            )}
                           </select>
                         </div>
 
@@ -3388,7 +3391,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <select value={newOrgUnitData.division_code}
                     onChange={e => setNewOrgUnitData(p => ({ ...p, division_code: e.target.value }))}
                     className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-emerald-500">
-                    {['IT', 'GA', 'SC', 'PIBC', 'Audit', 'Umum'].map(d => <option key={d} value={d}>{d}</option>)}
+                    {[...activeOwnerDivisions.map(d => d.code), 'Umum'].filter((d, i, all) => all.indexOf(d) === i).map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                   <button type="submit" disabled={isSubmittingOrgMaster}
                     className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1">
@@ -3582,10 +3585,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             }}
                             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:border-emerald-500"
                           >
-                            <option value="IT">IT (Teknologi Informasi)</option>
-                            <option value="GA">GA (General Affairs / Umum)</option>
-                            <option value="SC">SC (Supply Chain &amp; Gudang)</option>
-                            <option value="PIBC">PIBC (Pasar Induk Cipinang)</option>
+                            {activeOwnerDivisions.map(d => <option key={d.code} value={d.code}>{d.code} - {d.name}</option>)}
                           </select>
                         </div>
                       </div>
@@ -3750,9 +3750,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditCategoryData(prev => ({ ...prev, owner_division: e.target.value }))}
                             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:border-emerald-500"
                           >
-                            {divisions.map(d => (
+                            {activeOwnerDivisions.map(d => (
                               <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                             ))}
+                            {['SC', 'PIBC'].includes(String(editCategoryData.owner_division || '').toUpperCase()) && (
+                              <option value={editCategoryData.owner_division}>Legacy {editCategoryData.owner_division} — perlu review</option>
+                            )}
                           </select>
                         </div>
                       </div>
@@ -4195,7 +4198,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <label className="text-[10px] font-bold text-slate-600">
                       Divisi pemilik
                       <select value={numberingRuleForm.owner_division} disabled={!!editingNumberingRuleId} onChange={e => setNumberingRuleForm(prev => ({ ...prev, owner_division: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs disabled:bg-slate-100">
-                        <option value="IT">IT</option><option value="GA">GA</option><option value="SC">RPC / SC</option><option value="PIBC">PIBC</option><option value="Umum">Umum</option>
+                        {activeOwnerDivisions.map(d => <option key={d.code} value={d.code}>{d.code}</option>)}
                       </select>
                     </label>
                     <label className="text-[10px] font-bold text-slate-600">
@@ -4297,10 +4300,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       }}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold"
                     >
-                      <option value="IT">IT (Teknologi Informasi)</option>
-                      <option value="SC">SC (Supply Chain Beras)</option>
-                      <option value="GA">GA (General Affairs)</option>
-                      <option value="PIBC">PIBC (Pasar Induk)</option>
+                      {activeOwnerDivisions.map(d => <option key={d.code} value={d.code}>{d.code} - {d.name}</option>)}
                     </select>
                   </div>
                   <div>
@@ -5002,7 +5002,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 <div>[GABAH Health] persistence: {healthStatus.persistence || 'belum diperiksa'}</div>
                 <div>[GABAH Scheduler] enabled: {healthStatus.scheduler?.enabled ?? 'belum diperiksa'} · timezone: {healthStatus.scheduler?.timezone || '-'} · intervalMs: {healthStatus.scheduler?.intervalMs ?? '-'}</div>
                 <div>[GABAH Data] {assets.length} aset · {loans.length} peminjaman · {tickets.length} tiket · {userList.length} pengguna · {auditLogs.length} log audit</div>
-                <div>[GABAH RBAC] 9 peran resmi ditegakkan server-side (Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Supply Chain, PIBC, Karyawan, Auditor)</div>
+                <div>[GABAH RBAC] Role, permission, unit, dan lokasi dikelola terpisah melalui Dynamic RBAC.</div>
               </div>
             </div>
           )}

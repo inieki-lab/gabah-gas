@@ -3,8 +3,8 @@
 **Dokumen:** `docs/testing/UAT.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus.  
-**Terakhir Diperbarui:** 8 November 2026
+**Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Implementasi routing IT/GA/ME dan scope unit ME telah melewati CI otomatis pada PR #121 (67/67 langkah pada commit yang diverifikasi); skenario tiket tetap berstatus belum lulus UAT sampai browser test per persona dijalankan dan bukti/sign-off dicatat.  
+**Terakhir Diperbarui:** 18 November 2026
 
 ---
 
@@ -64,7 +64,7 @@
   1. Login sebagai IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC/SC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
   2. Login sebagai GA. Pastikan aset owner GA terlihat lintas lokasi. Jika permission assets.read.it_workstations aktif, hanya Laptop/PC owner IT yang dapat dibaca; mutasi langsung via API harus ditolak.
   3. Login sebagai Karyawan di unit Supply Chain dan PIBC. Pastikan fungsi dasar karyawan tersedia; lokasi kerja tidak otomatis membuka katalog aset unit/lokasi.
-  4. Uji aset operasional owner RPC/SC yang ditempatkan di lokasi fisik berbeda. User dengan permission + scope RPC/SC yang disahkan dapat mengelolanya; GA tidak otomatis mendapat akses karena aset berada di gudang.
+  4. Uji aset historis dengan owner legacy SC/PIBC yang ditempatkan di lokasi fisik berbeda. Record tersebut harus tetap terbaca hanya melalui scope legacy eksplisit atau Superadmin selama proses review; jangan menganggap RPC/SC atau PIBC sebagai owner aktif baru. Aset baru harus memakai owner domain aktif yang sah (misalnya IT atau GA), sedangkan lokasi fisik disimpan terpisah.
   5. Login sebagai Humas dan Sekretaris Direksi. Pastikan fungsi dasar karyawan tersedia serta kapabilitas tambahan muncul hanya bila role tambahan/permission diberikan.
   6. Login sebagai Auditor. Pastikan data yang diberi scope audit dapat dibaca dan seluruh operasi mutasi ditolak.
   7. Uji user tanpa role, role nonaktif, dan role tanpa scope: akses harus gagal tertutup.
@@ -110,12 +110,13 @@
 ---
 
 ### Skenario 3: Pendaftaran Aset & Validasi Duplikasi
-- **Tujuan**: Memverifikasi nomor kanonikal dihasilkan secara atomik dan nomor duplikat ditolak.
+- **Tujuan**: Memverifikasi nomor aset mengikuti aturan aktif, preview tidak mengonsumsi sequence, dan serial number duplikat ditolak. Skenario ini tidak membuktikan atomicity sequence untuk multi-instance.
 - **Langkah Pengujian**:
   1. Login sebagai `IT`. Buka modal *Tambah Aset Baru*.
   2. Pilih kategori "Laptop / Notebook", masukkan nama "Lenovo ThinkPad P14s", serial number `SN-TEST-001`.
-  3. Simpan aset. Verifikasi nomor yang terbentuk berformat `IT-HLT-2026-xxxx`.
-  4. Coba daftarkan aset kedua dengan serial number yang sama (`SN-TEST-001`).
+  3. Simpan aset. Verifikasi nomor mengikuti aturan aktif yang ditampilkan pada Administration → Asset Numbering; jangan mengasumsikan prefix atau pola tertentu sebelum standar perusahaan disahkan.
+  4. Sebagai Super Admin, ubah/aktifkan aturan penomoran UAT yang aman, lalu verifikasi preview tidak mengonsumsi sequence dan pembuatan aset berikutnya mengikuti aturan aktif. Pulihkan aturan setelah tes.
+  5. Coba daftarkan aset kedua dengan serial number yang sama (`SN-TEST-001`).
 - **Kriteria Lulus**: Aset pertama tersimpan, aset kedua ditolak dengan pesan error serial number duplikat.
 
 ---
@@ -135,20 +136,24 @@
 ### Skenario 5: Peminjaman Barang & Deteksi Tabrakan Jadwal (Anti-Collision)
 - **Tujuan**: Membuktikan server menolak tabrakan peminjaman aset yang sama pada tanggal tumpang tindih.
 - **Langkah Pengujian (Happy Path & Collision Test)**:
-  1. Login sebagai `Karyawan` (Hendra). Buka *Peminjaman Barang* $\to$ ajukan pinjaman mobil Toyota Avanza (`GA-KDR-2026-0001`) tanggal 1 s/d 5 Oktober 2026.
+  1. Login sebagai `Karyawan` (Hendra). Buka *Peminjaman Barang* $\to$ pilih aset kendaraan GA berstatus dapat dipinjam yang tersedia di database UAT; catat ID aset dan ajukan pinjaman pada rentang tanggal uji yang akan datang.
   2. Login sebagai `GA` (Siti) $\to$ buka menu *Peminjaman* $\to$ klik *Setujui Pinjaman*. Status berubah `approved`.
-  3. Login sebagai Karyawan lain (atau alih peran) $\to$ ajukan pinjaman untuk mobil Avanza yang sama pada tanggal 3 s/d 7 Oktober 2026 (periode bertabrakan).
+  3. Login sebagai Karyawan lain (atau akun uji kedua) $\to$ ajukan pinjaman untuk aset yang sama pada rentang tanggal yang tumpang tindih dengan permohonan pertama.
 - **Kriteria Lulus**: Permohonan kedua ditolak oleh server dengan pesan error: `Tabrakan Jadwal: Aset sudah direservasi atau dipinjam pada rentang tanggal tersebut.`
 
 ---
 
-### Skenario 6: Helpdesk Tiket & Perhitungan SLA Otomatis
-- **Tujuan**: Memastikan SLA dihitung otomatis berdasarkan prioritas kendala.
+### Skenario 6: Helpdesk IT, GA, ME, Dispatch, dan SLA
+- **Tujuan**: Memastikan kategori tiket baru terpisah dari lokasi, antrean, owner aset, dan hak penangan.
 - **Langkah Pengujian**:
-  1. Login sebagai `Karyawan` $\to$ buat tiket baru: Kategori `IT`, Prioritas `Urgent`, Judul "Server ERP Tidak Dapat Diakses".
-  2. Verifikasi tiket memiliki `sla_hours: 4` dan deadline 4 jam dari waktu pembuatan.
-  3. Login sebagai `IT` $\to$ terima tiket, perbarui status menjadi `in_progress`, lalu `resolved` dengan catatan solusi.
-- **Kriteria Lulus**: SLA dihitung tepat, notifikasi terkirim ke divisi IT, dan audit log tercatat.
+  1. Login sebagai pegawai biasa; buat tiket IT prioritas Urgent. Verifikasi SLA 4 jam. Jika tepat satu petugas IT aktif memiliki `tickets.read`, `notifications.read`, `tickets.update` + exact scope IT, tiket otomatis ditugaskan kepadanya. Jika nol atau lebih dari satu kandidat, tiket tetap di antrean IT (tidak memilih acak).
+  2. Login sebagai petugas IT yang ditugaskan; mulai pekerjaan dan selesaikan tiket dengan catatan. Pelapor hanya boleh membaca tiketnya, bukan mengubah status kecuali ia juga petugas berwenang.
+  3. Login sebagai pemohon dengan capability `tickets.create.ga`; buat tiket GA. Login sebagai Petugas Helpdesk GA yang memiliki `tickets.read`, `notifications.read`, `tickets.assign` + exact scope GA; buka daftar petugas. Hanya user aktif dengan `tickets.read`, `notifications.read`, `tickets.update` + exact scope GA yang boleh dipilih. Uji bahwa user GA biasa/Kasi GA tanpa capability operator tidak dapat mengubah status atau mendelegasikan tiket.
+  4. Login sebagai pemohon dengan capability `tickets.create.me`; buat tiket ME. Pastikan `assigned_unit_id=UNIT-PIBC-ME` dan lokasi unit adalah PIBC. Login sebagai Admin Tiket ME dengan unit dan scope ME; delegasikan hanya kepada petugas aktif yang berada pada unit ME serta memiliki `tickets.read`, `notifications.read`, `tickets.update` + exact scope unit.
+  5. Login sebagai pegawai PIBC lain yang tidak memiliki scope unit ME. Pastikan ia tidak melihat antrean ME hanya karena `office_location_id=OFF-PIBC`. Ulangi untuk pegawai RPC/SC: lokasi kerja tidak memberikan akses antrean.
+  6. Coba kirim kategori baru `SC` atau `PIBC` melalui API; server harus menolak. Tiket historis kategori SC/PIBC tetap tersimpan dan hanya terlihat melalui reporter, assignee, scope legacy eksplisit, atau Superadmin.
+  7. Pilih aset terkait owner IT/GA dan pastikan kategori konsisten. Pilih aset owner legacy SC/PIBC; form/API harus menolak tautan tiket baru sampai klasifikasi aset direview, tanpa mengubah owner atau histori.
+- **Kriteria Lulus**: Semua keputusan list, direct-ID, status mutation, assignee lookup, assignment, notifikasi, dan dashboard sesuai permission + scope; tidak ada grant dari label role/jabatan/lokasi; SLA dan audit log akurat.
 
 ---
 
@@ -183,7 +188,7 @@
 ---
 
 ### Skenario 10: Contract Management (Domain Tersendiri) & Kategori Tiket
-1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware → `IT`; fasilitas → `GA`; SC → `SC`; PIBC → `PIBC`. Tidak ada opsi License/General/Contract di form.
+1. **Kategori / routing tiket baru**: hanya `IT`, `GA`, dan `ME`. IT menangani hardware/software/lisensi; GA menangani antrean GA melalui dispatcher berizin; ME adalah antrean unit `UNIT-PIBC-ME`. `SC`/`PIBC` tetap hanya nilai historis dan tidak boleh dipilih untuk tiket baru. Kontrak tetap domain terpisah; owner kontrak legacy tidak otomatis menentukan antrean tiket. Uji seluruh permission dan scope sesuai Skenario 6.
 2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
 3. **Dokumen kontrak**: unggah PDF/DOC/JPG yang sah, unduh kembali sebagai PIC/owner yang berwenang, dan pastikan user di luar scope menerima 404. Restart aplikasi; file harus tetap dapat diunduh. Backup database dan volume uploads harus diuji bersama.
 3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
@@ -205,13 +210,13 @@
 
 ---
 
-### Skenario 10: Pengujian Keamanan Negatif (Negative / Security Testing)
+### Skenario 11: Pengujian Keamanan Negatif (Negative / Security Testing)
 - **Tujuan**: Menguji ketahanan terhadap percobaan bypass dan penolakan mutasi peran Auditor.
 - **Langkah Pengujian**:
-  1. **Uji ID Spoofing**: Kirim request API menggunakan token user biasa tetapi menambahkan header `x-user-id: USR-01`.
-     - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden` (`Percobaan manipulasi identitas (ID spoofing) terdeteksi`).
+  1. **Uji ID Spoofing**: Kirim request API menggunakan token user biasa tetapi menambahkan header `x-user-id` berisi ID akun uji lain yang valid (bukan ID pemilik token).
+     - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden`; server tidak boleh menerima identitas dari header yang bertentangan dengan token.
   2. **Uji Auditor Read-Only**: Login sebagai `Auditor`. Coba lakukan request `POST /api/assets` atau `PATCH /api/tickets/1/status`.
-     - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden` (`Akses ditolak: Peran Auditor memiliki hak akses Read-Only`).
+     - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden` untuk mutasi yang tidak diberikan oleh permission efektif Auditor, termasuk bila Auditor digabung sebagai role tambahan.
   3. **Uji Unauthenticated Request**: Kirim request `GET /api/assets` tanpa menyertakan header Bearer token.
      - *Hasil Diharapkan*: Server merespon HTTP `401 Unauthorized` (tidak pernah auto-login sebagai Super Admin).
 - **Kriteria Lulus**: Seluruh upaya pelanggaran keamanan ditolak dengan status HTTP yang tepat.
@@ -276,3 +281,89 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
 ### 4.7 Blocker Pengujian Eksternal (jujur)
 - **Pengiriman email/Telegram nyata (status `sent` pada provider eksternal) belum dapat diuji end-to-end** — tidak ada SMTP relay maupun `TELEGRAM_BOT_TOKEN` di lingkungan verifikasi. Cakupan yang terverifikasi: jalur unconfigured→skipped, jalur gagal→failed dengan alasan jelas, dan pengiriman in-app→sent. Konfigurasi produksi: set env `GABAH_SMTP_*` dan `TELEGRAM_BOT_TOKEN` lalu ulangi verifikasi manual Seksi 3 Skenario 10 poin 4.
 - **Docker build tidak dapat diverifikasi** (Docker tidak tersedia di lingkungan verifikasi).
+
+
+---
+
+## 5. Browser UAT — Dynamic RBAC, ticket routing, and owner/location separation
+
+**Status as of 18 November 2026: NOT EXECUTED / NOT SIGNED OFF.** Automated CI is not a substitute for this section. Run against an isolated UAT database and build, never against production. Record build SHA, browser/version, tester, timestamp, screenshots, and result for every row.
+
+### 5.1 Preconditions
+
+- [ ] UAT database is isolated and has a verified backup.
+- [ ] Application health reports PostgreSQL persistence; no file-store fallback.
+- [ ] Migration ledger contains migration 098 exactly once.
+- [ ] Superadmin has reviewed role assignments, primary/additional roles, module activation, owner scopes, unit scopes, and location attributes.
+- [ ] One dedicated test account exists for each persona below. Do not reuse a real employee's account.
+- [ ] Dedicated GA operator, GA requester, ME requester, Admin Tiket ME, and ME technician assignments are explicitly configured. Migration 098 creates role templates; it does not assign users.
+- [ ] Each account is logged out before its test begins; verify fresh login and session restore.
+
+### 5.2 Persona and negative-access matrix
+
+| Persona / test account | Positive test | Negative test that must be denied |
+|---|---|---|
+| Superadmin | Administration, user/role assignment, module configuration, all authorized asset/ticket views | No hidden API error; destructive actions must require confirmation and create audit records |
+| IT Support | See IT queue; receive IT ticket notifications; assign/update tickets only with exact IT scope; manage IT assets across office locations | Cannot manage GA/ME queues or non-IT assets without explicit additional scope |
+| GA asset operator | Create/update GA-owned assets; see and dispatch GA ticket queue only when ga_helpdesk_operator is explicitly assigned | Generic GA role alone cannot dispatch/manage GA tickets; cannot mutate IT assets |
+| GA requester | Create GA ticket with tickets.create.ga; see own ticket and notifications | Cannot see all GA queue or assign/update other people's tickets |
+| ME requester | Create ME ticket; ticket routes to UNIT-PIBC-ME | Being physically located at PIBC without ME capability does not grant ME queue access |
+| Admin Tiket ME | See/manage/assign tickets in UNIT-PIBC-ME with exact tickets unit scope | Cannot manage IT/GA queues or other units |
+| ME technician | See only tickets explicitly assigned to them if personal-assignment policy permits; update only with explicit operational permission/scope | Unit membership or location alone must not imply dispatcher rights |
+| RPC/SC employee | Standard employee dashboard; create IT helpdesk ticket; view own requests | RPC/SC location must not create a Supply Chain role, division scope, or broad asset/ticket access |
+| PIBC employee | Standard employee dashboard; create IT helpdesk ticket; view own requests | PIBC office location must not grant ME operator access, PIBC division authority, or asset mutation |
+| Auditor | Read-only audit/reconciliation and explicitly permitted read views | Every create/update/delete/assign/approve/dispatch action must be denied server-side |
+
+### 5.3 Cross-cutting authorization probes
+
+For every persona, verify both UI and direct API behavior. Hiding a button is not sufficient evidence.
+
+- [ ] Change only office_location_id from HO to PIBC; permissions and role grants must not increase.
+- [ ] Change only unit_id; queue access changes only where an exact module unit scope and required permissions are both present.
+- [ ] Change only job level (Direksi/Kadiv/Kadep/Kasi/Staf); no permission is added by title.
+- [ ] Remove an additional role or its scope; access is revoked after policy refresh and a new request.
+- [ ] Disable a module; its UI entry and API actions are denied, not merely hidden.
+- [ ] Attempt direct object-ID access for an out-of-scope asset, ticket, contract, loan, and notification; no data leakage.
+- [ ] Attempt state-changing requests as Auditor and as a custom read-only role; server returns 403/404 according to the endpoint's disclosure policy.
+- [ ] Verify user-targeted notifications are private; role/unit notifications are visible only to eligible recipients.
+- [ ] Verify all denied writes leave no changed row, notification, audit success record, or partial state.
+
+### 5.4 Ticket routing scenarios
+
+- [ ] New IT ticket routes to IT; automatic assignment occurs only when exactly one active operator meets all permission and exact-scope requirements.
+- [ ] Zero or multiple eligible IT operators leaves the ticket in the IT queue; notifications go only to eligible users with notifications.read.
+- [ ] New GA ticket requires explicit GA requester capability; it is visible to its reporter and explicitly scoped GA operator only.
+- [ ] New ME ticket requires explicit ME requester capability and active UNIT-PIBC-ME; it stores assigned_unit_id='UNIT-PIBC-ME'.
+- [ ] Disable UNIT-PIBC-ME; a new ME ticket is rejected with HTTP 409 and no ticket/notification/audit partial write.
+- [ ] SC/PIBC are rejected as new ticket categories while historical SC/PIBC tickets remain unchanged.
+- [ ] Reporter can read their own ticket but cannot change its status without tickets.update and matching scope.
+- [ ] Dispatch to an inactive, unscoped, or insufficiently permissioned target is rejected.
+- [ ] Failed persistence during dispatch restores ticket assignment, notification, audit, and state snapshot.
+
+### 5.5 Asset owner and location scenarios
+
+- [ ] IT user can create/manage IT assets at HO, PIBC, RPC, Pangsub, and Kantor Perawatan when location is valid; ownership remains IT.
+- [ ] GA user can create/manage GA assets at those locations; physical location does not change owner.
+- [ ] GA's IT workstation read-only grant (if enabled) exposes only approved IT workstation categories and does not permit create/update/assign/move/lifecycle.
+- [ ] A custom role sees and mutates only owner domains explicitly granted by asset permission plus owner scope.
+- [ ] A role with only unit/location scope cannot mutate assets in an owner domain.
+- [ ] Unknown or inactive owner masters are rejected for new assets.
+- [ ] Historical SC/PIBC owner records remain unchanged pending asset-by-asset review; UI labels identify them as legacy owner values, not current divisions.
+- [ ] Movement and maintenance history are limited to the same visible asset set.
+
+### 5.6 Result record
+
+| Persona / scenario | PASS / FAIL / BLOCKED | Evidence reference | Tester / date |
+|---|---|---|---|
+| Superadmin | NOT RUN | | |
+| IT Support | NOT RUN | | |
+| GA operator + requester | NOT RUN | | |
+| ME requester + Admin ME + technician | NOT RUN | | |
+| RPC/SC employee | NOT RUN | | |
+| PIBC employee | NOT RUN | | |
+| Auditor | NOT RUN | | |
+| Direct API / cross-cutting probes | NOT RUN | | |
+| Ticket routing | NOT RUN | | |
+| Asset owner/location separation | NOT RUN | | |
+
+**Release gate:** no production go-live or merge-to-main recommendation until all applicable rows pass, evidence is attached, and business/IT owners sign off. Any BLOCKED row must have an owner and remediation date; it is not a pass.

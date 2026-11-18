@@ -4,11 +4,10 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs/promises';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
+import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, hasTicketQueueScope } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canManageContractCapability } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -61,12 +60,17 @@ async function startServer() {
   // Production API security and session/role hardening
   app.use(gabahSecurityMiddleware);
 
-  // Persist every successful state-changing API request after the response is sent
+  // Compatibility safety net for legacy mutation handlers. Critical domain
+  // routes must still await persistence before responding; this post-response
+  // fallback is intentionally non-authoritative and must never create an
+  // unhandled rejection.
   app.use((req, res, next) => {
     if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
     res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 400) {
-        void persistDataStore();
+        void persistDataStore().catch(error => {
+          console.error('[GABAH] Post-response persistence safety-net failed:', error);
+        });
       }
     });
     next();
@@ -282,7 +286,6 @@ async function startServer() {
     const legacyLabels: Record<string, string> = {
       superadmin: 'Admin GABAH', it: 'IT', ga: 'GA', karyawan: 'Karyawan',
       auditor: 'Auditor', humas: 'Humas', sekretaris_direksi: 'Sekretaris Direksi',
-      supply_chain: 'Supply Chain', pibc: 'PIBC',
     };
     return actor.role === legacyLabels[normalizeRoleKey(roleKey)];
   };
@@ -578,22 +581,37 @@ async function startServer() {
             [userId, roleId, false, actor.id],
           );
         }
+        const roleNames = valid.rows.map(row => String(row.name));
+        const auditDetails = 'Superadmin mengubah assignment role untuk user "' + String(user.name) + '" (' + String(user.email) + ') menjadi: ' + roleNames.join(', ') + '.';
+        const auditLog = {
+          id: `LOG-${crypto.randomUUID()}`,
+          action: 'RBAC_USER_ROLES_UPDATED',
+          entity: 'Administration',
+          entity_id: userId,
+          user_id: String(actor.id),
+          user_name: String(actor.name || 'System'),
+          user_role: String(actor.role || 'System'),
+          details: auditDetails,
+          timestamp: new Date().toISOString(),
+        };
+        // The assignment and its audit evidence share the same PostgreSQL
+        // transaction. A failed audit insert must roll back the role change.
+        await client.query(
+          'INSERT INTO audit_logs (id, action, entity, entity_id, user_id, user_name, user_role, details, timestamp) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+          [auditLog.id, auditLog.action, auditLog.entity, auditLog.entity_id, auditLog.user_id, auditLog.user_name, auditLog.user_role, auditLog.details, auditLog.timestamp],
+        );
         return {
           user_id: userId,
           user_name: String(user.name),
           user_email: String(user.email),
           role_ids: assignmentIds,
-          role_names: valid.rows.map(row => String(row.name)),
+          role_names: roleNames,
           primary_role_id: null,
+          audit_log: auditLog,
         };
       });
+      db.auditLogs.unshift(result.audit_log);
       await refreshRbacPolicy();
-     GabahDomainService.recordAudit(
-        'RBAC_USER_ROLES_UPDATED',
-        'Administration',
-        'Superadmin mengubah assignment role untuk user "' + result.user_name + '" (' + result.user_email + ') menjadi: ' + result.role_names.join(', ') + '.',
-        actor,
-      );
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -640,7 +658,16 @@ async function startServer() {
         || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
-      const primaryRole = profileLabel;
+      const primaryRole = ['Supply Chain', 'PIBC'].includes(profileLabel) ? 'Karyawan' : profileLabel;
+      const requestedDivision = division === undefined || division === null || division === ''
+        ? 'Umum' : (typeof division === 'string' ? division.trim() : '');
+      const activeDivision = (db.divisions || []).find(item =>
+        String(item.code || '').trim().toUpperCase() === requestedDivision.toUpperCase()
+        && item.is_active !== false
+      );
+      if (!activeDivision) {
+        return res.status(400).json({ success: false, message: `Divisi "${requestedDivision || '(kosong)'}" tidak terdaftar atau sedang nonaktif. Pilih divisi aktif; lokasi kantor diisi terpisah.` });
+      }
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
@@ -660,12 +687,14 @@ async function startServer() {
         newUnitId = uid;
       }
       let newOfficeId: string | undefined;
-      if (req.body.office_location_id) {
-        const lid = String(req.body.office_location_id).trim();
-        if (!(db.officeLocations || []).some(x => x.id === lid && x.is_active)) {
-          return res.status(400).json({ success: false, message: `Lokasi kantor "${lid}" tidak terdaftar atau sedang nonaktif.` });
+      const requestedOfficeId = String(req.body.office_location_id || '').trim();
+      const mappedLegacyOfficeId = profileLabel === 'Supply Chain' ? 'OFF-RPC' : profileLabel === 'PIBC' ? 'OFF-PIBC' : '';
+      const officeIdToValidate = requestedOfficeId || mappedLegacyOfficeId;
+      if (officeIdToValidate) {
+        if (!(db.officeLocations || []).some(x => x.id === officeIdToValidate && x.is_active)) {
+          return res.status(400).json({ success: false, message: `Lokasi kantor "${officeIdToValidate}" tidak terdaftar atau sedang nonaktif.` });
         }
-        newOfficeId = lid;
+        newOfficeId = officeIdToValidate;
       }
       if (!name || !email) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi' });
@@ -696,7 +725,7 @@ async function startServer() {
         email: email.trim().toLowerCase(),
         role: primaryRole,
         role_label: roleLabels[primaryRole] || primaryRole,
-        division: division || 'Umum',
+        division: String(activeDivision.code) as ServerUser['division'],
         department: department || 'Operasional',
         job_level_code: newJobLevel,
         unit_id: newUnitId || null,
@@ -716,7 +745,7 @@ async function startServer() {
         `Menambahkan pengguna baru: ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}. Password awal dibuat server-side dan dikirim out-of-band.`,
         actor,
         newUser.id
-      );
+      , false);
 
       await persistDataStore();
       // New employee accounts receive no implicit permissions. Superadmin assigns
@@ -774,14 +803,23 @@ async function startServer() {
         const name = String(row.name || '').trim();
         const email = String(row.email || '').trim().toLowerCase();
         const roleRaw = String(row.role || '').trim();
-        const division = String(row.division || '').trim() || 'Umum';
+        const requestedDivision = String(row.division || '').trim() || 'Umum';
+        const divisionMaster = (db.divisions || []).find(item =>
+          String(item.code || '').trim().toUpperCase() === requestedDivision.toUpperCase()
+          && item.is_active !== false
+        );
+        if (!divisionMaster) {
+          errors.push(`Baris ${rowNo}: Divisi "${requestedDivision}" tidak terdaftar/aktif. Lokasi kantor harus diisi pada kolom office_location_id.`);
+          continue;
+        }
+        const division = String(divisionMaster.code);
         const department = String(row.department || '').trim() || 'Operasional';
         const phone = String(row.phone || '').trim();
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
         // Unit is an organizational attribute; SC/RPC and PIBC are office locations.
         const unitId = String(row.unit_id || '').trim().toUpperCase();
         const requestedOfficeLocation = String(row.office_location_id || '').trim().toUpperCase();
-        const officeLocationId = requestedOfficeLocation;
+        const officeLocationId = requestedOfficeLocation || (roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '');
 
         if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
         if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
@@ -798,10 +836,10 @@ async function startServer() {
           errors.push(`Baris ${rowNo}: Lokasi kantor "${officeLocationId}" tidak terdaftar/aktif.`); continue;
         }
 
-        const requestedRole = roleRaw || 'Pegawai';
-        const role = requestedRole;
-        if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
-          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipertahankan sebagai label profil lama saja; lokasi kantor tidak ditebak. Isi kolom office_location_id secara eksplisit.`);
+        const requestedRole = roleRaw || 'Karyawan';
+        const role = ['Supply Chain', 'PIBC'].includes(requestedRole) ? 'Karyawan' : requestedRole;
+        if (role !== requestedRole) {
+          warnings.push(`Baris ${rowNo}: label lokasi "${requestedRole}" dinormalisasi menjadi Karyawan; office_location_id=${officeLocationId}.`);
         }
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
@@ -813,13 +851,12 @@ async function startServer() {
           const existingFunctionLabel = String(existing.role_label || '');
           (existing as any).role_label = /humas|sekretariat/i.test(existingFunctionLabel)
             ? existingFunctionLabel
-            : requestedRole === 'Supply Chain' ? 'Karyawan — Lokasi RPC/SC'
-              : requestedRole === 'PIBC' ? 'Karyawan — Lokasi PIBC'
-                : (roleLabels[role] || role);
+            : (roleLabels[role] || role);
           existing.division = division as ServerUser['division'];
           existing.department = department;
           if (jobLevelCode) existing.job_level_code = jobLevelCode;
           if (unitId) existing.unit_id = unitId;
+          else if (['UNIT-SC', 'UNIT-PIBC', 'UNIT-PANGSUB'].includes(String(existing.unit_id || ''))) existing.unit_id = null;
           if (officeLocationId) existing.office_location_id = officeLocationId;
           if (phone) existing.phone = phone;
           importedUsers.push(existing);
@@ -830,7 +867,7 @@ async function startServer() {
             `Impor massal: profil ${existing.name} (${existing.email}) diperbarui (divisi: ${division}, departemen: ${department}).`,
             actor,
             existing.id
-          );
+          , false);
         } else {
           // CREATE — password CSPRNG server-side (CR-02), tidak pernah dikirim balik.
           const generatedTempPassword = crypto.randomBytes(12).toString('base64url');
@@ -840,9 +877,7 @@ async function startServer() {
             name,
             email,
             role: role as ServerUser['role'],
-            role_label: requestedRole === 'Supply Chain' ? 'Karyawan — Lokasi RPC/SC'
-              : requestedRole === 'PIBC' ? 'Karyawan — Lokasi PIBC'
-                : (roleLabels[role] || 'Pegawai Operasional'),
+            role_label: roleLabels[role] || 'Pegawai Operasional',
             division: division as ServerUser['division'],
             department,
             job_level_code: jobLevelCode || undefined,
@@ -864,7 +899,7 @@ async function startServer() {
             `Impor massal: pengguna baru ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}. Password awal dibuat server-side.`,
             actor,
             newUser.id
-          );
+          , false);
         }
       }
 
@@ -933,6 +968,15 @@ async function startServer() {
       const normalizedName = name === undefined ? undefined : name.trim();
       const normalizedEmail = email === undefined ? undefined : email.trim().toLowerCase();
       const normalizedDivision = division === undefined ? undefined : division.trim();
+      if (normalizedDivision !== undefined) {
+        const activeDivision = (db.divisions || []).find(item =>
+          String(item.code || '').trim().toUpperCase() === normalizedDivision.toUpperCase()
+          && item.is_active !== false
+        );
+        if (!activeDivision) {
+          return res.status(400).json({ success: false, message: `Divisi "${normalizedDivision || '(kosong)'}" tidak terdaftar atau sedang nonaktif. Pilih divisi aktif; lokasi kantor diisi terpisah.` });
+        }
+      }
       const normalizedDepartment = department === undefined ? undefined : department.trim();
       const normalizedPhone = phone === undefined ? undefined : phone.trim();
       const normalizedTelegramChatId = telegram_chat_id === undefined ? undefined : telegram_chat_id.trim();
@@ -996,15 +1040,18 @@ async function startServer() {
       if (normalizedEmail !== undefined) targetUser.email = normalizedEmail;
 
       if (role !== undefined) {
-        targetUser.role = role.trim();
-        const roleLabels: Record<string, string> = {
-          'Admin GABAH': 'Admin GABAH (Super Admin)',
-          'IT': 'Staff Divisi IT',
-          'GA': 'Staff Divisi General Affairs',
-          'Auditor': 'Satuan Pengawas Internal (SPI)',
-          'Karyawan': 'Karyawan / Pemohon',
-        };
-        (targetUser as any).role_label = role.trim();
+        const requestedProfileLabel = role.trim();
+        const normalizedProfileRole = ['Supply Chain', 'PIBC'].includes(requestedProfileLabel)
+          ? 'Karyawan' : requestedProfileLabel;
+        targetUser.role = normalizedProfileRole;
+        (targetUser as any).role_label = normalizedProfileRole;
+        if (!targetUser.office_location_id && ['Supply Chain', 'PIBC'].includes(requestedProfileLabel)) {
+          const mappedOffice = requestedProfileLabel === 'Supply Chain' ? 'OFF-RPC' : 'OFF-PIBC';
+          if (!(db.officeLocations || []).some(location => location.id === mappedOffice && location.is_active)) {
+            return res.status(400).json({ success: false, message: `Lokasi kantor "${mappedOffice}" tidak terdaftar atau sedang nonaktif.` });
+          }
+          targetUser.office_location_id = mappedOffice;
+        }
       }
       if (normalizedDivision !== undefined) targetUser.division = normalizedDivision;
       if (normalizedDepartment !== undefined) targetUser.department = normalizedDepartment;
@@ -1038,7 +1085,7 @@ async function startServer() {
         `Memperbarui profil pengguna ${targetUser.name} (${targetUser.email})`,
         actor,
         targetUser.id
-      );
+      , false);
 
       await persistDataStore();
       // Profile edits do not alter RBAC assignments or permissions.
@@ -1122,7 +1169,7 @@ async function startServer() {
         `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - tidak ada pinjaman aktif atau aset dalam penguasaan yang dilepas otomatis`,
         actor,
         targetId
-      );
+      , false);
 
       await persistDataStore();
       await refreshRbacPolicy();
@@ -1169,7 +1216,7 @@ async function startServer() {
         `Menerbitkan sandi sementara baru untuk pengguna ${targetUser.name} (${targetUser.email}); seluruh sesi aktif dicabut`,
         actor,
         targetUser.id
-      );
+      , false);
 
       await persistDataStore();
 
@@ -1252,7 +1299,7 @@ async function startServer() {
         [id, owner, code, separator, digits, notes]
       );
       AssetNumberingEngine.upsertRule(result.rows[0]);
-      GabahDomainService.recordAudit('NUMBERING_RULE_CREATED', 'Asset Numbering', `Membuat aturan penomoran ${owner}/${code}; pemisah "${separator}", digit ${digits}.`, actor);
+      GabahDomainService.recordAudit('NUMBERING_RULE_CREATED', 'Asset Numbering', `Membuat aturan penomoran ${owner}/${code}; pemisah "${separator}", digit ${digits}.`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: { ...result.rows[0], usage_count: 0 } });
     } catch (err: any) {
@@ -1323,7 +1370,7 @@ async function startServer() {
         [current.id, separator, digits, isActive, notes]
       );
       AssetNumberingEngine.upsertRule(updated.rows[0]);
-      GabahDomainService.recordAudit('NUMBERING_RULE_UPDATED', 'Asset Numbering', `Memperbarui aturan ${current.owner_division}/${current.asset_code} (terpakai: ${usageCount}); nomor yang telah terbit tidak diubah.`, actor);
+      GabahDomainService.recordAudit('NUMBERING_RULE_UPDATED', 'Asset Numbering', `Memperbarui aturan ${current.owner_division}/${current.asset_code} (terpakai: ${usageCount}); nomor yang telah terbit tidak diubah.`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: { ...updated.rows[0], usage_count: usageCount } });
     } catch (err: any) {
@@ -1368,7 +1415,7 @@ async function startServer() {
       }
       await queryRbac('DELETE FROM asset_numbering_rules WHERE id = $1', [rule.id]);
       AssetNumberingEngine.removeRule(rule.owner_division, rule.asset_code);
-      GabahDomainService.recordAudit('NUMBERING_RULE_DELETED', 'Asset Numbering', `Menghapus aturan ${expected}. Alasan: ${reason}`, actor);
+      GabahDomainService.recordAudit('NUMBERING_RULE_DELETED', 'Asset Numbering', `Menghapus aturan ${expected}. Alasan: ${reason}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: { id: rule.id, deleted: true } });
     } catch (err: any) {
@@ -1427,7 +1474,7 @@ async function startServer() {
   });
 
   // Secure Authentication Endpoints
-  app.post('/api/auth/login', (req, res) => {
+  app.post('/api/auth/login', async (req, res) => {
     try {
       const ip = extractClientIp(req) || 'unknown';
       const lockCheck = isLoginLocked(ip);
@@ -1464,8 +1511,8 @@ async function startServer() {
         if (u.role === 'GA' && ['ga', 'ga.officer', 'siti', 'siti.rahmawati'].includes(inPrefix)) return true;
         if (u.role === 'Sekretaris Direksi' && ['sekdir', 'sekretariat.direksi', 'dewi', 'dewi.anggraini'].includes(inPrefix)) return true;
         if (u.role === 'Humas' && ['humas', 'rina', 'rina.kartika'].includes(inPrefix)) return true;
-        if (u.role === 'Supply Chain' && ['sc', 'sc.warehouse', 'supplychain', 'agus', 'agus.pratama'].includes(inPrefix)) return true;
-        if (u.role === 'PIBC' && ['pibc', 'pibc.admin', 'pasar', 'bambang', 'bambang.h'].includes(inPrefix)) return true;
+        if (u.office_location_id === 'OFF-RPC' && ['sc', 'sc.warehouse', 'supplychain', 'agus', 'agus.pratama'].includes(inPrefix)) return true;
+        if (u.office_location_id === 'OFF-PIBC' && ['pibc', 'pibc.admin', 'pasar', 'bambang', 'bambang.h'].includes(inPrefix)) return true;
         if (u.role === 'Karyawan' && ['karyawan', 'pegawai', 'hendra', 'hendra.w'].includes(inPrefix)) return true;
         if (u.role === 'Auditor' && ['auditor', 'spi', 'maya', 'maya.indriani'].includes(inPrefix)) return true;
         return false;
@@ -1485,6 +1532,11 @@ async function startServer() {
       // SECURITY (CR-02): password verification uses ONLY the stored PBKDF2
       // hash (server/crypto.ts). There is no hardcoded role-password list, no
       // universal fallback password, and no plaintext temp_password path.
+      const previousCredentials = {
+        password_hash: user.password_hash,
+        password_salt: user.password_salt,
+        temp_password: user.temp_password,
+      };
       let isValidPassword = false;
 
       if (user.password_hash && user.password_salt && verifyPassword(password, user.password_hash, user.password_salt)) {
@@ -1500,12 +1552,24 @@ async function startServer() {
 
       if (!isValidPassword) {
         const lock = recordFailedLogin(ip);
+        const previousAuditLogs = db.auditLogs.slice();
         GabahDomainService.recordAudit(
           'AUTH_LOGIN_FAILED',
           'Auth',
           `Gagal login untuk pengguna ${user.name} (${user.email}) - Kata sandi tidak cocok`,
-          user
+          user,
+          undefined,
+          false
         );
+        try {
+          await persistDataStore();
+        } catch (persistenceError) {
+          db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+          try { await persistDataStore(); } catch (rollbackError) {
+            console.error('[GABAH] Failed to persist failed-login audit rollback:', rollbackError);
+          }
+          return res.status(503).json({ success: false, message: 'Layanan autentikasi sementara tidak dapat menyimpan audit login.' });
+        }
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
@@ -1520,14 +1584,31 @@ async function startServer() {
 
       // Create persistent session
       const session = createSession(user.id, req);
+      const previousAuditLogs = db.auditLogs.slice();
       GabahDomainService.recordAudit(
         'AUTH_LOGIN_SUCCESS',
         'Auth',
         `Pengguna ${user.name} (${user.role}) berhasil masuk dari IP ${session.ip_address}`,
-        user
+        user,
+        undefined,
+        false
       );
+      try {
+        await persistDataStore();
+      } catch (persistenceError) {
+        destroySession(session.token);
+        user.password_hash = previousCredentials.password_hash;
+        user.password_salt = previousCredentials.password_salt;
+        if (previousCredentials.temp_password === undefined) delete user.temp_password;
+        else user.temp_password = previousCredentials.temp_password;
+        db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+        try { await persistDataStore(); } catch (rollbackError) {
+          console.error('[GABAH] Failed to persist login rollback snapshot:', rollbackError);
+        }
+        return res.status(503).json({ success: false, message: 'Login gagal diselesaikan karena penyimpanan autentikasi tidak tersedia. Silakan coba lagi.' });
+      }
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           user: serializeAuthenticatedUser(user),
@@ -1555,7 +1636,7 @@ async function startServer() {
   // Self-service password change (P1): the CURRENT user rotates their own
   // password. Requires the current password; revokes all other sessions but
   // issues a fresh token for THIS device so the user is not logged out.
-  app.post('/api/auth/change-password', (req, res) => {
+  app.post('/api/auth/change-password', async (req, res) => {
     try {
       const actor = getActor(req);
       const { currentPassword, newPassword } = req.body;
@@ -1577,27 +1658,49 @@ async function startServer() {
         return res.status(401).json({ success: false, message: 'Kata sandi lama tidak cocok.' });
       }
 
+      const previousCredentials = {
+        password_hash: user.password_hash,
+        password_salt: user.password_salt,
+        temp_password: user.temp_password,
+        authVersion: user.authVersion,
+      };
       const { hash, salt } = hashPassword(newPassword);
       user.password_hash = hash;
       user.password_salt = salt;
       delete user.temp_password;
       if (typeof user.authVersion === 'number') user.authVersion += 1;
 
-      // SECURITY (CR-03 §3.4): rotate credentials ⇒ revoke ALL sessions, then
-      // re-issue one session for the calling device so it stays signed in.
-      revokeUserSessions(user.id);
-      const session = createSession(user.id, req);
-
-      GabahDomainService.recordAudit(
+      const auditEntry = GabahDomainService.recordAudit(
         'USER_PASSWORD_SELF_CHANGED',
         'Auth',
         `Pengguna ${user.name} (${user.email}) mengganti kata sandinya sendiri; seluruh sesi lain dicabut`,
         actor,
         user.id
-      );
-      persistDataStore().catch(() => {});
+      , false);
+      try {
+        // Commit the credential change before revoking sessions. A storage
+        // failure must leave the old password and existing sessions usable.
+        await persistDataStore();
+      } catch (persistenceError) {
+        user.password_hash = previousCredentials.password_hash;
+        user.password_salt = previousCredentials.password_salt;
+        if (previousCredentials.temp_password === undefined) delete user.temp_password;
+        else user.temp_password = previousCredentials.temp_password;
+        user.authVersion = previousCredentials.authVersion;
+        const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+        if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+        try { await persistDataStore(); } catch (rollbackError) {
+          console.error('[GABAH] Failed to persist password-change rollback snapshot:', rollbackError);
+        }
+        return res.status(500).json({ success: false, message: 'Perubahan kata sandi gagal disimpan. Kata sandi lama tetap berlaku.' });
+      }
 
-      res.json({
+      // SECURITY (CR-03 §3.4): only after durable credential persistence,
+      // revoke ALL sessions and issue one fresh session for this device.
+      revokeUserSessions(user.id);
+      const session = createSession(user.id, req);
+
+      return res.json({
         success: true,
         data: { user: sanitizeUser(user), token: session.token, expires_at: session.expires_at },
       });
@@ -1686,7 +1789,7 @@ async function startServer() {
         `Admin ${actor.name} beralih identitas aktif ke ${targetUser.name} (${targetUser.role})`,
         actor,
         targetUser.id
-      );
+      , false);
 
       await persistDataStore();
 
@@ -1742,6 +1845,9 @@ async function startServer() {
       if (!isOwnerDivision(owner_division)) {
         return res.status(400).json({ success: false, message: `Kode owner "${owner_division}" wajib diisi dan maksimal 20 karakter.` });
       }
+      if (['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(owner_division).trim().toUpperCase())) {
+        return res.status(400).json({ success: false, message: 'SC/PIBC adalah nilai historis/lokasi, bukan owner domain aktif untuk kategori baru.' });
+      }
       const normalizedCategoryType = category_type || (owner_division === 'IT' ? 'IT' : 'General');
       if (!isGabahCategoryType(normalizedCategoryType)) {
         return res.status(400).json({ success: false, message: `Tipe taksonomi "${normalizedCategoryType}" tidak dikenal. Nilai yang diizinkan: IT, General, License.` });
@@ -1783,7 +1889,7 @@ async function startServer() {
       };
 
       db.categories.push(newCategory);
-      GabahDomainService.recordAudit('CATEGORY_CREATED', 'MasterData', `Menambahkan master kategori ${newCategory.code} - ${newCategory.name}`, actor);
+      GabahDomainService.recordAudit('CATEGORY_CREATED', 'MasterData', `Menambahkan master kategori ${newCategory.code} - ${newCategory.name}`, actor, undefined, false);
       await persistDataStore();
 
       res.status(201).json({ success: true, data: newCategory });
@@ -1802,6 +1908,11 @@ async function startServer() {
       if (!target) return res.status(404).json({ success: false, message: `Kategori "${code}" tidak ditemukan.` });
 
       const { name, main_type, owner_division, category_type, description, is_loanable_by_default, is_active } = req.body || {};
+      if (owner_division !== undefined
+        && ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(owner_division).trim().toUpperCase())
+        && String(owner_division).trim().toUpperCase() !== String(target.owner_division || '').trim().toUpperCase()) {
+        return res.status(400).json({ success: false, message: 'SC/PIBC tidak dapat ditetapkan sebagai owner kategori baru. Klasifikasikan aset historis berdasarkan bukti owner yang benar.' });
+      }
       if (is_loanable_by_default !== undefined && typeof is_loanable_by_default !== 'boolean') {
         return res.status(400).json({ success: false, message: 'is_loanable_by_default harus berupa boolean.' });
       }
@@ -1849,6 +1960,8 @@ async function startServer() {
         'MasterData',
         `Memperbarui master kategori ${target.code} - ${target.name}${is_active !== undefined ? (target.is_active ? ' (diaktifkan)' : ' (dinonaktifkan)') : ''}`,
         actor,
+        undefined,
+        false,
       );
       await persistDataStore();
       res.json({ success: true, data: target });
@@ -1877,7 +1990,7 @@ async function startServer() {
         return res.status(404).json({ success: false, message: `Kategori "${code}" tidak ditemukan.` });
       }
 
-      GabahDomainService.recordAudit('CATEGORY_DELETED', 'MasterData', `Menghapus master kategori ${code}`, actor);
+      GabahDomainService.recordAudit('CATEGORY_DELETED', 'MasterData', `Menghapus master kategori ${code}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, message: `Kategori ${code} berhasil dihapus.` });
     } catch (err: any) {
@@ -1906,7 +2019,7 @@ async function startServer() {
         capacity: capacity?.trim() || 'Fasilitas Operasional'
       };
       db.locations.push(newLoc);
-      GabahDomainService.recordAudit('LOCATION_CREATED', 'MasterData', `Menambahkan master lokasi ${newLoc.name}`, actor);
+      GabahDomainService.recordAudit('LOCATION_CREATED', 'MasterData', `Menambahkan master lokasi ${newLoc.name}`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: newLoc });
     } catch (err: any) {
@@ -1927,7 +2040,7 @@ async function startServer() {
       if (address !== undefined) target.address = address.trim();
       if (capacity !== undefined) target.capacity = capacity.trim();
 
-      GabahDomainService.recordAudit('LOCATION_UPDATED', 'MasterData', `Memperbarui master lokasi ${target.name}`, actor);
+      GabahDomainService.recordAudit('LOCATION_UPDATED', 'MasterData', `Memperbarui master lokasi ${target.name}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: target });
     } catch (err: any) {
@@ -1944,7 +2057,7 @@ async function startServer() {
       if (!loc) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
 
       db.locations = db.locations.filter(l => l.id !== req.params.id);
-      GabahDomainService.recordAudit('LOCATION_DELETED', 'MasterData', `Menghapus master lokasi ${loc.name}`, actor);
+      GabahDomainService.recordAudit('LOCATION_DELETED', 'MasterData', `Menghapus master lokasi ${loc.name}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, message: `Lokasi ${loc.name} berhasil dihapus.` });
     } catch (err: any) {
@@ -1981,7 +2094,7 @@ async function startServer() {
         depts: Array.isArray(depts) && depts.length > 0 ? depts : ['Operasional']
       };
       db.divisions.push(newDiv);
-      GabahDomainService.recordAudit('DIVISION_CREATED', 'Organization', `Menambahkan divisi baru ${newDiv.code} - ${newDiv.name}`, actor);
+      GabahDomainService.recordAudit('DIVISION_CREATED', 'Organization', `Menambahkan divisi baru ${newDiv.code} - ${newDiv.name}`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: newDiv });
     } catch (err: any) {
@@ -2003,7 +2116,7 @@ async function startServer() {
       if (leader) div.leader = leader.trim();
       if (Array.isArray(depts)) div.depts = depts;
 
-      GabahDomainService.recordAudit('DIVISION_UPDATED', 'Organization', `Memperbarui divisi ${div.code} - ${div.name}`, actor);
+      GabahDomainService.recordAudit('DIVISION_UPDATED', 'Organization', `Memperbarui divisi ${div.code} - ${div.name}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: div });
     } catch (err: any) {
@@ -2040,7 +2153,7 @@ async function startServer() {
       if (!div) return res.status(404).json({ success: false, message: 'Divisi tidak ditemukan.' });
 
       db.divisions = db.divisions.filter(d => d.code.toUpperCase() !== code);
-      GabahDomainService.recordAudit('DIVISION_DELETED', 'Organization', `Menghapus struktur divisi ${code} (${div.name})`, actor);
+      GabahDomainService.recordAudit('DIVISION_DELETED', 'Organization', `Menghapus struktur divisi ${code} (${div.name})`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, message: `Divisi ${code} berhasil dihapus.` });
     } catch (err: any) {
@@ -2072,7 +2185,7 @@ async function startServer() {
       const maxOrder = db.jobLevels.reduce((m, j) => Math.max(m, j.order || 0), 0);
       const level = { code, label, order: Number(req.body.order) || maxOrder + 1, is_active: true };
       db.jobLevels.push(level);
-      GabahDomainService.recordAudit('JOB_LEVEL_CREATED', 'Organization', `Menambahkan master jabatan ${level.code} (${level.label})`, actor);
+      GabahDomainService.recordAudit('JOB_LEVEL_CREATED', 'Organization', `Menambahkan master jabatan ${level.code} (${level.label})`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: level });
     } catch (err: any) {
@@ -2093,7 +2206,7 @@ async function startServer() {
       if (req.body.label !== undefined) level.label = String(req.body.label).trim() || level.label;
       if (req.body.order !== undefined) level.order = Number(req.body.order);
       if (req.body.is_active !== undefined) level.is_active = req.body.is_active;
-      GabahDomainService.recordAudit('JOB_LEVEL_UPDATED', 'Organization', `Memperbarui master jabatan ${level.code} (${level.label}) — aktif: ${level.is_active}`, actor);
+      GabahDomainService.recordAudit('JOB_LEVEL_UPDATED', 'Organization', `Memperbarui master jabatan ${level.code} (${level.label}) — aktif: ${level.is_active}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: level });
     } catch (err: any) {
@@ -2111,7 +2224,7 @@ async function startServer() {
       if (!requireAdminPermission(req, res, 'organization.manage')) return;
       const name = String(req.body.name || '').trim();
       const requestedDivisionCode = String(req.body.division_code || 'Umum').trim();
-      const configuredDivision = (db.divisions || []).find(d => String(d.code || '').trim().toLowerCase() === requestedDivisionCode.toLowerCase());
+      const configuredDivision = (db.divisions || []).find(d => String(d.code || '').trim().toLowerCase() === requestedDivisionCode.toLowerCase() && d.is_active !== false);
       if (!name) return res.status(400).json({ success: false, message: 'Nama unit wajib diisi.' });
       if (!configuredDivision) return res.status(400).json({ success: false, message: `Divisi "${requestedDivisionCode}" tidak terdaftar pada Master Divisi.` });
       const divisionCode = String(configuredDivision.code);
@@ -2121,7 +2234,7 @@ async function startServer() {
       }
       const unit = { id: `UNIT-${Date.now().toString(36).toUpperCase()}`, name, division_code: divisionCode as any, is_active: true };
       db.orgUnits.push(unit);
-      GabahDomainService.recordAudit('ORG_UNIT_CREATED', 'Organization', `Menambahkan master unit ${unit.name} (divisi ${unit.division_code})`, actor);
+      GabahDomainService.recordAudit('ORG_UNIT_CREATED', 'Organization', `Menambahkan master unit ${unit.name} (divisi ${unit.division_code})`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: unit });
     } catch (err: any) {
@@ -2160,7 +2273,7 @@ async function startServer() {
       }
       if (resolvedDivisionCode !== undefined) unit.division_code = resolvedDivisionCode as any;
       if (req.body.is_active !== undefined) unit.is_active = req.body.is_active;
-      GabahDomainService.recordAudit('ORG_UNIT_UPDATED', 'Organization', `Memperbarui master unit ${unit.name} — aktif: ${unit.is_active}`, actor);
+      GabahDomainService.recordAudit('ORG_UNIT_UPDATED', 'Organization', `Memperbarui master unit ${unit.name} — aktif: ${unit.is_active}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: unit });
     } catch (err: any) {
@@ -2184,7 +2297,7 @@ async function startServer() {
       }
       const loc = { id: `OFF-${Date.now().toString(36).toUpperCase()}`, name, is_active: true };
       db.officeLocations.push(loc);
-      GabahDomainService.recordAudit('OFFICE_LOCATION_CREATED', 'Organization', `Menambahkan master lokasi kantor ${loc.name}`, actor);
+      GabahDomainService.recordAudit('OFFICE_LOCATION_CREATED', 'Organization', `Menambahkan master lokasi kantor ${loc.name}`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
@@ -2204,7 +2317,7 @@ async function startServer() {
       }
       if (req.body.name !== undefined) loc.name = String(req.body.name).trim() || loc.name;
       if (req.body.is_active !== undefined) loc.is_active = req.body.is_active;
-      GabahDomainService.recordAudit('OFFICE_LOCATION_UPDATED', 'Organization', `Memperbarui master lokasi kantor ${loc.name} — aktif: ${loc.is_active}`, actor);
+      GabahDomainService.recordAudit('OFFICE_LOCATION_UPDATED', 'Organization', `Memperbarui master lokasi kantor ${loc.name} — aktif: ${loc.is_active}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: loc });
     } catch (err: any) {
@@ -2240,7 +2353,7 @@ async function startServer() {
       }
       const loc = { id: `ALOC-${Date.now().toString(36).toUpperCase()}`, name, parent_id: parentId, is_active: true };
       db.assetLocations.push(loc);
-      GabahDomainService.recordAudit('ASSET_LOCATION_CREATED', 'Assets', `Menambahkan master lokasi fisik aset ${getAssetLocationPath(loc)}`, actor);
+      GabahDomainService.recordAudit('ASSET_LOCATION_CREATED', 'Assets', `Menambahkan master lokasi fisik aset ${getAssetLocationPath(loc)}`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
@@ -2281,7 +2394,7 @@ async function startServer() {
         loc.parent_id = parentId;
       }
       if (req.body.is_active !== undefined) loc.is_active = req.body.is_active;
-      GabahDomainService.recordAudit('ASSET_LOCATION_UPDATED', 'Assets', `Memperbarui master lokasi fisik aset ${getAssetLocationPath(loc)} — aktif: ${loc.is_active}`, actor);
+      GabahDomainService.recordAudit('ASSET_LOCATION_UPDATED', 'Assets', `Memperbarui master lokasi fisik aset ${getAssetLocationPath(loc)} — aktif: ${loc.is_active}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: loc });
     } catch (err: any) {
@@ -2302,6 +2415,27 @@ async function startServer() {
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
+  });
+
+  // Asset creation options are calculated from the authenticated user's effective
+  // permission + exact owner-domain scope. The browser must never infer write
+  // ownership from a primary role label, job title, or office location.
+  app.get('/api/assets/creation-categories', (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.create')) return;
+    const actor = getActor(req);
+    const source = (db.categories && db.categories.length > 0) ? db.categories : CANONICAL_TAXONOMY;
+    const categories = normalizeCategoryMaster(source).filter(category => {
+      if (category.is_active === false) return false;
+      const owner = String(category.owner_division || '').trim();
+      if (!owner || ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(owner.toUpperCase())) return false;
+      const isSuperadmin = isSuperadminActor(actor);
+      if (!isSuperadmin && !hasRbacScope(String(actor.id), 'division', owner, 'assets')) return false;
+      if (category.category_type === 'License'
+        && !isSuperadmin
+        && !hasRbacPermission(String(actor.id), 'licenses.manage')) return false;
+      return true;
+    });
+    res.json({ success: true, data: categories });
   });
 
   // Assets Management
@@ -2486,7 +2620,7 @@ async function startServer() {
             }
           }
           existing.updated_at = new Date().toISOString();
-          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id);
+          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id, false);
           importedAssets.push(existing);
           updated++;
           continue;
@@ -2523,7 +2657,7 @@ async function startServer() {
             condition: (condition || undefined) as any,
             notes: String(row.notes || '').trim() || undefined,
           }, actor);
-          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id);
+          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id, false);
           importedAssets.push(asset);
           created++;
         } catch (rowErr: any) {
@@ -2568,7 +2702,7 @@ async function startServer() {
     res.json({ success: true, data: asset });
   });
 
-  app.patch('/api/assets/:id', (req, res) => {
+  app.patch('/api/assets/:id', async (req, res) => {
     const actor = getActor(req);
     const asset = db.assets.find(a => a.id === req.params.id);
     if (asset?.category_type === 'License' && isPostgresPersistenceActive()
@@ -2654,6 +2788,9 @@ async function startServer() {
       }
     }
 
+    // Keep a rollback snapshot until the durable store confirms the mutation.
+    const previousAsset = { ...asset };
+
     // T2B-1: managing unit operasional (relasi ke org_units.id) — divalidasi
     // terhadap master aktif; nullable untuk kasus ambigu. owner_division &
     // asset_number tetap server-owned (tidak berubah), RBAC tetap owner_division.
@@ -2687,42 +2824,51 @@ async function startServer() {
     }
     asset.updated_at = new Date().toISOString();
 
-    GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
-    persistDataStore().catch(() => {});
-
-    res.json({ success: true, data: asset });
+    const auditEntry = GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id, false);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: asset });
+    } catch (persistenceError) {
+      Object.assign(asset, previousAsset);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist asset-update rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Perubahan aset gagal disimpan. Perubahan dibatalkan.' });
+    }
   });
 
-  app.post('/api/assets/:id/assign', (req, res) => {
+  app.post('/api/assets/:id/assign', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.assign')) return;
     try {
       const actor = getActor(req);
       const { targetUserId, reason } = req.body;
-      const updated = GabahDomainService.assignAsset(req.params.id, targetUserId, reason, actor);
+      const updated = await GabahDomainService.assignAsset(req.params.id, targetUserId, reason, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/assets/:id/move', (req, res) => {
+  app.post('/api/assets/:id/move', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.move')) return;
     try {
       const actor = getActor(req);
       const { newLocation, reason } = req.body;
-      const updated = GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
+      const updated = await GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/assets/:id/lifecycle', (req, res) => {
+  app.post('/api/assets/:id/lifecycle', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.lifecycle')) return;
     try {
       const actor = getActor(req);
       const { action, notes } = req.body;
-      const updated = GabahDomainService.mutateLifecycle(req.params.id, action, notes, actor);
+      const updated = await GabahDomainService.mutateLifecycle(req.params.id, action, notes, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2737,7 +2883,7 @@ async function startServer() {
     // with every explicit dynamic role scope. Do not re-filter by legacy
     // primary-role labels here: that would hide scoped assets from employees
     // who hold additional operational roles.
-    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas'];
     const isEmployeeBaseline = employeeBaselineRoles.includes(actor.role);
     const scopedAssets = GabahDomainService.getScopedAssets(actor);
     // Employee baseline may see unassigned loanable assets in the asset catalogue
@@ -2809,7 +2955,7 @@ async function startServer() {
         try {
           const createdLoans = [];
           for (const id of normalizedAssetIds) {
-            const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
+            const newLoan = await GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor, false);
             createdLoans.push(newLoan);
           }
           await persistDataStore();
@@ -2824,12 +2970,14 @@ async function startServer() {
           db.loans.splice(0, db.loans.length, ...snapshots.loans);
           db.notifications.splice(0, db.notifications.length, ...snapshots.notifications);
           db.auditLogs.splice(0, db.auditLogs.length, ...snapshots.auditLogs);
+          try { await persistDataStore(); } catch (rollbackError) {
+            console.error('[GABAH] Failed to persist bulk-loan rollback snapshot:', rollbackError);
+          }
           throw bulkError;
         }
       }
 
-      const newLoan = GabahDomainService.requestLoan(req.body, actor);
-      await persistDataStore();
+      const newLoan = await GabahDomainService.requestLoan(req.body, actor);
       res.status(201).json({ success: true, data: newLoan });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2841,8 +2989,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.approve')) return;
     const actor = getActor(req);
-      const approved = GabahDomainService.approveLoan(req.params.id, actor);
-      await persistDataStore();
+      const approved = await GabahDomainService.approveLoan(req.params.id, actor);
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2854,8 +3001,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.reject')) return;
     const actor = getActor(req);
-      const rejected = GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
-      await persistDataStore();
+      const rejected = await GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
       res.json({ success: true, data: rejected });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2868,8 +3014,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'loans.handover')) return;
     const actor = getActor(req);
       const { handoverNotes } = req.body;
-      const handedOver = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
-      await persistDataStore();
+      const handedOver = await GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
@@ -2888,8 +3033,7 @@ async function startServer() {
       // capability and the domain service enforces matching owner scope.
       if (loan.borrower_id !== actor.id && !requireRbacPermission(req, res, 'loans.return')) return;
       const { condition, returnNotes } = req.body;
-      const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
-      await persistDataStore();
+      const returned = await GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
       res.json({ success: true, data: returned });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
@@ -2897,6 +3041,20 @@ async function startServer() {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
+
+  // Ticket capabilities are calculated per record by the backend; the client must
+  // not infer mutation/dispatch rights from a role label or a broad module permission.
+  const ticketCapabilitiesForActor = (actor: ServerUser, ticket: any) => {
+    const superadmin = isSuperadminActor(actor);
+    if (isAuditorActor(actor)) return { can_manage: false, can_assign: false };
+    const queueScope = hasTicketQueueScope(actor, ticket);
+    const canUpdate = hasRbacPermission(String(actor.id), 'tickets.update');
+    const canAssign = hasRbacPermission(String(actor.id), 'tickets.assign');
+    return {
+      can_manage: superadmin || (canUpdate && (ticket.assigned_agent_id === actor.id || queueScope)),
+      can_assign: superadmin || (hasRbacPermission(String(actor.id), 'tickets.read') && canAssign && queueScope),
+    };
+  };
 
   // Helpdesk Tickets
   app.get('/api/tickets', (req, res) => {
@@ -2911,31 +3069,159 @@ async function startServer() {
         && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
 
     if (isSuperadminActor(actor)) {
-      return res.json({ success: true, data: db.tickets });
+      return res.json({ success: true, data: db.tickets.map(ticket => ({ ...ticket, ...ticketCapabilitiesForActor(actor, ticket) })) });
     }
-    const canReadTicketOwner = (owner: string) =>
-      isPostgresPersistenceActive()
-        ? hasRbacScope(String(actor.id), 'division', owner, 'tickets')
-        : actor.role === owner;
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
       || ticket.assigned_agent_id === actor.id
-      || canReadTicketOwner(ticket.category)
+      || hasTicketQueueScope(actor, ticket)
     );
-    return res.json({ success: true, data });
+    const responseData = isPostgresPersistenceActive()
+      ? data.map(ticket => ({ ...ticket, ...ticketCapabilitiesForActor(actor, ticket) }))
+      : data;
+    return res.json({ success: true, data: responseData });
+  });
+
+  // Direct ticket reads use the same ownership/owner-domain rules as the collection endpoint.
+  // Return 404 for out-of-scope IDs to avoid disclosing whether another team's ticket exists.
+  app.get('/api/tickets/:id', (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
+    const actor = getActor(req);
+    const ticket = db.tickets.find(item => item.id === req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+    const isReporter = ticket.reporter_id === actor.id
+      || (!ticket.reporter_id && Boolean(ticket.reporter_name)
+        && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+    const hasQueueScope = hasTicketQueueScope(actor, ticket);
+    if (!isSuperadminActor(actor) && !isReporter
+      && ticket.assigned_agent_id !== actor.id && !hasQueueScope) {
+      return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+    }
+    const responseTicket = isPostgresPersistenceActive() ? { ...ticket, ...ticketCapabilitiesForActor(actor, ticket) } : ticket;
+    return res.json({ success: true, data: responseTicket });
   });
 
   app.post('/api/tickets', async (req, res) => {
     try {
-      
-    if (!requireRbacPermission(req, res, 'tickets.create')) return;
-    const actor = getActor(req);
-      const newTicket = GabahDomainService.createTicket(req.body, actor);
-      // Domain service validates optional asset/contract relations before creating the ticket.
-      await persistDataStore();
+      const actor = getActor(req);
+      const requestedCategory = String(req.body?.category || '').trim().toUpperCase();
+      const requiredPermission: Record<string, string> = {
+        IT: 'tickets.create',
+        GA: 'tickets.create.ga',
+        ME: 'tickets.create.me',
+      };
+      const permission = requiredPermission[requestedCategory];
+      if (!permission) return res.status(400).json({ success: false, message: 'Kategori tiket baru hanya IT, GA, atau ME.' });
+      if (isAuditorActor(actor)) return res.status(403).json({ success: false, message: 'Auditor hanya memiliki hak baca (read-only).' });
+      if (!isPostgresPersistenceActive()) {
+        const legacyRequesterAllowed = requestedCategory === 'IT';
+        if (!legacyRequesterAllowed) return res.status(403).json({ success: false, message: 'Capability pemohon untuk antrean ini belum diberikan.' });
+      }
+      if (!requireRbacPermission(req, res, permission)) return;
+      const newTicket = await GabahDomainService.createTicket({ ...req.body, category: requestedCategory as 'IT' | 'GA' | 'ME' }, actor);
       res.status(201).json({ success: true, data: newTicket });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
+    }
+  });
+
+  // Ticket dispatch is a separate capability from status updates.
+  app.get('/api/tickets/:id/assignees', (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
+    if (!requireRbacPermission(req, res, 'tickets.assign')) return;
+    const actor = getActor(req);
+    if (isAuditorActor(actor)) return res.status(403).json({ success: false, message: 'Auditor hanya memiliki hak baca (read-only).' });
+    const ticket = db.tickets.find(item => item.id === req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+    if (!isSuperadminActor(actor) && !hasTicketQueueScope(actor, ticket)) {
+      return res.status(403).json({ success: false, message: 'Anda tidak berwenang melihat petugas untuk antrean ini.' });
+    }
+    const eligible = db.users.filter(user => {
+      if (user.is_active === false || !hasRbacPermission(String(user.id), 'tickets.read') || !hasRbacPermission(String(user.id), 'notifications.read') || !hasRbacPermission(String(user.id), 'tickets.update')) return false;
+      if (ticket.assigned_unit_id) {
+        return user.unit_id === ticket.assigned_unit_id
+          && hasRbacScope(String(user.id), 'unit', ticket.assigned_unit_id, 'tickets', true);
+      }
+      const category = String(ticket.category || '').toUpperCase();
+      return ['IT', 'GA'].includes(category)
+        && hasRbacScope(String(user.id), 'division', category, 'tickets', true);
+    }).map(user => ({ id: user.id, name: user.name, department: user.department }));
+    return res.json({ success: true, data: eligible });
+  });
+
+  app.patch('/api/tickets/:id/assign', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
+    if (!requireRbacPermission(req, res, 'tickets.assign')) return;
+    const actor = getActor(req);
+    if (isAuditorActor(actor)) return res.status(403).json({ success: false, message: 'Auditor hanya memiliki hak baca (read-only).' });
+    const ticket = db.tickets.find(item => item.id === req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+    if (['resolved', 'closed'].includes(ticket.status)) {
+      return res.status(409).json({ success: false, message: 'Tiket sudah selesai. Buka kembali sebelum mengubah penugasan.' });
+    }
+    if (!isSuperadminActor(actor) && !hasTicketQueueScope(actor, ticket)) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki kewenangan mendelegasikan tiket ini.' });
+    }
+
+    const targetId = String(req.body?.assigned_agent_id || '').trim();
+    const target = db.users.find(user => user.id === targetId && user.is_active !== false);
+    if (!target) return res.status(400).json({ success: false, message: 'Petugas tujuan tidak ditemukan atau tidak aktif.' });
+    const targetHasScope = ticket.assigned_unit_id
+      ? target.unit_id === ticket.assigned_unit_id
+        && hasRbacScope(String(target.id), 'unit', ticket.assigned_unit_id, 'tickets', true)
+      : ['IT', 'GA'].includes(String(ticket.category || '').toUpperCase())
+        && hasRbacScope(String(target.id), 'division', String(ticket.category).toUpperCase(), 'tickets', true);
+    if (!hasRbacPermission(String(target.id), 'tickets.read') || !hasRbacPermission(String(target.id), 'notifications.read') || !hasRbacPermission(String(target.id), 'tickets.update') || !targetHasScope) {
+      return res.status(400).json({ success: false, message: 'Petugas tujuan belum memiliki permission dan scope untuk menangani antrean ini.' });
+    }
+
+    const previous = {
+      assigned_agent_id: ticket.assigned_agent_id,
+      assigned_agent_name: ticket.assigned_agent_name,
+      status: ticket.status,
+      updated_at: ticket.updated_at,
+    };
+    let notificationId: string | undefined;
+    let auditId: string | undefined;
+    try {
+      ticket.assigned_agent_id = target.id;
+      ticket.assigned_agent_name = target.name;
+      if (ticket.status === 'open') ticket.status = 'assigned';
+      ticket.updated_at = new Date().toISOString();
+      const assignmentNotification = GabahDomainService.notify({
+        recipient_user_id: target.id,
+        title: `Tiket Ditugaskan: ${ticket.ticket_number}`,
+        message: `Tiket ${ticket.title} ditugaskan kepada Anda oleh ${actor.name}.`,
+        severity: ticket.priority === 'urgent' ? 'critical' : ticket.priority === 'high' ? 'action_required' : 'info',
+        category: 'sla',
+        link_type: 'ticket',
+        link_id: ticket.id,
+      });
+      notificationId = assignmentNotification.id;
+      const assignmentAudit = GabahDomainService.recordAudit('TICKET_ASSIGNED', 'Tickets', `Tiket ${ticket.ticket_number} ditugaskan kepada ${target.name}.`, actor, ticket.id, false);
+      auditId = assignmentAudit.id;
+      await persistDataStore();
+      return res.json({ success: true, data: ticket });
+    } catch (error: any) {
+      ticket.assigned_agent_id = previous.assigned_agent_id;
+      ticket.assigned_agent_name = previous.assigned_agent_name;
+      ticket.status = previous.status;
+      ticket.updated_at = previous.updated_at;
+      if (notificationId) {
+        const notificationIndex = db.notifications.findIndex(item => item.id === notificationId);
+        if (notificationIndex >= 0) db.notifications.splice(notificationIndex, 1);
+      }
+      if (auditId) {
+        const auditIndex = db.auditLogs.findIndex(item => item.id === auditId);
+        if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      }
+      try {
+        // Refresh the file fallback snapshot after restoring in-memory state.
+        await persistDataStore();
+      } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist ticket assignment rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Penugasan gagal disimpan. Perubahan dibatalkan.' });
     }
   });
 
@@ -2950,7 +3236,7 @@ async function startServer() {
     closed: ['open'],
   };
 
-  app.patch('/api/tickets/:id/status', (req, res) => {
+  app.patch('/api/tickets/:id/status', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'tickets.update')) return;
@@ -2969,6 +3255,12 @@ async function startServer() {
           message: 'Catatan penyelesaian harus berupa teks maksimal 4000 karakter.',
         });
       }
+      const previousState = {
+        status: ticket.status,
+        resolution_notes: ticket.resolution_notes,
+        resolved_at: ticket.resolved_at,
+        updated_at: ticket.updated_at,
+      };
       const currentStatus = String(ticket.status);
       const nextStatus = String(status || '');
 
@@ -2996,12 +3288,36 @@ async function startServer() {
       }
       ticket.updated_at = new Date().toISOString();
 
-      GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
-      persistDataStore().catch(() => {});
+      const auditEntry = GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id, false);
+      try {
+        // Do not acknowledge a lifecycle transition until the authoritative
+        // persistence queue confirms the write.
+        await persistDataStore();
+      } catch (persistenceError: any) {
+        ticket.status = previousState.status;
+        ticket.resolution_notes = previousState.resolution_notes;
+        ticket.resolved_at = previousState.resolved_at;
+        ticket.updated_at = previousState.updated_at;
+        const auditIndex = db.auditLogs.findIndex(entry => entry.id === auditEntry.id);
+        if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+        // persistDataStore snapshots the in-memory state to the local fallback
+        // before attempting PostgreSQL. After rollback, write the restored
+        // snapshot too, so a development restart cannot resurrect the failed
+        // status transition from the fallback file.
+        try {
+          await persistDataStore();
+        } catch (rollbackPersistenceError: any) {
+          console.error('[GABAH Tickets] Failed to persist rollback snapshot:', rollbackPersistenceError.message || rollbackPersistenceError);
+        }
+        return res.status(500).json({
+          success: false,
+          message: persistenceError.message || 'Gagal menyimpan perubahan status tiket.',
+        });
+      }
 
       res.json({ success: true, data: ticket });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3054,7 +3370,7 @@ async function startServer() {
     }
 
     // File-store compatibility: preserve the established legacy behavior.
-    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
+    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(actor.role);
     const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor)
       .filter(asset => !employeeBaseline || asset.assigned_to?.id === actor.id)
       .filter(asset => actor.role !== 'GA' || String(asset.owner_division).toUpperCase() === 'GA')
@@ -3087,7 +3403,7 @@ async function startServer() {
     return { valid: true as const, vendor, clear: false };
   };
 
-  app.post('/api/maintenances', (req, res) => {
+  app.post('/api/maintenances', async (req, res) => {
     const actor = getActor(req);
     // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
     // GA) secara eksplisit; mode PostgreSQL beralih ke permission dinamis
@@ -3142,12 +3458,23 @@ async function startServer() {
       created_at: new Date().toISOString(),
     };
     db.maintenances.push(newSchedule);
-    GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
-    persistDataStore().catch(() => {});
-    res.status(201).json({ success: true, data: newSchedule });
+    const auditEntry = GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id, false);
+    try {
+      await persistDataStore();
+      return res.status(201).json({ success: true, data: newSchedule });
+    } catch (persistenceError) {
+      const scheduleIndex = db.maintenances.findIndex(item => item.id === newSchedule.id);
+      if (scheduleIndex >= 0) db.maintenances.splice(scheduleIndex, 1);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist maintenance-create rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Jadwal maintenance gagal disimpan. Tidak ada perubahan yang diterapkan.' });
+    }
   });
 
-  app.patch('/api/maintenances/:id', (req, res) => {
+  app.patch('/api/maintenances/:id', async (req, res) => {
     const actor = getActor(req);
     // RBAC: file-store mempertahankan allowlist legacy; PostgreSQL beralih ke
     // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
@@ -3167,6 +3494,23 @@ async function startServer() {
 
     const validationError = validateMaintenanceInput(req.body || {});
     if (validationError) return res.status(400).json({ success: false, message: validationError });
+
+    // Snapshot every field this handler may mutate so a failed durable write
+    // can restore the in-memory domain object and its audit trail.
+    const previous = {
+      title: schedule.title,
+      scheduled_date: schedule.scheduled_date,
+      frequency: schedule.frequency,
+      status: schedule.status,
+      technician_name: schedule.technician_name,
+      estimated_cost: schedule.estimated_cost,
+      actual_cost: schedule.actual_cost,
+      notes: schedule.notes,
+      checklist: schedule.checklist,
+      vendor_id: schedule.vendor_id,
+      vendor_name: schedule.vendor_name,
+      last_completed_at: schedule.last_completed_at,
+    };
 
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, schedule_code, asset_id, asset_name,
@@ -3195,9 +3539,19 @@ async function startServer() {
     if (req.body.status === 'completed') {
       schedule.last_completed_at = new Date().toISOString();
     }
-    GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: schedule });
+    const auditEntry = GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id, false);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: schedule });
+    } catch (persistenceError) {
+      Object.assign(schedule, previous);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist maintenance-update rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Perubahan maintenance gagal disimpan. Perubahan dibatalkan.' });
+    }
   });
 
   // =========================
@@ -3241,7 +3595,7 @@ async function startServer() {
     return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
   });
 
-  app.post('/api/vendors', (req, res) => {
+  app.post('/api/vendors', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
@@ -3287,12 +3641,23 @@ async function startServer() {
       notes: req.body.notes || '',
     };
     db.vendors.push(vendor);
-    GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
-    res.status(201).json({ success: true, data: vendor });
+    const auditEntry = GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id, false);
+    try {
+      await persistDataStore();
+      return res.status(201).json({ success: true, data: vendor });
+    } catch (persistenceError) {
+      const index = db.vendors.findIndex(item => item.id === vendor.id);
+      if (index >= 0) db.vendors.splice(index, 1);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist vendor-create rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Vendor gagal disimpan. Tidak ada perubahan yang diterapkan.' });
+    }
   });
 
-  app.patch('/api/vendors/:id', (req, res) => {
+  app.patch('/api/vendors/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.update')) return;
@@ -3336,6 +3701,7 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor ini.' });
     }
     const vendor = existingVendor;
+    const previousVendor = { ...vendor };
     // SECURITY (CR-06): explicit allowlist — id is server-owned.
     const allowedVendorFields = ['name', 'category', 'owner_division', 'pic_name', 'pic_phone', 'pic_email', 'address', 'rating', 'notes'];
     for (const key of allowedVendorFields) {
@@ -3346,9 +3712,19 @@ async function startServer() {
     vendor.owner_division = requestedOwner;
     vendor.rating = requestedRating;
     vendor.active_contracts_count = getActiveVendorContractCount(vendor.name);
-    GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: vendor });
+    const auditEntry = GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id, false);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: vendor });
+    } catch (persistenceError) {
+      Object.assign(vendor, previousVendor);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist vendor-update rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Perubahan vendor gagal disimpan. Perubahan dibatalkan.' });
+    }
   });
 
   // =========================
@@ -3360,7 +3736,7 @@ async function startServer() {
     res.json({ success: true, data: db.knowledgeArticles });
   });
 
-  app.post('/api/knowledge', (req, res) => {
+  app.post('/api/knowledge', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.create')) return;
@@ -3384,12 +3760,23 @@ async function startServer() {
       updated_at: new Date().toISOString(),
     };
     db.knowledgeArticles.push(article);
-    GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
-    res.status(201).json({ success: true, data: article });
+    const auditEntry = GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id, false);
+    try {
+      await persistDataStore();
+      return res.status(201).json({ success: true, data: article });
+    } catch (persistenceError) {
+      const index = db.knowledgeArticles.findIndex(item => item.id === article.id);
+      if (index >= 0) db.knowledgeArticles.splice(index, 1);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist knowledge-create rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Artikel gagal disimpan. Tidak ada perubahan yang diterapkan.' });
+    }
   });
 
-  app.patch('/api/knowledge/:id', (req, res) => {
+  app.patch('/api/knowledge/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.update')) return;
@@ -3399,32 +3786,61 @@ async function startServer() {
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     // SECURITY (CR-06): explicit allowlist — view_count/helpful_votes only via dedicated endpoints.
+    const previousArticle = { ...article };
     const allowedArticleFields = ['title', 'category', 'content', 'tags', 'author'];
     for (const key of allowedArticleFields) {
       if (req.body[key] !== undefined) (article as any)[key] = req.body[key];
     }
     article.updated_at = new Date().toISOString();
-    GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: article });
+    const auditEntry = GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id, false);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: article });
+    } catch (persistenceError) {
+      Object.assign(article, previousArticle);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist knowledge-update rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Perubahan artikel gagal disimpan. Perubahan dibatalkan.' });
+    }
   });
 
-  app.post('/api/knowledge/:id/vote', (req, res) => {
+  app.post('/api/knowledge/:id/vote', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.vote')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
+    const previousVotes = article.helpful_votes;
     article.helpful_votes += 1;
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: article });
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: article });
+    } catch (persistenceError) {
+      article.helpful_votes = previousVotes;
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist knowledge-vote rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Vote gagal disimpan. Silakan coba kembali.' });
+    }
   });
 
-  app.post('/api/knowledge/:id/view', (req, res) => {
+  app.post('/api/knowledge/:id/view', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.read')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
+    const previousViews = article.view_count;
     article.view_count += 1;
-    persistDataStore().catch(() => {});
-    res.json({ success: true, data: article });
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: article });
+    } catch (persistenceError) {
+      article.view_count = previousViews;
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist knowledge-view rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Tampilan artikel gagal dicatat. Silakan coba kembali.' });
+    }
   });
 
   // Notifications
@@ -3439,6 +3855,10 @@ async function startServer() {
         return hasRbacPermission(String(actor.id), 'room_reservations.documentation.read');
       }
       return hasApplicationRole(actor, recipientRoleKey);
+    }
+    if (notification.recipient_unit_id) {
+      return actor.unit_id === notification.recipient_unit_id
+        && hasRbacScope(String(actor.id), 'unit', notification.recipient_unit_id, 'tickets', true);
     }
     if (notification.recipient_division) return notification.recipient_division === actor.division;
     return false;
@@ -3461,7 +3881,7 @@ async function startServer() {
     res.json({ success: true, data: filtered });
   });
 
-  app.patch('/api/notifications/:id/read', (req, res) => {
+  app.patch('/api/notifications/:id/read', async (req, res) => {
     if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
     
     const actor = getActor(req);
@@ -3470,19 +3890,39 @@ async function startServer() {
     if (!notif || !isRecipient) {
       return res.status(404).json({ success: false, message: 'Notifikasi tidak ditemukan.' });
     }
+    const previousNotification = { ...notif };
     notif.is_read = true;
-    res.json({ success: true, data: notif });
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: notif });
+    } catch (persistenceError) {
+      Object.assign(notif, previousNotification);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist notification-read rollback:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Status notifikasi gagal disimpan.' });
+    }
   });
 
-  app.post('/api/notifications/read-all', (req, res) => {
+  app.post('/api/notifications/read-all', async (req, res) => {
     
     if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
     const actor = getActor(req);
+    const previousNotifications = db.notifications.map(item => ({ ...item }));
     for (const n of db.notifications) {
       const isRecipient = isNotificationRecipient(actor, n);
       if (isRecipient) n.is_read = true;
     }
-    res.json({ success: true, message: 'Semua notifikasi ditandai telah dibaca' });
+    try {
+      await persistDataStore();
+      return res.json({ success: true, message: 'Semua notifikasi ditandai telah dibaca' });
+    } catch (persistenceError) {
+      db.notifications = previousNotifications;
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist read-all notification rollback:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Status notifikasi gagal disimpan.' });
+    }
   });
 
   // Dashboard Stats & Attention Center
@@ -3514,7 +3954,7 @@ async function startServer() {
       : db.tickets.filter(ticket =>
         ticket.reporter_id === actor.id
         || ticket.assigned_agent_id === actor.id
-        || canReadOwnerScope(ticket.category, 'tickets')
+        || hasTicketQueueScope(actor, ticket)
       );
 
     const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;
@@ -3557,6 +3997,7 @@ async function startServer() {
       loans: canReadLoans ? db.loans : [],
       tickets: canReadTickets ? db.tickets : [],
       canReadOwnerScope,
+      canReadTicketQueueScope: ticket => hasTicketQueueScope(actor, ticket),
     });
     res.json({ success: true, data: visibleItems });
   });
@@ -3572,7 +4013,7 @@ async function startServer() {
     res.json({ success: true, data: reconData });
   });
 
-  app.post('/api/reconciliation/link', (req, res) => {
+  app.post('/api/reconciliation/link', async (req, res) => {
     
     if (!requireRbacPermission(req, res, 'reconciliation.link')) return;
     const actor = getActor(req);
@@ -3583,12 +4024,23 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Anda tidak memiliki permission dan owner scope untuk mengubah data aset ini.' });
     }
 
+    const previousAsset = { ...asset };
+    const previousAuditLogs = db.auditLogs.slice();
     asset.corporate_asset_number = corporateAssetNumber ? corporateAssetNumber.trim() : null;
     asset.updated_at = new Date().toISOString();
 
-    GabahDomainService.recordAudit('RECONCILIATION_LINK', 'Assets', `Menautkan nomor aset Accurate "${corporateAssetNumber}" ke ${asset.asset_number}`, actor, asset.id);
-
-    res.json({ success: true, data: asset });
+    GabahDomainService.recordAudit('RECONCILIATION_LINK', 'Assets', `Menautkan nomor aset Accurate "${corporateAssetNumber}" ke ${asset.asset_number}`, actor, asset.id, false);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: asset });
+    } catch (persistenceError) {
+      Object.assign(asset, previousAsset);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist reconciliation rollback:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Tautan nomor aset gagal disimpan.' });
+    }
   });
 
   // Audit Logs
@@ -3905,12 +4357,12 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingRooms() });
   });
 
-  app.patch('/api/meeting-rooms/:id', (req, res) => {
+  app.patch('/api/meeting-rooms/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_rooms.update')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -4020,12 +4472,12 @@ async function startServer() {
     res.json({ success: true, data });
   });
 
-  app.post('/api/room-reservations', (req, res) => {
+  app.post('/api/room-reservations', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.create')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.requestRoomReservation(req.body, actor);
+      const created = await GabahDomainService.requestRoomReservation(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
       // RBAC: preserve domain-service status codes — 403 for override/interupsi
@@ -4040,60 +4492,60 @@ async function startServer() {
     }
   });
 
-  app.post('/api/room-reservations/:id/approve', (req, res) => {
+  app.post('/api/room-reservations/:id/approve', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.approve')) return;
     const actor = getActor(req);
-      const approved = GabahDomainService.approveRoomReservation(req.params.id, actor);
+      const approved = await GabahDomainService.approveRoomReservation(req.params.id, actor);
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/reject', (req, res) => {
+  app.post('/api/room-reservations/:id/reject', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.reject')) return;
     const actor = getActor(req);
-      const rejected = GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
+      const rejected = await GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
       res.json({ success: true, data: rejected });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/checkin', (req, res) => {
+  app.post('/api/room-reservations/:id/checkin', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.checkin')) return;
     const actor = getActor(req);
-      const checkedIn = GabahDomainService.checkinRoomReservation(req.params.id, actor);
+      const checkedIn = await GabahDomainService.checkinRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedIn });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/checkout', (req, res) => {
+  app.post('/api/room-reservations/:id/checkout', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.checkout')) return;
     const actor = getActor(req);
-      const checkedOut = GabahDomainService.checkoutRoomReservation(req.params.id, actor);
+      const checkedOut = await GabahDomainService.checkoutRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedOut });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/cancel', (req, res) => {
+  app.post('/api/room-reservations/:id/cancel', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.cancel')) return;
     const actor = getActor(req);
-      const cancelled = GabahDomainService.cancelRoomReservation(req.params.id, actor);
+      const cancelled = await GabahDomainService.cancelRoomReservation(req.params.id, actor);
       res.json({ success: true, data: cancelled });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -4107,39 +4559,39 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingTypes() });
   });
 
-  app.post('/api/meeting-types', (req, res) => {
+  app.post('/api/meeting-types', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.createMeetingType(req.body, actor);
+      const created = await GabahDomainService.createMeetingType(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.patch('/api/meeting-types/:id', (req, res) => {
+  app.patch('/api/meeting-types/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.delete('/api/meeting-types/:id', (req, res) => {
+  app.delete('/api/meeting-types/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const result = GabahDomainService.deleteMeetingType(req.params.id, actor);
+      const result = await GabahDomainService.deleteMeetingType(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4150,39 +4602,39 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingFacilities() });
   });
 
-  app.post('/api/meeting-facilities', (req, res) => {
+  app.post('/api/meeting-facilities', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.createMeetingFacility(req.body, actor);
+      const created = await GabahDomainService.createMeetingFacility(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.patch('/api/meeting-facilities/:id', (req, res) => {
+  app.patch('/api/meeting-facilities/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.delete('/api/meeting-facilities/:id', (req, res) => {
+  app.delete('/api/meeting-facilities/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const result = GabahDomainService.deleteMeetingFacility(req.params.id, actor);
+      const result = await GabahDomainService.deleteMeetingFacility(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4190,6 +4642,9 @@ async function startServer() {
   // VITE MIDDLEWARE (DEVELOPMENT vs PRODUCTION)
   // ==========================================
   if (process.env.NODE_ENV !== 'production') {
+    // Load Vite only in development. A static import makes the production bundle
+    // require Vite even though the middleware branch is never executed.
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

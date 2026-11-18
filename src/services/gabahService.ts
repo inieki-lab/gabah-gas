@@ -318,12 +318,24 @@ export function parseUsersImportCsv(
     if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di file (${email}).`); continue; }
     seenEmails.add(email);
     const roleRaw = iRole !== -1 ? (r[iRole] || '').trim() : '';
-    const role = normRole(roleRaw);
+    const matchedRole = roleRaw
+      ? validRoles.find(candidate => candidate.toLowerCase() === roleRaw.toLowerCase()) || normRole(roleRaw)
+      : 'Karyawan';
+    const legacyLocationRole = matchedRole === 'Supply Chain' || matchedRole === 'PIBC';
+    const role = legacyLocationRole ? 'Karyawan' : normRole(matchedRole);
     const divisionRaw = iDiv !== -1 ? (r[iDiv] || '').trim() : '';
-    const division = validDivisions.find(d => d.toLowerCase() === divisionRaw.toLowerCase()) || divisionRaw || 'Umum';
+    const matchedDivision = divisionRaw
+      ? validDivisions.find(d => d.toLowerCase() === divisionRaw.toLowerCase())
+      : validDivisions.find(d => d.toLowerCase() === 'umum');
+    if (!matchedDivision) {
+      errors.push(`Baris ${rowNo}: Divisi "${divisionRaw}" tidak terdaftar/aktif. Lokasi kantor harus diisi pada kolom office_location_id.`);
+      continue;
+    }
+    const division = matchedDivision;
     const jobLevelCode = iJobLevel !== -1 ? (r[iJobLevel] || '').trim().toUpperCase() : '';
     const unitId = iUnit !== -1 ? (r[iUnit] || '').trim().toUpperCase() : '';
-    const officeLocationId = iOffice !== -1 ? (r[iOffice] || '').trim().toUpperCase() : '';
+    const explicitOfficeLocationId = iOffice !== -1 ? (r[iOffice] || '').trim().toUpperCase() : '';
+    const officeLocationId = explicitOfficeLocationId || (matchedRole === 'Supply Chain' ? 'OFF-RPC' : matchedRole === 'PIBC' ? 'OFF-PIBC' : '');
     if (jobLevelCode && !validJobLevels.includes(jobLevelCode)) {
       errors.push(`Baris ${rowNo}: Kode jabatan "${jobLevelCode}" tidak ditemukan atau tidak aktif di master.`);
       continue;
@@ -673,7 +685,7 @@ export class GabahService {
     if (Array.isArray(user.permission_keys)) {
       return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
-    return ['Admin GABAH', 'IT', 'GA'].includes(user.role);
+    return ['Admin GABAH', 'IT'].includes(user.role);
   }
 
   /**
@@ -688,45 +700,31 @@ export class GabahService {
     // tickets scope. Do not apply a second, legacy role-label filter in React.
     if (Array.isArray(user.permission_keys)) return true;
 
-    // File-store compatibility below is intentionally limited to canonical
-    // legacy roles; production authorization is always enforced server-side.
-    // 1. IT and Super Admin (Admin GABAH) can see all tickets
-    if (user.role === 'Admin GABAH' || user.role === 'IT') {
-      return true;
-    }
-
-    // 1b. Auditor: strict read-only visibility over ALL tickets (never able to mutate)
-    if (user.role === 'Auditor') {
-      return true;
-    }
+    // File-store compatibility only. Assigned identity and ME unit are explicit;
+    // office location and legacy SC/PIBC labels never grant queue-wide access.
+    if (user.role === 'Admin GABAH' || user.role === 'Auditor') return true;
+    if (ticket.assigned_agent_id === user.id) return true;
+    if (ticket.assigned_unit_id && ticket.assigned_unit_id === user.unit_id) return true;
 
     const currentUserId = user.id || '';
     const isReporter = Boolean(
       (ticket.reporter_id && ticket.reporter_id === currentUserId) ||
-      isExactIdentityNameMatch(ticket.reporter_name, user.name)
+      (!ticket.reporter_id && isExactIdentityNameMatch(ticket.reporter_name, user.name))
     );
-
-    // 2. GA: can see tickets directed to GA (category 'GA'), or tickets reported by GA user themselves
-    if (user.role === 'GA') {
-      return ticket.category === 'GA' || isReporter;
-    }
-
-    // 2b. Employee baseline and other non-operational profiles see only
-    // their own submissions in file-store compatibility mode. Supply Chain
-    // and PIBC are organizational units/locations, never implicit queue roles.
-
-    // 3. All other users (Karyawan, Humas, Sekretaris Direksi, Auditor, etc.):
-    // ONLY see tickets where they are the reporter
-    return isReporter;
+    if (isReporter) return true;
+    if (user.role === 'IT') return ticket.category === 'IT';
+    return false;
   }
 
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     if (Array.isArray(user.permission_keys)) {
-      return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+      return ticket.can_manage === true && (user.permission_keys.includes('*') || user.permission_keys.includes('tickets.update'));
     }
-    if (user.role === 'Admin GABAH' || user.role === 'IT') return true;
-    if (user.role === 'GA' && ticket.category === 'GA') return true;
+    if (ticket.assigned_agent_id === user.id) return true;
+    if (ticket.assigned_unit_id && ticket.assigned_unit_id === user.unit_id) return true;
+    if (user.role === 'Admin GABAH') return true;
+    if (user.role === 'IT' && ticket.category === 'IT') return true;
     return false;
   }
 

@@ -1,3 +1,15 @@
+## [2026-11-18] — RBAC audit durability, Auditor scope, and asset category fail-closed
+
+- Asset creation form now fails closed when the server-authorized category list is loading, empty, or unavailable; the submit handler revalidates the active category against the authorized master list.
+- Custom License categories initialize license detail data from the selected master category's `category_type`.
+- Dynamic user-role assignment inserts `RBAC_USER_ROLES_UPDATED` inside the same PostgreSQL transaction as the assignment replacement; the committed audit row is published to memory before policy cache refresh.
+- PostgreSQL startup merges normalized `audit_logs` rows into the hydrated state by stable ID so transactionally committed audit evidence is not lost when the JSON state snapshot is older.
+- Migration 091 makes `audit_logs` append-only at the database boundary: UPDATE, DELETE, and TRUNCATE are rejected with SQLSTATE 55000.
+- Migration 099 grants Auditor a global read scope only for the `audit` module; Auditor as an additional role can read authorized cross-domain audit records while write APIs remain denied.
+- Removed the unused legacy role-scope helper that still identified Supply Chain and PIBC as application roles.
+- Updated T2B-1/2/3 regression fixtures to create new records under valid owner domains while retaining PIBC/RPC as independent physical locations.
+- Added live PostgreSQL checks for role assignment/audit persistence after restart, Auditor cross-domain read/write boundaries, append-only audit enforcement, and protection of the last active Superadmin.
+- Exact code head `075bb60acc5419c7c887199faa95584e074473f7`: CI #2332 SUCCESS (PostgreSQL 17, P0 security, RBAC, asset, ticket/ME, loan, maintenance, production build, Docker runtime smoke).
 ## [2026-11-17] — PostgreSQL concurrency safeguards and license module routing
 
 - Replace process-local asset sequence issuance in PostgreSQL mode with a transactionally allocated `asset_number_sequences` row protected by `SELECT ... FOR UPDATE`; bootstrap legacy counters from persisted asset numbers.

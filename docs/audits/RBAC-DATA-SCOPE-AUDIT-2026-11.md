@@ -251,3 +251,157 @@ Endpoint dashboard sudah memfilter kartu pinjaman dengan borrower sendiri atau s
 
 ### Status verifikasi
 Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI exact head belum berjalan.
+
+
+## Pembaruan audit — 18 November 2026: legacy SC/PIBC masih tertanam di domain
+
+Pemeriksaan ulang source pada head PR #120 menemukan bahwa keputusan organisasi di atas belum sepenuhnya tercermin dalam implementasi:
+
+- `server/migrations/006_org_model_masters.sql` masih men-seed `UNIT-SC` dengan `division_code='SC'` dan `UNIT-PIBC` dengan `division_code='PIBC'`.
+- `server/db.ts` masih memuat dua unit tersebut dan tipe `OrgUnit.division_code` masih mencakup `SC | PIBC`.
+- `server/managing-unit.ts` masih memiliki aturan backfill owner-domain SC → UNIT-SC dan PIBC → UNIT-PIBC.
+- `src/types.ts` masih mendefinisikan `TicketCategory = IT | GA | SC | PIBC`; `CreateTicketModal.tsx` menampilkan Supply Chain dan PIBC sebagai pilihan Departemen Penanganan dan otomatis memilih kategori itu dari `asset.owner_division`.
+- `server.ts` masih memiliki alias login berbasis role Supply Chain/PIBC pada jalur file-store non-PostgreSQL. Jalur ini harus tetap terbatas pada kompatibilitas development dan tidak boleh menjadi sumber identitas/otorisasi production.
+
+Ini bukan bukti bahwa semua data SC/PIBC harus langsung dihapus atau dipindahkan. Nilai lama mungkin masih dipakai oleh aset, kontrak, notifikasi, dan histori. Migrasi massal berdasarkan lokasi dilarang. Namun, **target organisasi belum tercapai**: unit/lokasi SC dan PIBC masih beririsan dengan kode divisi/owner domain di seed, tipe, dan routing tiket.
+
+### Tindakan wajib sebelum release
+
+1. Inventarisasi seluruh pemakaian kode SC/PIBC pada user, org_units, asset owner, managing_unit, kategori tiket, kontrak, notifikasi, numbering, laporan, dan audit.
+2. Tetapkan secara eksplisit domain pemilik/penangan operasional yang sah. Lokasi RPC/SC dan PIBC tidak otomatis menjadi domain otorisasi.
+3. Buat migration additive dan idempotent yang memisahkan atribut unit/lokasi dari owner-domain; pertahankan histori dan tandai data ambigu untuk review Super Admin.
+4. Perbarui resolver, validasi API, UI, dashboard, notification routing, search/export, serta laporan secara konsisten.
+5. Uji fresh database dan upgrade database berisi data legacy, termasuk list/detail/mutasi dan negative cross-scope tests.
+
+**Status: RELEASE BLOCKER.** Jangan menonaktifkan atau menghapus kode SC/PIBC sebelum mapping aset/transaksi historis disetujui. Jangan mengklaim model organisasi sudah sepenuhnya dinamis hanya berdasarkan CI hijau.
+
+
+## Update 18 November 2026 — ticket routing branch
+
+PR #121 (`fix/ticket-routing-me-unit-scope`) implements a first selective correction for the ticket-domain conflation recorded above. It introduces a separate ME operational unit at PIBC, exact ticket-module scope enforcement, explicit GA/ME requester and operator roles, scoped dispatch endpoints, and unit-aware dashboard filtering. Legacy SC/PIBC ticket categories and asset owners are retained without automatic migration.
+
+This does **not** resolve every SC/PIBC legacy asset/contract ownership record. It only prevents those labels/locations from becoming new ticket categories or implicit ticket queue grants. Full asset/contract classification remains a separate review. CI #2197 passed 67/67 steps, including PostgreSQL 17 fresh database/persistence, Docker runtime, P0 security, and ticket-routing regressions. Upgrade rehearsal against a copy of legacy data and browser UAT/sign-off remain open; do not mark the audit or release gate complete yet.
+
+
+## Follow-up source scan — remaining SC/PIBC asset, dashboard, and contract references (18 November 2026)
+
+A second source scan on the consolidated PR #121 branch found the following remaining references. These are not all authorization bypasses; several are legacy-data display or file-store compatibility. They must nevertheless be reconciled before claiming the organization model is complete.
+
+| Source | Remaining behavior | Risk / required follow-up |
+|---|---|---|
+| `src/components/modals/CreateAssetModal.tsx` | Category visibility is still filtered by primary role labels IT/GA/Supply Chain/PIBC. Unknown/non-IT/non-GA roles fall through to the full static taxonomy. | UI does not yet reflect effective owner-domain create permission/scope. Server-side create guard remains authoritative, but the form can expose invalid options or hide valid custom-role options. Replace with server-calculated allowed owner domains and filter subcategories by taxonomy owner. |
+| `server/taxonomy.ts` | Initial taxonomy still contains SC/PIBC owner-domain seeds and legacy categories such as KDR-SC/MSN/MSN-PIBC. | Do not mass-reassign these rows. Mark legacy owner values as review-required and prevent new use until an approved owner-domain map exists. |
+| `server/db.ts` | Seed/sample assets still contain owner_division SC/PIBC; `UNIT-SC` and `UNIT-PIBC` still have `division_code=SC/PIBC`. | Historical examples and managing-unit mappings still conflate legacy owner values with organizational units. Needs additive data classification and explicit mapping, not location-based rewrite. |
+| `src/components/views/AssetsView.tsx` | Asset filter still labels SC/PIBC owner values as division filters. | Rename as legacy owner classification / review queue; it must not imply these are current application divisions. |
+| `src/components/views/DashboardView.tsx` | Dashboard still calculates SC/PIBC owner counts; permission fallback includes old profile labels for file-store mode. | Production permission path is dynamic, but labels and aggregates need to distinguish legacy owner data from current organization. |
+| `src/components/views/ContractsView.tsx` | File-store fallback arrays still include Supply Chain/PIBC for contract actions. | PostgreSQL permission checks remain authoritative; remove legacy profile fallback and test file-store deny-by-default. |
+| `src/components/modals/CreateLoanModal.tsx` | Loan pool summary still counts SC-owned legacy assets. | Preserve historical loanable assets, but label as legacy owner classification; do not derive loan authorization from this count. |
+
+### Follow-up priority
+
+1. Add a server endpoint that returns effective asset-create owner domains for the authenticated user; make CreateAssetModal consume that result instead of primary role labels.
+2. Create a Superadmin review queue for assets with owner values SC/PIBC and unresolved managing-unit mapping. Do not mutate owner/history until each record is classified.
+3. Relabel SC/PIBC dashboard and asset filters as legacy owner values, not divisions.
+4. Remove file-store contract permission fallback for Supply Chain/PIBC and add negative tests.
+5. Only after asset and contract ownership mapping is approved, add an additive migration to move records into canonical owner domains and preserve audit history.
+
+**Status: OPEN.** PR #121 resolves ticket category/queue routing only. It does not yet complete asset taxonomy, asset create UI, contract ownership, or historical data classification.
+
+
+### CI refresh — 18 November 2026
+
+- Exact head: `d1f9fd93b1a5f5864270a813d35d28717b406010`.
+- GitHub Actions run #2204: 67/67 steps passed, including `npm run lint`, production build, Docker runtime smoke, PostgreSQL 17 fresh-database/persistence (migration 098 is present in the migration ledger), P0 live HTTP security, ticket reporter ownership (22/22), ticket routing/unit-scope contract (37/37), and related-asset scope regression.
+- This refresh does not change the remaining release blockers: upgrade rehearsal against a copied legacy database and browser UAT/sign-off per persona remain BLOCKED/not yet evidenced.
+
+
+### Additional routing hardening — 18 November 2026
+
+Source review found two operational edge cases and added regression coverage:
+
+- When there is not exactly one eligible IT assignee, queue notifications are now sent only to active IT-scope users who also have `notifications.read`; ticket-read permission alone is insufficient to receive notification records.
+- New ME requests now fail closed with HTTP 409 if the configured `UNIT-PIBC-ME` operational unit is inactive or missing.
+- The ticket-routing contract suite now verifies both rules; CI #2204 passed 37/37 checks.
+
+
+### CI refresh after rehearsal procedure + Compose isolation — 18 November 2026
+
+- Exact head: `900a0a36e04385cb3aad8ab5d3f127e25522c2dd`.
+- GitHub Actions CI run #2211 (run ID `44294634254`): **67/67 steps passed**. The new first-step Compose validation checks both the normal stack and the isolated rehearsal override.
+- The rehearsal override uses a separate Compose project name, project-scoped volumes/networks, unique host ports, and removes fixed container names so the copy can coexist with the normal GABAH stack.
+- The rehearsal procedure is documented at `docs/ops/LEGACY-DATABASE-UPGRADE-REHEARSAL.md`; it remains **NOT EXECUTED** until an operator supplies a verified pre-098 backup and captures pre/post row-identity evidence.
+- CI success proves configuration validation and the fresh-database migration path; it does **not** prove upgrade safety against a legacy database. Browser UAT, backup/restore rehearsal, and business-owner sign-off remain release blockers.
+
+## 18 November 2026 — follow-up hardening on release candidate
+
+### Asset creation owner-domain options
+- Added `GET /api/assets/creation-categories`, which requires `assets.create` and filters active category master rows by the actor's effective `assets` owner-domain scope. License categories additionally require `licenses.manage`.
+- `CreateAssetModal` no longer derives create authority from primary role labels such as IT, GA, Supply Chain, or PIBC. The selected category's configured `owner_division` is authoritative; non-Superadmin users cannot override it in the browser.
+- Owner-domain options are derived from the authorized category master rather than a fixed IT/GA/SC/PIBC dropdown. Empty or failed responses fail closed and do not fall back to static role-based category choices.
+- Added CI contract coverage in `scripts/asset-creation-scope-verify.mjs`.
+
+### Durable persistence and rollback
+- Asset PATCH now awaits persistence before success and restores the asset plus audit entry if the write fails.
+- Maintenance create/update now await persistence and roll back the schedule and audit entry on failure.
+- Vendor create/update and Knowledge Base create/update/vote/view now await persistence; failed writes restore the in-memory record/counter and remove the associated audit event where applicable.
+- Self-service password change now persists the new password hash before revoking sessions. On persistence failure, the prior credentials remain in force and sessions are not revoked.
+- The legacy post-response persistence safety net now catches and logs rejected writes rather than producing an unhandled promise rejection. It remains a compatibility fallback, not proof that a route's own write is durable.
+- Added source regression coverage in `scripts/domain-persistence-verify.mjs`, and extended asset/maintenance regression checks.
+
+### Verification status
+- These changes are committed to the PR #121 head. A fresh exact-head CI run is required; no pass is claimed yet.
+- Browser UAT, legacy database upgrade rehearsal, backup/restore rehearsal, and real-user role assignment remain separate release gates.
+
+### SC/PIBC location-vs-owner separation
+- Removed Supply Chain and PIBC legacy labels from fallback role navigation and dashboard legacy permission grants. They no longer receive application access merely because a user profile contains one of those old labels.
+- New asset-category creation and new asset creation reject SC/PIBC/Supply Chain as owner-domain values. Existing historical categories/assets are retained; the change does not mass-reclassify records.
+- Administration user, category, unit, and numbering forms now source active owner choices from the owner-domain master while excluding legacy SC/PIBC values. Existing legacy user/category values remain visible as explicitly marked review options so records can be corrected deliberately.
+- Asset and contract screens expose historical SC/PIBC records only through an “Owner lama (perlu review)” filter/label, not as active divisions. Dashboard summary groups them into one legacy-review count.
+- `ASSET_OWNER_DIVISIONS` now seeds only IT and GA; taxonomy aliases remain available for historical data compatibility.
+- Added `scripts/legacy-owner-presentation-verify.mjs` to CI.
+
+### Exact-head CI
+- A fresh CI run is in progress for the latest PR #121 head. Earlier failures exposed and were corrected: malformed static-test regex, owner guard placed before owner resolution, outdated Knowledge Base async-route expectation, and the AdministrationModal memo-hook namespace.
+- No CI pass is claimed until the latest exact-head run completes successfully.
+
+### Durable domain-service writes
+- Added an awaited persistence/rollback helper to `GabahDomainService`.
+- Asset create, assign/unassign, move, and lifecycle mutations now commit before success; failed writes restore asset state, movement history, and audit entries.
+- Room reservation create/approve/reject/check-in/check-out/cancel and meeting-room master updates now commit before success; failed writes restore reservation/room state, notifications, and audit entries.
+- Meeting type and meeting facility create/update/delete now use the same durable-write contract.
+- Service audit events for these operations are included in the same awaited commit; the guarded audit fallback remains only for older handlers that have not yet been migrated.
+- Corresponding Express handlers now await the asynchronous service methods.
+- Added `scripts/domain-service-persistence-verify.mjs`; the existing asset assignment fixture was updated to await asynchronous service results.
+
+### Loan and helpdesk transaction durability
+- Loan request, approval, rejection, physical handover, and return now await durable persistence. A failed write restores loan state, linked asset state, notifications, and audit entries.
+- Bulk loan requests retain one atomic persistence boundary: each candidate is validated without an intermediate commit; the batch commits once, and a failed batch restores the complete pre-request snapshot.
+- Ticket creation now awaits persistence and rolls back the new ticket, notifications, and audit trail if the write fails.
+- Express routes await these asynchronous domain services; duplicate post-service persistence calls were removed from the single-item paths.
+- Expanded `scripts/domain-service-persistence-verify.mjs` to cover asset, loan, ticket, room reservation, meeting room, meeting type, and facility service/route contracts.
+
+### Remaining direct mutation handlers
+- Login now awaits audit/credential persistence before issuing a session; failed persistence destroys the newly created session and restores any legacy temporary-password migration.
+- Individual and bulk notification-read mutations now await persistence and restore prior read state on failure.
+- Accurate reconciliation linking now awaits persistence and rolls back the asset reference and audit entry if the write fails.
+- Remaining mutating routes without a local snapshot commit are PostgreSQL transaction-backed RBAC/module registry handlers; taxonomy resolve is a read-only POST.
+
+## 18 November 2026 — follow-up batch: category creation, RBAC audit durability, and regression alignment
+
+### Fixed
+- Asset creation UI now fails closed while the authorized category master is loading, empty, or unavailable. It no longer falls back to the static taxonomy for a live create form; submit revalidates the selected code against the server-authorized active master list.
+- Custom License master categories initialize `license_detail` based on the selected master row's `category_type`, not the static parent category label.
+- Dynamic user-role assignment now writes the `RBAC_USER_ROLES_UPDATED` audit row inside the same PostgreSQL transaction as the full assignment-set replacement. If the audit insert fails, the role assignment transaction rolls back.
+- PostgreSQL startup now merges normalized `audit_logs` rows into the in-memory audit collection by stable ID before startup persistence sync. This prevents transactionally committed audit rows from being lost when the older `gabah_state` JSON payload is hydrated.
+- Removed an unused legacy role-scope helper that still named Supply Chain and PIBC as application roles, avoiding future accidental reuse of location labels as authorization roles.
+- Corrected T2B-1, T2B-2, and T2B-3 regression fixtures that attempted to create new owner=SC/PIBC assets/categories. New records now use valid owner domains; physical locations remain independently testable as PIBC/RPC.
+- Added regression checks for fail-closed asset category loading/submission, transactional role-assignment audit ordering, and persistence of role assignments/audit evidence across restart.
+
+### Verification
+- Exact-head CI #2319 for `7e0f763eea99f5ebfbe7201b63c40dadfb548c64`: **SUCCESS**. Dependency gate, lint/typecheck, production build, Docker image/runtime smoke, PostgreSQL 17 fresh-database/persistence integration, P0 security, RBAC, ticket/ME routing, loan, organization, asset managing-unit/location/category, and maintenance suites passed.
+- CI #2317 also passed after the SC/PIBC fixture alignment; it exposed the additional static-category fallback defect, which was fixed and covered in CI #2319.
+- CI is automated evidence only. Browser UAT by each actual persona, legacy-database upgrade rehearsal, backup/restore including uploads, staging deployment, and business-owner sign-off remain outstanding.
+
+### Release posture
+- Candidate branch remains `fix/ticket-routing-me-unit-scope` / PR #121.
+- No merge to `main` and no production deployment is authorized by these CI results alone. Branch reconciliation, manual UAT, legacy upgrade and recovery rehearsal remain release gates.

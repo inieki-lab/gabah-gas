@@ -74,10 +74,10 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
       // Division filter
       if (selectedDivision !== 'ALL') {
         const div = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : '');
-        if (selectedDivision === 'SC') {
-          if (div !== 'SC' && div !== 'Supply Chain') return false;
-        } else if (selectedDivision === 'PIBC') {
-          if (div !== 'PIBC') return false;
+        if (selectedDivision === 'LEGACY') {
+          // Keep historical SC/PIBC owner values visible for Superadmin review,
+          // but never present those location labels as active divisions.
+          if (!['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(div).trim().toUpperCase())) return false;
         } else if (selectedDivision === 'IT') {
           if (div !== 'IT') return false;
         } else if (selectedDivision === 'GA') {
@@ -216,13 +216,12 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
 
           {/* Division Tabs */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto">
-            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Devisi:</span>
+            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Pemilik:</span>
             {[
-              { id: 'ALL', label: 'Semua Devisi' },
+              { id: 'ALL', label: 'Semua Owner' },
               { id: 'IT', label: 'IT' },
               { id: 'GA', label: 'GA' },
-              { id: 'SC', label: 'SC' },
-              { id: 'PIBC', label: 'PIBC' },
+              { id: 'LEGACY', label: 'Owner lama (review)' },
             ].map(d => (
               <button
                 key={d.id}

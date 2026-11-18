@@ -27,6 +27,10 @@
     "test:dashboard-scope": "tsx scripts/dashboard-scope-verify.ts",
     "test:dashboard-attention-scope": "tsx scripts/dashboard-attention-scope-verify.ts",
     "test:asset-scope-policy": "node scripts/asset-scope-policy-verify.mjs",
+    "test:asset-creation-scope": "node scripts/asset-creation-scope-verify.mjs",
+    "test:domain-persistence": "node scripts/domain-persistence-verify.mjs",
+    "test:legacy-owner-presentation": "node scripts/legacy-owner-presentation-verify.mjs",
+    "test:domain-service-persistence": "node scripts/domain-service-persistence-verify.mjs",
     "test:asset-assignment-active-user": "node --import tsx scripts/asset-assignment-active-user-verify.mjs",
     "test:asset-category-filter": "tsx scripts/asset-category-filter-verify.ts",
     "test:branch-migration-safety": "node scripts/branch-migration-safety-verify.mjs",
@@ -49,6 +53,7 @@
     "test:ticket-resolution-notes": "node scripts/ticket-resolution-notes-verify.mjs",
     "test:telegram-chat-id-redaction": "node scripts/telegram-chat-id-redaction-verify.mjs",
     "test:ticket-reporter-ownership": "node scripts/ticket-reporter-ownership-verify.mjs",
+    "test:ticket-routing-unit-scope": "node scripts/ticket-routing-unit-scope-verify.mjs",
     "test:ticket-related-asset-scope": "node --import tsx scripts/ticket-related-asset-scope-verify.mjs",
     "test:org-master-active": "node scripts/org-master-active-verify.mjs",
     "test:numbering-rules": "node --import tsx scripts/numbering-rule-verify.mjs",
@@ -61,13 +66,10 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
     "lucide-react": "^0.546.0",
     "multer": "^2.5.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.4.6",
     "express": "^4.21.2",
     "dotenv": "^17.2.3",
     "motion": "^12.23.24",
@@ -82,6 +84,8 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.4.6",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4"
   }
 }
