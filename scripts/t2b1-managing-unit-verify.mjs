@@ -29,9 +29,9 @@ const req = async (b, m, p, o = {}) => {
   return { status: r.status, json: j };
 };
 
-// Aturan mapping deterministik (harus identik dengan server/managing-unit.ts
-// dan backfill SQL di server/migrations/007_asset_managing_unit.sql).
-const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: 'UNIT-SC', PIBC: 'UNIT-PIBC', GA: null };
+// Default unit hanya boleh diturunkan dari owner domain operasional yang valid.
+// SC/PIBC adalah kode lokasi legacy; keduanya tidak boleh menentukan unit pengelola.
+const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: null, PIBC: null, GA: null };
 
 async function boot(sp, port, env) {
   const c = spawn(process.execPath, [sp], {
@@ -92,7 +92,7 @@ async function main() {
       if (exp === 'ANY' && a.managing_unit_id !== null) cOk = false;
     }
     rec('C1: seed aset per divisi punya managing_unit_id (ownership mapping)',
-      `IT→UNIT-IT-MIS, SC→UNIT-SC, PIBC→UNIT-PIBC, GA→null`,
+      `IT→UNIT-IT-MIS, SC/PIBC→null (legacy location), GA→null`,
       JSON.stringify(divCounts) + (cUndefined ? ` (${cUndefined} undefined!)` : ''),
       cOk && cUndefined === 0);
     rec('C2: seed memuat divisi IT & GA untuk bukti mapping', 'ada', `IT=${divCounts.IT || 0}, GA=${divCounts.GA || 0}, SC=${divCounts.SC || 0}, PIBC=${divCounts.PIBC || 0}`,
@@ -101,14 +101,14 @@ async function main() {
     rec('C3: aset GA TIDAK ditebak ke unit manapun (2 kandidat → null)', 'null', `${gaSeed?.managing_unit_id}`, gaSeed && gaSeed.managing_unit_id === null);
 
     // ---------- Test A: create/update membawa managing_unit_id ----------
-    // A1: create eksplisit (owner PIBC via kategori MSN yang boleh di-override)
+    // A1: owner GA dengan unit pengelola eksplisit; unit tidak disimpulkan dari lokasi/owner lain.
     const a1 = await req(s1.base, 'POST', '/api/assets', {
       token: admin,
-      body: { category_name_or_code: 'MSN', owner_division: 'PIBC', name: 'Aset Uji T2B-1 (explicit)', location: 'RPC', managing_unit_id: 'UNIT-PIBC' },
+      body: { category_name_or_code: 'MSN', owner_division: 'GA', name: 'Aset Uji T2B-1 (explicit)', location: 'PIBC', managing_unit_id: 'UNIT-GA-SARPRAS' },
     });
     const created1 = a1.json?.data;
-    rec('A1: create asset dengan managing_unit_id eksplisit', '201 + UNIT-PIBC',
-      `${a1.status} + ${created1?.managing_unit_id}`, a1.status === 201 && created1?.managing_unit_id === 'UNIT-PIBC' && created1?.owner_division === 'PIBC');
+    rec('A1: create asset dengan owner GA dan managing unit eksplisit', '201 + UNIT-GA-SARPRAS',
+      `${a1.status} + ${created1?.managing_unit_id}`, a1.status === 201 && created1?.managing_unit_id === 'UNIT-GA-SARPRAS' && created1?.owner_division === 'GA');
 
     // A2: create tanpa field → default dari ownership (bukan lokasi)
     const a2 = await req(s1.base, 'POST', '/api/assets', {
@@ -121,11 +121,11 @@ async function main() {
 
     // A3: update (PATCH) mengganti managing_unit_id tanpa mengubah asset_number
     const numBeforePatch = created1?.asset_number;
-    const a3 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-SC' } });
+    const a3 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-GA-UMUM' } });
     rec('A3: PATCH managing_unit_id → 200 + nilai berubah + asset_number tetap',
-      '200 + UNIT-SC + number sama',
+      '200 + UNIT-GA-UMUM + number sama',
       `${a3.status} + ${a3.json?.data?.managing_unit_id} + ${a3.json?.data?.asset_number === numBeforePatch ? 'sama' : 'BERUBAH'}`,
-      a3.status === 200 && a3.json?.data?.managing_unit_id === 'UNIT-SC' && a3.json?.data?.asset_number === numBeforePatch);
+      a3.status === 200 && a3.json?.data?.managing_unit_id === 'UNIT-GA-UMUM' && a3.json?.data?.asset_number === numBeforePatch);
 
     // A4: PATCH null eksplisit → diterima (nullable)
     const a4 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: null } });
@@ -177,7 +177,7 @@ async function main() {
     const createdInFile = fileAssets.find(a => a.id === created1?.id);
     rec('F1: JSON fallback menyimpan managing_unit_id (semua aset punya key)', 'true + ada',
       `key=${allHaveKey}/${fileAssets.length} + created=${createdInFile?.managing_unit_id}`,
-      allHaveKey && createdInFile?.managing_unit_id === 'UNIT-PIBC');
+      allHaveKey && createdInFile?.managing_unit_id === 'UNIT-GA-SARPRAS');
 
     kill(s1.c); s1 = null;
 
