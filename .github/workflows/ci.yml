@@ -29,7 +29,9 @@ jobs:
       - name: Validate Docker Compose configuration
         env:
           PGPASSWORD: ci-validation-only-not-a-secret
-        run: docker compose config --quiet
+        run: |
+          docker compose config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.rehearsal.yml config --quiet
 
       - name: Validate deployment shell script
         run: bash -n deploy.sh
