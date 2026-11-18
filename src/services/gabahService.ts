@@ -319,12 +319,8 @@ export function parseUsersImportCsv(
     seenEmails.add(email);
     const roleRaw = iRole !== -1 ? (r[iRole] || '').trim() : '';
     const matchedRole = roleRaw
-      ? validRoles.find(candidate => candidate.toLowerCase() === roleRaw.toLowerCase())
+      ? validRoles.find(candidate => candidate.toLowerCase() === roleRaw.toLowerCase()) || normRole(roleRaw)
       : 'Karyawan';
-    if (!matchedRole) {
-      errors.push(`Baris ${rowNo}: Label profil "${roleRaw}" tidak dikenal untuk impor. Gunakan label profil utama yang tersedia; hak fungsi ditetapkan melalui Dynamic RBAC.`);
-      continue;
-    }
     const legacyLocationRole = matchedRole === 'Supply Chain' || matchedRole === 'PIBC';
     const role = legacyLocationRole ? 'Karyawan' : normRole(matchedRole);
     const divisionRaw = iDiv !== -1 ? (r[iDiv] || '').trim() : '';
