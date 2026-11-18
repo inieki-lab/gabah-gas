@@ -36,6 +36,7 @@ const checks = [
   ['Ticket and notification schemas support unit routing', migration.includes('ADD COLUMN IF NOT EXISTS assigned_unit_id') && migration.includes('ADD COLUMN IF NOT EXISTS recipient_unit_id')],
   ['Migration preserves historical SC/PIBC ticket categories', migration.includes('Historical SC/PIBC ticket categories') && !/UPDATE tickets SET category/.test(migration)],
   ['GA generic role no longer receives ticket operator privileges', /DELETE FROM gabah_role_permissions rp[\s\S]*r\.role_key = 'ga'[\s\S]*tickets\.update'[\s\S]*tickets\.assign'/.test(migration)],
+  ['GA and legacy SC/PIBC profiles lose implicit queue scopes', /DELETE FROM gabah_role_division_scopes s[\s\S]*r\.role_key = 'ga'[\s\S]*s\.module = 'tickets'[\s\S]*division/.test(migration) && /r\.role_key IN \('supply_chain', 'pibc'\)[\s\S]*s\.module = 'tickets'/.test(migration)],
   ['GA operator role is explicit and not auto-assigned', migration.includes("'ga_helpdesk_operator'") && !/INSERT INTO gabah_user_roles[\s\S]*ga_helpdesk_operator/.test(migration)],
   ['ME admin role receives unit scope, not PIBC division scope', /'unit', 'UNIT-PIBC-ME'/.test(migration) && !/'division', 'PIBC'[\s\S]*UNIT-PIBC-ME/.test(migration)],
   ['GA and ME requester capabilities are opt-in', migration.includes('tickets.create.ga') && migration.includes('tickets.create.me') && migration.includes('pemohon_tiket_ga') && migration.includes('pemohon_tiket_me')],
