@@ -196,6 +196,9 @@ jobs:
       - name: Telegram chat ID response redaction
         run: npm run test:telegram-chat-id-redaction
 
+      - name: Reminder failure payload rendering regression
+        run: npm run test:reminder-failure-payload
+
       - name: Contract renewal linkage integrity
         run: npm run test:contract-renewal-integrity
 
