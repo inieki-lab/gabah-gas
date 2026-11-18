@@ -3014,6 +3014,15 @@ async function startServer() {
         ticket.updated_at = previousState.updated_at;
         const auditIndex = db.auditLogs.findIndex(entry => entry.id === auditEntry.id);
         if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+        // persistDataStore snapshots the in-memory state to the local fallback
+        // before attempting PostgreSQL. After rollback, write the restored
+        // snapshot too, so a development restart cannot resurrect the failed
+        // status transition from the fallback file.
+        try {
+          await persistDataStore();
+        } catch (rollbackPersistenceError: any) {
+          console.error('[GABAH Tickets] Failed to persist rollback snapshot:', rollbackPersistenceError.message || rollbackPersistenceError);
+        }
         return res.status(500).json({
           success: false,
           message: persistenceError.message || 'Gagal menyimpan perubahan status tiket.',
