@@ -156,7 +156,7 @@ async function main() {
     const d2 = r2.json?.data || {};
     record('Second import updates existing email', 'updated=1', `updated=${d2.updated}`, d2.updated === 1);
     record('Second import creates new accounts for profile labels', 'created=2', `created=${d2.created}`, d2.created === 2);
-    record('Legacy location labels do not infer office location', 'warning asks explicit office_location_id', (d2.warnings || []).join(' | '), (d2.warnings || []).some(w => w.includes('lokasi kantor tidak ditebak')));
+    record('Legacy location labels normalize to Karyawan and map to office location', 'warnings mention Karyawan + OFF-RPC/OFF-PIBC', (d2.warnings || []).join(' | '), (d2.warnings || []).some(w => w.includes('dinormalisasi menjadi Karyawan')));
 
     // ---------- Verify persisted state ----------
     const list = await req(base, 'GET', '/api/users', { token: adminToken });
@@ -175,9 +175,9 @@ async function main() {
     const unknownRoleUser = users.find(u => u.email === `impor.tiga.${suffix}@foodstation.co.id`);
     record('Custom profile label is retained', 'Peran Ngawur', unknownRoleUser?.role || 'not created', unknownRoleUser?.role === 'Peran Ngawur');
     const branchUser = users.find(u => u.email === `impor.empat.${suffix}@foodstation.co.id`);
-    record('PIBC profile does not infer office location', 'PIBC / no office assignment', `${branchUser?.role} / ${branchUser?.office_location_id || 'none'}`, branchUser?.role === 'PIBC' && !branchUser?.office_location_id);
+    record('Legacy PIBC label becomes Karyawan at PIBC location', 'Karyawan / OFF-PIBC / no location unit', `${branchUser?.role} / unit=${branchUser?.unit_id || 'none'} / ${branchUser?.office_location_id || 'none'}`, branchUser?.role === 'Karyawan' && !branchUser?.unit_id && branchUser?.office_location_id === 'OFF-PIBC');
     const rpcUser = users.find(u => u.email === `impor.lima.${suffix}@foodstation.co.id`);
-    record('Supply Chain profile does not infer office location', 'Supply Chain / no office assignment', `${rpcUser?.role} / ${rpcUser?.office_location_id || 'none'}`, rpcUser?.role === 'Supply Chain' && !rpcUser?.office_location_id);
+    record('Legacy Supply Chain label becomes Karyawan at RPC/SC location', 'Karyawan / OFF-RPC / no location unit', `${rpcUser?.role} / unit=${rpcUser?.unit_id || 'none'} / ${rpcUser?.office_location_id || 'none'}`, rpcUser?.role === 'Karyawan' && !rpcUser?.unit_id && rpcUser?.office_location_id === 'OFF-RPC');
     const functionRoleUser = users.find(u => u.email === `impor.humas.${suffix}@foodstation.co.id`);
     record('Function profile is retained without access-role implication', 'Humas', functionRoleUser?.role || 'not created', functionRoleUser?.role === 'Humas');
 
