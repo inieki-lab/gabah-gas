@@ -1917,7 +1917,9 @@ async function startServer() {
         'MasterData',
         `Memperbarui master kategori ${target.code} - ${target.name}${is_active !== undefined ? (target.is_active ? ' (diaktifkan)' : ' (dinonaktifkan)') : ''}`,
         actor,
-      , false);
+        undefined,
+        false,
+      );
       await persistDataStore();
       res.json({ success: true, data: target });
     } catch (err: any) {
