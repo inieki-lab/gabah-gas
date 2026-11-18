@@ -631,3 +631,15 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Exact branch head `0416c2e035b2b635b4c6d02b1287d953c3dd9db6` passed workflow run `44217401104` with all 76 steps successful.
 
 **Checklist:** numbering localStorage shadow = removed; backup uses database rules/counters = implemented; final company numbering standard = OPEN; SC/PIBC owner-domain normalization = OPEN pending safe ownership mapping.
+
+## 26. Master location/division local-shadow removal — 18 November 2026
+
+- Removed browser `localStorage` shadows `gabah_master_locations` and `gabah_org_divisions` from Administration. The UI now starts with empty collections and uses the `/api/master/locations` and `/api/master/divisions` responses as the source of truth, including valid empty arrays.
+- On master-data fetch failure, the location/division collections are cleared and an error toast is shown instead of continuing to display stale browser-cached values.
+- Removed the `Reset Default` division action because it only reset client state/localStorage and had no server-side reset API. Existing create/edit/delete operations remain server-backed.
+- Fixed location creation to use the exact location object/ID returned by `POST /api/master/locations`. Previously the client generated its own timestamp ID and ignored the server response, which could make subsequent edit/delete requests target the wrong ID.
+- Added ORG-MODEL regression assertions for absence of localStorage shadows, handling of empty server results, removal of the fake reset action, and use of the server-generated location ID.
+- The only remaining `localStorage` use in this Administration component is the authentication token read for API authorization; master data is no longer shadowed there.
+- Exact code SHA `fec319a76fac2ce264d2ccabbd9a82d70464615c` passed workflow run `44218282571`; the `verify` job completed successfully with all 76 steps and no failures.
+
+**Checklist:** master location/division localStorage shadow = removed; fake client-only reset = removed; location create/edit/delete ID consistency = fixed; exact-head CI = PASS (76/76 steps); SC/PIBC owner-domain normalization remains OPEN as documented in section 25.
