@@ -450,16 +450,20 @@ async function main() {
       );
       const locationMigrations = await mig.query(
         `SELECT COUNT(*)::int AS count FROM schema_migrations
-         WHERE version IN ('100', '101', '102')`,
+         WHERE version IN ('100', '101', '102', '103')`,
       );
       const meUnit = await mig.query(
         `SELECT COUNT(*)::int AS count FROM org_units
          WHERE id = 'UNIT-PIBC-ME' AND is_active = TRUE`,
       );
+      const unitDivisionCodeWidth = await mig.query(
+        `SELECT character_maximum_length FROM information_schema.columns
+         WHERE table_name = 'org_units' AND column_name = 'division_code'`,
+      );
       record('SC/PIBC/Pangsub are not active divisions or location-shaped units',
         'legacy divisions/units inactive; ME unit remains active',
         `divisions=${legacyDivisions.rows[0].count}; units=${legacyUnits.rows[0].count}; ME=${meUnit.rows[0].count}`,
-        locationMigrations.rows[0].count === 3 && legacyDivisions.rows[0].count === 0
+        locationMigrations.rows[0].count === 4 && Number(unitDivisionCodeWidth.rows[0]?.character_maximum_length) === 20 && legacyDivisions.rows[0].count === 0
           && legacyUnits.rows[0].count === 0 && meUnit.rows[0].count === 1);
       record('SC/PIBC are no longer active application roles or user role grants',
         'roles inactive; no legacy assignments',
