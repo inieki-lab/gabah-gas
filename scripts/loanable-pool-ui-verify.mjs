@@ -7,6 +7,7 @@ const checks = [
   ['Preselected asset must belong to eligible pool', /preselectedAssetId && availablePool\.some\(a => a\.id === preselectedAssetId\)/.test(source)],
   ['Submit handler rejects stale or ineligible selected IDs', /selectedAssetIds\.every\(id => availablePool\.some\(asset => asset\.id === id\)\)/.test(source)],
   ['Submit control is disabled for ineligible selected IDs', /disabled=\{isAuditor \|\| hasAnyConflict \|\| selectedAssetIds\.length === 0 \|\| selectedAssetIds\.some\(id => !availablePool\.some\(asset => asset\.id === id\)\)\}/.test(source)],
+  ['Borrower phone defaults to the employee profile instead of a fabricated sample number', /useState<string>\\(currentUser\\?\\.phone \\|\\| ''\\)/.test(source) && !source.includes('0812-3456-7890')],
 ];
 
 for (const [name, pass] of checks) console.log(`${pass ? 'PASS' : 'FAIL'} | ${name}`);
