@@ -1054,6 +1054,12 @@ export class GabahDomainService {
     if (!VALID_PRIORITIES.includes(payload.priority as any)) {
       throw Object.assign(new Error(`Prioritas "${payload.priority}" tidak valid. Pilihan: ${VALID_PRIORITIES.join(', ')}.`), { statusCode: 400 });
     }
+    if (payload.category === 'ME') {
+      const meUnit = db.orgUnits.find(unit => unit.id === 'UNIT-PIBC-ME' && unit.is_active === true);
+      if (!meUnit) {
+        throw Object.assign(new Error('Antrean Tim Perawatan (ME) sedang nonaktif atau belum dikonfigurasi. Hubungi Superadmin.'), { statusCode: 409 });
+      }
+    }
     const slaHours = {
       urgent: 4,
       high: 8,
