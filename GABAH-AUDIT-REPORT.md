@@ -737,3 +737,29 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Authentication denial/security-event audit behavior remains a separately scoped review item.
 
 **Checklist:** core audit UPDATE/DELETE/TRUNCATE blocked by PostgreSQL = implemented and live integration PASS; RBAC six-route transactional audit source regression = PASS; live RBAC endpoint failure injection = OPEN; remaining domain audit durability = OPEN; merge/UAT gate = OPEN.
+
+
+## 31. Asset assignment, movement, and lifecycle persistence hardening — 18 November 2026
+
+### Implementation
+
+- Converted `GabahDomainService.assignAsset()`, `moveAsset()`, and `mutateLifecycle()` to asynchronous durable mutations.
+- Each operation now appends its business audit row without starting the legacy fire-and-forget persistence path, then awaits the shared persistence boundary before returning success.
+- On persistence failure, the operation restores the prior asset snapshot and removes only the movement/audit rows created by that failed operation. Snapshot restoration also removes optional properties that were absent before the mutation (for example a newly assigned `assigned_to` object).
+- Assignment/unassignment, physical movement, and lifecycle changes now return an HTTP 503 on persistence failure. Their HTTP routes await the domain service and preserve the status code instead of reporting success before the durable write completes.
+- The shared `persistDomainMutation()` helper now accepts an optional rollback callback. Existing meeting-room/facility callers remain compatible and retain their existing behavior.
+
+### Regression coverage and exact-head CI
+
+- Added `scripts/asset-domain-persistence-verify.mjs` and CI step `Asset assignment, movement, and lifecycle persistence regression`; all **15/15** source-contract checks passed.
+- Extended `scripts/asset-assignment-active-user-verify.mjs` to exercise real asynchronous rejection paths with a configured-but-unavailable PostgreSQL authority. It verifies HTTP 503 contract behavior and rollback of asset fields, movement history, and audit history for assignment, movement, and lifecycle mutations.
+- Exact code head `87f5a485a6660e7c9d44990b0d75d656871f1f7b` passed GitHub Actions run `44232034559` (run #2070); the `verify` job completed successfully with **78/78 steps**, including TypeScript lint, asset persistence regression, Docker production build/runtime smoke, PostgreSQL 17 fresh-database integration, live P0 HTTP security, and the complete regression suite.
+- The unavailable-PostgreSQL test proves fail-closed response and in-memory rollback; it is not a live PostgreSQL server-side fault-injection test of a successful connection followed by an injected write failure.
+
+### Remaining scope
+
+- Asset creation, generic asset PATCH, bulk import, loan state transitions, and the remaining domain mutations still require a complete call-path review for the same awaited durability/rollback contract.
+- Concurrent same-asset mutation serialization and multi-process conflict handling remain open; the current in-memory rollback pattern is not a substitute for row-level PostgreSQL transactions across multiple app processes.
+- Live HTTP integration for successful assignment/movement/lifecycle persistence followed by process restart remains open.
+
+**Checklist:** assignment/unassignment durable write + rollback = implemented; location movement durable write + rollback = implemented; lifecycle durable write + rollback = implemented; HTTP routes await persistence = implemented; outage rollback regression = PASS; full exact-head CI = PASS (78/78); broader domain durability/concurrency = OPEN; merge/UAT gate = OPEN.
