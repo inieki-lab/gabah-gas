@@ -1431,7 +1431,7 @@ async function startServer() {
   });
 
   // Secure Authentication Endpoints
-  app.post('/api/auth/login', (req, res) => {
+  app.post('/api/auth/login', async (req, res) => {
     try {
       const ip = extractClientIp(req) || 'unknown';
       const lockCheck = isLoginLocked(ip);
@@ -1489,6 +1489,11 @@ async function startServer() {
       // SECURITY (CR-02): password verification uses ONLY the stored PBKDF2
       // hash (server/crypto.ts). There is no hardcoded role-password list, no
       // universal fallback password, and no plaintext temp_password path.
+      const previousCredentials = {
+        password_hash: user.password_hash,
+        password_salt: user.password_salt,
+        temp_password: user.temp_password,
+      };
       let isValidPassword = false;
 
       if (user.password_hash && user.password_salt && verifyPassword(password, user.password_hash, user.password_salt)) {
@@ -1504,12 +1509,24 @@ async function startServer() {
 
       if (!isValidPassword) {
         const lock = recordFailedLogin(ip);
+        const previousAuditLogs = db.auditLogs.slice();
         GabahDomainService.recordAudit(
           'AUTH_LOGIN_FAILED',
           'Auth',
           `Gagal login untuk pengguna ${user.name} (${user.email}) - Kata sandi tidak cocok`,
-          user
+          user,
+          undefined,
+          false
         );
+        try {
+          await persistDataStore();
+        } catch (persistenceError) {
+          db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+          try { await persistDataStore(); } catch (rollbackError) {
+            console.error('[GABAH] Failed to persist failed-login audit rollback:', rollbackError);
+          }
+          return res.status(503).json({ success: false, message: 'Layanan autentikasi sementara tidak dapat menyimpan audit login.' });
+        }
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
@@ -1524,14 +1541,31 @@ async function startServer() {
 
       // Create persistent session
       const session = createSession(user.id, req);
+      const previousAuditLogs = db.auditLogs.slice();
       GabahDomainService.recordAudit(
         'AUTH_LOGIN_SUCCESS',
         'Auth',
         `Pengguna ${user.name} (${user.role}) berhasil masuk dari IP ${session.ip_address}`,
-        user
+        user,
+        undefined,
+        false
       );
+      try {
+        await persistDataStore();
+      } catch (persistenceError) {
+        destroySession(session.token);
+        user.password_hash = previousCredentials.password_hash;
+        user.password_salt = previousCredentials.password_salt;
+        if (previousCredentials.temp_password === undefined) delete user.temp_password;
+        else user.temp_password = previousCredentials.temp_password;
+        db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+        try { await persistDataStore(); } catch (rollbackError) {
+          console.error('[GABAH] Failed to persist login rollback snapshot:', rollbackError);
+        }
+        return res.status(503).json({ success: false, message: 'Login gagal diselesaikan karena penyimpanan autentikasi tidak tersedia. Silakan coba lagi.' });
+      }
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           user: serializeAuthenticatedUser(user),
