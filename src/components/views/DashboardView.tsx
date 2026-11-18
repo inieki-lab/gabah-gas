@@ -20,7 +20,7 @@ import {
   Camera
 } from 'lucide-react';
 import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation } from '../../types';
-import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
+import { GabahService, formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
@@ -74,15 +74,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || currentUser.role === 'Auditor';
-  const isDivisionDashboard = currentUser.role === 'IT' || currentUser.role === 'GA';
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || isAuditor;
+  const isDivisionDashboard = !isGlobalDashboard && (currentUser.role === 'IT' || currentUser.role === 'GA');
   const divisionLabel = isDivisionDashboard ? currentUser.role : 'Unit kerja';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
   const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
-  const roleDescription = currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
-    ? roleDescriptions.Humas
+  const roleDescription = isAuditor
+    ? roleDescriptions.Auditor
+    : currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
+      ? roleDescriptions.Humas
     : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
       ? roleDescriptions['Sekretaris Direksi']
       : roleDescriptions[currentUser.role];
@@ -168,7 +171,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {currentUser.role !== 'Auditor' && (
+            {!isAuditor && (
               <button
                 id="btn-quick-loan"
                 onClick={onOpenNewLoanModal}
@@ -178,7 +181,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Pinjam Aset
               </button>
             )}
-            {currentUser?.role !== 'Auditor' ? (
+            {!isAuditor ? (
               <button
                 id="btn-quick-ticket"
                 onClick={onOpenNewTicketModal}
@@ -193,7 +196,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span>Tiket (Read-Only)</span>
               </div>
             )}
-            {!isEmployee && currentUser?.role !== 'Auditor' && (
+            {!isEmployee && !isAuditor && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
@@ -619,7 +622,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Tiket Kendala Saya
               </h3>
               <div className="flex items-center gap-2">
-                {currentUser?.role !== 'Auditor' && (
+                {!isAuditor && (
                   <button
                     onClick={onOpenNewTicketModal}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -689,9 +692,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <CalendarClock className="w-4 h-4 text-emerald-600" />
-                  {isDivisionDashboard ? `Jadwal Peminjaman ${divisionLabel}` : currentUser.role === 'Auditor' ? 'Pemantauan Peminjaman Lintas Divisi' : 'Jadwal Peminjaman Aset Terintegrasi'}
+                  {isDivisionDashboard ? `Jadwal Peminjaman ${divisionLabel}` : isAuditor ? 'Pemantauan Peminjaman Lintas Divisi' : 'Jadwal Peminjaman Aset Terintegrasi'}
                 </h3>
-                <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : currentUser.role === 'Auditor' ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
+                <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : isAuditor ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
               </div>
               <button
                 onClick={() => onNavigate('loans')}
@@ -757,10 +760,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <LifeBuoy className="w-4 h-4 text-rose-600" />
-                  {currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : currentUser.role === 'Auditor' ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
+                  {isAuditor ? 'Pemantauan Tiket Helpdesk' : currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
-                  {currentUser?.role !== 'Auditor' && (
+                  {!isAuditor && (
                     <button
                       onClick={onOpenNewTicketModal}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -807,7 +810,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
               <h3 className="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                {currentUser.role === 'Auditor' ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
+                {isAuditor ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
               </h3>
               <div className="space-y-2.5 text-xs">
                 {auditLogs.slice(0, 4).map((log) => (

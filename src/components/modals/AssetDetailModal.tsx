@@ -732,7 +732,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              {currentUser?.role !== 'Auditor' && (
+              {!GabahService.isAuditor(currentUser) && (
                 <button
                   onClick={() => {
                     onClose();
@@ -745,7 +745,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 </button>
               )}
 
-              {asset.is_loanable && currentUser?.role !== 'Auditor' && (
+              {asset.is_loanable && !GabahService.isAuditor(currentUser) && (
                 <button
                   onClick={() => {
                     onClose();
