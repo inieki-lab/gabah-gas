@@ -1478,17 +1478,6 @@ async function startServer() {
       }
 
       const inputEmail = email.trim().toLowerCase();
-      // Lock out the IP + normalized account pair, not the whole office/NAT IP.
-      // A failed attempt against one account must not block other employees
-      // who share the same corporate internet connection.
-      const loginIdentifier = `${ip}|${inputEmail}`;
-      const lockCheck = isLoginLocked(loginIdentifier);
-      if (lockCheck.isLocked) {
-        return res.status(429).json({
-          success: false,
-          message: `Terlalu banyak percobaan login gagal. Silakan coba lagi dalam ${lockCheck.remainingLockoutSeconds} detik.`,
-        });
-      }
       const inPrefix = inputEmail.split('@')[0];
 
       // Robust Enterprise User Resolver with Alias Mapping.
@@ -1515,6 +1504,18 @@ async function startServer() {
 
         return false;
       });
+
+      // Use the resolved immutable user ID when possible so legacy login aliases
+      // cannot create separate lockout buckets for the same account. Unknown
+      // emails remain isolated by their normalized input value.
+      const loginIdentifier = `${ip}|${user?.id ?? inputEmail}`;
+      const lockCheck = isLoginLocked(loginIdentifier);
+      if (lockCheck.isLocked) {
+        return res.status(429).json({
+          success: false,
+          message: `Terlalu banyak percobaan login gagal. Silakan coba lagi dalam ${lockCheck.remainingLockoutSeconds} detik.`,
+        });
+      }
 
       if (!user || !user.is_active) {
         const lock = recordFailedLogin(loginIdentifier);
