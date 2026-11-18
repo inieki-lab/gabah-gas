@@ -3802,7 +3802,7 @@ async function startServer() {
     res.json({ success: true, data: filtered });
   });
 
-  app.patch('/api/notifications/:id/read', (req, res) => {
+  app.patch('/api/notifications/:id/read', async (req, res) => {
     if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
     
     const actor = getActor(req);
@@ -3811,19 +3811,39 @@ async function startServer() {
     if (!notif || !isRecipient) {
       return res.status(404).json({ success: false, message: 'Notifikasi tidak ditemukan.' });
     }
+    const previousNotification = { ...notif };
     notif.is_read = true;
-    res.json({ success: true, data: notif });
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: notif });
+    } catch (persistenceError) {
+      Object.assign(notif, previousNotification);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist notification-read rollback:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Status notifikasi gagal disimpan.' });
+    }
   });
 
-  app.post('/api/notifications/read-all', (req, res) => {
+  app.post('/api/notifications/read-all', async (req, res) => {
     
     if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
     const actor = getActor(req);
+    const previousNotifications = db.notifications.map(item => ({ ...item }));
     for (const n of db.notifications) {
       const isRecipient = isNotificationRecipient(actor, n);
       if (isRecipient) n.is_read = true;
     }
-    res.json({ success: true, message: 'Semua notifikasi ditandai telah dibaca' });
+    try {
+      await persistDataStore();
+      return res.json({ success: true, message: 'Semua notifikasi ditandai telah dibaca' });
+    } catch (persistenceError) {
+      db.notifications = previousNotifications;
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist read-all notification rollback:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Status notifikasi gagal disimpan.' });
+    }
   });
 
   // Dashboard Stats & Attention Center
@@ -3914,7 +3934,7 @@ async function startServer() {
     res.json({ success: true, data: reconData });
   });
 
-  app.post('/api/reconciliation/link', (req, res) => {
+  app.post('/api/reconciliation/link', async (req, res) => {
     
     if (!requireRbacPermission(req, res, 'reconciliation.link')) return;
     const actor = getActor(req);
@@ -3925,12 +3945,23 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Anda tidak memiliki permission dan owner scope untuk mengubah data aset ini.' });
     }
 
+    const previousAsset = { ...asset };
+    const previousAuditLogs = db.auditLogs.slice();
     asset.corporate_asset_number = corporateAssetNumber ? corporateAssetNumber.trim() : null;
     asset.updated_at = new Date().toISOString();
 
-    GabahDomainService.recordAudit('RECONCILIATION_LINK', 'Assets', `Menautkan nomor aset Accurate "${corporateAssetNumber}" ke ${asset.asset_number}`, actor, asset.id);
-
-    res.json({ success: true, data: asset });
+    GabahDomainService.recordAudit('RECONCILIATION_LINK', 'Assets', `Menautkan nomor aset Accurate "${corporateAssetNumber}" ke ${asset.asset_number}`, actor, asset.id, false);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: asset });
+    } catch (persistenceError) {
+      Object.assign(asset, previousAsset);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist reconciliation rollback:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Tautan nomor aset gagal disimpan.' });
+    }
   });
 
   // Audit Logs
