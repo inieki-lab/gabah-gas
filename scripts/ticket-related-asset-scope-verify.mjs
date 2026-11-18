@@ -68,7 +68,7 @@ if (legacyOwnerAsset) {
     related_asset_id: legacyOwnerAsset.id,
   }, admin, false), /owner legacy SC\/PIBC/);
 }
-assert.throws(() => GabahDomainService.createTicket({
+await assert.rejects(() => GabahDomainService.createTicket({
   title: 'Fixture legacy category', description: 'Must not be created', category: 'SC', priority: 'low',
 }, admin, false), /Kategori tiket/);
 console.log('PASS | new ticket categories reject legacy SC/PIBC and linked legacy assets');
