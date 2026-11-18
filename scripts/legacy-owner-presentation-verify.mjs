@@ -28,4 +28,4 @@ assert.match(dashboard, /owner lama \(perlu review\)/);
 assert.doesNotMatch(dashboard, /owner legacy SC|owner legacy PIBC/);
 assert.match(dashboard, /<span>Layanan Helpdesk<\/span>/);
 
-console.log('Legacy owner / location separation checks: 13/13 passed');
+console.log('Legacy owner / location separation checks: 14/14 passed');
