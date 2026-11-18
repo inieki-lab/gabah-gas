@@ -2560,6 +2560,7 @@ async function startServer() {
       const errors: string[] = [];
       const warnings: string[] = [];
       const importedAssets: ServerAsset[] = [];
+      const mutationSnapshot = captureDomainMutationState();
       const seenKeys = new Set<string>();
 
       for (let i = 0; i < rows.length; i++) {
@@ -2665,7 +2666,7 @@ async function startServer() {
             }
           }
           existing.updated_at = new Date().toISOString();
-          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id);
+          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id, false);
           importedAssets.push(existing);
           updated++;
           continue;
@@ -2702,7 +2703,7 @@ async function startServer() {
             condition: (condition || undefined) as any,
             notes: String(row.notes || '').trim() || undefined,
           }, actor);
-          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id);
+          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id, false);
           importedAssets.push(asset);
           created++;
         } catch (rowErr: any) {
@@ -2711,7 +2712,7 @@ async function startServer() {
       }
 
       if (created > 0 || updated > 0) {
-        await persistDataStore();
+        if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       }
 
       res.json({
