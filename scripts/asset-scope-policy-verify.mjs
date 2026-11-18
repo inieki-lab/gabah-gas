@@ -18,6 +18,8 @@ const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
 const ticketUi = read('src/components/views/TicketsView.tsx');
 const adminUi = read('src/components/modals/AdministrationModal.tsx');
+const assetCreateUi = read('src/components/modals/CreateAssetModal.tsx');
+const assetCreateApi = read('src/services/gabahApi.ts');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC[/]SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
@@ -99,6 +101,14 @@ const checks = [
   ['Dashboard ticket counts reuse dynamic ticket owner scope and personal visibility', /canReadOwnerScope = \(owner: string, module: 'loans' \| 'tickets'\)/.test(server) && /canReadOwnerScope\(ticket\.category, 'tickets'\)/.test(server) && /ticket\.reporter_id === actor\.id/.test(server)],
   ['Loan list and dashboard counts follow borrower and explicit owner scope', /hasRbacScope\(String\(actor.id\), 'division', loan\.owner_division, 'loans'\)/.test(server) && /canReadOwnerScope\(loan\.owner_division, 'loans'\)/.test(server) && /loans\.approve[\s\S]*hasRbacScope/.test(services)],
   ['User-targeted notifications remain private and role recipients honor additional RBAC assignments', /if \(notification\.recipient_user_id\) return notification\.recipient_user_id === actor\.id;/.test(server) && /const recipientRoleKey = normalizeRoleKey\(notification\.recipient_role\);[\s\S]*?if \(recipientRoleKey === 'humas' && isPostgresPersistenceActive\(\)\) \{\s*return hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\);\s*\}[\s\S]*?return hasApplicationRole\(actor, recipientRoleKey\);/.test(server) && /const isRecipient = notif \? isNotificationRecipient\(actor, notif\) : false;/.test(server) && /const isRecipient = isNotificationRecipient\(actor, n\);/.test(server)],
+
+  ['Asset creation options require assets.create and derive owner choices from active master plus explicit mutation authority', /app\\.get\\('\\/api\\/assets\\/create-options'[\\s\\S]*requireRbacPermission\\(req, res, 'assets\\.create'\\)[\\s\\S]*canMutateAssetOwner\\(actor, String\\(owner\\.code \\|\\| ''\\), 'assets\\.create'\\)[\\s\\S]*owner\\.is_active !== false/.test(server)],
+  ['Asset creation options return only active categories whose owner is within the effective allowed-owner set', /const allowedOwnerCodes = new Set\\(ownerDomains\\.map\\(owner => owner\\.code\\)\\)[\\s\\S]*category\\.is_active !== false[\\s\\S]*allowedOwnerCodes\\.has\\(String\\(category\\.owner_division/.test(server)],
+  ['Asset creation options are gated by the Assets module even though the endpoint is GET', /if \\(path === '\\/api\\/assets\\/create-options'\\) return 'assets';/.test(server)],
+  ['Asset API client exposes the scoped creation-options endpoint', /getAssetCreateOptions\\(\\): Promise<[\\s\\S]*this\\.request<[\\s\\S]*'\\/api\\/assets\\/create-options'/.test(assetCreateApi)],
+  ['Asset form uses server-calculated owner domains and categories, with fail-closed loading/error/empty states', /gabahApi\\.getAssetCreateOptions\\(\\)/.test(assetCreateUi) && /ownerDomains\\.map/.test(assetCreateUi) && /Tidak ada owner aset yang dapat didaftarkan/.test(assetCreateUi) && /Pilihan owner aset gagal dimuat/.test(assetCreateUi)],
+  ['Asset form no longer infers write authority from primary role labels or hardcoded SC/PIBC options', !/userRole|resolvedUser|isSuperadmin/.test(assetCreateUi) && !/<option value="SC">|<option value="PIBC">/.test(assetCreateUi)],
+
 ];
 
 let failed = 0;
