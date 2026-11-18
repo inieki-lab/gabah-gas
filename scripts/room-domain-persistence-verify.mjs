@@ -22,7 +22,7 @@ const methods = [
 
 assert.match(
   services,
-  /async function persistDomainMutation\(\): Promise<void>[\s\S]*statusCode: 503/,
+  /async function persistDomainMutation(?:\([^)]*\))?: Promise<void>[\s\S]*statusCode: 503/,
   'Domain mutations must surface durable-write failures as HTTP 503',
 );
 
