@@ -172,10 +172,10 @@ async function main() {
     rec('5a: kategori baru admin langsung dipakai buat aset (kode dari master)',
       '201 & category_code=DRN', `${aDrn.status} & code=${drnAsset?.category_code} & number=${drnAsset?.asset_number}`,
       aDrn.status === 201 && drnAsset?.category_code === 'DRN');
-    rec('5b: owner_division & nomor aset diturunkan dari master (SC, bukan fallback)',
-      'owner=SC & nomor mengandung -DRN-',
+    rec('5b: owner_division & nomor aset diturunkan dari master (GA, bukan fallback)',
+      'owner=GA & nomor mengandung -DRN-',
       `owner=${drnAsset?.owner_division} & number=${drnAsset?.asset_number}`,
-      drnAsset?.owner_division === 'SC' && String(drnAsset?.asset_number || '').includes('-DRN-'));
+      drnAsset?.owner_division === 'GA' && String(drnAsset?.asset_number || '').includes('-DRN-'));
 
     // ================= 6. Rename master terlihat oleh resolusi =================
     const resName = await req(s1.base, 'POST', '/api/taxonomy/resolve', { token: admin, body: { nameOrCode: 'Drone Pemetaan Lahan V2' } });
