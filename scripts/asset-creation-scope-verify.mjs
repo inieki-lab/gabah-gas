@@ -28,5 +28,9 @@ assert.match(modal, /resolvedUser\?\.is_superadmin === true/,
 assert.match(modal, /const selectedCategoryType = selectedMasterCategory\?\.category_type \|\| activeMainCat\.categoryType/);
 assert.match(modal, /if \(selectedCategoryType === 'License'\)/,
   'custom master categories of License type must initialize license detail payloads');
+assert.match(modal, /if \(masterCategories === null \|\| allowedMainCategories\.length === 0 \|\| !activeSub \|\| !isCodeSelectable\(subCode\)\)/,
+  'loading or empty authorized category responses must not fall back to static creation options');
+assert.match(modal, /if \(!name\.trim\(\) \|\| !masterCategories \|\| !isCodeSelectable\(subCode\)\) return/,
+  'form submission must revalidate the selected category against the authorized master list');
 
-console.log('Asset creation owner-scope checks: 12/12 passed');
+console.log('Asset creation owner-scope checks: 14/14 passed');
