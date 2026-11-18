@@ -122,25 +122,32 @@ async function main() {
     // ================= 3. CRUD master oleh Admin =================
     const c1 = await req(s1.base, 'POST', '/api/taxonomy/categories', {
       token: admin,
-      body: { code: 'DRN', name: 'Drone Pemetaan Lahan', main_type: 'MSN', owner_division: 'SC', category_type: 'General', description: 'Drone survei kawasan (uji T2B-3)', is_loanable_by_default: false },
+      body: { code: 'DRN', name: 'Drone Pemetaan Lahan', main_type: 'MSN', owner_division: 'GA', category_type: 'General', description: 'Drone survei kawasan (uji T2B-3)', is_loanable_by_default: false },
     });
     const c2 = await req(s1.base, 'POST', '/api/taxonomy/categories', {
       token: admin,
-      body: { code: 'DRN', name: 'Drone Duplikat', main_type: 'MSN', owner_division: 'SC' },
+      body: { code: 'DRN', name: 'Drone Duplikat', main_type: 'MSN', owner_division: 'GA' },
     });
     const c3 = await req(s1.base, 'POST', '/api/taxonomy/categories', {
       token: admin,
-      body: { code: 'DRN2', name: 'Mesin Produksi & Forklift', main_type: 'MSN', owner_division: 'SC' },
+      body: { code: 'DRN2', name: 'Mesin Produksi & Forklift', main_type: 'MSN', owner_division: 'GA' },
     });
     const c4 = await req(s1.base, 'POST', '/api/taxonomy/categories', {
       token: admin,
-      body: { code: 'TYP', name: 'Kategori Tipe Aneh', main_type: 'EQUIPMENT', owner_division: 'SC' },
+      body: { code: 'TYP', name: 'Kategori Tipe Aneh', main_type: 'EQUIPMENT', owner_division: 'GA' },
     });
+    const c5 = await req(s1.base, 'POST', '/api/taxonomy/categories', {
+      token: admin,
+      body: { code: 'OLD', name: 'Kategori Owner Lokasi Legacy', main_type: 'MSN', owner_division: 'SC' },
+    });
+    const pLegacyOwner = await req(s1.base, 'PATCH', '/api/taxonomy/categories/MSN', { token: admin, body: { owner_division: 'PIBC' } });
     rec('3a: Admin create kategori baru; duplikat kode & nama ditolak', '201 lalu 400 lalu 400',
       `${c1.status} / ${c2.status} / ${c3.status}`,
       c1.status === 201 && c2.status === 400 && c3.status === 400);
     rec('3b: main_type di luar domain kanonikal (vocabulary legacy) ditolak', '400',
       `${c4.status}: ${c4.json?.message || ''}`, c4.status === 400);
+    rec('3d: kategori baru/owner update tidak boleh memakai kode lokasi SC/PIBC', '400 + 400',
+      `${c5.status} + ${pLegacyOwner.status}`, c5.status === 400 && pLegacyOwner.status === 400);
 
     const pRename = await req(s1.base, 'PATCH', '/api/taxonomy/categories/DRN', { token: admin, body: { name: 'Drone Pemetaan Lahan V2' } });
     const pType = await req(s1.base, 'PATCH', '/api/taxonomy/categories/DRN', { token: admin, body: { main_type: 'VEHICLE' } });
