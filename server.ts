@@ -2907,7 +2907,7 @@ async function startServer() {
     const canAssign = hasRbacPermission(String(actor.id), 'tickets.assign');
     return {
       can_manage: superadmin || (canUpdate && (ticket.assigned_agent_id === actor.id || queueScope)),
-      can_assign: superadmin || (canAssign && queueScope),
+      can_assign: superadmin || (hasRbacPermission(String(actor.id), 'tickets.read') && canAssign && queueScope),
     };
   };
 
@@ -2983,6 +2983,7 @@ async function startServer() {
 
   // Ticket dispatch is a separate capability from status updates.
   app.get('/api/tickets/:id/assignees', (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
     if (!requireRbacPermission(req, res, 'tickets.assign')) return;
     const actor = getActor(req);
     if (isAuditorActor(actor)) return res.status(403).json({ success: false, message: 'Auditor hanya memiliki hak baca (read-only).' });
@@ -3005,6 +3006,7 @@ async function startServer() {
   });
 
   app.patch('/api/tickets/:id/assign', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
     if (!requireRbacPermission(req, res, 'tickets.assign')) return;
     const actor = getActor(req);
     if (isAuditorActor(actor)) return res.status(403).json({ success: false, message: 'Auditor hanya memiliki hak baca (read-only).' });
