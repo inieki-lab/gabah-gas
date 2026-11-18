@@ -39,6 +39,8 @@ assert.doesNotMatch(dashboard, /owner legacy SC|owner legacy PIBC/);
 assert.match(dashboard, /<span>Layanan Helpdesk<\/span>/);
 assert.doesNotMatch(roleNavigation, /'Supply Chain':|PIBC:/,
   'legacy office labels must not receive fallback role navigation');
+assert.doesNotMatch(services, /LEGACY_SCOPED_ROLES|isLegacyScopedRole/,
+  'obsolete SC/PIBC legacy role-scope helper must not remain available for future authorization use');
 assert.match(admin, /activeOwnerDivisions = React\.useMemo/);
 assert.match(admin, /value=\{newCategoryData\.owner_division\}[\s\S]*?activeOwnerDivisions\.map/);
 assert.match(admin, /value=\{numberingRuleForm\.owner_division\}[\s\S]*?activeOwnerDivisions\.map/);
