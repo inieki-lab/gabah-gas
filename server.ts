@@ -349,6 +349,59 @@ async function startServer() {
     return res.status(400).json({ success: false, message: 'Permintaan Dynamic RBAC tidak valid atau gagal diproses.' });
   };
 
+  // Notification rule switches are server-authoritative. Rule definitions are
+  // fixed in the UI; only Superadmin may change their enabled state.
+  const NOTIFICATION_RULE_IDS = new Set(['rule-warranty', 'rule-loan', 'rule-sla', 'rule-bast']);
+  app.get('/api/admin/notification-rules', async (req, res) => {
+    if (!requireRbacSuperadmin(req, res)) return;
+    try {
+      const result = await queryRbac<any>(
+        'SELECT rule_id, is_active, updated_at, updated_by_user_id FROM gabah_notification_rule_settings ORDER BY rule_id',
+      );
+      return res.json({ success: true, data: result.rows });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.patch('/api/admin/notification-rules/:ruleId', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const ruleId = String(req.params.ruleId || '');
+    if (!NOTIFICATION_RULE_IDS.has(ruleId) || typeof req.body?.is_active !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'Aturan notifikasi atau status tidak valid.' });
+    }
+    try {
+      const updated = await withRbacTransaction(async client => {
+        const current = await client.query<{ is_active: boolean }>(
+          'SELECT is_active FROM gabah_notification_rule_settings WHERE rule_id = $1 FOR UPDATE',
+          [ruleId],
+        );
+        if (!current.rows.length) throw new Error('NOTIFICATION_RULE_NOT_FOUND');
+        const previous = current.rows[0].is_active === true;
+        const next = req.body.is_active as boolean;
+        if (previous === next) {
+          const unchanged = await client.query(
+            'SELECT rule_id, is_active, updated_at, updated_by_user_id FROM gabah_notification_rule_settings WHERE rule_id = $1',
+            [ruleId],
+          );
+          return unchanged.rows[0];
+        }
+        const result = await client.query(
+          'UPDATE gabah_notification_rule_settings SET is_active = $2, updated_at = NOW(), updated_by_user_id = $3 WHERE rule_id = $1 RETURNING rule_id, is_active, updated_at, updated_by_user_id',
+          [ruleId, next, String(actor.id)],
+        );
+        await client.query(
+          'INSERT INTO gabah_notification_rule_audit (rule_id, previous_is_active, new_is_active, changed_by_user_id) VALUES ($1, $2, $3, $4)',
+          [ruleId, previous, next, String(actor.id)],
+        );
+        return result.rows[0];
+      });
+      return res.json({ success: true, data: updated });
+    } catch (error: any) {
+      if (error?.message === 'NOTIFICATION_RULE_NOT_FOUND') return res.status(404).json({ success: false, message: 'Aturan notifikasi tidak ditemukan.' });
+      return rbacFailure(res, error);
+    }
+  });
+
   app.get('/api/admin/rbac/permissions', async (req, res) => {
     if (!requireRbacSuperadmin(req, res)) return;
     try {
