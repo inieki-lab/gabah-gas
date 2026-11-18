@@ -1704,7 +1704,7 @@ async function startServer() {
           'Auth',
           `Percobaan role switch oleh principal tanpa kewenangan: ${actor.name} (${actor.role})`,
           actor
-        , undefined, false);
+        );
         return res.status(403).json({
           success: false,
           message: 'Akses ditolak: Hanya Admin GABAH yang berwenang melakukan alih peran ke akun/peran lain.',
