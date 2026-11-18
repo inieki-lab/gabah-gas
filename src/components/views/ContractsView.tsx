@@ -85,6 +85,8 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
     return legacyRoles.includes(currentUser.role);
   };
   // SC/PIBC are historical owner values, not application roles or active divisions.
+  const isSuperadmin = currentUser.is_superadmin === true || currentUser.role === 'Superadmin' || currentUser.role_keys?.includes('superadmin') === true;
+  const isLegacyContractOwner = (contract: Contract) => ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(contract.owner_division || '').trim().toUpperCase());
   const canManage = !isAuditor && hasPermission('contracts.create', ['IT', 'GA']);
   const canUploadDocuments = !isAuditor && hasPermission('contracts.documents.upload', ['IT', 'GA']);
 
@@ -366,7 +368,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                     <div className="text-[10px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                       <Paperclip className="w-3.5 h-3.5" /> Dokumen Kontrak ({(contract.documents || []).length})
                     </div>
-                    {canUploadDocuments && (
+                    {canUploadDocuments && (!isLegacyContractOwner(contract) || isSuperadmin) && (
                       <label className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-white text-emerald-800 text-[10px] font-bold cursor-pointer hover:bg-emerald-50 ${uploadingContractId === contract.id ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Upload className="w-3.5 h-3.5" />
                         {uploadingContractId === contract.id ? 'Mengunggah…' : 'Unggah PDF / Dokumen'}
