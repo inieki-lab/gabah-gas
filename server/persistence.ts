@@ -621,6 +621,47 @@ async function persistPostgresState(): Promise<void> {
   await backfillNormalizedTables();
 }
 
+function normalizeLegacyLocationProfilesInMemory(): void {
+  const legacyUnitLocations: Record<string, string> = {
+    'UNIT-SC': 'OFF-RPC',
+    'UNIT-PIBC': 'OFF-PIBC',
+    'UNIT-PANGSUB': 'OFF-PANGSUB',
+  };
+  for (const user of db.users || []) {
+    const previousRole = String(user.role || '');
+    const previousUnit = String(user.unit_id || '');
+    const isLegacyLocationRole = previousRole === 'Supply Chain' || previousRole === 'PIBC';
+    const inferredLocation = previousUnit === 'UNIT-PANGSUB'
+      ? 'OFF-PANGSUB'
+      : previousUnit === 'UNIT-PIBC' || previousRole === 'PIBC'
+        ? 'OFF-PIBC'
+        : previousUnit === 'UNIT-SC' || previousRole === 'Supply Chain'
+          ? 'OFF-RPC'
+          : undefined;
+    const isLegacyLocationUnit = Object.prototype.hasOwnProperty.call(legacyUnitLocations, previousUnit);
+    if (!isLegacyLocationRole && !isLegacyLocationUnit) continue;
+    if (!user.office_location_id && inferredLocation) user.office_location_id = inferredLocation;
+    if (isLegacyLocationUnit) user.unit_id = null;
+    if (isLegacyLocationRole) {
+      user.role = 'Karyawan';
+      user.role_label = 'Karyawan';
+    }
+    const auditId = `MIG-102-${String(user.id)}`.slice(0, 64);
+    if (!(db.auditLogs || []).some(log => String(log.id) === auditId)) {
+      db.auditLogs.unshift({
+        id: auditId,
+        action: 'USER_LOCATION_ROLE_NORMALIZED',
+        entity: 'Users',
+        entity_id: String(user.id),
+        user_name: String(user.name || 'Unknown user'),
+        user_role: 'System Migration',
+        details: `Legacy location profile normalized: role ${previousRole || '(unchanged)'}, unit ${previousUnit || '(none)'}, office location ${user.office_location_id || '(needs admin review)'}. Job level and unrelated capabilities were not inferred.`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+}
+
 export async function initializePersistence(): Promise<void> {
   // Production must always have an explicitly configured PostgreSQL authority.
   // An empty DATABASE_URL/PGHOST must never activate the standalone JSON store.
