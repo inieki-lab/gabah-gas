@@ -108,6 +108,7 @@ const checks = [
   ['Asset API client exposes the scoped creation-options endpoint', assetCreateApi.includes("getAssetCreateOptions()") && assetCreateApi.includes("'/api/assets/create-options'")],
   ['Asset form uses server-calculated owner domains and categories, with fail-closed loading/error/empty states', assetCreateUi.includes("gabahApi.getAssetCreateOptions()") && assetCreateUi.includes("ownerDomains.map") && assetCreateUi.includes("Tidak ada owner aset yang dapat didaftarkan") && assetCreateUi.includes("Pilihan owner aset gagal dimuat")],
   ['Asset form no longer infers write authority from primary role labels or hardcoded SC/PIBC options', !/userRole|resolvedUser|isSuperadmin/.test(assetCreateUi) && !assetCreateUi.includes('<option value="SC">') && !assetCreateUi.includes('<option value="PIBC">')],
+  ['New asset owner choices exclude legacy SC/PIBC office codes pending review', server.includes("!['SC', 'PIBC'].includes(owner.code)")],
 
 ];
 
