@@ -25,5 +25,8 @@ assert.doesNotMatch(modal, /userRole === '(IT|GA|Supply Chain|PIBC)'/,
   'asset creation UI must not infer write domains from primary role labels');
 assert.match(modal, /resolvedUser\?\.is_superadmin === true/,
   'superadmin UI capability must come from the server-calculated flag');
+assert.match(modal, /const selectedCategoryType = selectedMasterCategory\?\.category_type \|\| activeMainCat\.categoryType/);
+assert.match(modal, /if \(selectedCategoryType === 'License'\)/,
+  'custom master categories of License type must initialize license detail payloads');
 
-console.log('Asset creation owner-scope checks: 10/10 passed');
+console.log('Asset creation owner-scope checks: 12/12 passed');
