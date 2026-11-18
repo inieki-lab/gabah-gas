@@ -279,6 +279,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       })
       .catch(error => {
         if (cancelled) return;
+        setNotificationRules([]);
         setNotificationRulesError(error?.message || 'Aturan notifikasi gagal dimuat dari server.');
         showToast('Aturan notifikasi tidak dapat dimuat dari database. Perubahan dinonaktifkan.', 'warning');
       })
@@ -721,7 +722,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0005');
 
   // Rule definitions are code-owned; active status is loaded from PostgreSQL.
-  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>([]);
   const [notificationRulesLoading, setNotificationRulesLoading] = useState(false);
   const [notificationRulesError, setNotificationRulesError] = useState('');
   const [savingNotificationRuleId, setSavingNotificationRuleId] = useState<string | null>(null);
