@@ -2923,7 +2923,7 @@ async function startServer() {
         && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
 
     if (isSuperadminActor(actor)) {
-      return res.json({ success: true, data: db.tickets });
+      return res.json({ success: true, data: db.tickets.map(ticket => ({ ...ticket, ...ticketCapabilitiesForActor(actor, ticket) })) });
     }
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
