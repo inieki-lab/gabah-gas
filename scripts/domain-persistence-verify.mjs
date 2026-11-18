@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 const source = fs.readFileSync('server.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
+const orgUnitSchemaMigration = fs.readFileSync('server/migrations/103_expand_org_unit_division_code.sql', 'utf8');
 
 function route(start, end) {
   const from = source.indexOf(start);
@@ -66,4 +67,12 @@ assert.match(persistence, /auditById\.set\(String\(row\.id\)/,
 assert.match(persistence, /db\.auditLogs = \[\.\.\.auditById\.values\(\)\]\.sort/,
   'hydrated audit trail must be sorted newest-first');
 
-console.log('Vendor, Knowledge Base, auth, notification, reconciliation, and persistence safety-net checks: 40/40 passed');
+assert.match(persistence, /INSERT INTO org_job_levels/);
+assert.match(persistence, /INSERT INTO org_units/);
+assert.match(persistence, /INSERT INTO org_office_locations/);
+assert.match(persistence, /job_level_code,unit_id,office_location_id/);
+assert.match(persistence, /office_location_id=EXCLUDED\.office_location_id/);
+assert.match(persistence, /SELECT id::text AS id, role, unit_id, office_location_id FROM users/);
+assert.match(orgUnitSchemaMigration, /ALTER COLUMN division_code TYPE VARCHAR\(20\)/);
+
+console.log('Vendor, Knowledge Base, auth, notification, reconciliation, and persistence safety-net checks: 47/47 passed');
