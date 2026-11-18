@@ -342,8 +342,8 @@ Section ini supersedes the 30 September snapshot above. Evidence must be read to
 | SEC-09 contract numbering | **Verified in CI** | PostgreSQL contract numbering allocation regression passes; production-like concurrent multi-instance rehearsal remains outstanding. |
 | CR-06 initial password delivery | **Operational follow-up remains** | Password provisioning/reset is server-side; initial credential delivery to employees remains an out-of-band operator process. |
 | Git history / exposed historical credentials | **Operational blocker remains** | No automatic history rewrite or credential rotation was performed. Coordinate history purge and full secret/password rotation with repository owners before production. |
-| Audit log immutability | **Verified in CI** | Migration 091 rejects PostgreSQL UPDATE/DELETE/TRUNCATE against `audit_logs`; fresh-database integration verifies all three operations return SQLSTATE 55000 and preserves the row (CI #2329). |
+| Audit log immutability | **Verified in CI** | Migration 091 rejects PostgreSQL UPDATE/DELETE/TRUNCATE against `audit_logs`; fresh-database integration verifies all three operations return SQLSTATE 55000 and preserves the row (CI #2332). |
 | Auditor cross-domain audit read | **Verified in CI** | Migration 099 grants an explicit `all` scope only for module `audit`; Auditor additional-role can read an authorized cross-domain contract/document while write attempts remain 403 (CI #2329). |
-| RBAC assignment protection | **Partially verified** | Assignment and audit insert share one PostgreSQL transaction; additional role and audit survive restart (CI #2329). A new live last-Superadmin removal regression is running in CI #2332. |
+| RBAC assignment protection | **Partially verified** | Assignment and audit insert share one PostgreSQL transaction; additional role and audit survive restart; live removal of the only active Superadmin returns 409 and preserves the assignment (CI #2332). |
 
 **Current release posture remains NO-GO.** Green CI does not replace browser UAT, legacy upgrade rehearsal, recovery rehearsal, staging controls, credential incident response, or business-owner sign-off.
