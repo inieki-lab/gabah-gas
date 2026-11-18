@@ -223,6 +223,12 @@ function hydrateDbFromState(state: any): void {
   );
   if (Array.isArray(state.locations) && state.locations.length > 0) db.locations = state.locations;
   if (Array.isArray(state.divisions) && state.divisions.length > 0) db.divisions = state.divisions;
+  // SC/PIBC are legacy location-owner labels, not active divisions. Preserve their rows for historical records only.
+  for (const division of db.divisions || []) {
+    const code = String(division.code || '').trim().toUpperCase();
+    if (code === 'SC') { division.name = 'Legacy owner SC — lokasi RPC/SC'; division.is_active = false; }
+    if (code === 'PIBC') { division.name = 'Legacy owner PIBC — lokasi PIBC'; division.is_active = false; }
+  }
 
   // =========================
   // ORG-MODEL migration (aman, idempoten):
@@ -253,9 +259,9 @@ function hydrateDbFromState(state: any): void {
     { id: 'UNIT-GA-SARPRAS', name: 'GA / Sarpras', division_code: 'GA', is_active: true },
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
     { id: 'UNIT-PIBC-ME', name: 'Tim Perawatan (ME)', division_code: 'Umum', office_location_id: 'OFF-PIBC', is_active: true },
-    { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
-    { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
-    { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
+    { id: 'UNIT-SC', name: 'Legacy location placeholder — RPC/SC', division_code: 'SC', is_active: false },
+    { id: 'UNIT-PIBC', name: 'Legacy location placeholder — PIBC', division_code: 'PIBC', is_active: false },
+    { id: 'UNIT-PANGSUB', name: 'Legacy location placeholder — Pangsub', division_code: 'SC', is_active: false },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
   ];
   const stateOrgUnits = Array.isArray(state.orgUnits) ? state.orgUnits : [];
@@ -263,6 +269,16 @@ function hydrateDbFromState(state: any): void {
     const existing = stateOrgUnits.find((u: any) => u && u.id === def.id);
     return existing ? { ...def, ...existing } : { ...def };
   }).concat(stateOrgUnits.filter((u: any) => u && !DEFAULT_ORG_UNITS.some(d => d.id === u.id)) as any[]);
+  // Historical location placeholders must never be reactivated by an old state snapshot.
+  const retiredLocationUnitLabels: Record<string, string> = {
+    'UNIT-SC': 'Legacy location placeholder — RPC/SC',
+    'UNIT-PIBC': 'Legacy location placeholder — PIBC',
+    'UNIT-PANGSUB': 'Legacy location placeholder — Pangsub',
+  };
+  for (const [id, name] of Object.entries(retiredLocationUnitLabels)) {
+    const legacyUnit = db.orgUnits.find(unit => unit.id === id);
+    if (legacyUnit) { legacyUnit.name = name; legacyUnit.is_active = false; }
+  }
   // ME is an operational sub-unit at PIBC, never a PIBC division/owner domain.
   const meOperationalUnit = db.orgUnits.find(unit => unit.id === 'UNIT-PIBC-ME');
   if (meOperationalUnit) {
