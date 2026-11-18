@@ -107,6 +107,9 @@ const checks = [
   ['Dashboard owner summaries aggregate arbitrary owner domains and mark legacy SC/PIBC as review-only', dashboardUi.includes('ownerAssetCounts') && dashboardUi.includes('ownerAssetSummary') && dashboardUi.includes('legacy owner — review') && !dashboardUi.includes('scAssets') && !dashboardUi.includes('pibcAssets')],
   ['Contract UI uses dynamic owner filters and does not grant legacy Supply Chain/PIBC role fallbacks', contractUi.includes('const ownerDomains = useMemo') && contractUi.includes("options: ['ALL', ...ownerDomains]") && contractUi.includes("label: 'Owner'") && !contractUi.includes("['IT', 'GA', 'Supply Chain', 'PIBC']")],
   ['Category normalization never silently assigns an unknown owner to GA', taxonomy.includes("owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED'") && taxonomy.includes('Unknown ownership must remain unassigned')],
+  ['Legacy SC/PIBC owner codes remain readable but cannot be mutated by non-Superadmins', services.includes("if (['SC', 'PIBC'].includes(owner)) return false") && services.includes('legacy office/location labels, not active owner domains')],
+  ['New assets cannot be created under legacy SC/PIBC location codes even by direct API payloads', services.includes("if (['SC', 'PIBC'].includes(String(resolvedOwnerDivision || '').trim().toUpperCase()))") && services.includes('Owner SC/PIBC adalah kode lokasi legacy')],
+
 
 ];
 
