@@ -3,7 +3,7 @@
 **Dokumen:** `docs/testing/UAT.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Terdapat blocker organisasi pada kategori/routing tiket SC/PIBC yang harus diselesaikan sebelum release.  
+**Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Perubahan routing IT/GA/ME dan scope unit ME sedang diimplementasikan pada branch terpisah; seluruh skenario tiket di bawah tetap berstatus belum diuji sampai CI dan browser UAT lulus.  
 **Terakhir Diperbarui:** 18 November 2026
 
 ---
@@ -143,13 +143,17 @@
 
 ---
 
-### Skenario 6: Helpdesk Tiket & Perhitungan SLA Otomatis
-- **Tujuan**: Memastikan SLA dihitung otomatis berdasarkan prioritas kendala.
+### Skenario 6: Helpdesk IT, GA, ME, Dispatch, dan SLA
+- **Tujuan**: Memastikan kategori tiket baru terpisah dari lokasi, antrean, owner aset, dan hak penangan.
 - **Langkah Pengujian**:
-  1. Login sebagai `Karyawan` $\to$ buat tiket baru: Kategori `IT`, Prioritas `Urgent`, Judul "Server ERP Tidak Dapat Diakses".
-  2. Verifikasi tiket memiliki `sla_hours: 4` dan deadline 4 jam dari waktu pembuatan.
-  3. Login sebagai `IT` $\to$ terima tiket, perbarui status menjadi `in_progress`, lalu `resolved` dengan catatan solusi.
-- **Kriteria Lulus**: SLA dihitung tepat, notifikasi terkirim ke divisi IT, dan audit log tercatat.
+  1. Login sebagai pegawai biasa; buat tiket IT prioritas Urgent. Verifikasi SLA 4 jam. Jika tepat satu petugas IT aktif memiliki `tickets.update` + scope IT, tiket otomatis ditugaskan kepadanya. Jika nol atau lebih dari satu kandidat, tiket tetap di antrean IT (tidak memilih acak).
+  2. Login sebagai petugas IT yang ditugaskan; mulai pekerjaan dan selesaikan tiket dengan catatan. Pelapor hanya boleh membaca tiketnya, bukan mengubah status kecuali ia juga petugas berwenang.
+  3. Login sebagai pemohon dengan capability `tickets.create.ga`; buat tiket GA. Login sebagai Petugas Helpdesk GA yang memiliki `tickets.assign` + scope GA; buka daftar petugas. Hanya user aktif dengan `tickets.update` + scope GA yang boleh dipilih. Uji bahwa user GA biasa/Kasi GA tanpa capability operator tidak dapat mengubah status atau mendelegasikan tiket.
+  4. Login sebagai pemohon dengan capability `tickets.create.me`; buat tiket ME. Pastikan `assigned_unit_id=UNIT-PIBC-ME` dan lokasi unit adalah PIBC. Login sebagai Admin Tiket ME dengan unit dan scope ME; delegasikan hanya kepada petugas aktif yang berada pada unit ME serta memiliki `tickets.update` + scope unit.
+  5. Login sebagai pegawai PIBC lain yang tidak memiliki scope unit ME. Pastikan ia tidak melihat antrean ME hanya karena `office_location_id=OFF-PIBC`. Ulangi untuk pegawai RPC/SC: lokasi kerja tidak memberikan akses antrean.
+  6. Coba kirim kategori baru `SC` atau `PIBC` melalui API; server harus menolak. Tiket historis kategori SC/PIBC tetap tersimpan dan hanya terlihat melalui reporter, assignee, scope legacy eksplisit, atau Superadmin.
+  7. Pilih aset terkait owner IT/GA dan pastikan kategori konsisten. Pilih aset owner legacy SC/PIBC; form/API harus menolak tautan tiket baru sampai klasifikasi aset direview, tanpa mengubah owner atau histori.
+- **Kriteria Lulus**: Semua keputusan list, direct-ID, status mutation, assignee lookup, assignment, notifikasi, dan dashboard sesuai permission + scope; tidak ada grant dari label role/jabatan/lokasi; SLA dan audit log akurat.
 
 ---
 
@@ -184,7 +188,7 @@
 ---
 
 ### Skenario 10: Contract Management (Domain Tersendiri) & Kategori Tiket
-1. **Kategori / routing tiket**: software license (Accurate/M365/VPN) dan hardware IT harus masuk domain `IT`; fasilitas GA harus masuk domain `GA`. Saat ini form masih menampilkan Supply Chain dan PIBC sebagai kategori departemen — ini adalah defect organisasi yang tercatat pada `docs/audits/HUMAS-SEKDIR-ME-STATIC-REVIEW.md`, bukan perilaku yang boleh disahkan. Jangan menyatakan UAT routing lulus sampai pemetaan owner operasional RPC/SC, PIBC, dan ME disetujui, diterapkan end-to-end, dan diuji. Tidak ada kategori License/General/Contract sebagai domain tiket.
+1. **Kategori / routing tiket baru**: hanya `IT`, `GA`, dan `ME`. IT menangani hardware/software/lisensi; GA menangani antrean GA melalui dispatcher berizin; ME adalah antrean unit `UNIT-PIBC-ME`. `SC`/`PIBC` tetap hanya nilai historis dan tidak boleh dipilih untuk tiket baru. Kontrak tetap domain terpisah; owner kontrak legacy tidak otomatis menentukan antrean tiket. Uji seluruh permission dan scope sesuai Skenario 6.
 2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
 3. **Dokumen kontrak**: unggah PDF/DOC/JPG yang sah, unduh kembali sebagai PIC/owner yang berwenang, dan pastikan user di luar scope menerima 404. Restart aplikasi; file harus tetap dapat diunduh. Backup database dan volume uploads harus diuji bersama.
 3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
