@@ -9,8 +9,7 @@ ALTER TABLE org_units
 INSERT INTO org_units (id, name, division_code, office_location_id, is_active)
 VALUES ('UNIT-PIBC-ME', 'Tim Perawatan (ME)', 'Umum', 'OFF-PIBC', TRUE)
 ON CONFLICT (id) DO UPDATE
-SET name = EXCLUDED.name,
-    division_code = 'Umum',
+SET division_code = 'Umum',
     office_location_id = EXCLUDED.office_location_id,
     is_active = TRUE;
 
