@@ -2925,6 +2925,26 @@ async function startServer() {
     return res.json({ success: true, data });
   });
 
+  // Direct ticket reads use the same ownership/owner-domain rules as the collection endpoint.
+  // Return 404 for out-of-scope IDs to avoid disclosing whether another team's ticket exists.
+  app.get('/api/tickets/:id', (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
+    const actor = getActor(req);
+    const ticket = db.tickets.find(item => item.id === req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+    const isReporter = ticket.reporter_id === actor.id
+      || (!ticket.reporter_id && Boolean(ticket.reporter_name)
+        && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+    const hasOwnerScope = isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', String(ticket.category || '').trim(), 'tickets')
+      : actor.role === ticket.category;
+    if (!isSuperadminActor(actor) && !isReporter
+      && ticket.assigned_agent_id !== actor.id && !hasOwnerScope) {
+      return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+    }
+    return res.json({ success: true, data: ticket });
+  });
+
   app.post('/api/tickets', async (req, res) => {
     try {
       
