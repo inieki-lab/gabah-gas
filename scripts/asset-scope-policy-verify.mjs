@@ -19,6 +19,7 @@ const assetUi = read('src/components/views/AssetsView.tsx');
 const ticketUi = read('src/components/views/TicketsView.tsx');
 const assetCreateUi = read('src/components/modals/CreateAssetModal.tsx');
 const assetCreateApi = read('src/services/gabahApi.ts');
+const assetDetailUi = read('src/components/modals/AssetDetailModal.tsx');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC[/]SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
@@ -83,6 +84,7 @@ const checks = [
   ['Loan approve/reject preserve domain authorization HTTP status codes', /app\.post\('\/api\/loans\/:id\/approve'[\s\S]*status\(typeof err\?\.statusCode === 'number' \? err\.statusCode : 400\)/.test(server) && /app\.post\('\/api\/loans\/:id\/reject'[\s\S]*status\(typeof err\?\.statusCode === 'number' \? err\.statusCode : 400\)/.test(server)],
   ['Employee movement history excludes unassigned loanable-pool inventory', /employeeBaseline[\s\S]*asset\.assigned_to\?\.id === actor\.id[\s\S]*db\.movements\.filter/.test(server)],
   ['Private agenda fields are redacted from GA/IT operational queues', /title: 'Reservasi ruang rapat'[\s\S]*description: undefined[\s\S]*attendees_list: undefined[\s\S]*documentation_notes: undefined/.test(server)],
+  ['Asset detail edit action uses the same effective assets.update permission helper, not a hard-coded primary-role allowlist', /onEditThisAsset && canEdit &&/.test(assetDetailUi) && !/onEditThisAsset && \(currentUser\?\.role/.test(assetDetailUi)],
   ['Asset create-options endpoint requires assets.create and uses server-calculated owner mutation authority', server.includes("app.get('/api/assets/create-options'") && server.includes("requireRbacPermission(req, res, 'assets.create')") && server.includes("canMutateAssetOwner(actor, String(owner.code || ''), 'assets.create')")],
   ['Asset create-options is excluded from direct asset-ID visibility middleware while mutations remain domain-guarded', hardeningSource.includes("const assetMatch = req.path.replace(/\\/+$/, '').match(/^\\/api\\/assets\\/([^/]+)/i)") && hardeningSource.includes("new Set(['bulk-import', 'create-options'])") && hardeningSource.includes("assetMatch?.[1].toLowerCase()") && hardeningSource.includes("!assetCollectionActions.has(assetAction || '')")],
 
