@@ -371,10 +371,27 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
 
   // Calculate live preview number
   const currentYear = new Date().getFullYear();
-  const subCode = activeSub.code;
+  const subCode = activeSub?.code || '';
   const livePreviewNumber = `${selectedDivision}-${subCode}-${currentYear}-0001`;
 
-  if (!isOpen || !activeMainCat) return null;
+  if (!isOpen) return null;
+  if (!activeSub) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <h2 className="text-base font-bold text-slate-900">Kategori aset belum tersedia</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            {masterCategories === null
+              ? 'Sedang memuat kategori aset yang diizinkan.'
+              : 'Tidak ada kategori aset aktif pada owner domain yang menjadi kewenangan Anda. Minta Superadmin memeriksa permission assets.create dan scope owner aset.'}
+          </p>
+          <button type="button" onClick={onClose} className="mt-5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+            Tutup
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
