@@ -2076,7 +2076,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                       >
                         <option value="">— Pilih divisi —</option>
-                        {divisions.map(d => (
+                        {activeOwnerDivisions.map(d => (
                           <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                         ))}
                       </select>
@@ -2217,12 +2217,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   ? 'bg-blue-50 text-blue-700 border-blue-200'
                                   : user.role === 'GA'
                                   ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                  : user.role === 'Supply Chain'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : user.role === 'Auditor'
                                   ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : user.role === 'PIBC'
-                                  ? 'bg-teal-50 text-teal-700 border-teal-200'
                                   : user.role === 'Sekretaris Direksi'
                                   ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                                   : user.role === 'Humas'
@@ -2376,9 +2372,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditUserData(prev => ({ ...prev, division: e.target.value as OwnerDivision }))}
                             className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                           >
-                            {divisions.map(d => (
+                            {activeOwnerDivisions.map(d => (
                               <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                             ))}
+                            {['SC', 'PIBC'].includes(String(editUserData.division || '').toUpperCase()) && (
+                              <option value={editUserData.division}>Legacy {editUserData.division} — perlu normalisasi</option>
+                            )}
                           </select>
                         </div>
 
@@ -3751,9 +3750,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             onChange={e => setEditCategoryData(prev => ({ ...prev, owner_division: e.target.value }))}
                             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:border-emerald-500"
                           >
-                            {divisions.map(d => (
+                            {activeOwnerDivisions.map(d => (
                               <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
                             ))}
+                            {['SC', 'PIBC'].includes(String(editCategoryData.owner_division || '').toUpperCase()) && (
+                              <option value={editCategoryData.owner_division}>Legacy {editCategoryData.owner_division} — perlu review</option>
+                            )}
                           </select>
                         </div>
                       </div>
