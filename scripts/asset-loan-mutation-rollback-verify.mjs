@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const server = fs.readFileSync('server.ts', 'utf8');
+const services = fs.readFileSync('server/services.ts', 'utf8');
 const failures = [];
 let passed = 0;
 const assert = (name, condition) => {
@@ -28,11 +29,28 @@ assert('asset creation snapshots before mutation and uses rollback persistence',
   && createAsset.indexOf('captureDomainMutationState()') < createAsset.indexOf('GabahDomainService.createAsset')
   && createAsset.includes('persistMutationOrRollback(res, mutationSnapshot)'));
 
+const bulkImport = section("app.post('/api/assets/bulk-import',", "app.get('/api/assets/:id',");
+assert('bulk asset import snapshots before processing rows and rolls back on failed persistence',
+  bulkImport.indexOf('captureDomainMutationState()') >= 0
+  && bulkImport.indexOf('captureDomainMutationState()') < bulkImport.indexOf('for (let i = 0; i < rows.length')
+  && bulkImport.includes('persistMutationOrRollback(res, mutationSnapshot)'));
+assert('successful asset create and bulk audit events defer fire-and-forget persistence',
+  services.includes("actor, newAsset.id, false);")
+  && bulkImport.includes('actor, existing.id, false);')
+  && bulkImport.includes('actor, asset.id, false);');
+
 const patchAsset = section("app.patch('/api/assets/:id',", "app.post('/api/assets/:id/assign'");
 assert('asset PATCH snapshots before mutation and uses rollback persistence',
   patchAsset.indexOf('captureDomainMutationState()') >= 0
   && patchAsset.indexOf('captureDomainMutationState()') < patchAsset.indexOf('asset.managing_unit_id =')
   && patchAsset.includes('persistMutationOrRollback(res, mutationSnapshot)'));
+
+assert('successful loan transition audit events defer persistence to the awaited route write',
+  ["LOAN_REQUESTED", "LOAN_APPROVED", "LOAN_REJECTED", "LOAN_HANDOVER", "LOAN_RETURNED"]
+    .every(action => {
+      const line = services.split('\\n').find(item => item.includes(`this.recordAudit('${action}'`));
+      return Boolean(line && line.includes(', false);'));
+    }));
 
 const loans = section("app.post('/api/loans',", '  // Helpdesk Tickets');
 assert('request, approve, reject, handover, and return use rollback persistence',
