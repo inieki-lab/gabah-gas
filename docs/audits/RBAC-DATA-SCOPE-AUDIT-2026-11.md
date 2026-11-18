@@ -363,3 +363,12 @@ Source review found two operational edge cases and added regression coverage:
 ### Exact-head CI
 - A fresh CI run is in progress for the latest PR #121 head. Earlier failures exposed and were corrected: malformed static-test regex, owner guard placed before owner resolution, outdated Knowledge Base async-route expectation, and the AdministrationModal memo-hook namespace.
 - No CI pass is claimed until the latest exact-head run completes successfully.
+
+### Durable domain-service writes
+- Added an awaited persistence/rollback helper to `GabahDomainService`.
+- Asset create, assign/unassign, move, and lifecycle mutations now commit before success; failed writes restore asset state, movement history, and audit entries.
+- Room reservation create/approve/reject/check-in/check-out/cancel and meeting-room master updates now commit before success; failed writes restore reservation/room state, notifications, and audit entries.
+- Meeting type and meeting facility create/update/delete now use the same durable-write contract.
+- Service audit events for these operations are included in the same awaited commit; the guarded audit fallback remains only for older handlers that have not yet been migrated.
+- Corresponding Express handlers now await the asynchronous service methods.
+- Added `scripts/domain-service-persistence-verify.mjs`; the existing asset assignment fixture was updated to await asynchronous service results.
