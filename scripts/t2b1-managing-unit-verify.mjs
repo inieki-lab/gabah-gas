@@ -177,7 +177,7 @@ async function main() {
     const createdInFile = fileAssets.find(a => a.id === created1?.id);
     rec('F1: JSON fallback menyimpan managing_unit_id (semua aset punya key)', 'true + ada',
       `key=${allHaveKey}/${fileAssets.length} + created=${createdInFile?.managing_unit_id}`,
-      allHaveKey && createdInFile?.managing_unit_id === 'UNIT-PIBC');
+      allHaveKey && createdInFile?.managing_unit_id === 'UNIT-GA-SARPRAS');
 
     kill(s1.c); s1 = null;
 
