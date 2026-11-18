@@ -51,11 +51,33 @@ async function startServer() {
   const PORT = Number(process.env.PORT || 3000);
 
   // Await authoritative writes before returning a successful mutation response.
-  const persistMutationOrRespond = async (res: express.Response): Promise<boolean> => {
+  type DomainMutationSnapshot = {
+    assets: typeof db.assets;
+    loans: typeof db.loans;
+    notifications: typeof db.notifications;
+    auditLogs: typeof db.auditLogs;
+  };
+  const captureDomainMutationState = (): DomainMutationSnapshot => ({
+    assets: JSON.parse(JSON.stringify(db.assets)),
+    loans: JSON.parse(JSON.stringify(db.loans)),
+    notifications: JSON.parse(JSON.stringify(db.notifications)),
+    auditLogs: JSON.parse(JSON.stringify(db.auditLogs)),
+  });
+  const restoreDomainMutationState = (snapshot: DomainMutationSnapshot): void => {
+    db.assets.splice(0, db.assets.length, ...snapshot.assets);
+    db.loans.splice(0, db.loans.length, ...snapshot.loans);
+    db.notifications.splice(0, db.notifications.length, ...snapshot.notifications);
+    db.auditLogs.splice(0, db.auditLogs.length, ...snapshot.auditLogs);
+  };
+  const persistMutationOrRollback = async (
+    res: express.Response,
+    snapshot: DomainMutationSnapshot,
+  ): Promise<boolean> => {
     try { await persistDataStore(); return true; }
     catch (error: any) {
-      console.error('[GABAH API] Mutation persistence failed:', error?.message || error);
-      if (!res.headersSent) res.status(503).json({ success: false, code: 'PERSISTENCE_UNAVAILABLE', message: 'Penyimpanan utama sedang bermasalah. Perubahan belum dapat dipastikan tersimpan; periksa ulang data sebelum mencoba kembali.' });
+      restoreDomainMutationState(snapshot);
+      console.error('[GABAH API] Mutation persistence failed; in-memory state rolled back:', error?.message || error);
+      if (!res.headersSent) res.status(503).json({ success: false, code: 'PERSISTENCE_UNAVAILABLE', message: 'Penyimpanan utama sedang bermasalah. Perubahan dibatalkan dan data dikembalikan ke kondisi sebelumnya.' });
       return false;
     }
   };
@@ -2495,8 +2517,9 @@ async function startServer() {
       }
       // Effective permission and explicit owner-domain scope are enforced by
       // createAsset() for every user, regardless of job title or work location.
+      const mutationSnapshot = captureDomainMutationState();
       const newAsset = await GabahDomainService.createAsset(req.body, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.status(201).json({ success: true, data: newAsset });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2810,6 +2833,8 @@ async function startServer() {
       }
     }
 
+    const mutationSnapshot = captureDomainMutationState();
+
     // T2B-1: managing unit operasional (relasi ke org_units.id) — divalidasi
     // terhadap master aktif; nullable untuk kasus ambigu. owner_division &
     // asset_number tetap server-owned (tidak berubah), RBAC tetap owner_division.
@@ -2844,7 +2869,7 @@ async function startServer() {
     asset.updated_at = new Date().toISOString();
 
     GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
-    if (!await persistMutationOrRespond(res)) return;
+    if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
 
     res.json({ success: true, data: asset });
   });
@@ -2957,18 +2982,14 @@ async function startServer() {
 
         // Bulk requests are one business operation: roll back every in-memory
         // side effect if any item or persistence step fails.
-        const snapshots = {
-          loans: [...db.loans],
-          notifications: [...db.notifications],
-          auditLogs: [...db.auditLogs],
-        };
+        const snapshots = captureDomainMutationState();
         try {
           const createdLoans = [];
           for (const id of normalizedAssetIds) {
             const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
             createdLoans.push(newLoan);
           }
-          await persistDataStore();
+          if (!await persistMutationOrRollback(res, snapshots)) return;
           return res.status(201).json({
             success: true,
             data: createdLoans[0],
@@ -2977,15 +2998,14 @@ async function startServer() {
             message: `${createdLoans.length} aset pinjaman berhasil diajukan.`
           });
         } catch (bulkError) {
-          db.loans.splice(0, db.loans.length, ...snapshots.loans);
-          db.notifications.splice(0, db.notifications.length, ...snapshots.notifications);
-          db.auditLogs.splice(0, db.auditLogs.length, ...snapshots.auditLogs);
+          restoreDomainMutationState(snapshots);
           throw bulkError;
         }
       }
 
+      const mutationSnapshot = captureDomainMutationState();
       const newLoan = GabahDomainService.requestLoan(req.body, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.status(201).json({ success: true, data: newLoan });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2997,8 +3017,9 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.approve')) return;
     const actor = getActor(req);
+      const mutationSnapshot = captureDomainMutationState();
       const approved = GabahDomainService.approveLoan(req.params.id, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -3010,8 +3031,9 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.reject')) return;
     const actor = getActor(req);
+      const mutationSnapshot = captureDomainMutationState();
       const rejected = GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.json({ success: true, data: rejected });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -3038,6 +3060,7 @@ async function startServer() {
           return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi notifikasi BAST tidak dapat diverifikasi.' });
         }
       }
+      const mutationSnapshot = captureDomainMutationState();
       const { handoverNotes } = req.body;
       const handedOver = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
       if (bastNotificationEnabled) {
@@ -3057,7 +3080,7 @@ async function startServer() {
           { ...notification, id: `NOTIF-${crypto.randomUUID()}`, recipient_division: handedOver.owner_division },
         );
       }
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
@@ -3075,9 +3098,10 @@ async function startServer() {
       // owner-side loans.return capability. Other actors still need that
       // capability and the domain service enforces matching owner scope.
       if (loan.borrower_id !== actor.id && !requireRbacPermission(req, res, 'loans.return')) return;
+      const mutationSnapshot = captureDomainMutationState();
       const { condition, returnNotes } = req.body;
       const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.json({ success: true, data: returned });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
