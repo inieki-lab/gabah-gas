@@ -4387,6 +4387,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 )}
               </div>
 
+              {notificationRulesLoading && <div className="text-xs text-slate-500">Memuat konfigurasi dari database...</div>}
+              {notificationRulesError && <div role="alert" className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">{notificationRulesError}</div>}
               <div className="space-y-3">
                 {notificationRules.map((rule, idx) => (
                   <div key={rule.id || idx} className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-4 flex-wrap">
@@ -4411,7 +4413,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleToggleNotificationRule(rule.id)}
-                          title="Aktifkan/nonaktifkan aturan — tersimpan di panel administrasi ini"
+                          disabled={notificationRulesLoading || !!notificationRulesError || savingNotificationRuleId !== null}
+                          title="Aktifkan/nonaktifkan aturan — tersimpan di PostgreSQL"
                           className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                             rule.status === 'Aktif'
                               ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
