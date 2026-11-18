@@ -1,9 +1,10 @@
 # GABAH — Production Readiness Gates
 
 **Owner:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Working integration branch:** fix/role-based-navigation (PR #18)  
+**Working integration branch:** fix/ticket-routing-me-unit-scope (PR #121)
+**Current candidate HEAD:** `7e0f763eea99f5ebfbe7201b63c40dadfb548c64`  
 **Status:** NO-GO / stabilization in progress  
-**Last reviewed:** 8 November 2026
+**Last reviewed:** 18 November 2026
 
 This checklist is the release control record. A green build is necessary but is not proof of production readiness. Every gate needs a timestamp, commit SHA, actual result, evidence, and reviewer.
 
@@ -33,7 +34,7 @@ This checklist is the release control record. A green build is necessary but is 
 - [x] Fresh database applies all 35 migration entries; repeatability/ledger checks pass (CI #588).
 - [x] PostgreSQL is authoritative in production; the app fails closed if production DB is unavailable (CI #588).
 - [x] Create, update, read-back, restart, and re-read workflows pass (CI #588).
-- [ ] Dynamic user-role assignments survive ordinary writes and restart.
+- [x] Dynamic user-role assignments survive ordinary writes and restart (CI #2319: additional role assignment and audit evidence survive PostgreSQL app restart).
 - [ ] Migration path from a representative legacy snapshot is tested separately from fresh install.
 - [ ] PostgreSQL backup and restore are demonstrated on an isolated test environment.
 - [x] Contract uploads write durable bytes; download enforces contract scope (404) and file bytes survive restart (CI #588; Docker volume writable smoke #587).
@@ -43,7 +44,7 @@ This checklist is the release control record. A green build is necessary but is 
 ## G2 — Identity, organization, and Dynamic RBAC
 
 - [x] Primary role and additional roles are assignable and displayed separately in the employee directory (CI #589).
-- [ ] Role assignment is transactional, audited, and protects the last active Super Admin.
+- [x] Role assignment is transactional, audited in the same PostgreSQL transaction, and protects the last active Super Admin (Dynamic RBAC contract checks, CI #2319).
 - [ ] Role additions persist after unrelated writes and restart.
 - [x] Permission and scope are evaluated independently per module (Dynamic RBAC and asset scope suites, CI #589).
 - [x] Unknown/inactive roles and missing/invalid scopes fail closed (CI #589).
@@ -84,9 +85,9 @@ Run docs/testing/UAT.md in a browser against PostgreSQL using disposable test da
 
 | Gate | Commit SHA | Result | Evidence / run URL | Reviewer | Date |
 |---|---|---|---|---|---|
-| G0 | a1cd3d4ce082c547736f67a863d2981abb6dfcaa | PARTIAL PASS | CI #589: npm ci/lint/build, all regression suites, Docker Compose config, Node 22 image build + runtime smoke PASS; dead-action review remains | — | 8 Nov 2026 |
-| G1 | 9feadd7f152c19975f2ae24e9b9c25f6491ca949 | PARTIAL PASS | CI #588: PostgreSQL 17 fresh DB, 35 migrations, CR-04/05 63/63, restart persistence, contract file upload/download/signature/scope/restart PASS; legacy snapshot upgrade and DB+uploads restore not run | — | 8 Nov 2026 |
-| G2 | a1cd3d4ce082c547736f67a863d2981abb6dfcaa | PARTIAL PASS | CI #589: Dynamic RBAC 63/63, asset scope 37/37, P0 37/37, maintenance 33/33, Auditor additional-role denial/read, primary/additional role UI, org model PASS; live HR mapping and full endpoint review remain | — | 8 Nov 2026 |
+| G0 | 7e0f763eea99f5ebfbe7201b63c40dadfb548c64 | PARTIAL PASS | CI #2319: dependency gate, lint/typecheck, regression suites, production build, Docker image and runtime smoke PASS; integration-branch reconciliation and dead-action review remain | — | 18 Nov 2026 |
+| G1 | 7e0f763eea99f5ebfbe7201b63c40dadfb548c64 | PARTIAL PASS | CI #2319: PostgreSQL 17 fresh database, persistence integration, dynamic role assignment and audit restart checks PASS; legacy snapshot upgrade, backup/restore, and combined PostgreSQL+uploads restore not run | — | 18 Nov 2026 |
+| G2 | 7e0f763eea99f5ebfbe7201b63c40dadfb548c64 | PARTIAL PASS | CI #2319: Dynamic RBAC, transactional role assignment/audit, last-Superadmin guard, role assignment restart persistence, asset owner scope, GA IT workstation read-only, org model, ticket/ME routing, loans, locations/categories, and maintenance regression suites PASS; live HR mapping, configurable GA broad-scope review, and full endpoint review remain | — | 18 Nov 2026 |
 | G3 | — | NOT VERIFIED | Manual browser UAT required | Business owners | — |
 | G4 | — | NOT STARTED | Staging and production controls | Infrastructure owner | — |
 
