@@ -67,8 +67,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const effective = hasEffectivePermission(key);
     if (effective !== undefined) return effective;
     const legacyGrants: Record<string, string[]> = {
-      'loans.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Supply Chain', 'PIBC', 'Humas', 'Sekretaris Direksi'],
-      'tickets.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Supply Chain', 'PIBC', 'Humas', 'Sekretaris Direksi'],
+      'loans.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'],
+      'tickets.create': ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'],
       'assets.create': ['Admin GABAH', 'IT', 'GA'],
       'licenses.read': ['Admin GABAH', 'IT'],
     };
@@ -146,8 +146,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const itAssets = dashboardAssets.filter(a => a.owner_division === 'IT');
   const gaAssets = dashboardAssets.filter(a => a.owner_division === 'GA');
-  const scAssets = dashboardAssets.filter(a => a.owner_division === 'SC');
-  const pibcAssets = dashboardAssets.filter(a => a.owner_division === 'PIBC');
+  const legacyOwnerAssets = dashboardAssets.filter(a =>
+    ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(a.owner_division || '').trim().toUpperCase())
+  );
   const licenseAssets = dashboardAssets.filter(a => a.category_type === 'License');
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
@@ -472,7 +473,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="mt-3">
               <div className="text-2xl font-black text-slate-900">{dashboardAssets.length} Item</div>
               <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between font-medium flex-wrap gap-1">
-                <span>{isGlobalDashboard ? `${itAssets.length} IT • ${gaAssets.length} GA • ${scAssets.length} owner legacy SC • ${pibcAssets.length} owner legacy PIBC • ${licenseAssets.length} Lisensi` : isDivisionDashboard ? `${divisionLabel} • ${dashboardAssets.length} aset dalam cakupan` : `${dashboardAssets.length} aset dalam cakupan`}</span>
+                <span>{isGlobalDashboard ? `${itAssets.length} IT • ${gaAssets.length} GA • ${legacyOwnerAssets.length} owner lama (perlu review) • ${licenseAssets.length} Lisensi` : isDivisionDashboard ? `${divisionLabel} • ${dashboardAssets.length} aset dalam cakupan` : `${dashboardAssets.length} aset dalam cakupan`}</span>
               </div>
               <div className="text-[11px] text-emerald-700 font-bold mt-2 pt-2 border-t border-slate-100">
                 Valuasi: {formatRupiah(totalAssetValue)}
