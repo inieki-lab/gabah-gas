@@ -203,7 +203,8 @@ export function hasTicketQueueScope(actor: ServerUser, ticket: { category: strin
   if (isSuperadminActor(actor)) return true;
   if (ticket.assigned_unit_id) {
     return isPostgresPersistenceActive()
-      ? hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets')
+      ? String(actor.unit_id || '') === String(ticket.assigned_unit_id)
+        && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets')
       : String(actor.unit_id || '') === String(ticket.assigned_unit_id);
   }
   const category = String(ticket.category || '').trim().toUpperCase();
