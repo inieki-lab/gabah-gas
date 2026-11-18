@@ -386,6 +386,17 @@ export class GabahDomainService {
       if (alt) taxonomy = alt;
     }
 
+    // SC/PIBC (and the old Supply Chain label) are historical office/location
+    // values, not valid owner domains for newly created assets. Preserve existing
+    // records unchanged; new assets must use an approved operational owner.
+    const normalizedOwner = String(resolvedOwnerDivision || '').trim().toUpperCase();
+    if (['SC', 'PIBC', 'SUPPLY CHAIN'].includes(normalizedOwner)) {
+      throw Object.assign(
+        new Error('Owner SC/PIBC adalah klasifikasi historis/lokasi, bukan owner aset baru. Pilih owner operasional yang sah dan isi lokasi fisik secara terpisah.'),
+        { statusCode: 409 },
+      );
+    }
+
     // Enforce Corporate Rules:
     // a) All IT items (IT-H & IT-S) belong to IT. GA only has read-only access.
     let resolvedOwnerDivision: string = taxonomy.owner_division;
