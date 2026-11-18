@@ -10,6 +10,7 @@ const end = source.indexOf("\n\n    if (isSuperadminActor(actor)", start);
 const block = source.slice(start, end);
 
 const checks = [
+  ['New ticket IDs use collision-resistant UUIDs', fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8').includes('id: `TKT-${randomUUID()}`')],
   ['Reporter ID remains the primary ownership key', block.includes('ticket.reporter_id === actor.id')],
   ['Name fallback is restricted to legacy records without reporter ID', block.includes('!ticket.reporter_id && Boolean(ticket.reporter_name)')],
   ['Name equality cannot override a different reporter ID', block.includes('|| (!ticket.reporter_id')],
