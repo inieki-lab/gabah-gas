@@ -595,6 +595,15 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Wired the BAST switch to the physical loan handover route. When enabled, the successful handover creates in-app notifications for the borrower and the asset-owning division; the setting is checked before the state transition. When disabled, the handover still succeeds but no BAST notifications are created.
 - **Scope still open:** warranty/loan/SLA switches currently govern the Dashboard Attention feed. This work does not yet claim to gate every email, Telegram, or other in-app producer across the application.
 - Added `test:notification-rule-persistence` and a CI step covering Superadmin guards, strict input, row locking, atomic audit, migration seeding, no localStorage dependency, UI save ordering, and dashboard enforcement.
-- An early CI attempt exposed a malformed regression assertion and a missing UI disabled-state guard; both were corrected. The newest branch head `6ce6f9c2adeb21256d4aa199596aa33548c4f96c` is awaiting exact-head GitHub Actions validation. Do not treat this change as green until the full workflow completes.
+- Early CI attempts exposed a malformed regression assertion, an obsolete test expectation, and a missing UI disabled-state guard; these were corrected. The final exact code head `d31a8672df603bc3f45ee0f7828965cbc022d343` passed GitHub Actions run `44216183330`: `verify` succeeded with all 75 steps completed and no failures.
 
-**Checklist:** Notification Rules DB storage/API/audit = implemented; warranty/loan/SLA dashboard attention enforcement = implemented; BAST in-app handover notifications = implemented; outbound email/Telegram integration = OPEN; exact-head CI = PENDING.
+**Checklist:** Notification Rules DB storage/API/audit = implemented; warranty/loan/SLA dashboard attention enforcement = implemented; BAST in-app handover notifications = implemented; outbound email/Telegram integration = OPEN; exact-head CI = PASS (75/75 steps, run 44216183330).
+
+## 23. Notification Rules exact-head release validation — 18 November 2026
+
+- Exact code SHA `d31a8672df603bc3f45ee0f7828965cbc022d343` was validated by workflow run `44216183330`.
+- The complete `verify` job concluded `success`; all 75 steps completed, including TypeScript lint, production Docker image/runtime smoke, PostgreSQL 17 fresh-database and persistence integration, live HTTP security checks, and the full regression suite.
+- The notification regression test passed on this exact head, covering authenticated read/Superadmin write policy, strict inputs, transactional audit, dashboard rule enforcement, BAST handover notification creation, UI read-only state, no localStorage fallback, and server-failure handling.
+- PR #119 remains Draft and stacked on its parent branch. This green CI does not authorize merging to `main` or laptop UAT while the parent release-chain conflict and operational UAT gates remain open.
+
+**Notification Rules release gate:** implementation = complete for the documented scope; exact-head CI = PASS; outbound email/Telegram gating for warranty/loan/SLA and the wider System Settings centralization = OPEN.
