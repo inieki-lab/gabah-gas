@@ -725,7 +725,7 @@ async function startServer() {
         email: email.trim().toLowerCase(),
         role: primaryRole,
         role_label: roleLabels[primaryRole] || primaryRole,
-        division: String(activeDivision.code),
+        division: String(activeDivision.code) as ServerUser['division'],
         department: department || 'Operasional',
         job_level_code: newJobLevel,
         unit_id: newUnitId || null,
