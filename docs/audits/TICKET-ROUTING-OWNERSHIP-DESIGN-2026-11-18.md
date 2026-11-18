@@ -107,7 +107,9 @@ Implemented in source for CI review:
 - Client form hides SC/PIBC for new requests, exposes IT/GA/ME only when requester capability is present, and blocks linking a new ticket to a legacy SC/PIBC-owned asset pending classification review.
 - Added a static regression contract and CI step; UAT scenarios now cover requester, dispatcher, assignee, location-only denial, and legacy-history preservation.
 
-**Not yet verified:** this implementation branch has not completed CI, fresh PostgreSQL migration, upgrade-from-legacy migration, or browser UAT. No merge or production readiness is claimed. Review the migration ordering and normalized persistence before approving.
+**CI verified:** run #2191 completed 67/67 steps successfully on commit `3f5d12bb92a964a9099180474567fc97aadb28c0`, including typecheck, production build/runtime, PostgreSQL 17 fresh database + persistence, P0 security, ticket reporter ownership, ticket routing/ME scope, and related-asset visibility regressions.
+
+**Still open:** upgrade rehearsal on a copy of a database containing legacy SC/PIBC transaction/asset data and browser UAT/sign-off per persona. No merge or production readiness is claimed until both are complete.
 
 
 ### Scope boundary for this implementation slice
