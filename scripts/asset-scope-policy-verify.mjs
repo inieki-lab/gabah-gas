@@ -117,7 +117,7 @@ const checks = [
 
 
 
-  ['Per-asset owner reclassification is Superadmin-only, reason-required, active-owner validated and audited', server.includes("app.post('/api/assets/:id/reclassify-owner'") && server.includes("if (!isSuperadminActor(actor))") && server.includes("reason.length < 10 || reason.length > 500") && server.includes("ASSET_OWNER_RECLASSIFIED") && server.includes("await persistDataStore()")],
+  ['Per-asset owner reclassification is Superadmin-only, reason-required, active-owner validated and audited', server.includes("app.post('/api/assets/:id/reclassify-owner'") && server.includes("if (!isSuperadminActor(actor))") && server.includes("reason.length < 10 || reason.length > 500") && server.includes("['pending_approval', 'approved', 'borrowed', 'overdue']") && server.includes("ASSET_OWNER_RECLASSIFIED") && server.includes("await persistDataStore()")],
   ['Superadmin asset UI exposes legacy owner review and refreshes the list after successful reclassification', assetUi.includes('openOwnerReclassification') && assetUi.includes('submitOwnerReclassification') && assetUi.includes('onRefresh') && assetUi.includes('Review owner aset legacy')],
   ['Asset API client exposes the audited owner reclassification endpoint', assetApi.includes('reclassifyAssetOwner(id: string') && assetApi.includes('/reclassify-owner')],
 
