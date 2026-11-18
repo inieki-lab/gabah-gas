@@ -40,6 +40,10 @@ assert('successful asset create and bulk audit events defer fire-and-forget pers
   && bulkImport.includes('actor, asset.id, false);');
 
 const patchAsset = section("app.patch('/api/assets/:id',", "app.post('/api/assets/:id/assign'");
+assert('asset PATCH restores earlier field changes when a later location validation fails',
+  patchAsset.includes('restoreDomainMutationState(mutationSnapshot);')
+  && patchAsset.indexOf('asset.managing_unit_id = uid;') < patchAsset.indexOf('restoreDomainMutationState(mutationSnapshot);'));
+
 assert('asset PATCH snapshots before mutation and uses rollback persistence',
   patchAsset.indexOf('captureDomainMutationState()') >= 0
   && patchAsset.indexOf('captureDomainMutationState()') < patchAsset.indexOf('asset.managing_unit_id =')
