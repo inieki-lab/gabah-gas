@@ -260,6 +260,32 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   }, [users]);
 
+  useEffect(() => {
+    if (!isOpen || activeSection !== 'notifications' || !isCurrentUserAdmin) return;
+    let cancelled = false;
+    setNotificationRulesLoading(true);
+    setNotificationRulesError('');
+    gabahApi.getNotificationRuleSettings()
+      .then(settings => {
+        if (cancelled) return;
+        const byId = new Map(settings.map(item => [item.rule_id, item.is_active]));
+        if (DEFAULT_NOTIFICATION_RULES.some(rule => !byId.has(rule.id))) {
+          throw new Error('Konfigurasi aturan notifikasi belum lengkap di database.');
+        }
+        setNotificationRules(DEFAULT_NOTIFICATION_RULES.map(rule => ({
+          ...rule,
+          status: byId.get(rule.id) ? 'Aktif' : 'Nonaktif',
+        })));
+      })
+      .catch(error => {
+        if (cancelled) return;
+        setNotificationRulesError(error?.message || 'Aturan notifikasi gagal dimuat dari server.');
+        showToast('Aturan notifikasi tidak dapat dimuat dari database. Perubahan dinonaktifkan.', 'warning');
+      })
+      .finally(() => { if (!cancelled) setNotificationRulesLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, activeSection, isCurrentUserAdmin]);
+
   // Master Data State
   const [categories, setCategories] = useState<any[]>([
     { code: 'IT-HLT', name: 'Hardware Laptop & PC', type: 'IT', loanable: true, total: 42, is_active: true },
@@ -694,32 +720,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [testCode, setTestCode] = useState('HLT');
   const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0005');
 
-  // Notification Rules State
-  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => {
-    // Browser storage is untrusted input: old versions may contain malformed
-    // JSON, a non-array value, or incomplete rule objects. Never let it crash
-    // the Administration modal during render.
-    try {
-      const saved = window.localStorage.getItem('gabah_notification_rules');
-      if (!saved) return DEFAULT_NOTIFICATION_RULES;
-      const parsed: unknown = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return DEFAULT_NOTIFICATION_RULES;
-      const validRules = parsed.filter((rule): rule is NotificationRule =>
-        !!rule &&
-        typeof rule === 'object' &&
-        typeof rule.id === 'string' &&
-        typeof rule.title === 'string' &&
-        typeof rule.trigger === 'string' &&
-        typeof rule.target === 'string' &&
-        (rule.status === 'Aktif' || rule.status === 'Nonaktif') &&
-        (rule.severity === 'warning' || rule.severity === 'critical' || rule.severity === 'info')
-      );
-      return validRules.length > 0 ? validRules : DEFAULT_NOTIFICATION_RULES;
-    } catch (error) {
-      console.warn('[GABAH Administration] Notification rules storage unavailable; using defaults.', error);
-      return DEFAULT_NOTIFICATION_RULES;
-    }
-  });
+  // Rule definitions are code-owned; active status is loaded from PostgreSQL.
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
+  const [notificationRulesLoading, setNotificationRulesLoading] = useState(false);
+  const [notificationRulesError, setNotificationRulesError] = useState('');
+  const [savingNotificationRuleId, setSavingNotificationRuleId] = useState<string | null>(null);
 
   // Audit Search & Filter State
   const [auditSearch, setAuditSearch] = useState('');
@@ -1225,25 +1230,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast('Format dan parameter sequence penomoran aset berhasil disimpan!', 'success');
   };
 
-  // Notification Rules Handlers
-  const handleToggleNotificationRule = (id: string) => {
-    const updated = notificationRules.map(r => {
-      if (r.id === id) {
-        const nextStatus: 'Aktif' | 'Nonaktif' = r.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
-        return { ...r, status: nextStatus };
-      }
-      return r;
-    });
-    setNotificationRules(updated);
+  // Notification rule status is committed by the API before the UI is updated.
+  const handleToggleNotificationRule = async (id: string) => {
+    const target = notificationRules.find(rule => rule.id === id);
+    if (!target || notificationRulesLoading || notificationRulesError || savingNotificationRuleId) return;
+    const nextStatus: 'Aktif' | 'Nonaktif' = target.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
     try {
-      window.localStorage.setItem('gabah_notification_rules', JSON.stringify(updated));
-    } catch (error) {
-      console.error('[GABAH Administration] Failed to persist notification rules locally:', error);
-      showToast('Perubahan hanya berlaku sementara di browser ini; penyimpanan lokal tidak tersedia.', 'warning');
-      return;
+      setSavingNotificationRuleId(id);
+      await gabahApi.updateNotificationRuleSetting(id, nextStatus === 'Aktif');
+      setNotificationRules(previous => previous.map(rule => rule.id === id ? { ...rule, status: nextStatus } : rule));
+      showToast(`Aturan "${target.title}" berhasil diubah menjadi: ${nextStatus}`, 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Perubahan aturan notifikasi gagal disimpan.', 'warning');
+    } finally {
+      setSavingNotificationRuleId(null);
     }
-    const target = updated.find(r => r.id === id);
-    showToast(`Aturan "${target?.title}" diubah menjadi: ${target?.status}`, 'info');
   };
 
   // System Settings Handlers
@@ -1380,7 +1381,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { id: 'org_masters' as AdminSection, label: 'Struktur Pegawai', description: 'Master jabatan/level, unit organisasi, dan lokasi kantor pegawai.', dataSource: 'Database master', icon: Network, badge: `${jobLevels.length} jabatan` },
     { id: 'master_data' as AdminSection, label: 'Referensi Aset & Layanan', description: 'Kategori aset, lokasi fasilitas, dan parameter layanan yang dipakai form operasional.', dataSource: 'Campuran: database dan lokal', icon: Database, badge: `${categories.length} kategori` },
     { id: 'numbering' as AdminSection, label: 'Penomoran Aset', description: 'Format nomor aset dan pemantauan sequence nomor yang diterbitkan server.', dataSource: 'Format masih lokal; sequence dari API', icon: Hash, badge: liveSequences === null ? 'Sequence belum tersedia' : `${liveSequences.length} sequence` },
-    { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'Konfigurasi masih lokal', icon: Bell, badge: 'Perlu sentralisasi' },
+    { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'PostgreSQL', icon: Bell, badge: 'Database' },
     { id: 'audit_log' as AdminSection, label: 'Riwayat Aktivitas', description: 'Catatan perubahan dan aktivitas yang direkam sistem.', dataSource: 'Database / API', icon: ScrollText, badge: `${auditLogs.length} catatan` },
     { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Identitas perusahaan, parameter PSAK, SLA, dan retensi data.', dataSource: 'Konfigurasi masih lokal', icon: Settings2, badge: 'Perlu sentralisasi' },
     { id: 'data_admin' as AdminSection, label: 'Ekspor & Rekonsiliasi', description: 'Fungsi ekspor dan pemeriksaan konsistensi data; bukan pengganti backup terjadwal.', dataSource: 'Operasi administratif', icon: FileSpreadsheet, badge: 'Alat data' },
@@ -4418,7 +4419,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           }`}
                         >
                           <span className={`w-2 h-2 rounded-full ${rule.status === 'Aktif' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                          <span>{rule.status === 'Aktif' ? 'Aktif' : 'Nonaktif'}</span>
+                          <span>{savingNotificationRuleId === rule.id ? 'Menyimpan...' : (rule.status === 'Aktif' ? 'Aktif' : 'Nonaktif')}</span>
                         </button>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
