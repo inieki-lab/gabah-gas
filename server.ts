@@ -2867,6 +2867,7 @@ async function startServer() {
       try {
         asset.asset_location_id = validateAssetLocation(req.body.asset_location_id, undefined, asset.asset_location_id);
       } catch (e: any) {
+        restoreDomainMutationState(mutationSnapshot);
         return res.status(400).json({ success: false, message: e.message });
       }
     }
