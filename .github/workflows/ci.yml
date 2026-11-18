@@ -151,6 +151,9 @@ jobs:
       - name: Ticket reporter ownership regression
         run: npm run test:ticket-reporter-ownership
 
+      - name: Ticket routing and ME unit-scope regression
+        run: npm run test:ticket-routing-unit-scope
+
       - name: Ticket related-asset visibility regression
         run: npm run test:ticket-related-asset-scope
 
