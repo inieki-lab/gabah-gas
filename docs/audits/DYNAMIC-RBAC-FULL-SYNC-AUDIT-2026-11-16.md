@@ -506,3 +506,22 @@ Pemeriksaan lanjutan menemukan bahwa implementasi IT/GA/ME sebenarnya pernah dik
 - Jalankan CI exact-head, fresh PostgreSQL, upgrade database existing, dan UAT semua persona sebelum menutup blocker ME.
 
 **Status:** kandidat implementasi ME ditemukan; integrasi ke branch rilis belum dilakukan dan belum tervalidasi. PR #115 tetap Draft; jangan merge ke `main`.
+
+
+### Deep review kandidat Helpdesk IT/GA/ME — 18 November 2026
+
+Pemeriksaan source dan migration kandidat dilakukan lebih rinci sebelum port ke branch audit utama. Hasilnya menambah beberapa blocker teknis yang harus diselesaikan, bukan sekadar konflik nomor migration.
+
+**Temuan schema/domain:**
+- Migration kandidat 035 membuat `UNIT-PIBC-ME` dengan `division_code = 'PIBC'`. Ini masih mencampur lokasi PIBC dengan kode divisi/owner domain. Keputusan organisasi GABAH menyatakan PIBC adalah lokasi, bukan divisi atau role. Unit ME harus direlasikan ke owner domain operasional yang sah; jangan memakai kode lokasi PIBC sebagai pengganti divisi.
+- `getTicketOwnerDivision()` pada kandidat memetakan kategori ME ke PIBC. Ini berisiko membuat otorisasi, dashboard, laporan, dan notifikasi menganggap PIBC sebagai divisi pemilik tiket. Model owner domain ME harus dipisahkan dari office location.
+- Migration 036 kandidat berbenturan nomor dengan migration 036 yang sudah ada di branch audit utama (`036_dynamic_rbac_auditor_ticket_create_deny.sql)). Tidak boleh menimpa atau mengganti migration yang sudah pernah diterapkan. Kandidat 035 serta 037–041 perlu direvisi/diurutkan ulang sebagai migration baru setelah 097, setelah kontrak skema disetujui.
+- Migration 039 menghapus `tickets.update`, `tickets.assign`, dan `tickets.close` dari role `ga`. Ini dapat mengubah hak GA yang sudah berjalan. Perubahan tersebut harus diuji terhadap assignment role dan pekerjaan GA yang aktual; jangan mengasumsikan semua user GA bukan operator.
+
+**Temuan authorization/UI:**
+- Kandidat menyediakan permission `tickets.assign`, `tickets.create.ga`, dan `tickets.create.me`, serta role template operator/requester. Ini pemisahan capability yang lebih tepat daripada menjadikan label jabatan sebagai role.
+- Namun beberapa jalur handler kandidat masih menggunakan regex `actor.role_label` untuk otorisasi unit ME/GA pada fallback non-PostgreSQL. Pastikan jalur itu benar-benar tidak dapat aktif di deployment produksi dan tidak menjadi fallback ketika PostgreSQL gagal.
+- Endpoint assignment harus selalu mensyaratkan permission dispatch, scope unit/divisi pada tiket, target aktif, permission update, serta scope target. Daftar assignee tidak boleh membocorkan user lintas unit.
+- Kategori tiket ME tidak boleh otomatis membuka seluruh tiket PIBC. Reporter dan assignee tetap dapat melihat tiket miliknya sesuai kebijakan, sedangkan antrean ME memerlukan permission dan scope ME eksplisit.
+
+**Keputusan:** belum aman melakukan port kode kandidat apa adanya. Langkah yang benar adalah mendefinisikan owner domain ME sebagai domain operasional terpisah dari lokasi PIBC, mempertahankan histori SC/PIBC tanpa rewrite, merancang migration baru non-destructive di atas 097, lalu mengadaptasi resolver list/detail/status/assignment/notifikasi/dashboard ke domain tersebut. Uji fresh DB dan upgrade DB existing wajib dilakukan sebelum fitur dinyatakan selesai.
