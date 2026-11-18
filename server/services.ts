@@ -211,7 +211,7 @@ export function hasTicketQueueScope(actor: ServerUser, ticket: { category: strin
   if (!category || category === 'ME') return false;
   return isPostgresPersistenceActive()
     ? hasRbacScope(String(actor.id), 'division', category, 'tickets')
-    : ['IT', 'GA', 'SC', 'PIBC'].includes(category) && actor.role === category;
+    : category === 'IT' && actor.role === 'IT';
 }
 
 export class GabahDomainService {
