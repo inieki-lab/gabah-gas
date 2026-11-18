@@ -256,6 +256,14 @@ async function main() {
     record('Invalid borrower ID is rejected without fallback to admin', '404 + no new loan',
       `HTTP ${invalidBorrower.status} + delta ${afterInvalidBorrower.length - initialLoans.length}`,
       invalidBorrower.status === 404 && afterInvalidBorrower.length === initialLoans.length);
+    const invalidBorrowerPhone = await req(base, 'POST', '/api/loans', {
+      token: admin.token,
+      body: { asset_id: itAsset1.id, borrower_id: 'USR-01', borrower_phone: '1'.repeat(41), purpose: 'Invalid borrower phone fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+    });
+    const afterInvalidBorrowerPhone = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    record('Borrower phone over 40 characters is rejected without creating a loan', '400 + no new loan',
+      `HTTP ${invalidBorrowerPhone.status} + delta ${afterInvalidBorrowerPhone.length - initialLoans.length}`,
+      invalidBorrowerPhone.status === 400 && afterInvalidBorrowerPhone.length === initialLoans.length);
 
     const bulkPartial = await req(base, 'POST', '/api/loans', {
       token: admin.token,
@@ -272,12 +280,13 @@ async function main() {
     });
     record('Bulk request rejects duplicate asset IDs', '400', `HTTP ${duplicateBulk.status}`, duplicateBulk.status === 400);
 
-    const mkLoan = async (token, assetId, borrowerId) => {
+    const mkLoan = async (token, assetId, borrowerId, borrowerPhone) => {
       const r = await req(base, 'POST', '/api/loans', {
         token,
         body: {
           asset_id: assetId,
           ...(borrowerId ? { borrower_id: borrowerId } : {}),
+          ...(borrowerPhone ? { borrower_phone: borrowerPhone } : {}),
           purpose: 'Regression test pinjaman',
           start_date: isoDatePlus(1),
           due_date: isoDatePlus(7),
@@ -291,7 +300,7 @@ async function main() {
     };
 
     // L1 (IT, borrower Karyawan): happy-path workflow, then double-return guard
-    const L1 = await mkLoan(karyawan.token, itAsset1.id);
+    const L1 = await mkLoan(karyawan.token, itAsset1.id, undefined, '+62 813-5555-0101');
     // L2 (IT, borrower Karyawan): handover authorization matrix + double handover
     const L2 = await mkLoan(karyawan.token, itAsset2.id);
     // L3 (IT, borrower Karyawan): handover from pending_approval must be 409
@@ -303,6 +312,9 @@ async function main() {
     record('Setup: 5 loans requested', 'ids issued',
       [L1, L2, L3, L4, L5].filter(l => l.id).length + ' ids',
       [L1, L2, L3, L4, L5].every(l => l.id));
+    const loanContactSnapshot = ((await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || []).find(l => l.id === L1.id);
+    record('Loan request preserves borrower contact entered in the form', '+62 813-5555-0101',
+      loanContactSnapshot?.borrower_phone || '(missing)', loanContactSnapshot?.borrower_phone === '+62 813-5555-0101');
 
     // Approve: IT approves IT loans, GA approves GA loan
     const appr = async (loanId, token) => req(base, 'POST', `/api/loans/${loanId}/approve`, { token, body: {} });
