@@ -258,7 +258,7 @@ async function main() {
       invalidBorrower.status === 404 && afterInvalidBorrower.length === initialLoans.length);
     const invalidBorrowerPhone = await req(base, 'POST', '/api/loans', {
       token: admin.token,
-      body: { asset_id: itAsset1.id, borrower_id: 'USR-01', borrower_phone: '1'.repeat(41), purpose: 'Invalid borrower phone fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
+      body: { asset_id: itAsset1.id, borrower_phone: '1'.repeat(41), purpose: 'Invalid borrower phone fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
     });
     const afterInvalidBorrowerPhone = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
     record('Borrower phone over 40 characters is rejected without creating a loan', '400 + no new loan',
