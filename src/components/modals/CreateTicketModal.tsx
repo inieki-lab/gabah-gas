@@ -200,6 +200,10 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   React.useEffect(() => {
     if (isOpen) {
+      if (!canCreateCategory(category)) {
+        const fallbackCategory = (['IT', 'GA', 'ME'] as TicketCategory[]).find(canCreateCategory);
+        if (fallbackCategory) setCategory(fallbackCategory);
+      }
       if (preselectedAssetId) {
         handleAssetSelect(preselectedAssetId);
       } else {
@@ -211,7 +215,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         setDescription(
           `Tiket kerja terkait kontrak ${linkedContract.contract_number} (${linkedContract.title}) dengan vendor ${linkedContract.vendor_name}. Divisi pemilik: ${linkedContract.owner_division}.`
         );
-        if (linkedContract.owner_division === 'IT') setCategory('IT');
+        if (linkedContract.owner_division === 'IT' && canCreateCategory('IT')) setCategory('IT');
         else if (linkedContract.owner_division === 'GA' && canCreateCategory('GA')) setCategory('GA');
         else if (linkedContract.owner_division === 'SC' || linkedContract.owner_division === 'PIBC') {
           setAssetRoutingError('Owner kontrak masih legacy SC/PIBC. Kategori tiket harus dipilih berdasarkan pekerjaan operasional, bukan lokasi/owner legacy.');
