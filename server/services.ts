@@ -370,14 +370,6 @@ export class GabahDomainService {
       if (alt) taxonomy = alt;
     }
 
-    // SC/PIBC are legacy office/location labels, not owner domains for new assets.
-    // Keep historical rows untouched; require an administrator to review/reclassify
-    // category master ownership before any new asset can use a replacement owner code.
-    if (['SC', 'PIBC'].includes(String(taxonomy.owner_division || '').trim().toUpperCase())
-      && !payload.owner_division) {
-      throw Object.assign(new Error('Kategori ini masih memakai owner legacy SC/PIBC. Review master kategori dan tetapkan owner domain aktif sebelum mendaftarkan aset baru.'), { statusCode: 409 });
-    }
-
     // Enforce Corporate Rules:
     // a) All IT items (IT-H & IT-S) belong to IT. GA only has read-only access.
     let resolvedOwnerDivision: string = taxonomy.owner_division;
@@ -388,6 +380,13 @@ export class GabahDomainService {
       resolvedOwnerDivision = 'GA';
     } else if (payload.owner_division) {
       resolvedOwnerDivision = payload.owner_division;
+    }
+
+    // SC/PIBC are legacy office/location labels, not owner domains for new assets.
+    // Existing records remain readable; new records require an explicitly reviewed
+    // active owner code (for example, the approved replacement domain).
+    if (['SC', 'PIBC'].includes(String(resolvedOwnerDivision || '').trim().toUpperCase())) {
+      throw Object.assign(new Error('Owner SC/PIBC adalah kode lokasi legacy, bukan owner aset baru. Review master kategori dan gunakan owner domain aktif.'), { statusCode: 409 });
     }
 
     const configuredOwner = (db.divisions || []).some(division =>
