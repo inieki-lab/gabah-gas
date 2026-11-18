@@ -4172,7 +4172,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               <div className="bg-white p-4 rounded-2xl border border-slate-200">
                 <h3 className="text-base font-black text-slate-900">Asset Numbering & Sequence Engine</h3>
                 <p className="text-xs text-slate-500">
-                  Format otoritatif: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[#206f65] font-bold">{'{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}'}</code>
+                  Format teknis generator saat ini: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[#206f65] font-bold">{'{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}'}</code> — standar final perusahaan masih menunggu konfirmasi.
                 </p>
               </div>
 
