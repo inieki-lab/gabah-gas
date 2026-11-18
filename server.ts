@@ -7,7 +7,7 @@ import path from 'path';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
+import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole, hasTicketQueueScope } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canManageContractCapability } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -2912,14 +2912,10 @@ async function startServer() {
     if (isSuperadminActor(actor)) {
       return res.json({ success: true, data: db.tickets });
     }
-    const canReadTicketOwner = (owner: string) =>
-      isPostgresPersistenceActive()
-        ? hasRbacScope(String(actor.id), 'division', owner, 'tickets')
-        : actor.role === owner;
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
       || ticket.assigned_agent_id === actor.id
-      || canReadTicketOwner(ticket.category)
+      || hasTicketQueueScope(actor, ticket)
     );
     return res.json({ success: true, data });
   });
@@ -2934,11 +2930,9 @@ async function startServer() {
     const isReporter = ticket.reporter_id === actor.id
       || (!ticket.reporter_id && Boolean(ticket.reporter_name)
         && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
-    const hasOwnerScope = isPostgresPersistenceActive()
-      ? hasRbacScope(String(actor.id), 'division', String(ticket.category || '').trim(), 'tickets')
-      : actor.role === ticket.category;
+    const hasQueueScope = hasTicketQueueScope(actor, ticket);
     if (!isSuperadminActor(actor) && !isReporter
-      && ticket.assigned_agent_id !== actor.id && !hasOwnerScope) {
+      && ticket.assigned_agent_id !== actor.id && !hasQueueScope) {
       return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
     }
     return res.json({ success: true, data: ticket });
@@ -2946,11 +2940,18 @@ async function startServer() {
 
   app.post('/api/tickets', async (req, res) => {
     try {
-      
-    if (!requireRbacPermission(req, res, 'tickets.create')) return;
-    const actor = getActor(req);
-      const newTicket = GabahDomainService.createTicket(req.body, actor);
-      // Domain service validates optional asset/contract relations before creating the ticket.
+      const actor = getActor(req);
+      const requestedCategory = String(req.body?.category || '').trim().toUpperCase();
+      const requiredPermission: Record<string, string> = {
+        IT: 'tickets.create',
+        GA: 'tickets.create.ga',
+        ME: 'tickets.create.me',
+      };
+      const permission = requiredPermission[requestedCategory];
+      if (!permission) return res.status(400).json({ success: false, message: 'Kategori tiket baru hanya IT, GA, atau ME.' });
+      if (isAuditorActor(actor)) return res.status(403).json({ success: false, message: 'Auditor hanya memiliki hak baca (read-only).' });
+      if (!requireRbacPermission(req, res, permission)) return;
+      const newTicket = GabahDomainService.createTicket({ ...req.body, category: requestedCategory }, actor);
       await persistDataStore();
       res.status(201).json({ success: true, data: newTicket });
     } catch (err: any) {
