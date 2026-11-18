@@ -6,11 +6,19 @@ const services = fs.readFileSync('server/services.ts', 'utf8');
 const assets = fs.readFileSync('src/components/views/AssetsView.tsx', 'utf8');
 const contracts = fs.readFileSync('src/components/views/ContractsView.tsx', 'utf8');
 const dashboard = fs.readFileSync('src/components/views/DashboardView.tsx', 'utf8');
+const taxonomyCreateStart = server.indexOf("app.post('/api/taxonomy/categories'");
+const taxonomyPatchStart = server.indexOf("app.patch('/api/taxonomy/categories/:code'");
+const taxonomyCreate = server.slice(taxonomyCreateStart, taxonomyPatchStart);
+const taxonomyPatch = server.slice(taxonomyPatchStart, server.indexOf("app.delete('/api/taxonomy/categories/:code'", taxonomyPatchStart));
 
 assert.match(server, /\['SC', 'PIBC', 'SUPPLY CHAIN'\]\.includes\(owner\.toUpperCase\(\)\)/,
   'asset creation options must hide legacy SC/PIBC owner categories');
 assert.match(services, /\['SC', 'PIBC', 'SUPPLY CHAIN'\]\.includes\(normalizedOwner\)[\s\S]*?statusCode: 409/,
   'domain service must reject new assets assigned to legacy location codes');
+assert.match(taxonomyCreate, /\['SC', 'PIBC', 'SUPPLY CHAIN'\]\.includes\(String\(owner_division\)\.trim\(\)\.toUpperCase\(\)\)/,
+  'new category master rows must not introduce legacy location owners');
+assert.match(taxonomyPatch, /owner_division !== undefined[\s\S]*?\['SC', 'PIBC', 'SUPPLY CHAIN'\]/,
+  'category owner edits must not reintroduce legacy location codes');
 assert.match(assets, /selectedDivision === 'LEGACY'[\s\S]*?\['SC', 'PIBC', 'SUPPLY CHAIN'\]/,
   'asset view may expose legacy owner records only through a review filter');
 assert.doesNotMatch(assets, /\{ id: 'SC', label: 'SC' \}|\{ id: 'PIBC', label: 'PIBC' \}/,
@@ -28,4 +36,4 @@ assert.match(dashboard, /owner lama \(perlu review\)/);
 assert.doesNotMatch(dashboard, /owner legacy SC|owner legacy PIBC/);
 assert.match(dashboard, /<span>Layanan Helpdesk<\/span>/);
 
-console.log('Legacy owner / location separation checks: 14/14 passed');
+console.log('Legacy owner / location separation checks: 16/16 passed');
