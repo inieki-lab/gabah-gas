@@ -26,11 +26,13 @@ import {
   UserCheck,
   UserPlus,
   User,
-  LifeBuoy
+  LifeBuoy,
+  ArrowRightLeft
 } from 'lucide-react';
 import { Asset, AssetCategoryType, AssetStatus, UserProfile } from '../../types';
 import { matchesAssetCategoryFilter } from '../../utils/assetCategoryFilter';
 import { GabahService, formatRupiah, formatDate, exportAssetsToCsv } from '../../services/gabahService';
+import { gabahApi } from '../../services/gabahApi';
 import { BatchQRPrintModal } from '../modals/BatchQRPrintModal';
 
 interface AssetsViewProps {
@@ -45,6 +47,7 @@ interface AssetsViewProps {
   onLoanAsset?: (asset: Asset) => void;
   onReportAsset?: (asset: Asset) => void;
   onOpenImportModal?: () => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export const AssetsView: React.FC<AssetsViewProps> = ({
@@ -59,6 +62,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   onLoanAsset,
   onReportAsset,
   onOpenImportModal,
+  onRefresh,
 }) => {
   const handleOpenCreate = onOpenCreateModal || onOpenNewAssetModal || (() => {});
   const [selectedDivision, setSelectedDivision] = useState<string>('ALL');
@@ -66,24 +70,64 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isBatchQrOpen, setIsBatchQrOpen] = useState<boolean>(false);
+  const [reclassifyAsset, setReclassifyAsset] = useState<Asset | null>(null);
+  const [reclassifyOwners, setReclassifyOwners] = useState<Array<{ code: string; name: string; is_active?: boolean }>>([]);
+  const [reclassifyOwner, setReclassifyOwner] = useState('');
+  const [reclassifyReason, setReclassifyReason] = useState('');
+  const [reclassifyLoading, setReclassifyLoading] = useState(false);
+  const [reclassifySaving, setReclassifySaving] = useState(false);
+  const [reclassifyError, setReclassifyError] = useState('');
+  const isSuperadmin = currentUser.is_superadmin === true || currentUser.role === 'Superadmin' || currentUser.role_keys?.includes('superadmin') === true;
+
+  const openOwnerReclassification = async (asset: Asset) => {
+    setReclassifyAsset(asset);
+    setReclassifyError('');
+    setReclassifyReason('');
+    setReclassifyOwner('');
+    setReclassifyLoading(true);
+    try {
+      const rows = await gabahApi.getDivisions();
+      const owners = (Array.isArray(rows) ? rows : [])
+        .filter(owner => owner && owner.is_active !== false && !['SC', 'PIBC', 'UNASSIGNED'].includes(String(owner.code || '').trim().toUpperCase()))
+        .map(owner => ({ code: String(owner.code).trim().toUpperCase(), name: String(owner.name || owner.code), is_active: owner.is_active }));
+      setReclassifyOwners(owners);
+      setReclassifyOwner(owners.find(owner => owner.code !== String(asset.owner_division || '').toUpperCase())?.code || '');
+    } catch (error) {
+      setReclassifyError(error instanceof Error ? error.message : 'Gagal memuat master owner aktif.');
+    } finally {
+      setReclassifyLoading(false);
+    }
+  };
+
+  const submitOwnerReclassification = async () => {
+    if (!reclassifyAsset || !reclassifyOwner || reclassifyReason.trim().length < 10) return;
+    setReclassifySaving(true);
+    setReclassifyError('');
+    try {
+      await gabahApi.reclassifyAssetOwner(reclassifyAsset.id, {
+        new_owner_division: reclassifyOwner,
+        reason: reclassifyReason.trim(),
+      });
+      await onRefresh?.();
+      setReclassifyAsset(null);
+    } catch (error) {
+      setReclassifyError(error instanceof Error ? error.message : 'Gagal menyimpan reklasifikasi owner.');
+    } finally {
+      setReclassifySaving(false);
+    }
+  };
 
   const safeAssets = Array.isArray(assets) ? assets : [];
+  const ownerDomainOptions = useMemo(() => Array.from(new Set(
+    safeAssets.map(asset => String(asset.owner_division || '').trim().toUpperCase()).filter(Boolean)
+  )).sort(), [safeAssets]);
 
   const filteredAssets = useMemo(() => {
     return safeAssets.filter(asset => {
-      // Division filter
-      if (selectedDivision !== 'ALL') {
-        const div = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : '');
-        if (selectedDivision === 'LEGACY') {
-          // Keep historical SC/PIBC owner values visible for Superadmin review,
-          // but never present those location labels as active divisions.
-          if (!['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(div).trim().toUpperCase())) return false;
-        } else if (selectedDivision === 'IT') {
-          if (div !== 'IT') return false;
-        } else if (selectedDivision === 'GA') {
-          if (div !== 'GA') return false;
-        }
-      }
+      // Owner filter uses only the persisted owner domain. Never infer it from
+      // asset-number prefixes or office/location labels (legacy data stays visible under ALL).
+      if (selectedDivision !== 'ALL'
+        && String(asset.owner_division || '').trim().toUpperCase() !== selectedDivision) return false;
 
       // Kategori mengikuti kode taksonomi/nomor aset. Nama hanya dipakai
       // sebagai fallback untuk data legacy tanpa kode; mencegah substring
@@ -214,14 +258,12 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
             />
           </div>
 
-          {/* Division Tabs */}
+          {/* Owner-domain Tabs: values come from visible persisted asset records. */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto">
-            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Pemilik:</span>
+            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Owner aset:</span>
             {[
               { id: 'ALL', label: 'Semua Owner' },
-              { id: 'IT', label: 'IT' },
-              { id: 'GA', label: 'GA' },
-              { id: 'LEGACY', label: 'Owner lama (review)' },
+              ...ownerDomainOptions.map(code => ({ id: code, label: ['SC', 'PIBC'].includes(code) ? `${code} (legacy — review)` : code })),
             ].map(d => (
               <button
                 key={d.id}
@@ -441,6 +483,16 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                     {/* Actions */}
                     <td className="px-4 py-3.5 align-top text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
+                        {isSuperadmin && ['SC', 'PIBC', 'UNASSIGNED'].includes(String(asset.owner_division || '').trim().toUpperCase()) && (
+                          <button
+                            type="button"
+                            onClick={() => void openOwnerReclassification(asset)}
+                            className="p-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 transition-colors"
+                            title="Review dan reklasifikasi owner legacy per aset"
+                          >
+                            <ArrowRightLeft className="w-4 h-4" />
+                          </button>
+                        )}
                         {onEditAsset && canManageAsset(asset) && (
                           <button
                             onClick={() => onEditAsset(asset)}
@@ -504,6 +556,37 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
         onClose={() => setIsBatchQrOpen(false)}
         assets={filteredAssets}
       />
+      {reclassifyAsset && (
+        <div className="fixed inset-0 z-[80] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !reclassifySaving && setReclassifyAsset(null)}>
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden" onClick={event => event.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-slate-200 bg-amber-50">
+              <h3 className="text-sm font-black text-slate-900">Review owner aset legacy</h3>
+              <p className="text-xs text-slate-600 mt-1">{reclassifyAsset.asset_number} · {reclassifyAsset.name}</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs text-slate-700">
+                Owner saat ini: <strong>{reclassifyAsset.owner_division || 'UNASSIGNED'}</strong>. Nomor aset, lokasi fisik, unit pengelola, PIC, dan histori tidak akan diubah.
+              </div>
+              {reclassifyLoading ? <p className="text-xs text-slate-500">Memuat master owner aktif...</p> : (
+                <>
+                  <label className="block text-xs font-bold text-slate-700">Owner domain baru</label>
+                  <select value={reclassifyOwner} onChange={event => setReclassifyOwner(event.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={reclassifySaving}>
+                    <option value="">Pilih owner aktif...</option>
+                    {reclassifyOwners.map(owner => <option key={owner.code} value={owner.code}>{owner.code} — {owner.name}</option>)}
+                  </select>
+                  <label className="block text-xs font-bold text-slate-700">Alasan / referensi verifikasi (10–500 karakter)</label>
+                  <textarea value={reclassifyReason} onChange={event => setReclassifyReason(event.target.value)} rows={3} maxLength={500} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Contoh: hasil verifikasi kartu aset dan konfirmasi unit pengelola..." disabled={reclassifySaving} />
+                </>
+              )}
+              {reclassifyError && <p className="text-xs text-rose-700">{reclassifyError}</p>}
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setReclassifyAsset(null)} disabled={reclassifySaving} className="rounded-lg px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100">Batal</button>
+                <button type="button" onClick={() => void submitOwnerReclassification()} disabled={reclassifyLoading || reclassifySaving || !reclassifyOwner || reclassifyReason.trim().length < 10} className="rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 px-4 py-2 text-xs font-bold text-white">{reclassifySaving ? 'Menyimpan...' : 'Simpan reklasifikasi'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
