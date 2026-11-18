@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const source = fs.readFileSync('server.ts', 'utf8');
+const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 
 function route(start, end) {
   const from = source.indexOf(start);
@@ -58,4 +59,11 @@ assert.match(notificationReadAll, /await persistDataStore\(\)[\s\S]*?db\.notific
 assert.match(reconciliationLink, /app\.post\('\/api\/reconciliation\/link', async/);
 assert.match(reconciliationLink, /await persistDataStore\(\)[\s\S]*?Object\.assign\(asset, previousAsset\)[\s\S]*?auditLogs/);
 
-console.log('Vendor, Knowledge Base, auth, notification, reconciliation, and persistence safety-net checks: 37/37 passed');
+assert.match(persistence, /SELECT id, action, entity, entity_id, user_name, user_role, details, ip_address, timestamp FROM audit_logs ORDER BY timestamp DESC/,
+  'PostgreSQL audit rows must be merged into memory on startup before state synchronization');
+assert.match(persistence, /auditById\.set\(String\(row\.id\)/,
+  'audit hydration must merge by stable ID without duplicating payload rows');
+assert.match(persistence, /db\.auditLogs = \[\.\.\.auditById\.values\(\)\]\.sort/,
+  'hydrated audit trail must be sorted newest-first');
+
+console.log('Vendor, Knowledge Base, auth, notification, reconciliation, and persistence safety-net checks: 40/40 passed');
