@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const hardening = fs.readFileSync(new URL('../server/runtime-hardening.ts', import.meta.url), 'utf8');
+const services = fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8');
 const guardStart = hardening.indexOf('function canManageTicket(');
 const guardEnd = hardening.indexOf('\n}\n', guardStart);
 const guard = hardening.slice(guardStart, guardEnd);
@@ -12,7 +13,7 @@ const block = source.slice(start, end);
 const checks = [
   ['Direct ticket detail route requires tickets.read', source.includes("app.get('/api/tickets/:id'") && source.includes("requireRbacPermission(req, res, 'tickets.read')")],
   ['Direct ticket detail denies out-of-scope IDs without revealing existence', source.includes("return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' })")],
-  ['Direct ticket detail permits only reporter, assignee, owner scope, or superadmin', source.includes("ticket.assigned_agent_id !== actor.id && !hasOwnerScope") && source.includes('!isSuperadminActor(actor) && !isReporter')],
+  ['Direct ticket detail permits only reporter, assignee, owner scope, or superadmin', source.includes("ticket.assigned_agent_id !== actor.id && !hasQueueScope") && source.includes('!isSuperadminActor(actor) && !isReporter')],
   ['New ticket IDs use collision-resistant UUIDs', fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8').includes('id: `TKT-${randomUUID()}`')],
   ['Reporter ID remains the primary ownership key', block.includes('ticket.reporter_id === actor.id')],
   ['Name fallback is restricted to legacy records without reporter ID', block.includes('!ticket.reporter_id && Boolean(ticket.reporter_name)')],
@@ -20,7 +21,7 @@ const checks = [
   ['Ticket list still filters through the reporter predicate', source.slice(end, end + 1200).includes('isReporter(ticket)')],
   ['Reporter-only identity does not grant status-mutation authority', !guard.includes('ticket.reporter_id === actor.id')],
   ['Assigned agent retains object-level status authority', guard.includes('ticket.assigned_agent_id === actor.id')],
-  ['Unassigned operator still needs explicit ticket owner scope', guard.includes("hasRbacScope(String(actor.id), 'division', owner, 'tickets')")],
+  ['Unassigned operator still needs explicit ticket-module queue scope', guard.includes('hasTicketQueueScope(actor, ticket)') && services.includes("hasRbacScope(String(actor.id), 'division', category, 'tickets', true)")],
   ['Reporter remains eligible for ticket-linked attention visibility', hardening.includes("if (item.link_type === 'ticket') return canSeeTicket(actor, item.link_id);")],
   ['Ticket visibility helper includes reporter ownership', hardening.includes('function canSeeTicket(') && hardening.slice(hardening.indexOf('function canSeeTicket('), hardening.indexOf('function canManageTicket(')).includes('ticket.reporter_id === actor.id')],
   ['Mutation helper excludes reporter-only ownership', !guard.includes('ticket.reporter_id === actor.id')],
