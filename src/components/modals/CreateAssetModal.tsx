@@ -231,6 +231,13 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
     return map;
   }, [masterCategories]);
 
+  const availableOwnerDomains = useMemo(() => (
+    [...new Set((masterCategories || [])
+      .map(category => String(category?.owner_division || '').trim())
+      .filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b))
+  ), [masterCategories]);
+
   // Kode terpilih layak dipakai bila: master belum termuat (fallback), ATAU
   // kode terdaftar di master dan berstatus aktif. Kategori nonaktif/dihapus
   // admin tidak muncul sebagai pilihan baru (nilai historis aset tetap utuh).
@@ -470,10 +477,9 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
                 disabled={!isSuperadmin}
                 className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-600 disabled:bg-slate-100 disabled:text-slate-600"
               >
-                <option value="IT">IT — Tim Teknologi Informasi</option>
-                <option value="GA">GA — Tim General Affair</option>
-                <option value="SC">SC — Tim Supply Chain &amp; Pergudangan</option>
-                <option value="PIBC">PIBC — Tim Pasar Induk Beras Cipinang</option>
+                {availableOwnerDomains.map(owner => (
+                  <option key={owner} value={owner}>{owner}</option>
+                ))}
               </select>
 
               <p className="text-[10.5px] text-slate-500 leading-relaxed">
