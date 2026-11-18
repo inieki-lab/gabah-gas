@@ -59,6 +59,12 @@ const sf = path.resolve('server/data/gabah_state.json'); let old = null;
       `localShadow=${adminModalSource.includes('gabah_master_locations') || adminModalSource.includes('gabah_org_divisions')}; apiEmptyHandling=${masterConfigServerAuthoritative}`,
       masterConfigServerAuthoritative);
 
+    const locationCreateUsesServerId = adminModalSource.includes('created = await gabahApi.createLocation(payload);')
+      && adminModalSource.includes('const updated = [...locations, created];')
+      && !adminModalSource.includes('id: `loc-${Date.now()}`');
+    rec('15: create lokasi memakai ID yang diterbitkan server', 'server-returned ID is used for edit/delete follow-up',
+      `serverId=${locationCreateUsesServerId}`, locationCreateUsesServerId);
+
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
     const units = (await req(b, 'GET', '/api/master/org-units', { token: admin })).json?.data || [];
