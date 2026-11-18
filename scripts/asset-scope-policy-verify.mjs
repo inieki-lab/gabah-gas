@@ -18,6 +18,9 @@ const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
 const ticketUi = read('src/components/views/TicketsView.tsx');
 const adminUi = read('src/components/modals/AdministrationModal.tsx');
+const dashboardUi = read('src/components/views/DashboardView.tsx');
+const contractUi = read('src/components/views/ContractsView.tsx');
+const taxonomy = read('server/taxonomy.ts');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC[/]SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
@@ -99,6 +102,12 @@ const checks = [
   ['Dashboard ticket counts reuse dynamic ticket owner scope and personal visibility', /canReadOwnerScope = \(owner: string, module: 'loans' \| 'tickets'\)/.test(server) && /canReadOwnerScope\(ticket\.category, 'tickets'\)/.test(server) && /ticket\.reporter_id === actor\.id/.test(server)],
   ['Loan list and dashboard counts follow borrower and explicit owner scope', /hasRbacScope\(String\(actor.id\), 'division', loan\.owner_division, 'loans'\)/.test(server) && /canReadOwnerScope\(loan\.owner_division, 'loans'\)/.test(server) && /loans\.approve[\s\S]*hasRbacScope/.test(services)],
   ['User-targeted notifications remain private and role recipients honor additional RBAC assignments', /if \(notification\.recipient_user_id\) return notification\.recipient_user_id === actor\.id;/.test(server) && /const recipientRoleKey = normalizeRoleKey\(notification\.recipient_role\);[\s\S]*?if \(recipientRoleKey === 'humas' && isPostgresPersistenceActive\(\)\) \{\s*return hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\);\s*\}[\s\S]*?return hasApplicationRole\(actor, recipientRoleKey\);/.test(server) && /const isRecipient = notif \? isNotificationRecipient\(actor, notif\) : false;/.test(server) && /const isRecipient = isNotificationRecipient\(actor, n\);/.test(server)],
+
+  ['Asset list owner filter uses persisted owner domains, not division labels or asset-number prefix inference', assetUi.includes('ownerDomainOptions') && assetUi.includes('Owner aset:') && !assetUi.includes("selectedDivision === 'SC'") && !assetUi.includes("selectedDivision === 'PIBC'") && !assetUi.includes("asset.asset_number.split('-')[0]")],
+  ['Dashboard owner summaries aggregate arbitrary owner domains and mark legacy SC/PIBC as review-only', dashboardUi.includes('ownerAssetCounts') && dashboardUi.includes('ownerAssetSummary') && dashboardUi.includes('legacy owner — review') && !dashboardUi.includes('scAssets') && !dashboardUi.includes('pibcAssets')],
+  ['Contract UI uses dynamic owner filters and does not grant legacy Supply Chain/PIBC role fallbacks', contractUi.includes('const ownerDomains = useMemo') && contractUi.includes("label: 'Owner'") && !contractUi.includes("'Supply Chain'") && !contractUi.includes("'PIBC'")],
+  ['Category normalization never silently assigns an unknown owner to GA', taxonomy.includes("owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED'") && taxonomy.includes('Unknown ownership must remain unassigned')],
+
 ];
 
 let failed = 0;
