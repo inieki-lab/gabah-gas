@@ -67,6 +67,9 @@ jobs:
       - name: Asset creation effective owner-scope regression
         run: npm run test:asset-creation-scope
 
+      - name: Vendor and Knowledge Base durable persistence regression
+        run: npm run test:domain-persistence
+
       - name: Asset assignment active-user integrity
         run: npm run test:asset-assignment-active-user
 
