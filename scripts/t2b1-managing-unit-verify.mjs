@@ -101,14 +101,14 @@ async function main() {
     rec('C3: aset GA TIDAK ditebak ke unit manapun (2 kandidat → null)', 'null', `${gaSeed?.managing_unit_id}`, gaSeed && gaSeed.managing_unit_id === null);
 
     // ---------- Test A: create/update membawa managing_unit_id ----------
-    // A1: create eksplisit (owner PIBC via kategori MSN yang boleh di-override)
+    // A1: create eksplisit pada owner GA yang sah; unit pengelola dipilih secara eksplisit.
     const a1 = await req(s1.base, 'POST', '/api/assets', {
       token: admin,
-      body: { category_name_or_code: 'MSN', owner_division: 'PIBC', name: 'Aset Uji T2B-1 (explicit)', location: 'RPC', managing_unit_id: 'UNIT-PIBC' },
+      body: { category_name_or_code: 'MSN', owner_division: 'GA', name: 'Aset Uji T2B-1 (explicit)', location: 'RPC', managing_unit_id: 'UNIT-GA-SARPRAS' },
     });
     const created1 = a1.json?.data;
-    rec('A1: create asset dengan managing_unit_id eksplisit', '201 + UNIT-PIBC',
-      `${a1.status} + ${created1?.managing_unit_id}`, a1.status === 201 && created1?.managing_unit_id === 'UNIT-PIBC' && created1?.owner_division === 'PIBC');
+    rec('A1: create asset dengan managing_unit_id eksplisit', '201 + GA + UNIT-GA-SARPRAS',
+      `${a1.status} + ${created1?.owner_division} + ${created1?.managing_unit_id}`, a1.status === 201 && created1?.managing_unit_id === 'UNIT-GA-SARPRAS' && created1?.owner_division === 'GA');
 
     // A2: create tanpa field → default dari ownership (bukan lokasi)
     const a2 = await req(s1.base, 'POST', '/api/assets', {
@@ -121,11 +121,11 @@ async function main() {
 
     // A3: update (PATCH) mengganti managing_unit_id tanpa mengubah asset_number
     const numBeforePatch = created1?.asset_number;
-    const a3 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-SC' } });
+    const a3 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-GA-UMUM' } });
     rec('A3: PATCH managing_unit_id → 200 + nilai berubah + asset_number tetap',
-      '200 + UNIT-SC + number sama',
+      '200 + UNIT-GA-UMUM + number sama',
       `${a3.status} + ${a3.json?.data?.managing_unit_id} + ${a3.json?.data?.asset_number === numBeforePatch ? 'sama' : 'BERUBAH'}`,
-      a3.status === 200 && a3.json?.data?.managing_unit_id === 'UNIT-SC' && a3.json?.data?.asset_number === numBeforePatch);
+      a3.status === 200 && a3.json?.data?.managing_unit_id === 'UNIT-GA-UMUM' && a3.json?.data?.asset_number === numBeforePatch);
 
     // A4: PATCH null eksplisit → diterima (nullable)
     const a4 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: null } });
@@ -164,7 +164,7 @@ async function main() {
       mv.status === 200 && dAfter?.owner_division === 'IT' && dAfter?.managing_unit_id === dUnit && dAfter?.asset_number === dNum && /PIBC/i.test(dAfter?.location || ''));
 
     // restore nilai A1 asset & state persist untuk F
-    await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-PIBC' } });
+    await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-GA-SARPRAS' } });
     await new Promise(r => setTimeout(r, 400));
 
     // ---------- Test E/F phase 1: snapshot numbers + baca JSON fallback ----------
@@ -198,8 +198,8 @@ async function main() {
       unitsStable ? 'identik' : 'berubah', unitsStable);
 
     const created2After = phase2.find(a => a.id === created1?.id);
-    rec('F3: aset buatan (UNIT-PIBC) tetap setelah restart', 'UNIT-PIBC',
-      `${created2After?.managing_unit_id}`, created2After?.managing_unit_id === 'UNIT-PIBC');
+    rec('F3: aset buatan (UNIT-GA-SARPRAS) tetap setelah restart', 'UNIT-GA-SARPRAS',
+      `${created2After?.managing_unit_id}`, created2After?.managing_unit_id === 'UNIT-GA-SARPRAS');
 
     const gaAfter = phase2.find(a => a.id === gaSeed?.id);
     rec('F4: aset GA tetap null (tidak ditebak ulang saat hydrate)', 'null',
