@@ -2876,7 +2876,7 @@ async function startServer() {
         try {
           const createdLoans = [];
           for (const id of normalizedAssetIds) {
-            const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
+            const newLoan = await GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor, false);
             createdLoans.push(newLoan);
           }
           await persistDataStore();
@@ -2891,12 +2891,14 @@ async function startServer() {
           db.loans.splice(0, db.loans.length, ...snapshots.loans);
           db.notifications.splice(0, db.notifications.length, ...snapshots.notifications);
           db.auditLogs.splice(0, db.auditLogs.length, ...snapshots.auditLogs);
+          try { await persistDataStore(); } catch (rollbackError) {
+            console.error('[GABAH] Failed to persist bulk-loan rollback snapshot:', rollbackError);
+          }
           throw bulkError;
         }
       }
 
-      const newLoan = GabahDomainService.requestLoan(req.body, actor);
-      await persistDataStore();
+      const newLoan = await GabahDomainService.requestLoan(req.body, actor);
       res.status(201).json({ success: true, data: newLoan });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2908,8 +2910,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.approve')) return;
     const actor = getActor(req);
-      const approved = GabahDomainService.approveLoan(req.params.id, actor);
-      await persistDataStore();
+      const approved = await GabahDomainService.approveLoan(req.params.id, actor);
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2921,8 +2922,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.reject')) return;
     const actor = getActor(req);
-      const rejected = GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
-      await persistDataStore();
+      const rejected = await GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
       res.json({ success: true, data: rejected });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2935,8 +2935,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'loans.handover')) return;
     const actor = getActor(req);
       const { handoverNotes } = req.body;
-      const handedOver = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
-      await persistDataStore();
+      const handedOver = await GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
@@ -2955,8 +2954,7 @@ async function startServer() {
       // capability and the domain service enforces matching owner scope.
       if (loan.borrower_id !== actor.id && !requireRbacPermission(req, res, 'loans.return')) return;
       const { condition, returnNotes } = req.body;
-      const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
-      await persistDataStore();
+      const returned = await GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
       res.json({ success: true, data: returned });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
