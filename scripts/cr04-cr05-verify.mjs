@@ -211,6 +211,44 @@ async function main() {
     const mig = new pg.Client({ connectionString: TEST_DB_URL });
     mig.on('error', e => console.error('[pg ledger async error]', e.message));
     await mig.connect();
+    // Org masters and employee assignments must be durable in normalized PostgreSQL,
+    // not only in gabah_state. Create one isolated test job level/unit/user.
+    const customLevel = await req(base, 'POST', '/api/master/job-levels', {
+      token: adminToken, body: { code: 'CI', label: 'CI Verification', order: 99 },
+    });
+    const customUnit = await req(base, 'POST', '/api/master/org-units', {
+      token: adminToken, body: { name: 'Unit CI Persistence', division_code: 'IT' },
+    });
+    const customUserEmail = `org.persistence.${Date.now()}@foodstation.co.id`;
+    const customUser = await req(base, 'POST', '/api/users', {
+      token: adminToken,
+      body: {
+        name: 'Uji Persistensi Organisasi',
+        email: customUserEmail,
+        role: 'Karyawan',
+        division: 'IT',
+        password: ADMIN_PASS,
+        job_level_code: 'CI',
+        unit_id: customUnit.json?.data?.id,
+        office_location_id: 'OFF-PIBC',
+      },
+    });
+    const customUserId = customUser.json?.data?.id;
+    const normalizedOrgMasters = await mig.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM org_job_levels WHERE code = 'CI') AS job_level_count,
+         (SELECT COUNT(*)::int FROM org_units WHERE id = $1 AND division_code = 'IT' AND is_active = TRUE) AS unit_count,
+         (SELECT COUNT(*)::int FROM org_office_locations WHERE id = 'OFF-PIBC' AND is_active = TRUE) AS location_count,
+         (SELECT COUNT(*)::int FROM users WHERE id = $2 AND job_level_code = 'CI' AND unit_id = $1 AND office_location_id = 'OFF-PIBC') AS user_profile_count`,
+      [customUnit.json?.data?.id || '', customUserId || ''],
+    );
+    const orgMasterCounts = normalizedOrgMasters.rows[0] || {};
+    record('Custom job level, unit, office location and employee assignments persist to normalized PostgreSQL',
+      '1/1/1/1 rows',
+      `job=${orgMasterCounts.job_level_count} unit=${orgMasterCounts.unit_count} location=${orgMasterCounts.location_count} user=${orgMasterCounts.user_profile_count}`,
+      customLevel.status === 201 && customUnit.status === 201 && customUser.status === 201
+        && orgMasterCounts.job_level_count === 1 && orgMasterCounts.unit_count === 1
+        && orgMasterCounts.location_count === 1 && orgMasterCounts.user_profile_count === 1);
     // Legacy function profiles must become Karyawan primary plus a secondary
     // capability assignment, and the authoritative JSON state must agree.
     const capabilityRows = await mig.query(
