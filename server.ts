@@ -286,7 +286,6 @@ async function startServer() {
     const legacyLabels: Record<string, string> = {
       superadmin: 'Admin GABAH', it: 'IT', ga: 'GA', karyawan: 'Karyawan',
       auditor: 'Auditor', humas: 'Humas', sekretaris_direksi: 'Sekretaris Direksi',
-      supply_chain: 'Supply Chain', pibc: 'PIBC',
     };
     return actor.role === legacyLabels[normalizeRoleKey(roleKey)];
   };
@@ -1512,8 +1511,8 @@ async function startServer() {
         if (u.role === 'GA' && ['ga', 'ga.officer', 'siti', 'siti.rahmawati'].includes(inPrefix)) return true;
         if (u.role === 'Sekretaris Direksi' && ['sekdir', 'sekretariat.direksi', 'dewi', 'dewi.anggraini'].includes(inPrefix)) return true;
         if (u.role === 'Humas' && ['humas', 'rina', 'rina.kartika'].includes(inPrefix)) return true;
-        if (u.role === 'Supply Chain' && ['sc', 'sc.warehouse', 'supplychain', 'agus', 'agus.pratama'].includes(inPrefix)) return true;
-        if (u.role === 'PIBC' && ['pibc', 'pibc.admin', 'pasar', 'bambang', 'bambang.h'].includes(inPrefix)) return true;
+        if (u.office_location_id === 'OFF-RPC' && ['sc', 'sc.warehouse', 'supplychain', 'agus', 'agus.pratama'].includes(inPrefix)) return true;
+        if (u.office_location_id === 'OFF-PIBC' && ['pibc', 'pibc.admin', 'pasar', 'bambang', 'bambang.h'].includes(inPrefix)) return true;
         if (u.role === 'Karyawan' && ['karyawan', 'pegawai', 'hendra', 'hendra.w'].includes(inPrefix)) return true;
         if (u.role === 'Auditor' && ['auditor', 'spi', 'maya', 'maya.indriani'].includes(inPrefix)) return true;
         return false;
@@ -2884,7 +2883,7 @@ async function startServer() {
     // with every explicit dynamic role scope. Do not re-filter by legacy
     // primary-role labels here: that would hide scoped assets from employees
     // who hold additional operational roles.
-    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
+    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas'];
     const isEmployeeBaseline = employeeBaselineRoles.includes(actor.role);
     const scopedAssets = GabahDomainService.getScopedAssets(actor);
     // Employee baseline may see unassigned loanable assets in the asset catalogue
@@ -3371,7 +3370,7 @@ async function startServer() {
     }
 
     // File-store compatibility: preserve the established legacy behavior.
-    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
+    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(actor.role);
     const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor)
       .filter(asset => !employeeBaseline || asset.assigned_to?.id === actor.id)
       .filter(asset => actor.role !== 'GA' || String(asset.owner_division).toUpperCase() === 'GA')
