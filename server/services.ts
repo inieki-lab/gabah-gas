@@ -1413,7 +1413,7 @@ export class GabahDomainService {
     override_conflict?: boolean;
     interruption_reason?: string;
     notes?: string;
-  }, actor: ServerUser): ServerRoomReservation {
+  }, actor: ServerUser): Promise<ServerRoomReservation> {
     const canCreateReservation = isPostgresPersistenceActive()
       ? hasRoomPermission(actor, 'room_reservations.create')
       : !isAuditorActor(actor);
@@ -1510,6 +1510,15 @@ export class GabahDomainService {
         throw Object.assign(new Error(`${label} harus berupa teks maksimal ${maxLength} karakter.`), { statusCode: 400 });
       }
     }
+
+    const previousReservations = (db.roomReservations || []).map(item => ({ ...item }));
+    const previousNotifications = (db.notifications || []).map(item => ({ ...item }));
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      db.roomReservations = previousReservations;
+      db.notifications = previousNotifications;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
 
     // Anti-Collision Check: StartA < EndB && EndA > StartB on the same date for this room
     // SEC-07: In-memory check remains for UI feedback, but database-level
@@ -1756,7 +1765,7 @@ export class GabahDomainService {
       });
     }
 
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await this.persistMutationWithRollback('Pembuatan reservasi ruang rapat', rollback);
 
     return reservation;
   }
