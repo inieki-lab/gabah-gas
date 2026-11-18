@@ -2950,7 +2950,7 @@ async function startServer() {
     closed: ['open'],
   };
 
-  app.patch('/api/tickets/:id/status', (req, res) => {
+  app.patch('/api/tickets/:id/status', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'tickets.update')) return;
@@ -2969,6 +2969,12 @@ async function startServer() {
           message: 'Catatan penyelesaian harus berupa teks maksimal 4000 karakter.',
         });
       }
+      const previousState = {
+        status: ticket.status,
+        resolution_notes: ticket.resolution_notes,
+        resolved_at: ticket.resolved_at,
+        updated_at: ticket.updated_at,
+      };
       const currentStatus = String(ticket.status);
       const nextStatus = String(status || '');
 
@@ -2996,12 +3002,27 @@ async function startServer() {
       }
       ticket.updated_at = new Date().toISOString();
 
-      GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
-      persistDataStore().catch(() => {});
+      const auditEntry = GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
+      try {
+        // Do not acknowledge a lifecycle transition until the authoritative
+        // persistence queue confirms the write.
+        await persistDataStore();
+      } catch (persistenceError: any) {
+        ticket.status = previousState.status;
+        ticket.resolution_notes = previousState.resolution_notes;
+        ticket.resolved_at = previousState.resolved_at;
+        ticket.updated_at = previousState.updated_at;
+        const auditIndex = db.auditLogs.findIndex(entry => entry.id === auditEntry.id);
+        if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+        return res.status(500).json({
+          success: false,
+          message: persistenceError.message || 'Gagal menyimpan perubahan status tiket.',
+        });
+      }
 
       res.json({ success: true, data: ticket });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
