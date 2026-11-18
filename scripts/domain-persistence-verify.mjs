@@ -72,7 +72,7 @@ assert.match(persistence, /INSERT INTO org_units/);
 assert.match(persistence, /INSERT INTO org_office_locations/);
 assert.match(persistence, /job_level_code,unit_id,office_location_id/);
 assert.match(persistence, /office_location_id=EXCLUDED\.office_location_id/);
-assert.match(persistence, /SELECT id::text AS id, role, unit_id, office_location_id FROM users/);
+assert.match(persistence, /SELECT id::text AS id, role, job_level_code, unit_id, office_location_id FROM users/);
 assert.match(orgUnitSchemaMigration, /ALTER COLUMN division_code TYPE VARCHAR\(20\)/);
 
 console.log('Vendor, Knowledge Base, auth, notification, reconciliation, and persistence safety-net checks: 47/47 passed');
