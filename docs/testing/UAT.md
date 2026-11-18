@@ -136,9 +136,9 @@
 ### Skenario 5: Peminjaman Barang & Deteksi Tabrakan Jadwal (Anti-Collision)
 - **Tujuan**: Membuktikan server menolak tabrakan peminjaman aset yang sama pada tanggal tumpang tindih.
 - **Langkah Pengujian (Happy Path & Collision Test)**:
-  1. Login sebagai `Karyawan` (Hendra). Buka *Peminjaman Barang* $\to$ ajukan pinjaman mobil Toyota Avanza (`GA-KDR-2026-0001`) tanggal 1 s/d 5 Oktober 2026.
+  1. Login sebagai `Karyawan` (Hendra). Buka *Peminjaman Barang* $\to$ pilih aset kendaraan GA berstatus dapat dipinjam yang tersedia di database UAT; catat ID aset dan ajukan pinjaman pada rentang tanggal uji yang akan datang.
   2. Login sebagai `GA` (Siti) $\to$ buka menu *Peminjaman* $\to$ klik *Setujui Pinjaman*. Status berubah `approved`.
-  3. Login sebagai Karyawan lain (atau alih peran) $\to$ ajukan pinjaman untuk mobil Avanza yang sama pada tanggal 3 s/d 7 Oktober 2026 (periode bertabrakan).
+  3. Login sebagai Karyawan lain (atau akun uji kedua) $\to$ ajukan pinjaman untuk aset yang sama pada rentang tanggal yang tumpang tindih dengan permohonan pertama.
 - **Kriteria Lulus**: Permohonan kedua ditolak oleh server dengan pesan error: `Tabrakan Jadwal: Aset sudah direservasi atau dipinjam pada rentang tanggal tersebut.`
 
 ---
