@@ -17,6 +17,9 @@ const checks = [
   ['Reporter-only identity does not grant status-mutation authority', !guard.includes('ticket.reporter_id === actor.id')],
   ['Assigned agent retains object-level status authority', guard.includes('ticket.assigned_agent_id === actor.id')],
   ['Unassigned operator still needs explicit ticket owner scope', guard.includes("hasRbacScope(String(actor.id), 'division', owner, 'tickets')')],
+  ['Reporter remains eligible for ticket-linked attention visibility', hardening.includes("if (item.link_type === 'ticket') return canSeeTicket(actor, item.link_id);")],
+  ['Ticket visibility helper includes reporter ownership', hardening.includes('function canSeeTicket(') && hardening.slice(hardening.indexOf('function canSeeTicket('), hardening.indexOf('function canManageTicket(')).includes('ticket.reporter_id === actor.id')],
+  ['Mutation helper excludes reporter-only ownership', !guard.includes('ticket.reporter_id === actor.id')],
 ];
 
 let failed = 0;
