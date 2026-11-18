@@ -46,6 +46,17 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
+  const [assetRoutingError, setAssetRoutingError] = useState('');
+
+  const hasPermission = (key: string): boolean | undefined => Array.isArray(currentUser?.permission_keys)
+    ? currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key)
+    : undefined;
+  const canCreateCategory = (target: TicketCategory): boolean => {
+    if (target === 'IT') return hasPermission('tickets.create') ?? currentUser?.role !== 'Auditor';
+    if (target === 'GA') return hasPermission('tickets.create.ga') ?? false;
+    if (target === 'ME') return hasPermission('tickets.create.me') ?? false;
+    return false;
+  };
 
   const isAuditor = Array.isArray(currentUser?.role_keys) ? currentUser?.role_keys?.includes('auditor') === true : currentUser?.role === 'Auditor';
 
@@ -79,12 +90,12 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       icon: '❄️',
     },
     {
-      id: 'sc-weighbridge',
-      label: 'Timbangan & Mesin Pabrik',
-      category: 'SC' as TicketCategory,
+      id: 'me-facility',
+      label: 'Perawatan Mesin & Fasilitas PIBC',
+      category: 'ME' as TicketCategory,
       priority: 'urgent' as TicketPriority,
       title: 'Kendala Mesin Pabrik Beras / Jembatan Timbang Truk',
-      desc: 'Sensor jembatan timbang atau conveyor penggilingan beras mengalami deviasi/error butuh kalibrasi darurat.',
+      desc: 'Kerusakan mesin, instalasi listrik, AC, pintu, wastafel, atau fasilitas operasional yang ditangani Tim Perawatan (ME) PIBC.',
       icon: '🌾',
     },
     {
@@ -99,6 +110,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   ];
 
   const applyCatalogTemplate = (tpl: typeof serviceCatalogTemplates[0]) => {
+    if (!canCreateCategory(tpl.category)) return;
+    setAssetRoutingError('');
     setCategory(tpl.category);
     setPriority(tpl.priority);
     setTitle(tpl.title);
@@ -164,20 +177,23 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const reporterAssets = Array.from(reporterAssetsMap.values());
 
   const handleAssetSelect = (assetId: string) => {
+    setAssetRoutingError('');
     setRelatedAssetId(assetId);
     if (assetId) {
       const selected = safeAssets.find(a => a.id === assetId);
-      if (selected) {
-        // License/SaaS is an IT domain: software & license tickets route to IT
-        if (selected.owner_division === 'SC') {
-          setCategory('SC');
-        } else if (selected.owner_division === 'PIBC') {
-          setCategory('PIBC');
-        } else if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
-          setCategory('GA');
-        } else {
-          setCategory('IT');
+      if (!selected) return;
+      const owner = String(selected.owner_division || '').toUpperCase();
+      if (owner === 'SC' || owner === 'PIBC') {
+        setRelatedAssetId('');
+        setAssetRoutingError('Aset ini masih memakai klasifikasi owner legacy SC/PIBC. Aset tidak ditautkan ke tiket baru sampai klasifikasinya direview Superadmin.');
+      } else if (owner === 'GA' || selected.category_type === 'GA') {
+        if (canCreateCategory('GA')) setCategory('GA');
+        else {
+          setRelatedAssetId('');
+          setAssetRoutingError('Aset GA terdeteksi, tetapi akun ini belum memiliki capability untuk mengajukan tiket GA.');
         }
+      } else if (owner === 'IT') {
+        setCategory('IT');
       }
     }
   };
@@ -195,10 +211,11 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         setDescription(
           `Tiket kerja terkait kontrak ${linkedContract.contract_number} (${linkedContract.title}) dengan vendor ${linkedContract.vendor_name}. Divisi pemilik: ${linkedContract.owner_division}.`
         );
-        setCategory((linkedContract.owner_division === 'IT' ? 'IT'
-          : linkedContract.owner_division === 'SC' ? 'SC'
-          : linkedContract.owner_division === 'PIBC' ? 'PIBC'
-          : 'GA') as TicketCategory);
+        if (linkedContract.owner_division === 'IT') setCategory('IT');
+        else if (linkedContract.owner_division === 'GA' && canCreateCategory('GA')) setCategory('GA');
+        else if (linkedContract.owner_division === 'SC' || linkedContract.owner_division === 'PIBC') {
+          setAssetRoutingError('Owner kontrak masih legacy SC/PIBC. Kategori tiket harus dipilih berdasarkan pekerjaan operasional, bukan lokasi/owner legacy.');
+        }
       }
     }
   }, [isOpen, preselectedAssetId, linkedContract]);
@@ -209,7 +226,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor || !title.trim() || !description.trim()) return;
+    if (isAuditor || !canCreateCategory(category) || !title.trim() || !description.trim()) return;
 
     onCreateTicket({
       title,
@@ -266,7 +283,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               <span className="text-[10px] text-slate-500 font-normal">Klik untuk auto-fill standar ITSM</span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              {serviceCatalogTemplates.map(tpl => (
+              {serviceCatalogTemplates.filter(tpl => canCreateCategory(tpl.category)).map(tpl => (
                 <button
                   key={tpl.id}
                   type="button"
@@ -282,64 +299,19 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
           {/* Category */}
           <div className="space-y-1.5">
-            <label className="text-slate-700 font-bold">Departemen Penanganan:</label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-              <button
-                type="button"
-                onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'IT'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
+            <label className="text-slate-700 font-bold">Antrean Penanganan:</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {canCreateCategory('IT') && <button type="button" onClick={() => { setCategory('IT'); setRelatedAssetId(''); setAssetRoutingError(''); }} className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${category === 'IT' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
                 <Laptop className="w-4 h-4" /> IT / Lisensi
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('GA'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'GA' 
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
+              </button>}
+              {canCreateCategory('GA') && <button type="button" onClick={() => { setCategory('GA'); setRelatedAssetId(''); setAssetRoutingError(''); }} className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${category === 'GA' ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
                 <Car className="w-4 h-4" /> General Affair (GA)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'IT' && title.toLowerCase().includes('lisensi')
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <KeyRound className="w-4 h-4" /> Lisensi (IT)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('SC'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'SC' 
-                    ? 'bg-orange-600 text-white border-orange-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Package className="w-4 h-4" /> Supply Chain
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('PIBC'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'PIBC' 
-                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Store className="w-4 h-4" /> PIBC
-              </button>
+              </button>}
+              {canCreateCategory('ME') && <button type="button" onClick={() => { setCategory('ME'); setRelatedAssetId(''); setAssetRoutingError(''); }} className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${category === 'ME' ? 'bg-orange-600 text-white border-orange-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
+                <Package className="w-4 h-4" /> Tim Perawatan (ME)
+              </button>}
             </div>
+            {assetRoutingError && <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2">{assetRoutingError}</p>}
           </div>
 
           {/* Priority Level & Dynamic SLA Preview */}
