@@ -68,8 +68,11 @@ jobs:
       - name: Asset movement history scope consistency
         run: npm run test:movement-scope
 
-      - name: Per-account login lockout isolation
+      - name: Per-account login lockout isolation (route contract)
         run: npm run test:login-lockout-scope
+
+      - name: Per-account login lockout isolation (runtime)
+        run: npm run test:login-lockout-runtime
 
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
