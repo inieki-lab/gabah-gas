@@ -204,13 +204,13 @@ export function hasTicketQueueScope(actor: ServerUser, ticket: { category: strin
   if (ticket.assigned_unit_id) {
     return isPostgresPersistenceActive()
       ? String(actor.unit_id || '') === String(ticket.assigned_unit_id)
-        && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets')
+        && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets', true)
       : String(actor.unit_id || '') === String(ticket.assigned_unit_id);
   }
   const category = String(ticket.category || '').trim().toUpperCase();
   if (!category || category === 'ME') return false;
   return isPostgresPersistenceActive()
-    ? hasRbacScope(String(actor.id), 'division', category, 'tickets')
+    ? hasRbacScope(String(actor.id), 'division', category, 'tickets', true)
     : category === 'IT' && actor.role === 'IT';
 }
 
@@ -1129,7 +1129,7 @@ export class GabahDomainService {
       const eligibleAgents = db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
         && hasRbacPermission(String(user.id), 'tickets.read')
         && hasRbacPermission(String(user.id), 'tickets.update')
-        && hasRbacScope(String(user.id), 'division', 'IT', 'tickets'));
+        && hasRbacScope(String(user.id), 'division', 'IT', 'tickets', true));
       if (eligibleAgents.length === 1) {
         newTicket.assigned_agent_id = eligibleAgents[0].id;
         newTicket.assigned_agent_name = eligibleAgents[0].name;
@@ -1152,12 +1152,12 @@ export class GabahDomainService {
         && user.unit_id === 'UNIT-PIBC-ME'
         && hasRbacPermission(String(user.id), 'tickets.read')
         && hasRbacPermission(String(user.id), 'tickets.assign')
-        && hasRbacScope(String(user.id), 'unit', 'UNIT-PIBC-ME', 'tickets'))
+        && hasRbacScope(String(user.id), 'unit', 'UNIT-PIBC-ME', 'tickets', true))
       : payload.category === 'GA'
         ? db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
           && hasRbacPermission(String(user.id), 'tickets.read')
           && hasRbacPermission(String(user.id), 'tickets.assign')
-          && hasRbacScope(String(user.id), 'division', 'GA', 'tickets'))
+          && hasRbacScope(String(user.id), 'division', 'GA', 'tickets', true))
         : newTicket.assigned_agent_id
           ? db.users.filter(user => user.id === newTicket.assigned_agent_id)
           : db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
