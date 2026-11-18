@@ -1,0 +1,5 @@
+services:
+  database:
+    container_name: null
+  app:
+    container_name: null
