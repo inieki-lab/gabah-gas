@@ -676,6 +676,7 @@ export async function initializePersistence(): Promise<void> {
     console.log('[GABAH Persistence] Standalone environment active. Utilizing resilient local file storage.');
 
     const loaded = loadStateFromFile();
+    normalizeLegacyLocationProfilesInMemory();
     // T2B-1: backfill managing_unit_id (ownership-based, idempoten) untuk aset
     // yang belum punya nilai — nilai eksplisit tidak pernah ditimpa.
     backfillManagingUnits('file store');
@@ -691,6 +692,7 @@ export async function initializePersistence(): Promise<void> {
     ensureCanonicalAdministrator();
     provisionCanonicalUserPasswords();
     AssetNumberingEngine.syncFromExistingAssets(db.assets);
+    saveStateToFile(createPayload());
     return;
   }
 
