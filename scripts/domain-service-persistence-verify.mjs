@@ -62,4 +62,4 @@ for (const [start, end, call] of routeCases) {
   assert.ok(body.includes('await ' + call + '('), call + ' route must await service persistence');
 }
 
-console.log('Asset, room reservation, meeting room/type/facility persistence checks: 37/37 passed');
+console.log('Asset, room reservation, meeting room/type/facility persistence checks: 36/36 passed');
