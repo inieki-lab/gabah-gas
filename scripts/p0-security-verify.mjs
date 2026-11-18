@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import net from 'node:net';
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 
 const results = [];
 function record(test, expected, actual, pass) {
@@ -460,7 +460,6 @@ async function main() {
 /** Read a couple of old bearer tokens from HEAD's gabah_state.json (for revocation proof). */
 function extractOldTokensFromGit() {
   try {
-    const { execSync } = require('node:child_process');
     const out = execSync('git show HEAD:server/data/gabah_state.json 2>/dev/null', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     const parsed = JSON.parse(out);
     return (parsed.sessions || []).slice(0, 1).map(s => s.token).filter(Boolean);
