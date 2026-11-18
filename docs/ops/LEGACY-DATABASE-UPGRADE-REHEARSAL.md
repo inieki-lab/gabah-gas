@@ -36,18 +36,18 @@ GABAH_INITIAL_ADMIN_PASSWORD=REPLACE_WITH_A_NEW_TEST_PASSWORD
 GABAH_INITIAL_USER_PASSWORD=REPLACE_WITH_A_DIFFERENT_TEST_PASSWORD
 ```
 
-3. Start an isolated Compose project. It has its own database volume and app container.
+3. Start an isolated Compose project. The small override removes the repository's fixed container names so this project can coexist with the normal GABAH stack; it receives its own project-prefixed volume and network.
 
 ```bash
-docker compose -p gabah-rehearsal --env-file .env.rehearsal up -d database
-docker compose -p gabah-rehearsal --env-file .env.rehearsal ps
+docker compose -p gabah-rehearsal -f docker-compose.yml -f docker-compose.rehearsal.yml --env-file .env.rehearsal up -d database
+docker compose -p gabah-rehearsal -f docker-compose.yml -f docker-compose.rehearsal.yml --env-file .env.rehearsal ps
 ```
 
 4. Restore the dump into the isolated database. This pipes the archive into the PostgreSQL 17 container; it does not write to the source database.
 
 ```bash
 pg_dump --format=custom --no-owner --no-acl "$SOURCE_DATABASE_URL" | \
-  docker compose -p gabah-rehearsal --env-file .env.rehearsal exec -T database \
+  docker compose -p gabah-rehearsal -f docker-compose.yml -f docker-compose.rehearsal.yml --env-file .env.rehearsal exec -T database \
   pg_restore --username "$PGUSER" --dbname "$PGDATABASE" --clean --if-exists --single-transaction --no-owner --no-privileges
 ```
 
@@ -100,9 +100,9 @@ ORDER BY id;
 Build and start the app against the restored rehearsal database:
 
 ```bash
-docker compose -p gabah-rehearsal --env-file .env.rehearsal up -d --build
-docker compose -p gabah-rehearsal --env-file .env.rehearsal ps
-docker compose -p gabah-rehearsal --env-file .env.rehearsal logs --tail=300 app
+docker compose -p gabah-rehearsal -f docker-compose.yml -f docker-compose.rehearsal.yml --env-file .env.rehearsal up -d --build
+docker compose -p gabah-rehearsal -f docker-compose.yml -f docker-compose.rehearsal.yml --env-file .env.rehearsal ps
+docker compose -p gabah-rehearsal -f docker-compose.yml -f docker-compose.rehearsal.yml --env-file .env.rehearsal logs --tail=300 app
 ```
 
 The app must become healthy and the logs must show migration `098_ticket_routing_unit_scope.sql` applied, followed by PostgreSQL persistence ready. A migration failure or fallback to file storage is an immediate FAIL.
@@ -176,7 +176,7 @@ Save the following together: source dump checksum, source migration ledger, pre/
 Only after evidence is copied out:
 
 ```bash
-docker compose -p gabah-rehearsal --env-file .env.rehearsal down -v
+docker compose -p gabah-rehearsal -f docker-compose.yml -f docker-compose.rehearsal.yml --env-file .env.rehearsal down -v
 ```
 
 This command intentionally deletes the **rehearsal project's** database and uploads volumes. Confirm the project name is exactly `gabah-rehearsal`; never run it against the regular `gabah-gas` project.
