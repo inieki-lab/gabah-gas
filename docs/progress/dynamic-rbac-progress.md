@@ -709,3 +709,15 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The previous deploy.sh auto-installed Docker from get.docker.com, shut down the existing Compose project with --remove-orphans, and printed success without verifying health. Replaced with fail-fast preflight, .env/PGPASSWORD validation, Compose config check, app-only recreation, health polling, and failure diagnostics. It no longer stops the DB first or claims success without health.
 - PostgreSQL host port now binds only to loopback. Compose now passes GABAH_INITIAL_ADMIN_PASSWORD and GABAH_INITIAL_USER_PASSWORD into the application container (previously documented in runbook but not passed by Compose).
 - CI checks Compose configuration and shell syntax. VM runbook now requires clean main, fast-forward-only update, database backup, health verification, and explicit rollback/restore safeguards. Production deploy remains NO-GO pending merge, UAT, restore rehearsal, TLS, and sign-off.
+
+### Follow-up integration batch — 2026-11-18 (PR #121 candidate)
+
+- Current integration candidate is `fix/ticket-routing-me-unit-scope`; exact code head `075bb60acc5419c7c887199faa95584e074473f7` passed CI #2332.
+- Role assignment now writes its `RBAC_USER_ROLES_UPDATED` audit row in the same PostgreSQL transaction as role-set replacement. Startup merges normalized audit rows by stable ID before syncing state, so older `gabah_state` payloads cannot hide committed audit evidence.
+- Migration 091 makes `audit_logs` append-only in PostgreSQL (UPDATE/DELETE/TRUNCATE rejected); migration 099 gives Auditor explicit global read scope only for module `audit`.
+- Live PostgreSQL verification confirms: Auditor additional role reads authorized cross-domain contract/document and cannot write; the only active Superadmin cannot be removed (409, assignment preserved); role assignment and audit evidence survive restart.
+- Asset creation UI now fails closed on loading/empty/unavailable category master and revalidates the selected active master category at submit. Custom License category payloads follow the selected master row's `category_type`.
+- T2B-1/2/3 tests now distinguish owner domains from physical locations: new owner must be valid (e.g. GA), while PIBC/RPC remain valid physical locations. Historical records are not rewritten.
+- CI #2332 passed PostgreSQL 17, P0 security, dynamic RBAC, user directory, ticket reporter/ME routing, loan transitions, meeting-room, asset owner/location/category, maintenance, production build, and Docker runtime smoke.
+- Release remains NO-GO until persona-by-persona browser UAT, legacy DB upgrade rehearsal, PostgreSQL+uploads backup/restore, staging/TLS/deployment controls, credential/history incident response, and business-owner sign-off are completed.
+- PR #121 remains draft and the candidate branch is 733 commits ahead / 1 behind `main` at this check. Do not merge until integration history is reconciled and release owners approve.
