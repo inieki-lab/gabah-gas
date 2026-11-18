@@ -6,6 +6,8 @@ const services = fs.readFileSync('server/services.ts', 'utf8');
 const assets = fs.readFileSync('src/components/views/AssetsView.tsx', 'utf8');
 const contracts = fs.readFileSync('src/components/views/ContractsView.tsx', 'utf8');
 const dashboard = fs.readFileSync('src/components/views/DashboardView.tsx', 'utf8');
+const admin = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
+const roleNavigation = fs.readFileSync('src/navigation/roleNavigation.ts', 'utf8');
 const taxonomyCreateStart = server.indexOf("app.post('/api/taxonomy/categories'");
 const taxonomyPatchStart = server.indexOf("app.patch('/api/taxonomy/categories/:code'");
 const taxonomyCreate = server.slice(taxonomyCreateStart, taxonomyPatchStart);
@@ -35,5 +37,14 @@ assert.doesNotMatch(legacyGrants, /Supply Chain|PIBC|\bSC\b/,
 assert.match(dashboard, /owner lama \(perlu review\)/);
 assert.doesNotMatch(dashboard, /owner legacy SC|owner legacy PIBC/);
 assert.match(dashboard, /<span>Layanan Helpdesk<\/span>/);
+assert.doesNotMatch(roleNavigation, /'Supply Chain':|PIBC:/,
+  'legacy office labels must not receive fallback role navigation');
+assert.match(admin, /activeOwnerDivisions = useMemo/);
+assert.match(admin, /value=\{newCategoryData\.owner_division\}[\s\S]*?activeOwnerDivisions\.map/);
+assert.match(admin, /value=\{numberingRuleForm\.owner_division\}[\s\S]*?activeOwnerDivisions\.map/);
+assert.match(admin, /value=\{newUserData\.division \|\| ''\}[\s\S]*?activeOwnerDivisions\.map/);
+assert.match(admin, /Legacy \{editUserData\.division\} — perlu normalisasi/);
+assert.match(admin, /Legacy \{editCategoryData\.owner_division\} — perlu review/);
+assert.match(admin, /Legacy \(perlu normalisasi\)/);
 
-console.log('Legacy owner / location separation checks: 16/16 passed');
+console.log('Legacy owner / location separation checks: 23/23 passed');
