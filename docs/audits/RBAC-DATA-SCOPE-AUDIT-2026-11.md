@@ -322,3 +322,12 @@ Source review found two operational edge cases and added regression coverage:
 - When there is not exactly one eligible IT assignee, queue notifications are now sent only to active IT-scope users who also have `notifications.read`; ticket-read permission alone is insufficient to receive notification records.
 - New ME requests now fail closed with HTTP 409 if the configured `UNIT-PIBC-ME` operational unit is inactive or missing.
 - The ticket-routing contract suite now verifies both rules; CI #2204 passed 37/37 checks.
+
+
+### CI refresh after rehearsal procedure + Compose isolation — 18 November 2026
+
+- Exact head: `900a0a36e04385cb3aad8ab5d3f127e25522c2dd`.
+- GitHub Actions CI run #2211 (run ID `44294634254`): **67/67 steps passed**. The new first-step Compose validation checks both the normal stack and the isolated rehearsal override.
+- The rehearsal override uses a separate Compose project name, project-scoped volumes/networks, unique host ports, and removes fixed container names so the copy can coexist with the normal GABAH stack.
+- The rehearsal procedure is documented at `docs/ops/LEGACY-DATABASE-UPGRADE-REHEARSAL.md`; it remains **NOT EXECUTED** until an operator supplies a verified pre-098 backup and captures pre/post row-identity evidence.
+- CI success proves configuration validation and the fresh-database migration path; it does **not** prove upgrade safety against a legacy database. Browser UAT, backup/restore rehearsal, and business-owner sign-off remain release blockers.
