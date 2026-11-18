@@ -36,8 +36,8 @@ assert('bulk asset import snapshots before processing rows and rolls back on fai
   && bulkImport.includes('persistMutationOrRollback(res, mutationSnapshot)'));
 assert('successful asset create and bulk audit events defer fire-and-forget persistence',
   services.includes("actor, newAsset.id, false);")
-  && bulkImport.includes('actor, existing.id, false);')
-  && bulkImport.includes('actor, asset.id, false);');
+  && bulkImport.includes("actor, existing.id, false);")
+  && bulkImport.includes("actor, asset.id, false);");
 
 const patchAsset = section("app.patch('/api/assets/:id',", "app.post('/api/assets/:id/assign'");
 assert('asset PATCH restores earlier field changes when a later location validation fails',
