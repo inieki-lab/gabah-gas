@@ -2993,7 +2993,7 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Anda tidak berwenang melihat petugas untuk antrean ini.' });
     }
     const eligible = db.users.filter(user => {
-      if (user.is_active === false || !hasRbacPermission(String(user.id), 'tickets.read') || !hasRbacPermission(String(user.id), 'tickets.update')) return false;
+      if (user.is_active === false || !hasRbacPermission(String(user.id), 'tickets.read') || !hasRbacPermission(String(user.id), 'notifications.read') || !hasRbacPermission(String(user.id), 'tickets.update')) return false;
       if (ticket.assigned_unit_id) {
         return user.unit_id === ticket.assigned_unit_id
           && hasRbacScope(String(user.id), 'unit', ticket.assigned_unit_id, 'tickets', true);
@@ -3027,7 +3027,7 @@ async function startServer() {
         && hasRbacScope(String(target.id), 'unit', ticket.assigned_unit_id, 'tickets', true)
       : ['IT', 'GA'].includes(String(ticket.category || '').toUpperCase())
         && hasRbacScope(String(target.id), 'division', String(ticket.category).toUpperCase(), 'tickets', true);
-    if (!hasRbacPermission(String(target.id), 'tickets.read') || !hasRbacPermission(String(target.id), 'tickets.update') || !targetHasScope) {
+    if (!hasRbacPermission(String(target.id), 'tickets.read') || !hasRbacPermission(String(target.id), 'notifications.read') || !hasRbacPermission(String(target.id), 'tickets.update') || !targetHasScope) {
       return res.status(400).json({ success: false, message: 'Petugas tujuan belum memiliki permission dan scope untuk menangani antrean ini.' });
     }
 
