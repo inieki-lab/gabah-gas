@@ -86,6 +86,9 @@ jobs:
       - name: Asset movement history scope consistency
         run: npm run test:movement-scope
 
+      - name: Asset assignment, movement, and lifecycle persistence regression
+        run: npm run test:asset-domain-persistence
+
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
 
