@@ -571,7 +571,7 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Rendering is capped to five failure rows even if the API returns more than the intended display limit.
 - Added `scripts/reminder-failure-payload-verify.mjs`, registered it as `npm run test:reminder-failure-payload`, and added the check to CI.
 - This closes a frontend crash path when the reminder API returns a truthy non-array value (for example an object/string/null-like malformed payload).
-- **Not closed:** Notification Rules configuration still persists to browser `localStorage`, not a server-authoritative PostgreSQL setting. This remains a separate functional/data-consistency item; do not mark Notification Rules centrally persisted or production-complete.
+- **At the time of this entry:** Notification Rules still used browser `localStorage`. This was subsequently replaced by PostgreSQL-backed settings and audit in section 22; section 22 is the authoritative current status.
 - Validation: the exact latest head `813d33c3f0cc1b8212be60c0b1ea0a8b3d2f0c96` completed GitHub Actions run `44211191175` successfully. All 74 steps passed, including live P0 HTTP security, PostgreSQL 17 persistence integration, Docker runtime smoke, and the full regression suite.
 
 **Checklist:** reminder failure payload crash guard = implemented and CI PASS; Notification Rules central persistence = OPEN.
@@ -581,7 +581,7 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 
 - Exact branch head `813d33c3f0cc1b8212be60c0b1ea0a8b3d2f0c96` was verified against workflow run `44211191175`.
 - The `verify` job completed with conclusion `success`; all 74 steps completed and no failed step was reported.
-- This confirms the Reminder Center malformed-payload guard and its regression check are included in a green full pipeline. It does not close Notification Rules persistence, system settings centralization, or numbering configuration parity.
+- This confirms the Reminder Center malformed-payload guard and its regression check are included in a green full pipeline. Notification Rules persistence was subsequently completed in section 22; system settings centralization and numbering configuration parity were still open at the time of this entry.
 - PR #119 remains in its stacked release chain. No merge to `main` or laptop UAT authorization is implied by this CI result.
 
 
@@ -607,3 +607,16 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - PR #119 remains Draft and stacked on its parent branch. This green CI does not authorize merging to `main` or laptop UAT while the parent release-chain conflict and operational UAT gates remain open.
 
 **Notification Rules release gate:** implementation = complete for the documented scope; exact-head CI = PASS; outbound email/Telegram gating for warranty/loan/SLA and the wider System Settings centralization = OPEN.
+
+## 24. System Settings company-profile centralization — 18 November 2026
+
+- Added migration 099 with a singleton PostgreSQL company-profile settings row and append-only before/after audit history. Conflict-safe seeding preserves any existing configuration.
+- Added authenticated read API and Superadmin-only update API. Updates accept exactly four fields: company name, accounting standard, base currency, and fiscal year; field lengths and fiscal-year range are validated server-side.
+- Settings changes use a row lock and update/audit insertion in one PostgreSQL transaction. No-op updates do not create false audit entries; database failures return an explicit error.
+- Replaced `gabah_system_settings` browser `localStorage` reads/writes in Administration. The form loads authoritative server data, shows errors instead of falling back to stale browser defaults, and only reports success after the API confirms persistence.
+- Non-Superadmin views can read the current profile but remain read-only. The operational SLA reference values (Urgent 4h, High 8h, Medium 24h, Low 48h) are now disabled in the form; they remain server-owned and are not editable through this metadata endpoint.
+- Removed unused local-only fields from the active settings form. The persisted profile metadata is not yet consumed throughout all app branding/reporting/accounting workflows; that broader integration remains open and must not be assumed.
+- Added `test:system-settings-persistence` and a CI regression step covering API authorization, field allowlist/validation, transaction/audit, migration seed, localStorage removal, read-only behavior, and SLA reference locking.
+- Exact code SHA `6aa202cb555192e0cf0ab8d1363eabb3a7008d56` passed workflow run `44216761752`; the `verify` job completed successfully with all 76 steps and no failures.
+
+**Checklist:** company-profile PostgreSQL storage/API/audit = implemented; SLA policy remains server-owned/read-only; app-wide consumption of company profile metadata = OPEN; exact-head CI = PASS (76/76 steps).
