@@ -26,6 +26,7 @@ const serviceCases = [
   ['loan reject', 'static async rejectLoan(', '/**\n   * Loan custody authority'],
   ['loan handover', 'static async handoverLoan(', '/**\n   * Loan Return & Inspection'],
   ['loan return', 'static async returnLoan(', '/**\n   * Helpdesk Ticket Creation'],
+  ['ticket create', 'static async createTicket(', '/**\n   * Dashboard Attention Center'],
   ['room request', 'static async requestRoomReservation(', 'static async approveRoomReservation('],
   ['room approve', 'static async approveRoomReservation(', 'static async rejectRoomReservation('],
   ['room reject', 'static async rejectRoomReservation(', 'static async checkinRoomReservation('],
@@ -54,6 +55,7 @@ const routeCases = [
   ["app.post('/api/loans/:id/reject', async", "app.post('/api/loans/:id/handover'", 'GabahDomainService.rejectLoan'],
   ["app.post('/api/loans/:id/handover', async", "app.post('/api/loans/:id/return'", 'GabahDomainService.handoverLoan'],
   ["app.post('/api/loans/:id/return', async", '// Ticket capabilities', 'GabahDomainService.returnLoan'],
+  ["app.post('/api/tickets', async", '// Ticket dispatch is a separate capability', 'GabahDomainService.createTicket'],
   ["app.patch('/api/meeting-rooms/:id', async", "app.get('/api/room-reservations'", 'GabahDomainService.updateMeetingRoom'],
   ["app.post('/api/room-reservations', async", "app.post('/api/room-reservations/:id/approve'", 'GabahDomainService.requestRoomReservation'],
   ["app.post('/api/room-reservations/:id/approve', async", "app.post('/api/room-reservations/:id/reject'", 'GabahDomainService.approveRoomReservation'],
@@ -73,4 +75,4 @@ for (const [start, end, call] of routeCases) {
   assert.ok(body.includes('await ' + call + '('), call + ' route must await service persistence');
 }
 
-console.log('Asset, loan, room reservation, meeting room/type/facility persistence checks: 46/46 passed');
+console.log('Asset, loan, room reservation, meeting room/type/facility persistence checks: 48/48 passed');
