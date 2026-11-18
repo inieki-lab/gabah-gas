@@ -1832,7 +1832,8 @@ async function startServer() {
 
       const { name, main_type, owner_division, category_type, description, is_loanable_by_default, is_active } = req.body || {};
       if (owner_division !== undefined
-        && ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(owner_division).trim().toUpperCase())) {
+        && ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(owner_division).trim().toUpperCase())
+        && String(owner_division).trim().toUpperCase() !== String(target.owner_division || '').trim().toUpperCase()) {
         return res.status(400).json({ success: false, message: 'SC/PIBC tidak dapat ditetapkan sebagai owner kategori baru. Klasifikasikan aset historis berdasarkan bukti owner yang benar.' });
       }
       if (is_loanable_by_default !== undefined && typeof is_loanable_by_default !== 'boolean') {
