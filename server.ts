@@ -3069,6 +3069,12 @@ async function startServer() {
         const auditIndex = db.auditLogs.findIndex(item => item.id === auditId);
         if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
       }
+      try {
+        // Refresh the file fallback snapshot after restoring in-memory state.
+        await persistDataStore();
+      } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist ticket assignment rollback snapshot:', rollbackError);
+      }
       return res.status(500).json({ success: false, message: 'Penugasan gagal disimpan. Perubahan dibatalkan.' });
     }
   });
