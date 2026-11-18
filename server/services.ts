@@ -1148,6 +1148,7 @@ export class GabahDomainService {
     // Role labels and office locations are never used as ticket recipients.
     const notificationTargets = payload.category === 'ME'
       ? db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
+        && user.unit_id === 'UNIT-PIBC-ME'
         && hasRbacPermission(String(user.id), 'tickets.assign')
         && hasRbacScope(String(user.id), 'unit', 'UNIT-PIBC-ME', 'tickets'))
       : payload.category === 'GA'
