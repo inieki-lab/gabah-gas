@@ -21,4 +21,11 @@ assert.match(create, /else if \(!\['Admin GABAH', 'IT', 'GA'\]\.includes\(actor\
 assert.match(update, /requireRbacPermission\(req, res, 'maintenances\.update'\)[\s\S]*validateMaintenanceInput/);
 assert.match(update, /canMutateAssetOwner\(actor, schedule\.owner_division, 'maintenances\.update'\)[\s\S]*validateMaintenanceInput/);
 assert.equal((source.match(/validateMaintenanceInput\(req\.body \|\| \{\}\)/g) || []).length, 2);
-console.log('Maintenance input validation: 12 checks passed');
+assert.match(create, /app\.post\('\/api\/maintenances', async \(req, res\)/);
+assert.match(create, /await persistDataStore\(\)[\s\S]*?MAINTENANCE_SCHEDULED[\s\S]*?splice\(scheduleIndex, 1\)[\s\S]*?MAINTENANCE/);
+assert.doesNotMatch(create, /persistDataStore\(\)\.catch\(\(\) => \{\}\)/);
+assert.match(update, /app\.patch\('\/api\/maintenances\/:id', async \(req, res\)/);
+assert.match(update, /const previous = \{[\s\S]*?vendor_id:[\s\S]*?last_completed_at:/);
+assert.match(update, /await persistDataStore\(\)[\s\S]*?Object\.assign\(schedule, previous\)[\s\S]*?MAINTENANCE_UPDATED/);
+assert.doesNotMatch(update, /persistDataStore\(\)\.catch\(\(\) => \{\}\)/);
+console.log('Maintenance input validation + durable persistence: 19 checks passed');
