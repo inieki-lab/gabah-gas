@@ -2814,7 +2814,7 @@ async function startServer() {
       const updated = await GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4522,7 +4522,7 @@ async function startServer() {
       const created = await GabahDomainService.createMeetingType(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4534,7 +4534,7 @@ async function startServer() {
       const updated = await GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4546,7 +4546,7 @@ async function startServer() {
       const result = await GabahDomainService.deleteMeetingType(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4565,7 +4565,7 @@ async function startServer() {
       const created = await GabahDomainService.createMeetingFacility(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4577,7 +4577,7 @@ async function startServer() {
       const updated = await GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4589,7 +4589,7 @@ async function startServer() {
       const result = await GabahDomainService.deleteMeetingFacility(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
