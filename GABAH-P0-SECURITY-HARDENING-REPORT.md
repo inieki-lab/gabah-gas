@@ -333,15 +333,17 @@ Section ini supersedes the 30 September snapshot above. Evidence must be read to
 
 | Finding | Current status | Evidence / remaining condition |
 |---|---|---|
-| CR-04 PostgreSQL authority and migrations | **Verified in CI** | PostgreSQL 17 fresh database, migration runner, persistence/restart, and production fail-fast passed in CI #2319. Legacy snapshot upgrade and backup/restore remain untested. |
+| CR-04 PostgreSQL authority and migrations | **Verified in CI** | PostgreSQL 17 fresh database, migration runner, persistence/restart, production fail-fast, append-only audit log triggers, and Auditor additional-role scope checks passed in CI #2329. Legacy snapshot upgrade and backup/restore remain untested. |
 | CR-05 reminders | **Partially verified** | Scheduler, idempotent reminder sweep, and honest in-app sent/skipped statuses are covered by CI. Email/Telegram remain skipped until transport credentials/configuration are provided. |
-| SEC-04 authorization / IDOR | **Regression suites pass** | Current CI covers notification recipient scoping, ticket reporter/assignee ownership, loan transitions, room reservations, asset scopes, and restricted contract linkage. Browser UAT remains outstanding. |
+| SEC-04 authorization / IDOR | **Regression suites pass** | CI #2329 covers notification recipient scoping, ticket reporter/assignee ownership, loan transitions, room reservations, asset scopes, restricted contract linkage, and Auditor additional-role read/write boundaries. Browser UAT remains outstanding. |
 | SEC-06 brute force / client IP | **Partially verified** | Production login lockout is active; API rate limiting keys on the transport peer address and does not trust client-supplied `X-Forwarded-For`. Alias/enumeration behavior still needs a focused review. |
 | SEC-07 room collision | **Regression suite passes** | Meeting-room reservation conflict/priority workflows and PostgreSQL persistence tests pass in CI. A production-like concurrency rehearsal remains outstanding. |
 | SEC-08 contract documents | **Verified in CI** | Physical file bytes, scoped download, and restart persistence are covered by PostgreSQL/Docker integration. Production backup of PostgreSQL and uploads volume together remains outstanding. |
 | SEC-09 contract numbering | **Verified in CI** | PostgreSQL contract numbering allocation regression passes; production-like concurrent multi-instance rehearsal remains outstanding. |
 | CR-06 initial password delivery | **Operational follow-up remains** | Password provisioning/reset is server-side; initial credential delivery to employees remains an out-of-band operator process. |
 | Git history / exposed historical credentials | **Operational blocker remains** | No automatic history rewrite or credential rotation was performed. Coordinate history purge and full secret/password rotation with repository owners before production. |
-| Audit log immutability | **New hardening in progress** | Migration 091 adds PostgreSQL UPDATE/DELETE/TRUNCATE rejection for `audit_logs`; CI #2323 is the exact-head verification run. Do not count it as verified until that run succeeds. |
+| Audit log immutability | **Verified in CI** | Migration 091 rejects PostgreSQL UPDATE/DELETE/TRUNCATE against `audit_logs`; fresh-database integration verifies all three operations return SQLSTATE 55000 and preserves the row (CI #2329). |
+| Auditor cross-domain audit read | **Verified in CI** | Migration 099 grants an explicit `all` scope only for module `audit`; Auditor additional-role can read an authorized cross-domain contract/document while write attempts remain 403 (CI #2329). |
+| RBAC assignment protection | **Partially verified** | Assignment and audit insert share one PostgreSQL transaction; additional role and audit survive restart (CI #2329). A new live last-Superadmin removal regression is running in CI #2332. |
 
 **Current release posture remains NO-GO.** Green CI does not replace browser UAT, legacy upgrade rehearsal, recovery rehearsal, staging controls, credential incident response, or business-owner sign-off.
