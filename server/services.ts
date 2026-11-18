@@ -1150,14 +1150,14 @@ export class GabahDomainService {
   /**
    * Helpdesk Ticket Creation with Authoritative SLA Deadline
    */
-  static createTicket(payload: {
+  static async createTicket(payload: {
     title: string;
     description: string;
     category: 'IT' | 'GA' | 'ME';
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
     contract_id?: string;
-  }, actor: ServerUser): ServerTicket {
+  }, actor: ServerUser): Promise<ServerTicket> {
     // Strict divisional categories per PRD §3.5: a ticket must target an
     // operational division that actually staffs a queue. Without this gate a
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
@@ -1261,12 +1261,20 @@ export class GabahDomainService {
       }
     }
 
+    const previousTickets = db.tickets.slice();
+    const previousNotifications = (db.notifications || []).map(item => ({ ...item }));
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      db.tickets = previousTickets;
+      db.notifications = previousNotifications;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
     db.tickets.unshift(newTicket);
 
     // Contract linkage was validated before ticket creation.
     if (linkedContractId) {
       const contract = db.contracts.find(item => item.id === linkedContractId)!;
-      this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id);
+      this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id, false);
     }
 
     // Notify only active users who are explicitly authorized for the queue.
@@ -1300,8 +1308,9 @@ export class GabahDomainService {
       link_id: newTicket.id,
     });
 
-    this.recordAudit('TICKET_CREATED', 'Tickets', `Membuat tiket helpdesk ${ticketNumber} (Prioritas: ${payload.priority}, SLA: ${slaHours}h)`, actor, newTicket.id);
+    this.recordAudit('TICKET_CREATED', 'Tickets', `Membuat tiket helpdesk ${ticketNumber} (Prioritas: ${payload.priority}, SLA: ${slaHours}h)`, actor, newTicket.id, false);
 
+    await this.persistMutationWithRollback('Pembuatan tiket helpdesk', rollback);
     return newTicket;
   }
 
