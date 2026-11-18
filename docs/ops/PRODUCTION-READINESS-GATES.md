@@ -33,6 +33,7 @@ This checklist is the release control record. A green build is necessary but is 
 - [x] PostgreSQL 17 boots from a completely empty test database (CI #588).
 - [x] Fresh database applies all 35 migration entries; repeatability/ledger checks pass (CI #588).
 - [x] PostgreSQL is authoritative in production; the app fails closed if production DB is unavailable (CI #588).
+- [x] PostgreSQL `audit_logs` rejects UPDATE, DELETE, and TRUNCATE at database level (migration 091; CI #2329).
 - [x] Create, update, read-back, restart, and re-read workflows pass (CI #588).
 - [x] Dynamic user-role assignments survive ordinary writes and restart (CI #2319: additional role assignment and audit evidence survive PostgreSQL app restart).
 - [ ] Migration path from a representative legacy snapshot is tested separately from fresh install.
@@ -53,7 +54,7 @@ This checklist is the release control record. A green build is necessary but is 
 - [x] Future locations and owner domains can be added from master data without code changes (org/owner-scope CI #589).
 - [ ] GA's broad owner scope (all except IT) remains an administrator-configurable policy, not an automatic grant.
 - [x] GA's IT Laptop/PC visibility is read-only and controlled by assets.read.it_workstations (CI #589).
-- [x] Auditor read-only behavior is tested through direct API calls, including Auditor as an additional role (PostgreSQL CI #544: write 403, authorized audit read 200).
+- [x] Auditor read-only behavior and additional-role assignment are tested through direct API calls; explicit global read scope is limited to the `audit` module (migration 099; CI #2329: write 403, authorized cross-domain read 200).
 
 ## G3 — Workflow and role-based UAT
 
