@@ -331,3 +331,23 @@ Source review found two operational edge cases and added regression coverage:
 - The rehearsal override uses a separate Compose project name, project-scoped volumes/networks, unique host ports, and removes fixed container names so the copy can coexist with the normal GABAH stack.
 - The rehearsal procedure is documented at `docs/ops/LEGACY-DATABASE-UPGRADE-REHEARSAL.md`; it remains **NOT EXECUTED** until an operator supplies a verified pre-098 backup and captures pre/post row-identity evidence.
 - CI success proves configuration validation and the fresh-database migration path; it does **not** prove upgrade safety against a legacy database. Browser UAT, backup/restore rehearsal, and business-owner sign-off remain release blockers.
+
+## 18 November 2026 — follow-up hardening on release candidate
+
+### Asset creation owner-domain options
+- Added `GET /api/assets/creation-categories`, which requires `assets.create` and filters active category master rows by the actor's effective `assets` owner-domain scope. License categories additionally require `licenses.manage`.
+- `CreateAssetModal` no longer derives create authority from primary role labels such as IT, GA, Supply Chain, or PIBC. The selected category's configured `owner_division` is authoritative; non-Superadmin users cannot override it in the browser.
+- Owner-domain options are derived from the authorized category master rather than a fixed IT/GA/SC/PIBC dropdown. Empty or failed responses fail closed and do not fall back to static role-based category choices.
+- Added CI contract coverage in `scripts/asset-creation-scope-verify.mjs`.
+
+### Durable persistence and rollback
+- Asset PATCH now awaits persistence before success and restores the asset plus audit entry if the write fails.
+- Maintenance create/update now await persistence and roll back the schedule and audit entry on failure.
+- Vendor create/update and Knowledge Base create/update/vote/view now await persistence; failed writes restore the in-memory record/counter and remove the associated audit event where applicable.
+- Self-service password change now persists the new password hash before revoking sessions. On persistence failure, the prior credentials remain in force and sessions are not revoked.
+- The legacy post-response persistence safety net now catches and logs rejected writes rather than producing an unhandled promise rejection. It remains a compatibility fallback, not proof that a route's own write is durable.
+- Added source regression coverage in `scripts/domain-persistence-verify.mjs`, and extended asset/maintenance regression checks.
+
+### Verification status
+- These changes are committed to the PR #121 head. A fresh exact-head CI run is required; no pass is claimed yet.
+- Browser UAT, legacy database upgrade rehearsal, backup/restore rehearsal, and real-user role assignment remain separate release gates.
