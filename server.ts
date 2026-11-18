@@ -818,7 +818,7 @@ async function startServer() {
         // Unit is an organizational attribute; SC/RPC and PIBC are office locations.
         const unitId = String(row.unit_id || '').trim().toUpperCase();
         const requestedOfficeLocation = String(row.office_location_id || '').trim().toUpperCase();
-        const officeLocationId = requestedOfficeLocation;
+        const officeLocationId = requestedOfficeLocation || (roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '');
 
         if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
         if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
@@ -835,10 +835,10 @@ async function startServer() {
           errors.push(`Baris ${rowNo}: Lokasi kantor "${officeLocationId}" tidak terdaftar/aktif.`); continue;
         }
 
-        const requestedRole = roleRaw || 'Pegawai';
-        const role = requestedRole;
-        if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
-          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipertahankan sebagai label profil lama saja; lokasi kantor tidak ditebak. Isi kolom office_location_id secara eksplisit.`);
+        const requestedRole = roleRaw || 'Karyawan';
+        const role = ['Supply Chain', 'PIBC'].includes(requestedRole) ? 'Karyawan' : requestedRole;
+        if (role !== requestedRole) {
+          warnings.push(`Baris ${rowNo}: label lokasi "${requestedRole}" dinormalisasi menjadi Karyawan; office_location_id=${officeLocationId}.`);
         }
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
@@ -850,13 +850,12 @@ async function startServer() {
           const existingFunctionLabel = String(existing.role_label || '');
           (existing as any).role_label = /humas|sekretariat/i.test(existingFunctionLabel)
             ? existingFunctionLabel
-            : requestedRole === 'Supply Chain' ? 'Karyawan — Lokasi RPC/SC'
-              : requestedRole === 'PIBC' ? 'Karyawan — Lokasi PIBC'
-                : (roleLabels[role] || role);
+            : (roleLabels[role] || role);
           existing.division = division as ServerUser['division'];
           existing.department = department;
           if (jobLevelCode) existing.job_level_code = jobLevelCode;
           if (unitId) existing.unit_id = unitId;
+          else if (['UNIT-SC', 'UNIT-PIBC', 'UNIT-PANGSUB'].includes(String(existing.unit_id || ''))) existing.unit_id = null;
           if (officeLocationId) existing.office_location_id = officeLocationId;
           if (phone) existing.phone = phone;
           importedUsers.push(existing);
@@ -877,9 +876,7 @@ async function startServer() {
             name,
             email,
             role: role as ServerUser['role'],
-            role_label: requestedRole === 'Supply Chain' ? 'Karyawan — Lokasi RPC/SC'
-              : requestedRole === 'PIBC' ? 'Karyawan — Lokasi PIBC'
-                : (roleLabels[role] || 'Pegawai Operasional'),
+            role_label: roleLabels[role] || 'Pegawai Operasional',
             division: division as ServerUser['division'],
             department,
             job_level_code: jobLevelCode || undefined,
