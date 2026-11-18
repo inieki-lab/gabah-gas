@@ -65,6 +65,20 @@ Gunakan akun yang memang disediakan oleh seed/provisioning aplikasi. Email di ba
 | Pegawai umum | `hendra.w@foodstation.co.id` | layanan mandiri, aset milik sendiri, tiket, permohonan |
 | Auditor | `auditor@foodstation.co.id` | baca sesuai scope audit; seluruh mutasi ditolak |
 
+### Role template tiket — harus ditetapkan manual oleh Superadmin
+
+Role template berikut dibuat oleh migration 098, tetapi **tidak otomatis ditetapkan ke akun mana pun**. Sebelum UAT, Superadmin harus memilih akun/persona yang disetujui dan menetapkan unit/scope yang benar:
+
+| Role template | Fungsi | Prasyarat |
+|---|---|---|
+| `pemohon_tiket_ga` | membuat dan membaca tiket GA miliknya | permission `tickets.create.ga` |
+| `ga_helpdesk_operator` | membaca antrean GA, dispatch, dan update tiket | scope division GA pada modul tickets + `tickets.read`, `tickets.assign`, `tickets.update`, `notifications.read` |
+| `pemohon_tiket_me` | membuat dan membaca tiket ME miliknya | permission `tickets.create.me` |
+| `admin_tiket_me` | membaca antrean ME dan dispatch | `user.unit_id=UNIT-PIBC-ME` + exact unit scope ME pada modul tickets |
+| Petugas ME | menangani tiket yang ditugaskan | unit ME + `tickets.read`, `tickets.update`, `notifications.read` + exact unit scope |
+
+IT tidak memiliki role dispatcher tambahan pada tahap ini: auto-assignment hanya terjadi bila tepat satu petugas aktif memenuhi permission dan exact scope IT. Jika tidak ada tepat satu kandidat, tiket tetap berada di antrean IT.
+
 Password tidak boleh dicantumkan di dokumen, log, screenshot, atau commit. Pada Docker Compose, app berjalan dengan `NODE_ENV=production`; karena itu `GABAH_TEST_PASSWORD` memang diabaikan dan tidak boleh dijadikan cara login UAT. Untuk database UAT baru, isi `GABAH_INITIAL_ADMIN_PASSWORD` dan `GABAH_INITIAL_USER_PASSWORD` sebelum boot pertama. Password awal hanya mengisi akun yang belum punya hash dan tidak mereset akun lama. Untuk database UAT yang sudah berisi akun, login dengan kredensial yang berlaku lalu gunakan fitur reset password resmi dari Superadmin untuk menyiapkan password UAT bagi akun uji. Jangan hapus volume atau menimpa kredensial tanpa backup dan persetujuan. Jangan menyalin akun/password production ke UAT.
 
 ## 4. Model organisasi yang harus dipertahankan saat tes
@@ -75,6 +89,8 @@ Password tidak boleh dicantumkan di dokumen, log, screenshot, atau commit. Pada 
 - Owner aset tidak sama dengan lokasi fisik. Aset IT tetap owner IT meski berada di PIBC/RPC.
 - IT mengelola aset IT lintas lokasi. GA mengelola aset GA; akses baca ke PC/laptop IT hanya jika permission/scope khusus diberikan, tanpa hak mutasi.
 - Sekdir dan Humas adalah pegawai dengan capability tambahan, bukan pengganti role primer pegawai.
+- ME adalah fungsi operasional pada unit `UNIT-PIBC-ME` yang berlokasi di PIBC; bukan divisi PIBC. Akses antrean ME memerlukan unit assignment dan exact ticket-module scope, bukan lokasi kerja saja.
+- Kategori tiket baru hanya IT, GA, dan ME. Kategori SC/PIBC hanya untuk histori lama dan tidak boleh dipilih untuk tiket baru.
 - Auditor harus tetap read-only walaupun role tambahan lain dimiliki.
 - Superadmin memiliki akses administrasi penuh.
 
