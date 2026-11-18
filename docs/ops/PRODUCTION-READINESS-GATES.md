@@ -2,7 +2,7 @@
 
 **Owner:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Working integration branch:** fix/ticket-routing-me-unit-scope (PR #121)
-**Current candidate HEAD:** `7e0f763eea99f5ebfbe7201b63c40dadfb548c64`  
+**Current code-verified HEAD:** `075bb60acc5419c7c887199faa95584e074473f7`  
 **Status:** NO-GO / stabilization in progress  
 **Last reviewed:** 18 November 2026
 
@@ -45,7 +45,7 @@ This checklist is the release control record. A green build is necessary but is 
 ## G2 — Identity, organization, and Dynamic RBAC
 
 - [x] Primary role and additional roles are assignable and displayed separately in the employee directory (CI #589).
-- [x] Role assignment is transactional, audited in the same PostgreSQL transaction, and protects the last active Super Admin (Dynamic RBAC contract checks, CI #2319).
+- [x] Role assignment is transactional, audited in the same PostgreSQL transaction, and protects the last active Super Admin (live last-Superadmin removal → 409; assignment remains intact; CI #2332).
 - [ ] Role additions persist after unrelated writes and restart.
 - [x] Permission and scope are evaluated independently per module (Dynamic RBAC and asset scope suites, CI #589).
 - [x] Unknown/inactive roles and missing/invalid scopes fail closed (CI #589).
@@ -86,9 +86,9 @@ Run docs/testing/UAT.md in a browser against PostgreSQL using disposable test da
 
 | Gate | Commit SHA | Result | Evidence / run URL | Reviewer | Date |
 |---|---|---|---|---|---|
-| G0 | 7e0f763eea99f5ebfbe7201b63c40dadfb548c64 | PARTIAL PASS | CI #2319: dependency gate, lint/typecheck, regression suites, production build, Docker image and runtime smoke PASS; integration-branch reconciliation and dead-action review remain | — | 18 Nov 2026 |
+| G0 | 075bb60acc5419c7c887199faa95584e074473f7 | PARTIAL PASS | CI #2332: dependency gate, lint/typecheck, regression suites, production build, Docker image and runtime smoke PASS; integration-branch reconciliation and dead-action review remain | — | 18 Nov 2026 |
 | G1 | 7e0f763eea99f5ebfbe7201b63c40dadfb548c64 | PARTIAL PASS | CI #2319: PostgreSQL 17 fresh database, persistence integration, dynamic role assignment and audit restart checks PASS; legacy snapshot upgrade, backup/restore, and combined PostgreSQL+uploads restore not run | — | 18 Nov 2026 |
-| G2 | 7e0f763eea99f5ebfbe7201b63c40dadfb548c64 | PARTIAL PASS | CI #2319: Dynamic RBAC, transactional role assignment/audit, last-Superadmin guard, role assignment restart persistence, asset owner scope, GA IT workstation read-only, org model, ticket/ME routing, loans, locations/categories, and maintenance regression suites PASS; live HR mapping, configurable GA broad-scope review, and full endpoint review remain | — | 18 Nov 2026 |
+| G2 | 075bb60acc5419c7c887199faa95584e074473f7 | PARTIAL PASS | CI #2332: Dynamic RBAC, atomic assignment/audit, live last-Superadmin protection, Auditor cross-domain read + global read-only, role/audit restart, asset owner scope, GA IT workstation read-only, org model, ticket/ME routing, loans, locations/categories, and maintenance suites PASS; live HR mapping, configurable GA broad-scope review, and full endpoint review remain | — | 18 Nov 2026 |
 | G3 | — | NOT VERIFIED | Manual browser UAT required | Business owners | — |
 | G4 | — | NOT STARTED | Staging and production controls | Infrastructure owner | — |
 
