@@ -1770,7 +1770,7 @@ export class GabahDomainService {
     return reservation;
   }
 
-  static approveRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async approveRoomReservation(reservationId: string, actor: ServerUser): Promise<ServerRoomReservation> {
     if (!hasRoomPermission(actor, 'room_reservations.approve', 'GA')) {
       throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.approve.'), { statusCode: 403 });
     }
@@ -1780,6 +1780,15 @@ export class GabahDomainService {
     if (reservation.status !== 'pending_approval') {
       throw Object.assign(new Error(`Reservasi hanya dapat disetujui dari status "pending_approval" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
     }
+
+    const previousReservation = { ...reservation };
+    const previousNotifications = (db.notifications || []).map(item => ({ ...item }));
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(reservation, previousReservation);
+      db.notifications = previousNotifications;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
 
     // Re-verify no collision before approving
     const conflicting = (db.roomReservations || []).find(r => {
@@ -1847,12 +1856,12 @@ export class GabahDomainService {
       });
     }
 
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await this.persistMutationWithRollback('Persetujuan reservasi ruang rapat', rollback);
 
     return reservation;
   }
 
-  static rejectRoomReservation(reservationId: string, reason: string, actor: ServerUser): ServerRoomReservation {
+  static async rejectRoomReservation(reservationId: string, reason: string, actor: ServerUser): Promise<ServerRoomReservation> {
     if (!hasRoomPermission(actor, 'room_reservations.reject', 'GA')) {
       throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.reject.'), { statusCode: 403 });
     }
@@ -1863,6 +1872,13 @@ export class GabahDomainService {
     if (reservation.status !== 'pending_approval') {
       throw Object.assign(new Error(`Reservasi hanya dapat ditolak dari status "pending_approval" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
     }
+    const previousReservation = { ...reservation };
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(reservation, previousReservation);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
+
     reservation.status = 'rejected';
     reservation.rejection_reason = reason || 'Kapasitas penuh / prioritas rapat direksi';
     reservation.approver_id = actor.id;
@@ -1877,12 +1893,12 @@ export class GabahDomainService {
       reservation.id
     );
 
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await this.persistMutationWithRollback('Penolakan reservasi ruang rapat', rollback);
 
     return reservation;
   }
 
-  static checkinRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async checkinRoomReservation(reservationId: string, actor: ServerUser): Promise<ServerRoomReservation> {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
@@ -1893,21 +1909,30 @@ export class GabahDomainService {
       throw Object.assign(new Error(`Check-in hanya dapat dilakukan pada status "approved" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
     }
 
+    const previousReservation = { ...reservation };
+    const room = (db.rooms || []).find(r => r.id === reservation.room_id);
+    const previousRoom = room ? { ...room } : null;
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(reservation, previousReservation);
+      if (room && previousRoom) Object.assign(room, previousRoom);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
+
     reservation.status = 'in_use';
     reservation.checkin_at = new Date().toISOString();
     reservation.updated_at = new Date().toISOString();
 
-    const room = (db.rooms || []).find(r => r.id === reservation.room_id);
     if (room) {
       room.status = 'in_use';
     }
 
     this.recordAudit('ROOM_CHECKIN', 'MeetingRooms', `Check-in rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await this.persistMutationWithRollback('Check-in ruang rapat', rollback);
     return reservation;
   }
 
-  static checkoutRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async checkoutRoomReservation(reservationId: string, actor: ServerUser): Promise<ServerRoomReservation> {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
@@ -1918,21 +1943,30 @@ export class GabahDomainService {
       throw Object.assign(new Error(`Check-out hanya dapat dilakukan pada status "in_use" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
     }
 
+    const previousReservation = { ...reservation };
+    const room = (db.rooms || []).find(r => r.id === reservation.room_id);
+    const previousRoom = room ? { ...room } : null;
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(reservation, previousReservation);
+      if (room && previousRoom) Object.assign(room, previousRoom);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
+
     reservation.status = 'completed';
     reservation.checkout_at = new Date().toISOString();
     reservation.updated_at = new Date().toISOString();
 
-    const room = (db.rooms || []).find(r => r.id === reservation.room_id);
     if (room) {
       room.status = 'available';
     }
 
     this.recordAudit('ROOM_CHECKOUT', 'MeetingRooms', `Check-out selesai rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await this.persistMutationWithRollback('Check-out ruang rapat', rollback);
     return reservation;
   }
 
-  static cancelRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async cancelRoomReservation(reservationId: string, actor: ServerUser): Promise<ServerRoomReservation> {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
@@ -1942,26 +1976,42 @@ export class GabahDomainService {
     if (!['pending_approval', 'approved'].includes(reservation.status)) {
       throw Object.assign(new Error(`Reservasi tidak dapat dibatalkan dari status "${reservation.status}".`), { statusCode: 409 });
     }
+    const previousReservation = { ...reservation };
+    const room = (db.rooms || []).find(r => r.id === reservation.room_id);
+    const previousRoom = room ? { ...room } : null;
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(reservation, previousReservation);
+      if (room && previousRoom) Object.assign(room, previousRoom);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
+
     reservation.status = 'cancelled';
     reservation.updated_at = new Date().toISOString();
 
-    const room = (db.rooms || []).find(r => r.id === reservation.room_id);
     if (room && room.status === 'in_use') {
       room.status = 'available';
     }
 
     this.recordAudit('ROOM_RESERVATION_CANCELLED', 'MeetingRooms', `Pembatalan reservasi ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await this.persistMutationWithRollback('Pembatalan reservasi ruang rapat', rollback);
     return reservation;
   }
 
-  static updateMeetingRoom(roomId: string, updates: Partial<ServerMeetingRoom>, actor: ServerUser): ServerMeetingRoom {
+  static async updateMeetingRoom(roomId: string, updates: Partial<ServerMeetingRoom>, actor: ServerUser): Promise<ServerMeetingRoom> {
     if (!hasRoomPermission(actor, 'meeting_rooms.update', 'GA')) {
       throw Object.assign(new Error('Akses ditolak: tidak memiliki permission meeting_rooms.update.'), { statusCode: 403 });
     }
 
     const room = (db.rooms || []).find(r => r.id === roomId);
     if (!room) throw new Error('Ruangan tidak ditemukan.');
+
+    const previousRoom = { ...room };
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(room, previousRoom);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
 
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, code, building, floor (identity &
@@ -1975,7 +2025,7 @@ export class GabahDomainService {
       }
     }
     this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
-    persistDataStore().catch(err => console.warn('[GABAH Room] Persistence notice:', err.message));
+    await this.persistMutationWithRollback('Perubahan master ruang rapat', rollback);
     return room;
   }
 
