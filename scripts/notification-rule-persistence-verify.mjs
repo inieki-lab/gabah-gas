@@ -21,10 +21,10 @@ const checks = [
   ['Frontend no longer reads or writes notification rules in localStorage', !/localStorage\.(getItem|setItem)\(['"]gabah_notification_rules['"]/.test(modal)],
   ['UI loads server settings before allowing toggles', /notificationRulesLoading \|\| !!notificationRulesError \|\| savingNotificationRuleId !== null/.test(modal)],
   ['UI updates state only after API success', /await gabahApi\.updateNotificationRuleSetting\(id, nextStatus === 'Aktif'\);[\s\S]*setNotificationRules\(previous/.test(modal)],
-  ['Dashboard attention applies stored warranty, loan, and SLA switches', /app\.get\('\/api\/dashboard\/attention', async[\s\S]*SELECT rule_id, is_active FROM gabah_notification_rule_settings[\s\S]*item\.type === 'warranty_expiring'[\s\S]*item\.type === 'loan_pending'[\s\S]*item\.type === 'sla_breach'/.test(server)],
+  ['Dashboard attention applies stored warranty, loan, and SLA switches', server.includes("app.get('/api/dashboard/attention', async") && server.includes("SELECT rule_id, is_active FROM gabah_notification_rule_settings") && server.includes("item.type === 'warranty_expiring'") && server.includes("item.type === 'loan_pending'") && server.includes("item.type === 'sla_breach'")],
 
-  ['BAST rule is checked before the physical handover mutation', /app\.post\('\/api\/loans\/:id\/handover', async[\s\S]*rule-bast[\s\S]*GabahDomainService\.handoverLoan/.test(server)],
-  ['BAST completion creates borrower and owner-division notifications', /recipient_user_id: handedOver\.borrower_id[\s\S]*recipient_division: handedOver\.owner_division/.test(server)],
+  ['BAST rule is checked before the physical handover mutation', server.includes("app.post('/api/loans/:id/handover', async") && server.includes("rule-bast") && server.includes('GabahDomainService.handoverLoan')],
+  ['BAST completion creates borrower and owner-division notifications', server.includes('recipient_user_id: handedOver.borrower_id') && server.includes('recipient_division: handedOver.owner_division')],
 
 ];
 let failed = 0;
