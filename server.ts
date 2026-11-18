@@ -2760,36 +2760,36 @@ async function startServer() {
     }
   });
 
-  app.post('/api/assets/:id/assign', (req, res) => {
+  app.post('/api/assets/:id/assign', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.assign')) return;
     try {
       const actor = getActor(req);
       const { targetUserId, reason } = req.body;
-      const updated = GabahDomainService.assignAsset(req.params.id, targetUserId, reason, actor);
+      const updated = await GabahDomainService.assignAsset(req.params.id, targetUserId, reason, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/assets/:id/move', (req, res) => {
+  app.post('/api/assets/:id/move', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.move')) return;
     try {
       const actor = getActor(req);
       const { newLocation, reason } = req.body;
-      const updated = GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
+      const updated = await GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/assets/:id/lifecycle', (req, res) => {
+  app.post('/api/assets/:id/lifecycle', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.lifecycle')) return;
     try {
       const actor = getActor(req);
       const { action, notes } = req.body;
-      const updated = GabahDomainService.mutateLifecycle(req.params.id, action, notes, actor);
+      const updated = await GabahDomainService.mutateLifecycle(req.params.id, action, notes, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
