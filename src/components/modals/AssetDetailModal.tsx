@@ -425,7 +425,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         <span>Cetak BAST</span>
                       </button>
                     )}
-                    {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                    {onEditThisAsset && canEdit && (
                       <button
                         type="button"
                         onClick={() => onEditThisAsset(asset)}
