@@ -21,6 +21,7 @@ const adminUi = read('src/components/modals/AdministrationModal.tsx');
 const dashboardUi = read('src/components/views/DashboardView.tsx');
 const contractUi = read('src/components/views/ContractsView.tsx');
 const taxonomy = read('server/taxonomy.ts');
+const managingUnit = read('server/managing-unit.ts');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC[/]SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
@@ -110,6 +111,7 @@ const checks = [
   ['Legacy SC/PIBC owner codes remain readable but cannot be mutated by non-Superadmins', services.includes("if (['SC', 'PIBC'].includes(owner)) return false") && services.includes('legacy office/location labels, not active owner domains')],
   ['New assets cannot be created under legacy SC/PIBC location codes even by direct API payloads', services.includes("if (['SC', 'PIBC'].includes(String(resolvedOwnerDivision || '').trim().toUpperCase()))") && services.includes('Owner SC/PIBC adalah kode lokasi legacy')],
   ['New assets cannot use categories with missing or UNASSIGNED owner domains', services.includes("String(taxonomy.owner_division).trim().toUpperCase() === 'UNASSIGNED'") && services.includes('Kategori belum memiliki owner domain aktif')],
+  ['Managing-unit fallback does not infer a unit from legacy SC/PIBC owner codes', managingUnit.includes("if (['SC', 'PIBC'].includes(div)) return null") && managingUnit.includes('existing explicit historical'))],
 
 
 ];
