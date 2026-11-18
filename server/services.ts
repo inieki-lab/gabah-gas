@@ -1396,7 +1396,7 @@ export class GabahDomainService {
     return list;
   }
 
-  static requestRoomReservation(payload: {
+  static async requestRoomReservation(payload: {
     room_id: string;
     title: string;
     description?: string;
@@ -1820,7 +1820,7 @@ export class GabahDomainService {
       'MeetingRooms',
       `Reservasi ${reservation.reservation_number} disetujui untuk ${reservation.room_name}`,
       actor,
-      reservation.id
+      reservation.id, false
     );
 
     this.notify({
@@ -1896,7 +1896,7 @@ export class GabahDomainService {
       'MeetingRooms',
       `Reservasi ${reservation.reservation_number} ditolak: ${reservation.rejection_reason}`,
       actor,
-      reservation.id
+      reservation.id, false
     );
 
     await this.persistMutationWithRollback('Penolakan reservasi ruang rapat', rollback);
