@@ -2881,7 +2881,7 @@ async function startServer() {
     }
     asset.updated_at = new Date().toISOString();
 
-    GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
+    GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id, false);
     if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
 
     res.json({ success: true, data: asset });
