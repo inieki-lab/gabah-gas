@@ -617,6 +617,17 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Non-Superadmin views can read the current profile but remain read-only. The operational SLA reference values (Urgent 4h, High 8h, Medium 24h, Low 48h) are now disabled in the form; they remain server-owned and are not editable through this metadata endpoint.
 - Removed unused local-only fields from the active settings form. The persisted profile metadata is not yet consumed throughout all app branding/reporting/accounting workflows; that broader integration remains open and must not be assumed.
 - Added `test:system-settings-persistence` and a CI regression step covering API authorization, field allowlist/validation, transaction/audit, migration seed, localStorage removal, read-only behavior, and SLA reference locking.
-- Exact code SHA `6aa202cb555192e0cf0ab8d1363eabb3a7008d56` passed workflow run `44216761752`; the `verify` job completed successfully with all 76 steps and no failures.
+- The final exact code head `0416c2e035b2b635b4c6d02b1287d953c3dd9db6` passed workflow run `44217401104`; the `verify` job completed successfully with all 76 steps and no failures, including the stricter string-type validation added after the first green run.
 
-**Checklist:** company-profile PostgreSQL storage/API/audit = implemented; SLA policy remains server-owned/read-only; app-wide consumption of company profile metadata = OPEN; exact-head CI = PASS (76/76 steps).
+**Checklist:** company-profile PostgreSQL storage/API/audit = implemented; SLA policy remains server-owned/read-only; app-wide consumption of company profile metadata = OPEN; exact-head CI = PASS (76/76 steps, run 44217401104).
+
+## 25. Numbering configuration cleanup and organization-model conflict — 18 November 2026
+
+- Removed the unused browser-only `gabah_numbering_config` state and local save handler from Administration. The active numbering interface already uses PostgreSQL-backed numbering rules and server sequence counters.
+- Full system backup now exports `numbering_rules` and `numbering_sequences` from the server-backed state instead of the obsolete local configuration shadow.
+- The displayed `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` pattern is explicitly labelled as the current technical generator format, not a confirmed company-wide numbering standard. Final standard remains pending company confirmation; no format redesign was made.
+- Added regression assertions to the existing numbering-rule test to prevent reintroducing localStorage numbering config and to ensure backup exports server-authoritative rules/counters.
+- **Organization-model conflict found; not auto-remapped:** current seed/model still treats `SC` and `PIBC` as owner divisions in `server/taxonomy.ts`; seeded user profiles include `division: 'SC'` and `division: 'PIBC'`, while their office locations are `OFF-RPC` and `OFF-PIBC`. The numbering UI also still offers SC and PIBC as owner divisions. This conflicts with the approved project rule that SC/PIBC are locations, not divisions/roles, and that Supply Chain is renamed RPC. SC-to-RPC has a clear rename direction, but PIBC-owned records need a real business owner mapping before migration. Do not mass-convert PIBC assets/contracts or user scopes to an arbitrary division.
+- Exact branch head `0416c2e035b2b635b4c6d02b1287d953c3dd9db6` passed workflow run `44217401104` with all 76 steps successful.
+
+**Checklist:** numbering localStorage shadow = removed; backup uses database rules/counters = implemented; final company numbering standard = OPEN; SC/PIBC owner-domain normalization = OPEN pending safe ownership mapping.
