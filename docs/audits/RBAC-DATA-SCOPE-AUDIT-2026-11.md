@@ -251,3 +251,26 @@ Endpoint dashboard sudah memfilter kartu pinjaman dengan borrower sendiri atau s
 
 ### Status verifikasi
 Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI exact head belum berjalan.
+
+
+## Pembaruan audit — 18 November 2026: legacy SC/PIBC masih tertanam di domain
+
+Pemeriksaan ulang source pada head PR #120 menemukan bahwa keputusan organisasi di atas belum sepenuhnya tercermin dalam implementasi:
+
+- `server/migrations/006_org_model_masters.sql` masih men-seed `UNIT-SC` dengan `division_code='SC'` dan `UNIT-PIBC` dengan `division_code='PIBC'`.
+- `server/db.ts` masih memuat dua unit tersebut dan tipe `OrgUnit.division_code` masih mencakup `SC | PIBC`.
+- `server/managing-unit.ts` masih memiliki aturan backfill owner-domain SC → UNIT-SC dan PIBC → UNIT-PIBC.
+- `src/types.ts` masih mendefinisikan `TicketCategory = IT | GA | SC | PIBC`; `CreateTicketModal.tsx` menampilkan Supply Chain dan PIBC sebagai pilihan Departemen Penanganan dan otomatis memilih kategori itu dari `asset.owner_division`.
+- `server.ts` masih memiliki alias login berbasis role Supply Chain/PIBC pada jalur file-store non-PostgreSQL. Jalur ini harus tetap terbatas pada kompatibilitas development dan tidak boleh menjadi sumber identitas/otorisasi production.
+
+Ini bukan bukti bahwa semua data SC/PIBC harus langsung dihapus atau dipindahkan. Nilai lama mungkin masih dipakai oleh aset, kontrak, notifikasi, dan histori. Migrasi massal berdasarkan lokasi dilarang. Namun, **target organisasi belum tercapai**: unit/lokasi SC dan PIBC masih beririsan dengan kode divisi/owner domain di seed, tipe, dan routing tiket.
+
+### Tindakan wajib sebelum release
+
+1. Inventarisasi seluruh pemakaian kode SC/PIBC pada user, org_units, asset owner, managing_unit, kategori tiket, kontrak, notifikasi, numbering, laporan, dan audit.
+2. Tetapkan secara eksplisit domain pemilik/penangan operasional yang sah. Lokasi RPC/SC dan PIBC tidak otomatis menjadi domain otorisasi.
+3. Buat migration additive dan idempotent yang memisahkan atribut unit/lokasi dari owner-domain; pertahankan histori dan tandai data ambigu untuk review Super Admin.
+4. Perbarui resolver, validasi API, UI, dashboard, notification routing, search/export, serta laporan secara konsisten.
+5. Uji fresh database dan upgrade database berisi data legacy, termasuk list/detail/mutasi dan negative cross-scope tests.
+
+**Status: RELEASE BLOCKER.** Jangan menonaktifkan atau menghapus kode SC/PIBC sebelum mapping aset/transaksi historis disetujui. Jangan mengklaim model organisasi sudah sepenuhnya dinamis hanya berdasarkan CI hijau.
