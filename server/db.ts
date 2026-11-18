@@ -47,6 +47,8 @@ export interface OrgUnit {
   name: string;
   /** Divisi pemilik unit (IT/GA/SC/PIBC/Audit/Umum) — unit milik divisi, jabatan tidak. */
   division_code: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
+  /** Optional office assignment for operational sub-units; not an authorization grant. */
+  office_location_id?: string | null;
   is_active: boolean;
 }
 
@@ -193,7 +195,9 @@ export interface ServerTicket {
   ticket_code: string;
   title: string;
   description: string;
-  category: 'IT' | 'GA' | 'SC' | 'PIBC';
+  category: 'IT' | 'GA' | 'ME' | 'SC' | 'PIBC';
+  /** Operational queue target. ME uses UNIT-PIBC-ME; legacy SC/PIBC tickets remain unchanged. */
+  assigned_unit_id?: string | null;
   contract_id?: string | null; // Linked Contract (optional action linkage, Contract ≠ Ticket)
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
@@ -300,6 +304,8 @@ export interface ServerNotification {
   recipient_role?: string;
   recipient_division?: string;
   recipient_user_id?: string;
+  /** Unit-scoped notification recipient, separate from recipient division and role. */
+  recipient_unit_id?: string;
   title: string;
   message: string;
   severity: 'critical' | 'action_required' | 'warning' | 'info' | 'success';
@@ -517,6 +523,7 @@ export const db = {
     { id: 'UNIT-IT-MIS', name: 'IT & MIS', division_code: 'IT', is_active: true },
     { id: 'UNIT-GA-SARPRAS', name: 'GA / Sarpras', division_code: 'GA', is_active: true },
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
+    { id: 'UNIT-PIBC-ME', name: 'Tim Perawatan (ME)', division_code: 'Umum', office_location_id: 'OFF-PIBC', is_active: true },
     { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
     { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
     { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
