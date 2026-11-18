@@ -17,6 +17,10 @@ const knowledgeUpdate = route("app.patch('/api/knowledge/:id'", "app.post('/api/
 const knowledgeVote = route("app.post('/api/knowledge/:id/vote'", "app.post('/api/knowledge/:id/view'");
 const knowledgeView = route("app.post('/api/knowledge/:id/view'", "// Notifications");
 const passwordChange = route("app.post('/api/auth/change-password'", "app.get('/api/auth/me'");
+const login = route("app.post('/api/auth/login'", "app.post('/api/auth/logout'");
+const notificationRead = route("app.patch('/api/notifications/:id/read'", "app.post('/api/notifications/read-all'");
+const notificationReadAll = route("app.post('/api/notifications/read-all'", "// Dashboard Stats");
+const reconciliationLink = route("app.post('/api/reconciliation/link'", "// Audit Logs");
 
 for (const [name, body] of [
   ['vendor create', vendorCreate],
@@ -45,5 +49,13 @@ assert.match(passwordChange, /password_hash = previousCredentials\.password_hash
 assert.doesNotMatch(passwordChange, /persistDataStore\(\)\.catch\(\(\) => \{\}\)/);
 assert.match(source, /void persistDataStore\(\)\.catch\(error =>/,
   'post-response compatibility safety net must catch persistence failures');
+assert.match(login, /app\.post\('\/api\/auth\/login', async/);
+assert.match(login, /await persistDataStore\(\)[\s\S]*?destroySession\(session\.token\)[\s\S]*?previousCredentials\.password_hash/);
+assert.match(notificationRead, /app\.patch\('\/api\/notifications\/:id\/read', async/);
+assert.match(notificationRead, /await persistDataStore\(\)[\s\S]*?Object\.assign\(notif, previousNotification\)/);
+assert.match(notificationReadAll, /app\.post\('\/api\/notifications\/read-all', async/);
+assert.match(notificationReadAll, /await persistDataStore\(\)[\s\S]*?db\.notifications = previousNotifications/);
+assert.match(reconciliationLink, /app\.post\('\/api\/reconciliation\/link', async/);
+assert.match(reconciliationLink, /await persistDataStore\(\)[\s\S]*?Object\.assign\(asset, previousAsset\)[\s\S]*?auditLogs/);
 
-console.log('Vendor, Knowledge Base, password, and persistence safety-net checks: 29/29 passed');
+console.log('Vendor, Knowledge Base, auth, notification, reconciliation, and persistence safety-net checks: 37/37 passed');
