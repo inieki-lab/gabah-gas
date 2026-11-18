@@ -6,7 +6,7 @@ import { GabahDomainService } from '../server/services.ts';
 const serviceSource = fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8');
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const ticketModalSource = fs.readFileSync(new URL('../src/components/modals/CreateTicketModal.tsx', import.meta.url), 'utf8');
-const start = serviceSource.indexOf('static createTicket(');
+const start = serviceSource.indexOf('static async createTicket(');
 const end = serviceSource.indexOf('\n  /**', start + 1);
 assert.ok(start >= 0 && end > start, 'createTicket domain method must exist');
 const method = serviceSource.slice(start, end);
@@ -37,25 +37,25 @@ seedInitialData();
 const admin = db.users.find(user => user.id === 'USR-01');
 assert.ok(admin);
 const initialCount = db.tickets.length;
-assert.throws(() => GabahDomainService.createTicket({
+await assert.rejects(() => GabahDomainService.createTicket({
   title: 'Fixture missing asset', description: 'Must not be created', category: 'IT', priority: 'low',
   related_asset_id: 'ASSET-NOT-FOUND',
-}, admin), /Aset terkait tidak ditemukan atau tidak dapat diakses/);
+}, admin, false), /Aset terkait tidak ditemukan atau tidak dapat diakses/);
 assert.equal(db.tickets.length, initialCount, 'Unknown asset must not create a ticket');
 
-assert.throws(() => GabahDomainService.createTicket({
+await assert.rejects(() => GabahDomainService.createTicket({
   title: 'Fixture missing contract', description: 'Must not be created', category: 'IT', priority: 'low',
   contract_id: 'CTR-NOT-FOUND',
-}, admin), /Kontrak terkait tidak ditemukan atau tidak dapat diakses/);
+}, admin, false), /Kontrak terkait tidak ditemukan atau tidak dapat diakses/);
 assert.equal(db.tickets.length, initialCount, 'Unknown contract must not create a ticket');
 
 const visibleAsset = GabahDomainService.getScopedAssets(admin).find(asset => ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase()));
 assert.ok(visibleAsset, 'Admin fixture must have a visible IT or GA owner asset for a canonical ticket link');
 const linkedCategory = String(visibleAsset.owner_division).toUpperCase();
-const linked = GabahDomainService.createTicket({
+const linked = await GabahDomainService.createTicket({
   title: 'Fixture valid asset link', description: 'Valid link', category: linkedCategory, priority: 'low',
   related_asset_id: visibleAsset.id,
-}, admin);
+}, admin, false);
 assert.equal(linked.related_asset_id, visibleAsset.id);
 assert.equal(linked.related_asset_name, visibleAsset.name);
 assert.equal(linked.related_asset_number, visibleAsset.asset_number);
@@ -63,13 +63,13 @@ console.log('PASS | fixture rejects missing links without creating orphan ticket
 console.log('PASS | fixture persists canonical asset ID and metadata');
 const legacyOwnerAsset = db.assets.find(asset => ['SC', 'PIBC'].includes(String(asset.owner_division || '').toUpperCase()));
 if (legacyOwnerAsset) {
-  assert.throws(() => GabahDomainService.createTicket({
+  await assert.rejects(() => GabahDomainService.createTicket({
     title: 'Fixture legacy owner asset', description: 'Must be reviewed', category: 'ME', priority: 'low',
     related_asset_id: legacyOwnerAsset.id,
-  }, admin), /owner legacy SC\/PIBC/);
+  }, admin, false), /owner legacy SC\/PIBC/);
 }
 assert.throws(() => GabahDomainService.createTicket({
   title: 'Fixture legacy category', description: 'Must not be created', category: 'SC', priority: 'low',
-}, admin), /Kategori tiket/);
+}, admin, false), /Kategori tiket/);
 console.log('PASS | new ticket categories reject legacy SC/PIBC and linked legacy assets');
 console.log('TOTAL: 10 source checks + 2 behavioral fixture groups | PASS');
