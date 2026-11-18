@@ -1554,7 +1554,7 @@ async function startServer() {
   // Self-service password change (P1): the CURRENT user rotates their own
   // password. Requires the current password; revokes all other sessions but
   // issues a fresh token for THIS device so the user is not logged out.
-  app.post('/api/auth/change-password', (req, res) => {
+  app.post('/api/auth/change-password', async (req, res) => {
     try {
       const actor = getActor(req);
       const { currentPassword, newPassword } = req.body;
