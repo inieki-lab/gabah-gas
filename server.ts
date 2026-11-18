@@ -2950,6 +2950,12 @@ async function startServer() {
       const permission = requiredPermission[requestedCategory];
       if (!permission) return res.status(400).json({ success: false, message: 'Kategori tiket baru hanya IT, GA, atau ME.' });
       if (isAuditorActor(actor)) return res.status(403).json({ success: false, message: 'Auditor hanya memiliki hak baca (read-only).' });
+      if (!isPostgresPersistenceActive()) {
+        const legacyRequesterAllowed = requestedCategory === 'IT'
+          || (requestedCategory === 'GA' && actor.role === 'GA')
+          || (requestedCategory === 'ME' && actor.unit_id === 'UNIT-PIBC-ME');
+        if (!legacyRequesterAllowed) return res.status(403).json({ success: false, message: 'Capability pemohon untuk antrean ini belum diberikan.' });
+      }
       if (!requireRbacPermission(req, res, permission)) return;
       const newTicket = GabahDomainService.createTicket({ ...req.body, category: requestedCategory }, actor);
       await persistDataStore();
