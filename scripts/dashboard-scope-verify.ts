@@ -105,10 +105,10 @@ assert.match(dashboardView, /const isEmployee = !isSuperAdmin && !isAuditor && !
 assert.match(dashboardView, /const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess/);
 assert.match(dashboardView, /'licenses\.manage'[\s\S]*'knowledge\.create'[\s\S]*'contracts\.update'[\s\S]*'vendors\.update'/);
 assert.doesNotMatch(dashboardView, /const isDivisionDashboard = hasRoleKey\('it', 'IT'\) \|\| hasRoleKey\('ga', 'GA'\)/);
-assert.match(dashboardView, /const hasITRole = !isSuperAdmin && hasRoleKey\('it', 'IT'\)/, 'IT dashboard label follows the assigned IT application role');
-assert.match(dashboardView, /const hasGARole = !isSuperAdmin && hasRoleKey\('ga', 'GA'\)/, 'GA dashboard label follows the assigned GA application role');
-assert.doesNotMatch(dashboardView, /const hasITRole[\s\S]{0,180}room_reservations\.it_facilities\.read/, 'IT asset dashboard label must not depend on room-facility queue permission');
-assert.doesNotMatch(dashboardView, /const hasGARole[\s\S]{0,180}room_reservations\.approve/, 'GA asset dashboard label must not depend on room-reservation approval permission');
+assert.match(dashboardView, /const visibleOwnerDomains = Array\.from\(new Set\(/, 'dashboard owner label is derived from visible scoped assets');
+assert.match(dashboardView, /const divisionLabel = visibleOwnerDomains\.length > 0 \? visibleOwnerDomains\.join\(' \/ '\) : 'Operasional'/, 'custom roles receive the owner-domain label from their effective asset scope');
+assert.match(dashboardView, /const ownerAssetCounts = dashboardAssets\.reduce/, 'global dashboard aggregates all visible owner domains dynamically');
+assert.doesNotMatch(dashboardView, /const hasITRole|const hasGARole/, 'dashboard does not infer owner-domain labels from primary role labels');
 assert.match(dashboardView, /const directorPriorityReservations = safeReservations\.filter\([\s\S]*r\.priority === 'high'[\s\S]*\)/, 'Sekdir dashboard counts only active high-priority reservations returned by the API');
 assert.match(dashboardView, /\) : isSekdir \? \([\s\S]*Agenda Prioritas Direksi[\s\S]*directorPriorityReservations\.length[\s\S]*onNavigate\('meeting_rooms'\)/, 'Sekdir receives a dedicated priority-reservation dashboard card');
 

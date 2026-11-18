@@ -2,11 +2,10 @@
  * GABAH Authoritative Asset Taxonomy
  * Master Source of Truth for Asset Categories, Human-readable mapping, and Owner Divisions
  * 
- * Divisi / Departemen:
- * - SC: Tim Supply Chain
- * - PIBC: Tim Pasar Induk Beras Cipinang
- * - IT: Tim IT (IT Hardware IT-H, IT Software IT-S)
- * - GA: Tim General Affair (Furniture INV-F, Peralatan INV-P, Bangunan BGN, Tanah TNH, Kendaraan KDR)
+ * Owner domain aset:
+ * - IT dan GA: domain operasional aset yang sudah ditetapkan.
+ * - SC dan PIBC: kode owner legacy yang masih dibaca untuk histori; bukan role aplikasi
+ *   atau lokasi kantor. Klasifikasi asetnya harus direview per aset sebelum migrasi.
  *
  * Jenis Aset Tetap:
  * - TNH: Tanah
@@ -47,7 +46,7 @@ export const FIXED_ASSET_MAIN_TYPES = [
 ] as const;
 export type FixedAssetMainType = (typeof FIXED_ASSET_MAIN_TYPES)[number];
 
-// Initial owner-domain seeds only; the owner vocabulary is intentionally extensible.
+// Initial owner-domain vocabulary is extensible. SC/PIBC remain legacy values pending per-asset review.
 export const ASSET_OWNER_DIVISIONS = ['IT', 'GA', 'SC', 'PIBC'] as const;
 export const ASSET_CATEGORY_TYPES = ['IT', 'General', 'License'] as const;
 
@@ -101,7 +100,8 @@ export function normalizeCategoryMaster(list: unknown): AssetTaxonomyItem[] {
       code,
       name: String(raw.name || code).trim(),
       main_type: mainType,
-      owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'GA',
+      // Unknown ownership must remain unassigned; never silently classify it as GA.
+      owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED',
       category_type: isGabahCategoryType(raw.category_type)
         ? raw.category_type
         : (raw.owner_division === 'IT' ? 'IT' : 'General'),
@@ -137,13 +137,13 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
   // General Affairs: Peralatan (INV-P)
   { code: 'INV-P', name: 'Inventaris Peralatan & Perlengkapan', main_type: 'INV-P', owner_division: 'GA', category_type: 'General', description: 'Kompor, dispenser, AC, microwave, vacuum cleaner, APAR (Milik GA)', is_loanable_by_default: true },
 
-  // Kendaraan (KDR) - GA atau SC
+  // Kendaraan (KDR) - GA; kode owner SC hanya dipertahankan sebagai legacy read-only.
   { code: 'KDR', name: 'Kendaraan Dinas & Operasional', main_type: 'KDR', owner_division: 'GA', category_type: 'General', description: 'Mobil dinas, minibus operasional, sepeda motor (Milik GA)', is_loanable_by_default: true },
-  { code: 'KDR-SC', name: 'Kendaraan Logistik / Truk Beras', main_type: 'KDR', owner_division: 'SC', category_type: 'General', description: 'Truk wingbox, colt diesel muatan beras (Milik SC)', is_loanable_by_default: true },
+  { code: 'KDR-SC', name: 'Kendaraan Logistik / Truk Beras', main_type: 'KDR', owner_division: 'SC', category_type: 'General', description: 'Truk wingbox, colt diesel muatan beras (owner legacy SC — perlu review per aset)', is_loanable_by_default: true },
 
-  // Mesin (MSN) - SC atau PIBC
-  { code: 'MSN', name: 'Mesin Produksi & Forklift', main_type: 'MSN', owner_division: 'SC', category_type: 'General', description: 'Forklift, rice milling plant, conveyor packaging (Milik SC)', is_loanable_by_default: false },
-  { code: 'MSN-PIBC', name: 'Mesin Jembatan Timbang & Tera PIBC', main_type: 'MSN', owner_division: 'PIBC', category_type: 'General', description: 'Jembatan timbang 60 ton & alat ukur kawasan pasar (Milik PIBC)', is_loanable_by_default: false },
+  // Mesin (MSN) - kode owner SC/PIBC dipertahankan untuk histori; bukan pilihan owner aset baru.
+  { code: 'MSN', name: 'Mesin Produksi & Forklift', main_type: 'MSN', owner_division: 'SC', category_type: 'General', description: 'Forklift, rice milling plant, conveyor packaging (owner legacy SC — perlu review per aset)', is_loanable_by_default: false },
+  { code: 'MSN-PIBC', name: 'Mesin Jembatan Timbang & Tera PIBC', main_type: 'MSN', owner_division: 'PIBC', category_type: 'General', description: 'Jembatan timbang 60 ton & alat ukur kawasan pasar (owner legacy PIBC — perlu review per aset)', is_loanable_by_default: false },
 
   // Bangunan & Fisik (BGN)
   { code: 'BGN', name: 'Bangunan Fisik & Gudang', main_type: 'BGN', owner_division: 'GA', category_type: 'General', description: 'Gedung kantor pusat, pergudangan Cipinang & Sragen (Milik GA)', is_loanable_by_default: false },

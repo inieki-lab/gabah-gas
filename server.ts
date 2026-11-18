@@ -1739,8 +1739,15 @@ async function startServer() {
           message: `Jenis utama aset "${main_type}" tidak dikenal. Nilai yang diizinkan: ${FIXED_ASSET_MAIN_TYPES.join(', ')}.`
         });
       }
-      if (!isOwnerDivision(owner_division)) {
+      const normalizedOwnerCode = String(owner_division).trim().toUpperCase();
+      if (!isOwnerDivision(normalizedOwnerCode)) {
         return res.status(400).json({ success: false, message: `Kode owner "${owner_division}" wajib diisi dan maksimal 20 karakter.` });
+      }
+      if (['SC', 'PIBC'].includes(normalizedOwnerCode)) {
+        return res.status(400).json({ success: false, message: 'SC/PIBC adalah kode lokasi legacy, bukan owner domain untuk kategori baru. Gunakan owner domain aktif.' });
+      }
+      if (!(db.divisions || []).some(d => d.is_active !== false && String(d.code || '').trim().toUpperCase() === normalizedOwnerCode)) {
+        return res.status(400).json({ success: false, message: `Owner "${normalizedOwnerCode}" harus terdaftar dan aktif pada Master Owner.` });
       }
       const normalizedCategoryType = category_type || (owner_division === 'IT' ? 'IT' : 'General');
       if (!isGabahCategoryType(normalizedCategoryType)) {
@@ -1816,8 +1823,12 @@ async function startServer() {
           message: `Jenis utama aset "${main_type}" tidak dikenal. Nilai yang diizinkan: ${FIXED_ASSET_MAIN_TYPES.join(', ')}.`
         });
       }
-      if (owner_division !== undefined && (!isOwnerDivision(owner_division) || !(db.divisions || []).some(d => String(d.code).toUpperCase() === String(owner_division).trim().toUpperCase()))) {
-        return res.status(400).json({ success: false, message: `Owner "${owner_division}" harus terdaftar pada Master Divisi/Owner.` });
+      if (owner_division !== undefined) {
+        const normalizedOwnerCode = String(owner_division).trim().toUpperCase();
+        if (!isOwnerDivision(normalizedOwnerCode) || ['SC', 'PIBC'].includes(normalizedOwnerCode)
+          || !(db.divisions || []).some(d => d.is_active !== false && String(d.code || '').trim().toUpperCase() === normalizedOwnerCode)) {
+          return res.status(400).json({ success: false, message: `Owner "${normalizedOwnerCode}" harus merupakan owner domain aktif; kode lokasi legacy SC/PIBC tidak dapat dipakai untuk kategori baru.` });
+        }
       }
       if (category_type !== undefined && !isGabahCategoryType(category_type)) {
         return res.status(400).json({ success: false, message: `Tipe taksonomi "${category_type}" tidak dikenal. Nilai yang diizinkan: IT, General, License.` });
@@ -2566,6 +2577,57 @@ async function startServer() {
       return res.status(404).json({ success: false, message: 'Aset tidak ditemukan atau tidak berada dalam cakupan akses Anda.' });
     }
     res.json({ success: true, data: asset });
+  });
+
+  // Per-asset owner reclassification is a controlled Superadmin workflow.
+  // It never rewrites asset_number, location, managing unit, custody or history.
+  app.post('/api/assets/:id/reclassify-owner', async (req, res) => {
+    const actor = getActor(req);
+    if (!isSuperadminActor(actor)) {
+      return res.status(403).json({ success: false, message: 'Reklasifikasi owner aset hanya dapat dilakukan Superadmin.' });
+    }
+    if (!requireRbacPermission(req, res, 'assets.update')) return;
+    const asset = db.assets.find(item => item.id === req.params.id);
+    if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan.' });
+
+    const requestedOwner = String(req.body?.new_owner_division || '').trim().toUpperCase();
+    const reason = String(req.body?.reason || '').trim();
+    if (!requestedOwner || requestedOwner.length > 20 || ['SC', 'PIBC', 'UNASSIGNED'].includes(requestedOwner)) {
+      return res.status(400).json({ success: false, message: 'Owner baru harus berupa kode owner domain aktif; SC/PIBC/UNASSIGNED tidak dapat digunakan.' });
+    }
+    if (reason.length < 10 || reason.length > 500) {
+      return res.status(400).json({ success: false, message: 'Alasan wajib diisi 10–500 karakter.' });
+    }
+    const ownerMaster = (db.divisions || []).find(item => item.is_active !== false
+      && String(item.code || '').trim().toUpperCase() === requestedOwner);
+    if (!ownerMaster) return res.status(400).json({ success: false, message: `Owner "${requestedOwner}" belum terdaftar atau tidak aktif.` });
+    const previousOwnerRaw = asset.owner_division;
+    const previousOwner = String(previousOwnerRaw || '').trim().toUpperCase();
+    if (previousOwner === requestedOwner) return res.status(409).json({ success: false, message: 'Owner aset sudah menggunakan domain tersebut.' });
+    const activeLoan = db.loans.find(loan => loan.asset_id === asset.id && ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(String(loan.status || '').toLowerCase()));
+    if (activeLoan) return res.status(409).json({ success: false, message: `Owner tidak dapat diubah selama pinjaman ${activeLoan.loan_number} masih aktif.` });
+
+    asset.owner_division = requestedOwner;
+    const auditLog = {
+      id: `LOG-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
+      action: 'ASSET_OWNER_RECLASSIFIED',
+      entity: 'Assets',
+      entity_id: asset.id,
+      user_name: actor.name || 'System',
+      user_role: actor.role || 'System',
+      details: `Reklasifikasi owner aset ${asset.asset_number}: ${previousOwner || 'UNASSIGNED'} → ${requestedOwner}. Alasan: ${reason}`,
+      timestamp: new Date().toISOString(),
+    };
+    db.auditLogs.unshift(auditLog);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: asset });
+    } catch (error: any) {
+      asset.owner_division = previousOwnerRaw;
+      const auditIndex = db.auditLogs.indexOf(auditLog);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      return res.status(500).json({ success: false, message: error?.message || 'Gagal menyimpan reklasifikasi owner aset.' });
+    }
   });
 
   app.patch('/api/assets/:id', (req, res) => {

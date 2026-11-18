@@ -105,13 +105,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
   const isGlobalDashboard = isSuperAdmin || isAuditor;
   const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess;
-  // Dashboard ownership labels follow the assigned application role, not unrelated room-facility queue permissions.
-  // A custom role with selected operational capabilities stays labelled Operasional unless it also carries IT/GA.
-  const hasITRole = !isSuperAdmin && hasRoleKey('it', 'IT');
-  const hasGARole = !isSuperAdmin && hasRoleKey('ga', 'GA');
-  const divisionLabel = hasITRole && !hasGARole ? 'IT'
-    : hasGARole && !hasITRole ? 'GA'
-      : 'Operasional';
+  // Operational dashboard labels follow the owner domains in the already
+  // permission-scoped asset collection, never the primary-role display label.
+  const visibleOwnerDomains = Array.from(new Set(
+    dashboardAssets.map(asset => String(asset.owner_division || '').trim().toUpperCase()).filter(Boolean)
+  )).sort();
+  const divisionLabel = visibleOwnerDomains.length > 0 ? visibleOwnerDomains.join(' / ') : 'Operasional';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
@@ -144,10 +143,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const todayMeetings = safeReservations.filter(r => r.date === todayStr && !['cancelled', 'rejected'].includes(r.status));
 
-  const itAssets = dashboardAssets.filter(a => a.owner_division === 'IT');
-  const gaAssets = dashboardAssets.filter(a => a.owner_division === 'GA');
-  const scAssets = dashboardAssets.filter(a => a.owner_division === 'SC');
-  const pibcAssets = dashboardAssets.filter(a => a.owner_division === 'PIBC');
+  const ownerAssetCounts = dashboardAssets.reduce<Record<string, number>>((counts, asset) => {
+    const owner = String(asset.owner_division || '').trim().toUpperCase();
+    if (owner) counts[owner] = (counts[owner] || 0) + 1;
+    return counts;
+  }, {});
+  const ownerAssetSummary = Object.entries(ownerAssetCounts)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([owner, count]) => `${owner}${['SC', 'PIBC'].includes(owner) ? ' (legacy owner — review)' : ''}: ${count}`)
+    .join(' • ');
+  const unclassifiedOwnerAssets = dashboardAssets.filter(asset => !String(asset.owner_division || '').trim()).length;
   const licenseAssets = dashboardAssets.filter(a => a.category_type === 'License');
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
@@ -472,7 +477,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="mt-3">
               <div className="text-2xl font-black text-slate-900">{dashboardAssets.length} Item</div>
               <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between font-medium flex-wrap gap-1">
-                <span>{isGlobalDashboard ? `${itAssets.length} IT • ${gaAssets.length} GA • ${scAssets.length} owner legacy SC • ${pibcAssets.length} owner legacy PIBC • ${licenseAssets.length} Lisensi` : isDivisionDashboard ? `${divisionLabel} • ${dashboardAssets.length} aset dalam cakupan` : `${dashboardAssets.length} aset dalam cakupan`}</span>
+                <span>{isGlobalDashboard ? `${ownerAssetSummary || 'Belum ada aset'}${unclassifiedOwnerAssets ? ` • Belum terklasifikasi: ${unclassifiedOwnerAssets}` : ''} • ${licenseAssets.length} Lisensi` : isDivisionDashboard ? `${divisionLabel} • ${dashboardAssets.length} aset dalam cakupan` : `${dashboardAssets.length} aset dalam cakupan`}</span>
               </div>
               <div className="text-[11px] text-emerald-700 font-bold mt-2 pt-2 border-t border-slate-100">
                 Valuasi: {formatRupiah(totalAssetValue)}

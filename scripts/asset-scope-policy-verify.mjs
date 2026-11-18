@@ -16,8 +16,13 @@ const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
+const assetApi = read('src/services/gabahApi.ts');
 const ticketUi = read('src/components/views/TicketsView.tsx');
 const adminUi = read('src/components/modals/AdministrationModal.tsx');
+const dashboardUi = read('src/components/views/DashboardView.tsx');
+const contractUi = read('src/components/views/ContractsView.tsx');
+const taxonomy = read('server/taxonomy.ts');
+const managingUnit = read('server/managing-unit.ts');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC[/]SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
@@ -27,7 +32,7 @@ const checks = [
   ['Fresh schema seeds Umum and Audit divisions before their org-unit foreign keys', /INSERT INTO divisions \(code, name\)[\s\S]*'Umum'[\s\S]*'Audit'[\s\S]*CREATE TABLE IF NOT EXISTS org_units/.test(orgMasterMigration)],
 
   ['Owner domains are synchronized from the configurable division master before PostgreSQL FK-backed data', /for \(const division of db\.divisions \|\| \[\]\)/.test(persistence) && /INSERT INTO divisions \(code,name,is_active\)/.test(persistence)],
-  ['Asset categories and new assets require owner codes from the configured master', /db\.divisions \|\| \[\]\)\.some\(d => String\(d\.code\)/.test(server) && /const configuredOwner = \(db\.divisions \|\| \[\]\)\.some/.test(services)],
+  ['Asset categories and new assets require active owner codes from the configured master', server.includes("String(d.code || '').trim().toUpperCase() === normalizedOwnerCode") && /const configuredOwner = \(db\.divisions \|\| \[\]\)\.some/.test(services)],
   ['Contract visibility and edits follow any explicit owner scope, not IT/GA whitelist', /if \(!owner\) return false;/.test(contracts) && !/owner !== 'IT' && owner !== 'GA'/.test(contracts) && /hasRbacScope\(String\(user\.id\), 'division', owner, 'contracts'\)/.test(contracts)],
   ['Vendor ownership is explicit and independent from category', /owner_division\?: string \| null/.test(read('server/db.ts')) && /owner_division\?: string \| null/.test(vendorTypes) && !/\['IT', 'License'\]\.includes\(String\(v\.category\)\)/.test(server)],
   ['Vendor list uses explicit owner scope and keeps unclassified legacy rows global-only', /const owner = String\(v\.owner_division \|\| ''\)\.trim\(\);[\s\S]*if \(!owner\) return false;[\s\S]*hasRbacScope\(String\(actor\.id\), 'division', owner, 'vendors'\)/.test(server)],
@@ -71,7 +76,7 @@ const checks = [
   ['Permission khusus tidak memberi permission mutasi', !/assets\.(create|update|delete|assign|move|lifecycle)/.test(migration)],
   ['RBAC policy mengevaluasi permission efektif per user', /export function hasRbacPermission/.test(policy)],
   ['Branch migration does not rewrite user role or work-unit assignments', !/\b(UPDATE|DELETE|INSERT|MERGE)\b/i.test(branchMigration.replace(/--[^\n]*/g, ''))],
-  ['Branch migration preserves role templates and operational units', /RPC\/SC may also be an operational asset-owning function/i.test(branchMigration) && !/UPDATE gabah_roles|UPDATE org_units/i.test(branchMigration)],
+  ['Branch migration never infers owner scope from office locations; RPC requires explicit owner-master configuration', /RPC may become an owner domain only when explicitly configured/i.test(branchMigration) && /SC\/PIBC are location/i.test(branchMigration) && !/UPDATE gabah_roles|UPDATE org_units/i.test(branchMigration)],
   ['Branch role migration does not rewrite historical asset ownership', !/UPDATE assets|UPDATE gabah_assets|owner_division\s*=/.test(branchMigration)],
   ['Movement history is restricted to the same visible asset scope', /visibleAssetIds[\s\S]*db\.movements\.filter\(m => visibleAssetIds\.has\(m\.asset_id\)\)/.test(server)],
   ['Maintenance schedules follow visible asset scope and exclude branch-wide fallback', /visibleAssetIds[\s\S]*db\.maintenances\.filter\(item => visibleAssetIds\.has\(item\.asset_id\)\)/.test(server)],
@@ -99,6 +104,23 @@ const checks = [
   ['Dashboard ticket counts reuse dynamic ticket owner scope and personal visibility', /canReadOwnerScope = \(owner: string, module: 'loans' \| 'tickets'\)/.test(server) && /canReadOwnerScope\(ticket\.category, 'tickets'\)/.test(server) && /ticket\.reporter_id === actor\.id/.test(server)],
   ['Loan list and dashboard counts follow borrower and explicit owner scope', /hasRbacScope\(String\(actor.id\), 'division', loan\.owner_division, 'loans'\)/.test(server) && /canReadOwnerScope\(loan\.owner_division, 'loans'\)/.test(server) && /loans\.approve[\s\S]*hasRbacScope/.test(services)],
   ['User-targeted notifications remain private and role recipients honor additional RBAC assignments', /if \(notification\.recipient_user_id\) return notification\.recipient_user_id === actor\.id;/.test(server) && /const recipientRoleKey = normalizeRoleKey\(notification\.recipient_role\);[\s\S]*?if \(recipientRoleKey === 'humas' && isPostgresPersistenceActive\(\)\) \{\s*return hasRbacPermission\(String\(actor\.id\), 'room_reservations\.documentation\.read'\);\s*\}[\s\S]*?return hasApplicationRole\(actor, recipientRoleKey\);/.test(server) && /const isRecipient = notif \? isNotificationRecipient\(actor, notif\) : false;/.test(server) && /const isRecipient = isNotificationRecipient\(actor, n\);/.test(server)],
+
+  ['Asset list owner filter uses persisted owner domains, not division labels or asset-number prefix inference', assetUi.includes('ownerDomainOptions') && assetUi.includes('Owner aset:') && !assetUi.includes("selectedDivision === 'SC'") && !assetUi.includes("selectedDivision === 'PIBC'") && !assetUi.includes("asset.asset_number.split('-')[0]")],
+  ['Dashboard owner summaries aggregate arbitrary owner domains and mark legacy SC/PIBC as review-only', dashboardUi.includes('ownerAssetCounts') && dashboardUi.includes('ownerAssetSummary') && dashboardUi.includes('visibleOwnerDomains') && dashboardUi.includes('legacy owner — review') && !dashboardUi.includes('hasITRole') && !dashboardUi.includes('hasGARole') && !dashboardUi.includes('scAssets') && !dashboardUi.includes('pibcAssets')],
+  ['Contract UI uses dynamic owner filters and does not grant legacy Supply Chain/PIBC role fallbacks', contractUi.includes('const ownerDomains = useMemo') && contractUi.includes("options: ['ALL', ...ownerDomains]") && contractUi.includes("label: 'Owner'") && !contractUi.includes("['IT', 'GA', 'Supply Chain', 'PIBC']")],
+  ['Category normalization never silently assigns an unknown owner to GA', taxonomy.includes("owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED'") && taxonomy.includes('Unknown ownership must remain unassigned')],
+  ['Legacy SC/PIBC owner codes remain readable but cannot be mutated by non-Superadmins', services.includes("if (['SC', 'PIBC'].includes(owner)) return false") && services.includes('legacy office/location labels, not active owner domains')],
+  ['New assets cannot be created under legacy SC/PIBC location codes even by direct API payloads', services.includes("if (['SC', 'PIBC'].includes(String(resolvedOwnerDivision || '').trim().toUpperCase()))") && services.includes('Owner SC/PIBC adalah kode lokasi legacy')],
+  ['New assets cannot use categories with missing or UNASSIGNED owner domains', services.includes("String(taxonomy.owner_division).trim().toUpperCase() === 'UNASSIGNED'") && services.includes('Kategori belum memiliki owner domain aktif')],
+  ['New/updated category masters cannot use legacy SC/PIBC location codes as owner domains', (server.match(/\['SC', 'PIBC'\]\.includes\(normalizedOwnerCode\)/g) || []).length >= 2 && server.includes('SC/PIBC adalah kode lokasi legacy, bukan owner domain untuk kategori baru')],
+  ['Managing-unit fallback does not infer a unit from legacy SC/PIBC owner codes', managingUnit.includes("if (['SC', 'PIBC'].includes(div)) return null") && managingUnit.includes('existing explicit historical')],
+
+
+
+  ['Per-asset owner reclassification is Superadmin-only, reason-required, active-owner validated and audited', server.includes("app.post('/api/assets/:id/reclassify-owner'") && server.includes("if (!isSuperadminActor(actor))") && server.includes("reason.length < 10 || reason.length > 500") && server.includes("['pending_approval', 'approved', 'borrowed', 'overdue']") && server.includes("ASSET_OWNER_RECLASSIFIED") && server.includes("await persistDataStore()")],
+  ['Superadmin asset UI exposes legacy owner review and refreshes the list after successful reclassification', assetUi.includes('openOwnerReclassification') && assetUi.includes('submitOwnerReclassification') && assetUi.includes('onRefresh') && assetUi.includes('Review owner aset legacy')],
+  ['Asset API client exposes the audited owner reclassification endpoint', assetApi.includes('reclassifyAssetOwner(id: string') && assetApi.includes('/reclassify-owner')],
+
 ];
 
 let failed = 0;

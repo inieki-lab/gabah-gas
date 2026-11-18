@@ -415,6 +415,13 @@ class GabahApiClient {
     return this.request<Asset>(`/api/assets/${id}`);
   }
 
+  async reclassifyAssetOwner(id: string, payload: { new_owner_division: string; reason: string }): Promise<Asset> {
+    return this.request<Asset>(`/api/assets/${encodeURIComponent(id)}/reclassify-owner`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async createAsset(payload: {
     category_name_or_code: string;
     owner_division?: OwnerDivision;
