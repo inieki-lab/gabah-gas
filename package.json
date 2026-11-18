@@ -63,7 +63,8 @@
     "test:ticket-contract-audit-persistence": "node scripts/ticket-contract-audit-persistence-verify.mjs",
     "test:room-domain-persistence": "node scripts/room-domain-persistence-verify.mjs",
     "test:contract-domain-persistence": "node scripts/contract-domain-persistence-verify.mjs",
-    "test:runtime-build-dependency-boundary": "node scripts/runtime-build-dependency-boundary-verify.mjs"
+    "test:runtime-build-dependency-boundary": "node scripts/runtime-build-dependency-boundary-verify.mjs",
+    "test:reminder-failure-payload": "node scripts/reminder-failure-payload-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
