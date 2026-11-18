@@ -205,21 +205,21 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
     }).catch(() => undefined);
   }, [isOpen, currentUser]);
 
-  // Determine user role and authorized divisions
-  const userRole = resolvedUser?.role || 'Karyawan';
-  const isSuperadmin = userRole === 'Admin GABAH' || userRole === 'Superadmin' || userRole === 'Management';
+  // Superadmin authority comes from the server-calculated capability, never a
+  // display role, job title, or location label.
+  const isSuperadmin = resolvedUser?.is_superadmin === true;
 
-  // T2B-3: master kategori aset tetap dari server (`db.categories`, hasil CRUD
-  // Admin GABAH) — sumber kebenaran tunggal untuk pilihan kategori di form ini.
-  // null = gagal diambil (offline/masih memuat) → daftar statis tetap dipakai
-  // sebagai fallback sehingga form tidak pernah kosong.
+  // Server supplies only active categories whose owner domains the current
+  // actor may create under assets.create + the exact assets module scope.
+  // null means loading; an error/empty response stays fail-closed.
   const [masterCategories, setMasterCategories] = useState<any[] | null>(null);
   useEffect(() => {
     if (!isOpen) return;
     let alive = true;
-    gabahApi.getCategories()
-      .then(list => { if (alive && Array.isArray(list) && list.length > 0) setMasterCategories(list); })
-      .catch(() => {});
+    setMasterCategories(null);
+    gabahApi.getAssetCreationCategories()
+      .then(list => { if (alive) setMasterCategories(Array.isArray(list) ? list : []); })
+      .catch(() => { if (alive) setMasterCategories([]); });
     return () => { alive = false; };
   }, [isOpen]);
 
@@ -235,33 +235,14 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   // kode terdaftar di master dan berstatus aktif. Kategori nonaktif/dihapus
   // admin tidak muncul sebagai pilihan baru (nilai historis aset tetap utuh).
   const isCodeSelectable = (code: string): boolean => {
-    if (!masterCategories) return true;
     const row = masterByCode.get(String(code || '').toUpperCase());
-    return Boolean(row) && row.is_active !== false;
+    return Boolean(row) && row.is_active !== false && Boolean(String(row.owner_division || '').trim());
   };
 
-  // Allowed fixed asset main categories according to corporate RBAC
+  // Main-type labels are presentation only. The server filters the category
+  // master by effective owner-domain grants; primary role names are irrelevant.
   const allowedMainCategories = useMemo<FixedAssetCategoryDef[]>(() => {
-    let roleGroups = FIXED_ASSET_TAXONOMY;
-    if (!isSuperadmin) {
-      if (userRole === 'IT') {
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'IT-H' || cat.type === 'IT-S');
-      } else if (userRole === 'GA') {
-        // GA owns INV-F, INV-P, KDR, BGN, TNH, LNY (All IT items are owned by IT; GA has read-only)
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => ['INV-F', 'INV-P', 'KDR', 'BGN', 'TNH', 'LNY'].includes(cat.type));
-      } else if (userRole === 'Supply Chain') {
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'KDR');
-      } else if (userRole === 'PIBC') {
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'BGN');
-      }
-    }
-
-    // T2B-3: terapkan master —
-    // 1) subkategori statis yang nonaktif/dihapus di master dibuang;
-    // 2) kategori master BARU (dibuat admin, tidak ada di daftar statis)
-    //    ditambahkan ke kelompok main_type-nya — form selalu mencerminkan master;
-    // 3) is_loanable_by_default & category_type diambil dari bila ada di master.
-    return roleGroups
+    return FIXED_ASSET_TAXONOMY
       .map(group => {
         const kept = group.subcategories
           .filter(s => isCodeSelectable(s.code))
@@ -269,6 +250,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
             const master = masterByCode.get(String(s.code).toUpperCase());
             return {
               ...s,
+              divisionOverride: String(master?.owner_division || ''),
               isLoanableDefault: master && master.is_loanable_by_default !== undefined
                 ? Boolean(master.is_loanable_by_default)
                 : s.isLoanableDefault,
@@ -284,12 +266,13 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
             placeholderName: String(c.name || c.code),
             placeholderBrand: '',
             placeholderModel: '',
+            divisionOverride: String(c.owner_division || ''),
             isLoanableDefault: Boolean(c.is_loanable_by_default),
           }));
         return { ...group, subcategories: [...kept, ...extras] };
       })
       .filter(group => group.subcategories.length > 0);
-  }, [userRole, isSuperadmin, masterCategories, masterByCode]);
+  }, [masterCategories, masterByCode]);
 
   // Selected state
   const [selectedMainType, setSelectedMainType] = useState<FixedAssetMainType>('IT-H');
@@ -315,23 +298,12 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
     return activeMainCat.subcategories[selectedSubIndex] || activeMainCat.subcategories[0];
   }, [activeMainCat, selectedSubIndex]);
 
-  // Sync division when main type or subcategory changes
+  // Owner domain is authoritative on the selected category master row.
+  // Non-superadmins cannot override it in the browser.
   useEffect(() => {
-    if (activeMainCat.type === 'INV-F') {
-      // Corporate Rule: Semua furniture adalah milik GA walau ada dimanapun
-      setSelectedDivision('GA');
-    } else if (activeMainCat.type === 'IT-H' || activeMainCat.type === 'IT-S') {
-      // Corporate Rule: Semua barang IT adalah milik IT
-      setSelectedDivision('IT');
-    } else if (activeSub.divisionOverride) {
-      setSelectedDivision(activeSub.divisionOverride);
-    } else if (!isSuperadmin) {
-      if (userRole === 'Supply Chain') setSelectedDivision('SC');
-      else if (userRole === 'PIBC') setSelectedDivision('PIBC');
-      else if (userRole === 'GA') setSelectedDivision('GA');
-      else setSelectedDivision(activeMainCat.defaultDivision);
-    }
-  }, [activeMainCat, activeSub, userRole, isSuperadmin]);
+    if (activeSub?.divisionOverride) setSelectedDivision(activeSub.divisionOverride);
+    else if (isSuperadmin) setSelectedDivision(activeMainCat.defaultDivision);
+  }, [activeMainCat, activeSub, isSuperadmin]);
 
   // Fields
   const [name, setName] = useState('');
@@ -495,7 +467,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
               <select
                 value={selectedDivision}
                 onChange={(e) => setSelectedDivision(e.target.value as OwnerDivision)}
-                disabled={activeMainCat.isDivisionLocked && !isSuperadmin}
+                disabled={!isSuperadmin}
                 className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-600 disabled:bg-slate-100 disabled:text-slate-600"
               >
                 <option value="IT">IT — Tim Teknologi Informasi</option>
