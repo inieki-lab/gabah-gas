@@ -3664,7 +3664,7 @@ async function startServer() {
       : db.tickets.filter(ticket =>
         ticket.reporter_id === actor.id
         || ticket.assigned_agent_id === actor.id
-        || canReadOwnerScope(ticket.category, 'tickets')
+        || hasTicketQueueScope(actor, ticket)
       );
 
     const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;
@@ -3707,6 +3707,7 @@ async function startServer() {
       loans: canReadLoans ? db.loans : [],
       tickets: canReadTickets ? db.tickets : [],
       canReadOwnerScope,
+      canReadTicketQueueScope: ticket => hasTicketQueueScope(actor, ticket),
     });
     res.json({ success: true, data: visibleItems });
   });
