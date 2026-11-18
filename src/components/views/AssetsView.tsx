@@ -77,7 +77,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   const [reclassifyLoading, setReclassifyLoading] = useState(false);
   const [reclassifySaving, setReclassifySaving] = useState(false);
   const [reclassifyError, setReclassifyError] = useState('');
-  const isSuperadmin = currentUser.role === 'Superadmin' || currentUser.role_keys?.includes('superadmin') === true;
+  const isSuperadmin = currentUser.is_superadmin === true || currentUser.role === 'Superadmin' || currentUser.role_keys?.includes('superadmin') === true;
 
   const openOwnerReclassification = async (asset: Asset) => {
     setReclassifyAsset(asset);
