@@ -1041,15 +1041,18 @@ async function startServer() {
       if (normalizedEmail !== undefined) targetUser.email = normalizedEmail;
 
       if (role !== undefined) {
-        targetUser.role = role.trim();
-        const roleLabels: Record<string, string> = {
-          'Admin GABAH': 'Admin GABAH (Super Admin)',
-          'IT': 'Staff Divisi IT',
-          'GA': 'Staff Divisi General Affairs',
-          'Auditor': 'Satuan Pengawas Internal (SPI)',
-          'Karyawan': 'Karyawan / Pemohon',
-        };
-        (targetUser as any).role_label = role.trim();
+        const requestedProfileLabel = role.trim();
+        const normalizedProfileRole = ['Supply Chain', 'PIBC'].includes(requestedProfileLabel)
+          ? 'Karyawan' : requestedProfileLabel;
+        targetUser.role = normalizedProfileRole;
+        (targetUser as any).role_label = normalizedProfileRole;
+        if (!targetUser.office_location_id && ['Supply Chain', 'PIBC'].includes(requestedProfileLabel)) {
+          const mappedOffice = requestedProfileLabel === 'Supply Chain' ? 'OFF-RPC' : 'OFF-PIBC';
+          if (!(db.officeLocations || []).some(location => location.id === mappedOffice && location.is_active)) {
+            return res.status(400).json({ success: false, message: `Lokasi kantor "${mappedOffice}" tidak terdaftar atau sedang nonaktif.` });
+          }
+          targetUser.office_location_id = mappedOffice;
+        }
       }
       if (normalizedDivision !== undefined) targetUser.division = normalizedDivision;
       if (normalizedDepartment !== undefined) targetUser.department = normalizedDepartment;
