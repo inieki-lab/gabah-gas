@@ -70,6 +70,9 @@ jobs:
       - name: Vendor and Knowledge Base durable persistence regression
         run: npm run test:domain-persistence
 
+      - name: Legacy owner and office-location separation regression
+        run: npm run test:legacy-owner-presentation
+
       - name: Asset assignment active-user integrity
         run: npm run test:asset-assignment-active-user
 
