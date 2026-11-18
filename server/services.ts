@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility, ServerMaintenance } from './db';
 import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
@@ -1075,7 +1076,7 @@ export class GabahDomainService {
     }
 
     const newTicket: ServerTicket = {
-      id: `TKT-${Date.now()}`,
+      id: `TKT-${randomUUID()}`,
       ticket_number: ticketNumber,
       ticket_code: ticketNumber,
       title: payload.title.trim(),
