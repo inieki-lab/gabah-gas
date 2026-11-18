@@ -119,6 +119,13 @@ async function main() {
     rec('A2: create tanpa field → unit mengikuti owner_division (IT)', 'UNIT-IT-MIS',
       `${created2?.managing_unit_id}`, a2.status === 201 && created2?.managing_unit_id === 'UNIT-IT-MIS' && created2?.owner_division === 'IT');
 
+    // Legacy office/location codes must never be accepted as new asset owners,
+    // including for direct API requests made by Superadmin.
+    const legacyScCreate = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'SC', name: 'Aset owner SC legacy ditolak' } });
+    const legacyPibcCreate = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'PIBC', name: 'Aset owner PIBC legacy ditolak' } });
+    rec('A5: owner lokasi legacy SC/PIBC ditolak untuk aset baru', '409 + 409',
+      `${legacyScCreate.status} + ${legacyPibcCreate.status}`, legacyScCreate.status === 409 && legacyPibcCreate.status === 409);
+
     // A3: update (PATCH) mengganti managing_unit_id tanpa mengubah asset_number
     const numBeforePatch = created1?.asset_number;
     const a3 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-GA-UMUM' } });
