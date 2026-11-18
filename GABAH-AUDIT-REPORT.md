@@ -677,7 +677,37 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Removed the post-transaction fire-and-forget `GabahDomainService.recordAudit()` calls from those six routes. An audit insert failure now rejects the transaction, so the associated RBAC mutation rolls back and the handler does not return a success response.
 - RBAC policy refresh remains after successful transaction commit, so the in-memory effective-policy cache is refreshed only after both mutation and audit row commit.
 - Added `scripts/rbac-audit-transaction-verify.mjs`, npm script `test:rbac-audit-transaction`, and a dedicated CI step. The regression checks that all six handlers place their audit insert inside the transaction and no longer call the fire-and-forget helper.
-- **Validation pending:** the latest branch commit is `70d81502e872c3f53dd34a24d87255af993fa2cb`; wait for exact-head CI and TypeScript/PostgreSQL integration before treating this as closed. The new source-contract regression is not a substitute for a live database rollback test.
+- **Validation:** exact code head `8c9dd34b70c628efab67e97e96f9d55156266440` passed GitHub Actions run `44225572523`; the `verify` job completed successfully with all 74 steps, including TypeScript lint, the Dynamic RBAC foundation checks, the six-route RBAC audit transaction regression, production Docker build/runtime smoke, PostgreSQL 17 fresh-database/persistence integration, and live P0 HTTP security verification. A later documentation-only update will trigger another exact-head workflow run.
 - Scope remains limited to the six RBAC write routes. Other application-domain mutations and authentication/security-event audit paths still use the legacy audit helper and remain open for staged remediation.
 
 **Checklist:** RBAC audit transaction coupling = implemented; six-route source regression = added; exact-head CI = pending; live fault-injection/rollback test = OPEN; remaining domain/auth audit durability = OPEN; merge/UAT gate = OPEN.
+
+
+## 29. RBAC audit exact-head validation and release-chain recheck — 18 November 2026
+
+### Exact-head CI result
+
+- Branch: `audit/runtime-persistence-fail-closed`.
+- Exact code head: `8c9dd34b70c628efab67e97e96f9d55156266440`.
+- GitHub Actions run: `44225572523`; job `verify` concluded **success** with all 74 steps completed.
+- Confirmed successful steps include `Dynamic RBAC foundation contract checks`, `RBAC mutation and audit transaction regression`, TypeScript lint, production frontend/server build, production Docker image build, Node 22 + PostgreSQL 17 runtime smoke, PostgreSQL 17 fresh-database/persistence integration, and live P0 security HTTP assertions.
+- This closes the CI validation item for the six RBAC transactional audit changes at this exact code head. It does **not** prove rollback under a deliberately injected live audit insert failure; the current six-route regression is a source-contract check.
+
+### Release-chain state rechecked
+
+- PR #115 remains Draft/open and reports `mergeable = false`, targeting `main`.
+- A fresh compare of `main...audit/dynamic-rbac-full-sync` reports `diverged`, **459 commits ahead and 1 commit behind**. The branch is not safe to merge or retarget blindly.
+- PR #118 remains Draft/open and reports mergeable against its parent branch `audit/dynamic-rbac-full-sync`.
+- PR #119 remains Draft/open and reports mergeable against its parent branch `audit/fix-ticket-persistence-contract-document-audit`; its exact head is the validated commit above.
+- Do not merge PR #118 or #119 independently, and do not retarget either child directly to `main`. First reconcile PR #115 against current `main`, then validate the ordered stack and all resulting exact heads. No force-push/rebase or destructive branch rewrite was attempted.
+
+### Remaining release blockers
+
+1. Live PostgreSQL fault-injection test proving RBAC mutation rollback when the mandatory audit insert fails.
+2. Broader audit durability migration for non-RBAC domain mutations; `GabahDomainService.recordAudit()` still starts a fire-and-forget persistence write for many call sites.
+3. Authentication/security-event audit semantics and database append-only enforcement.
+4. Safe SC/PIBC owner-domain normalization based on actual business ownership, not office location.
+5. Browser/API UAT for all roles, backup/restore rehearsal, deployment rehearsal, and concurrent multi-process numbering issuance.
+6. Parent PR #115 integration conflict and ordered stack validation.
+
+**Updated release gate:** PR #119 exact-head CI = **PASS (74/74)**; merge to `main` = **BLOCKED** by parent PR #115; laptop UAT = **NOT YET AUTHORIZED**.
