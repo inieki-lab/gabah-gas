@@ -2607,16 +2607,25 @@ async function startServer() {
     const activeLoan = db.loans.find(loan => loan.asset_id === asset.id && ['approved', 'borrowed'].includes(String(loan.status || '').toLowerCase()));
     if (activeLoan) return res.status(409).json({ success: false, message: `Owner tidak dapat diubah selama pinjaman ${activeLoan.loan_number} masih aktif.` });
 
-    const auditLength = db.auditLogs.length;
     asset.owner_division = requestedOwner;
-    GabahDomainService.recordAudit('ASSET_OWNER_RECLASSIFIED', 'Assets',
-      `Reklasifikasi owner aset ${asset.asset_number}: ${previousOwner || 'UNASSIGNED'} → ${requestedOwner}. Alasan: ${reason}`, actor, asset.id);
+    const auditLog = {
+      id: `LOG-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
+      action: 'ASSET_OWNER_RECLASSIFIED',
+      entity: 'Assets',
+      entity_id: asset.id,
+      user_name: actor.name || 'System',
+      user_role: actor.role || 'System',
+      details: `Reklasifikasi owner aset ${asset.asset_number}: ${previousOwner || 'UNASSIGNED'} → ${requestedOwner}. Alasan: ${reason}`,
+      timestamp: new Date().toISOString(),
+    };
+    db.auditLogs.unshift(auditLog);
     try {
       await persistDataStore();
       return res.json({ success: true, data: asset });
     } catch (error: any) {
       asset.owner_division = previousOwnerRaw;
-      db.auditLogs.splice(auditLength);
+      const auditIndex = db.auditLogs.indexOf(auditLog);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
       return res.status(500).json({ success: false, message: error?.message || 'Gagal menyimpan reklasifikasi owner aset.' });
     }
   });
