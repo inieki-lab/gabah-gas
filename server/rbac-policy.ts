@@ -129,11 +129,13 @@ export function hasRbacScope(
   type: RbacScope['type'],
   value?: string | null,
   module?: string | null,
+  exactModule = false,
 ): boolean {
   if (isRbacSuperadmin(userId)) return true;
   const policies = policiesByUser.get(String(userId)) || [];
-  const moduleMatches = (scope: RbacScope) =>
-    scope.module == null || scope.module === '*' || module == null || scope.module === module;
+  const moduleMatches = (scope: RbacScope) => exactModule
+    ? Boolean(module) && scope.module === module
+    : scope.module == null || scope.module === '*' || module == null || scope.module === module;
 
   // Owner-domain scopes support broad grants with explicit exclusions:
   // "all except IT" must not be mistaken for unrestricted "all".
