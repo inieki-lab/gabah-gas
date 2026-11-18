@@ -130,7 +130,7 @@ const checks = [
   ['RBAC writes fail closed without PostgreSQL', /Dynamic RBAC memerlukan PostgreSQL aktif/i.test(persistence) && /withRbacTransaction/i.test(persistence)],
   ['role deactivation and deletion check current assignments', /RBAC_ROLE_IN_USE/i.test(server) && /FROM gabah_user_roles WHERE role_id = \$1/i.test(server)],
   ['role administration changes are audit logged', /RBAC_ROLE_CREATED/i.test(server) && /RBAC_ROLE_UPDATED/i.test(server) && /RBAC_PERMISSIONS_UPDATED/i.test(server)],
-  ['Auditor receives global read scope only for the audit module', /r\.role_key = 'auditor'[\s\S]*?'audit', 'all', NULL/.test(auditorAuditScopeMigration) && /s\.module = 'audit'[\s\S]*s\.scope_type = 'all'/.test(auditorAuditScopeMigration)],
+  ['Auditor receives global read scope only for the audit module', auditorAuditScopeMigration.includes("WHERE r.role_key = 'auditor'") && auditorAuditScopeMigration.includes("SELECT r.id, 'audit', 'all', NULL") && auditorAuditScopeMigration.includes("AND s.module = 'audit'") && auditorAuditScopeMigration.includes("AND s.scope_type = 'all'")],
   ['Superadmin comparisons use the stable policy in server and domain services', !/actor\.role\s*(?:===|!==)\s*'Admin GABAH'/.test(server) && !/actor\.role\s*(?:===|!==)\s*'Admin GABAH'/.test(domainServices) && /isSuperadminActor\(actor\)/.test(domainServices)],
   ['legacy Superadmin string bypasses are removed from API guards', !/\(actor as any\)\.role !== 'Superadmin'/.test(server)],
   ['runtime security middleware uses stable Superadmin policy', /isSuperadminActor\(actor\)/.test(runtimeHardening) && /isSuperadminActor/.test(policy)],
