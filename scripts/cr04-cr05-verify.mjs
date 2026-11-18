@@ -374,6 +374,24 @@ async function main() {
       record('Audit log append-only integration',
         'migration 091 and rejected UPDATE/DELETE/TRUNCATE', `error: ${err.message}`, false);
     }
+    try {
+      const auditorScope = await mig.query(
+        `SELECT s.role_id FROM gabah_role_division_scopes s
+         JOIN gabah_roles r ON r.id = s.role_id
+         WHERE r.role_key = 'auditor' AND s.module = 'audit'
+           AND s.scope_type = 'all' AND s.scope_value IS NULL`,
+      );
+      const auditorScopeMigration = await mig.query(
+        "SELECT version FROM schema_migrations WHERE version = '099'",
+      );
+      record('Auditor global read scope is seeded only for audit module',
+        'migration 099 + one audit/all scope',
+        `migration=${auditorScopeMigration.rowCount} scope=${auditorScope.rowCount}`,
+        auditorScopeMigration.rowCount === 1 && auditorScope.rowCount === 1);
+    } catch (err) {
+      record('Auditor global audit scope migration',
+        'migration 099 and audit/all scope', `error: ${err.message}`, false);
+    }
     await mig.end();
 
     // ---------- 2. Logins (PBKDF2 path, env-provisioned passwords) ----------
