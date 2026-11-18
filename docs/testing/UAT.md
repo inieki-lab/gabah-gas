@@ -281,3 +281,89 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
 ### 4.7 Blocker Pengujian Eksternal (jujur)
 - **Pengiriman email/Telegram nyata (status `sent` pada provider eksternal) belum dapat diuji end-to-end** — tidak ada SMTP relay maupun `TELEGRAM_BOT_TOKEN` di lingkungan verifikasi. Cakupan yang terverifikasi: jalur unconfigured→skipped, jalur gagal→failed dengan alasan jelas, dan pengiriman in-app→sent. Konfigurasi produksi: set env `GABAH_SMTP_*` dan `TELEGRAM_BOT_TOKEN` lalu ulangi verifikasi manual Seksi 3 Skenario 10 poin 4.
 - **Docker build tidak dapat diverifikasi** (Docker tidak tersedia di lingkungan verifikasi).
+
+
+---
+
+## 5. Browser UAT — Dynamic RBAC, ticket routing, and owner/location separation
+
+**Status as of 18 November 2026: NOT EXECUTED / NOT SIGNED OFF.** Automated CI is not a substitute for this section. Run against an isolated UAT database and build, never against production. Record build SHA, browser/version, tester, timestamp, screenshots, and result for every row.
+
+### 5.1 Preconditions
+
+- [ ] UAT database is isolated and has a verified backup.
+- [ ] Application health reports PostgreSQL persistence; no file-store fallback.
+- [ ] Migration ledger contains migration 098 exactly once.
+- [ ] Superadmin has reviewed role assignments, primary/additional roles, module activation, owner scopes, unit scopes, and location attributes.
+- [ ] One dedicated test account exists for each persona below. Do not reuse a real employee's account.
+- [ ] Dedicated GA operator, GA requester, ME requester, Admin Tiket ME, and ME technician assignments are explicitly configured. Migration 098 creates role templates; it does not assign users.
+- [ ] Each account is logged out before its test begins; verify fresh login and session restore.
+
+### 5.2 Persona and negative-access matrix
+
+| Persona / test account | Positive test | Negative test that must be denied |
+|---|---|---|
+| Superadmin | Administration, user/role assignment, module configuration, all authorized asset/ticket views | No hidden API error; destructive actions must require confirmation and create audit records |
+| IT Support | See IT queue; receive IT ticket notifications; assign/update tickets only with exact IT scope; manage IT assets across office locations | Cannot manage GA/ME queues or non-IT assets without explicit additional scope |
+| GA asset operator | Create/update GA-owned assets; see and dispatch GA ticket queue only when ga_helpdesk_operator is explicitly assigned | Generic GA role alone cannot dispatch/manage GA tickets; cannot mutate IT assets |
+| GA requester | Create GA ticket with tickets.create.ga; see own ticket and notifications | Cannot see all GA queue or assign/update other people's tickets |
+| ME requester | Create ME ticket; ticket routes to UNIT-PIBC-ME | Being physically located at PIBC without ME capability does not grant ME queue access |
+| Admin Tiket ME | See/manage/assign tickets in UNIT-PIBC-ME with exact tickets unit scope | Cannot manage IT/GA queues or other units |
+| ME technician | See only tickets explicitly assigned to them if personal-assignment policy permits; update only with explicit operational permission/scope | Unit membership or location alone must not imply dispatcher rights |
+| RPC/SC employee | Standard employee dashboard; create IT helpdesk ticket; view own requests | RPC/SC location must not create a Supply Chain role, division scope, or broad asset/ticket access |
+| PIBC employee | Standard employee dashboard; create IT helpdesk ticket; view own requests | PIBC office location must not grant ME operator access, PIBC division authority, or asset mutation |
+| Auditor | Read-only audit/reconciliation and explicitly permitted read views | Every create/update/delete/assign/approve/dispatch action must be denied server-side |
+
+### 5.3 Cross-cutting authorization probes
+
+For every persona, verify both UI and direct API behavior. Hiding a button is not sufficient evidence.
+
+- [ ] Change only office_location_id from HO to PIBC; permissions and role grants must not increase.
+- [ ] Change only unit_id; queue access changes only where an exact module unit scope and required permissions are both present.
+- [ ] Change only job level (Direksi/Kadiv/Kadep/Kasi/Staf); no permission is added by title.
+- [ ] Remove an additional role or its scope; access is revoked after policy refresh and a new request.
+- [ ] Disable a module; its UI entry and API actions are denied, not merely hidden.
+- [ ] Attempt direct object-ID access for an out-of-scope asset, ticket, contract, loan, and notification; no data leakage.
+- [ ] Attempt state-changing requests as Auditor and as a custom read-only role; server returns 403/404 according to the endpoint's disclosure policy.
+- [ ] Verify user-targeted notifications are private; role/unit notifications are visible only to eligible recipients.
+- [ ] Verify all denied writes leave no changed row, notification, audit success record, or partial state.
+
+### 5.4 Ticket routing scenarios
+
+- [ ] New IT ticket routes to IT; automatic assignment occurs only when exactly one active operator meets all permission and exact-scope requirements.
+- [ ] Zero or multiple eligible IT operators leaves the ticket in the IT queue; notifications go only to eligible users with notifications.read.
+- [ ] New GA ticket requires explicit GA requester capability; it is visible to its reporter and explicitly scoped GA operator only.
+- [ ] New ME ticket requires explicit ME requester capability and active UNIT-PIBC-ME; it stores assigned_unit_id='UNIT-PIBC-ME'.
+- [ ] Disable UNIT-PIBC-ME; a new ME ticket is rejected with HTTP 409 and no ticket/notification/audit partial write.
+- [ ] SC/PIBC are rejected as new ticket categories while historical SC/PIBC tickets remain unchanged.
+- [ ] Reporter can read their own ticket but cannot change its status without tickets.update and matching scope.
+- [ ] Dispatch to an inactive, unscoped, or insufficiently permissioned target is rejected.
+- [ ] Failed persistence during dispatch restores ticket assignment, notification, audit, and state snapshot.
+
+### 5.5 Asset owner and location scenarios
+
+- [ ] IT user can create/manage IT assets at HO, PIBC, RPC, Pangsub, and Kantor Perawatan when location is valid; ownership remains IT.
+- [ ] GA user can create/manage GA assets at those locations; physical location does not change owner.
+- [ ] GA's IT workstation read-only grant (if enabled) exposes only approved IT workstation categories and does not permit create/update/assign/move/lifecycle.
+- [ ] A custom role sees and mutates only owner domains explicitly granted by asset permission plus owner scope.
+- [ ] A role with only unit/location scope cannot mutate assets in an owner domain.
+- [ ] Unknown or inactive owner masters are rejected for new assets.
+- [ ] Historical SC/PIBC owner records remain unchanged pending asset-by-asset review; UI labels identify them as legacy owner values, not current divisions.
+- [ ] Movement and maintenance history are limited to the same visible asset set.
+
+### 5.6 Result record
+
+| Persona / scenario | PASS / FAIL / BLOCKED | Evidence reference | Tester / date |
+|---|---|---|---|
+| Superadmin | NOT RUN | | |
+| IT Support | NOT RUN | | |
+| GA operator + requester | NOT RUN | | |
+| ME requester + Admin ME + technician | NOT RUN | | |
+| RPC/SC employee | NOT RUN | | |
+| PIBC employee | NOT RUN | | |
+| Auditor | NOT RUN | | |
+| Direct API / cross-cutting probes | NOT RUN | | |
+| Ticket routing | NOT RUN | | |
+| Asset owner/location separation | NOT RUN | | |
+
+**Release gate:** no production go-live or merge-to-main recommendation until all applicable rows pass, evidence is attached, and business/IT owners sign off. Any BLOCKED row must have an owner and remediation date; it is not a pass.
