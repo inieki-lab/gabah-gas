@@ -561,6 +561,17 @@ class GabahApiClient {
     });
   }
 
+  async getTicketAssignees(id: string): Promise<Array<{ id: string; name: string; department: string }>> {
+    return this.request<Array<{ id: string; name: string; department: string }>>(`/api/tickets/${id}/assignees`);
+  }
+
+  async assignTicket(id: string, assigned_agent_id: string): Promise<Ticket> {
+    return this.request<Ticket>(`/api/tickets/${id}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ assigned_agent_id }),
+    });
+  }
+
   // Notifications
   async getNotifications(): Promise<any[]> {
     return this.request<any[]>('/api/notifications');
