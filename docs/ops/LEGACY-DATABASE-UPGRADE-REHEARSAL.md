@@ -46,7 +46,7 @@ docker compose -p gabah-rehearsal -f docker-compose.yml -f docker-compose.rehear
 4. Restore the dump into the isolated database. This pipes the archive into the PostgreSQL 17 container; it does not write to the source database.
 
 ```bash
-pg_dump --format=custom --no-owner --no-acl "$SOURCE_DATABASE_URL" | \
+cat gabah-pre098-rehearsal.dump | \
   docker compose -p gabah-rehearsal -f docker-compose.yml -f docker-compose.rehearsal.yml --env-file .env.rehearsal exec -T database \
   pg_restore --username "$PGUSER" --dbname "$PGDATABASE" --clean --if-exists --single-transaction --no-owner --no-privileges
 ```
