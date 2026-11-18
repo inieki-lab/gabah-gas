@@ -847,28 +847,46 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     refreshReminderOverview();
   }, []);
 
-  // System Settings State
-  const [settingsForm, setSettingsForm] = useState(() => {
-    const saved = localStorage.getItem('gabah_system_settings');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return {
-      companyName: 'PT Food Station Tjipinang Jaya (Perseroda)',
-      shortCode: 'GABAH',
-      orgType: 'BUMD Pangan Pemerintah Provinsi DKI Jakarta',
-      accountingStandard: 'PSAK 16 (Aset Tetap & Depresiasi Garis Lurus)',
-      baseCurrency: 'IDR (Rupiah)',
-      fiscalYear: '2026',
-      capitalizationThreshold: '1000000',
-      slaUrgentHours: 4,
-      slaHighHours: 8,
-      slaMediumHours: 24,
-      slaLowHours: 48,
-      autoBackupDaily: true,
-      auditRetentionDays: 90
-    };
+  // Company profile is server-authoritative; SLA values below are read-only policy references.
+  const [settingsForm, setSettingsForm] = useState({
+    companyName: '',
+    accountingStandard: '',
+    baseCurrency: '',
+    fiscalYear: '',
+    slaUrgentHours: 4,
+    slaHighHours: 8,
+    slaMediumHours: 24,
+    slaLowHours: 48,
   });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || activeSection !== 'settings') return;
+    let cancelled = false;
+    setSettingsLoading(true);
+    setSettingsError('');
+    gabahApi.getSystemSettings()
+      .then(data => {
+        if (cancelled) return;
+        setSettingsForm(previous => ({
+          ...previous,
+          companyName: data.companyName,
+          accountingStandard: data.accountingStandard,
+          baseCurrency: data.baseCurrency,
+          fiscalYear: data.fiscalYear,
+        }));
+      })
+      .catch(error => {
+        if (cancelled) return;
+        setSettingsForm(previous => ({ ...previous, companyName: '', accountingStandard: '', baseCurrency: '', fiscalYear: '' }));
+        setSettingsError(error?.message || 'Pengaturan sistem gagal dimuat dari database.');
+        showToast('Pengaturan sistem tidak dapat dibaca dari database.', 'warning');
+      })
+      .finally(() => { if (!cancelled) setSettingsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, activeSection]);
 
   // Health Check State
   const [healthStatus, setHealthStatus] = useState<{
@@ -1248,11 +1266,25 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  // System Settings Handlers
-  const handleSaveSettings = (e: React.FormEvent) => {
+  // Persist only company-profile metadata; operational SLA policy remains server-owned.
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('gabah_system_settings', JSON.stringify(settingsForm));
-    showToast('Parameter tampilan panel administrasi tersimpan (local browser).', 'success');
+    if (!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving) return;
+    try {
+      setSettingsSaving(true);
+      const saved = await gabahApi.updateSystemSettings({
+        companyName: settingsForm.companyName,
+        accountingStandard: settingsForm.accountingStandard,
+        baseCurrency: settingsForm.baseCurrency,
+        fiscalYear: settingsForm.fiscalYear,
+      });
+      setSettingsForm(previous => ({ ...previous, ...saved }));
+      showToast('Profil perusahaan berhasil disimpan ke PostgreSQL.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Pengaturan sistem gagal disimpan.', 'warning');
+    } finally {
+      setSettingsSaving(false);
+    }
   };
 
   // P1#1: Rekonsiliasi INTEGRITAS DATA NYATA (bukan toast palsu).
@@ -1384,7 +1416,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { id: 'numbering' as AdminSection, label: 'Penomoran Aset', description: 'Format nomor aset dan pemantauan sequence nomor yang diterbitkan server.', dataSource: 'Format masih lokal; sequence dari API', icon: Hash, badge: liveSequences === null ? 'Sequence belum tersedia' : `${liveSequences.length} sequence` },
     { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'PostgreSQL', icon: Bell, badge: 'Database' },
     { id: 'audit_log' as AdminSection, label: 'Riwayat Aktivitas', description: 'Catatan perubahan dan aktivitas yang direkam sistem.', dataSource: 'Database / API', icon: ScrollText, badge: `${auditLogs.length} catatan` },
-    { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Identitas perusahaan, parameter PSAK, SLA, dan retensi data.', dataSource: 'Konfigurasi masih lokal', icon: Settings2, badge: 'Perlu sentralisasi' },
+    { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Identitas perusahaan, parameter PSAK, SLA, dan retensi data.', dataSource: 'PostgreSQL', icon: Settings2, badge: 'Database' },
     { id: 'data_admin' as AdminSection, label: 'Ekspor & Rekonsiliasi', description: 'Fungsi ekspor dan pemeriksaan konsistensi data; bukan pengganti backup terjadwal.', dataSource: 'Operasi administratif', icon: FileSpreadsheet, badge: 'Alat data' },
     { id: 'health' as AdminSection, label: 'Kesehatan Sistem', description: 'Pemeriksaan langsung API dan informasi runtime yang benar-benar tersedia.', dataSource: 'Live check', icon: HeartPulse, badge: healthStatus.status },
     { id: 'modules' as AdminSection, label: 'Siklus Hidup Modul', description: 'Aktif/nonaktif modul, enforcement API, dan histori perubahan.', dataSource: 'Database lifecycle registry', icon: Power, badge: '12 modul' },
@@ -4756,7 +4788,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
 
                   <div className="rounded-xl bg-sky-50 border border-sky-200 px-3 py-2 text-[11px] text-sky-900 leading-relaxed">
-                    <strong>Catatan:</strong> parameter entitas (nama, standar, mata uang, tahun buku) tersimpan sebagai konfigurasi tampilan panel administrasi ini. Batas SLA helpdesk di bawah merupakan <strong>referensi</strong> — nilai SLA operasional riil saat ini ditetapkan server (Urgent 4h, High 8h, Medium 24h, Low 48h) dan belum dapat diubah dari UI.
+                    <strong>Catatan:</strong> profil perusahaan (nama, standar akuntansi, mata uang, tahun buku) disimpan terpusat di PostgreSQL. Batas SLA di bawah hanya referensi kebijakan server dan tidak dapat diubah dari panel ini (Urgent 4h, High 8h, Medium 24h, Low 48h).
                   </div>
 
                 <div className="pt-4 border-t border-slate-100">
@@ -4768,7 +4800,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-red-600 mb-1 font-bold">Urgent (Kritis)</label>
                       <input
                         type="number"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={true}
                         value={settingsForm.slaUrgentHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaUrgentHours: Number(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl border border-red-200 bg-red-50/30 font-bold text-red-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
@@ -4778,7 +4810,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-amber-600 mb-1 font-bold">High (Tinggi)</label>
                       <input
                         type="number"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={true}
                         value={settingsForm.slaHighHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaHighHours: Number(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-amber-50/30 font-bold text-amber-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
@@ -4788,7 +4820,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-blue-600 mb-1 font-bold">Medium (Sedang)</label>
                       <input
                         type="number"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={true}
                         value={settingsForm.slaMediumHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaMediumHours: Number(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl border border-blue-200 bg-blue-50/30 font-bold text-blue-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
@@ -4798,7 +4830,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-slate-600 mb-1 font-bold">Low (Rendah)</label>
                       <input
                         type="number"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={true}
                         value={settingsForm.slaLowHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaLowHours: Number(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
@@ -4813,7 +4845,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       onClick={handleSaveSettings}
                       className="px-5 py-2 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold shadow-md shadow-[#4ABDAC]/20 hover:bg-[#3ba393] cursor-pointer"
                     >
-                      Simpan Pengaturan Sistem
+                      {settingsSaving ? 'Menyimpan...' : 'Simpan Pengaturan Sistem'}
                     </button>
                   ) : (
                     <div className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed">
