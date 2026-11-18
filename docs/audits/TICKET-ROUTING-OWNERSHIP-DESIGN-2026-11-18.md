@@ -75,10 +75,18 @@ Notifikasi antrean harus mengarah ke target operasional yang eksplisit, bukan me
 9. User inactive, role inactive, permission dicabut, scope dicabut, dan unit inactive langsung kehilangan akses.
 10. Tiket historis kategori SC/PIBC tetap terjaga; data unresolved tidak bocor dan tidak hilang.
 
-## 6. Keputusan bisnis yang masih harus dikonfirmasi sebelum coding routing
+## 6. Keputusan operasional yang sudah tercatat pada rancangan PR #36
 
-- Penanggung jawab tiket fasilitas umum untuk lokasi HO, RPC/SC, Pangsub, dan kantor perawatan: apakah GA menangani seluruhnya, atau ada unit ME/teknisi lokal di luar PIBC?
-- Apakah Admin GA dan Admin ME masing-masing menjadi satu akun/team target, atau antrean dapat diambil oleh beberapa petugas?
-- Akun IT Support tunggal yang menjadi target awal harus dipilih dari akun aktif yang mana.
+Pemeriksaan riwayat PR #36 (`fix/user-menu-location-rbac-audit`, head `2a83eae`) menemukan keputusan Helpdesk yang sebelumnya sudah dirumuskan dan perlu dipakai sebagai acuan desain, bukan mengulang keputusan dari nol:
 
-Sampai keputusan target operasional di atas disahkan, jangan menebak routing dan jangan menggabungkan PR perubahan runtime. Pekerjaan inventarisasi dan desain dapat dilanjutkan tanpa mengubah data transaksi.
+- Kategori tiket baru: IT, GA, ME. Kategori SC/PIBC hanya dipertahankan untuk histori tiket lama.
+- IT: tiket otomatis diarahkan langsung kepada satu petugas IT aktif yang memiliki `tickets.update` dan scope IT. Jika kandidat tidak ada atau lebih dari satu, tiket tetap di antrean IT; jangan memilih acak.
+- GA: tiket masuk antrean GA. Dispatcher yang memiliki `tickets.assign` dan scope GA mendelegasikan kepada petugas aktif yang memiliki permission dan scope sesuai. Kasi GA tidak otomatis menjadi operator hanya karena jabatan.
+- ME: antrean unit `UNIT-PIBC-ME`. Dispatcher memilih petugas aktif yang berada di unit tersebut dan memiliki `tickets.update` serta scope unit ME.
+- Template role Admin Tiket ME tidak otomatis diberikan ke akun; Superadmin menetapkan unit dan permission/scope kepada pegawai yang ditunjuk.
+- Permission `tickets.assign` dipisahkan dari `tickets.update`.
+- Tiket historis SC/PIBC tetap tersimpan; aset owner SC/PIBC tidak dipindahkan berdasarkan lokasi.
+
+Keputusan tersebut terlihat pada deskripsi PR #36, tetapi branch implementasinya tidak boleh digabung mentah-mentah. Audit sebelumnya sudah menemukan migration 035 pada branch itu menyimpan `UNIT-PIBC-ME` dengan `division_code='PIBC'`, yang kembali mencampur fungsi ME dengan kode divisi/lokasi PIBC; migration 039 juga mengubah permission role GA dan perlu direkonsiliasi dengan matriks role terkini. Perlu port selektif ke head terbaru, migration additive setelah 097, dan regression tests baru.
+
+Satu keputusan operasional yang masih belum tersedia dari catatan sebelumnya: identitas akun aktif yang ditunjuk sebagai petugas IT Support tunggal. Sampai akun itu ditetapkan, tiket IT tetap di antrean IT dan tidak boleh dipilih otomatis secara acak.
