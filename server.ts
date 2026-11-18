@@ -1847,8 +1847,12 @@ async function startServer() {
       if (!isOwnerDivision(owner_division)) {
         return res.status(400).json({ success: false, message: `Kode owner "${owner_division}" wajib diisi dan maksimal 20 karakter.` });
       }
-      if (['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(owner_division).trim().toUpperCase())) {
+      const normalizedOwnerCode = String(owner_division).trim().toUpperCase();
+      if (['SC', 'PIBC', 'SUPPLY CHAIN'].includes(normalizedOwnerCode)) {
         return res.status(400).json({ success: false, message: 'SC/PIBC adalah nilai historis/lokasi, bukan owner domain aktif untuk kategori baru.' });
+      }
+      if (!(db.divisions || []).some(d => d.is_active !== false && String(d.code || '').trim().toUpperCase() === normalizedOwnerCode)) {
+        return res.status(400).json({ success: false, message: `Owner "${normalizedOwnerCode}" harus terdaftar dan aktif pada Master Owner.` });
       }
       const normalizedCategoryType = category_type || (owner_division === 'IT' ? 'IT' : 'General');
       if (!isGabahCategoryType(normalizedCategoryType)) {
@@ -1929,8 +1933,12 @@ async function startServer() {
           message: `Jenis utama aset "${main_type}" tidak dikenal. Nilai yang diizinkan: ${FIXED_ASSET_MAIN_TYPES.join(', ')}.`
         });
       }
-      if (owner_division !== undefined && (!isOwnerDivision(owner_division) || !(db.divisions || []).some(d => String(d.code).toUpperCase() === String(owner_division).trim().toUpperCase()))) {
-        return res.status(400).json({ success: false, message: `Owner "${owner_division}" harus terdaftar pada Master Divisi/Owner.` });
+      if (owner_division !== undefined) {
+        const normalizedOwnerCode = String(owner_division).trim().toUpperCase();
+        if (!isOwnerDivision(normalizedOwnerCode) || ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(normalizedOwnerCode)
+          || !(db.divisions || []).some(d => d.is_active !== false && String(d.code || '').trim().toUpperCase() === normalizedOwnerCode)) {
+          return res.status(400).json({ success: false, message: `Owner "${normalizedOwnerCode}" harus merupakan owner domain aktif; kode lokasi legacy SC/PIBC tidak dapat dipakai untuk kategori baru.` });
+        }
       }
       if (category_type !== undefined && !isGabahCategoryType(category_type)) {
         return res.status(400).json({ success: false, message: `Tipe taksonomi "${category_type}" tidak dikenal. Nilai yang diizinkan: IT, General, License.` });
