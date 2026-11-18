@@ -333,6 +333,20 @@ async function startServer() {
     }
     return actor;
   };
+  // Mandatory RBAC audit rows share the mutation transaction. If audit insertion
+  // fails, the RBAC change rolls back and the API must not report success.
+  const insertRbacAudit = async (client: any, action: string, details: string, actor: ServerUser): Promise<void> => {
+    const requestIp = requestContext.getStore()?.ip;
+    await client.query(
+      'INSERT INTO audit_logs (id, action, entity, entity_id, user_id, user_name, user_role, details, ip_address, timestamp) VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, NOW())',
+      [
+        'LOG-' + crypto.randomUUID(), action, 'Administration', actor.id,
+        actor.name || 'System', actor.role || 'System', details,
+        requestIp || null,
+      ],
+    );
+  };
+
   const rbacFailure = (res: express.Response, error: any) => {
     if (error?.code === '23505') return res.status(409).json({ success: false, message: 'Nama atau kunci role sudah digunakan.' });
     if (error?.code === '23503') return res.status(409).json({ success: false, message: 'Role masih memiliki relasi yang digunakan.' });
@@ -550,10 +564,10 @@ async function startServer() {
         for (const permissionKey of permissionKeys) {
           await client.query('INSERT INTO gabah_role_permissions (role_id, permission_key) VALUES ($1, $2)', [inserted.rows[0].id, permissionKey]);
         }
+        await insertRbacAudit(client, 'RBAC_ROLE_CREATED', 'Superadmin membuat role "' + name + '" (' + roleKey + ') dengan ' + permissionKeys.length + ' permission.', actor);
         return inserted.rows[0];
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_ROLE_CREATED', 'Administration', 'Superadmin membuat role "' + name + '" (' + roleKey + ') dengan ' + permissionKeys.length + ' permission.', actor);
       return res.status(201).json({ success: true, data: { ...result, permissions: permissionKeys, scopes: [], assigned_user_count: 0 } });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -579,10 +593,10 @@ async function startServer() {
         const active = req.body?.is_active === undefined ? role.is_active : Boolean(req.body.is_active);
         if (name.length < 2 || name.length > 120) throw new Error('Nama role harus 2–120 karakter.');
         const updated = await client.query('UPDATE gabah_roles SET name = $2, description = $3, is_active = $4, updated_at = NOW() WHERE id = $1 RETURNING id, role_key, name, description, is_superadmin, is_active, created_at, updated_at', [id, name, description, active]);
+        await insertRbacAudit(client, 'RBAC_ROLE_UPDATED', 'Superadmin memperbarui role "' + updated.rows[0].name + '" (' + updated.rows[0].role_key + ').', actor);
         return updated.rows[0];
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_ROLE_UPDATED', 'Administration', 'Superadmin memperbarui role "' + result.name + '" (' + result.role_key + ').', actor);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -601,10 +615,10 @@ async function startServer() {
         const assigned = await client.query('SELECT COUNT(*)::int AS count FROM gabah_user_roles WHERE role_id = $1', [id]);
         if (Number(assigned.rows[0]?.count || 0) > 0) throw new Error('RBAC_ROLE_IN_USE');
         await client.query('DELETE FROM gabah_roles WHERE id = $1', [id]);
+        await insertRbacAudit(client, 'RBAC_ROLE_DELETED', 'Superadmin menghapus role "' + role.name + '" (' + role.role_key + ').', actor);
         return role;
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_ROLE_DELETED', 'Administration', 'Superadmin menghapus role "' + deleted.name + '" (' + deleted.role_key + ').', actor);
       return res.json({ success: true, data: { id: deleted.id, role_key: deleted.role_key } });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -630,10 +644,10 @@ async function startServer() {
         await client.query('DELETE FROM gabah_role_permissions WHERE role_id = $1', [id]);
         for (const key of uniqueKeys) await client.query('INSERT INTO gabah_role_permissions (role_id, permission_key) VALUES ($1, $2)', [id, key]);
         await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
+        await insertRbacAudit(client, 'RBAC_PERMISSIONS_UPDATED', 'Superadmin mengubah permission role "' + role.role_key + '".', actor);
         return { role_key: role.role_key, permission_keys: uniqueKeys };
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_PERMISSIONS_UPDATED', 'Administration', 'Superadmin mengubah permission role "' + result.role_key + '".', actor);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -672,10 +686,10 @@ async function startServer() {
           );
         }
         await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
+        await insertRbacAudit(client, 'RBAC_SCOPES_UPDATED', 'Superadmin mengubah scope role "' + role.role_key + '".', actor);
         return { role_key: role.role_key, scopes };
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_SCOPES_UPDATED', 'Administration', 'Superadmin mengubah scope role "' + result.role_key + '".', actor);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -718,6 +732,7 @@ async function startServer() {
             [userId, roleId, false, actor.id],
           );
         }
+        await insertRbacAudit(client, 'RBAC_USER_ROLES_UPDATED', 'Superadmin mengubah assignment role untuk user "' + user.name + '" (' + user.email + ') menjadi: ' + valid.rows.map(row => String(row.name)).join(', ') + '.', actor);
         return {
           user_id: userId,
           user_name: String(user.name),
@@ -728,12 +743,6 @@ async function startServer() {
         };
       });
       await refreshRbacPolicy();
-     GabahDomainService.recordAudit(
-        'RBAC_USER_ROLES_UPDATED',
-        'Administration',
-        'Superadmin mengubah assignment role untuk user "' + result.user_name + '" (' + result.user_email + ') menjadi: ' + result.role_names.join(', ') + '.',
-        actor,
-      );
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
