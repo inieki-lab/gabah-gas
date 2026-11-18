@@ -10,6 +10,9 @@ const end = source.indexOf("\n\n    if (isSuperadminActor(actor)", start);
 const block = source.slice(start, end);
 
 const checks = [
+  ['Direct ticket detail route requires tickets.read', source.includes("app.get('/api/tickets/:id'") && source.includes("requireRbacPermission(req, res, 'tickets.read')")],
+  ['Direct ticket detail denies out-of-scope IDs without revealing existence', source.includes("return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' })")],
+  ['Direct ticket detail permits only reporter, assignee, owner scope, or superadmin', source.includes("ticket.assigned_agent_id !== actor.id && !hasOwnerScope") && source.includes('!isSuperadminActor(actor) && !isReporter')],
   ['New ticket IDs use collision-resistant UUIDs', fs.readFileSync(new URL('../server/services.ts', import.meta.url), 'utf8').includes('id: `TKT-${randomUUID()}`')],
   ['Reporter ID remains the primary ownership key', block.includes('ticket.reporter_id === actor.id')],
   ['Name fallback is restricted to legacy records without reporter ID', block.includes('!ticket.reporter_id && Boolean(ticket.reporter_name)')],
