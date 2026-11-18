@@ -405,6 +405,79 @@ async function startServer() {
     }
   });
 
+  // Company profile metadata is centralized in PostgreSQL. Operational SLA
+  // thresholds are intentionally excluded and remain server-owned policy.
+  const SYSTEM_SETTING_KEYS = ['companyName', 'accountingStandard', 'baseCurrency', 'fiscalYear'] as const;
+  app.get('/api/admin/system-settings', async (req, res) => {
+    try {
+      getActor(req);
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_UNAVAILABLE', message: 'Pengaturan sistem memerlukan PostgreSQL aktif.' });
+      }
+      const result = await queryRbac<any>(
+        "SELECT settings, updated_at, updated_by_user_id FROM gabah_system_settings WHERE settings_key = 'company_profile'",
+      );
+      if (!result.rows.length) return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_UNAVAILABLE', message: 'Profil perusahaan belum tersedia di database.' });
+      return res.json({ success: true, data: { ...result.rows[0].settings, updated_at: result.rows[0].updated_at, updated_by_user_id: result.rows[0].updated_by_user_id } });
+    } catch (error: any) {
+      console.error('[GABAH API] System settings read failed:', error?.message || error);
+      return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_UNAVAILABLE', message: 'Pengaturan sistem tidak dapat dibaca dari database.' });
+    }
+  });
+
+  app.patch('/api/admin/system-settings', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+    const suppliedKeys = Object.keys(body).sort();
+    const expectedKeys = [...SYSTEM_SETTING_KEYS].sort();
+    if (suppliedKeys.length !== expectedKeys.length || suppliedKeys.some((key, index) => key !== expectedKeys[index])) {
+      return res.status(400).json({ success: false, message: 'Field pengaturan sistem tidak valid.' });
+    }
+    const nextSettings = {
+      companyName: String(body.companyName || '').trim(),
+      accountingStandard: String(body.accountingStandard || '').trim(),
+      baseCurrency: String(body.baseCurrency || '').trim(),
+      fiscalYear: String(body.fiscalYear || '').trim(),
+    };
+    if (nextSettings.companyName.length < 3 || nextSettings.companyName.length > 160
+      || nextSettings.accountingStandard.length < 3 || nextSettings.accountingStandard.length > 160
+      || nextSettings.baseCurrency.length < 3 || nextSettings.baseCurrency.length > 40
+      || !/^(20[0-9]{2}|2100)$/.test(nextSettings.fiscalYear)) {
+      return res.status(400).json({ success: false, message: 'Nama perusahaan, standar akuntansi, mata uang, atau tahun buku tidak valid.' });
+    }
+    try {
+      const updated = await withRbacTransaction(async client => {
+        const current = await client.query<{ settings: Record<string, string> }>(
+          "SELECT settings FROM gabah_system_settings WHERE settings_key = 'company_profile' FOR UPDATE",
+        );
+        if (!current.rows.length) throw new Error('SYSTEM_SETTINGS_NOT_FOUND');
+        const previous = current.rows[0].settings;
+        const unchanged = SYSTEM_SETTING_KEYS.every(key => previous?.[key] === nextSettings[key]);
+        if (unchanged) {
+          const result = await client.query(
+            "SELECT settings, updated_at, updated_by_user_id FROM gabah_system_settings WHERE settings_key = 'company_profile'",
+          );
+          return { ...result.rows[0].settings, updated_at: result.rows[0].updated_at, updated_by_user_id: result.rows[0].updated_by_user_id };
+        }
+        const result = await client.query(
+          "UPDATE gabah_system_settings SET settings = $1::jsonb, updated_at = NOW(), updated_by_user_id = $2 WHERE settings_key = 'company_profile' RETURNING settings, updated_at, updated_by_user_id",
+          [JSON.stringify(nextSettings), String(actor.id)],
+        );
+        await client.query(
+          "INSERT INTO gabah_system_settings_audit (settings_key, previous_settings, new_settings, changed_by_user_id) VALUES ('company_profile', $1::jsonb, $2::jsonb, $3)",
+          [JSON.stringify(previous), JSON.stringify(nextSettings), String(actor.id)],
+        );
+        return { ...result.rows[0].settings, updated_at: result.rows[0].updated_at, updated_by_user_id: result.rows[0].updated_by_user_id };
+      });
+      return res.json({ success: true, data: updated });
+    } catch (error: any) {
+      if (error?.message === 'SYSTEM_SETTINGS_NOT_FOUND') return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_UNAVAILABLE', message: 'Profil perusahaan belum tersedia di database.' });
+      console.error('[GABAH API] System settings update failed:', error?.message || error);
+      return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_SAVE_FAILED', message: 'Pengaturan sistem gagal disimpan secara permanen.' });
+    }
+  });
+
   app.get('/api/admin/rbac/permissions', async (req, res) => {
     if (!requireRbacSuperadmin(req, res)) return;
     try {
