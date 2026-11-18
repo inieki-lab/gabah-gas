@@ -164,7 +164,7 @@ async function main() {
       mv.status === 200 && dAfter?.owner_division === 'IT' && dAfter?.managing_unit_id === dUnit && dAfter?.asset_number === dNum && /PIBC/i.test(dAfter?.location || ''));
 
     // restore nilai A1 asset & state persist untuk F
-    await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-PIBC' } });
+    await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-GA-SARPRAS' } });
     await new Promise(r => setTimeout(r, 400));
 
     // ---------- Test E/F phase 1: snapshot numbers + baca JSON fallback ----------
@@ -198,8 +198,8 @@ async function main() {
       unitsStable ? 'identik' : 'berubah', unitsStable);
 
     const created2After = phase2.find(a => a.id === created1?.id);
-    rec('F3: aset buatan (UNIT-PIBC) tetap setelah restart', 'UNIT-PIBC',
-      `${created2After?.managing_unit_id}`, created2After?.managing_unit_id === 'UNIT-PIBC');
+    rec('F3: aset buatan (UNIT-GA-SARPRAS) tetap setelah restart', 'UNIT-GA-SARPRAS',
+      `${created2After?.managing_unit_id}`, created2After?.managing_unit_id === 'UNIT-GA-SARPRAS');
 
     const gaAfter = phase2.find(a => a.id === gaSeed?.id);
     rec('F4: aset GA tetap null (tidak ditebak ulang saat hydrate)', 'null',
