@@ -310,6 +310,15 @@ A second source scan on the consolidated PR #121 branch found the following rema
 
 ### CI refresh — 18 November 2026
 
-- Exact head: `2baf322ccc9696b5bbcbd2665812dae165e30248`.
-- GitHub Actions run #2197: 67/67 steps passed, including `npm run lint`, production build, Docker runtime smoke, PostgreSQL 17 fresh-database/persistence (migration 098 is present in the migration ledger), P0 live HTTP security, ticket reporter ownership (22/22), ticket routing/unit-scope contract (35/35), and related-asset scope regression.
+- Exact head: `d1f9fd93b1a5f5864270a813d35d28717b406010`.
+- GitHub Actions run #2204: 67/67 steps passed, including `npm run lint`, production build, Docker runtime smoke, PostgreSQL 17 fresh-database/persistence (migration 098 is present in the migration ledger), P0 live HTTP security, ticket reporter ownership (22/22), ticket routing/unit-scope contract (37/37), and related-asset scope regression.
 - This refresh does not change the remaining release blockers: upgrade rehearsal against a copied legacy database and browser UAT/sign-off per persona remain BLOCKED/not yet evidenced.
+
+
+### Additional routing hardening — 18 November 2026
+
+Source review found two operational edge cases and added regression coverage:
+
+- When there is not exactly one eligible IT assignee, queue notifications are now sent only to active IT-scope users who also have `notifications.read`; ticket-read permission alone is insufficient to receive notification records.
+- New ME requests now fail closed with HTTP 409 if the configured `UNIT-PIBC-ME` operational unit is inactive or missing.
+- The ticket-routing contract suite now verifies both rules; CI #2204 passed 37/37 checks.
