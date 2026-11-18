@@ -2304,6 +2304,24 @@ async function startServer() {
     }
   });
 
+  // Asset creation options are calculated from effective permission + explicit owner scope.
+  // The browser never infers writable owners from a primary-role label.
+  app.get('/api/assets/create-options', (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.create')) return;
+    const actor = getActor(req);
+    const ownerDomains = (db.divisions || [])
+      .filter(owner => owner && owner.is_active !== false
+        && canMutateAssetOwner(actor, String(owner.code || ''), 'assets.create'))
+      .map(owner => ({ code: String(owner.code).trim().toUpperCase(), name: String(owner.name || owner.code) }))
+      .filter(owner => owner.code);
+    const allowedOwnerCodes = new Set(ownerDomains.map(owner => owner.code));
+    const categories = (db.categories || [])
+      .filter(category => category && category.is_active !== false
+        && allowedOwnerCodes.has(String(category.owner_division || '').trim().toUpperCase()))
+      .map(category => ({ ...category, owner_division: String(category.owner_division).trim().toUpperCase() }));
+    return res.json({ success: true, data: { owner_domains: ownerDomains, categories } });
+  });
+
   // Assets Management
   app.get('/api/assets', (req, res) => {
     const actor = getActor(req);
