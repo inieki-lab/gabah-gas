@@ -46,7 +46,7 @@ const checks = [
   ['IT auto-assignment requires exactly one explicitly scoped operator', /eligibleAgents\.length === 1/.test(ticketCreate) && ticketCreate.includes("hasRbacPermission(String(user.id), 'tickets.update')") && ticketCreate.includes("hasRbacScope(String(user.id), 'division', 'IT', 'tickets')")],
   ['Queue scope resolver uses unit scope for unit-targeted tickets', queueScope.includes("hasRbacScope(String(actor.id), 'unit'") && queueScope.includes("ticket.assigned_unit_id") && queueScope.includes('actor.unit_id')],
   ['Ticket queue authorization requires exact tickets-module scopes and ignores wildcard module scopes', rbacPolicy.includes('exactModule = false') && rbacPolicy.includes('exactModule ?') && queueScope.includes("'tickets', true")],
-  ['ME without a unit target fails closed', /category === 'ME') return false/.test(queueScope)],
+  ['ME without a unit target fails closed', queueScope.includes("category === 'ME') return false")],
   ['File-store compatibility does not grant GA or SC/PIBC queue authority from profile labels', /category === 'IT' && actor\.role === 'IT'/.test(queueScope) && !/actor\.role === category/.test(queueScope)],
   ['List endpoint uses shared queue scope resolver', listRoute.includes('hasTicketQueueScope(actor, ticket)')],
   ['Direct detail endpoint uses the same queue scope resolver', detailRoute.includes('hasTicketQueueScope(actor, ticket)')],
