@@ -3,7 +3,7 @@ import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
 import { isSuperadminActor, isAuditorActor, hasRbacScope, hasRbacPermission } from './rbac-policy';
-import { GabahDomainService } from './services';
+import { GabahDomainService, hasTicketQueueScope } from './services';
 import { extractClientIp } from './requestContext';
 
 const isSuperadmin = (actor: ServerUser) => isSuperadminActor(actor);
@@ -27,13 +27,7 @@ function canSeeTicket(actor: ServerUser, ticketId: string): boolean {
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
-  if (isPostgresPersistenceActive()) {
-    const owner = String(ticket.category || '').trim();
-    return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'tickets');
-  }
-  if (actor.role === 'IT') return ticket.category === 'IT';
-  if (actor.role === 'GA') return ticket.category === 'GA';
-  return false;
+  return hasTicketQueueScope(actor, ticket);
 }
 
 function canManageTicket(actor: ServerUser, ticketId: string): boolean {
@@ -42,13 +36,7 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   if (isSuperadmin(actor)) return true;
   // Reporter-only visibility must never imply lifecycle mutation authority.
   if (ticket.assigned_agent_id === actor.id) return true;
-  if (isPostgresPersistenceActive()) {
-    const owner = String(ticket.category || '').trim();
-    return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'tickets');
-  }
-  if (actor.role === 'IT') return ticket.category === 'IT';
-  if (actor.role === 'GA') return ticket.category === 'GA';
-  return false;
+  return hasTicketQueueScope(actor, ticket);
 }
 
 function scopedAttention(actor: ServerUser, items: any[]) {
