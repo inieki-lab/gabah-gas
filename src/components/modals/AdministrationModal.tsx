@@ -261,7 +261,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   }, [users]);
 
   useEffect(() => {
-    if (!isOpen || activeSection !== 'notifications' || !isCurrentUserAdmin) return;
+    if (!isOpen || activeSection !== 'notifications') return;
     let cancelled = false;
     setNotificationRulesLoading(true);
     setNotificationRulesError('');
@@ -284,7 +284,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       })
       .finally(() => { if (!cancelled) setNotificationRulesLoading(false); });
     return () => { cancelled = true; };
-  }, [isOpen, activeSection, isCurrentUserAdmin]);
+  }, [isOpen, activeSection]);
 
   // Master Data State
   const [categories, setCategories] = useState<any[]>([
