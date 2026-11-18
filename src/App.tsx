@@ -8,6 +8,7 @@ import {
   AuditLog, 
   UserProfile, 
   TicketStatus,
+  TicketCategory,
   AssetCategoryType,
   TicketPriority,
   MaintenanceSchedule,
@@ -463,7 +464,7 @@ export default function App() {
   const handleCreateTicket = async (data: {
     title: string;
     description: string;
-    category: AssetCategoryType;
+    category: TicketCategory;
     priority: TicketPriority;
     related_asset_id?: string;
   }) => {
@@ -494,6 +495,18 @@ export default function App() {
       await refreshData();
     } catch (err: any) {
       showToast(err.message || 'Gagal memperbarui status tiket', 'warning');
+    }
+  };
+
+  const handleLoadTicketAssignees = async (ticketId: string) => gabahApi.getTicketAssignees(ticketId);
+
+  const handleAssignTicket = async (ticketId: string, assigneeId: string) => {
+    try {
+      const updated = await gabahApi.assignTicket(ticketId, assigneeId);
+      showToast(`Tiket ${updated.ticket_number} ditugaskan kepada petugas terpilih.`);
+      await refreshData();
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mendelegasikan tiket', 'warning');
     }
   };
 
@@ -906,6 +919,8 @@ export default function App() {
               currentUser={currentUser}
               onOpenNewTicketModal={handleOpenNewTicketModal}
               onUpdateTicketStatus={handleUpdateTicketStatus}
+              onLoadTicketAssignees={handleLoadTicketAssignees}
+              onAssignTicket={handleAssignTicket}
             />
           )}
 
