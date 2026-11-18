@@ -226,9 +226,9 @@ async function main() {
       const employeeAssetOptions = await req(base, 'GET', '/api/assets/create-options', { token: karyawanToken });
       const employeeOwners = employeeAssetOptions.json?.data?.owner_domains || [];
       const employeeCategories = employeeAssetOptions.json?.data?.categories || [];
-      record('P0 asset creation options fail closed for employee without owner mutation authority', '200 + empty owner/category choices',
+      record('P0 asset creation options fail closed for employee without owner mutation authority', '403 permission-denied or 200 + empty owner/category choices',
         `HTTP ${employeeAssetOptions.status}; message=${employeeAssetOptions.json?.message || employeeAssetOptions.json?.code || '(none)'}; owners=${employeeOwners.length}; categories=${employeeCategories.length}`,
-        employeeAssetOptions.status === 200 && employeeOwners.length === 0 && employeeCategories.length === 0);
+        (employeeAssetOptions.status === 403 || employeeAssetOptions.status === 200) && employeeOwners.length === 0 && employeeCategories.length === 0);
     } else {
       record('P0 asset creation options setup (Karyawan token)', 'valid Karyawan session', 'token unavailable', false);
     }
