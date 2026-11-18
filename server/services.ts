@@ -784,7 +784,7 @@ export class GabahDomainService {
     purpose: string;
     start_date: string;
     due_date: string;
-  }, actor: ServerUser): Promise<ServerLoan> {
+  }, actor: ServerUser, persist = true): Promise<ServerLoan> {
     // Self-service requests may only be created for the authenticated borrower.
     // Creating on behalf of another employee is a separate delegated capability;
     // until that capability exists, only Super Admin may set another borrower.
@@ -890,7 +890,9 @@ export class GabahDomainService {
     });
 
     this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id, false);
-    await this.persistMutationWithRollback('Pembuatan pengajuan pinjaman', rollback);
+    if (persist) {
+      await this.persistMutationWithRollback('Pembuatan pengajuan pinjaman', rollback);
+    }
 
     return newLoan;
   }
