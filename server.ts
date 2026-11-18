@@ -3019,14 +3019,14 @@ async function startServer() {
       status: ticket.status,
       updated_at: ticket.updated_at,
     };
-    const notificationCount = db.notifications.length;
-    const auditCount = db.auditLogs.length;
+    let notificationId: string | undefined;
+    let auditId: string | undefined;
     try {
       ticket.assigned_agent_id = target.id;
       ticket.assigned_agent_name = target.name;
       if (ticket.status === 'open') ticket.status = 'assigned';
       ticket.updated_at = new Date().toISOString();
-      GabahDomainService.notify({
+      const assignmentNotification = GabahDomainService.notify({
         recipient_user_id: target.id,
         title: `Tiket Ditugaskan: ${ticket.ticket_number}`,
         message: `Tiket ${ticket.title} ditugaskan kepada Anda oleh ${actor.name}.`,
@@ -3035,7 +3035,9 @@ async function startServer() {
         link_type: 'ticket',
         link_id: ticket.id,
       });
-      GabahDomainService.recordAudit('TICKET_ASSIGNED', 'Tickets', `Tiket ${ticket.ticket_number} ditugaskan kepada ${target.name}.`, actor, ticket.id);
+      notificationId = assignmentNotification.id;
+      const assignmentAudit = GabahDomainService.recordAudit('TICKET_ASSIGNED', 'Tickets', `Tiket ${ticket.ticket_number} ditugaskan kepada ${target.name}.`, actor, ticket.id);
+      auditId = assignmentAudit.id;
       await persistDataStore();
       return res.json({ success: true, data: ticket });
     } catch (error: any) {
@@ -3043,8 +3045,14 @@ async function startServer() {
       ticket.assigned_agent_name = previous.assigned_agent_name;
       ticket.status = previous.status;
       ticket.updated_at = previous.updated_at;
-      db.notifications.splice(0, Math.max(0, db.notifications.length - notificationCount));
-      db.auditLogs.splice(0, Math.max(0, db.auditLogs.length - auditCount));
+      if (notificationId) {
+        const notificationIndex = db.notifications.findIndex(item => item.id === notificationId);
+        if (notificationIndex >= 0) db.notifications.splice(notificationIndex, 1);
+      }
+      if (auditId) {
+        const auditIndex = db.auditLogs.findIndex(item => item.id === auditId);
+        if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      }
       return res.status(500).json({ success: false, message: 'Penugasan gagal disimpan. Perubahan dibatalkan.' });
     }
   });
