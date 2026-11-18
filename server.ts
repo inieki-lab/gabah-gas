@@ -2402,8 +2402,19 @@ async function startServer() {
       .filter(owner => owner.code && !['SC', 'PIBC'].includes(owner.code));
     const allowedOwnerCodes = new Set(ownerDomains.map(owner => owner.code));
     const categories = (db.categories || [])
-      .filter(category => category && category.is_active !== false
-        && allowedOwnerCodes.has(String(category.owner_division || '').trim().toUpperCase()))
+      .filter(category => {
+        if (!category || category.is_active === false) return false;
+        const masterOwner = String(category.owner_division || '').trim().toUpperCase();
+        const code = String(category.code || '').trim().toUpperCase();
+        const mainType = String(category.main_type || '').trim().toUpperCase();
+        const categoryType = String(category.category_type || '').trim().toUpperCase();
+        // Mirror createAsset() corporate ownership overrides so the UI never
+        // offers a category that the authoritative mutation service will reject.
+        const effectiveOwner = ['IT-H', 'IT-S'].includes(mainType) || ['IT', 'LICENSE'].includes(categoryType)
+          ? 'IT'
+          : code === 'INV-F' ? 'GA' : masterOwner;
+        return masterOwner === effectiveOwner && allowedOwnerCodes.has(effectiveOwner);
+      })
       .map(category => ({ ...category, owner_division: String(category.owner_division || '').trim().toUpperCase() }));
     const categoryOwnerCodes = new Set(categories.map(category => category.owner_division));
     const selectableOwners = ownerDomains.filter(owner => categoryOwnerCodes.has(owner.code));
