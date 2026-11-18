@@ -708,7 +708,7 @@ export class GabahService {
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket || (Array.isArray(user.role_keys) ? user.role_keys.includes('auditor') : user.role === 'Auditor')) return false;
     if (Array.isArray(user.permission_keys)) {
-      return user.permission_keys.includes('*') || user.permission_keys.includes('tickets.update');
+      return ticket.can_manage === true && (user.permission_keys.includes('*') || user.permission_keys.includes('tickets.update'));
     }
     if (ticket.assigned_agent_id === user.id) return true;
     if (ticket.assigned_unit_id && ticket.assigned_unit_id === user.unit_id) return true;
