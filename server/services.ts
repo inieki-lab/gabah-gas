@@ -698,6 +698,7 @@ export class GabahDomainService {
     purpose: string;
     start_date: string;
     due_date: string;
+    borrower_phone?: string;
   }, actor: ServerUser): ServerLoan {
     // Self-service requests may only be created for the authenticated borrower.
     // Creating on behalf of another employee is a separate delegated capability;
@@ -715,6 +716,13 @@ export class GabahDomainService {
     if (!borrower) {
       throw Object.assign(new Error('Pengguna peminjam tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
     }
+    if (payload.borrower_phone !== undefined
+      && (typeof payload.borrower_phone !== 'string' || payload.borrower_phone.trim().length > 40)) {
+      throw Object.assign(new Error('Nomor telepon peminjam tidak valid (maksimal 40 karakter).'), { statusCode: 400 });
+    }
+    const borrowerPhone = typeof payload.borrower_phone === 'string' && payload.borrower_phone.trim()
+      ? payload.borrower_phone.trim()
+      : (borrower.phone || '-');
 
     const assetId = String(payload.asset_id || '').trim();
     if (!assetId) throw Object.assign(new Error('ID aset wajib diisi.'), { statusCode: 400 });
@@ -772,7 +780,7 @@ export class GabahDomainService {
       borrower_id: borrower.id,
       borrower_name: borrower.name,
       borrower_department: borrower.department,
-      borrower_phone: borrower.phone || '-',
+      borrower_phone: borrowerPhone,
       purpose: payload.purpose.trim(),
       start_date: startDate.text,
       due_date: dueDate.text,
