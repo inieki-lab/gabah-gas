@@ -50,6 +50,16 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
 
+  // Await authoritative writes before returning a successful mutation response.
+  const persistMutationOrRespond = async (res: express.Response): Promise<boolean> => {
+    try { await persistDataStore(); return true; }
+    catch (error: any) {
+      console.error('[GABAH API] Mutation persistence failed:', error?.message || error);
+      if (!res.headersSent) res.status(503).json({ success: false, code: 'PERSISTENCE_UNAVAILABLE', message: 'Penyimpanan utama sedang bermasalah. Perubahan belum dapat dipastikan tersimpan; periksa ulang data sebelum mencoba kembali.' });
+      return false;
+    }
+  };
+
   app.use(express.json());
 
   // Per-request audit context: carry the client IP through the async chain so
@@ -66,7 +76,7 @@ async function startServer() {
     if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
     res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 400) {
-        void persistDataStore();
+        void persistDataStore().catch(error => console.error('[GABAH API] Background persistence retry failed:', error?.message || error));
       }
     });
     next();
@@ -728,7 +738,7 @@ async function startServer() {
         data: sanitizeUser(newUser, { includeTelegramChatId: true }),
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -886,7 +896,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1046,7 +1056,7 @@ async function startServer() {
 
       res.json({ success: true, data: sanitizeUser(targetUser, { includeTelegramChatId: true }) });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1132,7 +1142,7 @@ async function startServer() {
         message: `Pengguna ${targetUser.name} berhasil dihapus.`
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1175,7 +1185,7 @@ async function startServer() {
 
       res.json({ success: true, data: { temp_password: tempPassword, user_id: targetUser.id } });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1422,7 +1432,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1555,7 +1565,7 @@ async function startServer() {
   // Self-service password change (P1): the CURRENT user rotates their own
   // password. Requires the current password; revokes all other sessions but
   // issues a fresh token for THIS device so the user is not logged out.
-  app.post('/api/auth/change-password', (req, res) => {
+  app.post('/api/auth/change-password', async (req, res) => {
     try {
       const actor = getActor(req);
       const { currentPassword, newPassword } = req.body;
@@ -1577,14 +1587,20 @@ async function startServer() {
         return res.status(401).json({ success: false, message: 'Kata sandi lama tidak cocok.' });
       }
 
+      const previousCredentials = { password_hash: user.password_hash, password_salt: user.password_salt, temp_password: user.temp_password, authVersion: user.authVersion };
       const { hash, salt } = hashPassword(newPassword);
       user.password_hash = hash;
       user.password_salt = salt;
       delete user.temp_password;
       if (typeof user.authVersion === 'number') user.authVersion += 1;
-
-      // SECURITY (CR-03 §3.4): rotate credentials ⇒ revoke ALL sessions, then
-      // re-issue one session for the calling device so it stays signed in.
+      if (!await persistMutationOrRespond(res)) {
+        user.password_hash = previousCredentials.password_hash;
+        user.password_salt = previousCredentials.password_salt;
+        if (previousCredentials.temp_password === undefined) delete user.temp_password; else user.temp_password = previousCredentials.temp_password;
+        if (previousCredentials.authVersion === undefined) delete user.authVersion; else user.authVersion = previousCredentials.authVersion;
+        return;
+      }
+      // Revoke sessions only after the credential change is durably persisted.
       revokeUserSessions(user.id);
       const session = createSession(user.id, req);
 
@@ -1595,8 +1611,6 @@ async function startServer() {
         actor,
         user.id
       );
-      persistDataStore().catch(() => {});
-
       res.json({
         success: true,
         data: { user: sanitizeUser(user), token: session.token, expires_at: session.expires_at },
@@ -1699,7 +1713,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2076,7 +2090,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: level });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2097,7 +2111,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: level });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2125,7 +2139,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: unit });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2164,7 +2178,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: unit });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2188,7 +2202,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2208,7 +2222,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2244,7 +2258,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2285,7 +2299,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2300,7 +2314,7 @@ async function startServer() {
       );
       res.json({ success: true, data: resolved });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2547,7 +2561,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2568,7 +2582,7 @@ async function startServer() {
     res.json({ success: true, data: asset });
   });
 
-  app.patch('/api/assets/:id', (req, res) => {
+  app.patch('/api/assets/:id', async (req, res) => {
     const actor = getActor(req);
     const asset = db.assets.find(a => a.id === req.params.id);
     if (asset?.category_type === 'License' && isPostgresPersistenceActive()
@@ -2688,7 +2702,7 @@ async function startServer() {
     asset.updated_at = new Date().toISOString();
 
     GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
 
     res.json({ success: true, data: asset });
   });
@@ -2713,7 +2727,7 @@ async function startServer() {
       const updated = GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2950,7 +2964,7 @@ async function startServer() {
     closed: ['open'],
   };
 
-  app.patch('/api/tickets/:id/status', (req, res) => {
+  app.patch('/api/tickets/:id/status', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'tickets.update')) return;
@@ -2997,11 +3011,11 @@ async function startServer() {
       ticket.updated_at = new Date().toISOString();
 
       GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
-      persistDataStore().catch(() => {});
+      if (!await persistMutationOrRespond(res)) return;
 
       res.json({ success: true, data: ticket });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3087,7 +3101,7 @@ async function startServer() {
     return { valid: true as const, vendor, clear: false };
   };
 
-  app.post('/api/maintenances', (req, res) => {
+  app.post('/api/maintenances', async (req, res) => {
     const actor = getActor(req);
     // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
     // GA) secara eksplisit; mode PostgreSQL beralih ke permission dinamis
@@ -3143,11 +3157,11 @@ async function startServer() {
     };
     db.maintenances.push(newSchedule);
     GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: newSchedule });
   });
 
-  app.patch('/api/maintenances/:id', (req, res) => {
+  app.patch('/api/maintenances/:id', async (req, res) => {
     const actor = getActor(req);
     // RBAC: file-store mempertahankan allowlist legacy; PostgreSQL beralih ke
     // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
@@ -3196,7 +3210,7 @@ async function startServer() {
       schedule.last_completed_at = new Date().toISOString();
     }
     GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: schedule });
   });
 
@@ -3241,7 +3255,7 @@ async function startServer() {
     return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
   });
 
-  app.post('/api/vendors', (req, res) => {
+  app.post('/api/vendors', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
@@ -3288,11 +3302,11 @@ async function startServer() {
     };
     db.vendors.push(vendor);
     GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: vendor });
   });
 
-  app.patch('/api/vendors/:id', (req, res) => {
+  app.patch('/api/vendors/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.update')) return;
@@ -3347,7 +3361,7 @@ async function startServer() {
     vendor.rating = requestedRating;
     vendor.active_contracts_count = getActiveVendorContractCount(vendor.name);
     GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: vendor });
   });
 
@@ -3360,7 +3374,7 @@ async function startServer() {
     res.json({ success: true, data: db.knowledgeArticles });
   });
 
-  app.post('/api/knowledge', (req, res) => {
+  app.post('/api/knowledge', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.create')) return;
@@ -3385,11 +3399,11 @@ async function startServer() {
     };
     db.knowledgeArticles.push(article);
     GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: article });
   });
 
-  app.patch('/api/knowledge/:id', (req, res) => {
+  app.patch('/api/knowledge/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.update')) return;
@@ -3405,25 +3419,25 @@ async function startServer() {
     }
     article.updated_at = new Date().toISOString();
     GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
-  app.post('/api/knowledge/:id/vote', (req, res) => {
+  app.post('/api/knowledge/:id/vote', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.vote')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.helpful_votes += 1;
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
-  app.post('/api/knowledge/:id/view', (req, res) => {
+  app.post('/api/knowledge/:id/view', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.read')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.view_count += 1;
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
@@ -3608,7 +3622,7 @@ async function startServer() {
     const actor = getActor(req);
       res.json({ success: true, data: ContractDomainService.listContracts(actor) });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3635,7 +3649,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3648,7 +3662,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3776,7 +3790,7 @@ async function startServer() {
       if (savedFilePath) {
         await fs.rm(savedFilePath, { force: true }).catch(() => undefined);
       }
-      return res.status(400).json({ success: false, message: err.message });
+      return res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3827,7 +3841,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3840,7 +3854,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3854,7 +3868,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3870,7 +3884,7 @@ async function startServer() {
       const result = await ContractDomainService.runReminderSweep(actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3881,7 +3895,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'contracts.reminders.manage')) return;
       res.json({ success: true, data: getSchedulerStatus() });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3892,7 +3906,7 @@ async function startServer() {
     const actor = getActor(req);
       res.json({ success: true, data: ContractDomainService.getNotificationLogs(actor, req.params.id) });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3905,12 +3919,12 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingRooms() });
   });
 
-  app.patch('/api/meeting-rooms/:id', (req, res) => {
+  app.patch('/api/meeting-rooms/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_rooms.update')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -4020,12 +4034,12 @@ async function startServer() {
     res.json({ success: true, data });
   });
 
-  app.post('/api/room-reservations', (req, res) => {
+  app.post('/api/room-reservations', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.create')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.requestRoomReservation(req.body, actor);
+      const created = await GabahDomainService.requestRoomReservation(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
       // RBAC: preserve domain-service status codes — 403 for override/interupsi
@@ -4040,60 +4054,60 @@ async function startServer() {
     }
   });
 
-  app.post('/api/room-reservations/:id/approve', (req, res) => {
+  app.post('/api/room-reservations/:id/approve', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.approve')) return;
     const actor = getActor(req);
-      const approved = GabahDomainService.approveRoomReservation(req.params.id, actor);
+      const approved = await GabahDomainService.approveRoomReservation(req.params.id, actor);
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/reject', (req, res) => {
+  app.post('/api/room-reservations/:id/reject', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.reject')) return;
     const actor = getActor(req);
-      const rejected = GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
+      const rejected = await GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
       res.json({ success: true, data: rejected });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/checkin', (req, res) => {
+  app.post('/api/room-reservations/:id/checkin', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.checkin')) return;
     const actor = getActor(req);
-      const checkedIn = GabahDomainService.checkinRoomReservation(req.params.id, actor);
+      const checkedIn = await GabahDomainService.checkinRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedIn });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/checkout', (req, res) => {
+  app.post('/api/room-reservations/:id/checkout', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.checkout')) return;
     const actor = getActor(req);
-      const checkedOut = GabahDomainService.checkoutRoomReservation(req.params.id, actor);
+      const checkedOut = await GabahDomainService.checkoutRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedOut });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/cancel', (req, res) => {
+  app.post('/api/room-reservations/:id/cancel', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.cancel')) return;
     const actor = getActor(req);
-      const cancelled = GabahDomainService.cancelRoomReservation(req.params.id, actor);
+      const cancelled = await GabahDomainService.cancelRoomReservation(req.params.id, actor);
       res.json({ success: true, data: cancelled });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -4107,39 +4121,39 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingTypes() });
   });
 
-  app.post('/api/meeting-types', (req, res) => {
+  app.post('/api/meeting-types', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.createMeetingType(req.body, actor);
+      const created = await GabahDomainService.createMeetingType(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.patch('/api/meeting-types/:id', (req, res) => {
+  app.patch('/api/meeting-types/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.delete('/api/meeting-types/:id', (req, res) => {
+  app.delete('/api/meeting-types/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const result = GabahDomainService.deleteMeetingType(req.params.id, actor);
+      const result = await GabahDomainService.deleteMeetingType(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4150,39 +4164,39 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingFacilities() });
   });
 
-  app.post('/api/meeting-facilities', (req, res) => {
+  app.post('/api/meeting-facilities', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.createMeetingFacility(req.body, actor);
+      const created = await GabahDomainService.createMeetingFacility(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.patch('/api/meeting-facilities/:id', (req, res) => {
+  app.patch('/api/meeting-facilities/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.delete('/api/meeting-facilities/:id', (req, res) => {
+  app.delete('/api/meeting-facilities/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const result = GabahDomainService.deleteMeetingFacility(req.params.id, actor);
+      const result = await GabahDomainService.deleteMeetingFacility(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 

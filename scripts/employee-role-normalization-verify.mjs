@@ -7,7 +7,7 @@ const header = fs.readFileSync('src/components/HeaderNavbar.tsx', 'utf8');
 const migration = fs.readFileSync('server/migrations/031_employee_primary_role_with_job_capabilities.sql', 'utf8');
 const dynamic = fs.readFileSync('scripts/dynamic-rbac-foundation-verify.mjs', 'utf8');
 
-const persistFunction = persistence.slice(persistence.indexOf('async function persistPostgresState()'), persistence.indexOf('export async function initializePersistence()'));
+const persistFunction = persistence.slice(persistence.indexOf('async function persistPostgresState('), persistence.indexOf('export async function initializePersistence()'));
 assert.match(persistFunction, /await backfillNormalizedTables\(\);/);
 assert.doesNotMatch(persistFunction, /backfillDynamicRbacUserRoles|users\.role|gabah_user_roles/);
 assert.doesNotMatch(persistence, /function normalizeLegacyEmployeeProfileRoles|function collectLegacyEmployeeCapabilityAssignments|function backfillDynamicRbacUserRoles/);
