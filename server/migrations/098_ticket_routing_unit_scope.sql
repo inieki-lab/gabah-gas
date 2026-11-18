@@ -68,12 +68,16 @@ JOIN (VALUES
   ('ga_helpdesk_operator', 'tickets.read'),
   ('ga_helpdesk_operator', 'tickets.update'),
   ('ga_helpdesk_operator', 'tickets.assign'),
+  ('ga_helpdesk_operator', 'notifications.read'),
+  ('ga_helpdesk_operator', 'notifications.read_all'),
   ('admin_tiket_me', 'tickets.read'),
   ('admin_tiket_me', 'tickets.update'),
   ('admin_tiket_me', 'tickets.assign'),
   ('admin_tiket_me', 'notifications.read'),
   ('admin_tiket_me', 'notifications.read_all'),
+  ('pemohon_tiket_ga', 'tickets.read'),
   ('pemohon_tiket_ga', 'tickets.create.ga'),
+  ('pemohon_tiket_me', 'tickets.read'),
   ('pemohon_tiket_me', 'tickets.create.me')
 ) AS grants(role_key, permission_key) ON TRUE
 JOIN gabah_permissions p ON p.permission_key = grants.permission_key AND p.is_active = TRUE
