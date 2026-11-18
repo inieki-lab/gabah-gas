@@ -324,18 +324,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           }));
           setCategories(mapped);
         }
-        if (Array.isArray(liveLocs) && liveLocs.length > 0) {
-          setLocations(liveLocs);
-        }
-        if (Array.isArray(liveDivs) && liveDivs.length > 0) {
-          setDivisions(liveDivs);
-        }
+        if (Array.isArray(liveLocs)) setLocations(liveLocs);
+        if (Array.isArray(liveDivs)) setDivisions(liveDivs);
         // ORG-MODEL: masters terpisah jabatan/unit/lokasi kantor
         if (Array.isArray(liveJobLevels) && liveJobLevels.length > 0) setJobLevels(liveJobLevels);
         if (Array.isArray(liveOrgUnits) && liveOrgUnits.length > 0) setOrgUnits(liveOrgUnits);
         if (Array.isArray(liveOffices) && liveOffices.length > 0) setOfficeLocations(liveOffices);
         if (Array.isArray(liveAssetLocs)) setAssetLocations(liveAssetLocs);
       } catch (e) {
+        setLocations([]);
+        setDivisions([]);
         console.error('Failed loading administration master data:', e);
         showToast('Gagal memuat master data dari server. Data referensi belum diperbarui; periksa koneksi lalu buka ulang Administrasi.', 'warning');
       }
@@ -886,7 +884,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = [...locations, newLoc];
     setLocations(updated);
-    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
     setIsAddLocationOpen(false);
     setNewLocationData({ name: '', address: '', capacity: '' });
     showToast(`Lokasi fasilitas "${newLoc.name}" berhasil ditambahkan!`, 'success');
@@ -906,7 +903,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = locations.map(l => l.id === editLocationData.id ? { ...l, ...editLocationData } : l);
     setLocations(updated);
-    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
     setIsEditLocationOpen(false);
     setLocationToEdit(null);
     showToast(`Lokasi fasilitas "${editLocationData.name}" berhasil diperbarui!`, 'success');
@@ -921,7 +917,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = locations.filter(l => l.id !== id);
     setLocations(updated);
-    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
     showToast(`Lokasi fasilitas "${name}" berhasil dihapus.`, 'info');
   };
 
@@ -1017,7 +1012,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = [...divisions, newDiv];
     setDivisions(updated);
-    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
     setIsAddDivisionOpen(false);
     setNewDivisionData({ code: '', name: '', leader: '', initialDept: '' });
     showToast(`Divisi baru ${newDiv.code} - ${newDiv.name} berhasil ditambahkan!`, 'success');
@@ -1041,7 +1035,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = divisions.filter(d => d.code !== code);
     setDivisions(updated);
-    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
     showToast(`Divisi "${code} - ${name}" berhasil dihapus.`, 'info');
   };
 
@@ -1187,7 +1180,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = divisions.map(d => d.code === divisionToEdit.code ? divisionToEdit : d);
     setDivisions(updated);
-    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
     setIsEditDivisionOpen(false);
     setDivisionToEdit(null);
     showToast(`Struktur divisi ${divisionToEdit.code} - ${divisionToEdit.name} berhasil disimpan!`, 'success');
