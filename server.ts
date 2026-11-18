@@ -101,7 +101,7 @@ async function startServer() {
     path === prefix || path.startsWith(prefix + '/');
 
   const resolveModuleKeyForRequest = (req: express.Request, actor: ServerUser): string | null => {
-    const path = req.path;
+    const path = req.path.toLowerCase().replace(/\\/+$/, '') || '/';
     if (matchesApiPrefix(path, '/api/modules')) return null;
 
     if (matchesApiPrefix(path, '/api/assets/create-options')) return 'assets';
@@ -130,7 +130,7 @@ async function startServer() {
   };
 
   const isModuleManagedPath = (req: express.Request): boolean => {
-    const path = req.path;
+    const path = req.path.toLowerCase().replace(/\\/+$/, '') || '/';
     if (matchesApiPrefix(path, '/api/modules')) return false;
     return [
       '/api/assets', '/api/taxonomy', '/api/numbering', '/api/movements',
@@ -144,7 +144,8 @@ async function startServer() {
   // Unmanaged endpoints (login, health, notifications, administration) bypass
   // module status checks; missing registry state fails closed for managed APIs.
   app.use(async (req, res, next) => {
-    if (!req.path.startsWith('/api/') || !isPostgresPersistenceActive() || !isModuleManagedPath(req)) return next();
+    const requestPath = req.path.toLowerCase().replace(/\\/+$/, '') || '/';
+    if (!requestPath.startsWith('/api/') || !isPostgresPersistenceActive() || !isModuleManagedPath(req)) return next();
     let actor: ServerUser;
     try {
       actor = getActor(req);
