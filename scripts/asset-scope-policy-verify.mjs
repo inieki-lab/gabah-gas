@@ -109,10 +109,12 @@ const assetPatchEnd = server.indexOf("app.post('/api/assets/:id/assign'", assetP
 const assetPatchRoute = server.slice(assetPatchStart, assetPatchEnd);
 checks.push([
   'Asset PATCH waits for durable persistence and rolls back object plus audit on failure',
-  /app\\.patch\\('\\/api\\/assets\\/:id', async \\(req, res\\)/.test(assetPatchRoute)
-    && /const previousAsset = \\{ \\.\\.\\.asset \\}/.test(assetPatchRoute)
-    && /await persistDataStore\\(\\)[\\s\\S]*?Object\\.assign\\(asset, previousAsset\\)[\\s\\S]*?auditIndex/.test(assetPatchRoute)
-    && !/persistDataStore\\(\\)\\.catch\\(\\(\\) => \\{\\}\\)/.test(assetPatchRoute),
+  assetPatchRoute.includes("app.patch('/api/assets/:id', async")
+    && assetPatchRoute.includes('const previousAsset = { ...asset }')
+    && assetPatchRoute.includes('await persistDataStore()')
+    && assetPatchRoute.includes('Object.assign(asset, previousAsset)')
+    && assetPatchRoute.includes('auditIndex')
+    && !assetPatchRoute.includes('persistDataStore().catch(() => {})'),
 ]);
 
 let failed = 0;
