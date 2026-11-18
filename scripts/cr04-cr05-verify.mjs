@@ -325,6 +325,58 @@ async function main() {
       record('Module lifecycle registry + audit immutability integration',
         'migration 042, seeded modules, immutable audit', `error: ${err.message}`, false);
     }
+    // ---------- Core audit_logs append-only database enforcement ----------
+    try {
+      const migration100 = await mig.query(
+        "SELECT version FROM schema_migrations WHERE version = '100'",
+      );
+      record('Core audit log append-only migration 100 applied',
+        'version 100 in schema_migrations', `rows=${migration100.rowCount}`, migration100.rowCount === 1);
+
+      const coreAuditId = `CI-AUDIT-${crypto.randomUUID()}`;
+      await mig.query(
+        `INSERT INTO audit_logs
+          (id, action, entity, entity_id, user_id, user_name, user_role, details, timestamp)
+         VALUES ($1, 'CI_AUDIT_IMMUTABILITY', 'CI', NULL, NULL, 'CI Verify', 'System', 'Append-only integration check', NOW())`,
+        [coreAuditId],
+      );
+
+      async function assertCoreAuditMutationBlocked(label, sql) {
+        await mig.query('BEGIN');
+        try {
+          await mig.query(sql);
+          await mig.query('ROLLBACK');
+          record(label, 'PostgreSQL error code 55000', 'mutation unexpectedly succeeded', false);
+        } catch (err) {
+          await mig.query('ROLLBACK');
+          record(label, 'PostgreSQL error code 55000', err.code || err.message, err.code === '55000');
+        }
+      }
+
+      await assertCoreAuditMutationBlocked(
+        'Core audit_logs rejects UPDATE at database level',
+        'UPDATE audit_logs SET details = \'tampered\' WHERE id = $1'.replace('$1', `'${coreAuditId}'`),
+      );
+      await assertCoreAuditMutationBlocked(
+        'Core audit_logs rejects DELETE at database level',
+        `DELETE FROM audit_logs WHERE id = '${coreAuditId}'`,
+      );
+      await assertCoreAuditMutationBlocked(
+        'Core audit_logs rejects TRUNCATE at database level',
+        'TRUNCATE TABLE audit_logs',
+      );
+      const coreAuditSurvived = await mig.query(
+        'SELECT COUNT(*)::int AS count FROM audit_logs WHERE id = $1',
+        [coreAuditId],
+      );
+      record('Core audit log entry survives rejected mutations',
+        '1 preserved row', `count=${coreAuditSurvived.rows[0].count}`,
+        coreAuditSurvived.rows[0].count === 1);
+    } catch (err) {
+      record('Core audit_logs append-only integration',
+        'migration 100 and UPDATE/DELETE/TRUNCATE rejection', `error: ${err.message}`, false);
+    }
+
     await mig.end();
 
     // ---------- 2. Logins (PBKDF2 path, env-provisioned passwords) ----------
