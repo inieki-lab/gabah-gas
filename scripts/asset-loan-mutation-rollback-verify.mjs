@@ -52,7 +52,7 @@ assert('asset PATCH snapshots before mutation and uses rollback persistence',
 assert('successful loan transition audit events defer persistence to the awaited route write',
   ["LOAN_REQUESTED", "LOAN_APPROVED", "LOAN_REJECTED", "LOAN_HANDOVER", "LOAN_RETURNED"]
     .every(action => {
-      const line = services.split('\\n').find(item => item.includes(`this.recordAudit('${action}'`));
+      const line = services.split(String.fromCharCode(10)).find(item => item.includes(`this.recordAudit('${action}'`));
       return Boolean(line && line.includes(', false);'));
     }));
 
