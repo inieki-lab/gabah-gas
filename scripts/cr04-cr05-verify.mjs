@@ -392,6 +392,45 @@ async function main() {
       record('Auditor global audit scope migration',
         'migration 099 and audit/all scope', `error: ${err.message}`, false);
     }
+    try {
+      const legacyDivisions = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM divisions
+         WHERE code IN ('SC', 'PIBC') AND is_active = TRUE`,
+      );
+      const legacyUnits = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM org_units
+         WHERE id IN ('UNIT-SC', 'UNIT-PIBC', 'UNIT-PANGSUB') AND is_active = TRUE`,
+      );
+      const legacyRoles = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM gabah_roles
+         WHERE role_key IN ('supply_chain', 'pibc') AND is_active = TRUE`,
+      );
+      const legacyAssignments = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM gabah_user_roles ur
+         JOIN gabah_roles r ON r.id = ur.role_id
+         WHERE r.role_key IN ('supply_chain', 'pibc')`,
+      );
+      const locationMigrations = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM schema_migrations
+         WHERE version IN ('100', '101', '102')`,
+      );
+      const meUnit = await mig.query(
+        `SELECT COUNT(*)::int AS count FROM org_units
+         WHERE id = 'UNIT-PIBC-ME' AND is_active = TRUE`,
+      );
+      record('SC/PIBC/Pangsub are not active divisions or location-shaped units',
+        'legacy divisions/units inactive; ME unit remains active',
+        `divisions=${legacyDivisions.rows[0].count}; units=${legacyUnits.rows[0].count}; ME=${meUnit.rows[0].count}`,
+        locationMigrations.rows[0].count === 3 && legacyDivisions.rows[0].count === 0
+          && legacyUnits.rows[0].count === 0 && meUnit.rows[0].count === 1);
+      record('SC/PIBC are no longer active application roles or user role grants',
+        'roles inactive; no legacy assignments',
+        `roles=${legacyRoles.rows[0].count}; assignments=${legacyAssignments.rows[0].count}`,
+        legacyRoles.rows[0].count === 0 && legacyAssignments.rows[0].count === 0);
+    } catch (err) {
+      record('Legacy location/role retirement migrations',
+        'migrations 100/101/102 and inactive legacy rows', `error: ${err.message}`, false);
+    }
     await mig.end();
 
     // ---------- 2. Logins (PBKDF2 path, env-provisioned passwords) ----------
