@@ -109,6 +109,7 @@ const checks = [
   ['Category normalization never silently assigns an unknown owner to GA', taxonomy.includes("owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED'") && taxonomy.includes('Unknown ownership must remain unassigned')],
   ['Legacy SC/PIBC owner codes remain readable but cannot be mutated by non-Superadmins', services.includes("if (['SC', 'PIBC'].includes(owner)) return false") && services.includes('legacy office/location labels, not active owner domains')],
   ['New assets cannot be created under legacy SC/PIBC location codes even by direct API payloads', services.includes("if (['SC', 'PIBC'].includes(String(resolvedOwnerDivision || '').trim().toUpperCase()))") && services.includes('Owner SC/PIBC adalah kode lokasi legacy')],
+  ['New assets cannot use categories with missing or UNASSIGNED owner domains', services.includes("String(taxonomy.owner_division).trim().toUpperCase() === 'UNASSIGNED'") && services.includes('Kategori belum memiliki owner domain aktif')],
 
 
 ];
