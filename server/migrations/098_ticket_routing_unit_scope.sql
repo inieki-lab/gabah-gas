@@ -20,7 +20,7 @@ ALTER TABLE tickets
 
 ALTER TABLE notifications
   ADD COLUMN IF NOT EXISTS recipient_unit_id VARCHAR(64)
-  REFERENCES org_units(id) ON DELETE CASCADE;
+  REFERENCES org_units(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_tickets_assigned_unit_id
   ON tickets(assigned_unit_id)
