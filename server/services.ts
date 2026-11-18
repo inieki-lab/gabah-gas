@@ -197,6 +197,15 @@ export function filterMaintenanceSchedulesByDynamicScopes(schedules: ServerMaint
   });
 }
 
+function restoreAssetSnapshot(asset: ServerAsset, snapshot: ServerAsset): void {
+  // JSON snapshots omit undefined optional properties. Remove properties added
+  // by the failed mutation before restoring the prior values.
+  for (const key of Object.keys(asset)) {
+    if (!Object.prototype.hasOwnProperty.call(snapshot, key)) delete (asset as any)[key];
+  }
+  Object.assign(asset, snapshot);
+}
+
 async function persistDomainMutation(rollback?: () => void): Promise<void> {
   try { await persistDataStore(); }
   catch (error: any) {
@@ -559,7 +568,7 @@ export class GabahDomainService {
       db.movements.unshift(movement);
       const auditLog = this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id, false);
       await persistDomainMutation(() => {
-        Object.assign(asset, previousAsset);
+        restoreAssetSnapshot(asset, previousAsset);
         db.movements = db.movements.filter(item => item.id !== movement.id);
         db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
       });
@@ -600,7 +609,7 @@ export class GabahDomainService {
 
     const auditLog = this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id, false);
     await persistDomainMutation(() => {
-      Object.assign(asset, previousAsset);
+      restoreAssetSnapshot(asset, previousAsset);
       db.movements = db.movements.filter(item => item.id !== movement.id);
       db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
     });
@@ -649,7 +658,7 @@ export class GabahDomainService {
 
     const auditLog = this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id, false);
     await persistDomainMutation(() => {
-      Object.assign(asset, previousAsset);
+      restoreAssetSnapshot(asset, previousAsset);
       db.movements = db.movements.filter(item => item.id !== movement.id);
       db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
     });
@@ -715,7 +724,7 @@ export class GabahDomainService {
     asset.updated_at = new Date().toISOString();
     const auditLog = this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id, false);
     await persistDomainMutation(() => {
-      Object.assign(asset, previousAsset);
+      restoreAssetSnapshot(asset, previousAsset);
       db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
     });
 
