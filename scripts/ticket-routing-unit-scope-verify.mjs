@@ -45,7 +45,7 @@ const checks = [
   ['New ME tickets are assigned to UNIT-PIBC-ME', /assigned_unit_id: payload\.category === 'ME' \? 'UNIT-PIBC-ME'/.test(ticketCreate)],
   ['IT auto-assignment requires exactly one explicitly scoped operator', /eligibleAgents\.length === 1/.test(ticketCreate) && ticketCreate.includes("hasRbacPermission(String(user.id), 'tickets.update')") && ticketCreate.includes("hasRbacPermission(String(user.id), 'notifications.read')") && ticketCreate.includes("hasRbacScope(String(user.id), 'division', 'IT', 'tickets')")],
   ['Queue scope resolver uses unit scope for unit-targeted tickets', queueScope.includes("hasRbacScope(String(actor.id), 'unit'") && queueScope.includes("ticket.assigned_unit_id") && queueScope.includes('actor.unit_id')],
-  ['Ticket queue authorization requires exact tickets-module scopes and ignores wildcard module scopes', rbacPolicy.includes('exactModule = false') && rbacPolicy.includes('exactModule ?') && queueScope.includes("'tickets', true")],
+  ['Ticket queue authorization requires exact tickets-module scopes and ignores wildcard module scopes', rbacPolicy.includes('exactModule = false') && rbacPolicy.includes('=> exactModule') && rbacPolicy.includes('scope.module === module') && queueScope.includes("'tickets', true")],
   ['ME without a unit target fails closed', queueScope.includes("category === 'ME') return false")],
   ['File-store compatibility does not grant GA or SC/PIBC queue authority from profile labels', /category === 'IT' && actor\.role === 'IT'/.test(queueScope) && !/actor\.role === category/.test(queueScope)],
   ['List endpoint uses shared queue scope resolver', listRoute.includes('hasTicketQueueScope(actor, ticket)')],
