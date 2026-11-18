@@ -385,3 +385,23 @@ Source review found two operational edge cases and added regression coverage:
 - Individual and bulk notification-read mutations now await persistence and restore prior read state on failure.
 - Accurate reconciliation linking now awaits persistence and rolls back the asset reference and audit entry if the write fails.
 - Remaining mutating routes without a local snapshot commit are PostgreSQL transaction-backed RBAC/module registry handlers; taxonomy resolve is a read-only POST.
+
+## 18 November 2026 — follow-up batch: category creation, RBAC audit durability, and regression alignment
+
+### Fixed
+- Asset creation UI now fails closed while the authorized category master is loading, empty, or unavailable. It no longer falls back to the static taxonomy for a live create form; submit revalidates the selected code against the server-authorized active master list.
+- Custom License master categories initialize `license_detail` based on the selected master row's `category_type`, not the static parent category label.
+- Dynamic user-role assignment now writes the `RBAC_USER_ROLES_UPDATED` audit row inside the same PostgreSQL transaction as the full assignment-set replacement. If the audit insert fails, the role assignment transaction rolls back.
+- PostgreSQL startup now merges normalized `audit_logs` rows into the in-memory audit collection by stable ID before startup persistence sync. This prevents transactionally committed audit rows from being lost when the older `gabah_state` JSON payload is hydrated.
+- Removed an unused legacy role-scope helper that still named Supply Chain and PIBC as application roles, avoiding future accidental reuse of location labels as authorization roles.
+- Corrected T2B-1, T2B-2, and T2B-3 regression fixtures that attempted to create new owner=SC/PIBC assets/categories. New records now use valid owner domains; physical locations remain independently testable as PIBC/RPC.
+- Added regression checks for fail-closed asset category loading/submission, transactional role-assignment audit ordering, and persistence of role assignments/audit evidence across restart.
+
+### Verification
+- Exact-head CI #2319 for `7e0f763eea99f5ebfbe7201b63c40dadfb548c64`: **SUCCESS**. Dependency gate, lint/typecheck, production build, Docker image/runtime smoke, PostgreSQL 17 fresh-database/persistence integration, P0 security, RBAC, ticket/ME routing, loan, organization, asset managing-unit/location/category, and maintenance suites passed.
+- CI #2317 also passed after the SC/PIBC fixture alignment; it exposed the additional static-category fallback defect, which was fixed and covered in CI #2319.
+- CI is automated evidence only. Browser UAT by each actual persona, legacy-database upgrade rehearsal, backup/restore including uploads, staging deployment, and business-owner sign-off remain outstanding.
+
+### Release posture
+- Candidate branch remains `fix/ticket-routing-me-unit-scope` / PR #121.
+- No merge to `main` and no production deployment is authorized by these CI results alone. Branch reconciliation, manual UAT, legacy upgrade and recovery rehearsal remain release gates.
