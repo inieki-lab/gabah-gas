@@ -3,8 +3,9 @@
 -- Business rule (2026-11-08):
 --   * Current active sites: HO, PIBC, RPC/SC and Pangsub. New sites are configurable; closed sites are deactivated, not deleted.
 --     work/physical locations. Location is not an application role.
---   * RPC/SC may also be an operational asset-owning function. Ownership and
---     physical location are independent dimensions.
+--   * RPC may become an owner domain only when explicitly configured in the
+--     active owner master and granted by Dynamic RBAC. SC/PIBC are location
+--     labels only; neither location nor legacy code grants owner scope.
 --   * Employees at any site retain their actual job level, unit, primary role,
 --     additional capabilities, permissions and history until an authorized
 --     administrator maps them using verified HR/organizational data.
