@@ -826,8 +826,8 @@ export async function initializePersistence(): Promise<void> {
       // PostgreSQL is authoritative for the normalized employee profile. Apply
       // one-time migration results to the in-memory snapshot before it is saved
       // or synchronized again; preserve role_label and all other profile fields.
-      const normalizedUsers = await pool.query<{ id: string; role: string; unit_id: string | null; office_location_id: string | null }>(
-        'SELECT id::text AS id, role, unit_id, office_location_id FROM users'
+      const normalizedUsers = await pool.query<{ id: string; role: string; job_level_code: string | null; unit_id: string | null; office_location_id: string | null }>(
+        'SELECT id::text AS id, role, job_level_code, unit_id, office_location_id FROM users'
       );
       const normalizedProfiles = new Map(normalizedUsers.rows.map(row => [String(row.id), row]));
       for (const user of db.users) {
@@ -835,6 +835,7 @@ export async function initializePersistence(): Promise<void> {
         if (!profile) continue;
         const previousRole = String(user.role || '');
         user.role = String(profile.role);
+        user.job_level_code = profile.job_level_code || null;
         user.unit_id = profile.unit_id || null;
         user.office_location_id = profile.office_location_id || null;
         if (['Supply Chain', 'PIBC'].includes(previousRole)
