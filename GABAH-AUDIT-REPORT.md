@@ -563,3 +563,15 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Browser-based UAT, backup/restore rehearsal, deployment rehearsal, and concurrent multi-process issuance tests remain outstanding.
 
 **Updated release gate:** exact-head CI = PASS; parent integration/conflict resolution and operational UAT = OPEN. No merge to `main` yet.
+
+
+## 20. Reminder Center payload robustness — 18 November 2026
+
+- Fixed the Administration reminder overview renderer so `recent_failures` is type-checked with `Array.isArray` before accessing `.length` or calling `.map`.
+- Rendering is capped to five failure rows even if the API returns more than the intended display limit.
+- Added `scripts/reminder-failure-payload-verify.mjs`, registered it as `npm run test:reminder-failure-payload`, and added the check to CI.
+- This closes a frontend crash path when the reminder API returns a truthy non-array value (for example an object/string/null-like malformed payload).
+- **Not closed:** Notification Rules configuration still persists to browser `localStorage`, not a server-authoritative PostgreSQL setting. This remains a separate functional/data-consistency item; do not mark Notification Rules centrally persisted or production-complete.
+- Validation for commits `91ce063`, `57aea0c`, `0d4775f`, and `948ef57` is pending GitHub Actions. Do not mark this item green until the exact latest head completes CI.
+
+**Checklist:** reminder failure payload crash guard = implemented, CI pending; Notification Rules central persistence = OPEN.
