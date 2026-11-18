@@ -3,7 +3,7 @@
 **Dokumen:** `docs/testing/UAT.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Perubahan routing IT/GA/ME dan scope unit ME sedang diimplementasikan pada branch terpisah; seluruh skenario tiket di bawah tetap berstatus belum diuji sampai CI dan browser UAT lulus.  
+**Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Implementasi routing IT/GA/ME dan scope unit ME telah melewati CI otomatis pada PR #121 (67/67 langkah pada commit yang diverifikasi); skenario tiket tetap berstatus belum lulus UAT sampai browser test per persona dijalankan dan bukti/sign-off dicatat.  
 **Terakhir Diperbarui:** 18 November 2026
 
 ---
