@@ -2604,7 +2604,7 @@ async function startServer() {
     const previousOwnerRaw = asset.owner_division;
     const previousOwner = String(previousOwnerRaw || '').trim().toUpperCase();
     if (previousOwner === requestedOwner) return res.status(409).json({ success: false, message: 'Owner aset sudah menggunakan domain tersebut.' });
-    const activeLoan = db.loans.find(loan => loan.asset_id === asset.id && ['approved', 'borrowed'].includes(String(loan.status || '').toLowerCase()));
+    const activeLoan = db.loans.find(loan => loan.asset_id === asset.id && ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(String(loan.status || '').toLowerCase()));
     if (activeLoan) return res.status(409).json({ success: false, message: `Owner tidak dapat diubah selama pinjaman ${activeLoan.loan_number} masih aktif.` });
 
     asset.owner_division = requestedOwner;
