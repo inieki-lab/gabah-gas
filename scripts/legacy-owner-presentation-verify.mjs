@@ -67,6 +67,6 @@ assert.ok(normalizeProfiles.includes("WHEN u.unit_id = 'UNIT-SC' OR u.role = 'Su
 assert.ok(normalizeProfiles.includes("unit_id IN ('UNIT-SC', 'UNIT-PIBC', 'UNIT-PANGSUB')"));
 assert.ok(normalizeProfiles.includes("USER_LOCATION_ROLE_NORMALIZED"));
 assert.ok(persistence.includes("normalizeLegacyLocationProfilesInMemory"));
-assert.ok(persistence.includes("SELECT id::text AS id, role, unit_id, office_location_id FROM users"));
+assert.ok(persistence.includes("SELECT id::text AS id, role, job_level_code, unit_id, office_location_id FROM users"));
 
 console.log('Legacy owner / location separation checks: 37/37 passed');
