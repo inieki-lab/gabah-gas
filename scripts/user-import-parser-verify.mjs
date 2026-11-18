@@ -4,7 +4,7 @@ import { parseUsersImportCsv } from '../src/services/gabahService.ts';
 const roles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor', 'Supply Chain', 'PIBC'];
 const divisions = ['IT', 'GA', 'Umum', 'Audit'];
 const jobLevels = ['STAF'];
-const units = ['UNIT-SC', 'UNIT-PIBC'];
+const units = ['UNIT-IT-MIS', 'UNIT-GA-SARPRAS', 'UNIT-PIBC-ME'];
 const offices = ['OFF-RPC', 'OFF-PIBC'];
 
 const csv = [
@@ -22,9 +22,9 @@ assert.equal(parsed.errors.length, 0);
 assert.equal(parsed.valid[0].role, 'Karyawan');
 assert.equal(parsed.valid[0].job_level_code, 'STAF');
 assert.equal(parsed.valid[0].unit_id, undefined);
-assert.equal(parsed.valid[1].role, 'Supply Chain', 'legacy SC profile label is retained without permission mapping');
+assert.equal(parsed.valid[1].role, 'Karyawan', 'legacy SC location label normalizes to the employee baseline');
 assert.equal(parsed.valid[1].office_location_id, 'OFF-RPC');
-assert.equal(parsed.valid[2].role, 'PIBC', 'legacy PIBC profile label is retained without permission mapping');
+assert.equal(parsed.valid[2].role, 'Karyawan', 'legacy PIBC location label normalizes to the employee baseline');
 assert.equal(parsed.valid[2].unit_id, undefined);
 assert.equal(parsed.valid[3].role, 'Humas', 'function profile labels are accepted');
 assert.equal(parsed.valid[4].role, 'Peran Ngawur', 'custom profile labels are accepted');
