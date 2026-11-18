@@ -11,14 +11,15 @@ import { db, OrgUnit } from './db';
  * Prinsip: Owner/Managing Unit ≠ Asset Location ≠ Custodian/PIC ≠ Category.
  * Backfill SELALU berbasis ownership (owner_division), TIDAK PERNAH lokasi.
  *
- * ATURAN DETERMINISTIK (harus dijaga sinkron dengan backfill SQL di
- * server/migrations/007_asset_managing_unit.sql):
- *   1. Unit dengan id persis `UNIT-{DIVISION}` dan division_code = DIVISION
- *      (unit level divisi: SC → UNIT-SC, PIBC → UNIT-PIBC).
- *   2. Jika tidak ada, tepat SATU unit dengan division_code = DIVISION
- *      (IT → UNIT-IT-MIS).
- *   3. Selain itu NULL — mapping ambigu TIDAK ditebak (contoh: GA memiliki dua
- *      kandidat UNIT-GA-SARPRAS & UNIT-GA-UMUM → unresolved, biarkan kosong).
+ * ATURAN RUNTIME TERKINI:
+ *   1. Owner domain IT dapat dipetakan ke satu unit IT yang aktif (UNIT-IT-MIS).
+ *   2. SC/PIBC adalah kode lokasi legacy, bukan owner domain; hasil default NULL.
+ *   3. GA memiliki lebih dari satu kandidat unit, sehingga hasil default NULL.
+ *   4. Nilai managing_unit_id eksplisit yang sudah tersimpan tetap dipertahankan.
+ *
+ * Catatan: migration 007 adalah artefak historis yang pernah memetakan SC/PIBC.
+ * Runtime tidak mengulang pemetaan tersebut dan tidak menghapus nilai historis;
+ * koreksi data existing harus dilakukan per aset setelah review Superadmin.
  */
 
 /** Resolusi managing unit untuk sebuah owner_division (ownership-based). */
