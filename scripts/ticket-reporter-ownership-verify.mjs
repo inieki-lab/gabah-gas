@@ -27,6 +27,8 @@ const statusRouteStart = source.indexOf("app.patch('/api/tickets/:id/status'");
 const statusRouteEnd = source.indexOf("\n  const validateMaintenanceInput", statusRouteStart);
 const statusRoute = source.slice(statusRouteStart, statusRouteEnd);
 checks.push(
+  ['Ticket status route requires explicit tickets.update permission', statusRoute.includes("requireRbacPermission(req, res, 'tickets.update')")],
+  ['Ticket status route is protected by the shared object-level mutation guard', hardening.includes("const ticketMatch = req.path.match(/^\\/api\\/tickets\\/([^/]+)\\/status\\/?$/i);") && hardening.includes('ticketMatch && !canManageTicket(actor, ticketMatch[1])')],
   ['Ticket status route awaits authoritative persistence', statusRoute.includes("app.patch('/api/tickets/:id/status', async") && statusRoute.includes('await persistDataStore();')],
   ['Ticket status persistence failure returns HTTP 500', statusRoute.includes('return res.status(500).json(')],
   ['Ticket status is restored when persistence fails', ['ticket.status = previousState.status','ticket.resolution_notes = previousState.resolution_notes','ticket.resolved_at = previousState.resolved_at','ticket.updated_at = previousState.updated_at'].every(fragment => statusRoute.includes(fragment))],
