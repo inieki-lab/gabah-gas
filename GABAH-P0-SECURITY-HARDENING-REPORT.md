@@ -2,9 +2,9 @@
 
 **Repository:** `inieki-lab/gabah-gas` — GABAH (General Asset, Business & Automated Helpdesk)
 **Basis audit:** `GABAH-AUDIT-REPORT.md` (HEAD `610c899`)
-**Tanggal hardening:** 30 September 2026
+**Tanggal hardening:** 30 September 2026 (snapshot historis)
 **Scope tahap ini:** HANYA **CR-01**, **CR-02**, **CR-03**, **CR-06** (P0 Security Hardening)
-**Di luar scope (dibiarkan):** CR-04 (PostgreSQL/migrasi), CR-05 (reminder/email/telegram), seluruh temuan HIGH lainnya — lihat §8.
+**Catatan status:** §8–9 di bawah merekam temuan pada 30 September 2026 dan telah disupersede oleh verifikasi lanjutan. Status rilis terkini ada di `docs/ops/PRODUCTION-READINESS-GATES.md` dan catatan audit 18 November 2026.
 **Larangan yang dipatuhi:** tanpa commit, tanpa push, tanpa rewrite Git history (tidak ada `git filter-repo`/BFG/`push --force`), tanpa menampilkan secret/token asli di kode, log, test, maupun laporan ini.
 
 ---
@@ -291,7 +291,7 @@ Catatan: skrip verifikasi sengaja mengosongkan snapshot `sessions` saat menyalin
 
 ---
 
-# 8. REMAINING FINDINGS (belum diperbaiki — tahap berikutnya)
+# 8. HISTORICAL FINDINGS — 30 SEPTEMBER 2026 (SUPERSEDED)
 
 | ID | Severity | Ringkasan |
 |---|---|---|
@@ -309,7 +309,7 @@ Catatan: skrip verifikasi sengaja mengosongkan snapshot `sessions` saat menyalin
 
 ---
 
-# 9. RELEASE GATE
+# 9. HISTORICAL RELEASE GATE — 30 SEPTEMBER 2026 (SUPERSEDED)
 
 # **PASS WITH CONDITIONS**
 
