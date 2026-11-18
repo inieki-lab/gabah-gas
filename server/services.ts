@@ -207,7 +207,7 @@ export function hasTicketQueueScope(actor: ServerUser, ticket: Pick<ServerTicket
       : String(actor.unit_id || '') === String(ticket.assigned_unit_id);
   }
   const category = String(ticket.category || '').trim().toUpperCase();
-  if (!category) return false;
+  if (!category || category === 'ME') return false;
   return isPostgresPersistenceActive()
     ? hasRbacScope(String(actor.id), 'division', category, 'tickets')
     : ['IT', 'GA', 'SC', 'PIBC'].includes(category) && actor.role === category;
@@ -1147,16 +1147,16 @@ export class GabahDomainService {
     // Notify only active users who are explicitly authorized for the queue.
     // Role labels and office locations are never used as ticket recipients.
     const notificationTargets = payload.category === 'ME'
-      ? db.users.filter(user => user.is_active !== false
+      ? db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
         && hasRbacPermission(String(user.id), 'tickets.assign')
         && hasRbacScope(String(user.id), 'unit', 'UNIT-PIBC-ME', 'tickets'))
       : payload.category === 'GA'
-        ? db.users.filter(user => user.is_active !== false
+        ? db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
           && hasRbacPermission(String(user.id), 'tickets.assign')
           && hasRbacScope(String(user.id), 'division', 'GA', 'tickets'))
         : newTicket.assigned_agent_id
           ? db.users.filter(user => user.id === newTicket.assigned_agent_id)
-          : db.users.filter(user => user.is_active !== false
+          : db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
             && hasRbacPermission(String(user.id), 'tickets.read')
             && hasRbacScope(String(user.id), 'division', 'IT', 'tickets'));
     for (const target of notificationTargets) this.notify({
