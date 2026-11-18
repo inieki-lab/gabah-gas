@@ -280,7 +280,7 @@ Ini bukan bukti bahwa semua data SC/PIBC harus langsung dihapus atau dipindahkan
 
 PR #121 (`fix/ticket-routing-me-unit-scope`) implements a first selective correction for the ticket-domain conflation recorded above. It introduces a separate ME operational unit at PIBC, exact ticket-module scope enforcement, explicit GA/ME requester and operator roles, scoped dispatch endpoints, and unit-aware dashboard filtering. Legacy SC/PIBC ticket categories and asset owners are retained without automatic migration.
 
-This does **not** resolve every SC/PIBC legacy asset/contract ownership record. It only prevents those labels/locations from becoming new ticket categories or implicit ticket queue grants. Full asset/contract classification remains a separate review. CI #2191 passed 67/67 steps, including PostgreSQL 17 fresh database/persistence, Docker runtime, P0 security, and ticket-routing regressions. Upgrade rehearsal against a copy of legacy data and browser UAT/sign-off remain open; do not mark the audit or release gate complete yet.
+This does **not** resolve every SC/PIBC legacy asset/contract ownership record. It only prevents those labels/locations from becoming new ticket categories or implicit ticket queue grants. Full asset/contract classification remains a separate review. CI #2197 passed 67/67 steps, including PostgreSQL 17 fresh database/persistence, Docker runtime, P0 security, and ticket-routing regressions. Upgrade rehearsal against a copy of legacy data and browser UAT/sign-off remain open; do not mark the audit or release gate complete yet.
 
 
 ## Follow-up source scan — remaining SC/PIBC asset, dashboard, and contract references (18 November 2026)
@@ -306,3 +306,10 @@ A second source scan on the consolidated PR #121 branch found the following rema
 5. Only after asset and contract ownership mapping is approved, add an additive migration to move records into canonical owner domains and preserve audit history.
 
 **Status: OPEN.** PR #121 resolves ticket category/queue routing only. It does not yet complete asset taxonomy, asset create UI, contract ownership, or historical data classification.
+
+
+### CI refresh — 18 November 2026
+
+- Exact head: `2baf322ccc9696b5bbcbd2665812dae165e30248`.
+- GitHub Actions run #2197: 67/67 steps passed, including `npm run lint`, production build, Docker runtime smoke, PostgreSQL 17 fresh-database/persistence (migration 098 is present in the migration ledger), P0 live HTTP security, ticket reporter ownership (22/22), ticket routing/unit-scope contract (35/35), and related-asset scope regression.
+- This refresh does not change the remaining release blockers: upgrade rehearsal against a copied legacy database and browser UAT/sign-off per persona remain BLOCKED/not yet evidenced.
