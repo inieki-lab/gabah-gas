@@ -677,6 +677,13 @@ async function main() {
         && (karyawanAssignmentAfterRestart?.role_ids || []).includes(Number(gaRole?.id))
         && Number(karyawanAssignmentAfterRestart?.primary_role_id) === Number(persistedAssignment?.primary_role_id));
 
+    const auditAfterRestart = await req(base, 'GET', '/api/audit-logs', { token: adminToken2 });
+    const assignmentAuditAfterRestart = (auditAfterRestart.json?.data || []).find(log =>
+      log.action === 'RBAC_USER_ROLES_UPDATED' && String(log.entity_id) === String(karyawanUser?.id));
+    record('Role assignment audit evidence survives application restart', 'RBAC_USER_ROLES_UPDATED present',
+      `HTTP ${auditAfterRestart.status} event=${assignmentAuditAfterRestart?.action || 'missing'}`,
+      auditAfterRestart.status === 200 && Boolean(assignmentAuditAfterRestart));
+
     const afterRestart = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken2 });
     record('CR-04 contract persists across restart (PostgreSQL authoritative)', '200 + updated notes', `HTTP ${afterRestart.status} notes=${afterRestart.json?.data?.notes || '-'}`,
       afterRestart.status === 200 && afterRestart.json?.data?.notes === 'updated notes by verify' && afterRestart.json?.data?.contract_number === readBack.json?.data?.contract_number);
