@@ -377,7 +377,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   const livePreviewNumber = `${selectedDivision}-${subCode}-${currentYear}-0001`;
 
   if (!isOpen) return null;
-  if (!activeSub) {
+  if (masterCategories === null || allowedMainCategories.length === 0 || !activeSub || !isCodeSelectable(subCode)) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
