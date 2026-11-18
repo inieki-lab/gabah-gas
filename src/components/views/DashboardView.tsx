@@ -196,7 +196,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span>Tiket (Read-Only)</span>
               </div>
             )}
-            {!isEmployee && currentUser?.role !== 'Auditor' && (
+            {!isEmployee && !isAuditor && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
@@ -622,7 +622,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Tiket Kendala Saya
               </h3>
               <div className="flex items-center gap-2">
-                {currentUser?.role !== 'Auditor' && (
+                {!isAuditor && (
                   <button
                     onClick={onOpenNewTicketModal}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -694,7 +694,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <CalendarClock className="w-4 h-4 text-emerald-600" />
                   {isDivisionDashboard ? `Jadwal Peminjaman ${divisionLabel}` : isAuditor ? 'Pemantauan Peminjaman Lintas Divisi' : 'Jadwal Peminjaman Aset Terintegrasi'}
                 </h3>
-                <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : currentUser.role === 'Auditor' ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
+                <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : isAuditor ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
               </div>
               <button
                 onClick={() => onNavigate('loans')}
@@ -760,10 +760,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <LifeBuoy className="w-4 h-4 text-rose-600" />
-                  {currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : currentUser.role === 'Auditor' ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
+                  {currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : isAuditor ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
-                  {currentUser?.role !== 'Auditor' && (
+                  {!isAuditor && (
                     <button
                       onClick={onOpenNewTicketModal}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -810,7 +810,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
               <h3 className="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                {currentUser.role === 'Auditor' ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
+                {isAuditor ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
               </h3>
               <div className="space-y-2.5 text-xs">
                 {auditLogs.slice(0, 4).map((log) => (
