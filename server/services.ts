@@ -778,13 +778,13 @@ export class GabahDomainService {
   /**
    * Loan Request & Collision Detection
    */
-  static requestLoan(payload: {
+  static async requestLoan(payload: {
     asset_id: string;
     borrower_id: string;
     purpose: string;
     start_date: string;
     due_date: string;
-  }, actor: ServerUser): ServerLoan {
+  }, actor: ServerUser): Promise<ServerLoan> {
     // Self-service requests may only be created for the authenticated borrower.
     // Creating on behalf of another employee is a separate delegated capability;
     // until that capability exists, only Super Admin may set another borrower.
@@ -867,6 +867,14 @@ export class GabahDomainService {
       updated_at: new Date().toISOString(),
     };
 
+    const previousLoans = db.loans.slice();
+    const previousNotifications = (db.notifications || []).map(item => ({ ...item }));
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      db.loans = previousLoans;
+      db.notifications = previousNotifications;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
     db.loans.unshift(newLoan);
 
     // Dispatch attention notification to owner division
@@ -881,7 +889,8 @@ export class GabahDomainService {
       link_id: newLoan.id,
     });
 
-    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id);
+    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id, false);
+    await this.persistMutationWithRollback('Pembuatan pengajuan pinjaman', rollback);
 
     return newLoan;
   }
@@ -889,7 +898,7 @@ export class GabahDomainService {
   /**
    * Loan Approval by Authoritative Division
    */
-  static approveLoan(loanId: string, actor: ServerUser): ServerLoan {
+  static async approveLoan(loanId: string, actor: ServerUser): Promise<ServerLoan> {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
@@ -921,6 +930,17 @@ export class GabahDomainService {
       throw new Error(`Tidak dapat disetujui: Tabrakan jadwal dengan peminjaman ${conflicting.loan_number} (${conflicting.borrower_name}) yang telah disetujui untuk aset ini.`);
     }
 
+    const previousLoan = { ...loan };
+    const previousAsset = { ...asset };
+    const previousNotifications = (db.notifications || []).map(item => ({ ...item }));
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(loan, previousLoan);
+      Object.assign(asset, previousAsset);
+      db.notifications = previousNotifications;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
+
     loan.status = 'approved';
     loan.approver_id = actor.id;
     loan.approver_name = actor.name;
@@ -930,7 +950,7 @@ export class GabahDomainService {
     // Mark the already-validated asset as reserved.
     asset.status = 'reserved';
 
-    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id);
+    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id, false);
 
     this.notify({
       recipient_user_id: loan.borrower_id,
@@ -942,13 +962,14 @@ export class GabahDomainService {
       link_id: loan.id,
     });
 
+    await this.persistMutationWithRollback('Persetujuan pinjaman', rollback);
     return loan;
   }
 
   /**
    * Loan Rejection (Owner-division authority, mirrors approveLoan)
    */
-  static rejectLoan(loanId: string, reason: string, actor: ServerUser): ServerLoan {
+  static async rejectLoan(loanId: string, reason: string, actor: ServerUser): Promise<ServerLoan> {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
@@ -960,11 +981,20 @@ export class GabahDomainService {
       throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission reject dan scope owner aset yang sesuai atau Super Admin yang dapat menolak pinjaman.'), { statusCode: 403 });
     }
 
+    const previousLoan = { ...loan };
+    const previousNotifications = (db.notifications || []).map(item => ({ ...item }));
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(loan, previousLoan);
+      db.notifications = previousNotifications;
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
+
     loan.status = 'rejected';
     loan.rejection_reason = reason || 'Ditolak oleh divisi pemilik aset';
     loan.updated_at = new Date().toISOString();
 
-    this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id);
+    this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id, false);
 
     this.notify({
       recipient_user_id: loan.borrower_id,
@@ -976,6 +1006,7 @@ export class GabahDomainService {
       link_id: loan.id,
     });
 
+    await this.persistMutationWithRollback('Penolakan pinjaman', rollback);
     return loan;
   }
 
@@ -1006,7 +1037,7 @@ export class GabahDomainService {
    * (403 / 409). Knowing a loan ID grants no authority; denied attempts are
    * recorded in the existing audit trail.
    */
-  static handoverLoan(loanId: string, handoverNotes: string, actor: ServerUser): ServerLoan {
+  static async handoverLoan(loanId: string, handoverNotes: string, actor: ServerUser): Promise<ServerLoan> {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
@@ -1028,6 +1059,15 @@ export class GabahDomainService {
       throw Object.assign(new Error('Aset tidak ditemukan atau statusnya bukan reserved. Serah terima dibatalkan.'), { statusCode: 409 });
     }
 
+    const previousLoan = { ...loan };
+    const previousAsset = { ...asset };
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(loan, previousLoan);
+      Object.assign(asset, previousAsset);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
+
     loan.status = 'borrowed';
     loan.handover_by_id = actor.id;
     loan.handover_at = new Date().toISOString();
@@ -1036,8 +1076,9 @@ export class GabahDomainService {
 
     asset.status = 'assigned';
 
-    this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id);
+    this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id, false);
 
+    await this.persistMutationWithRollback('Serah terima pinjaman', rollback);
     return loan;
   }
 
@@ -1049,7 +1090,7 @@ export class GabahDomainService {
    * "Portal Aset Saya" flow); anyone else needs owner-division custody or
    * Admin GABAH. Denied attempts are recorded in the existing audit trail.
    */
-  static returnLoan(loanId: string, condition: 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged', returnNotes: string, actor: ServerUser): ServerLoan {
+  static async returnLoan(loanId: string, condition: 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged', returnNotes: string, actor: ServerUser): Promise<ServerLoan> {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
@@ -1078,6 +1119,15 @@ export class GabahDomainService {
       throw Object.assign(new Error('Aset tidak ditemukan atau statusnya bukan assigned. Pengembalian belum dapat diproses.'), { statusCode: 409 });
     }
 
+    const previousLoan = { ...loan };
+    const previousAsset = { ...asset };
+    const previousAuditLogs = db.auditLogs.slice();
+    const rollback = () => {
+      Object.assign(loan, previousLoan);
+      Object.assign(asset, previousAsset);
+      db.auditLogs.splice(0, db.auditLogs.length, ...previousAuditLogs);
+    };
+
     loan.status = 'returned';
     loan.actual_returned_at = new Date().toISOString();
     loan.return_condition = condition;
@@ -1089,8 +1139,9 @@ export class GabahDomainService {
     // Preserve the recorded physical location. Returning a loan changes custody/status,
     // not the asset's site; a real relocation must use the asset-mutation workflow.
 
-    this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id);
+    this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id, false);
 
+    await this.persistMutationWithRollback('Pengembalian pinjaman', rollback);
     return loan;
   }
 
