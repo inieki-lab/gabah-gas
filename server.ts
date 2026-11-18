@@ -51,6 +51,17 @@ async function startServer() {
   const PORT = Number(process.env.PORT || 3000);
 
   // Await authoritative writes before returning a successful mutation response.
+  // Shared durable-write helper for legacy domain routes that do not yet
+  // have an operation-specific rollback snapshot.
+  const persistMutationOrRespond = async (res: express.Response): Promise<boolean> => {
+    try { await persistDataStore(); return true; }
+    catch (error: any) {
+      console.error('[GABAH API] Mutation persistence failed:', error?.message || error);
+      if (!res.headersSent) res.status(503).json({ success: false, code: 'PERSISTENCE_UNAVAILABLE', message: 'Penyimpanan utama sedang bermasalah. Perubahan belum dapat dipastikan tersimpan; periksa ulang data sebelum mencoba kembali.' });
+      return false;
+    }
+  };
+
   type DomainMutationSnapshot = {
     assets: typeof db.assets;
     loans: typeof db.loans;
