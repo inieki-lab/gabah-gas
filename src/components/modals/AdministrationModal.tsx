@@ -663,7 +663,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     return DEFAULT_DIVISIONS;
   });
-  const activeOwnerDivisions = useMemo(
+  const activeOwnerDivisions = React.useMemo(
     () => divisions.filter(d => !['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(d.code || '').trim().toUpperCase())),
     [divisions],
   );
