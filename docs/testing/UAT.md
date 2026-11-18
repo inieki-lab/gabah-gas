@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus.  
-**Terakhir Diperbarui:** 8 November 2026
+**Terakhir Diperbarui:** 18 November 2026
 
 ---
 
@@ -114,8 +114,9 @@
 - **Langkah Pengujian**:
   1. Login sebagai `IT`. Buka modal *Tambah Aset Baru*.
   2. Pilih kategori "Laptop / Notebook", masukkan nama "Lenovo ThinkPad P14s", serial number `SN-TEST-001`.
-  3. Simpan aset. Verifikasi nomor yang terbentuk berformat `IT-HLT-2026-xxxx`.
-  4. Coba daftarkan aset kedua dengan serial number yang sama (`SN-TEST-001`).
+  3. Simpan aset. Verifikasi nomor mengikuti aturan aktif yang ditampilkan pada Administration → Asset Numbering; jangan mengasumsikan prefix atau pola tertentu sebelum standar perusahaan disahkan.
+  4. Sebagai Super Admin, ubah/aktifkan aturan penomoran UAT yang aman, lalu verifikasi preview tidak mengonsumsi sequence dan pembuatan aset berikutnya mengikuti aturan aktif. Pulihkan aturan setelah tes.
+  5. Coba daftarkan aset kedua dengan serial number yang sama (`SN-TEST-001`).
 - **Kriteria Lulus**: Aset pertama tersimpan, aset kedua ditolak dengan pesan error serial number duplikat.
 
 ---
@@ -205,13 +206,13 @@
 
 ---
 
-### Skenario 10: Pengujian Keamanan Negatif (Negative / Security Testing)
+### Skenario 11: Pengujian Keamanan Negatif (Negative / Security Testing)
 - **Tujuan**: Menguji ketahanan terhadap percobaan bypass dan penolakan mutasi peran Auditor.
 - **Langkah Pengujian**:
-  1. **Uji ID Spoofing**: Kirim request API menggunakan token user biasa tetapi menambahkan header `x-user-id: USR-01`.
-     - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden` (`Percobaan manipulasi identitas (ID spoofing) terdeteksi`).
+  1. **Uji ID Spoofing**: Kirim request API menggunakan token user biasa tetapi menambahkan header `x-user-id` berisi ID akun uji lain yang valid (bukan ID pemilik token).
+     - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden`; server tidak boleh menerima identitas dari header yang bertentangan dengan token.
   2. **Uji Auditor Read-Only**: Login sebagai `Auditor`. Coba lakukan request `POST /api/assets` atau `PATCH /api/tickets/1/status`.
-     - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden` (`Akses ditolak: Peran Auditor memiliki hak akses Read-Only`).
+     - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden` untuk mutasi yang tidak diberikan oleh permission efektif Auditor, termasuk bila Auditor digabung sebagai role tambahan.
   3. **Uji Unauthenticated Request**: Kirim request `GET /api/assets` tanpa menyertakan header Bearer token.
      - *Hasil Diharapkan*: Server merespon HTTP `401 Unauthorized` (tidak pernah auto-login sebagai Super Admin).
 - **Kriteria Lulus**: Seluruh upaya pelanggaran keamanan ditolak dengan status HTTP yang tepat.
