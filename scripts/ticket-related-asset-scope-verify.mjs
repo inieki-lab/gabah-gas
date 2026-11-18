@@ -49,10 +49,11 @@ assert.throws(() => GabahDomainService.createTicket({
 }, admin), /Kontrak terkait tidak ditemukan atau tidak dapat diakses/);
 assert.equal(db.tickets.length, initialCount, 'Unknown contract must not create a ticket');
 
-const visibleAsset = GabahDomainService.getScopedAssets(admin)[0];
-assert.ok(visibleAsset, 'Admin fixture must have at least one visible asset');
+const visibleAsset = GabahDomainService.getScopedAssets(admin).find(asset => ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase()));
+assert.ok(visibleAsset, 'Admin fixture must have a visible IT or GA owner asset for a canonical ticket link');
+const linkedCategory = String(visibleAsset.owner_division).toUpperCase();
 const linked = GabahDomainService.createTicket({
-  title: 'Fixture valid asset link', description: 'Valid link', category: 'IT', priority: 'low',
+  title: 'Fixture valid asset link', description: 'Valid link', category: linkedCategory, priority: 'low',
   related_asset_id: visibleAsset.id,
 }, admin);
 assert.equal(linked.related_asset_id, visibleAsset.id);
@@ -60,4 +61,15 @@ assert.equal(linked.related_asset_name, visibleAsset.name);
 assert.equal(linked.related_asset_number, visibleAsset.asset_number);
 console.log('PASS | fixture rejects missing links without creating orphan tickets');
 console.log('PASS | fixture persists canonical asset ID and metadata');
+const legacyOwnerAsset = db.assets.find(asset => ['SC', 'PIBC'].includes(String(asset.owner_division || '').toUpperCase()));
+if (legacyOwnerAsset) {
+  assert.throws(() => GabahDomainService.createTicket({
+    title: 'Fixture legacy owner asset', description: 'Must be reviewed', category: 'ME', priority: 'low',
+    related_asset_id: legacyOwnerAsset.id,
+  }, admin), /owner legacy SC\/PIBC/);
+}
+assert.throws(() => GabahDomainService.createTicket({
+  title: 'Fixture legacy category', description: 'Must not be created', category: 'SC', priority: 'low',
+}, admin), /Kategori tiket/);
+console.log('PASS | new ticket categories reject legacy SC/PIBC and linked legacy assets');
 console.log('TOTAL: 10 source checks + 2 behavioral fixture groups | PASS');
