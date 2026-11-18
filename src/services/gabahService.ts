@@ -318,12 +318,28 @@ export function parseUsersImportCsv(
     if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di file (${email}).`); continue; }
     seenEmails.add(email);
     const roleRaw = iRole !== -1 ? (r[iRole] || '').trim() : '';
-    const role = normRole(roleRaw);
+    const matchedRole = roleRaw
+      ? validRoles.find(candidate => candidate.toLowerCase() === roleRaw.toLowerCase())
+      : 'Karyawan';
+    if (!matchedRole) {
+      errors.push(`Baris ${rowNo}: Label profil "${roleRaw}" tidak dikenal untuk impor. Gunakan label profil utama yang tersedia; hak fungsi ditetapkan melalui Dynamic RBAC.`);
+      continue;
+    }
+    const legacyLocationRole = matchedRole === 'Supply Chain' || matchedRole === 'PIBC';
+    const role = legacyLocationRole ? 'Karyawan' : normRole(matchedRole);
     const divisionRaw = iDiv !== -1 ? (r[iDiv] || '').trim() : '';
-    const division = validDivisions.find(d => d.toLowerCase() === divisionRaw.toLowerCase()) || divisionRaw || 'Umum';
+    const matchedDivision = divisionRaw
+      ? validDivisions.find(d => d.toLowerCase() === divisionRaw.toLowerCase())
+      : validDivisions.find(d => d.toLowerCase() === 'umum');
+    if (!matchedDivision) {
+      errors.push(`Baris ${rowNo}: Divisi "${divisionRaw}" tidak terdaftar/aktif. Lokasi kantor harus diisi pada kolom office_location_id.`);
+      continue;
+    }
+    const division = matchedDivision;
     const jobLevelCode = iJobLevel !== -1 ? (r[iJobLevel] || '').trim().toUpperCase() : '';
     const unitId = iUnit !== -1 ? (r[iUnit] || '').trim().toUpperCase() : '';
-    const officeLocationId = iOffice !== -1 ? (r[iOffice] || '').trim().toUpperCase() : '';
+    const explicitOfficeLocationId = iOffice !== -1 ? (r[iOffice] || '').trim().toUpperCase() : '';
+    const officeLocationId = explicitOfficeLocationId || (matchedRole === 'Supply Chain' ? 'OFF-RPC' : matchedRole === 'PIBC' ? 'OFF-PIBC' : '');
     if (jobLevelCode && !validJobLevels.includes(jobLevelCode)) {
       errors.push(`Baris ${rowNo}: Kode jabatan "${jobLevelCode}" tidak ditemukan atau tidak aktif di master.`);
       continue;
