@@ -64,7 +64,7 @@
   1. Login sebagai IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC/SC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
   2. Login sebagai GA. Pastikan aset owner GA terlihat lintas lokasi. Jika permission assets.read.it_workstations aktif, hanya Laptop/PC owner IT yang dapat dibaca; mutasi langsung via API harus ditolak.
   3. Login sebagai Karyawan di unit Supply Chain dan PIBC. Pastikan fungsi dasar karyawan tersedia; lokasi kerja tidak otomatis membuka katalog aset unit/lokasi.
-  4. Uji aset operasional owner RPC/SC yang ditempatkan di lokasi fisik berbeda. User dengan permission + scope RPC/SC yang disahkan dapat mengelolanya; GA tidak otomatis mendapat akses karena aset berada di gudang.
+  4. Uji aset historis dengan owner legacy SC/PIBC yang ditempatkan di lokasi fisik berbeda. Record tersebut harus tetap terbaca hanya melalui scope legacy eksplisit atau Superadmin selama proses review; jangan menganggap RPC/SC atau PIBC sebagai owner aktif baru. Aset baru harus memakai owner domain aktif yang sah (misalnya IT atau GA), sedangkan lokasi fisik disimpan terpisah.
   5. Login sebagai Humas dan Sekretaris Direksi. Pastikan fungsi dasar karyawan tersedia serta kapabilitas tambahan muncul hanya bila role tambahan/permission diberikan.
   6. Login sebagai Auditor. Pastikan data yang diberi scope audit dapat dibaca dan seluruh operasi mutasi ditolak.
   7. Uji user tanpa role, role nonaktif, dan role tanpa scope: akses harus gagal tertutup.
