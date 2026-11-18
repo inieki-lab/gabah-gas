@@ -2957,7 +2957,7 @@ async function startServer() {
         if (!legacyRequesterAllowed) return res.status(403).json({ success: false, message: 'Capability pemohon untuk antrean ini belum diberikan.' });
       }
       if (!requireRbacPermission(req, res, permission)) return;
-      const newTicket = GabahDomainService.createTicket({ ...req.body, category: requestedCategory }, actor);
+      const newTicket = GabahDomainService.createTicket({ ...req.body, category: requestedCategory as 'IT' | 'GA' | 'ME' }, actor);
       await persistDataStore();
       res.status(201).json({ success: true, data: newTicket });
     } catch (err: any) {
