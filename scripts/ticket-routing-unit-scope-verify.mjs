@@ -53,6 +53,7 @@ const checks = [
   ['New ticket route selects permission by category and denies Auditor', createRoute.includes('tickets.create.ga') && createRoute.includes('tickets.create.me') && createRoute.includes('isAuditorActor(actor)')],
   ['Assignee discovery requires tickets.assign and target tickets.update plus scope', assigneeRoute.includes("tickets.assign") && assigneeRoute.includes("tickets.update") && assigneeRoute.includes("hasRbacScope")],
   ['Assignment mutation validates dispatcher and target scope', assignRoute.includes("tickets.assign") && assignRoute.includes("tickets.update") && assignRoute.includes('hasTicketQueueScope(actor, ticket)')],
+  ['Auditor cannot inspect dispatch candidates or mutate ticket assignment', assigneeRoute.includes('isAuditorActor(actor)') && assignRoute.includes('isAuditorActor(actor)') && server.includes('if (isAuditorActor(actor)) return { can_manage: false, can_assign: false }')],
   ['Runtime status mutation guard shares the same ticket queue resolver', hardening.includes('hasTicketQueueScope(actor, ticket)')],
   ['Ticket assignment and unit recipient fields are persisted', persistence.includes('assigned_unit_id') && persistence.includes('recipient_unit_id')],
   ['Server models retain legacy categories but support ME/unit routing', types.includes("'IT' | 'GA' | 'ME' | 'SC' | 'PIBC'") && types.includes('assigned_unit_id') && types.includes('recipient_unit_id')],
