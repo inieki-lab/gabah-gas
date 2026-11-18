@@ -341,10 +341,10 @@ async function main() {
         [coreAuditId],
       );
 
-      async function assertCoreAuditMutationBlocked(label, sql) {
+      async function assertCoreAuditMutationBlocked(label, sql, values = []) {
         await mig.query('BEGIN');
         try {
-          await mig.query(sql);
+          await mig.query(sql, values);
           await mig.query('ROLLBACK');
           record(label, 'PostgreSQL error code 55000', 'mutation unexpectedly succeeded', false);
         } catch (err) {
@@ -355,11 +355,13 @@ async function main() {
 
       await assertCoreAuditMutationBlocked(
         'Core audit_logs rejects UPDATE at database level',
-        'UPDATE audit_logs SET details = \'tampered\' WHERE id = $1'.replace('$1', `'${coreAuditId}'`),
+        'UPDATE audit_logs SET details = \'tampered\' WHERE id = $1',
+        [coreAuditId],
       );
       await assertCoreAuditMutationBlocked(
         'Core audit_logs rejects DELETE at database level',
-        `DELETE FROM audit_logs WHERE id = '${coreAuditId}'`,
+        'DELETE FROM audit_logs WHERE id = $1',
+        [coreAuditId],
       );
       await assertCoreAuditMutationBlocked(
         'Core audit_logs rejects TRUNCATE at database level',
