@@ -192,101 +192,90 @@ export const FIXED_ASSET_TAXONOMY: FixedAssetCategoryDef[] = [
 export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({ 
   isOpen, 
   onClose, 
-  onCreateAsset, 
-  currentUser 
+  onCreateAsset 
 }) => {
-  const [resolvedUser, setResolvedUser] = useState<UserProfile | undefined>(currentUser);
+  const [assetCreateOptions, setAssetCreateOptions] = useState<{ owner_domains: Array<{ code: string; name: string }>; categories: any[] } | null>(null);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsError, setOptionsError] = useState('');
+  const [masterCategories, setMasterCategories] = useState<any[]>([]);
+  const [selectedDivision, setSelectedDivision] = useState<OwnerDivision>('');
 
-  useEffect(() => {
-    setResolvedUser(currentUser);
-    if (!isOpen) return;
-    gabahApi.getMe().then(user => {
-      if (user) setResolvedUser(user as UserProfile);
-    }).catch(() => undefined);
-  }, [isOpen, currentUser]);
-
-  // Superadmin authority comes from the server-calculated capability, never a
-  // display role, job title, or location label.
-  const isSuperadmin = resolvedUser?.is_superadmin === true;
-
-  // Server supplies only active categories whose owner domains the current
-  // actor may create under assets.create + the exact assets module scope.
-  // null means loading; an error/empty response stays fail-closed.
-  const [masterCategories, setMasterCategories] = useState<any[] | null>(null);
   useEffect(() => {
     if (!isOpen) return;
     let alive = true;
-    setMasterCategories(null);
-    gabahApi.getAssetCreationCategories()
-      .then(list => { if (alive) setMasterCategories(Array.isArray(list) ? list : []); })
-      .catch(() => { if (alive) setMasterCategories([]); });
+    setOptionsLoading(true);
+    setOptionsError('');
+    setAssetCreateOptions(null);
+    setMasterCategories([]);
+    gabahApi.getAssetCreateOptions()
+      .then(options => {
+        if (!alive) return;
+        const owners = Array.isArray(options?.owner_domains) ? options.owner_domains : [];
+        const categories = Array.isArray(options?.categories) ? options.categories : [];
+        setAssetCreateOptions({ owner_domains: owners, categories });
+        setMasterCategories(categories);
+        setSelectedDivision(current => owners.some(owner => owner.code === current) ? current : (owners[0]?.code || ''));
+      })
+      .catch(error => {
+        if (alive) setOptionsError(error instanceof Error ? error.message : 'Gagal memuat kewenangan pendaftaran aset.');
+      })
+      .finally(() => { if (alive) setOptionsLoading(false); });
     return () => { alive = false; };
   }, [isOpen]);
 
+  const ownerDomains = assetCreateOptions?.owner_domains || [];
   const masterByCode = useMemo(() => {
     const map = new Map<string, any>();
-    for (const c of masterCategories || []) {
-      if (c && c.code) map.set(String(c.code).toUpperCase(), c);
+    for (const category of masterCategories) {
+      if (category?.code) map.set(String(category.code).toUpperCase(), category);
     }
     return map;
   }, [masterCategories]);
 
-  const availableOwnerDomains = useMemo<string[]>(() => {
-    const domains = new Set<string>();
-    for (const category of masterCategories || []) {
-      const owner = String(category?.owner_division || '').trim();
-      if (owner) domains.add(owner);
-    }
-    return [...domains].sort((a, b) => a.localeCompare(b));
-  }, [masterCategories]);
-
-  // Kode terpilih layak dipakai bila: master belum termuat (fallback), ATAU
-  // kode terdaftar di master dan berstatus aktif. Kategori nonaktif/dihapus
-  // admin tidak muncul sebagai pilihan baru (nilai historis aset tetap utuh).
-  const isCodeSelectable = (code: string): boolean => {
-    const row = masterByCode.get(String(code || '').toUpperCase());
-    return Boolean(row) && row.is_active !== false && Boolean(String(row.owner_division || '').trim());
-  };
-
-  // Main-type labels are presentation only. The server filters the category
-  // master by effective owner-domain grants; primary role names are irrelevant.
+  // Category choices are derived only from active server master rows whose
+  // owner domain is present in the server-calculated effective write scope.
   const allowedMainCategories = useMemo<FixedAssetCategoryDef[]>(() => {
-    return FIXED_ASSET_TAXONOMY
-      .map(group => {
-        const kept = group.subcategories
-          .filter(s => isCodeSelectable(s.code))
-          .map(s => {
-            const master = masterByCode.get(String(s.code).toUpperCase());
-            return {
-              ...s,
-              divisionOverride: String(master?.owner_division || ''),
-              isLoanableDefault: master && master.is_loanable_by_default !== undefined
-                ? Boolean(master.is_loanable_by_default)
-                : s.isLoanableDefault,
-            };
-          });
-        const extras = (masterCategories || [])
-          .filter(c => c && c.is_active !== false
-            && String(c.main_type || '').toUpperCase() === group.type
-            && !group.subcategories.some(s => String(s.code).toUpperCase() === String(c.code).toUpperCase()))
-          .map(c => ({
-            code: String(c.code).toUpperCase(),
-            name: String(c.name || c.code),
-            placeholderName: String(c.name || c.code),
-            placeholderBrand: '',
-            placeholderModel: '',
-            divisionOverride: String(c.owner_division || ''),
-            isLoanableDefault: Boolean(c.is_loanable_by_default),
-          }));
-        return { ...group, subcategories: [...kept, ...extras] };
-      })
-      .filter(group => group.subcategories.length > 0);
-  }, [masterCategories, masterByCode]);
+    const grouped = new Map<string, FixedAssetCategoryDef>();
+    const owner = String(selectedDivision || '').trim().toUpperCase();
+    for (const category of masterCategories) {
+      if (!category || category.is_active === false) continue;
+      if (String(category.owner_division || '').trim().toUpperCase() !== owner || !owner) continue;
+      const type = String(category.main_type || 'LNY').trim().toUpperCase() as FixedAssetMainType;
+      const template = FIXED_ASSET_TAXONOMY.find(item => item.type === type);
+      const templateSub = template?.subcategories.find(item =>
+        String(item.code).toUpperCase() === String(category.code || '').toUpperCase()
+        || String(item.divisionOverride || template.defaultDivision).toUpperCase() === owner
+      );
+      const subcategory = {
+        ...(templateSub || {}),
+        code: String(category.code || '').trim().toUpperCase(),
+        name: String(category.name || category.code || '').trim(),
+        placeholderName: templateSub?.placeholderName || String(category.name || category.code || '').trim(),
+        placeholderBrand: templateSub?.placeholderBrand || '',
+        placeholderModel: templateSub?.placeholderModel || '',
+        isLoanableDefault: Boolean(category.is_loanable_by_default),
+        divisionOverride: owner,
+      };
+      if (!subcategory.code) continue;
+      const existing = grouped.get(type);
+      if (existing) existing.subcategories.push(subcategory);
+      else grouped.set(type, {
+        type,
+        label: template?.label || `${type} — ${type}`,
+        categoryType: (category.category_type || template?.categoryType || 'General') as AssetCategoryType,
+        defaultDivision: owner,
+        isDivisionLocked: true,
+        ruleNote: template?.ruleNote || 'Kategori dan owner mengikuti master aktif serta kewenangan akun.',
+        iconName: template?.iconName || 'package',
+        subcategories: [subcategory],
+      });
+    }
+    return Array.from(grouped.values());
+  }, [masterCategories, selectedDivision]);
 
   // Selected state
   const [selectedMainType, setSelectedMainType] = useState<FixedAssetMainType>('IT-H');
   const [selectedSubIndex, setSelectedSubIndex] = useState<number>(0);
-  const [selectedDivision, setSelectedDivision] = useState<OwnerDivision>('IT');
 
   // Sync selected main type when modal opens or allowed categories change
   useEffect(() => {
@@ -307,12 +296,8 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
     return activeMainCat.subcategories[selectedSubIndex] || activeMainCat.subcategories[0];
   }, [activeMainCat, selectedSubIndex]);
 
-  // Owner domain is authoritative on the selected category master row.
-  // Non-superadmins cannot override it in the browser.
-  useEffect(() => {
-    if (activeSub?.divisionOverride) setSelectedDivision(activeSub.divisionOverride);
-    else if (isSuperadmin) setSelectedDivision(activeMainCat.defaultDivision);
-  }, [activeMainCat, activeSub, isSuperadmin]);
+  // selectedDivision is the owner domain returned by the server; category choices
+  // are already constrained to that owner and cannot silently switch ownership.
 
   // Fields
   const [name, setName] = useState('');
@@ -373,31 +358,17 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
 
   // Calculate live preview number
   const currentYear = new Date().getFullYear();
-  const subCode = activeSub?.code || '';
+  const subCode = activeSub.code;
   const livePreviewNumber = `${selectedDivision}-${subCode}-${currentYear}-0001`;
 
   if (!isOpen) return null;
-  if (masterCategories === null || allowedMainCategories.length === 0 || !activeSub || !isCodeSelectable(subCode)) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4">
-        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-          <h2 className="text-base font-bold text-slate-900">Kategori aset belum tersedia</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {masterCategories === null
-              ? 'Sedang memuat kategori aset yang diizinkan.'
-              : 'Tidak ada kategori aset aktif pada owner domain yang menjadi kewenangan Anda. Minta Superadmin memeriksa permission assets.create dan scope owner aset.'}
-          </p>
-          <button type="button" onClick={onClose} className="mt-5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-            Tutup
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (optionsLoading) return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-6"><div className="rounded-xl bg-white px-6 py-5 text-sm font-semibold text-slate-700">Memuat kewenangan pendaftaran aset...</div></div>;
+  if (optionsError) return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-6"><div className="max-w-md rounded-xl bg-white p-6 text-sm text-rose-700"><p className="font-bold">Pilihan owner aset gagal dimuat.</p><p className="mt-2">{optionsError}</p><button type="button" onClick={onClose} className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-white">Tutup</button></div></div>;
+  if (!ownerDomains.length || !allowedMainCategories.length || !activeSub) return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-6"><div className="max-w-md rounded-xl bg-white p-6 text-sm text-slate-700"><p className="font-bold">Tidak ada owner aset yang dapat didaftarkan.</p><p className="mt-2">Akun ini belum memiliki permission assets.create dan scope owner yang sesuai, atau belum ada kategori aktif pada owner tersebut. Hubungi Superadmin untuk pemeriksaan hak akses dan master kategori.</p><button type="button" onClick={onClose} className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-white">Tutup</button></div></div>;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !masterCategories || !isCodeSelectable(subCode)) return;
+    if (!name.trim()) return;
 
     const newAsset: Partial<Asset> = {
       name: name.trim(),
@@ -433,10 +404,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
       };
     }
 
-    const selectedMasterCategory = masterByCode.get(String(subCode).toUpperCase());
-    const selectedCategoryType = selectedMasterCategory?.category_type || activeMainCat.categoryType;
-
-    if (selectedCategoryType === 'License') {
+    if (activeMainCat.categoryType === 'License') {
       newAsset.license_detail = {
         total_seats: totalSeats,
         used_seats: 0,
@@ -496,11 +464,11 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
               <select
                 value={selectedDivision}
                 onChange={(e) => setSelectedDivision(e.target.value as OwnerDivision)}
-                disabled={!isSuperadmin}
+                disabled={ownerDomains.length <= 1}
                 className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-600 disabled:bg-slate-100 disabled:text-slate-600"
               >
-                {availableOwnerDomains.map(owner => (
-                  <option key={owner} value={owner}>{owner}</option>
+                {ownerDomains.map(owner => (
+                  <option key={owner.code} value={owner.code}>{owner.code} — {owner.name}</option>
                 ))}
               </select>
 
