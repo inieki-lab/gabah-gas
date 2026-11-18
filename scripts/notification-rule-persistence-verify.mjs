@@ -1,10 +1,10 @@
 import fs from 'node:fs';
-import assert from 'node:assert/strict';
 
 const server = fs.readFileSync('server.ts', 'utf8');
 const api = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const modal = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
 const migration = fs.readFileSync('server/migrations/098_notification_rule_settings.sql', 'utf8');
+const checks = [
   ['Notification settings require authentication for reads', server.includes("app.get('/api/admin/notification-rules', async") && server.includes('getActor(req);')],
   ['Notification settings require Superadmin for writes', server.includes("app.patch('/api/admin/notification-rules/:ruleId', async") && server.includes('const actor = requireRbacSuperadmin(req, res);')],
   ['Only known notification rule IDs are accepted', /NOTIFICATION_RULE_IDS = new Set\(\['rule-warranty', 'rule-loan', 'rule-sla', 'rule-bast'\]\)/.test(server)],
