@@ -110,7 +110,7 @@
 ---
 
 ### Skenario 3: Pendaftaran Aset & Validasi Duplikasi
-- **Tujuan**: Memverifikasi nomor kanonikal dihasilkan secara atomik dan nomor duplikat ditolak.
+- **Tujuan**: Memverifikasi nomor aset mengikuti aturan aktif, preview tidak mengonsumsi sequence, dan serial number duplikat ditolak. Skenario ini tidak membuktikan atomicity sequence untuk multi-instance.
 - **Langkah Pengujian**:
   1. Login sebagai `IT`. Buka modal *Tambah Aset Baru*.
   2. Pilih kategori "Laptop / Notebook", masukkan nama "Lenovo ThinkPad P14s", serial number `SN-TEST-001`.
