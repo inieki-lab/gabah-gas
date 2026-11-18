@@ -325,6 +325,55 @@ async function main() {
       record('Module lifecycle registry + audit immutability integration',
         'migration 042, seeded modules, immutable audit', `error: ${err.message}`, false);
     }
+    // ---------- Immutable audit_logs table (migration 091) ----------
+    try {
+      const auditMigration = await mig.query(
+        "SELECT version FROM schema_migrations WHERE version = '091'",
+      );
+      record('Audit log immutability migration 091 applied on fresh PostgreSQL database',
+        'version 091 in schema_migrations', `rows=${auditMigration.rowCount}`, auditMigration.rowCount === 1);
+
+      const auditId = 'CI-AUDIT-APPENDONLY-VERIFY';
+      await mig.query(
+        `INSERT INTO audit_logs (id, action, entity, entity_id, user_id, user_name, user_role, details, timestamp)
+         VALUES ($1, 'CI_AUDIT_VERIFY', 'CI', NULL, NULL, 'CI Verification', 'CI', 'Append-only verification row', NOW())`,
+        [auditId],
+      );
+      async function assertAuditLogMutationBlocked(label, sql) {
+        await mig.query('BEGIN');
+        try {
+          await mig.query(sql);
+          await mig.query('ROLLBACK');
+          record(label, 'PostgreSQL error code 55000', 'mutation unexpectedly succeeded', false);
+        } catch (err) {
+          await mig.query('ROLLBACK');
+          record(label, 'PostgreSQL error code 55000', err.code || err.message,
+            err.code === '55000');
+        }
+      }
+      await assertAuditLogMutationBlocked(
+        'Audit log history rejects UPDATE at database level',
+        `UPDATE audit_logs SET details = 'tampered' WHERE id = '${auditId}'`,
+      );
+      await assertAuditLogMutationBlocked(
+        'Audit log history rejects DELETE at database level',
+        `DELETE FROM audit_logs WHERE id = '${auditId}'`,
+      );
+      await assertAuditLogMutationBlocked(
+        'Audit log history rejects TRUNCATE at database level',
+        'TRUNCATE TABLE audit_logs',
+      );
+      const auditLogSurvived = await mig.query(
+        'SELECT COUNT(*)::int AS count FROM audit_logs WHERE id = $1',
+        [auditId],
+      );
+      record('Audit log entry remains intact after rejected mutations',
+        '1 preserved row', `count=${auditLogSurvived.rows[0].count}`,
+        auditLogSurvived.rows[0].count === 1);
+    } catch (err) {
+      record('Audit log append-only integration',
+        'migration 091 and rejected UPDATE/DELETE/TRUNCATE', `error: ${err.message}`, false);
+    }
     await mig.end();
 
     // ---------- 2. Logins (PBKDF2 path, env-provisioned passwords) ----------
