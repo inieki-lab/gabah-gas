@@ -2321,7 +2321,9 @@ async function startServer() {
       .filter(category => category && category.is_active !== false
         && allowedOwnerCodes.has(String(category.owner_division || '').trim().toUpperCase()))
       .map(category => ({ ...category, owner_division: String(category.owner_division).trim().toUpperCase() }));
-    return res.json({ success: true, data: { owner_domains: ownerDomains, categories } });
+    const categoryOwnerCodes = new Set(categories.map(category => category.owner_division));
+    const selectableOwners = ownerDomains.filter(owner => categoryOwnerCodes.has(owner.code));
+    return res.json({ success: true, data: { owner_domains: selectableOwners, categories } });
   });
 
   // Assets Management
