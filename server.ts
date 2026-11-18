@@ -2588,7 +2588,7 @@ async function startServer() {
     res.json({ success: true, data: asset });
   });
 
-  app.patch('/api/assets/:id', (req, res) => {
+  app.patch('/api/assets/:id', async (req, res) => {
     const actor = getActor(req);
     const asset = db.assets.find(a => a.id === req.params.id);
     if (asset?.category_type === 'License' && isPostgresPersistenceActive()
@@ -2674,6 +2674,9 @@ async function startServer() {
       }
     }
 
+    // Keep a rollback snapshot until the durable store confirms the mutation.
+    const previousAsset = { ...asset };
+
     // T2B-1: managing unit operasional (relasi ke org_units.id) — divalidasi
     // terhadap master aktif; nullable untuk kasus ambigu. owner_division &
     // asset_number tetap server-owned (tidak berubah), RBAC tetap owner_division.
@@ -2707,10 +2710,19 @@ async function startServer() {
     }
     asset.updated_at = new Date().toISOString();
 
-    GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
-    persistDataStore().catch(() => {});
-
-    res.json({ success: true, data: asset });
+    const auditEntry = GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
+    try {
+      await persistDataStore();
+      return res.json({ success: true, data: asset });
+    } catch (persistenceError) {
+      Object.assign(asset, previousAsset);
+      const auditIndex = db.auditLogs.findIndex(item => item.id === auditEntry.id);
+      if (auditIndex >= 0) db.auditLogs.splice(auditIndex, 1);
+      try { await persistDataStore(); } catch (rollbackError) {
+        console.error('[GABAH] Failed to persist asset-update rollback snapshot:', rollbackError);
+      }
+      return res.status(500).json({ success: false, message: 'Perubahan aset gagal disimpan. Perubahan dibatalkan.' });
+    }
   });
 
   app.post('/api/assets/:id/assign', (req, res) => {
