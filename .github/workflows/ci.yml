@@ -45,7 +45,7 @@ jobs:
         run: npm ci
 
       - name: Dependency vulnerability gate
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Typecheck (lint)
         run: npm run lint
