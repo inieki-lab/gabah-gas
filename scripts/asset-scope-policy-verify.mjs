@@ -105,7 +105,7 @@ const checks = [
 
   ['Asset list owner filter uses persisted owner domains, not division labels or asset-number prefix inference', assetUi.includes('ownerDomainOptions') && assetUi.includes('Owner aset:') && !assetUi.includes("selectedDivision === 'SC'") && !assetUi.includes("selectedDivision === 'PIBC'") && !assetUi.includes("asset.asset_number.split('-')[0]")],
   ['Dashboard owner summaries aggregate arbitrary owner domains and mark legacy SC/PIBC as review-only', dashboardUi.includes('ownerAssetCounts') && dashboardUi.includes('ownerAssetSummary') && dashboardUi.includes('legacy owner — review') && !dashboardUi.includes('scAssets') && !dashboardUi.includes('pibcAssets')],
-  ['Contract UI uses dynamic owner filters and does not grant legacy Supply Chain/PIBC role fallbacks', contractUi.includes('const ownerDomains = useMemo') && contractUi.includes("label: 'Owner'") && !contractUi.includes("'Supply Chain'") && !contractUi.includes("'PIBC'")],
+  ['Contract UI uses dynamic owner filters and does not grant legacy Supply Chain/PIBC role fallbacks', contractUi.includes('const ownerDomains = useMemo') && contractUi.includes("options: ['ALL', ...ownerDomains]") && contractUi.includes("label: 'Owner'") && !contractUi.includes("['IT', 'GA', 'Supply Chain', 'PIBC']")],
   ['Category normalization never silently assigns an unknown owner to GA', taxonomy.includes("owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED'") && taxonomy.includes('Unknown ownership must remain unassigned')],
 
 ];
