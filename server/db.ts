@@ -516,7 +516,7 @@ export const db = {
   ] as OrgJobLevel[],
 
   // ORG-MODEL: Master Unit/Bagian — terpisah dari jabatan & lokasi.
-  // PIBC / Supply Chain / Pangsub adalah UNIT, bukan jabatan.
+  // Lokasi PIBC/RPC/SC/Pangsub bukan unit atau divisi. Placeholder lama dipertahankan nonaktif untuk menjaga referensi historis.
   orgUnits: [
     { id: 'UNIT-SEKDIR', name: 'Sekretariat Direksi', division_code: 'Umum', is_active: true },
     { id: 'UNIT-HUMAS', name: 'Humas & Protokoler', division_code: 'Umum', is_active: true },
@@ -524,9 +524,9 @@ export const db = {
     { id: 'UNIT-GA-SARPRAS', name: 'GA / Sarpras', division_code: 'GA', is_active: true },
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
     { id: 'UNIT-PIBC-ME', name: 'Tim Perawatan (ME)', division_code: 'Umum', office_location_id: 'OFF-PIBC', is_active: true },
-    { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
-    { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
-    { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
+    { id: 'UNIT-SC', name: 'Legacy location placeholder — RPC/SC', division_code: 'SC', is_active: false },
+    { id: 'UNIT-PIBC', name: 'Legacy location placeholder — PIBC', division_code: 'PIBC', is_active: false },
+    { id: 'UNIT-PANGSUB', name: 'Legacy location placeholder — Pangsub', division_code: 'SC', is_active: false },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
   ] as OrgUnit[],
 
@@ -550,8 +550,8 @@ export const db = {
   assetLocations: DEFAULT_ASSET_LOCATIONS,
 
   divisions: [
-    { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
-    { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
+    { code: 'SC', name: 'Legacy owner SC — lokasi RPC/SC', leader: 'Nonaktif — lokasi, bukan divisi', depts: [], is_active: false },
+    { code: 'PIBC', name: 'Legacy owner PIBC — lokasi PIBC', leader: 'Nonaktif — lokasi, bukan divisi', depts: [], is_active: false },
     { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
     { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
     { code: 'Audit', name: 'Satuan Pengawas Internal (SPI)', leader: 'Kepala SPI', depts: ['Audit Kepatuhan & PSAK 16', 'Tinjauan Tata Kelola Aset'] },
