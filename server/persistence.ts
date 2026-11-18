@@ -474,16 +474,50 @@ async function backfillNormalizedTables(): Promise<void> {
         [String(division.code).trim(), String(division.name).trim(), division.is_active !== false],
       );
     }
+    for (const level of db.jobLevels || []) {
+      await client.query(
+        `INSERT INTO org_job_levels (code, label, order_num, is_active)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (code) DO UPDATE SET label=EXCLUDED.label, order_num=EXCLUDED.order_num, is_active=EXCLUDED.is_active`,
+        [level.code, level.label, Number(level.order_num || 0), level.is_active !== false],
+      );
+    }
+    for (const unit of db.orgUnits || []) {
+      await client.query(
+        `INSERT INTO org_units (id, name, division_code, is_active)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, division_code=EXCLUDED.division_code, is_active=EXCLUDED.is_active`,
+        [unit.id, unit.name, unit.division_code || 'Umum', unit.is_active !== false],
+      );
+    }
+    for (const location of db.officeLocations || []) {
+      await client.query(
+        `INSERT INTO org_office_locations (id, name, is_active)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, is_active=EXCLUDED.is_active`,
+        [location.id, location.name, location.is_active !== false],
+      );
+    }
     for (const u of db.users) {
       await client.query(
-        `INSERT INTO users (id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,updated_at)
-         VALUES ($1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),$6,$7,$8,$9,$10,NOW())
+        `INSERT INTO users (
+           id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,
+           job_level_code,unit_id,office_location_id,updated_at
+         )
+         VALUES (
+           $1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),$6,$7,$8,$9,$10,$11,$12,$13,NOW()
+         )
          ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,email=EXCLUDED.email,role=EXCLUDED.role,
            division_id=EXCLUDED.division_id,phone=EXCLUDED.phone,avatar=EXCLUDED.avatar,is_active=EXCLUDED.is_active,
            password_hash=COALESCE(EXCLUDED.password_hash, users.password_hash),
            password_salt=COALESCE(EXCLUDED.password_salt, users.password_salt),
-           updated_at=NOW()`,
-        [u.id,u.name,u.email,u.role,u.division,u.phone || null,u.avatar || null,u.is_active,u.password_hash || null,u.password_salt || null],
+           job_level_code=EXCLUDED.job_level_code, unit_id=EXCLUDED.unit_id,
+           office_location_id=EXCLUDED.office_location_id, updated_at=NOW()`,
+        [
+          u.id,u.name,u.email,u.role,u.division || 'Umum',u.phone || null,u.avatar || null,u.is_active,
+          u.password_hash || null,u.password_salt || null,u.job_level_code || null,u.unit_id || null,
+          u.office_location_id || null,
+        ],
       );
     }
     // SECURITY (CR-03): db.sessions are deliberately NOT backfilled into
