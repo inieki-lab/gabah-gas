@@ -127,7 +127,7 @@ async function main() {
       `${legacyScCreate.status} + ${legacyPibcCreate.status}`, legacyScCreate.status === 409 && legacyPibcCreate.status === 409);
 
     const allLoans = (await req(s1.base, 'GET', '/api/loans', { token: admin })).json?.data || [];
-    const activeLoanAssetIds = new Set(allLoans.filter(loan => ['approved', 'borrowed'].includes(String(loan.status || '').toLowerCase())).map(loan => loan.asset_id));
+    const activeLoanAssetIds = new Set(allLoans.filter(loan => ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(String(loan.status || '').toLowerCase())).map(loan => loan.asset_id));
     const legacyAsset = assets0.find(asset => ['SC', 'PIBC'].includes(String(asset.owner_division || '').toUpperCase()) && !activeLoanAssetIds.has(asset.id));
     if (!legacyAsset) throw new Error('fixture aset owner legacy SC/PIBC tanpa pinjaman aktif tidak tersedia');
     const legacySnapshot = { asset_number: legacyAsset.asset_number, location: legacyAsset.location, managing_unit_id: legacyAsset.managing_unit_id };
