@@ -268,7 +268,6 @@ function hydrateDbFromState(state: any): void {
   if (meOperationalUnit) {
     meOperationalUnit.division_code = 'Umum';
     meOperationalUnit.office_location_id = 'OFF-PIBC';
-    meOperationalUnit.name = 'Tim Perawatan (ME)';
   }
 
   const DEFAULT_OFFICE_LOCATIONS = [
