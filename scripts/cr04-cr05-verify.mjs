@@ -211,6 +211,13 @@ async function main() {
     const mig = new pg.Client({ connectionString: TEST_DB_URL });
     mig.on('error', e => console.error('[pg ledger async error]', e.message));
     await mig.connect();
+    // Authenticate before the organization persistence checks below, which create
+    // masters/users through authenticated API endpoints.
+    const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS } });
+    const adminToken = adminLogin.json?.data?.token || '';
+    record('login admin', '200 + token', `HTTP ${adminLogin.status}`, adminLogin.status === 200 && Boolean(adminToken));
+    if (!adminToken) throw new Error('cannot continue without admin token');
+
     // Org masters and employee assignments must be durable in normalized PostgreSQL,
     // not only in gabah_state. Create one isolated test job level/unit/user.
     const customLevel = await req(base, 'POST', '/api/master/job-levels', {
@@ -476,10 +483,7 @@ async function main() {
     await mig.end();
 
     // ---------- 2. Logins (PBKDF2 path, env-provisioned passwords) ----------
-    const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS } });
-    const adminToken = adminLogin.json?.data?.token || '';
-    record('login admin', '200 + token', `HTTP ${adminLogin.status}`, adminLogin.status === 200 && Boolean(adminToken));
-
+    // adminToken was acquired before the first authenticated organization API call.
     const itLogin = await req(base, 'POST', '/api/auth/login', { body: { email: IT_EMAIL, password: USER_PASS } });
     const itToken = itLogin.json?.data?.token || '';
     record('login IT user', '200 + token', `HTTP ${itLogin.status}`, itLogin.status === 200 && Boolean(itToken));
