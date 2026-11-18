@@ -3,7 +3,7 @@
 **Dokumen:** `docs/testing/UAT.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus.  
+**Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Terdapat blocker organisasi pada kategori/routing tiket SC/PIBC yang harus diselesaikan sebelum release.  
 **Terakhir Diperbarui:** 18 November 2026
 
 ---
@@ -184,7 +184,7 @@
 ---
 
 ### Skenario 10: Contract Management (Domain Tersendiri) & Kategori Tiket
-1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware → `IT`; fasilitas → `GA`; SC → `SC`; PIBC → `PIBC`. Tidak ada opsi License/General/Contract di form.
+1. **Kategori / routing tiket**: software license (Accurate/M365/VPN) dan hardware IT harus masuk domain `IT`; fasilitas GA harus masuk domain `GA`. Saat ini form masih menampilkan Supply Chain dan PIBC sebagai kategori departemen — ini adalah defect organisasi yang tercatat pada `docs/audits/HUMAS-SEKDIR-ME-STATIC-REVIEW.md`, bukan perilaku yang boleh disahkan. Jangan menyatakan UAT routing lulus sampai pemetaan owner operasional RPC/SC, PIBC, dan ME disetujui, diterapkan end-to-end, dan diuji. Tidak ada kategori License/General/Contract sebagai domain tiket.
 2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
 3. **Dokumen kontrak**: unggah PDF/DOC/JPG yang sah, unduh kembali sebagai PIC/owner yang berwenang, dan pastikan user di luar scope menerima 404. Restart aplikasi; file harus tetap dapat diunduh. Backup database dan volume uploads harus diuji bersama.
 3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
