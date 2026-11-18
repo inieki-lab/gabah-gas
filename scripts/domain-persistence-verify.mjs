@@ -43,5 +43,7 @@ assert.match(passwordChange, /await persistDataStore\(\)[\s\S]*?revokeUserSessio
 assert.match(passwordChange, /password_hash = previousCredentials\.password_hash[\s\S]*?auditIndex/,
   'password change must restore credentials and audit on persistence failure');
 assert.doesNotMatch(passwordChange, /persistDataStore\(\)\.catch\(\(\) => \{\}\)/);
+assert.match(source, /void persistDataStore\(\)\.catch\(error =>/,
+  'post-response compatibility safety net must catch persistence failures');
 
-console.log('Vendor, Knowledge Base, and password durable persistence checks: 22/22 passed');
+console.log('Vendor, Knowledge Base, password, and persistence safety-net checks: 23/23 passed');
