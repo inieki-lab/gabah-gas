@@ -2315,7 +2315,7 @@ async function startServer() {
       .filter(owner => owner && owner.is_active !== false
         && canMutateAssetOwner(actor, String(owner.code || ''), 'assets.create'))
       .map(owner => ({ code: String(owner.code).trim().toUpperCase(), name: String(owner.name || owner.code) }))
-      .filter(owner => owner.code);
+      .filter(owner => owner.code && !['SC', 'PIBC'].includes(owner.code));
     const allowedOwnerCodes = new Set(ownerDomains.map(owner => owner.code));
     const categories = (db.categories || [])
       .filter(category => category && category.is_active !== false
