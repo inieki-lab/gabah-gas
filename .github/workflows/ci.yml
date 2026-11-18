@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, 'audit/**']
   pull_request:
-    branches: [main, 'audit/**', preview/green-enterprise-theme-laptop]
+    branches: [main, 'audit/**', 'fix/**', preview/green-enterprise-theme-laptop]
 
 jobs:
   verify:
