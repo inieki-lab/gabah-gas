@@ -424,7 +424,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {myOpenTickets.length} Sedang Ditangani Tim
               </div>
               <div className="text-[11px] text-slate-500 font-medium mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span>Layanan Helpdesk PIBC</span>
+                <span>Layanan Helpdesk</span>
                 <ArrowRight className="w-3 h-3 text-rose-600" />
               </div>
             </div>
