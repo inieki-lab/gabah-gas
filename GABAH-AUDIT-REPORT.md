@@ -404,3 +404,362 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 ---
 
 *Akhir laporan — dibuat untuk review pemilik repository sebelum keputusan perbaikan. Tidak ada perubahan kode yang dilakukan dalam audit ini.*
+
+
+---
+
+# 13. Follow-up Audit — Runtime Persistence PR #119 (2026-11-18)
+
+**Branch:** `audit/runtime-persistence-fail-closed`  
+**Latest reviewed commit:** `372be247e0a4da97496839e85745761614d4755a`  
+**Release gate:** **NOT READY — CI blocked**
+
+## Verified changes in this follow-up
+
+1. Recovery snapshot creation now occurs inside the serialized persistence queue and is published only after PostgreSQL persistence succeeds.
+2. `gabah_state` JSONB and normalized-table synchronization now share one PostgreSQL transaction in `persistPostgresState()`. A failure in normalized synchronization rolls back the state-row update as well.
+3. `backfillNormalizedTables(existingClient?)` reuses the caller's transaction client, while standalone backfills retain their own transaction lifecycle.
+4. Regression assertions were added for queued snapshot ordering and shared transaction/rollback structure.
+
+## Current blockers and risks
+
+| Item | Evidence | Status |
+|---|---|---|
+| CI dependency gate | Latest checked CI run for commit `372be247` fails at **Dependency vulnerability gate** (`npm audit --audit-level=high`); subsequent tests are skipped | BLOCKED |
+| Runtime transaction integration | Current regression is source-contract/static verification; live PostgreSQL fault-injection proving rollback is still required | NEEDS INTEGRATION TEST |
+| Audit durability | `GabahDomainService.recordAudit()` starts `persistDataStore()` and handles rejection with a warning, without awaiting persistence. Audit writes can therefore fail after the caller has continued | OPEN |
+| In-memory rollback | Persistence failure does not generically restore mutated in-memory domain objects | OPEN |
+| Audit immutability | Append-only enforcement at the PostgreSQL table level remains unverified | OPEN |
+| Full role UAT | Browser/API end-to-end tests for all operational roles remain incomplete | OPEN |
+
+## Next required work
+
+1. Obtain the exact package/advisory details from the failing npm audit output; do not suppress the gate or upgrade dependencies blindly.
+2. Add a live PostgreSQL integration test that injects a failure during normalized-table synchronization and proves the `gabah_state` update is rolled back.
+3. Define and implement an awaited audit-persistence contract for successful state-changing operations, including failure behavior and transaction boundaries. Do not convert the existing synchronous service methods mechanically without mapping their callers.
+4. Add an append-only database policy for audit logs, with explicit retention/administrative handling.
+5. Continue failure-path rollback and multi-role UAT.
+
+**Important:** This follow-up does not declare PR #119 or the release ready. No merge to `main` is authorized by this report.
+
+
+## 14. Follow-up Audit — Audit Event Durability Call-Path Review (2026-11-18)
+
+**Branch:** `audit/runtime-persistence-fail-closed`
+
+### Verified source findings
+
+1. `GabahDomainService.recordAudit()` in `server/services.ts` is synchronous, pushes the event into `db.auditLogs`, then starts `persistDataStore()` without awaiting it. A persistence rejection is reduced to a console warning. The method therefore cannot guarantee that the audit event is durable before its caller proceeds.
+2. The same helper is used by synchronous domain mutations (for example asset create/assign/move) and by HTTP routes. Several routes explicitly call `await persistDataStore()` after recording the event, but this is not universal: RBAC role/permission/scope routes write RBAC tables in their own transaction and then call the non-awaited helper.
+3. `recordContractAudit()` in `server/contracts.ts` only appends to the in-memory audit list. Contract-domain methods (create/update/document/milestone/renewal) do not themselves persist the event; durability depends on the calling route's later persistence boundary. This coupling needs route-by-route verification.
+4. The existing `test:ticket-contract-audit-persistence` covers ticket status and binary contract upload rollback, but it does not prove durability for the full set of contract-domain operations or RBAC routes.
+5. The service layer's `persistDomainMutation()` awaits `persistDataStore()` for several meeting-room operations. This is the safer pattern, but the audit event is still added before persistence and the mutated in-memory object is not generally restored if persistence rejects.
+
+### Required remediation (not yet implemented)
+
+- Introduce an explicit awaited persistence boundary for every successful state-changing route/domain operation; do not rely on a fire-and-forget write inside a synchronous audit helper.
+- For operations already using a PostgreSQL transaction (notably RBAC), write the audit row in that same transaction rather than separately serializing the entire in-memory snapshot after commit.
+- For in-memory domain mutations, capture/restore the affected entity and audit-list state on persistence failure, or migrate the mutation itself into a database transaction. Returning HTTP success after failed persistence is prohibited.
+- Extend regression coverage across RBAC, asset, loan, ticket, maintenance, meeting-room, vendor, and contract mutations, including failure injection and verification that neither domain state nor audit state is partially committed.
+
+### CI status recheck
+
+The latest inspected Actions job for run `44191172144` confirms that `Dependency vulnerability gate` is the failing step and all subsequent verification/build/security/UAT jobs were skipped. The GitHub integration does not expose that job's log archive or Dependabot alert endpoint in this session, so the exact package/advisory is **not yet verified**. No dependency version or audit threshold was changed.
+
+**Release gate remains: NOT READY. No merge to `main`.**
+
+
+## 15. Contract Domain Mutation Durability — Implementation Added (2026-11-18)
+
+**Latest implementation commit:** `3b42fc71da4645932b2c59f796fc29cb0965e317`
+
+### Changes made
+
+- Contract create, update, legacy document metadata, milestone, and renewal-decision mutations now await durable persistence inside the domain service.
+- Each operation captures its prior in-memory state and audit-log identity. If the authoritative write fails, the changed contract (or newly created contract) and its corresponding uncommitted audit event are removed/restored before the error is returned.
+- Persistence failures are surfaced as HTTP 503 through the existing route error handling rather than returning a successful response.
+- The five HTTP routes now await their domain methods and no longer perform a redundant second persistence write.
+- Added `test:contract-domain-persistence` and registered it in CI to assert awaited persistence, in-memory rollback, audit-event rollback, and awaited route calls.
+
+### Verification status
+
+- Implementation is committed to the working audit branch.
+- CI for the latest commit has been triggered; results are pending at the time this report was updated.
+- The new regression is a source-contract test, not a substitute for live PostgreSQL fault injection. Runtime failure injection and full endpoint regression remain required.
+- The general `GabahDomainService.recordAudit()` fire-and-forget behavior remains OPEN outside the contract-domain operations addressed above.
+- The dependency vulnerability gate remains unresolved until the exact advisory can be obtained from CI output.
+
+**Release gate remains: NOT READY. No merge to `main`.**
+
+
+### Follow-up correction — HTTP failure semantics
+
+The five contract mutation routes now preserve the domain service's HTTP 503 status when durable persistence fails. This prevents the new rollback path from being misreported as an ordinary client validation error (400). The regression script now checks this route-level failure contract as well.
+
+**Latest implementation/test commit:** `98a7faddacf10afbbc5fae1b9ab647067d3bfa15`
+
+
+## 16. CI Dependency Gate — Advisory Identified (2026-11-18)
+
+**Branch:** `audit/runtime-persistence-fail-closed`
+
+### Verified CI evidence
+
+- Workflow run `44193696971` completed with failure in job `verify` (exact PR #119 head `13cd75dd29c3d1a6cd4fc65bb3f3a2d817039a61`).
+- The first failing step is `Dependency vulnerability gate`, executing `npm audit --audit-level=high`.
+- npm reports **4 high severity dependency paths** for the advisory **GHSA-fc5q-39xc-vjpf**: ReDoS in `picomatch`. The lockfile resolves `picomatch@4.0.7`; npm's report shows transitive paths through `fdir`, `tinyglobby`, and `vite`.
+- The CI log says `npm audit fix` is available. The advisory is identified as **CVE-2026-112366**. GitHub Advisory Database lists the affected range as through `4.0.7` and leaves the patched version **Unknown**; npm currently lists `4.0.7` as the latest release. These are external advisory/registry facts, separate from the CI log. npm's generic `npm audit fix` hint is not proof that a safe patched release exists. Sources: https://github.com/advisories/GHSA-fc5q-39xc-vjpf and https://www.npmjs.com/package/picomatch?activeTab=versions.
+
+### Decision
+
+- Do **not** run a blind `npm audit fix`, add an unverified override, downgrade the audit threshold, or suppress the finding. Such changes would not demonstrate remediation and could introduce dependency breakage.
+- Keep the dependency gate blocking CI until upstream publishes a verified fix or a reviewed mitigation is implemented and justified.
+- The CI failure occurs before typecheck, build, PostgreSQL integration, security verification, and the rest of the regression suite; those skipped jobs must not be interpreted as passing.
+
+### Next actions
+
+1. Monitor the upstream `picomatch` advisory/release for a version beyond the affected range and verify the exact transitive dependency tree before updating the lockfile.
+2. Once a verified fix exists, update the lockfile, run the full regression/build/security workflow, and inspect the complete npm audit output again.
+3. Continue domain audit durability and rollback remediation independently; this dependency finding does not explain or close those application-level risks.
+
+**Release gate remains: NOT READY. No merge to `main`; do not pull this branch for UAT while CI is blocked.**
+
+
+## 17. Dependency risk containment — development tooling only (2026-11-18)
+
+- Moved `vite`, `@tailwindcss/vite`, and `@vitejs/plugin-react` from production dependencies to `devDependencies`; these are build-time tools, not application runtime dependencies.
+- Regenerated the lockfile's dependency classification so the `vite → tinyglobby/fdir → picomatch` chain is marked development-only. The production dependency graph does not include these packages.
+- CI now runs a blocking `npm audit --omit=dev --audit-level=high` against production dependencies.
+- A separate, narrow development-tool policy checks the exact GHSA `GHSA-fc5q-39xc-vjpf` only, verifies every affected node remains `dev: true`, and fails on any additional advisory, unexpected package path, severity change, or production dependency exposure.
+- This is **risk containment, not an upstream patch**. The advisory still describes a ReDoS in picomatch through 4.0.7; no patched release is assumed. Vite/build tooling is used in trusted CI/build operations, not shipped as the application runtime. Keep the exception temporary and remove it when upstream resolution is verified.
+- Validation: code commit `44f93f8ebfee817ff5d63980dcb43b2fb8438568` passed CI run `44196100292` (all steps successful), including `npm ci`, production audit, Docker build/runtime smoke, PostgreSQL 17 integration, live P0 security, and the complete regression suite. A later documentation-only commit will trigger another CI run.
+
+
+### Production runtime dependency boundary follow-up — 2026-11-18
+
+- The server entrypoint previously had a static top-level import from `vite`, although Vite middleware is used only when `NODE_ENV !== 'production'`. Because the production esbuild bundle externalizes packages, a static import would still require Vite at process startup even when the production branch does not use it.
+- Changed the server to dynamically import Vite only inside the development branch. This makes moving Vite and its plugins to `devDependencies` compatible with the Docker runtime stage's `npm ci --omit=dev`.
+- Added `test:runtime-build-dependency-boundary` and a CI step to guard against reintroducing a static Vite import.
+- Runtime image smoke and production boot checks remain mandatory; source-level checks do not replace them.
+
+
+## 18. CI regression-suite repair and release-chain status — 2026-11-18
+
+- The first complete run exposed stale source-contract assertions after earlier safe refactors: meeting-room service methods had become `async`, persistence now passes the active PostgreSQL client into `backfillNormalizedTables(client)`, and knowledge vote/view routes had become `async` to await persistence. Updated the affected tests to assert the current contract instead of the old syntax.
+- Corrected the room/facility persistence test's malformed regular-expression escapes and its durable-route matcher.
+- Latest code validation: commit `44f93f8ebfee817ff5d63980dcb43b2fb8438568`, CI run `44196100292`, conclusion **success**. All workflow steps passed, including P0 live HTTP security, PostgreSQL 17 fresh-database/persistence integration, production image runtime smoke, tickets, loans, meeting rooms, contracts, maintenance, asset scope, role navigation, and dashboard scope.
+- Release-chain review: PR #119 and PR #118 currently report clean mergeability against their respective parent branches. Their parent PR #115 is **dirty/conflicted** against `main`; GitHub compare reports the dynamic RBAC branch diverged from `main` (459 commits ahead, 1 behind). Do not merge #119 or #118 until PR #115 is reconciled and the full ordered stack is revalidated.
+- PR #116 is a separate open WIP based on the dynamic RBAC branch and is not silently included in the #115 → #118 → #119 chain. Its changes require independent review before release.
+- UAT status: **not yet authorized**. Green CI for the #119 head is necessary but not sufficient while the parent branch conflict and stacked PR integration remain unresolved.
+
+
+## 19. Exact-head CI revalidation — 18 November 2026
+
+- Current PR #119 head verified from GitHub: `d96f6c7f1f53376a0b1dbbe3229e2ad60afcd5c6`.
+- Exact-head workflow runs #1910 (`44196502654`) and #1911 (`44196511182`) both completed successfully. The latest run #1911 has a successful `verify` job.
+- The complete job passed: production dependency audit, scoped development-tool advisory policy, TypeScript lint, frontend/server production build, Docker image build and runtime smoke, PostgreSQL 17 fresh-database/persistence integration, live P0 HTTP security checks, and all registered RBAC, asset, loan, ticket, meeting-room, contract, vendor, organization, dashboard, and maintenance regressions.
+- The earlier dependency-gate failure on prior commits is superseded for this exact head by the successful production dependency audit and narrowly scoped development-tool policy. The picomatch advisory remains explicitly documented as temporary development-tool risk containment, not an upstream patch.
+- Merge remains blocked by release-chain topology, not by this CI run: PR #115 (`audit/dynamic-rbac-full-sync` → `main`) is still `dirty` / not mergeable; compare reports 459 commits ahead and 1 behind. PR #118 is based on PR #115's branch, and PR #119 is based on PR #118's branch. Do not merge the child PRs or retarget them directly to `main` while the parent conflict is unresolved.
+- Browser-based UAT, backup/restore rehearsal, deployment rehearsal, and concurrent multi-process issuance tests remain outstanding.
+
+**Updated release gate:** exact-head CI = PASS; parent integration/conflict resolution and operational UAT = OPEN. No merge to `main` yet.
+
+
+## 20. Reminder Center payload robustness — 18 November 2026
+
+- Fixed the Administration reminder overview renderer so `recent_failures` is type-checked with `Array.isArray` before accessing `.length` or calling `.map`.
+- Rendering is capped to five failure rows even if the API returns more than the intended display limit.
+- Added `scripts/reminder-failure-payload-verify.mjs`, registered it as `npm run test:reminder-failure-payload`, and added the check to CI.
+- This closes a frontend crash path when the reminder API returns a truthy non-array value (for example an object/string/null-like malformed payload).
+- **At the time of this entry:** Notification Rules still used browser `localStorage`. This was subsequently replaced by PostgreSQL-backed settings and audit in section 22; section 22 is the authoritative current status.
+- Validation: the exact latest head `813d33c3f0cc1b8212be60c0b1ea0a8b3d2f0c96` completed GitHub Actions run `44211191175` successfully. All 74 steps passed, including live P0 HTTP security, PostgreSQL 17 persistence integration, Docker runtime smoke, and the full regression suite.
+
+**Checklist:** reminder failure payload crash guard = implemented and CI PASS; Notification Rules central persistence = OPEN.
+
+
+## 21. Reminder regression exact-head CI result — 18 November 2026
+
+- Exact branch head `813d33c3f0cc1b8212be60c0b1ea0a8b3d2f0c96` was verified against workflow run `44211191175`.
+- The `verify` job completed with conclusion `success`; all 74 steps completed and no failed step was reported.
+- This confirms the Reminder Center malformed-payload guard and its regression check are included in a green full pipeline. Notification Rules persistence was subsequently completed in section 22; system settings centralization and numbering configuration parity were still open at the time of this entry.
+- PR #119 remains in its stacked release chain. No merge to `main` or laptop UAT authorization is implied by this CI result.
+
+
+## 22. Notification Rules PostgreSQL persistence — 18 November 2026
+
+- Added migration 098 with a PostgreSQL-authoritative row for each supported notification rule (warranty, loan, SLA, and BAST), seeded Active using conflict-safe inserts.
+- Added append-only `gabah_notification_rule_audit`; status changes are recorded in the same database transaction as the setting update.
+- Added authenticated read and Superadmin-only update APIs. Read-only users can see the authoritative state; only Superadmin can change it. The update accepts only a known rule ID and a strict boolean status; the row is locked with `FOR UPDATE` to serialize concurrent changes. No-op updates do not create false audit entries.
+- Replaced browser `localStorage` loading/saving in Administration with API reads and writes. UI state changes only after the server confirms persistence; failed reads disable toggles rather than silently falling back to browser state. Read-only views also fetch the real server state and cannot mutate it.
+- Wired the centrally stored warranty, loan, and SLA switches into the Dashboard Attention feed. If PostgreSQL is active but the required settings cannot be read, the feed returns 503 rather than displaying potentially incorrect alerts.
+- Wired the BAST switch to the physical loan handover route. When enabled, the successful handover creates in-app notifications for the borrower and the asset-owning division; the setting is checked before the state transition. When disabled, the handover still succeeds but no BAST notifications are created.
+- **Scope still open:** warranty/loan/SLA switches currently govern the Dashboard Attention feed. This work does not yet claim to gate every email, Telegram, or other in-app producer across the application.
+- Added `test:notification-rule-persistence` and a CI step covering Superadmin guards, strict input, row locking, atomic audit, migration seeding, no localStorage dependency, UI save ordering, and dashboard enforcement.
+- Early CI attempts exposed a malformed regression assertion, an obsolete test expectation, and a missing UI disabled-state guard; these were corrected. The final exact code head `d31a8672df603bc3f45ee0f7828965cbc022d343` passed GitHub Actions run `44216183330`: `verify` succeeded with all 75 steps completed and no failures.
+
+**Checklist:** Notification Rules DB storage/API/audit = implemented; warranty/loan/SLA dashboard attention enforcement = implemented; BAST in-app handover notifications = implemented; outbound email/Telegram integration = OPEN; exact-head CI = PASS (75/75 steps, run 44216183330).
+
+## 23. Notification Rules exact-head release validation — 18 November 2026
+
+- Exact code SHA `d31a8672df603bc3f45ee0f7828965cbc022d343` was validated by workflow run `44216183330`.
+- The complete `verify` job concluded `success`; all 75 steps completed, including TypeScript lint, production Docker image/runtime smoke, PostgreSQL 17 fresh-database and persistence integration, live HTTP security checks, and the full regression suite.
+- The notification regression test passed on this exact head, covering authenticated read/Superadmin write policy, strict inputs, transactional audit, dashboard rule enforcement, BAST handover notification creation, UI read-only state, no localStorage fallback, and server-failure handling.
+- PR #119 remains Draft and stacked on its parent branch. This green CI does not authorize merging to `main` or laptop UAT while the parent release-chain conflict and operational UAT gates remain open.
+
+**Notification Rules release gate:** implementation = complete for the documented scope; exact-head CI = PASS; outbound email/Telegram gating for warranty/loan/SLA and the wider System Settings centralization = OPEN.
+
+## 24. System Settings company-profile centralization — 18 November 2026
+
+- Added migration 099 with a singleton PostgreSQL company-profile settings row and append-only before/after audit history. Conflict-safe seeding preserves any existing configuration.
+- Added authenticated read API and Superadmin-only update API. Updates accept exactly four fields: company name, accounting standard, base currency, and fiscal year; field lengths and fiscal-year range are validated server-side.
+- Settings changes use a row lock and update/audit insertion in one PostgreSQL transaction. No-op updates do not create false audit entries; database failures return an explicit error.
+- Replaced `gabah_system_settings` browser `localStorage` reads/writes in Administration. The form loads authoritative server data, shows errors instead of falling back to stale browser defaults, and only reports success after the API confirms persistence.
+- Non-Superadmin views can read the current profile but remain read-only. The operational SLA reference values (Urgent 4h, High 8h, Medium 24h, Low 48h) are now disabled in the form; they remain server-owned and are not editable through this metadata endpoint.
+- Removed unused local-only fields from the active settings form. The persisted profile metadata is not yet consumed throughout all app branding/reporting/accounting workflows; that broader integration remains open and must not be assumed.
+- Added `test:system-settings-persistence` and a CI regression step covering API authorization, field allowlist/validation, transaction/audit, migration seed, localStorage removal, read-only behavior, and SLA reference locking.
+- The final exact code head `0416c2e035b2b635b4c6d02b1287d953c3dd9db6` passed workflow run `44217401104`; the `verify` job completed successfully with all 76 steps and no failures, including the stricter string-type validation added after the first green run.
+
+**Checklist:** company-profile PostgreSQL storage/API/audit = implemented; SLA policy remains server-owned/read-only; app-wide consumption of company profile metadata = OPEN; exact-head CI = PASS (76/76 steps, run 44217401104).
+
+## 25. Numbering configuration cleanup and organization-model conflict — 18 November 2026
+
+- Removed the unused browser-only `gabah_numbering_config` state and local save handler from Administration. The active numbering interface already uses PostgreSQL-backed numbering rules and server sequence counters.
+- Full system backup now exports `numbering_rules` and `numbering_sequences` from the server-backed state instead of the obsolete local configuration shadow.
+- The displayed `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` pattern is explicitly labelled as the current technical generator format, not a confirmed company-wide numbering standard. Final standard remains pending company confirmation; no format redesign was made.
+- Added regression assertions to the existing numbering-rule test to prevent reintroducing localStorage numbering config and to ensure backup exports server-authoritative rules/counters.
+- **Organization-model conflict found; not auto-remapped:** current seed/model still treats `SC` and `PIBC` as owner divisions in `server/taxonomy.ts`; seeded user profiles include `division: 'SC'` and `division: 'PIBC'`, while their office locations are `OFF-RPC` and `OFF-PIBC`. The numbering UI also still offers SC and PIBC as owner divisions. This conflicts with the approved project rule that SC/PIBC are locations, not owner domains or roles, and that Supply Chain is renamed RPC. Location/custodian must never determine asset owner: IT owns IT hardware/software/licenses/SaaS and IT/ISP contracts; GA owns CCTV/TV/projector/furniture and general non-IT equipment regardless of location. Records formerly labelled SC must be mapped to RPC only where the underlying business owner is the Supply Chain/RPC function; PIBC-market service contracts and staff require a true business-owner mapping. Do not mass-convert assets/contracts/users to RPC or GA merely from their location.
+- Exact branch head `0416c2e035b2b635b4c6d02b1287d953c3dd9db6` passed workflow run `44217401104` with all 76 steps successful.
+
+**Checklist:** numbering localStorage shadow = removed; backup uses database rules/counters = implemented; final company numbering standard = OPEN; SC/PIBC owner-domain normalization = OPEN pending safe ownership mapping.
+
+## 26. Master location/division local-shadow removal — 18 November 2026
+
+- Removed browser `localStorage` shadows `gabah_master_locations` and `gabah_org_divisions` from Administration. The UI now starts with empty collections and uses the `/api/master/locations` and `/api/master/divisions` responses as the source of truth, including valid empty arrays.
+- On master-data fetch failure, the location/division collections are cleared and an error toast is shown instead of continuing to display stale browser-cached values.
+- Removed the `Reset Default` division action because it only reset client state/localStorage and had no server-side reset API. Existing create/edit/delete operations remain server-backed.
+- Fixed location creation to use the exact location object/ID returned by `POST /api/master/locations`. Previously the client generated its own timestamp ID and ignored the server response, which could make subsequent edit/delete requests target the wrong ID.
+- Added ORG-MODEL regression assertions for absence of localStorage shadows, handling of empty server results, removal of the fake reset action, and use of the server-generated location ID.
+- The only remaining `localStorage` use in this Administration component is the authentication token read for API authorization; master data is no longer shadowed there.
+- Exact code SHA `fec319a76fac2ce264d2ccabbd9a82d70464615c` passed workflow run `44218282571`; the `verify` job completed successfully with all 76 steps and no failures.
+
+**Checklist:** master location/division localStorage shadow = removed; fake client-only reset = removed; location create/edit/delete ID consistency = fixed; exact-head CI = PASS (76/76 steps); SC/PIBC owner-domain normalization remains OPEN as documented in section 25.
+
+## 27. Audit event durability — call-site verification (18 November 2026)
+
+### Verified source findings on the current branch
+
+- `GabahDomainService.recordAudit()` in `server/services.ts` appends the event to `db.auditLogs`, calls `persistDataStore()` without awaiting it, catches the rejection as a console warning, and returns the log synchronously. This API does not provide a durability guarantee to its caller.
+- Current source contains 31 call sites in `server/services.ts` (excluding the method definition) and 48 call sites in `server.ts`. These span asset, loan, ticket, room/facility, RBAC, user/authentication, numbering, taxonomy/master data, maintenance, vendor, knowledge-base, and reconciliation operations.
+- Several HTTP handlers do explicitly await `persistDataStore()` or `persistMutationOrRespond()` after recording an event. Those paths still depend on a second, implicit persistence boundary rather than an audit API that guarantees commit ordering and rollback.
+- The five PostgreSQL RBAC mutation routes for role create/update/delete, permission updates, scope updates, and user-role assignment execute their RBAC transaction and refresh policy, then call the synchronous fire-and-forget audit helper and immediately return success. The audit event is not inserted in the RBAC transaction and the route does not await its persistence.
+- Authentication paths also call the same helper for successful/failed login, self-service password change, and role-switch denial; not all of these paths have an explicit awaited persistence boundary. Login-failure audit writes should not be allowed to break authentication response handling, but their durability contract must be explicit.
+- The normalized PostgreSQL `audit_logs` table exists and persistence synchronizes it from the in-memory audit collection. The current source-level pattern is not equivalent to a transactionally coupled audit write for RBAC operations.
+
+### Remediation plan — deliberately not changed mechanically
+
+1. Do not simply change `recordAudit()` to return a Promise: there are many callers in synchronous domain methods and routes, and doing so without a complete call-graph migration would create un-awaited promises or break service contracts.
+2. Prioritize the six RBAC write routes: insert their audit rows through the same PostgreSQL transaction as the RBAC mutation, with a stable actor/user mapping and rollback on audit insert failure. Refresh policy only after commit, then return success.
+3. Define a separate explicit best-effort security-event path for login denials if required, distinct from mandatory transactional business audit events. Do not let an audit database outage silently turn a failed login into a successful login or leak authentication details.
+4. Migrate remaining domain mutation call sites to an awaited persistence contract with affected-entity rollback (or a database transaction), then add fault-injection tests proving neither business state nor audit state is partially committed.
+5. Add PostgreSQL append-only enforcement for `audit_logs` and a live integration test; source assertions alone are insufficient.
+
+### Current release status
+
+- This is a verified open finding, not a completed fix. No code was changed by this audit entry.
+- PR #119's latest inspected verify job completed successfully, but that does not close this audit durability issue or resolve the parent PR #115 conflict with `main`.
+- **Release gate remains OPEN. No merge to `main`; no laptop UAT authorization.**
+
+
+## 28. RBAC transactional audit write remediation — 18 November 2026
+
+- Added a dedicated `insertRbacAudit(client, ...)` helper in `server.ts`. It writes directly to PostgreSQL `audit_logs` using the same transaction client as the RBAC mutation, records actor ID/name/role and request IP, and uses UUID-based event IDs.
+- Moved mandatory audit inserts inside the transaction callback for all six RBAC mutation routes: role create, role update, role delete, role permission replacement, role scope replacement, and user-role assignment replacement.
+- Removed the post-transaction fire-and-forget `GabahDomainService.recordAudit()` calls from those six routes. An audit insert failure now rejects the transaction, so the associated RBAC mutation rolls back and the handler does not return a success response.
+- RBAC policy refresh remains after successful transaction commit, so the in-memory effective-policy cache is refreshed only after both mutation and audit row commit.
+- Added `scripts/rbac-audit-transaction-verify.mjs`, npm script `test:rbac-audit-transaction`, and a dedicated CI step. The regression checks that all six handlers place their audit insert inside the transaction and no longer call the fire-and-forget helper.
+- **Validation:** exact code head `8c9dd34b70c628efab67e97e96f9d55156266440` passed GitHub Actions run `44225572523`; the `verify` job completed successfully with all 74 steps, including TypeScript lint, the Dynamic RBAC foundation checks, the six-route RBAC audit transaction regression, production Docker build/runtime smoke, PostgreSQL 17 fresh-database/persistence integration, and live P0 HTTP security verification. A later documentation-only update will trigger another exact-head workflow run.
+- Scope remains limited to the six RBAC write routes. Other application-domain mutations and authentication/security-event audit paths still use the legacy audit helper and remain open for staged remediation.
+
+**Checklist:** RBAC audit transaction coupling = implemented; six-route source regression = added; exact-head CI = pending; live fault-injection/rollback test = OPEN; remaining domain/auth audit durability = OPEN; merge/UAT gate = OPEN.
+
+
+## 29. RBAC audit exact-head validation and release-chain recheck — 18 November 2026
+
+### Exact-head CI result
+
+- Branch: `audit/runtime-persistence-fail-closed`.
+- Exact code head: `8c9dd34b70c628efab67e97e96f9d55156266440`.
+- GitHub Actions run: `44225572523`; job `verify` concluded **success** with all 74 steps completed.
+- Confirmed successful steps include `Dynamic RBAC foundation contract checks`, `RBAC mutation and audit transaction regression`, TypeScript lint, production frontend/server build, production Docker image build, Node 22 + PostgreSQL 17 runtime smoke, PostgreSQL 17 fresh-database/persistence integration, and live P0 security HTTP assertions.
+- This closes the CI validation item for the six RBAC transactional audit changes at this exact code head. It does **not** prove rollback under a deliberately injected live audit insert failure; the current six-route regression is a source-contract check.
+
+### Release-chain state rechecked
+
+- PR #115 remains Draft/open and reports `mergeable = false`, targeting `main`.
+- A fresh compare of `main...audit/dynamic-rbac-full-sync` reports `diverged`, **459 commits ahead and 1 commit behind**. The branch is not safe to merge or retarget blindly.
+- PR #118 remains Draft/open and reports mergeable against its parent branch `audit/dynamic-rbac-full-sync`.
+- PR #119 remains Draft/open and reports mergeable against its parent branch `audit/fix-ticket-persistence-contract-document-audit`; its exact head is the validated commit above.
+- Do not merge PR #118 or #119 independently, and do not retarget either child directly to `main`. First reconcile PR #115 against current `main`, then validate the ordered stack and all resulting exact heads. No force-push/rebase or destructive branch rewrite was attempted.
+
+### Remaining release blockers
+
+1. Live PostgreSQL fault-injection test proving RBAC mutation rollback when the mandatory audit insert fails.
+2. Broader audit durability migration for non-RBAC domain mutations; `GabahDomainService.recordAudit()` still starts a fire-and-forget persistence write for many call sites.
+3. Authentication/security-event audit semantics and database append-only enforcement.
+4. Safe SC/PIBC owner-domain normalization based on actual business ownership, not office location.
+5. Browser/API UAT for all roles, backup/restore rehearsal, deployment rehearsal, and concurrent multi-process numbering issuance.
+6. Parent PR #115 integration conflict and ordered stack validation.
+
+**Updated release gate:** PR #119 exact-head CI = **PASS (74/74)**; merge to `main` = **BLOCKED** by parent PR #115; laptop UAT = **NOT YET AUTHORIZED**.
+
+
+## 30. Core audit log append-only enforcement — 18 November 2026
+
+### Implementation
+
+- Added migration `100_audit_logs_append_only.sql`.
+- PostgreSQL now rejects `UPDATE` and `DELETE` against the core `audit_logs` table with SQLSTATE `55000`, and rejects `TRUNCATE` at statement level.
+- The existing snapshot-to-normalized synchronization uses `INSERT ... ON CONFLICT (id) DO NOTHING`; this remains compatible because it does not update or delete existing audit rows.
+- No application route or persistence path was found in the reviewed `server.ts` and `server/persistence.ts` sources that requires updating or deleting core audit rows. Database owners/superusers remain capable of schema-level administration; this is not protection against a malicious database superuser.
+
+### Live PostgreSQL integration
+
+- Extended `scripts/cr04-cr05-verify.mjs` to assert migration version 100 is applied on a fresh PostgreSQL 17 database.
+- The integration inserts a unique test audit row, attempts UPDATE, DELETE, and TRUNCATE in isolated transactions, requires SQLSTATE `55000` for each rejected operation, then verifies the original row still exists.
+- The checks run as part of the existing fresh-database/persistence integration step, not only as source-text assertions.
+- Exact code head `2da1fa13337ea7471d666e067041b3ccd824dad3` passed workflow run `44230879552` (run #2050). The `verify` job completed successfully with **77/77 steps**, including the live PostgreSQL 17 integration, Docker runtime smoke, P0 HTTP security checks, and the complete regression suite.
+
+### Remaining scope
+
+- This closes database-level append-only enforcement for the core `audit_logs` table and validates it against a live PostgreSQL test database.
+- It does **not** close the wider durability issue: `GabahDomainService.recordAudit()` still uses fire-and-forget persistence for many asset, loan, ticket, room, maintenance, vendor, and other domain call sites. Those operations still need staged awaited persistence/rollback work.
+- The six RBAC mutation routes now write audit rows transactionally, but an explicit live endpoint-level failure-injection test for a failed audit INSERT is still open.
+- Authentication denial/security-event audit behavior remains a separately scoped review item.
+
+**Checklist:** core audit UPDATE/DELETE/TRUNCATE blocked by PostgreSQL = implemented and live integration PASS; RBAC six-route transactional audit source regression = PASS; live RBAC endpoint failure injection = OPEN; remaining domain audit durability = OPEN; merge/UAT gate = OPEN.
+
+
+## 31. Asset assignment, movement, and lifecycle persistence hardening — 18 November 2026
+
+### Implementation
+
+- Converted `GabahDomainService.assignAsset()`, `moveAsset()`, and `mutateLifecycle()` to asynchronous durable mutations.
+- Each operation now appends its business audit row without starting the legacy fire-and-forget persistence path, then awaits the shared persistence boundary before returning success.
+- On persistence failure, the operation restores the prior asset snapshot and removes only the movement/audit rows created by that failed operation. Snapshot restoration also removes optional properties that were absent before the mutation (for example a newly assigned `assigned_to` object).
+- Assignment/unassignment, physical movement, and lifecycle changes now return an HTTP 503 on persistence failure. Their HTTP routes await the domain service and preserve the status code instead of reporting success before the durable write completes.
+- The shared `persistDomainMutation()` helper now accepts an optional rollback callback. Existing meeting-room/facility callers remain compatible and retain their existing behavior.
+
+### Regression coverage and exact-head CI
+
+- Added `scripts/asset-domain-persistence-verify.mjs` and CI step `Asset assignment, movement, and lifecycle persistence regression`; all **15/15** source-contract checks passed.
+- Extended `scripts/asset-assignment-active-user-verify.mjs` to exercise real asynchronous rejection paths with a configured-but-unavailable PostgreSQL authority. It verifies HTTP 503 contract behavior and rollback of asset fields, movement history, and audit history for assignment, movement, and lifecycle mutations.
+- Exact code head `87f5a485a6660e7c9d44990b0d75d656871f1f7b` passed GitHub Actions run `44232034559` (run #2070); the `verify` job completed successfully with **78/78 steps**, including TypeScript lint, asset persistence regression, Docker production build/runtime smoke, PostgreSQL 17 fresh-database integration, live P0 HTTP security, and the complete regression suite.
+- The unavailable-PostgreSQL test proves fail-closed response and in-memory rollback; it is not a live PostgreSQL server-side fault-injection test of a successful connection followed by an injected write failure.
+
+### Remaining scope
+
+- Asset creation, generic asset PATCH, bulk import, loan state transitions, and the remaining domain mutations still require a complete call-path review for the same awaited durability/rollback contract.
+- Concurrent same-asset mutation serialization and multi-process conflict handling remain open; the current in-memory rollback pattern is not a substitute for row-level PostgreSQL transactions across multiple app processes.
+- Live HTTP integration for successful assignment/movement/lifecycle persistence followed by process restart remains open.
+
+**Checklist:** assignment/unassignment durable write + rollback = implemented; location movement durable write + rollback = implemented; lifecycle durable write + rollback = implemented; HTTP routes await persistence = implemented; outage rollback regression = PASS; full exact-head CI = PASS (78/78); broader domain durability/concurrency = OPEN; merge/UAT gate = OPEN.

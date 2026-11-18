@@ -154,6 +154,28 @@ class GabahApiClient {
     return this.request<ModuleStatusAuditRecord[]>('/api/modules/' + encodeURIComponent(moduleKey) + '/audit');
   }
 
+  async getNotificationRuleSettings(): Promise<Array<{ rule_id: string; is_active: boolean; updated_at: string; updated_by_user_id: string | null }>> {
+    return this.request('/api/admin/notification-rules');
+  }
+
+  async updateNotificationRuleSetting(ruleId: string, isActive: boolean): Promise<{ rule_id: string; is_active: boolean; updated_at: string; updated_by_user_id: string | null }> {
+    return this.request('/api/admin/notification-rules/' + encodeURIComponent(ruleId), {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
+    });
+  }
+
+  async getSystemSettings(): Promise<{ companyName: string; accountingStandard: string; baseCurrency: string; fiscalYear: string; updated_at?: string; updated_by_user_id?: string | null }> {
+    return this.request('/api/admin/system-settings');
+  }
+
+  async updateSystemSettings(payload: { companyName: string; accountingStandard: string; baseCurrency: string; fiscalYear: string }): Promise<{ companyName: string; accountingStandard: string; baseCurrency: string; fiscalYear: string; updated_at?: string; updated_by_user_id?: string | null }> {
+    return this.request('/api/admin/system-settings', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async createUser(payload: Partial<UserProfile>): Promise<UserProfile> {
     return this.request<UserProfile>('/api/users', {
       method: 'POST',

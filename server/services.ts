@@ -197,11 +197,28 @@ export function filterMaintenanceSchedulesByDynamicScopes(schedules: ServerMaint
   });
 }
 
+function restoreAssetSnapshot(asset: ServerAsset, snapshot: ServerAsset): void {
+  // JSON snapshots omit undefined optional properties. Remove properties added
+  // by the failed mutation before restoring the prior values.
+  for (const key of Object.keys(asset)) {
+    if (!Object.prototype.hasOwnProperty.call(snapshot, key)) delete (asset as any)[key];
+  }
+  Object.assign(asset, snapshot);
+}
+
+async function persistDomainMutation(rollback?: () => void): Promise<void> {
+  try { await persistDataStore(); }
+  catch (error: any) {
+    rollback?.();
+    throw Object.assign(new Error(error?.message || 'Gagal menyimpan perubahan.'), { statusCode: 503 });
+  }
+}
+
 export class GabahDomainService {
   /**
    * Log action to immutable audit trail
    */
-  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string) {
+  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string, persist = true) {
     const log: ServerAuditLog = {
       id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       action,
@@ -216,7 +233,7 @@ export class GabahDomainService {
       timestamp: new Date().toISOString(),
     };
     db.auditLogs.unshift(log);
-    persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
+    if (persist) persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
     return log;
   }
 
@@ -496,7 +513,7 @@ export class GabahDomainService {
     db.assets.unshift(newAsset);
 
     // Record audit
-    this.recordAudit('ASSET_CREATED', 'Assets', `Mendaftarkan aset baru ${newAsset.asset_number} (${newAsset.name}) [Owner: ${newAsset.owner_division}]`, actor, newAsset.id);
+    this.recordAudit('ASSET_CREATED', 'Assets', `Mendaftarkan aset baru ${newAsset.asset_number} (${newAsset.name}) [Owner: ${newAsset.owner_division}]`, actor, newAsset.id, false);
 
     return newAsset;
   }
@@ -504,7 +521,7 @@ export class GabahDomainService {
   /**
    * Asset Assignment Mutation
    */
-  static assignAsset(assetId: string, targetUserId: string, reason: string, actor: ServerUser): ServerAsset {
+  static async assignAsset(assetId: string, targetUserId: string, reason: string, actor: ServerUser): Promise<ServerAsset> {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -526,6 +543,7 @@ export class GabahDomainService {
 
     const normalizedTargetUserId = String(targetUserId ?? '').trim();
     const previousUser = asset.assigned_to?.name || 'Gudang / Pool';
+    const previousAsset = JSON.parse(JSON.stringify(asset)) as ServerAsset;
 
     // Support Unassign (Return to Pool/Warehouse as available/idle)
     if (!normalizedTargetUserId) {
@@ -548,7 +566,12 @@ export class GabahDomainService {
         created_at: new Date().toISOString(),
       };
       db.movements.unshift(movement);
-      this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id);
+      const auditLog = this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id, false);
+      await persistDomainMutation(() => {
+        restoreAssetSnapshot(asset, previousAsset);
+        db.movements = db.movements.filter(item => item.id !== movement.id);
+        db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
+      });
       return asset;
     }
 
@@ -584,14 +607,19 @@ export class GabahDomainService {
     };
     db.movements.unshift(movement);
 
-    this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id);
+    const auditLog = this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id, false);
+    await persistDomainMutation(() => {
+      restoreAssetSnapshot(asset, previousAsset);
+      db.movements = db.movements.filter(item => item.id !== movement.id);
+      db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
+    });
     return asset;
   }
 
   /**
    * Asset Location Movement Mutation
    */
-  static moveAsset(assetId: string, newLocation: string, reason: string, actor: ServerUser): ServerAsset {
+  static async moveAsset(assetId: string, newLocation: string, reason: string, actor: ServerUser): Promise<ServerAsset> {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -607,6 +635,7 @@ export class GabahDomainService {
       throw Object.assign(new Error('Alasan perpindahan maksimal 1.000 karakter.'), { statusCode: 400 });
     }
 
+    const previousAsset = JSON.parse(JSON.stringify(asset)) as ServerAsset;
     const oldLocation = asset.location;
     asset.location = normalizedLocation;
     // T2B-2: reolusi deterministik relasi lokasi fisik dari teks baru
@@ -627,7 +656,12 @@ export class GabahDomainService {
     };
     db.movements.unshift(movement);
 
-    this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id);
+    const auditLog = this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id, false);
+    await persistDomainMutation(() => {
+      restoreAssetSnapshot(asset, previousAsset);
+      db.movements = db.movements.filter(item => item.id !== movement.id);
+      db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
+    });
 
     return asset;
   }
@@ -635,7 +669,7 @@ export class GabahDomainService {
   /**
    * Asset Lifecycle Mutation (Repair, Damaged, Cannibalize, Disposal, Auction)
    */
-  static mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser): ServerAsset {
+  static async mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser): Promise<ServerAsset> {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -660,6 +694,7 @@ export class GabahDomainService {
       );
     }
 
+    const previousAsset = JSON.parse(JSON.stringify(asset)) as ServerAsset;
     switch (action) {
       case 'repair':
         asset.status = 'in_repair';
@@ -687,7 +722,11 @@ export class GabahDomainService {
     }
 
     asset.updated_at = new Date().toISOString();
-    this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id);
+    const auditLog = this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id, false);
+    await persistDomainMutation(() => {
+      restoreAssetSnapshot(asset, previousAsset);
+      db.auditLogs = db.auditLogs.filter(item => item.id !== auditLog.id);
+    });
 
     return asset;
   }
@@ -798,7 +837,7 @@ export class GabahDomainService {
       link_id: newLoan.id,
     });
 
-    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id);
+    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id, false);
 
     return newLoan;
   }
@@ -847,7 +886,7 @@ export class GabahDomainService {
     // Mark the already-validated asset as reserved.
     asset.status = 'reserved';
 
-    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id);
+    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id, false);
 
     this.notify({
       recipient_user_id: loan.borrower_id,
@@ -881,7 +920,7 @@ export class GabahDomainService {
     loan.rejection_reason = reason || 'Ditolak oleh divisi pemilik aset';
     loan.updated_at = new Date().toISOString();
 
-    this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id);
+    this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id, false);
 
     this.notify({
       recipient_user_id: loan.borrower_id,
@@ -953,7 +992,7 @@ export class GabahDomainService {
 
     asset.status = 'assigned';
 
-    this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id);
+    this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id, false);
 
     return loan;
   }
@@ -1006,7 +1045,7 @@ export class GabahDomainService {
     // Preserve the recorded physical location. Returning a loan changes custody/status,
     // not the asset's site; a real relocation must use the asset-mutation workflow.
 
-    this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id);
+    this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id, false);
 
     return loan;
   }
@@ -1266,7 +1305,7 @@ export class GabahDomainService {
     return list;
   }
 
-  static requestRoomReservation(payload: {
+  static async requestRoomReservation(payload: {
     room_id: string;
     title: string;
     description?: string;
@@ -1289,7 +1328,7 @@ export class GabahDomainService {
     override_conflict?: boolean;
     interruption_reason?: string;
     notes?: string;
-  }, actor: ServerUser): ServerRoomReservation {
+  }, actor: ServerUser): Promise<ServerRoomReservation> {
     const canCreateReservation = isPostgresPersistenceActive()
       ? hasRoomPermission(actor, 'room_reservations.create')
       : !isAuditorActor(actor);
@@ -1632,12 +1671,12 @@ export class GabahDomainService {
       });
     }
 
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await persistDomainMutation();
 
     return reservation;
   }
 
-  static approveRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async approveRoomReservation(reservationId: string, actor: ServerUser): Promise<ServerRoomReservation> {
     if (!hasRoomPermission(actor, 'room_reservations.approve', 'GA')) {
       throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.approve.'), { statusCode: 403 });
     }
@@ -1714,12 +1753,12 @@ export class GabahDomainService {
       });
     }
 
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await persistDomainMutation();
 
     return reservation;
   }
 
-  static rejectRoomReservation(reservationId: string, reason: string, actor: ServerUser): ServerRoomReservation {
+  static async rejectRoomReservation(reservationId: string, reason: string, actor: ServerUser): Promise<ServerRoomReservation> {
     if (!hasRoomPermission(actor, 'room_reservations.reject', 'GA')) {
       throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.reject.'), { statusCode: 403 });
     }
@@ -1744,12 +1783,12 @@ export class GabahDomainService {
       reservation.id
     );
 
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await persistDomainMutation();
 
     return reservation;
   }
 
-  static checkinRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async checkinRoomReservation(reservationId: string, actor: ServerUser): Promise<ServerRoomReservation> {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
@@ -1770,11 +1809,11 @@ export class GabahDomainService {
     }
 
     this.recordAudit('ROOM_CHECKIN', 'MeetingRooms', `Check-in rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await persistDomainMutation();
     return reservation;
   }
 
-  static checkoutRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async checkoutRoomReservation(reservationId: string, actor: ServerUser): Promise<ServerRoomReservation> {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
@@ -1795,11 +1834,11 @@ export class GabahDomainService {
     }
 
     this.recordAudit('ROOM_CHECKOUT', 'MeetingRooms', `Check-out selesai rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await persistDomainMutation();
     return reservation;
   }
 
-  static cancelRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async cancelRoomReservation(reservationId: string, actor: ServerUser): Promise<ServerRoomReservation> {
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
@@ -1818,11 +1857,11 @@ export class GabahDomainService {
     }
 
     this.recordAudit('ROOM_RESERVATION_CANCELLED', 'MeetingRooms', `Pembatalan reservasi ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    persistDataStore().catch(err => console.warn('[GABAH Reservation] Persistence notice:', err.message));
+    await persistDomainMutation();
     return reservation;
   }
 
-  static updateMeetingRoom(roomId: string, updates: Partial<ServerMeetingRoom>, actor: ServerUser): ServerMeetingRoom {
+  static async updateMeetingRoom(roomId: string, updates: Partial<ServerMeetingRoom>, actor: ServerUser): Promise<ServerMeetingRoom> {
     if (!hasRoomPermission(actor, 'meeting_rooms.update', 'GA')) {
       throw Object.assign(new Error('Akses ditolak: tidak memiliki permission meeting_rooms.update.'), { statusCode: 403 });
     }
@@ -1842,7 +1881,7 @@ export class GabahDomainService {
       }
     }
     this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
-    persistDataStore().catch(err => console.warn('[GABAH Room] Persistence notice:', err.message));
+    await persistDomainMutation();
     return room;
   }
 
@@ -1851,7 +1890,7 @@ export class GabahDomainService {
     return db.meetingTypes || [];
   }
 
-  static createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
+  static async createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): Promise<ServerMeetingType> {
     if (!hasRoomPermission(actor, 'meeting_types.manage')) {
       throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
@@ -1868,11 +1907,11 @@ export class GabahDomainService {
     if (!db.meetingTypes) db.meetingTypes = [];
     db.meetingTypes.push(newItem);
     this.recordAudit('MEETING_TYPE_CREATED', 'MeetingRooms', `Menambah tipe rapat baru: ${newItem.name}`, actor, newItem.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await persistDomainMutation();
     return newItem;
   }
 
-  static updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
+  static async updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): Promise<ServerMeetingType> {
     if (!hasRoomPermission(actor, 'meeting_types.manage')) {
       throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
@@ -1884,11 +1923,11 @@ export class GabahDomainService {
     if (payload.priority_level) item.priority_level = payload.priority_level;
     if (payload.color) item.color = payload.color;
     this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await persistDomainMutation();
     return item;
   }
 
-  static deleteMeetingType(id: string, actor: ServerUser): { success: boolean } {
+  static async deleteMeetingType(id: string, actor: ServerUser): Promise<{ success: boolean }> {
     if (!hasRoomPermission(actor, 'meeting_types.manage')) {
       throw new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.');
     }
@@ -1897,7 +1936,7 @@ export class GabahDomainService {
     const removed = db.meetingTypes[idx];
     db.meetingTypes.splice(idx, 1);
     this.recordAudit('MEETING_TYPE_DELETED', 'MeetingRooms', `Menghapus tipe rapat: ${removed.name}`, actor, removed.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await persistDomainMutation();
     return { success: true };
   }
 
@@ -1906,7 +1945,7 @@ export class GabahDomainService {
     return db.meetingFacilities || [];
   }
 
-  static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
+  static async createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): Promise<ServerMeetingFacility> {
     if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
       : actor.role === 'GA' || actor.role === 'IT'))) {
@@ -1924,11 +1963,11 @@ export class GabahDomainService {
     if (!db.meetingFacilities) db.meetingFacilities = [];
     db.meetingFacilities.push(newFac);
     this.recordAudit('MEETING_FACILITY_CREATED', 'MeetingRooms', `Menambah fasilitas rapat [${newFac.category}]: ${newFac.name}`, actor, newFac.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await persistDomainMutation();
     return newFac;
   }
 
-  static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
+  static async updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): Promise<ServerMeetingFacility> {
     if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
       : actor.role === 'GA' || actor.role === 'IT'))) {
@@ -1941,11 +1980,11 @@ export class GabahDomainService {
     if (payload.description !== undefined) item.description = payload.description.trim();
     if (payload.is_active !== undefined) item.is_active = payload.is_active;
     this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await persistDomainMutation();
     return item;
   }
 
-  static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
+  static async deleteMeetingFacility(id: string, actor: ServerUser): Promise<{ success: boolean }> {
     if (!(isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage')
       : actor.role === 'GA' || actor.role === 'IT'))) {
@@ -1956,7 +1995,7 @@ export class GabahDomainService {
     const removed = db.meetingFacilities[idx];
     db.meetingFacilities.splice(idx, 1);
     this.recordAudit('MEETING_FACILITY_DELETED', 'MeetingRooms', `Menghapus fasilitas rapat [${removed.category}]: ${removed.name}`, actor, removed.id);
-    persistDataStore().catch(err => console.warn('[GABAH Persistence] notice:', err.message));
+    await persistDomainMutation();
     return { success: true };
   }
 }

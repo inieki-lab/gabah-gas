@@ -121,10 +121,8 @@ export function canManageContractCapability(user: ServerUser, contract: ServerCo
 }
 
 function recordContractAudit(action: string, details: string, actor: ServerUser, contractId: string) {
-  // Shape MUST match the canonical ServerAuditLog (recordAudit in services.ts):
-  // the PostgreSQL audit_logs table enforces entity/user_name/user_role NOT NULL,
-  // and a deviating shape silently breaks the authoritative persistence sync.
-  db.auditLogs.unshift({
+  // Keep the canonical audit row available for rollback if the durable write fails.
+  const log = {
     id: `LOG-CTR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     action,
     entity: 'Contracts',
@@ -133,7 +131,23 @@ function recordContractAudit(action: string, details: string, actor: ServerUser,
     user_role: actor.role,
     details,
     timestamp: new Date().toISOString(),
-  } as any);
+  };
+  db.auditLogs.unshift(log as any);
+  return log;
+}
+
+async function persistContractMutation(rollback: () => void): Promise<void> {
+  try {
+    await persistDataStore();
+  } catch (error: any) {
+    // PostgreSQL writes are transactional; restore the in-memory view as well so
+    // the next request cannot observe a mutation that was never committed.
+    rollback();
+    throw Object.assign(
+      new Error(error?.message || 'Gagal menyimpan perubahan kontrak secara permanen.'),
+      { statusCode: 503 },
+    );
+  }
 }
 
 // NOTE (CR-05): queueing/delivery moved to server/notifications/notificationService.ts —
@@ -219,14 +233,19 @@ export const ContractDomainService = {
     };
 
     db.contracts.unshift(contract);
-    recordContractAudit('CONTRACT_CREATED', `Mendaftarkan kontrak ${contract.contract_number}: ${contract.title} (${contract.vendor_name}) — divisi pemilik ${contract.owner_division}`, actor, contract.id);
+    const auditLog = recordContractAudit('CONTRACT_CREATED', `Mendaftarkan kontrak ${contract.contract_number}: ${contract.title} (${contract.vendor_name}) — divisi pemilik ${contract.owner_division}`, actor, contract.id);
+    await persistContractMutation(() => {
+      db.contracts = db.contracts.filter(item => item.id !== contract.id);
+      db.auditLogs = db.auditLogs.filter(log => log.id !== auditLog.id);
+    });
     return contract;
   },
 
-  updateContract(contractId: string, updates: Partial<ServerContract>, actor: ServerUser): ServerContract {
+  async updateContract(contractId: string, updates: Partial<ServerContract>, actor: ServerUser): Promise<ServerContract> {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
+    const previousContract = JSON.parse(JSON.stringify(contract));
 
     // SECURITY (CR-06): protected fields — these govern identity, ownership,
     // governance flags, and the authoritative lifecycle of the contract and can
@@ -263,14 +282,19 @@ export const ContractDomainService = {
     contract.status = computeContractStatus(contract);
     contract.updated_at = new Date().toISOString();
 
-    recordContractAudit('CONTRACT_UPDATED', `Memperbarui kontrak ${contract.contract_number}`, actor, contract.id);
+    const auditLog = recordContractAudit('CONTRACT_UPDATED', `Memperbarui kontrak ${contract.contract_number}`, actor, contract.id);
+    await persistContractMutation(() => {
+      Object.assign(contract, previousContract);
+      db.auditLogs = db.auditLogs.filter(log => log.id !== auditLog.id);
+    });
     return contract;
   },
 
-  addDocument(contractId: string, doc: { kind: ServerContractDocument['kind']; file_name: string; file_ref: string }, actor: ServerUser): ServerContract {
+  async addDocument(contractId: string, doc: { kind: ServerContractDocument['kind']; file_name: string; file_ref: string }, actor: ServerUser): Promise<ServerContract> {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canManageContractCapability(actor, contract, 'contracts.documents.upload')) throw new Error('Akses ditolak: permission contracts.documents.upload atau scope kontrak tidak diberikan.');
+    const previousContract = JSON.parse(JSON.stringify(contract));
 
     // Versioning-ready: documents are appended, never overwritten
     contract.documents.push({
@@ -283,25 +307,35 @@ export const ContractDomainService = {
       uploaded_at: new Date().toISOString(),
     });
     contract.updated_at = new Date().toISOString();
-    recordContractAudit('CONTRACT_DOCUMENT_ADDED', `Dokumen '${doc.kind}' ditambahkan pada kontrak ${contract.contract_number}: ${doc.file_name}`, actor, contract.id);
+    const auditLog = recordContractAudit('CONTRACT_DOCUMENT_ADDED', `Dokumen '${doc.kind}' ditambahkan pada kontrak ${contract.contract_number}: ${doc.file_name}`, actor, contract.id);
+    await persistContractMutation(() => {
+      Object.assign(contract, previousContract);
+      db.auditLogs = db.auditLogs.filter(log => log.id !== auditLog.id);
+    });
     return contract;
   },
 
-  addMilestone(contractId: string, milestone: Omit<ServerContractMilestone, 'id' | 'status'>, actor: ServerUser): ServerContract {
+  async addMilestone(contractId: string, milestone: Omit<ServerContractMilestone, 'id' | 'status'>, actor: ServerUser): Promise<ServerContract> {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canManageContractCapability(actor, contract, 'contracts.milestones.manage')) throw new Error('Akses ditolak: permission contracts.milestones.manage atau scope kontrak tidak diberikan.');
+    const previousContract = JSON.parse(JSON.stringify(contract));
 
     contract.milestones.push({ ...milestone, id: `CMS-${Date.now()}`, status: 'pending' });
     contract.updated_at = new Date().toISOString();
-    recordContractAudit('CONTRACT_MILESTONE_ADDED', `Milestone '${milestone.type}' ditambahkan pada kontrak ${contract.contract_number}: ${milestone.title}`, actor, contract.id);
+    const auditLog = recordContractAudit('CONTRACT_MILESTONE_ADDED', `Milestone '${milestone.type}' ditambahkan pada kontrak ${contract.contract_number}: ${milestone.title}`, actor, contract.id);
+    await persistContractMutation(() => {
+      Object.assign(contract, previousContract);
+      db.auditLogs = db.auditLogs.filter(log => log.id !== auditLog.id);
+    });
     return contract;
   },
 
-  decideRenewal(contractId: string, outcome: RenewalOutcome, notes: string, replacementContractId: string | null, actor: ServerUser): ServerContract {
+  async decideRenewal(contractId: string, outcome: RenewalOutcome, notes: string, replacementContractId: string | null, actor: ServerUser): Promise<ServerContract> {
     const contract = db.contracts.find(c => c.id === contractId);
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canManageContractCapability(actor, contract, 'contracts.renewal.decide')) throw new Error('Akses ditolak: permission contracts.renewal.decide atau scope kontrak tidak diberikan.');
+    const previousContract = JSON.parse(JSON.stringify(contract));
 
     const allowedOutcomes: RenewalOutcome[] = [
       'pending_decision',
@@ -343,7 +377,11 @@ export const ContractDomainService = {
     }
     contract.updated_at = new Date().toISOString();
 
-    recordContractAudit('CONTRACT_RENEWAL_DECISION', `Keputusan renewal kontrak ${contract.contract_number}: ${outcome}. Catatan: ${notes || '-'}`, actor, contract.id);
+    const auditLog = recordContractAudit('CONTRACT_RENEWAL_DECISION', `Keputusan renewal kontrak ${contract.contract_number}: ${outcome}. Catatan: ${notes || '-'}`, actor, contract.id);
+    await persistContractMutation(() => {
+      Object.assign(contract, previousContract);
+      db.auditLogs = db.auditLogs.filter(log => log.id !== auditLog.id);
+    });
     return contract;
   },
 

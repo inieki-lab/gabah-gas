@@ -4,7 +4,7 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs/promises';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
+
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
@@ -50,6 +50,49 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
 
+  // Await authoritative writes before returning a successful mutation response.
+  // Shared durable-write helper for legacy domain routes that do not yet
+  // have an operation-specific rollback snapshot.
+  const persistMutationOrRespond = async (res: express.Response): Promise<boolean> => {
+    try { await persistDataStore(); return true; }
+    catch (error: any) {
+      console.error('[GABAH API] Mutation persistence failed:', error?.message || error);
+      if (!res.headersSent) res.status(503).json({ success: false, code: 'PERSISTENCE_UNAVAILABLE', message: 'Penyimpanan utama sedang bermasalah. Perubahan belum dapat dipastikan tersimpan; periksa ulang data sebelum mencoba kembali.' });
+      return false;
+    }
+  };
+
+  type DomainMutationSnapshot = {
+    assets: typeof db.assets;
+    loans: typeof db.loans;
+    notifications: typeof db.notifications;
+    auditLogs: typeof db.auditLogs;
+  };
+  const captureDomainMutationState = (): DomainMutationSnapshot => ({
+    assets: JSON.parse(JSON.stringify(db.assets)),
+    loans: JSON.parse(JSON.stringify(db.loans)),
+    notifications: JSON.parse(JSON.stringify(db.notifications)),
+    auditLogs: JSON.parse(JSON.stringify(db.auditLogs)),
+  });
+  const restoreDomainMutationState = (snapshot: DomainMutationSnapshot): void => {
+    db.assets.splice(0, db.assets.length, ...snapshot.assets);
+    db.loans.splice(0, db.loans.length, ...snapshot.loans);
+    db.notifications.splice(0, db.notifications.length, ...snapshot.notifications);
+    db.auditLogs.splice(0, db.auditLogs.length, ...snapshot.auditLogs);
+  };
+  const persistMutationOrRollback = async (
+    res: express.Response,
+    snapshot: DomainMutationSnapshot,
+  ): Promise<boolean> => {
+    try { await persistDataStore(); return true; }
+    catch (error: any) {
+      restoreDomainMutationState(snapshot);
+      console.error('[GABAH API] Mutation persistence failed; in-memory state rolled back:', error?.message || error);
+      if (!res.headersSent) res.status(503).json({ success: false, code: 'PERSISTENCE_UNAVAILABLE', message: 'Penyimpanan utama sedang bermasalah. Perubahan dibatalkan dan data dikembalikan ke kondisi sebelumnya.' });
+      return false;
+    }
+  };
+
   app.use(express.json());
 
   // Per-request audit context: carry the client IP through the async chain so
@@ -66,7 +109,7 @@ async function startServer() {
     if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
     res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 400) {
-        void persistDataStore();
+        void persistDataStore().catch(error => console.error('[GABAH API] Background persistence retry failed:', error?.message || error));
       }
     });
     next();
@@ -323,6 +366,20 @@ async function startServer() {
     }
     return actor;
   };
+  // Mandatory RBAC audit rows share the mutation transaction. If audit insertion
+  // fails, the RBAC change rolls back and the API must not report success.
+  const insertRbacAudit = async (client: any, action: string, details: string, actor: ServerUser): Promise<void> => {
+    const requestIp = requestContext.getStore()?.ip;
+    await client.query(
+      'INSERT INTO audit_logs (id, action, entity, entity_id, user_id, user_name, user_role, details, ip_address, timestamp) VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, NOW())',
+      [
+        'LOG-' + crypto.randomUUID(), action, 'Administration', actor.id,
+        actor.name || 'System', actor.role || 'System', details,
+        requestIp || null,
+      ],
+    );
+  };
+
   const rbacFailure = (res: express.Response, error: any) => {
     if (error?.code === '23505') return res.status(409).json({ success: false, message: 'Nama atau kunci role sudah digunakan.' });
     if (error?.code === '23503') return res.status(409).json({ success: false, message: 'Role masih memiliki relasi yang digunakan.' });
@@ -338,6 +395,136 @@ async function startServer() {
     if (message === 'RBAC_LAST_SUPERADMIN') return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh kehilangan role Superadmin.' });
     return res.status(400).json({ success: false, message: 'Permintaan Dynamic RBAC tidak valid atau gagal diproses.' });
   };
+
+  // Notification rule switches are server-authoritative. Rule definitions are
+  // fixed in the UI; only Superadmin may change their enabled state.
+  const NOTIFICATION_RULE_IDS = new Set(['rule-warranty', 'rule-loan', 'rule-sla', 'rule-bast']);
+  app.get('/api/admin/notification-rules', async (req, res) => {
+    try {
+      getActor(req);
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi memerlukan PostgreSQL aktif.' });
+      }
+      const result = await queryRbac<any>(
+        'SELECT rule_id, is_active, updated_at, updated_by_user_id FROM gabah_notification_rule_settings ORDER BY rule_id',
+      );
+      return res.json({ success: true, data: result.rows });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.patch('/api/admin/notification-rules/:ruleId', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const ruleId = String(req.params.ruleId || '');
+    if (!NOTIFICATION_RULE_IDS.has(ruleId) || typeof req.body?.is_active !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'Aturan notifikasi atau status tidak valid.' });
+    }
+    try {
+      const updated = await withRbacTransaction(async client => {
+        const current = await client.query<{ is_active: boolean }>(
+          'SELECT is_active FROM gabah_notification_rule_settings WHERE rule_id = $1 FOR UPDATE',
+          [ruleId],
+        );
+        if (!current.rows.length) throw new Error('NOTIFICATION_RULE_NOT_FOUND');
+        const previous = current.rows[0].is_active === true;
+        const next = req.body.is_active as boolean;
+        if (previous === next) {
+          const unchanged = await client.query(
+            'SELECT rule_id, is_active, updated_at, updated_by_user_id FROM gabah_notification_rule_settings WHERE rule_id = $1',
+            [ruleId],
+          );
+          return unchanged.rows[0];
+        }
+        const result = await client.query(
+          'UPDATE gabah_notification_rule_settings SET is_active = $2, updated_at = NOW(), updated_by_user_id = $3 WHERE rule_id = $1 RETURNING rule_id, is_active, updated_at, updated_by_user_id',
+          [ruleId, next, String(actor.id)],
+        );
+        await client.query(
+          'INSERT INTO gabah_notification_rule_audit (rule_id, previous_is_active, new_is_active, changed_by_user_id) VALUES ($1, $2, $3, $4)',
+          [ruleId, previous, next, String(actor.id)],
+        );
+        return result.rows[0];
+      });
+      return res.json({ success: true, data: updated });
+    } catch (error: any) {
+      if (error?.message === 'NOTIFICATION_RULE_NOT_FOUND') return res.status(404).json({ success: false, message: 'Aturan notifikasi tidak ditemukan.' });
+      return rbacFailure(res, error);
+    }
+  });
+
+  // Company profile metadata is centralized in PostgreSQL. Operational SLA
+  // thresholds are intentionally excluded and remain server-owned policy.
+  const SYSTEM_SETTING_KEYS = ['companyName', 'accountingStandard', 'baseCurrency', 'fiscalYear'] as const;
+  app.get('/api/admin/system-settings', async (req, res) => {
+    try {
+      getActor(req);
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_UNAVAILABLE', message: 'Pengaturan sistem memerlukan PostgreSQL aktif.' });
+      }
+      const result = await queryRbac<any>(
+        "SELECT settings, updated_at, updated_by_user_id FROM gabah_system_settings WHERE settings_key = 'company_profile'",
+      );
+      if (!result.rows.length) return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_UNAVAILABLE', message: 'Profil perusahaan belum tersedia di database.' });
+      return res.json({ success: true, data: { ...result.rows[0].settings, updated_at: result.rows[0].updated_at, updated_by_user_id: result.rows[0].updated_by_user_id } });
+    } catch (error: any) {
+      console.error('[GABAH API] System settings read failed:', error?.message || error);
+      return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_UNAVAILABLE', message: 'Pengaturan sistem tidak dapat dibaca dari database.' });
+    }
+  });
+
+  app.patch('/api/admin/system-settings', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+    const suppliedKeys = Object.keys(body).sort();
+    const expectedKeys = [...SYSTEM_SETTING_KEYS].sort();
+    if (suppliedKeys.length !== expectedKeys.length || suppliedKeys.some((key, index) => key !== expectedKeys[index])
+      || SYSTEM_SETTING_KEYS.some(key => typeof body[key] !== 'string')) {
+      return res.status(400).json({ success: false, message: 'Field pengaturan sistem tidak valid.' });
+    }
+    const nextSettings = {
+      companyName: String(body.companyName || '').trim(),
+      accountingStandard: String(body.accountingStandard || '').trim(),
+      baseCurrency: String(body.baseCurrency || '').trim(),
+      fiscalYear: String(body.fiscalYear || '').trim(),
+    };
+    if (nextSettings.companyName.length < 3 || nextSettings.companyName.length > 160
+      || nextSettings.accountingStandard.length < 3 || nextSettings.accountingStandard.length > 160
+      || nextSettings.baseCurrency.length < 3 || nextSettings.baseCurrency.length > 40
+      || !/^(20[0-9]{2}|2100)$/.test(nextSettings.fiscalYear)) {
+      return res.status(400).json({ success: false, message: 'Nama perusahaan, standar akuntansi, mata uang, atau tahun buku tidak valid.' });
+    }
+    try {
+      const updated = await withRbacTransaction(async client => {
+        const current = await client.query<{ settings: Record<string, string> }>(
+          "SELECT settings FROM gabah_system_settings WHERE settings_key = 'company_profile' FOR UPDATE",
+        );
+        if (!current.rows.length) throw new Error('SYSTEM_SETTINGS_NOT_FOUND');
+        const previous = current.rows[0].settings;
+        const unchanged = SYSTEM_SETTING_KEYS.every(key => previous?.[key] === nextSettings[key]);
+        if (unchanged) {
+          const result = await client.query(
+            "SELECT settings, updated_at, updated_by_user_id FROM gabah_system_settings WHERE settings_key = 'company_profile'",
+          );
+          return { ...result.rows[0].settings, updated_at: result.rows[0].updated_at, updated_by_user_id: result.rows[0].updated_by_user_id };
+        }
+        const result = await client.query(
+          "UPDATE gabah_system_settings SET settings = $1::jsonb, updated_at = NOW(), updated_by_user_id = $2 WHERE settings_key = 'company_profile' RETURNING settings, updated_at, updated_by_user_id",
+          [JSON.stringify(nextSettings), String(actor.id)],
+        );
+        await client.query(
+          "INSERT INTO gabah_system_settings_audit (settings_key, previous_settings, new_settings, changed_by_user_id) VALUES ('company_profile', $1::jsonb, $2::jsonb, $3)",
+          [JSON.stringify(previous), JSON.stringify(nextSettings), String(actor.id)],
+        );
+        return { ...result.rows[0].settings, updated_at: result.rows[0].updated_at, updated_by_user_id: result.rows[0].updated_by_user_id };
+      });
+      return res.json({ success: true, data: updated });
+    } catch (error: any) {
+      if (error?.message === 'SYSTEM_SETTINGS_NOT_FOUND') return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_UNAVAILABLE', message: 'Profil perusahaan belum tersedia di database.' });
+      console.error('[GABAH API] System settings update failed:', error?.message || error);
+      return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_SAVE_FAILED', message: 'Pengaturan sistem gagal disimpan secara permanen.' });
+    }
+  });
 
   app.get('/api/admin/rbac/permissions', async (req, res) => {
     if (!requireRbacSuperadmin(req, res)) return;
@@ -410,10 +597,10 @@ async function startServer() {
         for (const permissionKey of permissionKeys) {
           await client.query('INSERT INTO gabah_role_permissions (role_id, permission_key) VALUES ($1, $2)', [inserted.rows[0].id, permissionKey]);
         }
+        await insertRbacAudit(client, 'RBAC_ROLE_CREATED', 'Superadmin membuat role "' + name + '" (' + roleKey + ') dengan ' + permissionKeys.length + ' permission.', actor);
         return inserted.rows[0];
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_ROLE_CREATED', 'Administration', 'Superadmin membuat role "' + name + '" (' + roleKey + ') dengan ' + permissionKeys.length + ' permission.', actor);
       return res.status(201).json({ success: true, data: { ...result, permissions: permissionKeys, scopes: [], assigned_user_count: 0 } });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -439,10 +626,10 @@ async function startServer() {
         const active = req.body?.is_active === undefined ? role.is_active : Boolean(req.body.is_active);
         if (name.length < 2 || name.length > 120) throw new Error('Nama role harus 2–120 karakter.');
         const updated = await client.query('UPDATE gabah_roles SET name = $2, description = $3, is_active = $4, updated_at = NOW() WHERE id = $1 RETURNING id, role_key, name, description, is_superadmin, is_active, created_at, updated_at', [id, name, description, active]);
+        await insertRbacAudit(client, 'RBAC_ROLE_UPDATED', 'Superadmin memperbarui role "' + updated.rows[0].name + '" (' + updated.rows[0].role_key + ').', actor);
         return updated.rows[0];
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_ROLE_UPDATED', 'Administration', 'Superadmin memperbarui role "' + result.name + '" (' + result.role_key + ').', actor);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -461,10 +648,10 @@ async function startServer() {
         const assigned = await client.query('SELECT COUNT(*)::int AS count FROM gabah_user_roles WHERE role_id = $1', [id]);
         if (Number(assigned.rows[0]?.count || 0) > 0) throw new Error('RBAC_ROLE_IN_USE');
         await client.query('DELETE FROM gabah_roles WHERE id = $1', [id]);
+        await insertRbacAudit(client, 'RBAC_ROLE_DELETED', 'Superadmin menghapus role "' + role.name + '" (' + role.role_key + ').', actor);
         return role;
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_ROLE_DELETED', 'Administration', 'Superadmin menghapus role "' + deleted.name + '" (' + deleted.role_key + ').', actor);
       return res.json({ success: true, data: { id: deleted.id, role_key: deleted.role_key } });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -490,10 +677,10 @@ async function startServer() {
         await client.query('DELETE FROM gabah_role_permissions WHERE role_id = $1', [id]);
         for (const key of uniqueKeys) await client.query('INSERT INTO gabah_role_permissions (role_id, permission_key) VALUES ($1, $2)', [id, key]);
         await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
+        await insertRbacAudit(client, 'RBAC_PERMISSIONS_UPDATED', 'Superadmin mengubah permission role "' + role.role_key + '".', actor);
         return { role_key: role.role_key, permission_keys: uniqueKeys };
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_PERMISSIONS_UPDATED', 'Administration', 'Superadmin mengubah permission role "' + result.role_key + '".', actor);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -532,10 +719,10 @@ async function startServer() {
           );
         }
         await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
+        await insertRbacAudit(client, 'RBAC_SCOPES_UPDATED', 'Superadmin mengubah scope role "' + role.role_key + '".', actor);
         return { role_key: role.role_key, scopes };
       });
       await refreshRbacPolicy();
-      GabahDomainService.recordAudit('RBAC_SCOPES_UPDATED', 'Administration', 'Superadmin mengubah scope role "' + result.role_key + '".', actor);
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -578,6 +765,7 @@ async function startServer() {
             [userId, roleId, false, actor.id],
           );
         }
+        await insertRbacAudit(client, 'RBAC_USER_ROLES_UPDATED', 'Superadmin mengubah assignment role untuk user "' + user.name + '" (' + user.email + ') menjadi: ' + valid.rows.map(row => String(row.name)).join(', ') + '.', actor);
         return {
           user_id: userId,
           user_name: String(user.name),
@@ -588,12 +776,6 @@ async function startServer() {
         };
       });
       await refreshRbacPolicy();
-     GabahDomainService.recordAudit(
-        'RBAC_USER_ROLES_UPDATED',
-        'Administration',
-        'Superadmin mengubah assignment role untuk user "' + result.user_name + '" (' + result.user_email + ') menjadi: ' + result.role_names.join(', ') + '.',
-        actor,
-      );
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
@@ -1558,7 +1740,7 @@ async function startServer() {
   // Self-service password change (P1): the CURRENT user rotates their own
   // password. Requires the current password; revokes all other sessions but
   // issues a fresh token for THIS device so the user is not logged out.
-  app.post('/api/auth/change-password', (req, res) => {
+  app.post('/api/auth/change-password', async (req, res) => {
     try {
       const actor = getActor(req);
       const { currentPassword, newPassword } = req.body;
@@ -1580,14 +1762,20 @@ async function startServer() {
         return res.status(401).json({ success: false, message: 'Kata sandi lama tidak cocok.' });
       }
 
+      const previousCredentials = { password_hash: user.password_hash, password_salt: user.password_salt, temp_password: user.temp_password, authVersion: user.authVersion };
       const { hash, salt } = hashPassword(newPassword);
       user.password_hash = hash;
       user.password_salt = salt;
       delete user.temp_password;
       if (typeof user.authVersion === 'number') user.authVersion += 1;
-
-      // SECURITY (CR-03 §3.4): rotate credentials ⇒ revoke ALL sessions, then
-      // re-issue one session for the calling device so it stays signed in.
+      if (!await persistMutationOrRespond(res)) {
+        user.password_hash = previousCredentials.password_hash;
+        user.password_salt = previousCredentials.password_salt;
+        if (previousCredentials.temp_password === undefined) delete user.temp_password; else user.temp_password = previousCredentials.temp_password;
+        if (previousCredentials.authVersion === undefined) delete user.authVersion; else user.authVersion = previousCredentials.authVersion;
+        return;
+      }
+      // Revoke sessions only after the credential change is durably persisted.
       revokeUserSessions(user.id);
       const session = createSession(user.id, req);
 
@@ -1598,8 +1786,6 @@ async function startServer() {
         actor,
         user.id
       );
-      persistDataStore().catch(() => {});
-
       res.json({
         success: true,
         data: { user: sanitizeUser(user), token: session.token, expires_at: session.expires_at },
@@ -2342,8 +2528,9 @@ async function startServer() {
       }
       // Effective permission and explicit owner-domain scope are enforced by
       // createAsset() for every user, regardless of job title or work location.
+      const mutationSnapshot = captureDomainMutationState();
       const newAsset = await GabahDomainService.createAsset(req.body, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.status(201).json({ success: true, data: newAsset });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2384,6 +2571,7 @@ async function startServer() {
       const errors: string[] = [];
       const warnings: string[] = [];
       const importedAssets: ServerAsset[] = [];
+      const mutationSnapshot = captureDomainMutationState();
       const seenKeys = new Set<string>();
 
       for (let i = 0; i < rows.length; i++) {
@@ -2489,7 +2677,7 @@ async function startServer() {
             }
           }
           existing.updated_at = new Date().toISOString();
-          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id);
+          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id, false);
           importedAssets.push(existing);
           updated++;
           continue;
@@ -2526,7 +2714,7 @@ async function startServer() {
             condition: (condition || undefined) as any,
             notes: String(row.notes || '').trim() || undefined,
           }, actor);
-          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id);
+          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id, false);
           importedAssets.push(asset);
           created++;
         } catch (rowErr: any) {
@@ -2535,7 +2723,7 @@ async function startServer() {
       }
 
       if (created > 0 || updated > 0) {
-        await persistDataStore();
+        if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       }
 
       res.json({
@@ -2571,7 +2759,7 @@ async function startServer() {
     res.json({ success: true, data: asset });
   });
 
-  app.patch('/api/assets/:id', (req, res) => {
+  app.patch('/api/assets/:id', async (req, res) => {
     const actor = getActor(req);
     const asset = db.assets.find(a => a.id === req.params.id);
     if (asset?.category_type === 'License' && isPostgresPersistenceActive()
@@ -2657,6 +2845,8 @@ async function startServer() {
       }
     }
 
+    const mutationSnapshot = captureDomainMutationState();
+
     // T2B-1: managing unit operasional (relasi ke org_units.id) — divalidasi
     // terhadap master aktif; nullable untuk kasus ambigu. owner_division &
     // asset_number tetap server-owned (tidak berubah), RBAC tetap owner_division.
@@ -2677,6 +2867,7 @@ async function startServer() {
       try {
         asset.asset_location_id = validateAssetLocation(req.body.asset_location_id, undefined, asset.asset_location_id);
       } catch (e: any) {
+        restoreDomainMutationState(mutationSnapshot);
         return res.status(400).json({ success: false, message: e.message });
       }
     }
@@ -2690,42 +2881,42 @@ async function startServer() {
     }
     asset.updated_at = new Date().toISOString();
 
-    GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
-    persistDataStore().catch(() => {});
+    GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id, false);
+    if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
 
     res.json({ success: true, data: asset });
   });
 
-  app.post('/api/assets/:id/assign', (req, res) => {
+  app.post('/api/assets/:id/assign', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.assign')) return;
     try {
       const actor = getActor(req);
       const { targetUserId, reason } = req.body;
-      const updated = GabahDomainService.assignAsset(req.params.id, targetUserId, reason, actor);
+      const updated = await GabahDomainService.assignAsset(req.params.id, targetUserId, reason, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/assets/:id/move', (req, res) => {
+  app.post('/api/assets/:id/move', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.move')) return;
     try {
       const actor = getActor(req);
       const { newLocation, reason } = req.body;
-      const updated = GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
+      const updated = await GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/assets/:id/lifecycle', (req, res) => {
+  app.post('/api/assets/:id/lifecycle', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.lifecycle')) return;
     try {
       const actor = getActor(req);
       const { action, notes } = req.body;
-      const updated = GabahDomainService.mutateLifecycle(req.params.id, action, notes, actor);
+      const updated = await GabahDomainService.mutateLifecycle(req.params.id, action, notes, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2804,18 +2995,14 @@ async function startServer() {
 
         // Bulk requests are one business operation: roll back every in-memory
         // side effect if any item or persistence step fails.
-        const snapshots = {
-          loans: [...db.loans],
-          notifications: [...db.notifications],
-          auditLogs: [...db.auditLogs],
-        };
+        const snapshots = captureDomainMutationState();
         try {
           const createdLoans = [];
           for (const id of normalizedAssetIds) {
             const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
             createdLoans.push(newLoan);
           }
-          await persistDataStore();
+          if (!await persistMutationOrRollback(res, snapshots)) return;
           return res.status(201).json({
             success: true,
             data: createdLoans[0],
@@ -2824,15 +3011,14 @@ async function startServer() {
             message: `${createdLoans.length} aset pinjaman berhasil diajukan.`
           });
         } catch (bulkError) {
-          db.loans.splice(0, db.loans.length, ...snapshots.loans);
-          db.notifications.splice(0, db.notifications.length, ...snapshots.notifications);
-          db.auditLogs.splice(0, db.auditLogs.length, ...snapshots.auditLogs);
+          restoreDomainMutationState(snapshots);
           throw bulkError;
         }
       }
 
+      const mutationSnapshot = captureDomainMutationState();
       const newLoan = GabahDomainService.requestLoan(req.body, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.status(201).json({ success: true, data: newLoan });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2844,8 +3030,9 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.approve')) return;
     const actor = getActor(req);
+      const mutationSnapshot = captureDomainMutationState();
       const approved = GabahDomainService.approveLoan(req.params.id, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2857,8 +3044,9 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.reject')) return;
     const actor = getActor(req);
+      const mutationSnapshot = captureDomainMutationState();
       const rejected = GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.json({ success: true, data: rejected });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2870,9 +3058,42 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.handover')) return;
     const actor = getActor(req);
+      let bastNotificationEnabled = true;
+      if (isPostgresPersistenceActive()) {
+        try {
+          const setting = await queryRbac<{ is_active: boolean }>(
+            "SELECT is_active FROM gabah_notification_rule_settings WHERE rule_id = 'rule-bast'",
+          );
+          if (setting.rows.length !== 1) {
+            return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi notifikasi BAST belum dapat diverifikasi.' });
+          }
+          bastNotificationEnabled = setting.rows[0].is_active === true;
+        } catch (error: any) {
+          console.error('[GABAH API] BAST notification rule unavailable:', error?.message || error);
+          return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi notifikasi BAST tidak dapat diverifikasi.' });
+        }
+      }
+      const mutationSnapshot = captureDomainMutationState();
       const { handoverNotes } = req.body;
       const handedOver = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
-      await persistDataStore();
+      if (bastNotificationEnabled) {
+        const createdAt = new Date().toISOString();
+        const notification = {
+          title: `BAST Selesai: ${handedOver.loan_number}`,
+          message: `Serah terima fisik ${handedOver.asset_name} kepada ${handedOver.borrower_name} telah dicatat oleh ${actor.name}.`,
+          severity: 'success' as const,
+          category: 'loan' as const,
+          link_type: 'loan' as const,
+          link_id: handedOver.id,
+          is_read: false,
+          created_at: createdAt,
+        };
+        db.notifications.unshift(
+          { ...notification, id: `NOTIF-${crypto.randomUUID()}`, recipient_user_id: handedOver.borrower_id },
+          { ...notification, id: `NOTIF-${crypto.randomUUID()}`, recipient_division: handedOver.owner_division },
+        );
+      }
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
@@ -2890,9 +3111,10 @@ async function startServer() {
       // owner-side loans.return capability. Other actors still need that
       // capability and the domain service enforces matching owner scope.
       if (loan.borrower_id !== actor.id && !requireRbacPermission(req, res, 'loans.return')) return;
+      const mutationSnapshot = captureDomainMutationState();
       const { condition, returnNotes } = req.body;
       const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
-      await persistDataStore();
+      if (!await persistMutationOrRollback(res, mutationSnapshot)) return;
       res.json({ success: true, data: returned });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
@@ -3134,7 +3356,7 @@ async function startServer() {
     return { valid: true as const, vendor, clear: false };
   };
 
-  app.post('/api/maintenances', (req, res) => {
+  app.post('/api/maintenances', async (req, res) => {
     const actor = getActor(req);
     // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
     // GA) secara eksplisit; mode PostgreSQL beralih ke permission dinamis
@@ -3190,11 +3412,11 @@ async function startServer() {
     };
     db.maintenances.push(newSchedule);
     GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: newSchedule });
   });
 
-  app.patch('/api/maintenances/:id', (req, res) => {
+  app.patch('/api/maintenances/:id', async (req, res) => {
     const actor = getActor(req);
     // RBAC: file-store mempertahankan allowlist legacy; PostgreSQL beralih ke
     // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
@@ -3243,7 +3465,7 @@ async function startServer() {
       schedule.last_completed_at = new Date().toISOString();
     }
     GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: schedule });
   });
 
@@ -3288,7 +3510,7 @@ async function startServer() {
     return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
   });
 
-  app.post('/api/vendors', (req, res) => {
+  app.post('/api/vendors', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
@@ -3335,11 +3557,11 @@ async function startServer() {
     };
     db.vendors.push(vendor);
     GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: vendor });
   });
 
-  app.patch('/api/vendors/:id', (req, res) => {
+  app.patch('/api/vendors/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.update')) return;
@@ -3394,7 +3616,7 @@ async function startServer() {
     vendor.rating = requestedRating;
     vendor.active_contracts_count = getActiveVendorContractCount(vendor.name);
     GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: vendor });
   });
 
@@ -3407,7 +3629,7 @@ async function startServer() {
     res.json({ success: true, data: db.knowledgeArticles });
   });
 
-  app.post('/api/knowledge', (req, res) => {
+  app.post('/api/knowledge', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.create')) return;
@@ -3432,11 +3654,11 @@ async function startServer() {
     };
     db.knowledgeArticles.push(article);
     GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.status(201).json({ success: true, data: article });
   });
 
-  app.patch('/api/knowledge/:id', (req, res) => {
+  app.patch('/api/knowledge/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.update')) return;
@@ -3452,25 +3674,25 @@ async function startServer() {
     }
     article.updated_at = new Date().toISOString();
     GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
-  app.post('/api/knowledge/:id/vote', (req, res) => {
+  app.post('/api/knowledge/:id/vote', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.vote')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.helpful_votes += 1;
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
-  app.post('/api/knowledge/:id/view', (req, res) => {
+  app.post('/api/knowledge/:id/view', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.read')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.view_count += 1;
-    persistDataStore().catch(() => {});
+    if (!await persistMutationOrRespond(res)) return;
     res.json({ success: true, data: article });
   });
 
@@ -3582,10 +3804,30 @@ async function startServer() {
     });
   });
 
-  app.get('/api/dashboard/attention', (req, res) => {
+  app.get('/api/dashboard/attention', async (req, res) => {
     if (!requireRbacPermission(req, res, 'dashboard.read')) return;
     const actor = getActor(req);
-    const items = GabahDomainService.getAttentionCenter(actor);
+    let items = GabahDomainService.getAttentionCenter(actor);
+    if (isPostgresPersistenceActive()) {
+      try {
+        const settings = await queryRbac<{ rule_id: string; is_active: boolean }>(
+          "SELECT rule_id, is_active FROM gabah_notification_rule_settings WHERE rule_id IN ('rule-warranty', 'rule-loan', 'rule-sla')",
+        );
+        if (settings.rows.length !== 3) {
+          return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi belum lengkap; pusat perhatian tidak dapat diverifikasi.' });
+        }
+        const enabled = new Map(settings.rows.map(setting => [setting.rule_id, setting.is_active === true]));
+        items = items.filter(item => {
+          if (item.type === 'warranty_expiring') return enabled.get('rule-warranty') === true;
+          if (item.type === 'loan_pending' || item.type === 'loan_overdue') return enabled.get('rule-loan') === true;
+          if (item.type === 'sla_breach' || item.type === 'sla_warning') return enabled.get('rule-sla') === true;
+          return true;
+        });
+      } catch (error: any) {
+        console.error('[GABAH API] Notification rule settings unavailable:', error?.message || error);
+        return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi tidak dapat diverifikasi.' });
+      }
+    }
     const isGlobalReader = isSuperadminActor(actor);
     const visibleAssets = isGlobalReader ? db.assets : GabahDomainService.getScopedAssets(actor);
     const canReadOwnerScope = (module: 'loans' | 'tickets', owner: string) =>
@@ -3679,10 +3921,9 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'contracts.create')) return;
     const actor = getActor(req);
       const created = await ContractDomainService.createContract(req.body, actor);
-      await persistDataStore();
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3691,11 +3932,10 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'contracts.update')) return;
     const actor = getActor(req);
-      const updated = ContractDomainService.updateContract(req.params.id, req.body, actor);
-      await persistDataStore();
+      const updated = await ContractDomainService.updateContract(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3887,11 +4127,10 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
     const actor = getActor(req);
-      const updated = ContractDomainService.addDocument(req.params.id, req.body, actor);
-      await persistDataStore();
+      const updated = await ContractDomainService.addDocument(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3900,11 +4139,10 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'contracts.milestones.manage')) return;
     const actor = getActor(req);
-      const updated = ContractDomainService.addMilestone(req.params.id, req.body, actor);
-      await persistDataStore();
+      const updated = await ContractDomainService.addMilestone(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3914,11 +4152,10 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'contracts.renewal.decide')) return;
     const actor = getActor(req);
       const { outcome, notes, replacement_contract_id } = req.body;
-      const updated = ContractDomainService.decideRenewal(req.params.id, outcome, notes, replacement_contract_id || null, actor);
-      await persistDataStore();
+      const updated = await ContractDomainService.decideRenewal(req.params.id, outcome, notes, replacement_contract_id || null, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3969,12 +4206,12 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingRooms() });
   });
 
-  app.patch('/api/meeting-rooms/:id', (req, res) => {
+  app.patch('/api/meeting-rooms/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_rooms.update')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingRoom(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -4084,12 +4321,12 @@ async function startServer() {
     res.json({ success: true, data });
   });
 
-  app.post('/api/room-reservations', (req, res) => {
+  app.post('/api/room-reservations', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.create')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.requestRoomReservation(req.body, actor);
+      const created = await GabahDomainService.requestRoomReservation(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
       // RBAC: preserve domain-service status codes — 403 for override/interupsi
@@ -4104,60 +4341,60 @@ async function startServer() {
     }
   });
 
-  app.post('/api/room-reservations/:id/approve', (req, res) => {
+  app.post('/api/room-reservations/:id/approve', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.approve')) return;
     const actor = getActor(req);
-      const approved = GabahDomainService.approveRoomReservation(req.params.id, actor);
+      const approved = await GabahDomainService.approveRoomReservation(req.params.id, actor);
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/reject', (req, res) => {
+  app.post('/api/room-reservations/:id/reject', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.reject')) return;
     const actor = getActor(req);
-      const rejected = GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
+      const rejected = await GabahDomainService.rejectRoomReservation(req.params.id, req.body.reason, actor);
       res.json({ success: true, data: rejected });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/checkin', (req, res) => {
+  app.post('/api/room-reservations/:id/checkin', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.checkin')) return;
     const actor = getActor(req);
-      const checkedIn = GabahDomainService.checkinRoomReservation(req.params.id, actor);
+      const checkedIn = await GabahDomainService.checkinRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedIn });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/checkout', (req, res) => {
+  app.post('/api/room-reservations/:id/checkout', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.checkout')) return;
     const actor = getActor(req);
-      const checkedOut = GabahDomainService.checkoutRoomReservation(req.params.id, actor);
+      const checkedOut = await GabahDomainService.checkoutRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedOut });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.post('/api/room-reservations/:id/cancel', (req, res) => {
+  app.post('/api/room-reservations/:id/cancel', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.cancel')) return;
     const actor = getActor(req);
-      const cancelled = GabahDomainService.cancelRoomReservation(req.params.id, actor);
+      const cancelled = await GabahDomainService.cancelRoomReservation(req.params.id, actor);
       res.json({ success: true, data: cancelled });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -4171,39 +4408,39 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingTypes() });
   });
 
-  app.post('/api/meeting-types', (req, res) => {
+  app.post('/api/meeting-types', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.createMeetingType(req.body, actor);
+      const created = await GabahDomainService.createMeetingType(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.patch('/api/meeting-types/:id', (req, res) => {
+  app.patch('/api/meeting-types/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingType(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.delete('/api/meeting-types/:id', (req, res) => {
+  app.delete('/api/meeting-types/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
     const actor = getActor(req);
-      const result = GabahDomainService.deleteMeetingType(req.params.id, actor);
+      const result = await GabahDomainService.deleteMeetingType(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4214,39 +4451,39 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingFacilities() });
   });
 
-  app.post('/api/meeting-facilities', (req, res) => {
+  app.post('/api/meeting-facilities', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const created = GabahDomainService.createMeetingFacility(req.body, actor);
+      const created = await GabahDomainService.createMeetingFacility(req.body, actor);
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.patch('/api/meeting-facilities/:id', (req, res) => {
+  app.patch('/api/meeting-facilities/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const updated = GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
+      const updated = await GabahDomainService.updateMeetingFacility(req.params.id, req.body, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
-  app.delete('/api/meeting-facilities/:id', (req, res) => {
+  app.delete('/api/meeting-facilities/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
     const actor = getActor(req);
-      const result = GabahDomainService.deleteMeetingFacility(req.params.id, actor);
+      const result = await GabahDomainService.deleteMeetingFacility(req.params.id, actor);
       res.json({ success: true, data: result });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -4254,6 +4491,9 @@ async function startServer() {
   // VITE MIDDLEWARE (DEVELOPMENT vs PRODUCTION)
   // ==========================================
   if (process.env.NODE_ENV !== 'production') {
+    // Vite is a build/development dependency only. Load it lazily so the
+    // production server bundle can run after npm ci --omit=dev.
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

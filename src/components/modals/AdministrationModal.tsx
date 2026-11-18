@@ -146,23 +146,11 @@ export const GABAH_TAXONOMY_TYPES: { value: 'IT' | 'License' | 'General'; label:
   { value: 'General', label: 'General (Modul Inventaris Fisik / Fasilitas)', desc: 'Pengelolaan sarpras, mebel, kendaraan operasional, dan gedung dengan pelacakan fisik BAST' },
 ];
 
-const DEFAULT_DIVISIONS: OrgDivision[] = [
-  { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
-  { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
-];
-
-const DEFAULT_LOCATIONS: MasterLocation[] = [
-  { id: 'loc-1', name: 'Kantor Pusat Food Station Cipinang', address: 'Jl. Pisangan Lama No. 1, Jakarta Timur', capacity: '120 Pegawai' },
-  { id: 'loc-2', name: 'Gudang Beras Induk Blok A-D', address: 'Kawasan PIBC, Jakarta Timur', capacity: '48.000 Ton Beras' },
-  { id: 'loc-3', name: 'Depo Armada & Transportasi', address: 'Pintu 3 Pasar Induk Cipinang', capacity: '35 Truk Fuso' },
-  { id: 'loc-4', name: 'Data Center & Server Room', address: 'Gedung Utama Lt. 2, Cipinang', capacity: 'Tier 2 Redundant' }
-];
-
 const DEFAULT_NOTIFICATION_RULES: NotificationRule[] = [
   { id: 'rule-warranty', title: 'Peringatan Masa Garansi & Lisensi Expired', trigger: '30 hari & 7 hari sebelum tanggal kedaluwarsa', target: 'Admin GABAH & Divisi IT', status: 'Aktif', severity: 'warning', daysBefore: 30 },
   { id: 'rule-loan', title: 'Eskalasi Keterlambatan Peminjaman (Overdue Loan)', trigger: 'Melewati batas due date jam 17:00 WIB', target: 'Peminjam, Atasan, dan Admin Penanggung Jawab', status: 'Aktif', severity: 'critical', cutoffTime: '17:00' },
   { id: 'rule-sla', title: 'SLA Breach Warning Tiket Helpdesk', trigger: 'Sisa waktu SLA < 1 jam atau status open melebihi target', target: 'Teknisi yang ditugaskan & Koordinator IT/GA', status: 'Aktif', severity: 'critical', warningHours: 1 },
-  { id: 'rule-bast', title: 'Pemberitahuan BAST & Serah Terima Selesai', trigger: 'Saat serah terima fisik aset disetujui', target: 'Peminjam & Tim Inventaris BUMD', status: 'Aktif', severity: 'info' },
+  { id: 'rule-bast', title: 'Pemberitahuan BAST & Serah Terima Selesai', trigger: 'Saat serah terima fisik aset disetujui', target: 'Peminjam & Divisi Pemilik Aset', status: 'Aktif', severity: 'info' },
 ];
 
 export const AdministrationModal: React.FC<AdministrationModalProps> = ({
@@ -260,6 +248,33 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   }, [users]);
 
+  useEffect(() => {
+    if (!isOpen || activeSection !== 'notifications') return;
+    let cancelled = false;
+    setNotificationRulesLoading(true);
+    setNotificationRulesError('');
+    gabahApi.getNotificationRuleSettings()
+      .then(settings => {
+        if (cancelled) return;
+        const byId = new Map(settings.map(item => [item.rule_id, item.is_active]));
+        if (DEFAULT_NOTIFICATION_RULES.some(rule => !byId.has(rule.id))) {
+          throw new Error('Konfigurasi aturan notifikasi belum lengkap di database.');
+        }
+        setNotificationRules(DEFAULT_NOTIFICATION_RULES.map(rule => ({
+          ...rule,
+          status: byId.get(rule.id) ? 'Aktif' : 'Nonaktif',
+        })));
+      })
+      .catch(error => {
+        if (cancelled) return;
+        setNotificationRules([]);
+        setNotificationRulesError(error?.message || 'Aturan notifikasi gagal dimuat dari server.');
+        showToast('Aturan notifikasi tidak dapat dimuat dari database. Perubahan dinonaktifkan.', 'warning');
+      })
+      .finally(() => { if (!cancelled) setNotificationRulesLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, activeSection]);
+
   // Master Data State
   const [categories, setCategories] = useState<any[]>([
     { code: 'IT-HLT', name: 'Hardware Laptop & PC', type: 'IT', loanable: true, total: 42, is_active: true },
@@ -309,18 +324,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           }));
           setCategories(mapped);
         }
-        if (Array.isArray(liveLocs) && liveLocs.length > 0) {
-          setLocations(liveLocs);
-        }
-        if (Array.isArray(liveDivs) && liveDivs.length > 0) {
-          setDivisions(liveDivs);
-        }
+        if (Array.isArray(liveLocs)) setLocations(liveLocs);
+        if (Array.isArray(liveDivs)) setDivisions(liveDivs);
         // ORG-MODEL: masters terpisah jabatan/unit/lokasi kantor
         if (Array.isArray(liveJobLevels) && liveJobLevels.length > 0) setJobLevels(liveJobLevels);
         if (Array.isArray(liveOrgUnits) && liveOrgUnits.length > 0) setOrgUnits(liveOrgUnits);
         if (Array.isArray(liveOffices) && liveOffices.length > 0) setOfficeLocations(liveOffices);
         if (Array.isArray(liveAssetLocs)) setAssetLocations(liveAssetLocs);
       } catch (e) {
+        setLocations([]);
+        setDivisions([]);
         console.error('Failed loading administration master data:', e);
         showToast('Gagal memuat master data dari server. Data referensi belum diperbarui; periksa koneksi lalu buka ulang Administrasi.', 'warning');
       }
@@ -381,13 +394,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   };
 
-  const [locations, setLocations] = useState<MasterLocation[]>(() => {
-    const saved = localStorage.getItem('gabah_master_locations');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return DEFAULT_LOCATIONS;
-  });
+  const [locations, setLocations] = useState<MasterLocation[]>([]);
   const [isAddLocationOpen, setIsAddLocationOpen] = useState(false);
   const [locationToEdit, setLocationToEdit] = useState<MasterLocation | null>(null);
   const [isEditLocationOpen, setIsEditLocationOpen] = useState(false);
@@ -656,13 +663,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [newAssetLocationData, setNewAssetLocationData] = useState({ name: '', parent_id: '' });
   const [isSubmittingOrgMaster, setIsSubmittingOrgMaster] = useState(false);
 
-  const [divisions, setDivisions] = useState<OrgDivision[]>(() => {
-    const saved = localStorage.getItem('gabah_org_divisions');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return DEFAULT_DIVISIONS;
-  });
+  const [divisions, setDivisions] = useState<OrgDivision[]>([]);
   const [divisionToEdit, setDivisionToEdit] = useState<OrgDivision | null>(null);
   const [isEditDivisionOpen, setIsEditDivisionOpen] = useState(false);
   const [isAddDivisionOpen, setIsAddDivisionOpen] = useState(false);
@@ -674,52 +675,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   });
   const [newDeptInput, setNewDeptInput] = useState('');
 
-  // Asset Numbering State
-  const [numberingConfig, setNumberingConfig] = useState(() => {
-    const saved = localStorage.getItem('gabah_numbering_config');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return {
-      prefixCorp: 'FS',
-      format: '{DIV}-{CODE}-{YEAR}-{SEQ}',
-      separator: '-',
-      paddingDigits: 4,
-      autoResetYearly: true
-    };
-  });
-  const [isEditingNumbering, setIsEditingNumbering] = useState(false);
-  const [tempNumberingConfig, setTempNumberingConfig] = useState(numberingConfig);
+  // Number preview inputs; actual rules and sequence counters are loaded from PostgreSQL.
   const [testDiv, setTestDiv] = useState<OwnerDivision>('IT');
   const [testCode, setTestCode] = useState('HLT');
   const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0005');
 
-  // Notification Rules State
-  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(() => {
-    // Browser storage is untrusted input: old versions may contain malformed
-    // JSON, a non-array value, or incomplete rule objects. Never let it crash
-    // the Administration modal during render.
-    try {
-      const saved = window.localStorage.getItem('gabah_notification_rules');
-      if (!saved) return DEFAULT_NOTIFICATION_RULES;
-      const parsed: unknown = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return DEFAULT_NOTIFICATION_RULES;
-      const validRules = parsed.filter((rule): rule is NotificationRule =>
-        !!rule &&
-        typeof rule === 'object' &&
-        typeof rule.id === 'string' &&
-        typeof rule.title === 'string' &&
-        typeof rule.trigger === 'string' &&
-        typeof rule.target === 'string' &&
-        (rule.status === 'Aktif' || rule.status === 'Nonaktif') &&
-        (rule.severity === 'warning' || rule.severity === 'critical' || rule.severity === 'info')
-      );
-      return validRules.length > 0 ? validRules : DEFAULT_NOTIFICATION_RULES;
-    } catch (error) {
-      console.warn('[GABAH Administration] Notification rules storage unavailable; using defaults.', error);
-      return DEFAULT_NOTIFICATION_RULES;
-    }
-  });
+  // Rule definitions are code-owned; active status is loaded from PostgreSQL.
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>([]);
+  const [notificationRulesLoading, setNotificationRulesLoading] = useState(false);
+  const [notificationRulesError, setNotificationRulesError] = useState('');
+  const [savingNotificationRuleId, setSavingNotificationRuleId] = useState<string | null>(null);
 
   // Audit Search & Filter State
   const [auditSearch, setAuditSearch] = useState('');
@@ -841,28 +806,46 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     refreshReminderOverview();
   }, []);
 
-  // System Settings State
-  const [settingsForm, setSettingsForm] = useState(() => {
-    const saved = localStorage.getItem('gabah_system_settings');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return {
-      companyName: 'PT Food Station Tjipinang Jaya (Perseroda)',
-      shortCode: 'GABAH',
-      orgType: 'BUMD Pangan Pemerintah Provinsi DKI Jakarta',
-      accountingStandard: 'PSAK 16 (Aset Tetap & Depresiasi Garis Lurus)',
-      baseCurrency: 'IDR (Rupiah)',
-      fiscalYear: '2026',
-      capitalizationThreshold: '1000000',
-      slaUrgentHours: 4,
-      slaHighHours: 8,
-      slaMediumHours: 24,
-      slaLowHours: 48,
-      autoBackupDaily: true,
-      auditRetentionDays: 90
-    };
+  // Company profile is server-authoritative; SLA values below are read-only policy references.
+  const [settingsForm, setSettingsForm] = useState({
+    companyName: '',
+    accountingStandard: '',
+    baseCurrency: '',
+    fiscalYear: '',
+    slaUrgentHours: 4,
+    slaHighHours: 8,
+    slaMediumHours: 24,
+    slaLowHours: 48,
   });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || activeSection !== 'settings') return;
+    let cancelled = false;
+    setSettingsLoading(true);
+    setSettingsError('');
+    gabahApi.getSystemSettings()
+      .then(data => {
+        if (cancelled) return;
+        setSettingsForm(previous => ({
+          ...previous,
+          companyName: data.companyName,
+          accountingStandard: data.accountingStandard,
+          baseCurrency: data.baseCurrency,
+          fiscalYear: data.fiscalYear,
+        }));
+      })
+      .catch(error => {
+        if (cancelled) return;
+        setSettingsForm(previous => ({ ...previous, companyName: '', accountingStandard: '', baseCurrency: '', fiscalYear: '' }));
+        setSettingsError(error?.message || 'Pengaturan sistem gagal dimuat dari database.');
+        showToast('Pengaturan sistem tidak dapat dibaca dari database.', 'warning');
+      })
+      .finally(() => { if (!cancelled) setSettingsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, activeSection]);
 
   // Health Check State
   const [healthStatus, setHealthStatus] = useState<{
@@ -887,24 +870,23 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Nama lokasi fasilitas wajib diisi', 'warning');
       return;
     }
-    const newLoc: MasterLocation = {
-      id: `loc-${Date.now()}`,
+    const payload = {
       name: newLocationData.name.trim(),
       address: newLocationData.address.trim() || 'Kawasan PIBC, Jakarta Timur',
       capacity: newLocationData.capacity.trim() || 'Fasilitas Operasional'
     };
+    let created: MasterLocation;
     try {
-      await gabahApi.createLocation({ name: newLoc.name, address: newLoc.address, capacity: newLoc.capacity });
+      created = await gabahApi.createLocation(payload);
     } catch (err: any) {
       showToast(err.message || 'Gagal menyimpan lokasi fasilitas ke server.', 'warning');
       return;
     }
-    const updated = [...locations, newLoc];
+    const updated = [...locations, created];
     setLocations(updated);
-    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
     setIsAddLocationOpen(false);
     setNewLocationData({ name: '', address: '', capacity: '' });
-    showToast(`Lokasi fasilitas "${newLoc.name}" berhasil ditambahkan!`, 'success');
+    showToast(`Lokasi fasilitas "${created.name}" berhasil ditambahkan!`, 'success');
   };
 
   const handleEditLocationSubmit = async (e: React.FormEvent) => {
@@ -921,7 +903,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = locations.map(l => l.id === editLocationData.id ? { ...l, ...editLocationData } : l);
     setLocations(updated);
-    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
     setIsEditLocationOpen(false);
     setLocationToEdit(null);
     showToast(`Lokasi fasilitas "${editLocationData.name}" berhasil diperbarui!`, 'success');
@@ -936,7 +917,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = locations.filter(l => l.id !== id);
     setLocations(updated);
-    localStorage.setItem('gabah_master_locations', JSON.stringify(updated));
     showToast(`Lokasi fasilitas "${name}" berhasil dihapus.`, 'info');
   };
 
@@ -1032,7 +1012,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = [...divisions, newDiv];
     setDivisions(updated);
-    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
     setIsAddDivisionOpen(false);
     setNewDivisionData({ code: '', name: '', leader: '', initialDept: '' });
     showToast(`Divisi baru ${newDiv.code} - ${newDiv.name} berhasil ditambahkan!`, 'success');
@@ -1056,7 +1035,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = divisions.filter(d => d.code !== code);
     setDivisions(updated);
-    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
     showToast(`Divisi "${code} - ${name}" berhasil dihapus.`, 'info');
   };
 
@@ -1202,55 +1180,47 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
     const updated = divisions.map(d => d.code === divisionToEdit.code ? divisionToEdit : d);
     setDivisions(updated);
-    localStorage.setItem('gabah_org_divisions', JSON.stringify(updated));
     setIsEditDivisionOpen(false);
     setDivisionToEdit(null);
     showToast(`Struktur divisi ${divisionToEdit.code} - ${divisionToEdit.name} berhasil disimpan!`, 'success');
   };
 
-  const handleResetDivisions = () => {
-    setDivisions(DEFAULT_DIVISIONS);
-    localStorage.removeItem('gabah_org_divisions');
-    showToast('Struktur divisi dikembalikan ke standar organisasi BUMD.', 'info');
-  };
-
-  // Numbering Config Handlers
-  const handleSaveNumberingConfig = () => {
-    setNumberingConfig(tempNumberingConfig);
-    localStorage.setItem('gabah_numbering_config', JSON.stringify(tempNumberingConfig));
-    setIsEditingNumbering(false);
-    // Update live simulated number
-    const seqPadded = String(5).padStart(tempNumberingConfig.paddingDigits, '0');
-    setSimulatedNumber(`${testDiv}${tempNumberingConfig.separator}${testCode}${tempNumberingConfig.separator}2026${tempNumberingConfig.separator}${seqPadded}`);
-    showToast('Format dan parameter sequence penomoran aset berhasil disimpan!', 'success');
-  };
-
-  // Notification Rules Handlers
-  const handleToggleNotificationRule = (id: string) => {
-    const updated = notificationRules.map(r => {
-      if (r.id === id) {
-        const nextStatus: 'Aktif' | 'Nonaktif' = r.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
-        return { ...r, status: nextStatus };
-      }
-      return r;
-    });
-    setNotificationRules(updated);
+  // Notification rule status is committed by the API before the UI is updated.
+  const handleToggleNotificationRule = async (id: string) => {
+    const target = notificationRules.find(rule => rule.id === id);
+    if (!target || notificationRulesLoading || notificationRulesError || savingNotificationRuleId) return;
+    const nextStatus: 'Aktif' | 'Nonaktif' = target.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
     try {
-      window.localStorage.setItem('gabah_notification_rules', JSON.stringify(updated));
-    } catch (error) {
-      console.error('[GABAH Administration] Failed to persist notification rules locally:', error);
-      showToast('Perubahan hanya berlaku sementara di browser ini; penyimpanan lokal tidak tersedia.', 'warning');
-      return;
+      setSavingNotificationRuleId(id);
+      await gabahApi.updateNotificationRuleSetting(id, nextStatus === 'Aktif');
+      setNotificationRules(previous => previous.map(rule => rule.id === id ? { ...rule, status: nextStatus } : rule));
+      showToast(`Aturan "${target.title}" berhasil diubah menjadi: ${nextStatus}`, 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Perubahan aturan notifikasi gagal disimpan.', 'warning');
+    } finally {
+      setSavingNotificationRuleId(null);
     }
-    const target = updated.find(r => r.id === id);
-    showToast(`Aturan "${target?.title}" diubah menjadi: ${target?.status}`, 'info');
   };
 
-  // System Settings Handlers
-  const handleSaveSettings = (e: React.FormEvent) => {
+  // Persist only company-profile metadata; operational SLA policy remains server-owned.
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('gabah_system_settings', JSON.stringify(settingsForm));
-    showToast('Parameter tampilan panel administrasi tersimpan (local browser).', 'success');
+    if (!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving) return;
+    try {
+      setSettingsSaving(true);
+      const saved = await gabahApi.updateSystemSettings({
+        companyName: settingsForm.companyName,
+        accountingStandard: settingsForm.accountingStandard,
+        baseCurrency: settingsForm.baseCurrency,
+        fiscalYear: settingsForm.fiscalYear,
+      });
+      setSettingsForm(previous => ({ ...previous, ...saved }));
+      showToast('Profil perusahaan berhasil disimpan ke PostgreSQL.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Pengaturan sistem gagal disimpan.', 'warning');
+    } finally {
+      setSettingsSaving(false);
+    }
   };
 
   // P1#1: Rekonsiliasi INTEGRITAS DATA NYATA (bukan toast palsu).
@@ -1333,7 +1303,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         divisions,
         rbac_roles: rbacRoles,
         rbac_permissions: rbacPermissions,
-        numbering_config: numberingConfig,
+        numbering_rules: numberingRules || [],
+        numbering_sequences: liveSequences || [],
         notification_rules: notificationRules,
         settings: settingsForm,
         audit_logs_count: auditLogs.length
@@ -1379,10 +1350,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { id: 'organization' as AdminSection, label: 'Owner Domain', description: 'Daftar fungsi pemilik aset dan struktur divisi/departemen terkait.', dataSource: 'Perlu konsolidasi dengan master unit', icon: Building2, badge: `${divisions.length} divisi` },
     { id: 'org_masters' as AdminSection, label: 'Struktur Pegawai', description: 'Master jabatan/level, unit organisasi, dan lokasi kantor pegawai.', dataSource: 'Database master', icon: Network, badge: `${jobLevels.length} jabatan` },
     { id: 'master_data' as AdminSection, label: 'Referensi Aset & Layanan', description: 'Kategori aset, lokasi fasilitas, dan parameter layanan yang dipakai form operasional.', dataSource: 'Campuran: database dan lokal', icon: Database, badge: `${categories.length} kategori` },
-    { id: 'numbering' as AdminSection, label: 'Penomoran Aset', description: 'Format nomor aset dan pemantauan sequence nomor yang diterbitkan server.', dataSource: 'Format masih lokal; sequence dari API', icon: Hash, badge: liveSequences === null ? 'Sequence belum tersedia' : `${liveSequences.length} sequence` },
-    { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'Konfigurasi masih lokal', icon: Bell, badge: 'Perlu sentralisasi' },
+    { id: 'numbering' as AdminSection, label: 'Penomoran Aset', description: 'Format nomor aset dan pemantauan sequence nomor yang diterbitkan server.', dataSource: 'PostgreSQL registry', icon: Hash, badge: numberingRules === null ? 'Aturan belum tersedia' : `${numberingRules.length} aturan` },
+    { id: 'notifications' as AdminSection, label: 'Aturan Notifikasi', description: 'Aturan pengingat garansi, keterlambatan pinjaman, dan SLA tiket.', dataSource: 'PostgreSQL', icon: Bell, badge: 'Database' },
     { id: 'audit_log' as AdminSection, label: 'Riwayat Aktivitas', description: 'Catatan perubahan dan aktivitas yang direkam sistem.', dataSource: 'Database / API', icon: ScrollText, badge: `${auditLogs.length} catatan` },
-    { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Identitas perusahaan, parameter PSAK, SLA, dan retensi data.', dataSource: 'Konfigurasi masih lokal', icon: Settings2, badge: 'Perlu sentralisasi' },
+    { id: 'settings' as AdminSection, label: 'Pengaturan Sistem', description: 'Profil perusahaan, standar akuntansi, mata uang, dan tahun buku.', dataSource: 'PostgreSQL', icon: Settings2, badge: 'Database' },
     { id: 'data_admin' as AdminSection, label: 'Ekspor & Rekonsiliasi', description: 'Fungsi ekspor dan pemeriksaan konsistensi data; bukan pengganti backup terjadwal.', dataSource: 'Operasi administratif', icon: FileSpreadsheet, badge: 'Alat data' },
     { id: 'health' as AdminSection, label: 'Kesehatan Sistem', description: 'Pemeriksaan langsung API dan informasi runtime yang benar-benar tersedia.', dataSource: 'Live check', icon: HeartPulse, badge: healthStatus.status },
     { id: 'modules' as AdminSection, label: 'Siklus Hidup Modul', description: 'Aktif/nonaktif modul, enforcement API, dan histori perubahan.', dataSource: 'Database lifecycle registry', icon: Power, badge: '12 modul' },
@@ -3027,14 +2998,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <Plus className="w-3.5 h-3.5" />
                       <span>Tambah Divisi Baru</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleResetDivisions}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Reset Default</span>
-                    </button>
                   </div>
                 )}
               </div>
@@ -4163,7 +4126,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               <div className="bg-white p-4 rounded-2xl border border-slate-200">
                 <h3 className="text-base font-black text-slate-900">Asset Numbering & Sequence Engine</h3>
                 <p className="text-xs text-slate-500">
-                  Format otoritatif: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[#206f65] font-bold">{'{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}'}</code>
+                  Format teknis generator saat ini: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[#206f65] font-bold">{'{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}'}</code> — standar final perusahaan masih menunggu konfirmasi.
                 </p>
               </div>
 
@@ -4386,6 +4349,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 )}
               </div>
 
+              {notificationRulesLoading && <div className="text-xs text-slate-500">Memuat konfigurasi dari database...</div>}
+              {notificationRulesError && <div role="alert" className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">{notificationRulesError}</div>}
               <div className="space-y-3">
                 {notificationRules.map((rule, idx) => (
                   <div key={rule.id || idx} className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-4 flex-wrap">
@@ -4410,7 +4375,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleToggleNotificationRule(rule.id)}
-                          title="Aktifkan/nonaktifkan aturan — tersimpan di panel administrasi ini"
+                          disabled={notificationRulesLoading || !!notificationRulesError || savingNotificationRuleId !== null}
+                          title="Aktifkan/nonaktifkan aturan — tersimpan di PostgreSQL"
                           className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                             rule.status === 'Aktif'
                               ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -4418,7 +4384,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           }`}
                         >
                           <span className={`w-2 h-2 rounded-full ${rule.status === 'Aktif' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                          <span>{rule.status === 'Aktif' ? 'Aktif' : 'Nonaktif'}</span>
+                          <span>{savingNotificationRuleId === rule.id ? 'Menyimpan...' : (rule.status === 'Aktif' ? 'Aktif' : 'Nonaktif')}</span>
                         </button>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
@@ -4515,10 +4481,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </div>
                     </div>
 
-                    {(reminderOverview.recent_failures || []).length > 0 && (
+                    {Array.isArray(reminderOverview.recent_failures) && reminderOverview.recent_failures.length > 0 && (
                       <div className="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
                         <div className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700 mb-1">Kegagalan Terakhir (maks 5)</div>
-                        {reminderOverview.recent_failures.map((f: any) => (
+                        {reminderOverview.recent_failures.slice(0, 5).map((f: any) => (
                           <div key={f.id} className="text-[11px] text-rose-900 font-mono truncate">
                             {f.scheduled_at?.slice(0, 16).replace('T', ' ')} · {f.channel} · {f.notification_type} · {f.recipient} — {f.error_message || 'unknown error'}
                           </div>
@@ -4707,12 +4673,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
               )}
 
+              {settingsLoading && <div className="text-xs text-slate-500">Memuat pengaturan dari database...</div>}
+              {settingsError && <div role="alert" className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">{settingsError}</div>}
               <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">                    <div>
                       <label className="block text-slate-600 mb-1 font-semibold">Nama BUMD / Instansi</label>
                       <input
                         type="text"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving}
                         value={settingsForm.companyName}
                         onChange={e => setSettingsForm({ ...settingsForm, companyName: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
@@ -4722,7 +4690,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-slate-600 mb-1 font-semibold">Standar Akuntansi Aset Tetap</label>
                       <input
                         type="text"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving}
                         value={settingsForm.accountingStandard}
                         onChange={e => setSettingsForm({ ...settingsForm, accountingStandard: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
@@ -4732,7 +4700,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-slate-600 mb-1 font-semibold">Mata Uang Basis</label>
                       <input
                         type="text"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving}
                         value={settingsForm.baseCurrency}
                         onChange={e => setSettingsForm({ ...settingsForm, baseCurrency: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
@@ -4742,7 +4710,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-slate-600 mb-1 font-semibold">Tahun Buku Fiskal</label>
                       <input
                         type="text"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={!isCurrentUserAdmin || settingsLoading || !!settingsError || settingsSaving}
                         value={settingsForm.fiscalYear}
                         onChange={e => setSettingsForm({ ...settingsForm, fiscalYear: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-mono font-medium"
@@ -4751,7 +4719,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
 
                   <div className="rounded-xl bg-sky-50 border border-sky-200 px-3 py-2 text-[11px] text-sky-900 leading-relaxed">
-                    <strong>Catatan:</strong> parameter entitas (nama, standar, mata uang, tahun buku) tersimpan sebagai konfigurasi tampilan panel administrasi ini. Batas SLA helpdesk di bawah merupakan <strong>referensi</strong> — nilai SLA operasional riil saat ini ditetapkan server (Urgent 4h, High 8h, Medium 24h, Low 48h) dan belum dapat diubah dari UI.
+                    <strong>Catatan:</strong> profil perusahaan (nama, standar akuntansi, mata uang, tahun buku) disimpan terpusat di PostgreSQL. Batas SLA di bawah hanya referensi kebijakan server dan tidak dapat diubah dari panel ini (Urgent 4h, High 8h, Medium 24h, Low 48h).
                   </div>
 
                 <div className="pt-4 border-t border-slate-100">
@@ -4763,7 +4731,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-red-600 mb-1 font-bold">Urgent (Kritis)</label>
                       <input
                         type="number"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={true}
                         value={settingsForm.slaUrgentHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaUrgentHours: Number(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl border border-red-200 bg-red-50/30 font-bold text-red-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
@@ -4773,7 +4741,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-amber-600 mb-1 font-bold">High (Tinggi)</label>
                       <input
                         type="number"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={true}
                         value={settingsForm.slaHighHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaHighHours: Number(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-amber-50/30 font-bold text-amber-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
@@ -4783,7 +4751,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-blue-600 mb-1 font-bold">Medium (Sedang)</label>
                       <input
                         type="number"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={true}
                         value={settingsForm.slaMediumHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaMediumHours: Number(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl border border-blue-200 bg-blue-50/30 font-bold text-blue-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
@@ -4793,7 +4761,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <label className="block text-slate-600 mb-1 font-bold">Low (Rendah)</label>
                       <input
                         type="number"
-                        disabled={!isCurrentUserAdmin}
+                        disabled={true}
                         value={settingsForm.slaLowHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaLowHours: Number(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
@@ -4806,9 +4774,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   {isCurrentUserAdmin ? (
                     <button
                       onClick={handleSaveSettings}
+                      disabled={settingsLoading || !!settingsError || settingsSaving}
                       className="px-5 py-2 rounded-xl bg-[#4ABDAC] text-white text-xs font-bold shadow-md shadow-[#4ABDAC]/20 hover:bg-[#3ba393] cursor-pointer"
                     >
-                      Simpan Pengaturan Sistem
+                      {settingsSaving ? 'Menyimpan...' : 'Simpan Pengaturan Sistem'}
                     </button>
                   ) : (
                     <div className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed">

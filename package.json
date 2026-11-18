@@ -53,23 +53,30 @@
     "test:ticket-related-asset-scope": "node --import tsx scripts/ticket-related-asset-scope-verify.mjs",
     "test:org-master-active": "node scripts/org-master-active-verify.mjs",
     "test:numbering-rules": "node --import tsx scripts/numbering-rule-verify.mjs",
+    "test:runtime-persistence-fail-closed": "node scripts/runtime-persistence-fail-closed-verify.mjs",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f --tail=200",
     "docker:ps": "docker compose ps",
     "test:room-reservation-exclusion": "node scripts/room-reservation-exclusion-verify.mjs",
     "test:contract-numbering-atomic": "node scripts/contract-numbering-atomic-verify.mjs",
-    "test:ticket-contract-audit-persistence": "node scripts/ticket-contract-audit-persistence-verify.mjs"
+    "test:ticket-contract-audit-persistence": "node scripts/ticket-contract-audit-persistence-verify.mjs",
+    "test:room-domain-persistence": "node scripts/room-domain-persistence-verify.mjs",
+    "test:contract-domain-persistence": "node scripts/contract-domain-persistence-verify.mjs",
+    "test:runtime-build-dependency-boundary": "node scripts/runtime-build-dependency-boundary-verify.mjs",
+    "test:reminder-failure-payload": "node scripts/reminder-failure-payload-verify.mjs",
+    "test:notification-rule-persistence": "node scripts/notification-rule-persistence-verify.mjs",
+    "test:system-settings-persistence": "node scripts/system-settings-persistence-verify.mjs",
+    "test:rbac-audit-transaction": "node scripts/rbac-audit-transaction-verify.mjs",
+    "test:asset-domain-persistence": "node scripts/asset-domain-persistence-verify.mjs",
+    "test:asset-loan-mutation-rollback": "node scripts/asset-loan-mutation-rollback-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
     "lucide-react": "^0.546.0",
     "multer": "^2.5.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.4.6",
     "express": "^4.21.2",
     "dotenv": "^17.2.3",
     "motion": "^12.23.24",
@@ -84,6 +91,8 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.4.6",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4"
   }
 }

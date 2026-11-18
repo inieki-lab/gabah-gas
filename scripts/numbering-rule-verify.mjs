@@ -11,6 +11,7 @@ const css = fs.readFileSync(path.join(root, 'src/index.css'), 'utf8');
 const persistence = fs.readFileSync(path.join(root, 'server/persistence.ts'), 'utf8');
 const services = fs.readFileSync(path.join(root, 'server/services.ts'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
+const modal = fs.readFileSync(path.join(root, 'src/components/modals/AdministrationModal.tsx'), 'utf8');
 
 AssetNumberingEngine._resetForTesting();
 AssetNumberingEngine.configureRules([{
@@ -72,4 +73,8 @@ assert.ok(app.includes('await GabahDomainService.createAsset({'));
 assert.ok(app.includes("const canReadLicensesOnly = hasRbacPermission(actor.id, 'licenses.read')") && app.includes("canReadLicensesOnly ? 'licenses' : 'my_assets'"),
   'license-only readers must be governed by the licenses lifecycle module');
 
+assert.ok(!modal.includes('gabah_numbering_config') && !modal.includes('numberingConfig'),
+  'Administration must not retain a browser-only numbering configuration shadow');
+assert.ok(modal.includes('numbering_rules: numberingRules || []') && modal.includes('numbering_sequences: liveSequences || []'),
+  'Full backup must export the PostgreSQL-authoritative numbering rules and counters');
 console.log('PASS numbering rule format, PostgreSQL row-locked allocation contract, inactive guard, CRUD authorization, delete safeguards, license module routing, and theme enforcement');

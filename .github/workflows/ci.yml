@@ -44,14 +44,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Dependency vulnerability gate
-        run: npm audit --audit-level=high
+      - name: Production dependency vulnerability gate
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Production build dependency boundary regression
+        run: npm run test:runtime-build-dependency-boundary
+
+      - name: Development tooling vulnerability policy (temporary scoped advisory)
+        run: node scripts/dev-dependency-audit-policy.mjs
+
+      - name: Runtime PostgreSQL fail-closed regression
+        run: npm run test:runtime-persistence-fail-closed
+
+      - name: Room and facility durable-mutation regression
+        run: npm run test:room-domain-persistence
 
       - name: Typecheck (lint)
         run: npm run lint
 
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
+
+      - name: RBAC mutation and audit transaction regression
+        run: npm run test:rbac-audit-transaction
 
       - name: Employee profile capability normalization regression
         run: npm run test:employee-role-normalization
@@ -70,6 +85,12 @@ jobs:
 
       - name: Asset movement history scope consistency
         run: npm run test:movement-scope
+
+      - name: Asset assignment, movement, and lifecycle persistence regression
+        run: npm run test:asset-domain-persistence
+
+      - name: Asset and loan mutation rollback regression
+        run: npm run test:asset-loan-mutation-rollback
 
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
@@ -139,6 +160,9 @@ jobs:
       - name: Ticket persistence and contract document audit regression
         run: npm run test:ticket-contract-audit-persistence
 
+      - name: Contract domain audit durability and rollback regression
+        run: npm run test:contract-domain-persistence
+
       - name: Module lifecycle registry contract
         run: npm run test:module-lifecycle-registry
 
@@ -180,6 +204,15 @@ jobs:
 
       - name: Telegram chat ID response redaction
         run: npm run test:telegram-chat-id-redaction
+
+      - name: Reminder failure payload rendering regression
+        run: npm run test:reminder-failure-payload
+
+      - name: Notification rule PostgreSQL persistence regression
+        run: npm run test:notification-rule-persistence
+
+      - name: System settings PostgreSQL persistence regression
+        run: npm run test:system-settings-persistence
 
       - name: Contract renewal linkage integrity
         run: npm run test:contract-renewal-integrity
