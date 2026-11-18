@@ -60,12 +60,17 @@ async function startServer() {
   // Production API security and session/role hardening
   app.use(gabahSecurityMiddleware);
 
-  // Persist every successful state-changing API request after the response is sent
+  // Compatibility safety net for legacy mutation handlers. Critical domain
+  // routes must still await persistence before responding; this post-response
+  // fallback is intentionally non-authoritative and must never create an
+  // unhandled rejection.
   app.use((req, res, next) => {
     if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
     res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 400) {
-        void persistDataStore();
+        void persistDataStore().catch(error => {
+          console.error('[GABAH] Post-response persistence safety-net failed:', error);
+        });
       }
     });
     next();
