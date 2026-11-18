@@ -551,3 +551,15 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - Release-chain review: PR #119 and PR #118 currently report clean mergeability against their respective parent branches. Their parent PR #115 is **dirty/conflicted** against `main`; GitHub compare reports the dynamic RBAC branch diverged from `main` (459 commits ahead, 1 behind). Do not merge #119 or #118 until PR #115 is reconciled and the full ordered stack is revalidated.
 - PR #116 is a separate open WIP based on the dynamic RBAC branch and is not silently included in the #115 → #118 → #119 chain. Its changes require independent review before release.
 - UAT status: **not yet authorized**. Green CI for the #119 head is necessary but not sufficient while the parent branch conflict and stacked PR integration remain unresolved.
+
+
+## 19. Exact-head CI revalidation — 18 November 2026
+
+- Current PR #119 head verified from GitHub: `d96f6c7f1f53376a0b1dbbe3229e2ad60afcd5c6`.
+- Exact-head workflow runs #1910 (`44196502654`) and #1911 (`44196511182`) both completed successfully. The latest run #1911 has a successful `verify` job.
+- The complete job passed: production dependency audit, scoped development-tool advisory policy, TypeScript lint, frontend/server production build, Docker image build and runtime smoke, PostgreSQL 17 fresh-database/persistence integration, live P0 HTTP security checks, and all registered RBAC, asset, loan, ticket, meeting-room, contract, vendor, organization, dashboard, and maintenance regressions.
+- The earlier dependency-gate failure on prior commits is superseded for this exact head by the successful production dependency audit and narrowly scoped development-tool policy. The picomatch advisory remains explicitly documented as temporary development-tool risk containment, not an upstream patch.
+- Merge remains blocked by release-chain topology, not by this CI run: PR #115 (`audit/dynamic-rbac-full-sync` → `main`) is still `dirty` / not mergeable; compare reports 459 commits ahead and 1 behind. PR #118 is based on PR #115's branch, and PR #119 is based on PR #118's branch. Do not merge the child PRs or retarget them directly to `main` while the parent conflict is unresolved.
+- Browser-based UAT, backup/restore rehearsal, deployment rehearsal, and concurrent multi-process issuance tests remain outstanding.
+
+**Updated release gate:** exact-head CI = PASS; parent integration/conflict resolution and operational UAT = OPEN. No merge to `main` yet.
