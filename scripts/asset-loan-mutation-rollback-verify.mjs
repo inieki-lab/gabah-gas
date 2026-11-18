@@ -44,6 +44,9 @@ assert('asset PATCH restores earlier field changes when a later location validat
   patchAsset.includes('restoreDomainMutationState(mutationSnapshot);')
   && patchAsset.indexOf('asset.managing_unit_id = uid;') < patchAsset.indexOf('restoreDomainMutationState(mutationSnapshot);'));
 
+assert('asset PATCH defers audit persistence to its awaited rollback-aware write',
+  patchAsset.includes("actor, asset.id, false);"));
+
 assert('asset PATCH snapshots before mutation and uses rollback persistence',
   patchAsset.indexOf('captureDomainMutationState()') >= 0
   && patchAsset.indexOf('captureDomainMutationState()') < patchAsset.indexOf('asset.managing_unit_id =')
