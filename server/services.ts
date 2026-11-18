@@ -233,6 +233,10 @@ export class GabahDomainService {
       timestamp: new Date().toISOString(),
     };
     db.auditLogs.unshift(log);
+    // Compatibility fallback for legacy handlers that still record audit
+    // events without an explicit awaited domain commit. Core asset/room
+    // mutations below also await persistence and perform rollback themselves.
+    void persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence fallback notice:', err.message));
     return log;
   }
 
