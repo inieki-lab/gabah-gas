@@ -95,7 +95,7 @@ export function canManageContracts(user: ServerUser): boolean {
 export function canEditContract(user: ServerUser, contract: ServerContract): boolean {
   if (isSuperadminActor(user)) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
-  if (!owner) return false;
+  if (!owner || ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(owner)) return false;
   if (contract.pic_user_id === user.id) {
     return isPostgresPersistenceActive()
       ? hasRbacPermission(String(user.id), 'contracts.update')
@@ -112,7 +112,7 @@ export function canEditContract(user: ServerUser, contract: ServerContract): boo
 export function canManageContractCapability(user: ServerUser, contract: ServerContract, permissionKey: 'contracts.documents.upload' | 'contracts.milestones.manage' | 'contracts.renewal.decide'): boolean {
   if (isSuperadminActor(user)) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
-  if (!owner) return false;
+  if (!owner || ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(owner)) return false;
   if (isPostgresPersistenceActive()) {
     return hasRbacPermission(String(user.id), permissionKey)
       && (contract.pic_user_id === user.id || hasRbacScope(String(user.id), 'division', owner, 'contracts'));
@@ -161,7 +161,10 @@ export const ContractDomainService = {
     }
     const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
     const pic = db.users.find(u => u.id === payload.pic_user_id) || actor;
-    const ownerExists = (db.divisions || []).some(d => String(d.code).trim().toUpperCase() === ownerDivision);
+    if (['SC', 'PIBC', 'SUPPLY CHAIN'].includes(ownerDivision)) {
+      throw new Error('SC/PIBC adalah kode lokasi legacy, bukan owner kontrak baru. Gunakan owner domain aktif.');
+    }
+    const ownerExists = (db.divisions || []).some(d => d.is_active !== false && String(d.code || '').trim().toUpperCase() === ownerDivision);
     const ownerScopeAllowed = ownerExists
       && (isSuperadminActor(actor) || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
