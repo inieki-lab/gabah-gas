@@ -49,6 +49,7 @@
     "test:ticket-resolution-notes": "node scripts/ticket-resolution-notes-verify.mjs",
     "test:telegram-chat-id-redaction": "node scripts/telegram-chat-id-redaction-verify.mjs",
     "test:ticket-reporter-ownership": "node scripts/ticket-reporter-ownership-verify.mjs",
+    "test:ticket-status-ownership-live": "node scripts/ticket-status-ownership-live-verify.mjs",
     "test:ticket-related-asset-scope": "node --import tsx scripts/ticket-related-asset-scope-verify.mjs",
     "test:org-master-active": "node scripts/org-master-active-verify.mjs",
     "test:numbering-rules": "node --import tsx scripts/numbering-rule-verify.mjs",
@@ -57,7 +58,8 @@
     "docker:logs": "docker compose logs -f --tail=200",
     "docker:ps": "docker compose ps",
     "test:room-reservation-exclusion": "node scripts/room-reservation-exclusion-verify.mjs",
-    "test:contract-numbering-atomic": "node scripts/contract-numbering-atomic-verify.mjs"
+    "test:contract-numbering-atomic": "node scripts/contract-numbering-atomic-verify.mjs",
+    "test:ticket-contract-audit-persistence": "node scripts/ticket-contract-audit-persistence-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

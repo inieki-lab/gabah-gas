@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, 'audit/**']
   pull_request:
-    branches: [main, preview/green-enterprise-theme-laptop]
+    branches: [main, preview/green-enterprise-theme-laptop, 'audit/**']
 
 jobs:
   verify:
@@ -136,6 +136,9 @@ jobs:
       - name: PostgreSQL contract numbering allocation regression
         run: npm run test:contract-numbering-atomic
 
+      - name: Ticket persistence and contract document audit regression
+        run: npm run test:ticket-contract-audit-persistence
+
       - name: Module lifecycle registry contract
         run: npm run test:module-lifecycle-registry
 
@@ -150,6 +153,9 @@ jobs:
 
       - name: Ticket reporter ownership regression
         run: npm run test:ticket-reporter-ownership
+
+      - name: Ticket status object-level authorization live HTTP regression
+        run: npm run test:ticket-status-ownership-live
 
       - name: Ticket related-asset visibility regression
         run: npm run test:ticket-related-asset-scope

@@ -709,3 +709,25 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The previous deploy.sh auto-installed Docker from get.docker.com, shut down the existing Compose project with --remove-orphans, and printed success without verifying health. Replaced with fail-fast preflight, .env/PGPASSWORD validation, Compose config check, app-only recreation, health polling, and failure diagnostics. It no longer stops the DB first or claims success without health.
 - PostgreSQL host port now binds only to loopback. Compose now passes GABAH_INITIAL_ADMIN_PASSWORD and GABAH_INITIAL_USER_PASSWORD into the application container (previously documented in runbook but not passed by Compose).
 - CI checks Compose configuration and shell syntax. VM runbook now requires clean main, fast-forward-only update, database backup, health verification, and explicit rollback/restore safeguards. Production deploy remains NO-GO pending merge, UAT, restore rehearsal, TLS, and sign-off.
+
+
+### Follow-up audit fixes — 2026-11-17
+- `PATCH /api/tickets/:id/status` now awaits `persistDataStore()` before returning success. If persistence fails, the route restores the previous ticket status, resolution notes, completion timestamp, and update timestamp, removes the corresponding audit event, and returns HTTP 500 instead of a false success.
+- Binary contract document uploads now create a `CONTRACT_DOCUMENT_UPLOADED` audit event with contract ID, document kind, safe filename, file size, and authenticated actor. The route persists both document metadata and audit event before success; failed persistence rolls back metadata, audit event, and uploaded file.
+- Added `scripts/ticket-contract-audit-persistence-verify.mjs` and registered it in `package.json` and CI.
+- CI pull-request triggers now include `audit/**` base branches so follow-up audit PRs receive the same verification gate.
+- Validation status at commit time: source-level regression checks added; CI execution and runtime fault-injection remain pending.
+
+
+### Ticket object-level authorization follow-up — 2026-11-17
+- Re-audit against the Hermes ticket finding confirmed that PATCH /api/tickets/:id/status checked only the broad tickets.update permission; the nearby comment claiming middleware enforced object-level scope was inaccurate.
+- Added explicit object-level authorization matching the ticket-list visibility boundary: Superadmin, ticket reporter (stable reporter ID; legacy name fallback only when reporter ID is absent), assigned agent, or user with the matching tickets division scope. Unrelated tickets now return HTTP 403 before state mutation.
+- Extended scripts/ticket-reporter-ownership-verify.mjs with source regression assertions for the PATCH authorization boundary. CI execution is pending.
+- This corrects an earlier cross-check note that had incorrectly treated the middleware comment as proof of object-level enforcement.
+
+
+### Login brute-force protection follow-up — 2026-11-17
+- Replaced IP-wide login lockout keys with a composite client-IP + normalized-email key. This prevents five failed attempts against one account from locking out every employee sharing the office NAT address.
+- Brute-force lockout now remains enabled in development and UAT by default. An explicit GABAH_DISABLE_LOGIN_LOCKOUT=true opt-out is honored only outside production for isolated local testing; production cannot disable it through this flag.
+- Login input is type-checked before normalization and lockout lookup. Successful authentication clears only the matching account/IP counter.
+- Extended the live HTTP regression to prove the 5-attempt lockout is active in development, another account from the same IP can still log in, and the locked account remains blocked. CI execution is pending.

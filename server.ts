@@ -1430,20 +1430,23 @@ async function startServer() {
   app.post('/api/auth/login', (req, res) => {
     try {
       const ip = extractClientIp(req) || 'unknown';
-      const lockCheck = isLoginLocked(ip);
-      if (lockCheck.isLocked) {
-        return res.status(429).json({
-          success: false,
-          message: `Terlalu banyak percobaan login gagal. Silakan coba lagi dalam ${lockCheck.remainingLockoutSeconds} detik.`,
-        });
-      }
-
-      const { email, password } = req.body;
-      if (!email || !password) {
+      const { email, password } = req.body || {};
+      if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
         return res.status(400).json({ success: false, message: 'Email dan password wajib diisi.' });
       }
 
       const inputEmail = email.trim().toLowerCase();
+      // Scope the lockout to the client IP + normalized account identifier.
+      // A failed-login burst against one account must not lock every employee
+      // behind the same office NAT address.
+      const loginAttemptKey = `${ip}:${inputEmail}`;
+      const lockCheck = isLoginLocked(loginAttemptKey);
+      if (lockCheck.isLocked) {
+        return res.status(429).json({
+          success: false,
+          message: `Terlalu banyak percobaan login gagal untuk akun ini. Silakan coba lagi dalam ${lockCheck.remainingLockoutSeconds} detik.`,
+        });
+      }
       const inPrefix = inputEmail.split('@')[0];
 
       // Robust Enterprise User Resolver with Alias Mapping.
@@ -1472,11 +1475,11 @@ async function startServer() {
       }) : undefined);
 
       if (!user || !user.is_active) {
-        const lock = recordFailedLogin(ip);
+        const lock = recordFailedLogin(loginAttemptKey);
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
-            message: `Terlalu banyak percobaan login gagal. IP dikunci selama ${lock.remainingLockoutSeconds} detik.`,
+            message: `Terlalu banyak percobaan login gagal. Akun ini dikunci selama ${lock.remainingLockoutSeconds} detik.`,
           });
         }
         return res.status(401).json({ success: false, message: 'Email atau kata sandi tidak valid.' });
@@ -1499,7 +1502,7 @@ async function startServer() {
       }
 
       if (!isValidPassword) {
-        const lock = recordFailedLogin(ip);
+        const lock = recordFailedLogin(loginAttemptKey);
         GabahDomainService.recordAudit(
           'AUTH_LOGIN_FAILED',
           'Auth',
@@ -1509,14 +1512,14 @@ async function startServer() {
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
-            message: `Terlalu banyak percobaan login gagal. IP dikunci selama ${lock.remainingLockoutSeconds} detik.`,
+            message: `Terlalu banyak percobaan login gagal untuk akun ini. Silakan coba lagi selama ${lock.remainingLockoutSeconds} detik.`,
           });
         }
         return res.status(401).json({ success: false, message: 'Email atau kata sandi tidak valid.' });
       }
 
       // Reset lockout counter on success
-      clearFailedLogins(ip);
+      clearFailedLogins(loginAttemptKey);
 
       // Create persistent session
       const session = createSession(user.id, req);
@@ -2950,7 +2953,7 @@ async function startServer() {
     closed: ['open'],
   };
 
-  app.patch('/api/tickets/:id/status', (req, res) => {
+  app.patch('/api/tickets/:id/status', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'tickets.update')) return;
@@ -2960,6 +2963,25 @@ async function startServer() {
       }
       const ticket = db.tickets.find(t => t.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
+
+      // Enforce the same object-level boundary as GET /api/tickets. A broad
+      // tickets.update permission must never grant access to unrelated tickets.
+      const isReporter = ticket.reporter_id === actor.id
+        || (!ticket.reporter_id && Boolean(ticket.reporter_name)
+          && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+      const canReadTicketOwner = isPostgresPersistenceActive()
+        ? hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
+        : actor.role === ticket.category;
+      const canUpdateTicket = isSuperadminActor(actor)
+        || isReporter
+        || ticket.assigned_agent_id === actor.id
+        || canReadTicketOwner;
+      if (!canUpdateTicket) {
+        return res.status(403).json({
+          success: false,
+          message: 'Akses ditolak: tiket ini bukan milik Anda dan tidak termasuk cakupan penugasan/divisi Anda.',
+        });
+      }
 
       const { status, resolutionNotes } = req.body || {};
       if (resolutionNotes !== undefined
@@ -2983,8 +3005,14 @@ async function startServer() {
         });
       }
 
-      // Object-level authorization already enforced by middleware for scoped
-      // roles; Admin GABAH handles everything.
+      // Object-level authorization is enforced by middleware for scoped
+      // roles; Admin GABAH handles everything. Persist before reporting success.
+      const previous = {
+        status: ticket.status,
+        resolution_notes: ticket.resolution_notes,
+        resolved_at: ticket.resolved_at,
+        updated_at: ticket.updated_at,
+      };
       ticket.status = nextStatus as any;
       if (resolutionNotes !== undefined) ticket.resolution_notes = resolutionNotes.trim();
       if (nextStatus === 'resolved' || nextStatus === 'closed') {
@@ -2996,12 +3024,31 @@ async function startServer() {
       }
       ticket.updated_at = new Date().toISOString();
 
-      GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
-      persistDataStore().catch(() => {});
+      const auditLog = GabahDomainService.recordAudit(
+        'TICKET_STATUS_UPDATED',
+        'Tickets',
+        `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`,
+        actor,
+        ticket.id,
+      );
+      try {
+        await persistDataStore();
+      } catch (persistenceError: any) {
+        ticket.status = previous.status;
+        ticket.resolution_notes = previous.resolution_notes;
+        ticket.resolved_at = previous.resolved_at;
+        ticket.updated_at = previous.updated_at;
+        db.auditLogs = db.auditLogs.filter(log => log.id !== auditLog.id);
+        await persistDataStore().catch(() => undefined);
+        return res.status(500).json({
+          success: false,
+          message: 'Perubahan status tiket gagal disimpan. Tidak ada perubahan yang diterapkan.',
+        });
+      }
 
-      res.json({ success: true, data: ticket });
+      return res.json({ success: true, data: ticket });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      return res.status(400).json({ success: false, message: err.message });
     }
   });
 
@@ -3710,6 +3757,8 @@ async function startServer() {
     let savedFilePath: string | null = null;
     let savedContract: any = null;
     let savedDocumentId: string | null = null;
+    let savedAuditLog: any = null;
+    let previousContractUpdatedAt: string | undefined;
     try {
       if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
       const actor = getActor(req);
@@ -3756,7 +3805,17 @@ async function startServer() {
         uploaded_by_name: actor.name,
         uploaded_at: new Date().toISOString(),
       });
+      previousContractUpdatedAt = contract.updated_at;
       contract.updated_at = new Date().toISOString();
+      savedAuditLog = GabahDomainService.recordAudit(
+        'CONTRACT_DOCUMENT_UPLOADED',
+        'Contracts',
+        `Mengunggah dokumen '${fileKind}' pada kontrak ${contract.contract_number}: ${safeFilename} (${file.size} byte)`,
+        actor,
+        contract.id,
+      );
+      // Persist the document metadata and its audit event together. A single
+      // durable write avoids a crash window with an unaudited document.
       await persistDataStore();
 
       return res.json({
@@ -3772,11 +3831,16 @@ async function startServer() {
     } catch (err: any) {
       if (savedContract && savedDocumentId) {
         savedContract.documents = savedContract.documents.filter((document: any) => document.id !== savedDocumentId);
+        if (previousContractUpdatedAt !== undefined) savedContract.updated_at = previousContractUpdatedAt;
+      }
+      if (savedAuditLog) {
+        db.auditLogs = db.auditLogs.filter(log => log.id !== savedAuditLog.id);
       }
       if (savedFilePath) {
         await fs.rm(savedFilePath, { force: true }).catch(() => undefined);
       }
-      return res.status(400).json({ success: false, message: err.message });
+      await persistDataStore().catch(() => undefined);
+      return res.status(500).json({ success: false, message: 'Dokumen gagal disimpan secara konsisten. Silakan coba kembali.' });
     }
   });
 
