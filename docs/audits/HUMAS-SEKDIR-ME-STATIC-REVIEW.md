@@ -47,3 +47,19 @@ The GA ticket selector used legacy category `General` while the canonical client
 ## Release gate
 
 NOT READY for production sign-off. Static review and source assertions are not a substitute for CI, a fresh PostgreSQL migration run, or browser UAT. ME routing remains explicitly BLOCKED pending the distinct owner-domain and role-template implementation above.
+
+
+## Additional blocker — legacy SC/PIBC ticket categories conflict with the organization model
+
+Source inspection on 18 November 2026 found that the ticket UI still exposes **Supply Chain** and **PIBC** as selectable values under the label “Departemen Penanganan”. The client type remains `TicketCategory = 'IT' | 'GA' | 'SC' | 'PIBC'`, and selecting an asset whose `owner_division` is SC or PIBC automatically sets the ticket category to the same value.
+
+This is inconsistent with the approved GABAH organization model: RPC/SC and PIBC are work units / office locations, not application roles or owner divisions. A user's location must not implicitly determine the ticket handling authority. The current implementation therefore still contains a legacy domain conflation; CI passing does not make this organization rule correct.
+
+Safe correction requires an explicit operational owner/routing model, not a label-only rename:
+1. Confirm the responsible operational owner for tickets raised from RPC/SC and PIBC. Location alone must not grant queue-wide read or mutation rights.
+2. Keep IT and GA as distinct owner domains; define ME as a separate operational function within PIBC only after its capability/scope policy is approved.
+3. Replace the SC/PIBC divisional category mapping in client types, form, API validation, persistence normalization, queue resolver, dashboard counts, notification routing, and exports with approved operational categories/targets.
+4. Add a PostgreSQL migration and upgrade/fresh-install tests; preserve existing tickets with an explicit, audited mapping rather than silently reclassifying them.
+5. Add positive and negative tests for reporter, assignee, location-only user, owner-scope user, and cross-location access.
+
+**Release status: BLOCKED** until the routing owner mapping is approved and the end-to-end change is implemented and tested. Do not infer that all RPC/SC or PIBC employees should see or manage one shared ticket queue.
