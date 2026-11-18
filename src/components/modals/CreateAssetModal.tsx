@@ -231,12 +231,14 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
     return map;
   }, [masterCategories]);
 
-  const availableOwnerDomains = useMemo(() => (
-    [...new Set((masterCategories || [])
-      .map(category => String(category?.owner_division || '').trim())
-      .filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b))
-  ), [masterCategories]);
+  const availableOwnerDomains = useMemo<string[]>(() => {
+    const domains = new Set<string>();
+    for (const category of masterCategories || []) {
+      const owner = String(category?.owner_division || '').trim();
+      if (owner) domains.add(owner);
+    }
+    return [...domains].sort((a, b) => a.localeCompare(b));
+  }, [masterCategories]);
 
   // Kode terpilih layak dipakai bila: master belum termuat (fallback), ATAU
   // kode terdaftar di master dan berstatus aktif. Kategori nonaktif/dihapus
