@@ -479,7 +479,7 @@ async function backfillNormalizedTables(): Promise<void> {
         `INSERT INTO org_job_levels (code, label, order_num, is_active)
          VALUES ($1, $2, $3, $4)
          ON CONFLICT (code) DO UPDATE SET label=EXCLUDED.label, order_num=EXCLUDED.order_num, is_active=EXCLUDED.is_active`,
-        [level.code, level.label, Number(level.order ?? level.order_num ?? 0), level.is_active !== false],
+        [level.code, level.label, Number(level.order ?? 0), level.is_active !== false],
       );
     }
     for (const unit of db.orgUnits || []) {
@@ -829,7 +829,7 @@ export async function initializePersistence(): Promise<void> {
       const normalizedUsers = await pool.query<{ id: string; role: string; job_level_code: string | null; unit_id: string | null; office_location_id: string | null }>(
         'SELECT id::text AS id, role, job_level_code, unit_id, office_location_id FROM users'
       );
-      const normalizedProfiles = new Map(normalizedUsers.rows.map(row => [String(row.id), row]));
+      const normalizedProfiles = new Map<string, (typeof normalizedUsers.rows)[number]>(normalizedUsers.rows.map(row => [String(row.id), row]));
       for (const user of db.users) {
         const profile = normalizedProfiles.get(String(user.id));
         if (!profile) continue;
