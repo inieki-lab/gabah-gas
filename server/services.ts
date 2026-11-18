@@ -1157,7 +1157,7 @@ export class GabahDomainService {
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
     contract_id?: string;
-  }, actor: ServerUser): Promise<ServerTicket> {
+  }, actor: ServerUser, persist = true): Promise<ServerTicket> {
     // Strict divisional categories per PRD §3.5: a ticket must target an
     // operational division that actually staffs a queue. Without this gate a
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
@@ -1310,7 +1310,9 @@ export class GabahDomainService {
 
     this.recordAudit('TICKET_CREATED', 'Tickets', `Membuat tiket helpdesk ${ticketNumber} (Prioritas: ${payload.priority}, SLA: ${slaHours}h)`, actor, newTicket.id, false);
 
-    await this.persistMutationWithRollback('Pembuatan tiket helpdesk', rollback);
+    if (persist) {
+      await this.persistMutationWithRollback('Pembuatan tiket helpdesk', rollback);
+    }
     return newTicket;
   }
 
