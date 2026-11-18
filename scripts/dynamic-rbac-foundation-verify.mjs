@@ -9,6 +9,7 @@ const migration = fs.readFileSync('server/migrations/010_dynamic_rbac_foundation
 const postSeedRbacMigration = fs.readFileSync('server/migrations/090_post_seed_dynamic_rbac_assignment_backfill.sql', 'utf8');
 const roomCapabilityUpgradeMigration = fs.readFileSync('server/migrations/092_post_seed_room_reservation_capability_grants.sql', 'utf8');
 const employeeMenuCleanupMigration = fs.readFileSync('server/migrations/094_employee_self_service_menu_cleanup.sql', 'utf8');
+const auditorAuditScopeMigration = fs.readFileSync('server/migrations/099_auditor_global_audit_scope.sql', 'utf8');
 const backfill = fs.readFileSync('server/migrations/011_dynamic_rbac_legacy_backfill.sql', 'utf8');
 const catalogExpansion = fs.readFileSync('server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql', 'utf8');
 const dashboardPermissionSeed = fs.readFileSync('server/migrations/013_dynamic_rbac_dashboard_permission_seed.sql', 'utf8');
@@ -129,6 +130,7 @@ const checks = [
   ['RBAC writes fail closed without PostgreSQL', /Dynamic RBAC memerlukan PostgreSQL aktif/i.test(persistence) && /withRbacTransaction/i.test(persistence)],
   ['role deactivation and deletion check current assignments', /RBAC_ROLE_IN_USE/i.test(server) && /FROM gabah_user_roles WHERE role_id = \$1/i.test(server)],
   ['role administration changes are audit logged', /RBAC_ROLE_CREATED/i.test(server) && /RBAC_ROLE_UPDATED/i.test(server) && /RBAC_PERMISSIONS_UPDATED/i.test(server)],
+  ['Auditor receives global read scope only for the audit module', /r\.role_key = 'auditor'[\s\S]*?'audit', 'all', NULL/.test(auditorAuditScopeMigration) && /s\.module = 'audit'[\s\S]*s\.scope_type = 'all'/.test(auditorAuditScopeMigration)],
   ['Superadmin comparisons use the stable policy in server and domain services', !/actor\.role\s*(?:===|!==)\s*'Admin GABAH'/.test(server) && !/actor\.role\s*(?:===|!==)\s*'Admin GABAH'/.test(domainServices) && /isSuperadminActor\(actor\)/.test(domainServices)],
   ['legacy Superadmin string bypasses are removed from API guards', !/\(actor as any\)\.role !== 'Superadmin'/.test(server)],
   ['runtime security middleware uses stable Superadmin policy', /isSuperadminActor\(actor\)/.test(runtimeHardening) && /isSuperadminActor/.test(policy)],
