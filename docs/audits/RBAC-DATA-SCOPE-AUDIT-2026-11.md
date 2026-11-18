@@ -351,3 +351,15 @@ Source review found two operational edge cases and added regression coverage:
 ### Verification status
 - These changes are committed to the PR #121 head. A fresh exact-head CI run is required; no pass is claimed yet.
 - Browser UAT, legacy database upgrade rehearsal, backup/restore rehearsal, and real-user role assignment remain separate release gates.
+
+### SC/PIBC location-vs-owner separation
+- Removed Supply Chain and PIBC legacy labels from fallback role navigation and dashboard legacy permission grants. They no longer receive application access merely because a user profile contains one of those old labels.
+- New asset-category creation and new asset creation reject SC/PIBC/Supply Chain as owner-domain values. Existing historical categories/assets are retained; the change does not mass-reclassify records.
+- Administration user, category, unit, and numbering forms now source active owner choices from the owner-domain master while excluding legacy SC/PIBC values. Existing legacy user/category values remain visible as explicitly marked review options so records can be corrected deliberately.
+- Asset and contract screens expose historical SC/PIBC records only through an “Owner lama (perlu review)” filter/label, not as active divisions. Dashboard summary groups them into one legacy-review count.
+- `ASSET_OWNER_DIVISIONS` now seeds only IT and GA; taxonomy aliases remain available for historical data compatibility.
+- Added `scripts/legacy-owner-presentation-verify.mjs` to CI.
+
+### Exact-head CI
+- A fresh CI run is in progress for the latest PR #121 head. Earlier failures exposed and were corrected: malformed static-test regex, owner guard placed before owner resolution, outdated Knowledge Base async-route expectation, and the AdministrationModal memo-hook namespace.
+- No CI pass is claimed until the latest exact-head run completes successfully.
