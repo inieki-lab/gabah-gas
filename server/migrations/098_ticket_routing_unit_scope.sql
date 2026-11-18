@@ -45,6 +45,27 @@ WHERE rp.role_id = r.id
   AND r.role_key = 'ga'
   AND rp.permission_key IN ('tickets.update', 'tickets.assign');
 
+-- Keep generic GA staff on their own submitted tickets only. The dedicated
+-- operator role below is the sole seeded GA queue scope; job title/profile
+-- labels do not grant access to the whole GA ticket queue.
+DELETE FROM gabah_role_division_scopes s
+USING gabah_roles r
+WHERE s.role_id = r.id
+  AND r.role_key = 'ga'
+  AND s.module = 'tickets'
+  AND s.scope_type IN ('all', 'division');
+
+-- Historical branch profiles do not retain queue-wide access just because
+-- their old profile key matched SC/PIBC. Their own/assigned tickets remain
+-- visible; Superadmin may add a reviewed explicit scope if a real workflow needs it.
+DELETE FROM gabah_role_division_scopes s
+USING gabah_roles r
+WHERE s.role_id = r.id
+  AND r.role_key IN ('supply_chain', 'pibc')
+  AND s.module = 'tickets'
+  AND s.scope_type IN ('all', 'division');
+
+
 INSERT INTO gabah_roles (role_key, name, description, is_superadmin, is_active)
 VALUES
   ('ga_helpdesk_operator', 'Petugas Helpdesk GA',
