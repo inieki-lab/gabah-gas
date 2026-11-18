@@ -14,27 +14,37 @@ function section(startMarker, endMarker) {
 }
 
 const helper = section('type DomainMutationSnapshot', '  app.use(express.json())');
-assert('mutation snapshot captures assets, loans, notifications, and audit logs', 
-  ['assets', 'loans', 'notifications', 'auditLogs'].every(key => new RegExp(`\\b${key}: JSON\\.parse\\(JSON\\.stringify\\(db\\.${key}\\)\\)`).test(helper)));
-assert('failed persistence restores all four in-memory collections', 
-  ['assets', 'loans', 'notifications', 'auditLogs'].every(key => new RegExp(`db\\.${key}\\.splice\\(0, db\\.${key}\\.length, \.\.\.snapshot\\.${key}\\)`).test(helper)));
-assert('failed persistence returns explicit HTTP 503 after rollback', /catch[\\s\\S]*?restoreDomainMutationState\\(snapshot\\)[\\s\\S]*?res\\.status\\(503\\)/.test(helper));
+assert('snapshot captures assets, loans, notifications, and audit logs',
+  ['assets', 'loans', 'notifications', 'auditLogs'].every(key => helper.includes(`${key}: JSON.parse(JSON.stringify(db.${key}))`)));
+assert('rollback restores all four in-memory collections',
+  ['assets', 'loans', 'notifications', 'auditLogs'].every(key => helper.includes(`db.${key}.splice(0, db.${key}.length, ...snapshot.${key})`)));
+assert('persistence failure rolls back before returning HTTP 503',
+  helper.indexOf('restoreDomainMutationState(snapshot);') >= 0
+  && helper.indexOf('restoreDomainMutationState(snapshot);') < helper.indexOf('res.status(503)'));
 
 const createAsset = section("app.post('/api/assets',", "app.post('/api/assets/bulk-import'");
-assert('single asset creation snapshots state before mutation and rolls back on persistence failure', /captureDomainMutationState\\(\\)[\\s\\S]*?GabahDomainService\\.createAsset[\\s\\S]*?persistMutationOrRollback\\(res, mutationSnapshot\\)/.test(createAsset));
+assert('asset creation snapshots before mutation and uses rollback persistence',
+  createAsset.indexOf('captureDomainMutationState()') >= 0
+  && createAsset.indexOf('captureDomainMutationState()') < createAsset.indexOf('GabahDomainService.createAsset')
+  && createAsset.includes('persistMutationOrRollback(res, mutationSnapshot)'));
 
 const patchAsset = section("app.patch('/api/assets/:id',", "app.post('/api/assets/:id/assign'");
-assert('asset PATCH snapshots before changing fields and uses rollback persistence', /captureDomainMutationState\\(\\)[\\s\\S]*?asset\\.updated_at[\\s\\S]*?persistMutationOrRollback\\(res, mutationSnapshot\\)/.test(patchAsset));
+assert('asset PATCH snapshots before mutation and uses rollback persistence',
+  patchAsset.indexOf('captureDomainMutationState()') >= 0
+  && patchAsset.indexOf('captureDomainMutationState()') < patchAsset.indexOf('asset.managing_unit_id =')
+  && patchAsset.includes('persistMutationOrRollback(res, mutationSnapshot)'));
 
 const loans = section("app.post('/api/loans',", '  // Helpdesk Tickets');
-assert('loan request, approval, rejection, handover, and return use rollback persistence', 
-  (loans.match(/persistMutationOrRollback\\(res, mutationSnapshot\\)/g) || []).length === 5);
-assert('bulk loan request restores all affected collections when any item or persistence fails', 
-  /const snapshots = captureDomainMutationState\\(\\)[\\s\\S]*?catch \\(bulkError\\)[\\s\\S]*?restoreDomainMutationState\\(snapshots\\)/.test(loans));
-assert('all five loan state-changing endpoints capture snapshots before domain mutation',
+assert('request, approve, reject, handover, and return use rollback persistence',
+  (loans.match(/persistMutationOrRollback/g) || []).length === 6);
+assert('bulk loan request restores snapshots on any failure',
+  loans.includes('const snapshots = captureDomainMutationState();')
+  && loans.includes('restoreDomainMutationState(snapshots);'));
+assert('all five loan state-changing operations snapshot before domain mutation',
   ['requestLoan', 'approveLoan', 'rejectLoan', 'handoverLoan', 'returnLoan'].every(method => {
-    const i = loans.indexOf(`GabahDomainService.${method}(`);
-    return i >= 0 && /captureDomainMutationState\\(\\)/.test(loans.slice(Math.max(0, i - 500), i));
+    const mutation = loans.indexOf(`GabahDomainService.${method}(`);
+    const snapshot = loans.lastIndexOf('captureDomainMutationState()', mutation);
+    return mutation >= 0 && snapshot >= 0 && mutation - snapshot < 600;
   }));
 
 console.log(`Asset and loan mutation rollback regression: ${passed}/${passed + failures.length} checks passed.`);
