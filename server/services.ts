@@ -1165,7 +1165,8 @@ export class GabahDomainService {
           ? db.users.filter(user => user.id === newTicket.assigned_agent_id && hasRbacPermission(String(user.id), 'notifications.read'))
           : db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
             && hasRbacPermission(String(user.id), 'tickets.read')
-            && hasRbacScope(String(user.id), 'division', 'IT', 'tickets'));
+            && hasRbacPermission(String(user.id), 'notifications.read')
+            && hasRbacScope(String(user.id), 'division', 'IT', 'tickets', true));
     for (const target of notificationTargets) this.notify({
       recipient_user_id: target.id,
       title: `Tiket Baru: [${payload.priority.toUpperCase()}] ${ticketNumber}`,
