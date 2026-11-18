@@ -105,13 +105,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
   const isGlobalDashboard = isSuperAdmin || isAuditor;
   const isDivisionDashboard = !isSuperAdmin && !isAuditor && hasOperationalManagementAccess;
-  // Dashboard ownership labels follow the assigned application role, not unrelated room-facility queue permissions.
-  // A custom role with selected operational capabilities stays labelled Operasional unless it also carries IT/GA.
-  const hasITRole = !isSuperAdmin && hasRoleKey('it', 'IT');
-  const hasGARole = !isSuperAdmin && hasRoleKey('ga', 'GA');
-  const divisionLabel = hasITRole && !hasGARole ? 'IT'
-    : hasGARole && !hasITRole ? 'GA'
-      : 'Operasional';
+  // Operational dashboard labels follow the owner domains in the already
+  // permission-scoped asset collection, never the primary-role display label.
+  const visibleOwnerDomains = Array.from(new Set(
+    dashboardAssets.map(asset => String(asset.owner_division || '').trim().toUpperCase()).filter(Boolean)
+  )).sort();
+  const divisionLabel = visibleOwnerDomains.length > 0 ? visibleOwnerDomains.join(' / ') : 'Operasional';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
