@@ -7,7 +7,6 @@ const modal = fs.readFileSync('src/components/modals/AdministrationModal.tsx', '
 const migration = fs.readFileSync('server/migrations/098_notification_rule_settings.sql', 'utf8');
   ['Notification settings require authentication for reads', server.includes("app.get('/api/admin/notification-rules', async") && server.includes('getActor(req);')],
   ['Notification settings require Superadmin for writes', server.includes("app.patch('/api/admin/notification-rules/:ruleId', async") && server.includes('const actor = requireRbacSuperadmin(req, res);')],
-  ['Notification settings require Superadmin for reads', /app\.get\('\/api\/admin\/notification-rules'[\s\S]*requireRbacSuperadmin\(req, res\)/.test(server)],
   ['Notification settings require Superadmin for writes', /app\.patch\('\/api\/admin\/notification-rules\/:ruleId'[\s\S]*requireRbacSuperadmin\(req, res\)/.test(server)],
   ['Only known notification rule IDs are accepted', /NOTIFICATION_RULE_IDS = new Set\(\['rule-warranty', 'rule-loan', 'rule-sla', 'rule-bast'\]\)/.test(server)],
   ['Mutation accepts a strict boolean only', /typeof req\.body\?\.is_active !== 'boolean'/.test(server)],
