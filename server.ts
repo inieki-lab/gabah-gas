@@ -1472,20 +1472,23 @@ async function startServer() {
   app.post('/api/auth/login', (req, res) => {
     try {
       const ip = extractClientIp(req) || 'unknown';
-      const lockCheck = isLoginLocked(ip);
+      const { email, password } = req.body || {};
+      if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+        return res.status(400).json({ success: false, message: 'Email dan password wajib diisi.' });
+      }
+
+      const inputEmail = email.trim().toLowerCase();
+      // Lock out the IP + normalized account pair, not the whole office/NAT IP.
+      // A failed attempt against one account must not block other employees
+      // who share the same corporate internet connection.
+      const loginIdentifier = `${ip}|${inputEmail}`;
+      const lockCheck = isLoginLocked(loginIdentifier);
       if (lockCheck.isLocked) {
         return res.status(429).json({
           success: false,
           message: `Terlalu banyak percobaan login gagal. Silakan coba lagi dalam ${lockCheck.remainingLockoutSeconds} detik.`,
         });
       }
-
-      const { email, password } = req.body;
-      if (!email || !password) {
-        return res.status(400).json({ success: false, message: 'Email dan password wajib diisi.' });
-      }
-
-      const inputEmail = email.trim().toLowerCase();
       const inPrefix = inputEmail.split('@')[0];
 
       // Robust Enterprise User Resolver with Alias Mapping.
@@ -1514,7 +1517,7 @@ async function startServer() {
       });
 
       if (!user || !user.is_active) {
-        const lock = recordFailedLogin(ip);
+        const lock = recordFailedLogin(loginIdentifier);
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
@@ -1541,7 +1544,7 @@ async function startServer() {
       }
 
       if (!isValidPassword) {
-        const lock = recordFailedLogin(ip);
+        const lock = recordFailedLogin(loginIdentifier);
         GabahDomainService.recordAudit(
           'AUTH_LOGIN_FAILED',
           'Auth',
@@ -1558,7 +1561,7 @@ async function startServer() {
       }
 
       // Reset lockout counter on success
-      clearFailedLogins(ip);
+      clearFailedLogins(loginIdentifier);
 
       // Create persistent session
       const session = createSession(user.id, req);
