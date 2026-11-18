@@ -102,7 +102,7 @@ export function normalizeCategoryMaster(list: unknown): AssetTaxonomyItem[] {
       code,
       name: String(raw.name || code).trim(),
       main_type: mainType,
-      owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'GA',
+      owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED',
       category_type: isGabahCategoryType(raw.category_type)
         ? raw.category_type
         : (raw.owner_division === 'IT' ? 'IT' : 'General'),
@@ -140,11 +140,11 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
 
   // Kendaraan (KDR) — kategori owner SC lama dipertahankan hanya untuk histori.
   { code: 'KDR', name: 'Kendaraan Dinas & Operasional', main_type: 'KDR', owner_division: 'GA', category_type: 'General', description: 'Mobil dinas, minibus operasional, sepeda motor (Milik GA)', is_loanable_by_default: true },
-  { code: 'KDR-SC', name: 'Kendaraan Logistik / Truk Beras', main_type: 'KDR', owner_division: 'SC', category_type: 'General', description: 'Truk wingbox, colt diesel muatan beras (Milik SC)', is_loanable_by_default: true },
+  { code: 'KDR-SC', name: 'Kendaraan Logistik / Truk Beras', main_type: 'KDR', owner_division: 'SC', category_type: 'General', description: 'Truk wingbox, colt diesel muatan beras (owner legacy SC — perlu review per aset)', is_loanable_by_default: true },
 
   // Mesin (MSN) — kategori owner SC/PIBC lama dipertahankan hanya untuk histori.
-  { code: 'MSN', name: 'Mesin Produksi & Forklift', main_type: 'MSN', owner_division: 'SC', category_type: 'General', description: 'Forklift, rice milling plant, conveyor packaging (Milik SC)', is_loanable_by_default: false },
-  { code: 'MSN-PIBC', name: 'Mesin Jembatan Timbang & Tera PIBC', main_type: 'MSN', owner_division: 'PIBC', category_type: 'General', description: 'Jembatan timbang 60 ton & alat ukur kawasan pasar (Milik PIBC)', is_loanable_by_default: false },
+  { code: 'MSN', name: 'Mesin Produksi & Forklift', main_type: 'MSN', owner_division: 'SC', category_type: 'General', description: 'Forklift, rice milling plant, conveyor packaging (owner legacy SC — perlu review per aset)', is_loanable_by_default: false },
+  { code: 'MSN-PIBC', name: 'Mesin Jembatan Timbang & Tera PIBC', main_type: 'MSN', owner_division: 'PIBC', category_type: 'General', description: 'Jembatan timbang 60 ton & alat ukur kawasan pasar (owner legacy PIBC — perlu review per aset)', is_loanable_by_default: false },
 
   // Bangunan & Fisik (BGN)
   { code: 'BGN', name: 'Bangunan Fisik & Gudang', main_type: 'BGN', owner_division: 'GA', category_type: 'General', description: 'Gedung kantor pusat, pergudangan Cipinang & Sragen (Milik GA)', is_loanable_by_default: false },
