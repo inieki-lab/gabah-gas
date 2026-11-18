@@ -479,7 +479,7 @@ async function backfillNormalizedTables(): Promise<void> {
         `INSERT INTO org_job_levels (code, label, order_num, is_active)
          VALUES ($1, $2, $3, $4)
          ON CONFLICT (code) DO UPDATE SET label=EXCLUDED.label, order_num=EXCLUDED.order_num, is_active=EXCLUDED.is_active`,
-        [level.code, level.label, Number(level.order_num || 0), level.is_active !== false],
+        [level.code, level.label, Number(level.order ?? level.order_num ?? 0), level.is_active !== false],
       );
     }
     for (const unit of db.orgUnits || []) {
