@@ -2982,7 +2982,6 @@ async function startServer() {
       }
       const category = String(ticket.category || '').toUpperCase();
       return ['IT', 'GA'].includes(category)
-        && String(user.division || '').toUpperCase() === category
         && hasRbacScope(String(user.id), 'division', category, 'tickets');
     }).map(user => ({ id: user.id, name: user.name, department: user.department }));
     return res.json({ success: true, data: eligible });
@@ -3007,7 +3006,6 @@ async function startServer() {
       ? target.unit_id === ticket.assigned_unit_id
         && hasRbacScope(String(target.id), 'unit', ticket.assigned_unit_id, 'tickets')
       : ['IT', 'GA'].includes(String(ticket.category || '').toUpperCase())
-        && String(target.division || '').toUpperCase() === String(ticket.category).toUpperCase()
         && hasRbacScope(String(target.id), 'division', String(ticket.category).toUpperCase(), 'tickets');
     if (!hasRbacPermission(String(target.id), 'tickets.update') || !targetHasScope) {
       return res.status(400).json({ success: false, message: 'Petugas tujuan belum memiliki permission dan scope untuk menangani antrean ini.' });
