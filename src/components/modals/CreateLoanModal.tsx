@@ -44,22 +44,21 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   preselectedAssetId,
   onRequestLoan,
 }) => {
-  // Filter available pool of loanable assets
+  // Only explicitly configured loan-pool assets in the available state may
+  // be requested. "available" alone describes inventory status, not loanability.
+  // Revalidate both data sources because props may be stale or broadly scoped.
   const availablePool = useMemo(() => {
-    if (loanableAssets && Array.isArray(loanableAssets) && loanableAssets.length > 0) {
-      return loanableAssets;
-    }
-    if (assets && Array.isArray(assets) && assets.length > 0) {
-      return assets.filter(a => a.is_loanable || a.status === 'available');
-    }
-    return [];
+    const source = loanableAssets && Array.isArray(loanableAssets) && loanableAssets.length > 0
+      ? loanableAssets
+      : (Array.isArray(assets) ? assets : []);
+    return source.filter(a => a.is_loanable === true && a.status === 'available');
   }, [loanableAssets, assets]);
 
   const isAuditor = currentUser?.role === 'Auditor';
 
   // Selected asset IDs (supports multiple selections, e.g. 1 Laptop IT + 1 Mobil GA)
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(() => {
-    if (preselectedAssetId) return [preselectedAssetId];
+    if (preselectedAssetId && availablePool.some(a => a.id === preselectedAssetId)) return [preselectedAssetId];
     if (availablePool.length > 0) return [availablePool[0].id];
     return [];
   });
@@ -69,7 +68,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
   // Sync preselectedAssetId if opened with specific asset
   React.useEffect(() => {
-    if (preselectedAssetId) {
+    if (preselectedAssetId && availablePool.some(a => a.id === preselectedAssetId)) {
       setSelectedAssetIds(prev => prev.includes(preselectedAssetId) ? prev : [...prev, preselectedAssetId]);
     } else if (selectedAssetIds.length === 0 && availablePool.length > 0) {
       setSelectedAssetIds([availablePool[0].id]);
@@ -137,8 +136,10 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor || hasAnyConflict) return;
-    if (selectedAssetIds.length === 0 || !purpose.trim()) return;
+    const selectionIsValid = selectedAssetIds.length > 0
+      && selectedAssetIds.every(id => availablePool.some(asset => asset.id === id));
+    if (isAuditor || hasAnyConflict || !selectionIsValid) return;
+    if (!purpose.trim()) return;
 
     onRequestLoan({
       asset_id: selectedAssetIds[0],
@@ -414,7 +415,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isAuditor || hasAnyConflict || selectedAssetIds.length === 0}
+              disabled={isAuditor || hasAnyConflict || selectedAssetIds.length === 0 || selectedAssetIds.some(id => !availablePool.some(asset => asset.id === id))}
               className={`px-5 py-2 rounded-xl font-bold transition-all ${
                 hasAnyConflict || selectedAssetIds.length === 0
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
