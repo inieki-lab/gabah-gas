@@ -1151,15 +1151,17 @@ export class GabahDomainService {
       ? db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
         && user.unit_id === 'UNIT-PIBC-ME'
         && hasRbacPermission(String(user.id), 'tickets.read')
+        && hasRbacPermission(String(user.id), 'notifications.read')
         && hasRbacPermission(String(user.id), 'tickets.assign')
         && hasRbacScope(String(user.id), 'unit', 'UNIT-PIBC-ME', 'tickets', true))
       : payload.category === 'GA'
         ? db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
           && hasRbacPermission(String(user.id), 'tickets.read')
+          && hasRbacPermission(String(user.id), 'notifications.read')
           && hasRbacPermission(String(user.id), 'tickets.assign')
           && hasRbacScope(String(user.id), 'division', 'GA', 'tickets', true))
         : newTicket.assigned_agent_id
-          ? db.users.filter(user => user.id === newTicket.assigned_agent_id)
+          ? db.users.filter(user => user.id === newTicket.assigned_agent_id && hasRbacPermission(String(user.id), 'notifications.read'))
           : db.users.filter(user => user.is_active !== false && !isSuperadminActor(user)
             && hasRbacPermission(String(user.id), 'tickets.read')
             && hasRbacScope(String(user.id), 'division', 'IT', 'tickets'));
