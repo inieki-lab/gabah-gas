@@ -2901,6 +2901,7 @@ async function startServer() {
   // not infer mutation/dispatch rights from a role label or a broad module permission.
   const ticketCapabilitiesForActor = (actor: ServerUser, ticket: any) => {
     const superadmin = isSuperadminActor(actor);
+    if (isAuditorActor(actor)) return { can_manage: false, can_assign: false };
     const queueScope = hasTicketQueueScope(actor, ticket);
     const canUpdate = hasRbacPermission(String(actor.id), 'tickets.update');
     const canAssign = hasRbacPermission(String(actor.id), 'tickets.assign');
@@ -2984,6 +2985,7 @@ async function startServer() {
   app.get('/api/tickets/:id/assignees', (req, res) => {
     if (!requireRbacPermission(req, res, 'tickets.assign')) return;
     const actor = getActor(req);
+    if (isAuditorActor(actor)) return res.status(403).json({ success: false, message: 'Auditor hanya memiliki hak baca (read-only).' });
     const ticket = db.tickets.find(item => item.id === req.params.id);
     if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
     if (!isSuperadminActor(actor) && !hasTicketQueueScope(actor, ticket)) {
@@ -3005,6 +3007,7 @@ async function startServer() {
   app.patch('/api/tickets/:id/assign', async (req, res) => {
     if (!requireRbacPermission(req, res, 'tickets.assign')) return;
     const actor = getActor(req);
+    if (isAuditorActor(actor)) return res.status(403).json({ success: false, message: 'Auditor hanya memiliki hak baca (read-only).' });
     const ticket = db.tickets.find(item => item.id === req.params.id);
     if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
     if (['resolved', 'closed'].includes(ticket.status)) {
