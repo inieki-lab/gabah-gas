@@ -2993,11 +2993,11 @@ async function startServer() {
       if (user.is_active === false || !hasRbacPermission(String(user.id), 'tickets.read') || !hasRbacPermission(String(user.id), 'tickets.update')) return false;
       if (ticket.assigned_unit_id) {
         return user.unit_id === ticket.assigned_unit_id
-          && hasRbacScope(String(user.id), 'unit', ticket.assigned_unit_id, 'tickets');
+          && hasRbacScope(String(user.id), 'unit', ticket.assigned_unit_id, 'tickets', true);
       }
       const category = String(ticket.category || '').toUpperCase();
       return ['IT', 'GA'].includes(category)
-        && hasRbacScope(String(user.id), 'division', category, 'tickets');
+        && hasRbacScope(String(user.id), 'division', category, 'tickets', true);
     }).map(user => ({ id: user.id, name: user.name, department: user.department }));
     return res.json({ success: true, data: eligible });
   });
@@ -3019,9 +3019,9 @@ async function startServer() {
     if (!target) return res.status(400).json({ success: false, message: 'Petugas tujuan tidak ditemukan atau tidak aktif.' });
     const targetHasScope = ticket.assigned_unit_id
       ? target.unit_id === ticket.assigned_unit_id
-        && hasRbacScope(String(target.id), 'unit', ticket.assigned_unit_id, 'tickets')
+        && hasRbacScope(String(target.id), 'unit', ticket.assigned_unit_id, 'tickets', true)
       : ['IT', 'GA'].includes(String(ticket.category || '').toUpperCase())
-        && hasRbacScope(String(target.id), 'division', String(ticket.category).toUpperCase(), 'tickets');
+        && hasRbacScope(String(target.id), 'division', String(ticket.category).toUpperCase(), 'tickets', true);
     if (!hasRbacPermission(String(target.id), 'tickets.read') || !hasRbacPermission(String(target.id), 'tickets.update') || !targetHasScope) {
       return res.status(400).json({ success: false, message: 'Petugas tujuan belum memiliki permission dan scope untuk menangani antrean ini.' });
     }
@@ -3603,7 +3603,7 @@ async function startServer() {
     }
     if (notification.recipient_unit_id) {
       return actor.unit_id === notification.recipient_unit_id
-        && hasRbacScope(String(actor.id), 'unit', notification.recipient_unit_id, 'tickets');
+        && hasRbacScope(String(actor.id), 'unit', notification.recipient_unit_id, 'tickets', true);
     }
     if (notification.recipient_division) return notification.recipient_division === actor.division;
     return false;
