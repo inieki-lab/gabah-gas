@@ -260,9 +260,10 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
       {/* Freshservice Kanban Board View */}
       {viewMode === 'kanban' ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
             { id: 'open', title: 'Tiket Masuk (Open)', badgeBg: 'bg-amber-100 text-amber-800 border-amber-300' },
+            { id: 'assigned', title: 'Sudah Ditugaskan', badgeBg: 'bg-sky-100 text-sky-800 border-sky-300' },
             { id: 'in_progress', title: 'Dalam Penanganan (In Progress)', badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
             { id: 'resolved', title: 'Selesai & Solusi (Resolved)', badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300' }
           ].map(col => {
