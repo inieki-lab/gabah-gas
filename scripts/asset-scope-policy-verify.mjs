@@ -17,6 +17,8 @@ const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
 const ticketUi = read('src/components/views/TicketsView.tsx');
+const assetCreateUi = read('src/components/modals/CreateAssetModal.tsx');
+const assetCreateApi = read('src/services/gabahApi.ts');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC[/]SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
@@ -81,6 +83,19 @@ const checks = [
   ['Loan approve/reject preserve domain authorization HTTP status codes', /app\.post\('\/api\/loans\/:id\/approve'[\s\S]*status\(typeof err\?\.statusCode === 'number' \? err\.statusCode : 400\)/.test(server) && /app\.post\('\/api\/loans\/:id\/reject'[\s\S]*status\(typeof err\?\.statusCode === 'number' \? err\.statusCode : 400\)/.test(server)],
   ['Employee movement history excludes unassigned loanable-pool inventory', /employeeBaseline[\s\S]*asset\.assigned_to\?\.id === actor\.id[\s\S]*db\.movements\.filter/.test(server)],
   ['Private agenda fields are redacted from GA/IT operational queues', /title: 'Reservasi ruang rapat'[\s\S]*description: undefined[\s\S]*attendees_list: undefined[\s\S]*documentation_notes: undefined/.test(server)],
+  ['Asset create-options endpoint requires assets.create and uses server-calculated owner mutation authority', server.includes("app.get('/api/assets/create-options'") && server.includes("requireRbacPermission(req, res, 'assets.create')") && server.includes("canMutateAssetOwner(actor, String(owner.code || ''), 'assets.create')")],
+  ['Asset create-options is excluded from direct asset-ID visibility middleware while mutations remain domain-guarded', hardeningSource.includes("const assetMatch = req.path.replace(/\\/+$/, '').match(/^\\/api\\/assets\\/([^/]+)/i)") && hardeningSource.includes("new Set(['bulk-import', 'create-options'])") && hardeningSource.includes("assetMatch?.[1].toLowerCase()") && hardeningSource.includes("!assetCollectionActions.has(assetAction || '')")],
+
+  ['Asset create-options response includes only active master categories for permitted owners', server.includes("const allowedOwnerCodes = new Set(ownerDomains.map(owner => owner.code))") && server.includes("category.is_active === false") && server.includes("allowedOwnerCodes.has(effectiveOwner)")],
+  ['Asset create-options mirrors IT hardware/software/license and INV-F corporate owner overrides before exposing categories', server.includes("['IT-H', 'IT-S'].includes(mainType) || ['IT', 'LICENSE'].includes(categoryType)") && server.includes("code === 'INV-F' ? 'GA' : masterOwner") && server.includes("masterOwner === effectiveOwner")],
+
+  ['Asset create-options endpoint is gated by Assets module rather than My Assets', server.includes("matchesApiPrefix(path, '/api/assets/create-options')")],
+  ['Module lifecycle checks normalize API path case and trailing slashes before resolving managed modules', server.includes("const path = req.path.toLowerCase()") && server.includes("const requestPath = req.path.toLowerCase()") && server.includes("requestPath.startsWith('/api/')")],
+
+  ['Asset creation form fails closed and derives owner/category choices from the server', assetCreateUi.includes("gabahApi.getAssetCreateOptions()") && assetCreateUi.includes("ownerDomains.map") && assetCreateUi.includes("Tidak ada owner aset yang dapat didaftarkan") && assetCreateUi.includes("Pilihan owner aset gagal dimuat")],
+  ['Asset creation form no longer infers write authority from primary-role labels or hardcoded SC/PIBC options', !/userRole|resolvedUser|isSuperadmin/.test(assetCreateUi) && !assetCreateUi.includes('<option value="SC">') && !assetCreateUi.includes('<option value="PIBC">')],
+  ['Asset API client exposes server-authorized creation choices', assetCreateApi.includes("getAssetCreateOptions()") && assetCreateApi.includes("'/api/assets/create-options'")],
+
   ['Employee directory is gated by users.read', /app\.get\('\/api\/users', \(req, res\) => \{[\s\S]*requireRbacPermission\(req, res, 'users\.read'\)[\s\S]*!\['IT', 'GA'\]\.includes\(actor\.role\)/i.test(server)],
   ['Knowledge vote and view actions require their read/action permissions', /app\.post\('\/api\/knowledge\/:id\/vote', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'knowledge\.vote'\)\) return;/i.test(server) && /app\.post\('\/api\/knowledge\/:id\/view', \(req, res\) => \{\s*if \(!requireRbacPermission\(req, res, 'knowledge\.read'\)\) return;/i.test(server)],
   ['Ticket list visibility follows reporter, assignee, and explicit module owner scope', /canReadTicketOwner = \(owner: string\)/.test(server) && /hasRbacScope\(String\(actor.id\), 'division', owner, 'tickets'\)/.test(server) && /ticket\.assigned_agent_id === actor\.id/.test(hardeningSource)],

@@ -143,10 +143,12 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
   }
 
-  const assetMatch = req.path.match(/^\/api\/assets\/([^/]+)/i);
-  // '/bulk-import' adalah operasi collection-level (bukan asset id);
-  // authority per baris ditegakkan di handler + domain service.
-  if (assetMatch && assetMatch[1] !== 'bulk-import' && !canSeeAsset(actor, assetMatch[1])) {
+  // Match the route case-insensitively, but preserve the original ID casing:
+  // asset IDs are case-sensitive even though Express paths are not.
+  const assetMatch = req.path.replace(/\/+$/, '').match(/^\/api\/assets\/([^/]+)/i);
+  const assetCollectionActions = new Set(['bulk-import', 'create-options']);
+  const assetAction = assetMatch?.[1].toLowerCase();
+  if (assetMatch && !assetCollectionActions.has(assetAction || '') && !canSeeAsset(actor, assetMatch[1])) {
     return res.status(403).json({ success: false, message: 'Aset berada di luar scope pengguna.' });
   }
 

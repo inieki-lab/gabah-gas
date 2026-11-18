@@ -189,6 +189,18 @@ async function main() {
 
     if (!adminToken) throw new Error('Cannot continue without admin session');
 
+    // Asset creation choices are server-calculated; a broad UI role label must not grant owner options.
+    const adminAssetOptions = await req(base, 'GET', '/api/assets/create-options', { token: adminToken });
+    const adminOwners = adminAssetOptions.json?.data?.owner_domains || [];
+    const adminCategories = adminAssetOptions.json?.data?.categories || [];
+    const adminOwnerCodes = new Set(adminOwners.map(owner => owner.code));
+    record('P0 asset creation options expose only configured canonical owner domains', 'non-empty owner set without legacy SC/PIBC',
+      `HTTP ${adminAssetOptions.status}; message=${adminAssetOptions.json?.message || adminAssetOptions.json?.code || '(none)'}; owners=${Array.from(adminOwnerCodes).join(',') || '(none)'}`,
+      adminAssetOptions.status === 200 && adminOwnerCodes.size > 0
+        && !adminOwnerCodes.has('SC') && !adminOwnerCodes.has('PIBC')
+        && adminCategories.every(category => adminOwnerCodes.has(category.owner_division)));
+
+
     // Login the Karyawan persona EARLY (before any mutations) and stash the token.
     let karyawanToken = '';
     {
@@ -208,6 +220,17 @@ async function main() {
           false,
         );
       }
+    }
+
+    if (karyawanToken) {
+      const employeeAssetOptions = await req(base, 'GET', '/api/assets/create-options', { token: karyawanToken });
+      const employeeOwners = employeeAssetOptions.json?.data?.owner_domains || [];
+      const employeeCategories = employeeAssetOptions.json?.data?.categories || [];
+      record('P0 asset creation options fail closed for employee without owner mutation authority', '403 permission-denied or 200 + empty owner/category choices',
+        `HTTP ${employeeAssetOptions.status}; message=${employeeAssetOptions.json?.message || employeeAssetOptions.json?.code || '(none)'}; owners=${employeeOwners.length}; categories=${employeeCategories.length}`,
+        (employeeAssetOptions.status === 403 || employeeAssetOptions.status === 200) && employeeOwners.length === 0 && employeeCategories.length === 0);
+    } else {
+      record('P0 asset creation options setup (Karyawan token)', 'valid Karyawan session', 'token unavailable', false);
     }
 
     // ---------- Security path canonicalization (case + trailing slash) ----------

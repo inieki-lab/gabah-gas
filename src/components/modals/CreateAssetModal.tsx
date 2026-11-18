@@ -192,109 +192,86 @@ export const FIXED_ASSET_TAXONOMY: FixedAssetCategoryDef[] = [
 export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({ 
   isOpen, 
   onClose, 
-  onCreateAsset, 
-  currentUser 
+  onCreateAsset 
 }) => {
-  const [resolvedUser, setResolvedUser] = useState<UserProfile | undefined>(currentUser);
+  const [assetCreateOptions, setAssetCreateOptions] = useState<{ owner_domains: Array<{ code: string; name: string }>; categories: any[] } | null>(null);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsError, setOptionsError] = useState('');
+  const [masterCategories, setMasterCategories] = useState<any[]>([]);
+  const [selectedDivision, setSelectedDivision] = useState<OwnerDivision>('');
 
-  useEffect(() => {
-    setResolvedUser(currentUser);
-    if (!isOpen) return;
-    gabahApi.getMe().then(user => {
-      if (user) setResolvedUser(user as UserProfile);
-    }).catch(() => undefined);
-  }, [isOpen, currentUser]);
-
-  // Determine user role and authorized divisions
-  const userRole = resolvedUser?.role || 'Karyawan';
-  const isSuperadmin = userRole === 'Admin GABAH' || userRole === 'Superadmin' || userRole === 'Management';
-
-  // T2B-3: master kategori aset tetap dari server (`db.categories`, hasil CRUD
-  // Admin GABAH) — sumber kebenaran tunggal untuk pilihan kategori di form ini.
-  // null = gagal diambil (offline/masih memuat) → daftar statis tetap dipakai
-  // sebagai fallback sehingga form tidak pernah kosong.
-  const [masterCategories, setMasterCategories] = useState<any[] | null>(null);
   useEffect(() => {
     if (!isOpen) return;
     let alive = true;
-    gabahApi.getCategories()
-      .then(list => { if (alive && Array.isArray(list) && list.length > 0) setMasterCategories(list); })
-      .catch(() => {});
+    setOptionsLoading(true);
+    setOptionsError('');
+    setAssetCreateOptions(null);
+    setMasterCategories([]);
+    gabahApi.getAssetCreateOptions()
+      .then(options => {
+        if (!alive) return;
+        const owners = Array.isArray(options?.owner_domains) ? options.owner_domains : [];
+        const categories = Array.isArray(options?.categories) ? options.categories : [];
+        setAssetCreateOptions({ owner_domains: owners, categories });
+        setMasterCategories(categories);
+        setSelectedDivision(current => owners.some(owner => owner.code === current) ? current : (owners[0]?.code || ''));
+      })
+      .catch(error => {
+        if (alive) setOptionsError(error instanceof Error ? error.message : 'Gagal memuat kewenangan pendaftaran aset.');
+      })
+      .finally(() => { if (alive) setOptionsLoading(false); });
     return () => { alive = false; };
   }, [isOpen]);
 
+  const ownerDomains = assetCreateOptions?.owner_domains || [];
   const masterByCode = useMemo(() => {
     const map = new Map<string, any>();
-    for (const c of masterCategories || []) {
-      if (c && c.code) map.set(String(c.code).toUpperCase(), c);
+    for (const category of masterCategories) {
+      if (category?.code) map.set(String(category.code).toUpperCase(), category);
     }
     return map;
   }, [masterCategories]);
 
-  // Kode terpilih layak dipakai bila: master belum termuat (fallback), ATAU
-  // kode terdaftar di master dan berstatus aktif. Kategori nonaktif/dihapus
-  // admin tidak muncul sebagai pilihan baru (nilai historis aset tetap utuh).
-  const isCodeSelectable = (code: string): boolean => {
-    if (!masterCategories) return true;
-    const row = masterByCode.get(String(code || '').toUpperCase());
-    return Boolean(row) && row.is_active !== false;
-  };
-
-  // Allowed fixed asset main categories according to corporate RBAC
+  // All choices are based on active server master rows and effective owner write scope.
   const allowedMainCategories = useMemo<FixedAssetCategoryDef[]>(() => {
-    let roleGroups = FIXED_ASSET_TAXONOMY;
-    if (!isSuperadmin) {
-      if (userRole === 'IT') {
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'IT-H' || cat.type === 'IT-S');
-      } else if (userRole === 'GA') {
-        // GA owns INV-F, INV-P, KDR, BGN, TNH, LNY (All IT items are owned by IT; GA has read-only)
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => ['INV-F', 'INV-P', 'KDR', 'BGN', 'TNH', 'LNY'].includes(cat.type));
-      } else if (userRole === 'Supply Chain') {
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'KDR');
-      } else if (userRole === 'PIBC') {
-        roleGroups = FIXED_ASSET_TAXONOMY.filter(cat => cat.type === 'MSN' || cat.type === 'BGN');
-      }
+    const grouped = new Map<string, FixedAssetCategoryDef>();
+    const owner = String(selectedDivision || '').trim().toUpperCase();
+    for (const category of masterCategories) {
+      if (!category || category.is_active === false) continue;
+      if (!owner || String(category.owner_division || '').trim().toUpperCase() !== owner) continue;
+      const type = String(category.main_type || 'LNY').trim().toUpperCase() as FixedAssetMainType;
+      const template = FIXED_ASSET_TAXONOMY.find(item => item.type === type);
+      const templateSub = template?.subcategories.find(item => String(item.code).toUpperCase() === String(category.code || '').toUpperCase());
+      const subcategory = {
+        ...(templateSub || {}),
+        code: String(category.code || '').trim().toUpperCase(),
+        name: String(category.name || category.code || '').trim(),
+        placeholderName: templateSub?.placeholderName || String(category.name || category.code || '').trim(),
+        placeholderBrand: templateSub?.placeholderBrand || '',
+        placeholderModel: templateSub?.placeholderModel || '',
+        isLoanableDefault: Boolean(category.is_loanable_by_default),
+        divisionOverride: owner,
+      };
+      if (!subcategory.code) continue;
+      const existing = grouped.get(type);
+      if (existing) existing.subcategories.push(subcategory);
+      else grouped.set(type, {
+        type,
+        label: template?.label || `${type} — ${type}`,
+        categoryType: (category.category_type || template?.categoryType || 'General') as AssetCategoryType,
+        defaultDivision: owner,
+        isDivisionLocked: ownerDomains.length <= 1,
+        ruleNote: template?.ruleNote || 'Kategori dan owner mengikuti master aktif serta kewenangan akun.',
+        iconName: template?.iconName || 'package',
+        subcategories: [subcategory],
+      });
     }
-
-    // T2B-3: terapkan master —
-    // 1) subkategori statis yang nonaktif/dihapus di master dibuang;
-    // 2) kategori master BARU (dibuat admin, tidak ada di daftar statis)
-    //    ditambahkan ke kelompok main_type-nya — form selalu mencerminkan master;
-    // 3) is_loanable_by_default & category_type diambil dari bila ada di master.
-    return roleGroups
-      .map(group => {
-        const kept = group.subcategories
-          .filter(s => isCodeSelectable(s.code))
-          .map(s => {
-            const master = masterByCode.get(String(s.code).toUpperCase());
-            return {
-              ...s,
-              isLoanableDefault: master && master.is_loanable_by_default !== undefined
-                ? Boolean(master.is_loanable_by_default)
-                : s.isLoanableDefault,
-            };
-          });
-        const extras = (masterCategories || [])
-          .filter(c => c && c.is_active !== false
-            && String(c.main_type || '').toUpperCase() === group.type
-            && !group.subcategories.some(s => String(s.code).toUpperCase() === String(c.code).toUpperCase()))
-          .map(c => ({
-            code: String(c.code).toUpperCase(),
-            name: String(c.name || c.code),
-            placeholderName: String(c.name || c.code),
-            placeholderBrand: '',
-            placeholderModel: '',
-            isLoanableDefault: Boolean(c.is_loanable_by_default),
-          }));
-        return { ...group, subcategories: [...kept, ...extras] };
-      })
-      .filter(group => group.subcategories.length > 0);
-  }, [userRole, isSuperadmin, masterCategories, masterByCode]);
+    return Array.from(grouped.values());
+  }, [masterCategories, selectedDivision, ownerDomains.length]);
 
   // Selected state
   const [selectedMainType, setSelectedMainType] = useState<FixedAssetMainType>('IT-H');
   const [selectedSubIndex, setSelectedSubIndex] = useState<number>(0);
-  const [selectedDivision, setSelectedDivision] = useState<OwnerDivision>('IT');
 
   // Sync selected main type when modal opens or allowed categories change
   useEffect(() => {
@@ -315,23 +292,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
     return activeMainCat.subcategories[selectedSubIndex] || activeMainCat.subcategories[0];
   }, [activeMainCat, selectedSubIndex]);
 
-  // Sync division when main type or subcategory changes
-  useEffect(() => {
-    if (activeMainCat.type === 'INV-F') {
-      // Corporate Rule: Semua furniture adalah milik GA walau ada dimanapun
-      setSelectedDivision('GA');
-    } else if (activeMainCat.type === 'IT-H' || activeMainCat.type === 'IT-S') {
-      // Corporate Rule: Semua barang IT adalah milik IT
-      setSelectedDivision('IT');
-    } else if (activeSub.divisionOverride) {
-      setSelectedDivision(activeSub.divisionOverride);
-    } else if (!isSuperadmin) {
-      if (userRole === 'Supply Chain') setSelectedDivision('SC');
-      else if (userRole === 'PIBC') setSelectedDivision('PIBC');
-      else if (userRole === 'GA') setSelectedDivision('GA');
-      else setSelectedDivision(activeMainCat.defaultDivision);
-    }
-  }, [activeMainCat, activeSub, userRole, isSuperadmin]);
+  // Owner selection is server-authoritative; category choices are already filtered to it.
 
   // Fields
   const [name, setName] = useState('');
@@ -395,7 +356,10 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   const subCode = activeSub.code;
   const livePreviewNumber = `${selectedDivision}-${subCode}-${currentYear}-0001`;
 
-  if (!isOpen || !activeMainCat) return null;
+  if (!isOpen) return null;
+  if (optionsLoading) return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-6"><div className="rounded-xl bg-white px-6 py-5 text-sm font-semibold text-slate-700">Memuat kewenangan pendaftaran aset...</div></div>;
+  if (optionsError) return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-6"><div className="max-w-md rounded-xl bg-white p-6 text-sm text-rose-700"><p className="font-bold">Pilihan owner aset gagal dimuat.</p><p className="mt-2">{optionsError}</p><button type="button" onClick={onClose} className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-white">Tutup</button></div></div>;
+  if (!ownerDomains.length || !allowedMainCategories.length || !activeSub) return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-6"><div className="max-w-md rounded-xl bg-white p-6 text-sm text-slate-700"><p className="font-bold">Tidak ada owner aset yang dapat didaftarkan.</p><p className="mt-2">Akun ini belum memiliki permission assets.create dan scope owner yang sesuai, atau belum ada kategori aktif pada owner tersebut. Hubungi Superadmin untuk pemeriksaan hak akses dan master kategori.</p><button type="button" onClick={onClose} className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-white">Tutup</button></div></div>;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -495,13 +459,12 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
               <select
                 value={selectedDivision}
                 onChange={(e) => setSelectedDivision(e.target.value as OwnerDivision)}
-                disabled={activeMainCat.isDivisionLocked && !isSuperadmin}
+                disabled={ownerDomains.length <= 1}
                 className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-600 disabled:bg-slate-100 disabled:text-slate-600"
               >
-                <option value="IT">IT — Tim Teknologi Informasi</option>
-                <option value="GA">GA — Tim General Affair</option>
-                <option value="SC">SC — Tim Supply Chain &amp; Pergudangan</option>
-                <option value="PIBC">PIBC — Tim Pasar Induk Beras Cipinang</option>
+                {ownerDomains.map(owner => (
+                  <option key={owner.code} value={owner.code}>{owner.code} — {owner.name}</option>
+                ))}
               </select>
 
               <p className="text-[10.5px] text-slate-500 leading-relaxed">

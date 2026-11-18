@@ -709,3 +709,20 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The previous deploy.sh auto-installed Docker from get.docker.com, shut down the existing Compose project with --remove-orphans, and printed success without verifying health. Replaced with fail-fast preflight, .env/PGPASSWORD validation, Compose config check, app-only recreation, health polling, and failure diagnostics. It no longer stops the DB first or claims success without health.
 - PostgreSQL host port now binds only to loopback. Compose now passes GABAH_INITIAL_ADMIN_PASSWORD and GABAH_INITIAL_USER_PASSWORD into the application container (previously documented in runbook but not passed by Compose).
 - CI checks Compose configuration and shell syntax. VM runbook now requires clean main, fast-forward-only update, database backup, health verification, and explicit rollback/restore safeguards. Production deploy remains NO-GO pending merge, UAT, restore rehearsal, TLS, and sign-off.
+
+
+### Asset creation owner-scope alignment — 2026-11-19
+
+**Finding:** the asset creation modal still inferred writable owner domains from primary-role labels (IT/GA/Supply Chain/PIBC) and hard-coded owner choices. This diverged from the backend's effective Dynamic RBAC permission + owner-scope policy, particularly for custom/additional roles.
+
+**Changes in PR #127:**
+- Added `GET /api/assets/create-options`; it requires `assets.create` and calculates writable owners with the same `canMutateAssetOwner` policy used by the asset mutation service.
+- The endpoint returns only active owner masters with active categories in the caller's effective write scope.
+- Explicitly routes this GET endpoint through the Assets module lifecycle gate, not the self-service My Assets module.
+- Replaced role-label inference and hard-coded owner dropdown values in `CreateAssetModal` with server-provided owner/category options.
+- The form fails closed when options cannot be loaded or the caller has no eligible owner/category; it does not fall back to permissive static taxonomy.
+- The existing backend `createAsset` authorization remains authoritative and rechecks owner permission/scope at mutation time.
+
+**Data migration boundary:** legacy SC/PIBC codes are excluded from new owner choices because they are historical operational/location labels under the current organization decision. No asset owner, category, number, ticket, or user data is rewritten in this change. The canonical RPC owner master and category mapping must be established before RPC becomes a selectable creation domain.
+
+**Validation:** TypeScript, the asset-scope policy regression, production build, Docker image/runtime smoke, PostgreSQL fresh-database/persistence integration, and the full CI workflow are required on the exact PR head. This change is not a production approval and does not replace browser UAT for IT, GA, Superadmin, and custom multi-role accounts.

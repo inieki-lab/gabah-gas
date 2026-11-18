@@ -101,8 +101,10 @@ async function startServer() {
     path === prefix || path.startsWith(prefix + '/');
 
   const resolveModuleKeyForRequest = (req: express.Request, actor: ServerUser): string | null => {
-    const path = req.path;
+    const path = req.path.toLowerCase().replace(/\/+$/, '') || '/';
     if (matchesApiPrefix(path, '/api/modules')) return null;
+
+    if (matchesApiPrefix(path, '/api/assets/create-options')) return 'assets';
 
     if (matchesApiPrefix(path, '/api/assets')) {
       if (req.method === 'GET') {
@@ -128,7 +130,7 @@ async function startServer() {
   };
 
   const isModuleManagedPath = (req: express.Request): boolean => {
-    const path = req.path;
+    const path = req.path.toLowerCase().replace(/\/+$/, '') || '/';
     if (matchesApiPrefix(path, '/api/modules')) return false;
     return [
       '/api/assets', '/api/taxonomy', '/api/numbering', '/api/movements',
@@ -142,7 +144,8 @@ async function startServer() {
   // Unmanaged endpoints (login, health, notifications, administration) bypass
   // module status checks; missing registry state fails closed for managed APIs.
   app.use(async (req, res, next) => {
-    if (!req.path.startsWith('/api/') || !isPostgresPersistenceActive() || !isModuleManagedPath(req)) return next();
+    const requestPath = req.path.toLowerCase().replace(/\/+$/, '') || '/';
+    if (!requestPath.startsWith('/api/') || !isPostgresPersistenceActive() || !isModuleManagedPath(req)) return next();
     let actor: ServerUser;
     try {
       actor = getActor(req);
@@ -2387,6 +2390,36 @@ async function startServer() {
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
+  });
+
+  // Server-authoritative asset creation choices. The UI must never infer write authority from a role label.
+  app.get('/api/assets/create-options', (req, res) => {
+    if (!requireRbacPermission(req, res, 'assets.create')) return;
+    const actor = getActor(req);
+    const ownerDomains = (db.divisions || [])
+      .filter(owner => owner && owner.is_active !== false
+        && canMutateAssetOwner(actor, String(owner.code || ''), 'assets.create'))
+      .map(owner => ({ code: String(owner.code || '').trim().toUpperCase(), name: String(owner.name || owner.code || '').trim() }))
+      .filter(owner => owner.code && !['SC', 'PIBC'].includes(owner.code));
+    const allowedOwnerCodes = new Set(ownerDomains.map(owner => owner.code));
+    const categories = (db.categories || [])
+      .filter(category => {
+        if (!category || category.is_active === false) return false;
+        const masterOwner = String(category.owner_division || '').trim().toUpperCase();
+        const code = String(category.code || '').trim().toUpperCase();
+        const mainType = String(category.main_type || '').trim().toUpperCase();
+        const categoryType = String(category.category_type || '').trim().toUpperCase();
+        // Mirror createAsset() corporate ownership overrides so the UI never
+        // offers a category that the authoritative mutation service will reject.
+        const effectiveOwner = ['IT-H', 'IT-S'].includes(mainType) || ['IT', 'LICENSE'].includes(categoryType)
+          ? 'IT'
+          : code === 'INV-F' ? 'GA' : masterOwner;
+        return masterOwner === effectiveOwner && allowedOwnerCodes.has(effectiveOwner);
+      })
+      .map(category => ({ ...category, owner_division: String(category.owner_division || '').trim().toUpperCase() }));
+    const categoryOwnerCodes = new Set(categories.map(category => category.owner_division));
+    const selectableOwners = ownerDomains.filter(owner => categoryOwnerCodes.has(owner.code));
+    return res.json({ success: true, data: { owner_domains: selectableOwners, categories } });
   });
 
   // Assets Management
