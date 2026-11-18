@@ -29,9 +29,9 @@ const req = async (b, m, p, o = {}) => {
   return { status: r.status, json: j };
 };
 
-// Aturan mapping deterministik (harus identik dengan server/managing-unit.ts
-// dan backfill SQL di server/migrations/007_asset_managing_unit.sql).
-const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: 'UNIT-SC', PIBC: 'UNIT-PIBC', GA: null };
+// Default runtime unit hanya untuk owner domain operasional yang valid.
+// SC/PIBC adalah kode lokasi legacy; keduanya tidak boleh menentukan unit pengelola.
+const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: null, PIBC: null, GA: null };
 
 async function boot(sp, port, env) {
   const c = spawn(process.execPath, [sp], {
@@ -92,7 +92,7 @@ async function main() {
       if (exp === 'ANY' && a.managing_unit_id !== null) cOk = false;
     }
     rec('C1: seed aset per divisi punya managing_unit_id (ownership mapping)',
-      `IT→UNIT-IT-MIS, SC→UNIT-SC, PIBC→UNIT-PIBC, GA→null`,
+      `IT→UNIT-IT-MIS, SC/PIBC→null (legacy location), GA→null`,
       JSON.stringify(divCounts) + (cUndefined ? ` (${cUndefined} undefined!)` : ''),
       cOk && cUndefined === 0);
     rec('C2: seed memuat divisi IT & GA untuk bukti mapping', 'ada', `IT=${divCounts.IT || 0}, GA=${divCounts.GA || 0}, SC=${divCounts.SC || 0}, PIBC=${divCounts.PIBC || 0}`,
@@ -131,6 +131,30 @@ async function main() {
     const a4 = await req(s1.base, 'PATCH', `/api/assets/${created1?.id}`, { token: admin, body: { managing_unit_id: null } });
     rec('A4: PATCH managing_unit_id=null diterima', '200 + null',
       `${a4.status} + ${a4.json?.data?.managing_unit_id}`, a4.status === 200 && a4.json?.data?.managing_unit_id === null);
+
+    // A5: legacy location labels must not be accepted as new asset owner domains.
+    const legacyScCreate = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'SC', name: 'Aset owner SC legacy ditolak' } });
+    const legacyPibcCreate = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'PIBC', name: 'Aset owner PIBC legacy ditolak' } });
+    rec('A5: owner lokasi legacy SC/PIBC ditolak untuk aset baru', '409 + 409',
+      `${legacyScCreate.status} + ${legacyPibcCreate.status}`, legacyScCreate.status === 409 && legacyPibcCreate.status === 409);
+
+    const allLoans = (await req(s1.base, 'GET', '/api/loans', { token: admin })).json?.data || [];
+    const activeLoanAssetIds = new Set(allLoans.filter(loan => ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(String(loan.status || '').toLowerCase())).map(loan => loan.asset_id));
+    const legacyAsset = assets0.find(asset => ['SC', 'PIBC'].includes(String(asset.owner_division || '').toUpperCase()) && !activeLoanAssetIds.has(asset.id));
+    if (!legacyAsset) throw new Error('fixture aset owner legacy SC/PIBC tanpa pinjaman aktif tidak tersedia');
+    const legacySnapshot = { asset_number: legacyAsset.asset_number, location: legacyAsset.location, managing_unit_id: legacyAsset.managing_unit_id };
+    const reclassified = await req(s1.base, 'POST', `/api/assets/${legacyAsset.id}/reclassify-owner`, {
+      token: admin,
+      body: { new_owner_division: 'GA', reason: 'Verifikasi kartu aset dan konfirmasi unit pengelola pada pengujian regresi.' },
+    });
+    const reclassifiedAsset = reclassified.json?.data;
+    rec('A6: Superadmin dapat reklasifikasi owner legacy per aset tanpa mengubah nomor/lokasi/unit', '200 + owner GA + metadata tetap',
+      `${reclassified.status} + ${reclassifiedAsset?.owner_division} + ${reclassifiedAsset?.asset_number === legacySnapshot.asset_number && reclassifiedAsset?.location === legacySnapshot.location && reclassifiedAsset?.managing_unit_id === legacySnapshot.managing_unit_id ? 'metadata tetap' : 'metadata berubah'}`,
+      reclassified.status === 200 && reclassifiedAsset?.owner_division === 'GA' && reclassifiedAsset?.asset_number === legacySnapshot.asset_number && reclassifiedAsset?.location === legacySnapshot.location && reclassifiedAsset?.managing_unit_id === legacySnapshot.managing_unit_id);
+    const invalidReclassification = await req(s1.base, 'POST', `/api/assets/${legacyAsset.id}/reclassify-owner`, {
+      token: admin, body: { new_owner_division: 'PIBC', reason: 'Tidak boleh menggunakan kode lokasi legacy.' },
+    });
+    rec('A7: reklasifikasi tidak menerima owner SC/PIBC/UNASSIGNED', '400', `${invalidReclassification.status}`, invalidReclassification.status === 400);
 
     // ---------- Test B: referensi org_units valid ----------
     const b1 = await req(s1.base, 'PATCH', `/api/assets/${created2?.id}`, { token: admin, body: { managing_unit_id: 'UNIT-TIDAK-ADA' } });
