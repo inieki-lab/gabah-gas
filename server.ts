@@ -108,6 +108,8 @@ async function startServer() {
     const path = req.path;
     if (matchesApiPrefix(path, '/api/modules')) return null;
 
+    if (path === '/api/assets/creation-categories') return 'assets';
+
     if (matchesApiPrefix(path, '/api/assets')) {
       if (req.method === 'GET') {
         // My Assets and the full asset catalogue share the read endpoint.
@@ -2417,25 +2419,31 @@ async function startServer() {
     }
   });
 
-  // Asset creation options are calculated from the authenticated user's effective
-  // permission + exact owner-domain scope. The browser must never infer write
-  // ownership from a primary role label, job title, or office location.
+  // Asset creation options are calculated from effective permission + explicit owner scope.
+  // The browser never infers write ownership from a primary role label or office location.
   app.get('/api/assets/creation-categories', (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.create')) return;
     const actor = getActor(req);
+    const ownerDomains = (db.divisions || [])
+      .filter(owner => owner && owner.is_active !== false
+        && !['SC', 'PIBC', 'SUPPLY CHAIN'].includes(String(owner.code || '').trim().toUpperCase())
+        && canMutateAssetOwner(actor, String(owner.code || ''), 'assets.create'))
+      .map(owner => ({ code: String(owner.code).trim().toUpperCase(), name: String(owner.name || owner.code) }))
+      .filter(owner => owner.code);
+    const allowedOwnerCodes = new Set(ownerDomains.map(owner => owner.code));
     const source = (db.categories && db.categories.length > 0) ? db.categories : CANONICAL_TAXONOMY;
     const categories = normalizeCategoryMaster(source).filter(category => {
       if (category.is_active === false) return false;
-      const owner = String(category.owner_division || '').trim();
-      if (!owner || ['SC', 'PIBC', 'SUPPLY CHAIN'].includes(owner.toUpperCase())) return false;
-      const isSuperadmin = isSuperadminActor(actor);
-      if (!isSuperadmin && !hasRbacScope(String(actor.id), 'division', owner, 'assets')) return false;
+      const owner = String(category.owner_division || '').trim().toUpperCase();
+      if (!owner || !allowedOwnerCodes.has(owner)) return false;
       if (category.category_type === 'License'
-        && !isSuperadmin
+        && !isSuperadminActor(actor)
         && !hasRbacPermission(String(actor.id), 'licenses.manage')) return false;
       return true;
     });
-    res.json({ success: true, data: categories });
+    const categoryOwnerCodes = new Set(categories.map(category => String(category.owner_division || '').trim().toUpperCase()));
+    const selectableOwners = ownerDomains.filter(owner => categoryOwnerCodes.has(owner.code));
+    res.json({ success: true, data: { owner_domains: selectableOwners, categories } });
   });
 
   // Assets Management
