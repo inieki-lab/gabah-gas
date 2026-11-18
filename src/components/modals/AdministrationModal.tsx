@@ -870,23 +870,23 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       showToast('Nama lokasi fasilitas wajib diisi', 'warning');
       return;
     }
-    const newLoc: MasterLocation = {
-      id: `loc-${Date.now()}`,
+    const payload = {
       name: newLocationData.name.trim(),
       address: newLocationData.address.trim() || 'Kawasan PIBC, Jakarta Timur',
       capacity: newLocationData.capacity.trim() || 'Fasilitas Operasional'
     };
+    let created: MasterLocation;
     try {
-      await gabahApi.createLocation({ name: newLoc.name, address: newLoc.address, capacity: newLoc.capacity });
+      created = await gabahApi.createLocation(payload);
     } catch (err: any) {
       showToast(err.message || 'Gagal menyimpan lokasi fasilitas ke server.', 'warning');
       return;
     }
-    const updated = [...locations, newLoc];
+    const updated = [...locations, created];
     setLocations(updated);
     setIsAddLocationOpen(false);
     setNewLocationData({ name: '', address: '', capacity: '' });
-    showToast(`Lokasi fasilitas "${newLoc.name}" berhasil ditambahkan!`, 'success');
+    showToast(`Lokasi fasilitas "${created.name}" berhasil ditambahkan!`, 'success');
   };
 
   const handleEditLocationSubmit = async (e: React.FormEvent) => {
