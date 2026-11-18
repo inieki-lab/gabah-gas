@@ -673,7 +673,7 @@ export class GabahService {
     if (Array.isArray(user.permission_keys)) {
       return user.permission_keys.includes('*') || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
     }
-    return ['Admin GABAH', 'IT', 'GA'].includes(user.role);
+    return ['Admin GABAH', 'IT'].includes(user.role);
   }
 
   /**
@@ -701,7 +701,6 @@ export class GabahService {
     );
     if (isReporter) return true;
     if (user.role === 'IT') return ticket.category === 'IT';
-    if (user.role === 'GA') return ticket.category === 'GA';
     return false;
   }
 
@@ -714,7 +713,6 @@ export class GabahService {
     if (ticket.assigned_unit_id && ticket.assigned_unit_id === user.unit_id) return true;
     if (user.role === 'Admin GABAH') return true;
     if (user.role === 'IT' && ticket.category === 'IT') return true;
-    if (user.role === 'GA' && ticket.category === 'GA') return true;
     return false;
   }
 
