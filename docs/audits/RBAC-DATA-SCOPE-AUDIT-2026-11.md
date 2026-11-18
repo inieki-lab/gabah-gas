@@ -281,3 +281,28 @@ Ini bukan bukti bahwa semua data SC/PIBC harus langsung dihapus atau dipindahkan
 PR #121 (`fix/ticket-routing-me-unit-scope`) implements a first selective correction for the ticket-domain conflation recorded above. It introduces a separate ME operational unit at PIBC, exact ticket-module scope enforcement, explicit GA/ME requester and operator roles, scoped dispatch endpoints, and unit-aware dashboard filtering. Legacy SC/PIBC ticket categories and asset owners are retained without automatic migration.
 
 This does **not** resolve every SC/PIBC legacy asset/contract ownership record. It only prevents those labels/locations from becoming new ticket categories or implicit ticket queue grants. Full asset/contract classification remains a separate review. CI #2191 passed 67/67 steps, including PostgreSQL 17 fresh database/persistence, Docker runtime, P0 security, and ticket-routing regressions. Upgrade rehearsal against a copy of legacy data and browser UAT/sign-off remain open; do not mark the audit or release gate complete yet.
+
+
+## Follow-up source scan — remaining SC/PIBC asset, dashboard, and contract references (18 November 2026)
+
+A second source scan on the consolidated PR #121 branch found the following remaining references. These are not all authorization bypasses; several are legacy-data display or file-store compatibility. They must nevertheless be reconciled before claiming the organization model is complete.
+
+| Source | Remaining behavior | Risk / required follow-up |
+|---|---|---|
+| `src/components/modals/CreateAssetModal.tsx` | Category visibility is still filtered by primary role labels IT/GA/Supply Chain/PIBC. Unknown/non-IT/non-GA roles fall through to the full static taxonomy. | UI does not yet reflect effective owner-domain create permission/scope. Server-side create guard remains authoritative, but the form can expose invalid options or hide valid custom-role options. Replace with server-calculated allowed owner domains and filter subcategories by taxonomy owner. |
+| `server/taxonomy.ts` | Initial taxonomy still contains SC/PIBC owner-domain seeds and legacy categories such as KDR-SC/MSN/MSN-PIBC. | Do not mass-reassign these rows. Mark legacy owner values as review-required and prevent new use until an approved owner-domain map exists. |
+| `server/db.ts` | Seed/sample assets still contain owner_division SC/PIBC; `UNIT-SC` and `UNIT-PIBC` still have `division_code=SC/PIBC`. | Historical examples and managing-unit mappings still conflate legacy owner values with organizational units. Needs additive data classification and explicit mapping, not location-based rewrite. |
+| `src/components/views/AssetsView.tsx` | Asset filter still labels SC/PIBC owner values as division filters. | Rename as legacy owner classification / review queue; it must not imply these are current application divisions. |
+| `src/components/views/DashboardView.tsx` | Dashboard still calculates SC/PIBC owner counts; permission fallback includes old profile labels for file-store mode. | Production permission path is dynamic, but labels and aggregates need to distinguish legacy owner data from current organization. |
+| `src/components/views/ContractsView.tsx` | File-store fallback arrays still include Supply Chain/PIBC for contract actions. | PostgreSQL permission checks remain authoritative; remove legacy profile fallback and test file-store deny-by-default. |
+| `src/components/modals/CreateLoanModal.tsx` | Loan pool summary still counts SC-owned legacy assets. | Preserve historical loanable assets, but label as legacy owner classification; do not derive loan authorization from this count. |
+
+### Follow-up priority
+
+1. Add a server endpoint that returns effective asset-create owner domains for the authenticated user; make CreateAssetModal consume that result instead of primary role labels.
+2. Create a Superadmin review queue for assets with owner values SC/PIBC and unresolved managing-unit mapping. Do not mutate owner/history until each record is classified.
+3. Relabel SC/PIBC dashboard and asset filters as legacy owner values, not divisions.
+4. Remove file-store contract permission fallback for Supply Chain/PIBC and add negative tests.
+5. Only after asset and contract ownership mapping is approved, add an additive migration to move records into canonical owner domains and preserve audit history.
+
+**Status: OPEN.** PR #121 resolves ticket category/queue routing only. It does not yet complete asset taxonomy, asset create UI, contract ownership, or historical data classification.
