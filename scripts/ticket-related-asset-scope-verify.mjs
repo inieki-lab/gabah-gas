@@ -24,7 +24,7 @@ const checks = [
   ['Unknown or out-of-scope contract links are rejected before ticket creation', /const linkedContract = db\.contracts\.find[\s\S]*!linkedContract \|\| !canSeeContract\(actor, linkedContract\)[\s\S]*statusCode: 404/.test(method)],
   ['Validated contract ID is stored on the ticket', /contract_id: linkedContractId/.test(method)],
   ['GA request button uses canonical TicketCategory value instead of legacy General', /setCategory\('GA'\)/.test(ticketModalSource) && !/setCategory\('General'\)/.test(ticketModalSource)],
-  ['Ticket category selector exposes only supported canonical IT, GA, SC and PIBC categories', ['IT', 'GA', 'SC', 'PIBC'].every(category => ticketModalSource.includes(`setCategory('${category}')`)) && /TicketCategory/.test(ticketModalSource)],
+  ['New ticket selector exposes IT, GA, and ME while retaining legacy categories only for history', ['IT', 'GA', 'ME'].every(category => ticketModalSource.includes(`setCategory('${category}')`)) && !ticketModalSource.includes("setCategory('SC')") && !ticketModalSource.includes("setCategory('PIBC')") && /TicketCategory/.test(ticketModalSource)],
   ['HTTP route preserves domain status codes', /res\.status\(typeof err\?\.statusCode === 'number' \? err\.statusCode : 400\)/.test(route)],
   ['Route no longer performs a second contract lookup', !/db\.contracts\.find/.test(route)],
 ];
