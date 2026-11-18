@@ -4515,10 +4515,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </div>
                     </div>
 
-                    {(reminderOverview.recent_failures || []).length > 0 && (
+                    {Array.isArray(reminderOverview.recent_failures) && reminderOverview.recent_failures.length > 0 && (
                       <div className="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
                         <div className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700 mb-1">Kegagalan Terakhir (maks 5)</div>
-                        {reminderOverview.recent_failures.map((f: any) => (
+                        {reminderOverview.recent_failures.slice(0, 5).map((f: any) => (
                           <div key={f.id} className="text-[11px] text-rose-900 font-mono truncate">
                             {f.scheduled_at?.slice(0, 16).replace('T', ' ')} · {f.channel} · {f.notification_type} · {f.recipient} — {f.error_message || 'unknown error'}
                           </div>
