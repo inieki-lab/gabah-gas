@@ -711,3 +711,29 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 6. Parent PR #115 integration conflict and ordered stack validation.
 
 **Updated release gate:** PR #119 exact-head CI = **PASS (74/74)**; merge to `main` = **BLOCKED** by parent PR #115; laptop UAT = **NOT YET AUTHORIZED**.
+
+
+## 30. Core audit log append-only enforcement — 18 November 2026
+
+### Implementation
+
+- Added migration `100_audit_logs_append_only.sql`.
+- PostgreSQL now rejects `UPDATE` and `DELETE` against the core `audit_logs` table with SQLSTATE `55000`, and rejects `TRUNCATE` at statement level.
+- The existing snapshot-to-normalized synchronization uses `INSERT ... ON CONFLICT (id) DO NOTHING`; this remains compatible because it does not update or delete existing audit rows.
+- No application route or persistence path was found in the reviewed `server.ts` and `server/persistence.ts` sources that requires updating or deleting core audit rows. Database owners/superusers remain capable of schema-level administration; this is not protection against a malicious database superuser.
+
+### Live PostgreSQL integration
+
+- Extended `scripts/cr04-cr05-verify.mjs` to assert migration version 100 is applied on a fresh PostgreSQL 17 database.
+- The integration inserts a unique test audit row, attempts UPDATE, DELETE, and TRUNCATE in isolated transactions, requires SQLSTATE `55000` for each rejected operation, then verifies the original row still exists.
+- The checks run as part of the existing fresh-database/persistence integration step, not only as source-text assertions.
+- Exact code head `2da1fa13337ea7471d666e067041b3ccd824dad3` passed workflow run `44230879552` (run #2050). The `verify` job completed successfully with **77/77 steps**, including the live PostgreSQL 17 integration, Docker runtime smoke, P0 HTTP security checks, and the complete regression suite.
+
+### Remaining scope
+
+- This closes database-level append-only enforcement for the core `audit_logs` table and validates it against a live PostgreSQL test database.
+- It does **not** close the wider durability issue: `GabahDomainService.recordAudit()` still uses fire-and-forget persistence for many asset, loan, ticket, room, maintenance, vendor, and other domain call sites. Those operations still need staged awaited persistence/rollback work.
+- The six RBAC mutation routes now write audit rows transactionally, but an explicit live endpoint-level failure-injection test for a failed audit INSERT is still open.
+- Authentication denial/security-event audit behavior remains a separately scoped review item.
+
+**Checklist:** core audit UPDATE/DELETE/TRUNCATE blocked by PostgreSQL = implemented and live integration PASS; RBAC six-route transactional audit source regression = PASS; live RBAC endpoint failure injection = OPEN; remaining domain audit durability = OPEN; merge/UAT gate = OPEN.
