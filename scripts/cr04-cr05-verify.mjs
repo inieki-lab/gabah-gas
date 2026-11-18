@@ -668,6 +668,15 @@ async function main() {
     const adminLogin2 = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS } });
     const adminToken2 = adminLogin2.json?.data?.token || '';
 
+    const assignmentsAfterRestart = await req(base, 'GET', '/api/admin/rbac/user-assignments', { token: adminToken2 });
+    const karyawanAssignmentAfterRestart = (assignmentsAfterRestart.json?.data || [])
+      .find(item => String(item.user_id) === String(karyawanUser?.id));
+    record('Dynamic additional role and primary marker survive application restart', 'GA role + same primary marker',
+      `HTTP ${assignmentsAfterRestart.status} roles=${(karyawanAssignmentAfterRestart?.role_ids || []).join(',')} primary=${karyawanAssignmentAfterRestart?.primary_role_id ?? 'none'}`,
+      assignmentsAfterRestart.status === 200
+        && (karyawanAssignmentAfterRestart?.role_ids || []).includes(Number(gaRole?.id))
+        && Number(karyawanAssignmentAfterRestart?.primary_role_id) === Number(persistedAssignment?.primary_role_id));
+
     const afterRestart = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken2 });
     record('CR-04 contract persists across restart (PostgreSQL authoritative)', '200 + updated notes', `HTTP ${afterRestart.status} notes=${afterRestart.json?.data?.notes || '-'}`,
       afterRestart.status === 200 && afterRestart.json?.data?.notes === 'updated notes by verify' && afterRestart.json?.data?.contract_number === readBack.json?.data?.contract_number);
