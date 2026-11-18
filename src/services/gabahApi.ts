@@ -257,6 +257,11 @@ class GabahApiClient {
     return this.request<any[]>('/api/taxonomy/categories');
   }
 
+  /** Server-calculated asset creation choices; fail closed when scope cannot be resolved. */
+  async getAssetCreateOptions(): Promise<{ owner_domains: Array<{ code: string; name: string }>; categories: any[] }> {
+    return this.request<{ owner_domains: Array<{ code: string; name: string }>; categories: any[] }>('/api/assets/create-options');
+  }
+
   async createCategory(payload: {
     code: string;
     name: string;
