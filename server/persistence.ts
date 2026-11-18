@@ -263,6 +263,13 @@ function hydrateDbFromState(state: any): void {
     const existing = stateOrgUnits.find((u: any) => u && u.id === def.id);
     return existing ? { ...def, ...existing } : { ...def };
   }).concat(stateOrgUnits.filter((u: any) => u && !DEFAULT_ORG_UNITS.some(d => d.id === u.id)) as any[]);
+  // ME is an operational sub-unit at PIBC, never a PIBC division/owner domain.
+  const meOperationalUnit = db.orgUnits.find(unit => unit.id === 'UNIT-PIBC-ME');
+  if (meOperationalUnit) {
+    meOperationalUnit.division_code = 'Umum';
+    meOperationalUnit.office_location_id = 'OFF-PIBC';
+    meOperationalUnit.name = 'Tim Perawatan (ME)';
+  }
 
   const DEFAULT_OFFICE_LOCATIONS = [
     { id: 'OFF-KP', name: 'HO', is_active: true },
