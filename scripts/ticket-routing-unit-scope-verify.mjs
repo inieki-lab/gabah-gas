@@ -10,6 +10,7 @@ const types = read('server/db.ts');
 const clientTypes = read('src/types.ts');
 const form = read('src/components/modals/CreateTicketModal.tsx');
 const ticketView = read('src/components/views/TicketsView.tsx');
+const dashboardScope = read('server/dashboard-attention-scope.ts');
 
 const ticketCreateStart = services.indexOf('static createTicket(');
 const ticketCreateEnd = services.indexOf('\n  /**', ticketCreateStart);
@@ -54,6 +55,9 @@ const checks = [
   ['Client form offers ME but does not offer SC/PIBC as new categories', form.includes("category: 'ME' as TicketCategory") && form.includes("canCreateCategory('ME')") && !form.includes("setCategory('SC')") && !form.includes("setCategory('PIBC')")],
   ['Client form prevents linking legacy SC/PIBC-owned assets to new tickets', form.includes('owner === \'SC\' || owner === \'PIBC\'') && form.includes('owner legacy SC/PIBC')],
   ['Ticket UI exposes assignment controls only with tickets.assign', ticketView.includes("hasEffectivePermission('tickets.assign') === true") && ticketView.includes('onAssignTicket')],
+  ['Dashboard ticket stats use the same unit-aware queue scope as the ticket list', server.includes('|| hasTicketQueueScope(actor, ticket)')],
+  ['Dashboard attention supports assigned-unit ticket scopes', dashboardScope.includes('assigned_unit_id?: string | null') && dashboardScope.includes('canReadTicketQueueScope')],
+  ['Legacy reporter-name visibility fallback is allowed only when reporter_id is absent', dashboardScope.includes('!ticket.reporter_id && Boolean(ticket.reporter_name)')],
 ];
 
 let failed = 0;
