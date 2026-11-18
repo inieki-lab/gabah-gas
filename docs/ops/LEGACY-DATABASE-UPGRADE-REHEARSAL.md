@@ -48,7 +48,7 @@ docker compose -p gabah-rehearsal --env-file .env.rehearsal ps
 ```bash
 pg_dump --format=custom --no-owner --no-acl "$SOURCE_DATABASE_URL" | \
   docker compose -p gabah-rehearsal --env-file .env.rehearsal exec -T database \
-  pg_restore --username "$PGUSER" --dbname "$PGDATABASE" --no-owner --no-privileges
+  pg_restore --username "$PGUSER" --dbname "$PGDATABASE" --clean --if-exists --single-transaction --no-owner --no-privileges
 ```
 
 If the restore reports errors, stop and resolve the fixture/restore issue before proceeding. Do not continue with a partial restore.
@@ -89,6 +89,7 @@ ORDER BY a.asset_number;
 SELECT id, recipient_role, recipient_user_id
 FROM notifications
 WHERE recipient_role IN ('Supply Chain', 'PIBC', 'SC')
+   OR recipient_division IN ('SC', 'PIBC')
 ORDER BY id;
 ```
 
