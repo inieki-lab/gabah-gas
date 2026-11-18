@@ -660,6 +660,15 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
       const primaryRole = profileLabel;
+      const requestedDivision = division === undefined || division === null || division === ''
+        ? 'Umum' : (typeof division === 'string' ? division.trim() : '');
+      const activeDivision = (db.divisions || []).find(item =>
+        String(item.code || '').trim().toUpperCase() === requestedDivision.toUpperCase()
+        && item.is_active !== false
+      );
+      if (!activeDivision) {
+        return res.status(400).json({ success: false, message: `Divisi "${requestedDivision || '(kosong)'}" tidak terdaftar atau sedang nonaktif. Pilih divisi aktif; lokasi kantor diisi terpisah.` });
+      }
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
       let newJobLevel: string | undefined;
@@ -715,7 +724,7 @@ async function startServer() {
         email: email.trim().toLowerCase(),
         role: primaryRole,
         role_label: roleLabels[primaryRole] || primaryRole,
-        division: division || 'Umum',
+        division: String(activeDivision.code),
         department: department || 'Operasional',
         job_level_code: newJobLevel,
         unit_id: newUnitId || null,
@@ -793,7 +802,16 @@ async function startServer() {
         const name = String(row.name || '').trim();
         const email = String(row.email || '').trim().toLowerCase();
         const roleRaw = String(row.role || '').trim();
-        const division = String(row.division || '').trim() || 'Umum';
+        const requestedDivision = String(row.division || '').trim() || 'Umum';
+        const divisionMaster = (db.divisions || []).find(item =>
+          String(item.code || '').trim().toUpperCase() === requestedDivision.toUpperCase()
+          && item.is_active !== false
+        );
+        if (!divisionMaster) {
+          errors.push(`Baris ${rowNo}: Divisi "${requestedDivision}" tidak terdaftar/aktif. Lokasi kantor harus diisi pada kolom office_location_id.`);
+          continue;
+        }
+        const division = String(divisionMaster.code);
         const department = String(row.department || '').trim() || 'Operasional';
         const phone = String(row.phone || '').trim();
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
@@ -952,6 +970,15 @@ async function startServer() {
       const normalizedName = name === undefined ? undefined : name.trim();
       const normalizedEmail = email === undefined ? undefined : email.trim().toLowerCase();
       const normalizedDivision = division === undefined ? undefined : division.trim();
+      if (normalizedDivision !== undefined) {
+        const activeDivision = (db.divisions || []).find(item =>
+          String(item.code || '').trim().toUpperCase() === normalizedDivision.toUpperCase()
+          && item.is_active !== false
+        );
+        if (!activeDivision) {
+          return res.status(400).json({ success: false, message: `Divisi "${normalizedDivision || '(kosong)'}" tidak terdaftar atau sedang nonaktif. Pilih divisi aktif; lokasi kantor diisi terpisah.` });
+        }
+      }
       const normalizedDepartment = department === undefined ? undefined : department.trim();
       const normalizedPhone = phone === undefined ? undefined : phone.trim();
       const normalizedTelegramChatId = telegram_chat_id === undefined ? undefined : telegram_chat_id.trim();
@@ -2196,7 +2223,7 @@ async function startServer() {
       if (!requireAdminPermission(req, res, 'organization.manage')) return;
       const name = String(req.body.name || '').trim();
       const requestedDivisionCode = String(req.body.division_code || 'Umum').trim();
-      const configuredDivision = (db.divisions || []).find(d => String(d.code || '').trim().toLowerCase() === requestedDivisionCode.toLowerCase());
+      const configuredDivision = (db.divisions || []).find(d => String(d.code || '').trim().toLowerCase() === requestedDivisionCode.toLowerCase() && d.is_active !== false);
       if (!name) return res.status(400).json({ success: false, message: 'Nama unit wajib diisi.' });
       if (!configuredDivision) return res.status(400).json({ success: false, message: `Divisi "${requestedDivisionCode}" tidak terdaftar pada Master Divisi.` });
       const divisionCode = String(configuredDivision.code);
