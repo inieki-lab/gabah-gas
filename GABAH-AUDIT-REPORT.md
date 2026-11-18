@@ -668,3 +668,16 @@ The five contract mutation routes now preserve the domain service's HTTP 503 sta
 - This is a verified open finding, not a completed fix. No code was changed by this audit entry.
 - PR #119's latest inspected verify job completed successfully, but that does not close this audit durability issue or resolve the parent PR #115 conflict with `main`.
 - **Release gate remains OPEN. No merge to `main`; no laptop UAT authorization.**
+
+
+## 28. RBAC transactional audit write remediation — 18 November 2026
+
+- Added a dedicated `insertRbacAudit(client, ...)` helper in `server.ts`. It writes directly to PostgreSQL `audit_logs` using the same transaction client as the RBAC mutation, records actor ID/name/role and request IP, and uses UUID-based event IDs.
+- Moved mandatory audit inserts inside the transaction callback for all six RBAC mutation routes: role create, role update, role delete, role permission replacement, role scope replacement, and user-role assignment replacement.
+- Removed the post-transaction fire-and-forget `GabahDomainService.recordAudit()` calls from those six routes. An audit insert failure now rejects the transaction, so the associated RBAC mutation rolls back and the handler does not return a success response.
+- RBAC policy refresh remains after successful transaction commit, so the in-memory effective-policy cache is refreshed only after both mutation and audit row commit.
+- Added `scripts/rbac-audit-transaction-verify.mjs`, npm script `test:rbac-audit-transaction`, and a dedicated CI step. The regression checks that all six handlers place their audit insert inside the transaction and no longer call the fire-and-forget helper.
+- **Validation pending:** the latest branch commit is `70d81502e872c3f53dd34a24d87255af993fa2cb`; wait for exact-head CI and TypeScript/PostgreSQL integration before treating this as closed. The new source-contract regression is not a substitute for a live database rollback test.
+- Scope remains limited to the six RBAC write routes. Other application-domain mutations and authentication/security-event audit paths still use the legacy audit helper and remain open for staged remediation.
+
+**Checklist:** RBAC audit transaction coupling = implemented; six-route source regression = added; exact-head CI = pending; live fault-injection/rollback test = OPEN; remaining domain/auth audit durability = OPEN; merge/UAT gate = OPEN.
