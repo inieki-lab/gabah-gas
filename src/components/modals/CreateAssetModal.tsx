@@ -192,8 +192,7 @@ export const FIXED_ASSET_TAXONOMY: FixedAssetCategoryDef[] = [
 export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({ 
   isOpen, 
   onClose, 
-  onCreateAsset, 
-  currentUser 
+  onCreateAsset 
 }) => {
   const [assetCreateOptions, setAssetCreateOptions] = useState<{ owner_domains: Array<{ code: string; name: string }>; categories: any[] } | null>(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
