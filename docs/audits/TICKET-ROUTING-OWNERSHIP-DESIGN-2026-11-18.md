@@ -113,3 +113,13 @@ Implemented in source for CI review:
 ### Scope boundary for this implementation slice
 
 The current ticket schema does not yet capture a dedicated `request_location_id`. This slice deliberately uses the operational queue target for authorization and does not infer it from the reporter's office location. A later additive change may record the incident/request location as descriptive workflow data, but it must never be an authorization grant. Do not treat this PR as completion of location-based reporting or cross-location analytics.
+
+
+### Additional authorization hardening
+
+- Ticket queue access now requires an exact `tickets` module scope. A legacy `module='*'` scope from an unrelated module cannot silently grant ticket-queue visibility.
+- ME queue access requires both `user.unit_id='UNIT-PIBC-ME'` and the exact `unit:UNIT-PIBC-ME` scope for module `tickets`.
+- IT/GA queue staffing is based on explicit `tickets` module scopes and permissions, not `user.division` or job title.
+- The generic GA role loses its ticket dispatcher/update grants and its ticket-module owner scope; the separate GA helpdesk operator role must be explicitly assigned.
+- In file-store compatibility mode, only IT has the legacy IT queue fallback. GA/ME/SC/PIBC profile labels do not grant queue-wide access; GA/ME requester/dispatcher capabilities require PostgreSQL RBAC.
+- Dashboard ticket metrics and attention cards use the same unit-aware queue resolver. Reporter-name fallback is allowed only for legacy rows that lack `reporter_id`.
