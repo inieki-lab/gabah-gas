@@ -73,6 +73,9 @@ jobs:
       - name: Legacy owner and office-location separation regression
         run: npm run test:legacy-owner-presentation
 
+      - name: Asset and meeting-room durable service persistence regression
+        run: npm run test:domain-service-persistence
+
       - name: Asset assignment active-user integrity
         run: npm run test:asset-assignment-active-user
 
