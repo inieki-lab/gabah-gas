@@ -611,8 +611,8 @@ async function startServer() {
           audit_log: auditLog,
         };
       });
-      await refreshRbacPolicy();
       db.auditLogs.unshift(result.audit_log);
+      await refreshRbacPolicy();
       return res.json({ success: true, data: result });
     } catch (error: any) { return rbacFailure(res, error); }
   });
