@@ -449,7 +449,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <div className="text-[11px] text-slate-600">Aset siap ditugaskan secara manual ke karyawan Food Station.</div>
                     </div>
                   </div>
-                  {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+                  {onEditThisAsset && canEdit && (
                     <button
                       type="button"
                       onClick={() => onEditThisAsset(asset)}
@@ -715,7 +715,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 </button>
               )}
 
-              {onEditThisAsset && (currentUser?.role === 'Admin GABAH' || currentUser?.role === 'IT' || currentUser?.role === 'GA' || currentUser?.role === 'Supply Chain') && (
+              {onEditThisAsset && canEdit && (
                 <button
                   type="button"
                   onClick={() => {
