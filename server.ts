@@ -720,7 +720,7 @@ async function startServer() {
         `Menambahkan pengguna baru: ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}. Password awal dibuat server-side dan dikirim out-of-band.`,
         actor,
         newUser.id
-      );
+      , false);
 
       await persistDataStore();
       // New employee accounts receive no implicit permissions. Superadmin assigns
@@ -834,7 +834,7 @@ async function startServer() {
             `Impor massal: profil ${existing.name} (${existing.email}) diperbarui (divisi: ${division}, departemen: ${department}).`,
             actor,
             existing.id
-          );
+          , false);
         } else {
           // CREATE — password CSPRNG server-side (CR-02), tidak pernah dikirim balik.
           const generatedTempPassword = crypto.randomBytes(12).toString('base64url');
@@ -868,7 +868,7 @@ async function startServer() {
             `Impor massal: pengguna baru ${newUser.name} (${newUser.email}) - Peran: ${newUser.role}. Password awal dibuat server-side.`,
             actor,
             newUser.id
-          );
+          , false);
         }
       }
 
@@ -1042,7 +1042,7 @@ async function startServer() {
         `Memperbarui profil pengguna ${targetUser.name} (${targetUser.email})`,
         actor,
         targetUser.id
-      );
+      , false);
 
       await persistDataStore();
       // Profile edits do not alter RBAC assignments or permissions.
@@ -1126,7 +1126,7 @@ async function startServer() {
         `Menghapus akun pengguna: ${targetUser.name} (${targetUser.email}, ${targetUser.role}) - tidak ada pinjaman aktif atau aset dalam penguasaan yang dilepas otomatis`,
         actor,
         targetId
-      );
+      , false);
 
       await persistDataStore();
       await refreshRbacPolicy();
@@ -1173,7 +1173,7 @@ async function startServer() {
         `Menerbitkan sandi sementara baru untuk pengguna ${targetUser.name} (${targetUser.email}); seluruh sesi aktif dicabut`,
         actor,
         targetUser.id
-      );
+      , false);
 
       await persistDataStore();
 
@@ -1256,7 +1256,7 @@ async function startServer() {
         [id, owner, code, separator, digits, notes]
       );
       AssetNumberingEngine.upsertRule(result.rows[0]);
-      GabahDomainService.recordAudit('NUMBERING_RULE_CREATED', 'Asset Numbering', `Membuat aturan penomoran ${owner}/${code}; pemisah "${separator}", digit ${digits}.`, actor);
+      GabahDomainService.recordAudit('NUMBERING_RULE_CREATED', 'Asset Numbering', `Membuat aturan penomoran ${owner}/${code}; pemisah "${separator}", digit ${digits}.`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: { ...result.rows[0], usage_count: 0 } });
     } catch (err: any) {
@@ -1327,7 +1327,7 @@ async function startServer() {
         [current.id, separator, digits, isActive, notes]
       );
       AssetNumberingEngine.upsertRule(updated.rows[0]);
-      GabahDomainService.recordAudit('NUMBERING_RULE_UPDATED', 'Asset Numbering', `Memperbarui aturan ${current.owner_division}/${current.asset_code} (terpakai: ${usageCount}); nomor yang telah terbit tidak diubah.`, actor);
+      GabahDomainService.recordAudit('NUMBERING_RULE_UPDATED', 'Asset Numbering', `Memperbarui aturan ${current.owner_division}/${current.asset_code} (terpakai: ${usageCount}); nomor yang telah terbit tidak diubah.`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: { ...updated.rows[0], usage_count: usageCount } });
     } catch (err: any) {
@@ -1372,7 +1372,7 @@ async function startServer() {
       }
       await queryRbac('DELETE FROM asset_numbering_rules WHERE id = $1', [rule.id]);
       AssetNumberingEngine.removeRule(rule.owner_division, rule.asset_code);
-      GabahDomainService.recordAudit('NUMBERING_RULE_DELETED', 'Asset Numbering', `Menghapus aturan ${expected}. Alasan: ${reason}`, actor);
+      GabahDomainService.recordAudit('NUMBERING_RULE_DELETED', 'Asset Numbering', `Menghapus aturan ${expected}. Alasan: ${reason}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: { id: rule.id, deleted: true } });
     } catch (err: any) {
@@ -1633,7 +1633,7 @@ async function startServer() {
         `Pengguna ${user.name} (${user.email}) mengganti kata sandinya sendiri; seluruh sesi lain dicabut`,
         actor,
         user.id
-      );
+      , false);
       try {
         // Commit the credential change before revoking sessions. A storage
         // failure must leave the old password and existing sessions usable.
@@ -1704,7 +1704,7 @@ async function startServer() {
           'Auth',
           `Percobaan role switch oleh principal tanpa kewenangan: ${actor.name} (${actor.role})`,
           actor
-        );
+        , undefined, false);
         return res.status(403).json({
           success: false,
           message: 'Akses ditolak: Hanya Admin GABAH yang berwenang melakukan alih peran ke akun/peran lain.',
@@ -1746,7 +1746,7 @@ async function startServer() {
         `Admin ${actor.name} beralih identitas aktif ke ${targetUser.name} (${targetUser.role})`,
         actor,
         targetUser.id
-      );
+      , false);
 
       await persistDataStore();
 
@@ -1846,7 +1846,7 @@ async function startServer() {
       };
 
       db.categories.push(newCategory);
-      GabahDomainService.recordAudit('CATEGORY_CREATED', 'MasterData', `Menambahkan master kategori ${newCategory.code} - ${newCategory.name}`, actor);
+      GabahDomainService.recordAudit('CATEGORY_CREATED', 'MasterData', `Menambahkan master kategori ${newCategory.code} - ${newCategory.name}`, actor, undefined, false);
       await persistDataStore();
 
       res.status(201).json({ success: true, data: newCategory });
@@ -1917,7 +1917,7 @@ async function startServer() {
         'MasterData',
         `Memperbarui master kategori ${target.code} - ${target.name}${is_active !== undefined ? (target.is_active ? ' (diaktifkan)' : ' (dinonaktifkan)') : ''}`,
         actor,
-      );
+      , false);
       await persistDataStore();
       res.json({ success: true, data: target });
     } catch (err: any) {
@@ -1945,7 +1945,7 @@ async function startServer() {
         return res.status(404).json({ success: false, message: `Kategori "${code}" tidak ditemukan.` });
       }
 
-      GabahDomainService.recordAudit('CATEGORY_DELETED', 'MasterData', `Menghapus master kategori ${code}`, actor);
+      GabahDomainService.recordAudit('CATEGORY_DELETED', 'MasterData', `Menghapus master kategori ${code}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, message: `Kategori ${code} berhasil dihapus.` });
     } catch (err: any) {
@@ -1974,7 +1974,7 @@ async function startServer() {
         capacity: capacity?.trim() || 'Fasilitas Operasional'
       };
       db.locations.push(newLoc);
-      GabahDomainService.recordAudit('LOCATION_CREATED', 'MasterData', `Menambahkan master lokasi ${newLoc.name}`, actor);
+      GabahDomainService.recordAudit('LOCATION_CREATED', 'MasterData', `Menambahkan master lokasi ${newLoc.name}`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: newLoc });
     } catch (err: any) {
@@ -1995,7 +1995,7 @@ async function startServer() {
       if (address !== undefined) target.address = address.trim();
       if (capacity !== undefined) target.capacity = capacity.trim();
 
-      GabahDomainService.recordAudit('LOCATION_UPDATED', 'MasterData', `Memperbarui master lokasi ${target.name}`, actor);
+      GabahDomainService.recordAudit('LOCATION_UPDATED', 'MasterData', `Memperbarui master lokasi ${target.name}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: target });
     } catch (err: any) {
@@ -2012,7 +2012,7 @@ async function startServer() {
       if (!loc) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
 
       db.locations = db.locations.filter(l => l.id !== req.params.id);
-      GabahDomainService.recordAudit('LOCATION_DELETED', 'MasterData', `Menghapus master lokasi ${loc.name}`, actor);
+      GabahDomainService.recordAudit('LOCATION_DELETED', 'MasterData', `Menghapus master lokasi ${loc.name}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, message: `Lokasi ${loc.name} berhasil dihapus.` });
     } catch (err: any) {
@@ -2049,7 +2049,7 @@ async function startServer() {
         depts: Array.isArray(depts) && depts.length > 0 ? depts : ['Operasional']
       };
       db.divisions.push(newDiv);
-      GabahDomainService.recordAudit('DIVISION_CREATED', 'Organization', `Menambahkan divisi baru ${newDiv.code} - ${newDiv.name}`, actor);
+      GabahDomainService.recordAudit('DIVISION_CREATED', 'Organization', `Menambahkan divisi baru ${newDiv.code} - ${newDiv.name}`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: newDiv });
     } catch (err: any) {
@@ -2071,7 +2071,7 @@ async function startServer() {
       if (leader) div.leader = leader.trim();
       if (Array.isArray(depts)) div.depts = depts;
 
-      GabahDomainService.recordAudit('DIVISION_UPDATED', 'Organization', `Memperbarui divisi ${div.code} - ${div.name}`, actor);
+      GabahDomainService.recordAudit('DIVISION_UPDATED', 'Organization', `Memperbarui divisi ${div.code} - ${div.name}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: div });
     } catch (err: any) {
@@ -2108,7 +2108,7 @@ async function startServer() {
       if (!div) return res.status(404).json({ success: false, message: 'Divisi tidak ditemukan.' });
 
       db.divisions = db.divisions.filter(d => d.code.toUpperCase() !== code);
-      GabahDomainService.recordAudit('DIVISION_DELETED', 'Organization', `Menghapus struktur divisi ${code} (${div.name})`, actor);
+      GabahDomainService.recordAudit('DIVISION_DELETED', 'Organization', `Menghapus struktur divisi ${code} (${div.name})`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, message: `Divisi ${code} berhasil dihapus.` });
     } catch (err: any) {
@@ -2140,7 +2140,7 @@ async function startServer() {
       const maxOrder = db.jobLevels.reduce((m, j) => Math.max(m, j.order || 0), 0);
       const level = { code, label, order: Number(req.body.order) || maxOrder + 1, is_active: true };
       db.jobLevels.push(level);
-      GabahDomainService.recordAudit('JOB_LEVEL_CREATED', 'Organization', `Menambahkan master jabatan ${level.code} (${level.label})`, actor);
+      GabahDomainService.recordAudit('JOB_LEVEL_CREATED', 'Organization', `Menambahkan master jabatan ${level.code} (${level.label})`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: level });
     } catch (err: any) {
@@ -2161,7 +2161,7 @@ async function startServer() {
       if (req.body.label !== undefined) level.label = String(req.body.label).trim() || level.label;
       if (req.body.order !== undefined) level.order = Number(req.body.order);
       if (req.body.is_active !== undefined) level.is_active = req.body.is_active;
-      GabahDomainService.recordAudit('JOB_LEVEL_UPDATED', 'Organization', `Memperbarui master jabatan ${level.code} (${level.label}) — aktif: ${level.is_active}`, actor);
+      GabahDomainService.recordAudit('JOB_LEVEL_UPDATED', 'Organization', `Memperbarui master jabatan ${level.code} (${level.label}) — aktif: ${level.is_active}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: level });
     } catch (err: any) {
@@ -2189,7 +2189,7 @@ async function startServer() {
       }
       const unit = { id: `UNIT-${Date.now().toString(36).toUpperCase()}`, name, division_code: divisionCode as any, is_active: true };
       db.orgUnits.push(unit);
-      GabahDomainService.recordAudit('ORG_UNIT_CREATED', 'Organization', `Menambahkan master unit ${unit.name} (divisi ${unit.division_code})`, actor);
+      GabahDomainService.recordAudit('ORG_UNIT_CREATED', 'Organization', `Menambahkan master unit ${unit.name} (divisi ${unit.division_code})`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: unit });
     } catch (err: any) {
@@ -2228,7 +2228,7 @@ async function startServer() {
       }
       if (resolvedDivisionCode !== undefined) unit.division_code = resolvedDivisionCode as any;
       if (req.body.is_active !== undefined) unit.is_active = req.body.is_active;
-      GabahDomainService.recordAudit('ORG_UNIT_UPDATED', 'Organization', `Memperbarui master unit ${unit.name} — aktif: ${unit.is_active}`, actor);
+      GabahDomainService.recordAudit('ORG_UNIT_UPDATED', 'Organization', `Memperbarui master unit ${unit.name} — aktif: ${unit.is_active}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: unit });
     } catch (err: any) {
@@ -2252,7 +2252,7 @@ async function startServer() {
       }
       const loc = { id: `OFF-${Date.now().toString(36).toUpperCase()}`, name, is_active: true };
       db.officeLocations.push(loc);
-      GabahDomainService.recordAudit('OFFICE_LOCATION_CREATED', 'Organization', `Menambahkan master lokasi kantor ${loc.name}`, actor);
+      GabahDomainService.recordAudit('OFFICE_LOCATION_CREATED', 'Organization', `Menambahkan master lokasi kantor ${loc.name}`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
@@ -2272,7 +2272,7 @@ async function startServer() {
       }
       if (req.body.name !== undefined) loc.name = String(req.body.name).trim() || loc.name;
       if (req.body.is_active !== undefined) loc.is_active = req.body.is_active;
-      GabahDomainService.recordAudit('OFFICE_LOCATION_UPDATED', 'Organization', `Memperbarui master lokasi kantor ${loc.name} — aktif: ${loc.is_active}`, actor);
+      GabahDomainService.recordAudit('OFFICE_LOCATION_UPDATED', 'Organization', `Memperbarui master lokasi kantor ${loc.name} — aktif: ${loc.is_active}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: loc });
     } catch (err: any) {
@@ -2308,7 +2308,7 @@ async function startServer() {
       }
       const loc = { id: `ALOC-${Date.now().toString(36).toUpperCase()}`, name, parent_id: parentId, is_active: true };
       db.assetLocations.push(loc);
-      GabahDomainService.recordAudit('ASSET_LOCATION_CREATED', 'Assets', `Menambahkan master lokasi fisik aset ${getAssetLocationPath(loc)}`, actor);
+      GabahDomainService.recordAudit('ASSET_LOCATION_CREATED', 'Assets', `Menambahkan master lokasi fisik aset ${getAssetLocationPath(loc)}`, actor, undefined, false);
       await persistDataStore();
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
@@ -2349,7 +2349,7 @@ async function startServer() {
         loc.parent_id = parentId;
       }
       if (req.body.is_active !== undefined) loc.is_active = req.body.is_active;
-      GabahDomainService.recordAudit('ASSET_LOCATION_UPDATED', 'Assets', `Memperbarui master lokasi fisik aset ${getAssetLocationPath(loc)} — aktif: ${loc.is_active}`, actor);
+      GabahDomainService.recordAudit('ASSET_LOCATION_UPDATED', 'Assets', `Memperbarui master lokasi fisik aset ${getAssetLocationPath(loc)} — aktif: ${loc.is_active}`, actor, undefined, false);
       await persistDataStore();
       res.json({ success: true, data: loc });
     } catch (err: any) {
@@ -2575,7 +2575,7 @@ async function startServer() {
             }
           }
           existing.updated_at = new Date().toISOString();
-          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id);
+          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id, false);
           importedAssets.push(existing);
           updated++;
           continue;
@@ -2612,7 +2612,7 @@ async function startServer() {
             condition: (condition || undefined) as any,
             notes: String(row.notes || '').trim() || undefined,
           }, actor);
-          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id);
+          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id, false);
           importedAssets.push(asset);
           created++;
         } catch (rowErr: any) {
@@ -2779,7 +2779,7 @@ async function startServer() {
     }
     asset.updated_at = new Date().toISOString();
 
-    const auditEntry = GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
+    const auditEntry = GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id, false);
     try {
       await persistDataStore();
       return res.json({ success: true, data: asset });
@@ -3153,7 +3153,7 @@ async function startServer() {
         link_id: ticket.id,
       });
       notificationId = assignmentNotification.id;
-      const assignmentAudit = GabahDomainService.recordAudit('TICKET_ASSIGNED', 'Tickets', `Tiket ${ticket.ticket_number} ditugaskan kepada ${target.name}.`, actor, ticket.id);
+      const assignmentAudit = GabahDomainService.recordAudit('TICKET_ASSIGNED', 'Tickets', `Tiket ${ticket.ticket_number} ditugaskan kepada ${target.name}.`, actor, ticket.id, false);
       auditId = assignmentAudit.id;
       await persistDataStore();
       return res.json({ success: true, data: ticket });
@@ -3243,7 +3243,7 @@ async function startServer() {
       }
       ticket.updated_at = new Date().toISOString();
 
-      const auditEntry = GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
+      const auditEntry = GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id, false);
       try {
         // Do not acknowledge a lifecycle transition until the authoritative
         // persistence queue confirms the write.
@@ -3413,7 +3413,7 @@ async function startServer() {
       created_at: new Date().toISOString(),
     };
     db.maintenances.push(newSchedule);
-    const auditEntry = GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
+    const auditEntry = GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id, false);
     try {
       await persistDataStore();
       return res.status(201).json({ success: true, data: newSchedule });
@@ -3494,7 +3494,7 @@ async function startServer() {
     if (req.body.status === 'completed') {
       schedule.last_completed_at = new Date().toISOString();
     }
-    const auditEntry = GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
+    const auditEntry = GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id, false);
     try {
       await persistDataStore();
       return res.json({ success: true, data: schedule });
@@ -3596,7 +3596,7 @@ async function startServer() {
       notes: req.body.notes || '',
     };
     db.vendors.push(vendor);
-    const auditEntry = GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
+    const auditEntry = GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id, false);
     try {
       await persistDataStore();
       return res.status(201).json({ success: true, data: vendor });
@@ -3667,7 +3667,7 @@ async function startServer() {
     vendor.owner_division = requestedOwner;
     vendor.rating = requestedRating;
     vendor.active_contracts_count = getActiveVendorContractCount(vendor.name);
-    const auditEntry = GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
+    const auditEntry = GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id, false);
     try {
       await persistDataStore();
       return res.json({ success: true, data: vendor });
@@ -3715,7 +3715,7 @@ async function startServer() {
       updated_at: new Date().toISOString(),
     };
     db.knowledgeArticles.push(article);
-    const auditEntry = GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
+    const auditEntry = GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id, false);
     try {
       await persistDataStore();
       return res.status(201).json({ success: true, data: article });
@@ -3747,7 +3747,7 @@ async function startServer() {
       if (req.body[key] !== undefined) (article as any)[key] = req.body[key];
     }
     article.updated_at = new Date().toISOString();
-    const auditEntry = GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
+    const auditEntry = GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id, false);
     try {
       await persistDataStore();
       return res.json({ success: true, data: article });
