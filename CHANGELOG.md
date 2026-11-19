@@ -1,3 +1,13 @@
+## [2026-11-19] — Latch PostgreSQL runtime failures and make state synchronization atomic
+
+- Once PostgreSQL has become the authoritative runtime store, a pool or write failure now latches subsequent mutations closed; development no longer silently reports success by switching subsequent writes to the JSON fallback.
+- The JSON recovery snapshot is published only after the corresponding PostgreSQL commit, using the exact payload committed.
+- The `gabah_state` snapshot, normalized domain tables, and dynamic primary-role mirror now share one PostgreSQL transaction; a normalized sync failure rolls the state snapshot back as well.
+- Added `test:runtime-persistence-atomicity` and made it a required CI step.
+- This is an application-level persistence hardening change. Live PostgreSQL fault injection, browser UAT, legacy database upgrade rehearsal, and multi-instance asset numbering remain separate release gates.
+
+---
+
 ## [2026-11-16] — Green theme enforcement & asset numbering rule management
 
 - Extend the green enterprise palette across legacy Tailwind color utilities so administration, forms, cards, and neutral surfaces no longer retain the previous gray/teal appearance.
@@ -1496,3 +1506,7 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Memperbarui design tokens global, header, sidebar aktif, dan canvas workspace.
 - Tidak mengganti stack, menambah dependency UI, atau mengubah RBAC, API, route, workflow, maupun data.
 - Perlu verifikasi lint/build dan UAT visual lintas role sebelum merge.
+
+- 2026-11-19: Gate successful state-changing API responses on durable persistence; return HTTP 503 on write failure; remove swallowed persistence errors and preserve persistence status codes.
+
+- 2026-11-19: Exact-head CI passed for the durable mutation-response persistence gate (59383ef2541a20d1aeea9ce858bc64f28492a841). Dependency audit lockfile fix remains local and must be integrated before merge.

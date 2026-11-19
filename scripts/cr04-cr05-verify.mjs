@@ -688,6 +688,58 @@ async function main() {
     const health2 = await req(base, 'GET', '/api/health');
     record('CR-04 health after restart still postgresql', 'postgresql', health2.json?.persistence, health2.json?.persistence === 'postgresql');
 
+    // ---------- 6b. Runtime PostgreSQL failure must rollback and latch closed ----------
+    const faultClient = new pg.Client({ connectionString: TEST_DB_URL });
+    faultClient.on('error', e => console.error('[pg fault-injection async error]', e.message));
+    await faultClient.connect();
+    const passwordBeforeFault = await faultClient.query('SELECT password_hash FROM users WHERE id = $1', [itUserId]);
+    const snapshotPasswordBeforeFault = await faultClient.query(
+      "SELECT user_json->>'password_hash' AS password_hash FROM gabah_state, jsonb_array_elements(payload->'users') AS users_json(user_json) WHERE user_json->>'email' = $1",
+      [IT_EMAIL],
+    );
+    await faultClient.query(`
+      CREATE OR REPLACE FUNCTION gabah_ci_reject_user_sync() RETURNS trigger
+      LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.email = 'it.support@foodstation.co.id' THEN
+          RAISE EXCEPTION 'CI forced normalized user sync failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $$;
+    `);
+    await faultClient.query('CREATE TRIGGER gabah_ci_reject_user_sync BEFORE INSERT OR UPDATE ON users FOR EACH ROW EXECUTE FUNCTION gabah_ci_reject_user_sync()');
+
+    const faultedPasswordReset = await req(base, 'POST', `/api/users/${itUserId}/reset-password`, { token: adminToken2 });
+    const passwordAfterFault = await faultClient.query('SELECT password_hash FROM users WHERE id = $1', [itUserId]);
+    const snapshotPasswordAfterFault = await faultClient.query(
+      "SELECT user_json->>'password_hash' AS password_hash FROM gabah_state, jsonb_array_elements(payload->'users') AS users_json(user_json) WHERE user_json->>'email' = $1",
+      [IT_EMAIL],
+    );
+    const rolledBackState = passwordBeforeFault.rowCount === 1 && passwordAfterFault.rowCount === 1
+      && snapshotPasswordBeforeFault.rowCount === 1 && snapshotPasswordAfterFault.rowCount === 1
+      && passwordAfterFault.rows[0]?.password_hash === passwordBeforeFault.rows[0]?.password_hash
+      && snapshotPasswordAfterFault.rows[0]?.password_hash === snapshotPasswordBeforeFault.rows[0]?.password_hash;
+    record('Runtime normalized-table failure rolls back gabah_state snapshot', 'unchanged user row + JSONB credential',
+      `HTTP ${faultedPasswordReset.status}; rollback=${rolledBackState}`,
+      faultedPasswordReset.status === 503 && rolledBackState);
+
+    const subsequentMutation = await req(base, 'POST', `/api/users/${itUserId}/reset-password`, { token: adminToken2 });
+    const passwordAfterLatchedWrite = await faultClient.query('SELECT password_hash FROM users WHERE id = $1', [itUserId]);
+    const snapshotPasswordAfterLatchedWrite = await faultClient.query(
+      "SELECT user_json->>'password_hash' AS password_hash FROM gabah_state, jsonb_array_elements(payload->'users') AS users_json(user_json) WHERE user_json->>'email' = $1",
+      [IT_EMAIL],
+    );
+    const latchPreservedState = passwordAfterLatchedWrite.rowCount === 1 && snapshotPasswordAfterLatchedWrite.rowCount === 1
+      && passwordAfterLatchedWrite.rows[0]?.password_hash === passwordBeforeFault.rows[0]?.password_hash
+      && snapshotPasswordAfterLatchedWrite.rows[0]?.password_hash === snapshotPasswordBeforeFault.rows[0]?.password_hash;
+    record('Subsequent mutation remains fail-closed after runtime PostgreSQL failure', 'HTTP 400; no second snapshot write',
+      `HTTP ${subsequentMutation.status}; unchanged=${latchPreservedState}`,
+      subsequentMutation.status === 503 && latchPreservedState);
+    await faultClient.query('DROP TRIGGER IF EXISTS gabah_ci_reject_user_sync ON users');
+    await faultClient.query('DROP FUNCTION IF EXISTS gabah_ci_reject_user_sync()');
+    await faultClient.end();
+
     child2.kill('SIGKILL');
     await new Promise(r => setTimeout(r, 500));
 

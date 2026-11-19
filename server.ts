@@ -61,14 +61,36 @@ async function startServer() {
   // Production API security and session/role hardening
   app.use(gabahSecurityMiddleware);
 
-  // Persist every successful state-changing API request after the response is sent
+  // Gate successful state-changing API responses on durable persistence.
+  // Express res.json() delegates to res.send(), so this also covers JSON APIs
+  // whose handlers do not explicitly call persistDataStore().
   app.use((req, res, next) => {
     if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
-    res.on('finish', () => {
-      if (res.statusCode >= 200 && res.statusCode < 400) {
-        void persistDataStore();
+    const originalSend = res.send.bind(res);
+    res.send = ((body?: any) => {
+      if (res.statusCode < 200 || res.statusCode >= 400 || (req as any).__gabahPersisted) {
+        return originalSend(body);
       }
-    });
+      // A duplicate send during the persistence wait must not bypass the gate.
+      if ((req as any).__gabahPersisting) return res;
+      (req as any).__gabahPersisting = true;
+      void persistDataStore().then(() => {
+        (req as any).__gabahPersisted = true;
+        originalSend(body);
+      }).catch(error => {
+        console.error('[persistence] API response blocked because state was not committed:', error?.message || error);
+        if (!res.headersSent) {
+          res.status(typeof error?.statusCode === 'number' ? error.statusCode : 503);
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          originalSend(JSON.stringify({
+            success: false,
+            code: 'PERSISTENCE_UNAVAILABLE',
+            message: 'Perubahan belum dapat disimpan. Silakan coba kembali setelah layanan database pulih.',
+          }));
+        }
+      });
+      return res;
+    }) as typeof res.send;
     next();
   });
 
@@ -77,6 +99,27 @@ async function startServer() {
     const verified = (req as any).user || actorFor(req);
     if (verified) return verified;
     throw new Error('Pengguna tidak terautentikasi.');
+  };
+
+  // Persist state-changing API requests before reporting success. A failed
+  // authoritative write must be visible to the caller as HTTP 503, not hidden
+  // behind a successful response or an unhandled post-response rejection.
+  const persistBeforeSuccess = async (req: express.Request, res: express.Response): Promise<boolean> => {
+    try {
+      await persistDataStore();
+      (req as any).__gabahPersisted = true;
+      return true;
+    } catch (error: any) {
+      console.error('[persistence] API mutation was not committed:', error?.message || error);
+      if (!res.headersSent) {
+        res.status(typeof error?.statusCode === 'number' ? error.statusCode : 503).json({
+          success: false,
+          code: 'PERSISTENCE_UNAVAILABLE',
+          message: 'Perubahan belum dapat disimpan. Silakan coba kembali setelah layanan database pulih.',
+        });
+      }
+      return false;
+    }
   };
   // Module availability is a separate global lifecycle switch from Dynamic RBAC.
   // Cache status briefly to avoid a PostgreSQL round-trip on every API request.
@@ -750,6 +793,7 @@ async function startServer() {
       );
 
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       await syncPrimaryRbacRole(newUser.id, newUser.role);
       await refreshRbacPolicy();
 
@@ -758,7 +802,7 @@ async function startServer() {
         data: sanitizeUser(newUser, { includeTelegramChatId: true }),
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -913,6 +957,7 @@ async function startServer() {
 
       if (created > 0 || updated > 0) {
         await persistDataStore();
+      (req as any).__gabahPersisted = true;
         await syncPrimaryRbacRoles(importedUsers.map(user => ({ id: user.id, role: user.role })));
         await refreshRbacPolicy();
       }
@@ -929,7 +974,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1096,12 +1141,13 @@ async function startServer() {
       );
 
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       if (role !== undefined) await syncPrimaryRbacRole(targetUser.id, targetUser.role);
       await refreshRbacPolicy();
 
       res.json({ success: true, data: sanitizeUser(targetUser, { includeTelegramChatId: true }) });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1170,6 +1216,7 @@ async function startServer() {
       );
 
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       await refreshRbacPolicy();
 
       res.json({
@@ -1177,7 +1224,7 @@ async function startServer() {
         message: `Pengguna ${targetUser.name} berhasil dihapus.`
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1217,10 +1264,11 @@ async function startServer() {
       );
 
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
 
       res.json({ success: true, data: { temp_password: tempPassword, user_id: targetUser.id } });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(err.statusCode || 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1299,10 +1347,11 @@ async function startServer() {
       AssetNumberingEngine.upsertRule(result.rows[0]);
       GabahDomainService.recordAudit('NUMBERING_RULE_CREATED', 'Asset Numbering', `Membuat aturan penomoran ${owner}/${code}; pemisah "${separator}", digit ${digits}.`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: { ...result.rows[0], usage_count: 0 } });
     } catch (err: any) {
       const duplicate = err.code === '23505';
-      res.status(duplicate ? 409 : 400).json({ success: false, message: duplicate ? `Aturan ${owner}/${code} sudah terdaftar.` : (err.message || 'Gagal membuat aturan penomoran.') });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (duplicate ? 409 : 400)).json({ success: false, message: duplicate ? `Aturan ${owner}/${code} sudah terdaftar.` : (err.message || 'Gagal membuat aturan penomoran.') });
     }
   });
 
@@ -1370,9 +1419,10 @@ async function startServer() {
       AssetNumberingEngine.upsertRule(updated.rows[0]);
       GabahDomainService.recordAudit('NUMBERING_RULE_UPDATED', 'Asset Numbering', `Memperbarui aturan ${current.owner_division}/${current.asset_code} (terpakai: ${usageCount}); nomor yang telah terbit tidak diubah.`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: { ...updated.rows[0], usage_count: usageCount } });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message || 'Gagal memperbarui aturan penomoran.' });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message || 'Gagal memperbarui aturan penomoran.' });
     }
   });
 
@@ -1415,9 +1465,10 @@ async function startServer() {
       AssetNumberingEngine.removeRule(rule.owner_division, rule.asset_code);
       GabahDomainService.recordAudit('NUMBERING_RULE_DELETED', 'Asset Numbering', `Menghapus aturan ${expected}. Alasan: ${reason}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: { id: rule.id, deleted: true } });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message || 'Gagal menghapus aturan penomoran.' });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message || 'Gagal menghapus aturan penomoran.' });
     }
   });
 
@@ -1604,7 +1655,7 @@ async function startServer() {
   // Self-service password change (P1): the CURRENT user rotates their own
   // password. Requires the current password; revokes all other sessions but
   // issues a fresh token for THIS device so the user is not logged out.
-  app.post('/api/auth/change-password', (req, res) => {
+  app.post('/api/auth/change-password', async (req, res) => {
     try {
       const actor = getActor(req);
       const { currentPassword, newPassword } = req.body;
@@ -1644,7 +1695,7 @@ async function startServer() {
         actor,
         user.id
       );
-      persistDataStore().catch(() => {});
+      if (!(await persistBeforeSuccess(req, res))) return;
 
       res.json({
         success: true,
@@ -1740,6 +1791,7 @@ async function startServer() {
       );
 
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
 
       res.json({
         success: true,
@@ -1750,7 +1802,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -1848,10 +1900,11 @@ async function startServer() {
       db.categories.push(newCategory);
       GabahDomainService.recordAudit('CATEGORY_CREATED', 'MasterData', `Menambahkan master kategori ${newCategory.code} - ${newCategory.name}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
 
       res.status(201).json({ success: true, data: newCategory });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 500).json({ success: false, message: err.message });
     }
   });
 
@@ -1925,9 +1978,10 @@ async function startServer() {
         actor,
       );
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: target });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 500).json({ success: false, message: err.message });
     }
   });
 
@@ -1955,9 +2009,10 @@ async function startServer() {
 
       GabahDomainService.recordAudit('CATEGORY_DELETED', 'MasterData', `Menghapus master kategori ${code}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, message: `Kategori ${code} berhasil dihapus.` });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 500).json({ success: false, message: err.message });
     }
   });
 
@@ -1986,9 +2041,10 @@ async function startServer() {
       db.locations.push(newLoc);
       GabahDomainService.recordAudit('LOCATION_CREATED', 'MasterData', `Menambahkan master lokasi ${newLoc.name}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: newLoc });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 500).json({ success: false, message: err.message });
     }
   });
 
@@ -2009,9 +2065,10 @@ async function startServer() {
 
       GabahDomainService.recordAudit('LOCATION_UPDATED', 'MasterData', `Memperbarui master lokasi ${target.name}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: target });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 500).json({ success: false, message: err.message });
     }
   });
 
@@ -2028,9 +2085,10 @@ async function startServer() {
       db.locations = db.locations.filter(l => l.id !== req.params.id);
       GabahDomainService.recordAudit('LOCATION_DELETED', 'MasterData', `Menghapus master lokasi ${loc.name}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, message: `Lokasi ${loc.name} berhasil dihapus.` });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 500).json({ success: false, message: err.message });
     }
   });
 
@@ -2067,9 +2125,10 @@ async function startServer() {
       db.divisions.push(newDiv);
       GabahDomainService.recordAudit('DIVISION_CREATED', 'Organization', `Menambahkan divisi baru ${newDiv.code} - ${newDiv.name}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: newDiv });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 500).json({ success: false, message: err.message });
     }
   });
 
@@ -2091,9 +2150,10 @@ async function startServer() {
 
       GabahDomainService.recordAudit('DIVISION_UPDATED', 'Organization', `Memperbarui divisi ${div.code} - ${div.name}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: div });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 500).json({ success: false, message: err.message });
     }
   });
 
@@ -2130,9 +2190,10 @@ async function startServer() {
       db.divisions = db.divisions.filter(d => d.code.toUpperCase() !== code);
       GabahDomainService.recordAudit('DIVISION_DELETED', 'Organization', `Menghapus struktur divisi ${code} (${div.name})`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, message: `Divisi ${code} berhasil dihapus.` });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 500).json({ success: false, message: err.message });
     }
   });
 
@@ -2164,9 +2225,10 @@ async function startServer() {
       db.jobLevels.push(level);
       GabahDomainService.recordAudit('JOB_LEVEL_CREATED', 'Organization', `Menambahkan master jabatan ${level.code} (${level.label})`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: level });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2187,9 +2249,10 @@ async function startServer() {
       if (req.body.is_active !== undefined) level.is_active = req.body.is_active;
       GabahDomainService.recordAudit('JOB_LEVEL_UPDATED', 'Organization', `Memperbarui master jabatan ${level.code} (${level.label}) — aktif: ${level.is_active}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: level });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2217,9 +2280,10 @@ async function startServer() {
       db.orgUnits.push(unit);
       GabahDomainService.recordAudit('ORG_UNIT_CREATED', 'Organization', `Menambahkan master unit ${unit.name} (divisi ${unit.division_code})`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: unit });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2258,9 +2322,10 @@ async function startServer() {
       if (req.body.is_active !== undefined) unit.is_active = req.body.is_active;
       GabahDomainService.recordAudit('ORG_UNIT_UPDATED', 'Organization', `Memperbarui master unit ${unit.name} — aktif: ${unit.is_active}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: unit });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2284,9 +2349,10 @@ async function startServer() {
       db.officeLocations.push(loc);
       GabahDomainService.recordAudit('OFFICE_LOCATION_CREATED', 'Organization', `Menambahkan master lokasi kantor ${loc.name}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2306,9 +2372,10 @@ async function startServer() {
       if (req.body.is_active !== undefined) loc.is_active = req.body.is_active;
       GabahDomainService.recordAudit('OFFICE_LOCATION_UPDATED', 'Organization', `Memperbarui master lokasi kantor ${loc.name} — aktif: ${loc.is_active}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2344,9 +2411,10 @@ async function startServer() {
       db.assetLocations.push(loc);
       GabahDomainService.recordAudit('ASSET_LOCATION_CREATED', 'Assets', `Menambahkan master lokasi fisik aset ${getAssetLocationPath(loc)}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2387,9 +2455,10 @@ async function startServer() {
       if (req.body.is_active !== undefined) loc.is_active = req.body.is_active;
       GabahDomainService.recordAudit('ASSET_LOCATION_UPDATED', 'Assets', `Memperbarui master lokasi fisik aset ${getAssetLocationPath(loc)} — aktif: ${loc.is_active}`, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2454,6 +2523,7 @@ async function startServer() {
       // createAsset() for every user, regardless of job title or work location.
       const newAsset = GabahDomainService.createAsset(req.body, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: newAsset });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2626,6 +2696,7 @@ async function startServer() {
 
       if (created > 0 || updated > 0) {
         await persistDataStore();
+      (req as any).__gabahPersisted = true;
       }
 
       res.json({
@@ -2640,7 +2711,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2654,7 +2725,7 @@ async function startServer() {
     res.json({ success: true, data: asset });
   });
 
-  app.patch('/api/assets/:id', (req, res) => {
+  app.patch('/api/assets/:id', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.update')) return;
     const actor = getActor(req);
     const asset = db.assets.find(a => a.id === req.params.id);
@@ -2755,7 +2826,7 @@ async function startServer() {
     asset.updated_at = new Date().toISOString();
 
     GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
-    persistDataStore().catch(() => {});
+    if (!(await persistBeforeSuccess(req, res))) return;
 
     res.json({ success: true, data: asset });
   });
@@ -2878,6 +2949,7 @@ async function startServer() {
             createdLoans.push(newLoan);
           }
           await persistDataStore();
+      (req as any).__gabahPersisted = true;
           return res.status(201).json({
             success: true,
             data: createdLoans[0],
@@ -2895,6 +2967,7 @@ async function startServer() {
 
       const newLoan = GabahDomainService.requestLoan(req.body, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: newLoan });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2908,6 +2981,7 @@ async function startServer() {
     const actor = getActor(req);
       const approved = GabahDomainService.approveLoan(req.params.id, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: approved });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2921,6 +2995,7 @@ async function startServer() {
     const actor = getActor(req);
       const rejected = GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: rejected });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -2935,6 +3010,7 @@ async function startServer() {
       const { handoverNotes } = req.body;
       const handedOver = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
@@ -2951,6 +3027,7 @@ async function startServer() {
       const { condition, returnNotes } = req.body;
       const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: returned });
     } catch (err: any) {
       // SECURITY: 403 (authorization) / 409 (invalid state transition) are
@@ -2994,6 +3071,7 @@ async function startServer() {
       const newTicket = GabahDomainService.createTicket(req.body, actor);
       // Domain service validates optional asset/contract relations before creating the ticket.
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: newTicket });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -3011,7 +3089,7 @@ async function startServer() {
     closed: ['open'],
   };
 
-  app.patch('/api/tickets/:id/status', (req, res) => {
+  app.patch('/api/tickets/:id/status', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'tickets.update')) return;
@@ -3058,7 +3136,7 @@ async function startServer() {
       ticket.updated_at = new Date().toISOString();
 
       GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
-      persistDataStore().catch(() => {});
+      if (!(await persistBeforeSuccess(req, res))) return;
 
       res.json({ success: true, data: ticket });
     } catch (err: any) {
@@ -3148,7 +3226,7 @@ async function startServer() {
     return { valid: true as const, vendor, clear: false };
   };
 
-  app.post('/api/maintenances', (req, res) => {
+  app.post('/api/maintenances', async (req, res) => {
     const actor = getActor(req);
     // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
     // GA) secara eksplisit; mode PostgreSQL beralih ke permission dinamis
@@ -3204,11 +3282,11 @@ async function startServer() {
     };
     db.maintenances.push(newSchedule);
     GabahDomainService.recordAudit('MAINTENANCE_SCHEDULED', 'Maintenance', `Menambahkan jadwal servis ${scheduleCode} untuk ${newSchedule.asset_name}`, actor, newSchedule.id);
-    persistDataStore().catch(() => {});
+    if (!(await persistBeforeSuccess(req, res))) return;
     res.status(201).json({ success: true, data: newSchedule });
   });
 
-  app.patch('/api/maintenances/:id', (req, res) => {
+  app.patch('/api/maintenances/:id', async (req, res) => {
     const actor = getActor(req);
     // RBAC: file-store mempertahankan allowlist legacy; PostgreSQL beralih ke
     // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
@@ -3257,7 +3335,7 @@ async function startServer() {
       schedule.last_completed_at = new Date().toISOString();
     }
     GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
-    persistDataStore().catch(() => {});
+    if (!(await persistBeforeSuccess(req, res))) return;
     res.json({ success: true, data: schedule });
   });
 
@@ -3293,7 +3371,7 @@ async function startServer() {
     return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
   });
 
-  app.post('/api/vendors', (req, res) => {
+  app.post('/api/vendors', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
@@ -3340,11 +3418,11 @@ async function startServer() {
     };
     db.vendors.push(vendor);
     GabahDomainService.recordAudit('VENDOR_CREATED', 'Vendor', `Menambahkan vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
+    if (!(await persistBeforeSuccess(req, res))) return;
     res.status(201).json({ success: true, data: vendor });
   });
 
-  app.patch('/api/vendors/:id', (req, res) => {
+  app.patch('/api/vendors/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'vendors.update')) return;
@@ -3399,7 +3477,7 @@ async function startServer() {
     vendor.rating = requestedRating;
     vendor.active_contracts_count = getActiveVendorContractCount(vendor.name);
     GabahDomainService.recordAudit('VENDOR_UPDATED', 'Vendor', `Memperbarui data vendor ${vendor.name}`, actor, vendor.id);
-    persistDataStore().catch(() => {});
+    if (!(await persistBeforeSuccess(req, res))) return;
     res.json({ success: true, data: vendor });
   });
 
@@ -3412,7 +3490,7 @@ async function startServer() {
     res.json({ success: true, data: db.knowledgeArticles });
   });
 
-  app.post('/api/knowledge', (req, res) => {
+  app.post('/api/knowledge', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.create')) return;
@@ -3437,11 +3515,11 @@ async function startServer() {
     };
     db.knowledgeArticles.push(article);
     GabahDomainService.recordAudit('KB_ARTICLE_CREATED', 'KnowledgeBase', `Menambahkan artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
+    if (!(await persistBeforeSuccess(req, res))) return;
     res.status(201).json({ success: true, data: article });
   });
 
-  app.patch('/api/knowledge/:id', (req, res) => {
+  app.patch('/api/knowledge/:id', async (req, res) => {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.update')) return;
@@ -3457,25 +3535,25 @@ async function startServer() {
     }
     article.updated_at = new Date().toISOString();
     GabahDomainService.recordAudit('KB_ARTICLE_UPDATED', 'KnowledgeBase', `Memperbarui artikel: ${article.title}`, actor, article.id);
-    persistDataStore().catch(() => {});
+    if (!(await persistBeforeSuccess(req, res))) return;
     res.json({ success: true, data: article });
   });
 
-  app.post('/api/knowledge/:id/vote', (req, res) => {
+  app.post('/api/knowledge/:id/vote', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.vote')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.helpful_votes += 1;
-    persistDataStore().catch(() => {});
+    if (!(await persistBeforeSuccess(req, res))) return;
     res.json({ success: true, data: article });
   });
 
-  app.post('/api/knowledge/:id/view', (req, res) => {
+  app.post('/api/knowledge/:id/view', async (req, res) => {
     if (!requireRbacPermission(req, res, 'knowledge.read')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     article.view_count += 1;
-    persistDataStore().catch(() => {});
+    if (!(await persistBeforeSuccess(req, res))) return;
     res.json({ success: true, data: article });
   });
 
@@ -3670,9 +3748,10 @@ async function startServer() {
     const actor = getActor(req);
       const created = ContractDomainService.createContract(req.body, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3683,9 +3762,10 @@ async function startServer() {
     const actor = getActor(req);
       const updated = ContractDomainService.updateContract(req.params.id, req.body, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3786,6 +3866,7 @@ async function startServer() {
       });
       contract.updated_at = new Date().toISOString();
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
 
       return res.json({
         success: true,
@@ -3804,7 +3885,7 @@ async function startServer() {
       if (savedFilePath) {
         await fs.rm(savedFilePath, { force: true }).catch(() => undefined);
       }
-      return res.status(400).json({ success: false, message: err.message });
+      return res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3853,9 +3934,10 @@ async function startServer() {
     const actor = getActor(req);
       const updated = ContractDomainService.addDocument(req.params.id, req.body, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3866,9 +3948,10 @@ async function startServer() {
     const actor = getActor(req);
       const updated = ContractDomainService.addMilestone(req.params.id, req.body, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -3880,9 +3963,10 @@ async function startServer() {
       const { outcome, notes, replacement_contract_id } = req.body;
       const updated = ContractDomainService.decideRenewal(req.params.id, outcome, notes, replacement_contract_id || null, actor);
       await persistDataStore();
+      (req as any).__gabahPersisted = true;
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 

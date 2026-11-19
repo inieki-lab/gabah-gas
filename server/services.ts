@@ -747,11 +747,18 @@ export class GabahDomainService {
 
     const parseLoanDate = (value: unknown): { text: string; timestamp: number } => {
       const text = typeof value === 'string' ? value.trim() : '';
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return { text, timestamp: Number.NaN };
-      const parsed = new Date(`${text}T00:00:00.000Z`);
-      if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== text) {
-        return { text, timestamp: Number.NaN };
-      }
+      // The browser loan form submits datetime-local (YYYY-MM-DDTHH:mm).
+      // Accept legacy date-only records/clients as well, but validate both strictly.
+      const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+      const dateTime = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d)$/.exec(text);
+      const match = dateTime || dateOnly;
+      if (!match) return { text, timestamp: Number.NaN };
+      const [, year, month, day, hour = '00', minute = '00'] = match;
+      const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)));
+      const validDate = parsed.getUTCFullYear() === Number(year)
+        && parsed.getUTCMonth() === Number(month) - 1
+        && parsed.getUTCDate() === Number(day);
+      if (!validDate) return { text, timestamp: Number.NaN };
       return { text, timestamp: parsed.getTime() };
     };
     const startDate = parseLoanDate(payload.start_date);

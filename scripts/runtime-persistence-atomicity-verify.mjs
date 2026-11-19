@@ -21,6 +21,37 @@ assert.match(persist, /if \(postgresFailureLatched\)[\s\S]*Promise\.reject/, 'Al
 assert.match(persist, /if \(!isPostgresAvailable\)[\s\S]*saveStateToFile\(payload\)[\s\S]*return persistQueue/, 'File store is available only for the startup fallback state');
 assert.match(persist, /const committedPayload = await persistPostgresState\(\)[\s\S]*saveStateToFile\(committedPayload\)/, 'Recovery snapshot must publish only after the authoritative transaction commits');
 assert.ok(persist.indexOf('saveStateToFile(committedPayload)') > persist.indexOf('await persistPostgresState()'), 'Local snapshot publication must follow PostgreSQL commit');
-assert.match(persist, /postgresFailureLatched = true;[\s\S]*isPostgresAvailable = false;[\s\S]*throw new Error/, 'A failed authoritative write must latch closed and reject the caller');
+assert.match(persist, /postgresFailureLatched = true;[\s\S]*isPostgresAvailable = false;[\s\S]*throw Object\.assign\(/, 'A failed authoritative write must latch closed, reject the caller, and expose HTTP 503');
 
 console.log('PASS: PostgreSQL runtime failure latch, shared transaction rollback, and post-commit snapshot ordering');
+
+
+// API routes that previously swallowed persistence failures must await the
+// authoritative write and return a failure response before reporting success.
+const server = fs.readFileSync('server.ts', 'utf8');
+assert.match(server, /const persistBeforeSuccess = async \(req: express\.Request, res: express\.Response\)/);
+assert.match(server, /code: 'PERSISTENCE_UNAVAILABLE'/);
+assert.doesNotMatch(server, /persistDataStore\(\)\.catch\(\(\) => \{\}\)/);
+assert.match(server, /\(req as any\).__gabahPersisted = true/);
+assert.equal((server.match(/persistBeforeSuccess\(req, res\)/g) || []).length, 11, 'All 11 formerly swallowed mutation writes must be awaited');
+
+
+// Every successful mutating API response must be sent only after persistence.
+// The send gate covers mutation routes without route-local persistDataStore calls.
+assert.match(server, /const originalSend = res\.send\.bind\(res\)/);
+assert.match(server, /void persistDataStore\(\)\.then\(\(\) =>/);
+assert.match(server, /originalSend\(body\)/);
+assert.match(server, /PERSISTENCE_UNAVAILABLE/);
+assert.doesNotMatch(server, /res\.on\('finish',[\s\S]*persistDataStore/);
+
+
+// Persistence failures carry statusCode=503; route catch blocks must preserve it
+// instead of flattening database outages into client validation errors.
+const catchBlocks = [...server.matchAll(/catch \(err: any\) \{([\s\S]{0,500}?)res\.status\(([^)]+)\)/g)];
+assert.ok(catchBlocks.some(match => /err\?\.statusCode/.test(match[2])), 'Route catches must preserve persistence HTTP status codes');
+
+assert.doesNotMatch(server, /: \((?:400|500)\)\)\)\.json/, 'Persistence status mapping must remain valid TypeScript');
+
+assert.doesNotMatch(server, /await persistDataStore\(\);(?!\s*\(req as any\).__gabahPersisted = true;)/, 'A route that explicitly awaited persistence must mark the response as already committed');
+
+assert.match(server, /if \(\(req as any\).__gabahPersisting\) return res/, 'Duplicate sends must not bypass the persistence gate while the first write is pending');

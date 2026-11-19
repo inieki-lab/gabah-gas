@@ -102,12 +102,18 @@ const dbConfig = resolveDbConfig();
 const pool = new Pool(dbConfig.poolConfig);
 
 let isPostgresAvailable = false;
+// Once PostgreSQL has successfully become authoritative, any runtime pool/write
+// failure is latched. Development may use file storage only when PostgreSQL was
+// unavailable during startup; it must not silently switch stores after runtime
+// writes have begun.
+let postgresFailureLatched = false;
 let persistQueue: Promise<void> = Promise.resolve();
 
 // Prevent unhandled error crashes from pg pool background events
 pool.on('error', (err) => {
   if (isPostgresAvailable) {
     console.log('[GABAH Persistence] PostgreSQL pool status changed:', err.message);
+    postgresFailureLatched = true;
     isPostgresAvailable = false;
   }
 });
@@ -431,10 +437,10 @@ function ensureCanonicalAdministrator(): void {
   }
 }
 
-async function backfillNormalizedTables(): Promise<void> {
-  const client = await pool.connect();
+async function backfillNormalizedTables(existingClient?: PoolClient): Promise<void> {
+  const client = existingClient || await pool.connect();
   try {
-    await client.query('BEGIN');
+    if (!existingClient) await client.query('BEGIN');
     // Division codes are the extensible owner-domain master used by assets,
     // categories, loans, and module data scopes. Sync them before any FK-backed
     // user/category/asset rows so a newly configured owner works in PostgreSQL.
@@ -579,9 +585,13 @@ async function backfillNormalizedTables(): Promise<void> {
         [log.id,log.action,log.entity,log.entity_id || null,user?.id || null,log.user_name,log.user_role,log.details,log.timestamp],
       );
     }
-    await client.query('COMMIT');
-  } catch (error) { await client.query('ROLLBACK'); throw error; }
-  finally { client.release(); }
+    if (!existingClient) await client.query('COMMIT');
+  } catch (error) {
+    if (!existingClient) await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    if (!existingClient) client.release();
+  }
 }
 
 function collectLegacyEmployeeCapabilityAssignments(): Array<{ userId: string; roleKey: string }> {
@@ -646,31 +656,46 @@ async function ensureEmployeeCapabilityAssignments(assignments: Array<{ userId: 
   }
 }
 
-async function persistPostgresState(): Promise<void> {
+async function persistPostgresState(): Promise<any> {
   const payload = createPayload();
-  await pool.query(
-    `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
-    [JSON.stringify(payload)],
-  );
-  await backfillNormalizedTables();
-  await backfillDynamicRbacUserRoles();
+  const client = await pool.connect();
+  try {
+    // The state snapshot, normalized-domain rows, and dynamic role mirror must
+    // commit together. A normalized-table failure must not leave gabah_state
+    // ahead of the authoritative relational tables.
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO gabah_state (id,payload,updated_at) VALUES (1,$1::jsonb,NOW()) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload,updated_at=NOW()`,
+      [JSON.stringify(payload)],
+    );
+    await backfillNormalizedTables(client);
+    await backfillDynamicRbacUserRoles(client);
+    await client.query('COMMIT');
+    return payload;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
-async function backfillDynamicRbacUserRoles(): Promise<void> {
+async function backfillDynamicRbacUserRoles(existingClient?: PoolClient): Promise<void> {
+  const executor = existingClient || pool;
   // Do not wipe assignments if the in-memory user store is unexpectedly empty.
   const userIds = db.users.map(user => String(user.id));
   if (userIds.length === 0) return;
 
   // Remove assignments for deleted application users. This prevents a deleted
   // Superadmin's role assignment from being inherited if an ID is reused later.
-  await pool.query(
+  await executor.query(
     'DELETE FROM gabah_user_roles WHERE NOT (user_id = ANY($1::text[]))',
     [userIds],
   );
 
   // Reconcile only the primary role mirror from users.role. Additional dynamic
   // role assignments are preserved and remain additive.
-  await pool.query(
+  await executor.query(
     "DELETE FROM gabah_user_roles ur USING users u, gabah_roles assigned_role " +
     "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
     "AND ur.is_primary = TRUE " +
@@ -683,11 +708,11 @@ async function backfillDynamicRbacUserRoles(): Promise<void> {
   );
   // The users.role field is the primary application role; additional roles
   // remain assigned but are never marked primary by this compatibility bridge.
-  await pool.query(
+  await executor.query(
     'UPDATE gabah_user_roles SET is_primary = FALSE WHERE user_id = ANY($1::text[])',
     [userIds],
   );
-  await pool.query(
+  await executor.query(
     "INSERT INTO gabah_user_roles (user_id, role_id, is_primary) " +
     "SELECT u.id::text, r.id, TRUE FROM users u " +
     "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
@@ -829,32 +854,36 @@ export async function initializePersistence(): Promise<void> {
 
 export function persistDataStore(): Promise<void> {
   const payload = createPayload();
-  // Always persist immediately to local storage file
-  saveStateToFile(payload);
 
-  // PostgreSQL is authoritative whenever it is active. Do not swallow a
-  // failed database write: callers must not return a success response when
-  // the authoritative store did not persist the change.
-  if (!isPostgresAvailable) return persistQueue;
+  // A development file-store fallback is allowed only when PostgreSQL was
+  // unavailable during startup. Once PostgreSQL has been authoritative, never
+  // report success or write a newer local snapshot after a runtime outage.
+  if (postgresFailureLatched) {
+    return Promise.reject(Object.assign(new Error('PostgreSQL authoritative store mengalami gangguan; perubahan ditolak sampai layanan dipulihkan dan aplikasi direstart.'), { statusCode: 503 }));
+  }
+  if (!isPostgresAvailable) {
+    saveStateToFile(payload);
+    return persistQueue;
+  }
 
   const write = persistQueue.then(async () => {
-    if (!isPostgresAvailable) {
-      throw new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.');
+    if (!isPostgresAvailable || postgresFailureLatched) {
+      throw Object.assign(new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.'), { statusCode: 503 });
     }
     try {
-      await persistPostgresState();
+      const committedPayload = await persistPostgresState();
+      // Publish the local recovery snapshot only after the PostgreSQL
+      // transaction commits, and use the exact payload committed by it.
+      saveStateToFile(committedPayload);
     } catch (error: any) {
-      // In development, preserve the historical file-store fallback, but
-      // reject THIS write so the API caller can report the persistence failure.
-      // Production remains PostgreSQL-only and never silently degrades.
-      if (process.env.NODE_ENV !== 'production') isPostgresAvailable = false;
-      console.warn('[GABAH Persistence] PostgreSQL write failed:', error.message || error);
-      throw new Error('Gagal menyimpan perubahan ke PostgreSQL: ' + (error.message || String(error)));
+      postgresFailureLatched = true;
+      isPostgresAvailable = false;
+      console.error('[GABAH Persistence] PostgreSQL write failed; authoritative writes are now latched closed:', error.message || error);
+      throw Object.assign(new Error('Gagal menyimpan perubahan ke PostgreSQL: ' + (error.message || String(error))), { statusCode: 503 });
     }
   });
 
-  // Keep the queue usable for subsequent writes while returning the original
-  // rejection to the caller that initiated this write.
+  // Keep the queue usable while returning this write's rejection to its caller.
   persistQueue = write.catch(() => undefined);
   return write;
 }

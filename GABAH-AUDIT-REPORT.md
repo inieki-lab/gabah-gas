@@ -404,3 +404,54 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 ---
 
 *Akhir laporan — dibuat untuk review pemilik repository sebelum keputusan perbaikan. Tidak ada perubahan kode yang dilakukan dalam audit ini.*
+
+
+---
+
+# 13. Follow-up — PostgreSQL runtime failure latch and atomic state synchronization (2026-11-19)
+
+**Branch:** `fix/persistence-failure-latch-snapshot-order`  
+**Base:** `main` at `b46b4bed23bb48b76975a108d22b5b4ea791f720`  
+**Status:** implementation and PostgreSQL fault-injection integration test added; exact-head CI passed on 2026-11-19.
+
+## Verified implementation changes
+
+1. After PostgreSQL has been active, a pool error or authoritative write failure sets a process-level failure latch. Later mutations reject instead of silently returning success through the development JSON fallback.
+2. The JSON recovery snapshot is written only after PostgreSQL confirms the transaction commit, using the exact payload committed.
+3. The `gabah_state` JSONB row, normalized domain-table synchronization, and dynamic primary-role mirror now use one shared PostgreSQL transaction/client.
+4. Nested normalized-table synchronization no longer begins, commits, or releases the caller's transaction.
+5. A regression test checks the failure latch, shared transaction client, rollback path, and snapshot ordering; the test is required in CI.
+
+## Remaining verification
+
+- CI must pass on the final branch SHA.
+- CI now injects a PostgreSQL trigger failure during normalized user synchronization and verifies both the normalized user row and the JSONB credential snapshot remain unchanged; it also verifies subsequent writes return HTTP 503 after the failure latch is set.
+- Manual legacy-database upgrade rehearsal, production backup/restore rehearsal, browser UAT, and deployment rehearsal remain release gates.
+- Verify startup fallback when PostgreSQL is unavailable before it ever becomes authoritative.
+- Verify runtime pool failure rejects all subsequent writes until process restart and recovery.
+- Browser UAT and legacy database upgrade rehearsal remain release gates.
+
+**Data safety:** no existing asset, owner, location, contract, ticket, or user records are intentionally rewritten by this patch. It changes runtime persistence behavior only.
+
+
+## 14. Follow-up — mutation response persistence gate (2026-11-19)
+
+**Branch:** `fix/persistence-failure-latch-snapshot-order`  
+**Implementation commit:** `15ec303400e83688fc59142d5c725bb232944d03` plus subsequent response-gate and status-propagation commits.
+
+### Changes
+- Replaced the post-response-only persistence behavior with a response gate for state-changing `/api/*` requests. Successful JSON/send responses are not emitted until `persistDataStore()` resolves.
+- On authoritative persistence failure, the API returns a sanitized `503 PERSISTENCE_UNAVAILABLE` response instead of reporting success.
+- The gate marks requests already persisted by route-level logic to avoid an additional write from the response middleware.
+- Removed all 11 `persistDataStore().catch(() => {})` call sites. Those routes now use a shared helper that awaits persistence and returns a controlled failure response.
+- Updated route catch handlers on persistence paths to preserve an attached HTTP status code (including 503) rather than converting database failures into validation errors.
+- Added static regression assertions for the response gate, swallowed-error removal, and status propagation.
+
+### Verification status
+- Branch is now based on current `main` ancestry and GitHub reports it mergeable.
+- Exact-head GitHub Actions CI passed on `59383ef2541a20d1aeea9ce858bc64f28492a841` (workflow run 44446847040): TypeScript lint, persistence contract test, 67-step pipeline, production build, Docker image/runtime smoke, PostgreSQL 17 migration/persistence integration, P0 security HTTP checks, and the remaining regression suite all passed.
+- The CI install log still reports 3 npm vulnerabilities (1 moderate, 2 high) and Multer 1.x deprecation. The owner ran `npm audit fix` locally and got 0 vulnerabilities, but that updated lockfile has not yet reached this branch. Do not merge until the verified local lockfile fix is committed/pushed and CI reruns.
+- Browser UAT, legacy database upgrade rehearsal, backup/restore rehearsal, and deployment rehearsal remain outstanding release gates.
+
+### Important limitation
+- The response gate prevents a false success response; it does not provide in-memory rollback for every legacy handler. After an authoritative write failure, the PostgreSQL failure latch rejects subsequent writes. Restart/recovery and a targeted runtime test remain necessary to prove operational recovery behavior.
