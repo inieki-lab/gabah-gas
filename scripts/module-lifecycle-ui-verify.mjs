@@ -12,7 +12,7 @@ const checks = [
   ['Typed module update API exists', /updateModuleStatus\(moduleKey: string/.test(api)],
   ['Typed module audit API exists', /getModuleAudit\(moduleKey: string/.test(api)],
   ['App loads module availability for authenticated users', /gabahApi\.getModules\(\)/.test(app)],
-  ['App falls back when current module becomes inactive', /activeModuleKeys\.find\(key => isNavTabAllowedForRole/.test(app)],
+  ['App falls back to the always-available role landing when current module becomes inactive', /fallbackRoleTab/.test(app) && /isCoreNavigationTab\(tab\)/.test(app)],
   ['App passes module status to Sidebar', /activeModuleKeys=\{activeModuleKeys\}/.test(app)],
   ['App passes additional role assignments to Sidebar', /currentUserRoleKeys=\{currentUser\.role_keys\}/.test(app)],
   ['Primary Administration modal refreshes module status', /onModulesChanged=\{refreshModuleStatuses\}/.test(app)],
