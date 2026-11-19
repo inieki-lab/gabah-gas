@@ -9,8 +9,8 @@ assert.match(service, /datetime-local (YYYY-MM-DDTHH:mm)/, 'Backend documents an
 assert.ok(service.includes("const dateTime = /^(\\d{4})-(\\d{2})-(\\d{2})T"), 'Backend validates datetime-local hour/minute');
 assert.ok(service.includes("const dateOnly = /^(\\d{4})-(\\d{2})-(\\d{2})$"), 'Backend remains compatible with legacy date-only values');
 assert.match(service, /start >= due/, 'Backend rejects non-increasing loan schedules');
-assert.match(service, /Tabrakan Jadwal![\\s\\S]*?statusCode: 409/, 'Overlapping approved/borrowed asset schedules are HTTP 409 conflicts');
-assert.match(service, /if \\(!asset\\.is_loanable\\)[\\s\\S]*?statusCode: 409/, 'Assets outside the loan pool are rejected as HTTP 409 conflicts');
+assert.match(service, /Tabrakan Jadwal![\s\S]*?statusCode: 409/, 'Overlapping approved/borrowed asset schedules are HTTP 409 conflicts');
+assert.match(service, /if \(!asset\.is_loanable\)[\s\S]*?statusCode: 409/, 'Assets outside the loan pool are rejected as HTTP 409 conflicts');
 
 assert.match(modal, /type="datetime-local"/, 'Loan form uses datetime-local controls');
 assert.match(modal, /tomorrow\\.getFullYear\\(\\)/, 'Loan form default uses local calendar date rather than UTC date');
