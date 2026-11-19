@@ -543,8 +543,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { tab: 'knowledge', label: 'Knowledge Base', description: 'Panduan dan SOP', required: ['knowledge.read'] },
     { tab: 'reports', label: 'Laporan & Audit', description: 'Laporan operasional dan audit', required: ['reports.read'] },
   ];
+  const coreSidebarTabs = new Set(['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge']);
   const activePermissionKeys = new Set(rbacPermissions.filter((permission: any) => permission.is_active).map((permission: any) => permission.permission_key));
   const getMissingSidebarMenuPermissions = (item: typeof sidebarMenuControls[number]) => {
+    if (coreSidebarTabs.has(item.tab)) return [];
     if (item.tab === 'assets') return [
       ...(!activePermissionKeys.has('assets.read') ? ['assets.read'] : []),
       ...(!activePermissionKeys.has('assets.catalog.read') && !activePermissionKeys.has('assets.audit.read')
@@ -553,11 +555,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     return item.required.filter(key => !activePermissionKeys.has(key));
   };
   const isSidebarMenuEnabled = (item: typeof sidebarMenuControls[number]) => {
+    if (coreSidebarTabs.has(item.tab)) return true;
     if (item.tab === 'assets') return rbacSelectedPermissionKeys.includes('assets.read')
       && (rbacSelectedPermissionKeys.includes('assets.catalog.read') || rbacSelectedPermissionKeys.includes('assets.audit.read'));
     return item.required.every(key => rbacSelectedPermissionKeys.includes(key));
   };
   const toggleSidebarMenu = (item: typeof sidebarMenuControls[number], enabled: boolean) => {
+    if (coreSidebarTabs.has(item.tab)) return;
     const keysToChange = item.tab === 'assets'
       ? ['assets.catalog.read', 'assets.audit.read']
       : item.required;
@@ -3085,18 +3089,18 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                     const enabled = isSidebarMenuEnabled(item);
                                     return (
                                       <label key={item.tab} className="flex items-start gap-2 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-xs">
-                                        <input type="checkbox" checked={enabled} onChange={event => toggleSidebarMenu(item, event.target.checked)} disabled={rbacSaving || missing.length > 0} className="mt-0.5" />
+                                        <input type="checkbox" checked={enabled} onChange={event => toggleSidebarMenu(item, event.target.checked)} disabled={rbacSaving || missing.length > 0 || coreSidebarTabs.has(item.tab)} className="mt-0.5" />
                                         <span className="min-w-0">
                                           <span className="font-bold text-slate-800">{item.label}</span>
                                           <span className="block text-[10px] text-slate-500">{item.description}</span>
-                                          {missing.length > 0 && <span className="block text-[10px] text-amber-700">Belum tersedia: {missing.join(', ')}</span>}
+                                          {coreSidebarTabs.has(item.tab) ? <span className="block text-[10px] text-emerald-700">Menu dasar — selalu aktif</span> : missing.length > 0 && <span className="block text-[10px] text-amber-700">Belum tersedia: {missing.join(', ')}</span>}
                                         </span>
                                       </label>
                                     );
                                   })}
                                 </div>
                                 <div className="flex items-center justify-between flex-wrap gap-2">
-                                  <p className="text-[10px] text-slate-500">Menu Aset memerlukan hak baca aset dan katalog/audit aset. Menu Administrasi khusus Superadmin.</p>
+                                  <p className="text-[10px] text-slate-500">Dashboard, Aset Saya, Peminjaman, Tiket, dan Knowledge Base adalah menu dasar yang selalu aktif. Menu lain dapat diatur per role; menu Administrasi khusus Superadmin.</p>
                                   <button type="button" onClick={() => void handleSaveRbacPermissions()} disabled={rbacSaving} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">Simpan Menu Role</button>
                                 </div>
                               </>
