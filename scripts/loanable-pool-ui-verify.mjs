@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync('src/components/modals/CreateLoanModal.tsx', 'utf8');
 const services = fs.readFileSync('server/services.ts', 'utf8');
+const taxonomy = fs.readFileSync('server/taxonomy.ts', 'utf8');
 const checks = [
   ['Both data sources pass through one eligibility filter', /const source = loanableAssets[\s\S]*?\? loanableAssets[\s\S]*?: \(Array\.isArray\(assets\) \? assets : \[\]\);[\s\S]*?return source\.filter\(a => a\.is_loanable === true && a\.status === 'available'\);/.test(source)],
   ['Available inventory alone is not treated as loanable', !/a\.is_loanable \|\| a\.status === 'available'/.test(source)],
