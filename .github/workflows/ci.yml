@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/ui-overflow-and-responsive-polish]
   pull_request:
     branches: [main]
 
@@ -46,6 +46,9 @@ jobs:
 
       - name: Typecheck (lint)
         run: npm run lint
+
+      - name: Responsive layout and overflow safeguards
+        run: npm run test:responsive-layout
 
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
