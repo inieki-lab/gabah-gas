@@ -50,3 +50,5 @@ assert.doesNotMatch(server, /res\.on\('finish',[\s\S]*persistDataStore/);
 // instead of flattening database outages into client validation errors.
 const catchBlocks = [...server.matchAll(/catch \(err: any\) \{([\s\S]{0,500}?)res\.status\(([^)]+)\)/g)];
 assert.ok(catchBlocks.some(match => /err\?\.statusCode/.test(match[2])), 'Route catches must preserve persistence HTTP status codes');
+
+assert.doesNotMatch(server, /: \((?:400|500)\)\)\)\.json/, 'Persistence status mapping must remain valid TypeScript');
