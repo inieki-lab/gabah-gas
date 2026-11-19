@@ -24,3 +24,14 @@ assert.ok(persist.indexOf('saveStateToFile(committedPayload)') > persist.indexOf
 assert.match(persist, /postgresFailureLatched = true;[\s\S]*isPostgresAvailable = false;[\s\S]*throw Object\.assign\(/, 'A failed authoritative write must latch closed, reject the caller, and expose HTTP 503');
 
 console.log('PASS: PostgreSQL runtime failure latch, shared transaction rollback, and post-commit snapshot ordering');
+
+
+// API routes that previously swallowed persistence failures must await the
+// authoritative write and return a failure response before reporting success.
+const server = fs.readFileSync('server.ts', 'utf8');
+assert.match(server, /const persistBeforeSuccess = async \(req: express\.Request, res: express\.Response\)/);
+assert.match(server, /code: 'PERSISTENCE_UNAVAILABLE'/);
+assert.doesNotMatch(server, /persistDataStore\(\)\.catch\(\(\) => \{\}\)/);
+assert.match(server, /\(req as any\).__gabahPersisted = true/);
+assert.match(server, /if \(\(req as any\).__gabahPersisted\) return/);
+assert.equal((server.match(/persistBeforeSuccess\(req, res\)/g) || []).length, 11, 'All 11 formerly swallowed mutation writes must be awaited');
