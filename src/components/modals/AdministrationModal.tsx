@@ -544,6 +544,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { tab: 'reports', label: 'Laporan & Audit', description: 'Laporan operasional dan audit', required: ['reports.read'] },
   ];
   const activePermissionKeys = new Set(rbacPermissions.filter((permission: any) => permission.is_active).map((permission: any) => permission.permission_key));
+  const getMissingSidebarMenuPermissions = (item: typeof sidebarMenuControls[number]) => {
+    if (item.tab === 'assets') return [
+      ...(!activePermissionKeys.has('assets.read') ? ['assets.read'] : []),
+      ...(!activePermissionKeys.has('assets.catalog.read') && !activePermissionKeys.has('assets.audit.read')
+        ? ['assets.catalog.read atau assets.audit.read'] : []),
+    ];
+    return item.required.filter(key => !activePermissionKeys.has(key));
+  };
   const isSidebarMenuEnabled = (item: typeof sidebarMenuControls[number]) => {
     if (item.tab === 'assets') return rbacSelectedPermissionKeys.includes('assets.read')
       && (rbacSelectedPermissionKeys.includes('assets.catalog.read') || rbacSelectedPermissionKeys.includes('assets.audit.read'));
@@ -560,7 +568,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         showToast('Permission menu belum tersedia di katalog: ' + missing.join(', '), 'warning');
         return;
       }
-      setRbacSelectedPermissionKeys(current => [...new Set([...current, ...item.required])]);
+      const keysToEnable = item.tab === 'assets'
+        ? ['assets.read', activePermissionKeys.has('assets.catalog.read') ? 'assets.catalog.read' : 'assets.audit.read']
+        : item.required;
+      setRbacSelectedPermissionKeys(current => [...new Set([...current, ...keysToEnable])]);
     } else {
       setRbacSelectedPermissionKeys(current => current.filter(key => !availableKeys.includes(key)));
     }
@@ -3070,7 +3081,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                   {sidebarMenuControls.map(item => {
-                                    const missing = item.required.filter(key => !activePermissionKeys.has(key));
+                                    const missing = getMissingSidebarMenuPermissions(item);
                                     const enabled = isSidebarMenuEnabled(item);
                                     return (
                                       <label key={item.tab} className="flex items-start gap-2 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-xs">
