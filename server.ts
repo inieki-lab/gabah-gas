@@ -1220,7 +1220,7 @@ async function startServer() {
 
       res.json({ success: true, data: { temp_password: tempPassword, user_id: targetUser.id } });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(err.statusCode || 400).json({ success: false, message: err.message });
     }
   });
 
