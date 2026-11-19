@@ -613,7 +613,7 @@ function normalizeLegacyEmployeeProfileRoles(): void {
     } else if (legacyRole === 'Sekretaris Direksi') {
       if (!user.role_label) user.role_label = 'Sekretariat Direksi';
     } else if (legacyRole === 'Supply Chain') {
-      if (!user.role_label) user.role_label = 'Karyawan — Lokasi RPC/SC';
+      if (!user.role_label) user.role_label = 'Karyawan — Lokasi RPC';
       if (!user.office_location_id && db.officeLocations.some(location => location.id === 'OFF-RPC')) {
         user.office_location_id = 'OFF-RPC';
       }
