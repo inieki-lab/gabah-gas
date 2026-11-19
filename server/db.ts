@@ -192,7 +192,7 @@ export interface ServerTicket {
   ticket_code: string;
   title: string;
   description: string;
-  category: 'IT' | 'GA' | 'SC' | 'PIBC';
+  category: 'IT' | 'GA' | 'ME' | 'SC' | 'PIBC';
   contract_id?: string | null; // Linked Contract (optional action linkage, Contract ≠ Ticket)
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'open' | 'assigned' | 'in_progress' | 'pending_user' | 'resolved' | 'closed';
@@ -201,6 +201,7 @@ export interface ServerTicket {
   reporter_department: string;
   assigned_agent_id?: string;
   assigned_agent_name?: string;
+  assigned_unit_id?: string;
   related_asset_id?: string;
   related_asset_name?: string;
   related_asset_number?: string;
@@ -299,6 +300,7 @@ export interface ServerNotification {
   recipient_role?: string;
   recipient_division?: string;
   recipient_user_id?: string;
+  recipient_unit_id?: string;
   title: string;
   message: string;
   severity: 'critical' | 'action_required' | 'warning' | 'info' | 'success';
@@ -518,6 +520,7 @@ export const db = {
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
     { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
     { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
+    { id: 'UNIT-PIBC-ME', name: 'Tim Perawatan (ME)', division_code: 'PIBC', is_active: true },
     { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
   ] as OrgUnit[],
