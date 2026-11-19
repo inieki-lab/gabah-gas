@@ -62,6 +62,9 @@ jobs:
       - name: Asset owner filter never infers ownership from asset-number prefixes
         run: npm run test:asset-owner-filter
 
+      - name: Contract owner filters and legacy role fallback use owner domains
+        run: npm run test:contract-owner-filter
+
       - name: Auditor additional-role deny-write runtime regression
         run: npm run test:auditor-additional-role
 
