@@ -20,6 +20,7 @@ const ticketUi = read('src/components/views/TicketsView.tsx');
 const assetCreateUi = read('src/components/modals/CreateAssetModal.tsx');
 const assetCreateApi = read('src/services/gabahApi.ts');
 const assetDetailUi = read('src/components/modals/AssetDetailModal.tsx');
+const assetEditUi = read('src/components/modals/EditAssetModal.tsx');
 const gabahService = read('src/services/gabahService.ts');
 const dashboardUi = read('src/components/views/DashboardView.tsx');
 
@@ -91,6 +92,7 @@ const checks = [
   ['Asset detail report and loan-request actions use effective Auditor role membership', assetDetailUi.includes("!GabahService.isAuditor(currentUser)") && !/currentUser\?\.role !== 'Auditor'/.test(assetDetailUi)],
 
   ['Asset detail edit action uses the same effective assets.update permission helper, not a hard-coded primary-role allowlist', /onEditThisAsset && canEdit &&/.test(assetDetailUi) && !/onEditThisAsset && \(currentUser\?\.role/.test(assetDetailUi)],
+  ['Asset edit modal uses the same effective Dynamic RBAC helper as the asset list and detail views', /GabahService\.canEditAsset\(currentUser, asset\)/.test(assetEditUi) && !/currentUser\?\.role === '(Admin GABAH|IT|GA|Supply Chain)'/.test(assetEditUi) && !/owner_division === 'SC'/.test(assetEditUi)],
   ['Asset create-options endpoint requires assets.create and uses server-calculated owner mutation authority', server.includes("app.get('/api/assets/create-options'") && server.includes("requireRbacPermission(req, res, 'assets.create')") && server.includes("canMutateAssetOwner(actor, String(owner.code || ''), 'assets.create')")],
   ['Asset create-options is excluded from direct asset-ID visibility middleware while mutations remain domain-guarded', hardeningSource.includes("const assetMatch = req.path.replace(/\\/+$/, '').match(/^\\/api\\/assets\\/([^/]+)/i)") && hardeningSource.includes("new Set(['bulk-import', 'create-options'])") && hardeningSource.includes("assetMatch?.[1].toLowerCase()") && hardeningSource.includes("!assetCollectionActions.has(assetAction || '')")],
 
