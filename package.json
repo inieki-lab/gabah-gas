@@ -9,6 +9,7 @@
     "start": "docker compose up -d --build",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "test:responsive-layout": "node scripts/responsive-layout-verify.mjs",
     "test:loan-authz": "node scripts/loan-authz-verify.mjs",
     "test:loanable-pool-ui": "node scripts/loanable-pool-ui-verify.mjs",
     "test:meeting-room": "node scripts/meeting-room-stage3-verify.mjs",
