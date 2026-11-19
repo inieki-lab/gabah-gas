@@ -23,6 +23,7 @@ const assetDetailUi = read('src/components/modals/AssetDetailModal.tsx');
 const assetEditUi = read('src/components/modals/EditAssetModal.tsx');
 const gabahService = read('src/services/gabahService.ts');
 const dashboardUi = read('src/components/views/DashboardView.tsx');
+const appUi = read('src/App.tsx');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC[/]SC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
@@ -93,6 +94,7 @@ const checks = [
 
   ['Asset detail edit action uses the same effective assets.update permission helper, not a hard-coded primary-role allowlist', /onEditThisAsset && canEdit &&/.test(assetDetailUi) && !/onEditThisAsset && \(currentUser\?\.role/.test(assetDetailUi)],
   ['Asset edit modal uses the same effective Dynamic RBAC helper as the asset list and detail views', /GabahService\.canEditAsset\(currentUser, asset\)/.test(assetEditUi) && !/currentUser\?\.role === '(Admin GABAH|IT|GA|Supply Chain)'/.test(assetEditUi) && !/owner_division === 'SC'/.test(assetEditUi)],
+  ['Asset edit submit persists every field exposed by EditAssetModal instead of silently dropping values', (() => { const start = appUi.indexOf('const handleUpdateAsset = async'); const end = appUi.indexOf('// 3. Request Loan', start); const handler = appUi.slice(start, end); return ['name', 'brand', 'model', 'serial_number', 'specifications', 'corporate_asset_number', 'location', 'asset_location_id', 'condition', 'status', 'is_loanable', 'notes'].every(key => handler.includes(`${key}: updatedAsset.${key}`)); })()],
   ['Asset create-options endpoint requires assets.create and uses server-calculated owner mutation authority', server.includes("app.get('/api/assets/create-options'") && server.includes("requireRbacPermission(req, res, 'assets.create')") && server.includes("canMutateAssetOwner(actor, String(owner.code || ''), 'assets.create')")],
   ['Asset create-options is excluded from direct asset-ID visibility middleware while mutations remain domain-guarded', hardeningSource.includes("const assetMatch = req.path.replace(/\\/+$/, '').match(/^\\/api\\/assets\\/([^/]+)/i)") && hardeningSource.includes("new Set(['bulk-import', 'create-options'])") && hardeningSource.includes("assetMatch?.[1].toLowerCase()") && hardeningSource.includes("!assetCollectionActions.has(assetAction || '')")],
 

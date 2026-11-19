@@ -360,12 +360,20 @@ export default function App() {
   const handleUpdateAsset = async (updatedAsset: Asset) => {
     try {
       const saved = await gabahApi.updateAsset(updatedAsset.id, {
+        // Keep the edit form and API payload aligned: fields omitted here were
+        // silently discarded even though the modal let the operator edit them.
+        name: updatedAsset.name,
+        brand: updatedAsset.brand,
+        model: updatedAsset.model,
+        serial_number: updatedAsset.serial_number,
+        specifications: updatedAsset.specifications,
         corporate_asset_number: updatedAsset.corporate_asset_number,
         location: updatedAsset.location,
         // T2B-2: relasi lokasi fisik aset ikut diperbarui bila ada.
         asset_location_id: updatedAsset.asset_location_id,
         condition: updatedAsset.condition,
         status: updatedAsset.status,
+        is_loanable: updatedAsset.is_loanable,
         notes: updatedAsset.notes,
       });
 
