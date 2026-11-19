@@ -184,6 +184,9 @@ jobs:
       - name: Loanable asset pool UI eligibility regression
         run: npm run test:loanable-pool-ui
 
+      - name: Persisted IT loan catalog backfill regression
+        run: npm run test:it-loan-catalog-backfill
+
       - name: Meeting room reservation regression
         run: npm run test:meeting-room
 
