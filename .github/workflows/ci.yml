@@ -65,6 +65,9 @@ jobs:
       - name: Contract owner filters and legacy role fallback use owner domains
         run: npm run test:contract-owner-filter
 
+      - name: Dashboard asset owner summary uses scoped dynamic owner domains
+        run: npm run test:dashboard-owner-summary
+
       - name: Auditor additional-role deny-write runtime regression
         run: npm run test:auditor-additional-role
 
