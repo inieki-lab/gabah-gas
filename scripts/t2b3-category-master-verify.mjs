@@ -163,8 +163,12 @@ async function main() {
 
     const pRename = await req(s1.base, 'PATCH', '/api/taxonomy/categories/DRN', { token: admin, body: { name: 'Drone Pemetaan Lahan V2' } });
     const pType = await req(s1.base, 'PATCH', '/api/taxonomy/categories/DRN', { token: admin, body: { main_type: 'VEHICLE' } });
+    const pOwnerCase = await req(s1.base, 'PATCH', '/api/taxonomy/categories/DRN', { token: admin, body: { owner_division: 'ga' } });
     rec('3c: rename master 200; PATCH main_type legacy tetap ditolak', '200 lalu 400',
       `${pRename.status} / ${pType.status}`, pRename.status === 200 && pType.status === 400);
+    rec('3e: owner code dinormalisasi uppercase saat PATCH master', '200 + owner GA',
+      `${pOwnerCase.status} + ${pOwnerCase.json?.data?.owner_division}`,
+      pOwnerCase.status === 200 && pOwnerCase.json?.data?.owner_division === 'GA');
 
     // ================= 4. Non-admin & Auditor =================
     const itPost = await req(s1.base, 'POST', '/api/taxonomy/categories', { token: it, body: { code: 'HACK', name: 'Hacked', main_type: 'MSN', owner_division: 'IT' } });
