@@ -170,7 +170,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         // License/SaaS is an IT domain: software & license tickets route to IT
         if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
           setCategory('GA');
-        } else {
+        } else if (selected.owner_division === 'IT' || selected.category_type === 'IT' || selected.category_type === 'License') {
           setCategory('IT');
         }
       }
