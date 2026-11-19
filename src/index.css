@@ -152,3 +152,99 @@ body,
 #root a:focus-visible {
   outline-color: var(--gabah-control-focus);
 }
+
+
+/* GABAH workspace layout: fluid desktop canvas, contained data grids, usable laptop/mobile views. */
+#root {
+  min-height: 100vh;
+  min-width: 0;
+  width: 100%;
+}
+#root .gabah-app-shell {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  align-items: stretch;
+}
+#root .gabah-sidebar {
+  flex: 0 0 16.5rem;
+  width: 16.5rem;
+  max-width: 16.5rem;
+  position: sticky;
+  top: 4rem;
+  height: calc(100vh - 4rem);
+  min-height: 0;
+  align-self: flex-start;
+}
+#root .gabah-main-content {
+  min-width: 0;
+  width: 1px;
+  max-width: none;
+  flex: 1 1 0%;
+  overflow-x: hidden;
+  overscroll-behavior-x: contain;
+}
+#root .gabah-main-content > * {
+  min-width: 0;
+  max-width: 100%;
+}
+/* Tables remain inside their content pane. Wide tables scroll within the pane instead of clipping the page. */
+#root .gabah-main-content table {
+  max-width: 100%;
+}
+#root .gabah-main-content [class*="overflow-x-auto"],
+#root .gabah-main-content [class*="overflow-auto"] {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
+}
+#root .gabah-main-content input,
+#root .gabah-main-content select,
+#root .gabah-main-content textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+#root .gabah-main-content img,
+#root .gabah-main-content svg {
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  #root .gabah-app-shell {
+    flex-direction: column;
+  }
+  #root .gabah-sidebar {
+    position: relative;
+    top: auto;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--gabah-border);
+  }
+  #root .gabah-sidebar nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding: .75rem;
+    max-height: 13rem;
+    overflow-y: auto;
+  }
+  #root .gabah-sidebar nav > div {
+    min-width: min(100%, 14rem);
+    flex: 1 1 14rem;
+  }
+  #root .gabah-main-content {
+    width: 100%;
+    padding: 1rem;
+  }
+}
+@media (max-width: 560px) {
+  #root .gabah-main-content {
+    padding: .75rem;
+  }
+  #root .gabah-main-content table {
+    font-size: .8125rem;
+  }
+}
