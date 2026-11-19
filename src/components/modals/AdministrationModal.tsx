@@ -551,7 +551,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
   const toggleSidebarMenu = (item: typeof sidebarMenuControls[number], enabled: boolean) => {
     const keysToChange = item.tab === 'assets'
-      ? ['assets.read', 'assets.catalog.read', 'assets.audit.read']
+      ? ['assets.catalog.read', 'assets.audit.read']
       : item.required;
     const availableKeys = keysToChange.filter(key => activePermissionKeys.has(key));
     if (enabled) {
