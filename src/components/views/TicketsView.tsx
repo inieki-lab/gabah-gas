@@ -75,7 +75,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const hasScopedQueueTickets = Array.isArray(currentUser?.permission_keys) && baseTickets.some(t =>
     t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
   );
-  const isSelfTicketsOnly = !hasScopedQueueTickets
+  const isSelfTicketsOnly = !isMEOperator && !hasScopedQueueTickets
     && ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
