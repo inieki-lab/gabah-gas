@@ -527,6 +527,45 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   }, [activeSection, isCurrentUserAdmin]);
 
   const selectedRbacRole = rbacRoles.find(role => role.id === rbacSelectedRoleId) || null;
+  // Every primary sidebar destination is explicitly represented here.
+  // Menu visibility is persisted through the same role permission matrix used by the API.
+  const sidebarMenuControls: Array<{ tab: string; label: string; description: string; required: string[]; alternative?: string[] }> = [
+    { tab: 'dashboard', label: 'Dashboard', description: 'Ringkasan dan KPI', required: ['dashboard.read'] },
+    { tab: 'my_assets', label: 'Aset Saya', description: 'Aset yang ditugaskan kepada pegawai', required: ['assets.read'] },
+    { tab: 'meeting_rooms', label: 'Ruang Rapat / Reservasi', description: 'Katalog ruang dan antrean reservasi', required: ['meeting_rooms.read', 'room_reservations.read'] },
+    { tab: 'assets', label: 'Aset', description: 'Katalog dan pengelolaan aset; tetap memerlukan assets.read', required: ['assets.read', 'assets.catalog.read'], alternative: ['assets.audit.read'] },
+    { tab: 'maintenance', label: 'Maintenance', description: 'Pemeliharaan dan servis', required: ['maintenances.read'] },
+    { tab: 'loans', label: 'Peminjaman Barang', description: 'Pengajuan dan pengelolaan peminjaman', required: ['loans.read'] },
+    { tab: 'tickets', label: 'Helpdesk & Tiket', description: 'Tiket bantuan dan penanganan insiden', required: ['tickets.read'] },
+    { tab: 'licenses', label: 'Software & SaaS', description: 'Inventaris lisensi', required: ['licenses.read'] },
+    { tab: 'contracts', label: 'Contract Management', description: 'Register dan reminder kontrak', required: ['contracts.read'] },
+    { tab: 'vendors', label: 'Vendor Rekanan', description: 'Data vendor dan rekanan', required: ['vendors.read'] },
+    { tab: 'knowledge', label: 'Knowledge Base', description: 'Panduan dan SOP', required: ['knowledge.read'] },
+    { tab: 'reports', label: 'Laporan & Audit', description: 'Laporan operasional dan audit', required: ['reports.read'] },
+  ];
+  const activePermissionKeys = new Set(rbacPermissions.filter((permission: any) => permission.is_active).map((permission: any) => permission.permission_key));
+  const isSidebarMenuEnabled = (item: typeof sidebarMenuControls[number]) => {
+    if (item.tab === 'assets') return rbacSelectedPermissionKeys.includes('assets.read')
+      && (rbacSelectedPermissionKeys.includes('assets.catalog.read') || rbacSelectedPermissionKeys.includes('assets.audit.read'));
+    return item.required.every(key => rbacSelectedPermissionKeys.includes(key));
+  };
+  const toggleSidebarMenu = (item: typeof sidebarMenuControls[number], enabled: boolean) => {
+    const keysToChange = item.tab === 'assets'
+      ? ['assets.read', 'assets.catalog.read', 'assets.audit.read']
+      : item.required;
+    const availableKeys = keysToChange.filter(key => activePermissionKeys.has(key));
+    if (enabled) {
+      const missing = item.required.filter(key => !activePermissionKeys.has(key));
+      if (missing.length) {
+        showToast('Permission menu belum tersedia di katalog: ' + missing.join(', '), 'warning');
+        return;
+      }
+      setRbacSelectedPermissionKeys(current => [...new Set([...current, ...item.required])]);
+    } else {
+      setRbacSelectedPermissionKeys(current => current.filter(key => !availableKeys.includes(key)));
+    }
+  };
+
   const rbacPermissionGroups: Record<string, any[]> = rbacPermissions.reduce<Record<string, any[]>>((groups, permission) => {
     const moduleName = String(permission.module || 'other');
     (groups[moduleName] ||= []).push(permission);
@@ -3015,6 +3054,42 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <button type="button" onClick={() => void handleSaveRbacRole()} disabled={rbacSaving || rbacName.trim().length < 2} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold disabled:opacity-50">Simpan Detail</button>
                             </div>
                             {selectedRbacRole.is_superadmin && <div className="text-xs rounded-lg bg-emerald-50 text-emerald-800 p-3">Ini role Superadmin. Hak kendali tertinggi dilindungi dan tidak dapat dihapus atau dinonaktifkan.</div>}
+                          </div>
+
+                          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <h4 className="font-extrabold text-sm text-slate-900">Menu Sidebar per Role</h4>
+                                <p className="text-[11px] text-slate-500">Aktif/nonaktifkan setiap menu untuk role ini. Perubahan disimpan bersama permission role di database.</p>
+                              </div>
+                              <span className="text-[11px] text-slate-500">{sidebarMenuControls.filter(isSidebarMenuEnabled).length}/{sidebarMenuControls.length} menu aktif</span>
+                            </div>
+                            {selectedRbacRole.is_superadmin ? (
+                              <p className="text-xs text-slate-500">Menu Superadmin dilindungi dan mengikuti kendali tertinggi sistem.</p>
+                            ) : (
+                              <>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  {sidebarMenuControls.map(item => {
+                                    const missing = item.required.filter(key => !activePermissionKeys.has(key));
+                                    const enabled = isSidebarMenuEnabled(item);
+                                    return (
+                                      <label key={item.tab} className="flex items-start gap-2 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-xs">
+                                        <input type="checkbox" checked={enabled} onChange={event => toggleSidebarMenu(item, event.target.checked)} disabled={rbacSaving || missing.length > 0} className="mt-0.5" />
+                                        <span className="min-w-0">
+                                          <span className="font-bold text-slate-800">{item.label}</span>
+                                          <span className="block text-[10px] text-slate-500">{item.description}</span>
+                                          {missing.length > 0 && <span className="block text-[10px] text-amber-700">Belum tersedia: {missing.join(', ')}</span>}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                  <p className="text-[10px] text-slate-500">Menu Aset memerlukan hak baca aset dan katalog/audit aset. Menu Administrasi khusus Superadmin.</p>
+                                  <button type="button" onClick={() => void handleSaveRbacPermissions()} disabled={rbacSaving} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">Simpan Menu Role</button>
+                                </div>
+                              </>
+                            )}
                           </div>
 
                           <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
