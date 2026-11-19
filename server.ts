@@ -3666,6 +3666,8 @@ async function startServer() {
         ticket.reporter_id === actor.id
         || ticket.assigned_agent_id === actor.id
         || canReadOwnerScope(ticket.category, 'tickets')
+        || Boolean(ticket.assigned_unit_id && isPostgresPersistenceActive()
+          && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'))
       );
 
     const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;
