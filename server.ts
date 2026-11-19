@@ -61,17 +61,35 @@ async function startServer() {
   // Production API security and session/role hardening
   app.use(gabahSecurityMiddleware);
 
-  // Persist every successful state-changing API request after the response is sent
+  // Gate successful state-changing API responses on durable persistence.
+  // Express res.json() delegates to res.send(), so this also covers JSON APIs
+  // whose handlers do not explicitly call persistDataStore().
   app.use((req, res, next) => {
     if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
-    res.on('finish', () => {
-      if ((req as any).__gabahPersisted) return;
-      if (res.statusCode >= 200 && res.statusCode < 400) {
-        void persistDataStore().catch(error => {
-          console.error('[persistence] post-response API sync failed:', error?.message || error);
-        });
+    const originalSend = res.send.bind(res);
+    res.send = ((body?: any) => {
+      if (res.statusCode < 200 || res.statusCode >= 400
+        || (req as any).__gabahPersisted || (req as any).__gabahPersisting) {
+        return originalSend(body);
       }
-    });
+      (req as any).__gabahPersisting = true;
+      void persistDataStore().then(() => {
+        (req as any).__gabahPersisted = true;
+        originalSend(body);
+      }).catch(error => {
+        console.error('[persistence] API response blocked because state was not committed:', error?.message || error);
+        if (!res.headersSent) {
+          res.status(typeof error?.statusCode === 'number' ? error.statusCode : 503);
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          originalSend(JSON.stringify({
+            success: false,
+            code: 'PERSISTENCE_UNAVAILABLE',
+            message: 'Perubahan belum dapat disimpan. Silakan coba kembali setelah layanan database pulih.',
+          }));
+        }
+      });
+      return res;
+    }) as typeof res.send;
     next();
   });
 

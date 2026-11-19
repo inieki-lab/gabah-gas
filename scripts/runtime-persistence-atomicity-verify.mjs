@@ -35,3 +35,12 @@ assert.doesNotMatch(server, /persistDataStore\(\)\.catch\(\(\) => \{\}\)/);
 assert.match(server, /\(req as any\).__gabahPersisted = true/);
 assert.match(server, /if \(\(req as any\).__gabahPersisted\) return/);
 assert.equal((server.match(/persistBeforeSuccess\(req, res\)/g) || []).length, 11, 'All 11 formerly swallowed mutation writes must be awaited');
+
+
+// Every successful mutating API response must be sent only after persistence.
+// The send gate covers mutation routes without route-local persistDataStore calls.
+assert.match(server, /const originalSend = res\.send\.bind\(res\)/);
+assert.match(server, /void persistDataStore\(\)\.then\(\(\) =>/);
+assert.match(server, /originalSend\(body\)/);
+assert.match(server, /PERSISTENCE_UNAVAILABLE/);
+assert.doesNotMatch(server, /res\.on\('finish',[\s\S]*persistDataStore/);
