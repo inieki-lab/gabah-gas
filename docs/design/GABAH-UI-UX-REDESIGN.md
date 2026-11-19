@@ -4,41 +4,43 @@
 **Organization:** PT Food Station Tjipinang Jaya (Perseroda)
 **Framework:** React 19 + Tailwind CSS v4 + Lucide React
 **Date:** 2026-11-19
-**Branch:** `feat/gabah-enterprise-theme-complete`
+**Branch:** `feat/gabah-visual-redesign-v2`
 **Target:** `main` (via PR)
+**Status:** In progress — comprehensive redesign
 
 ---
 
 ## 1. Design Objectives
 
-This redesign transforms GABAH from a functional internal tool into a professional enterprise ERP dashboard. The goal is not superficial branding but a cohesive visual system that improves:
+This is a comprehensive UI/UX redesign (not a cosmetic color change). The goal is to transform GABAH into a professional enterprise ERP application that:
 
-- **Scannability** — users can find data, actions, and status quickly.
-- **Authority** — a clean, restrained interface signals a production enterprise application, not a prototype.
-- **Usability** — consistent spacing, readable tables, clear form controls, and predictable navigation.
-- **Accessibility** — sufficient contrast, visible focus states, keyboard support, and responsive behavior.
+- **Scannable** — users find data, actions, and status instantly.
+- **Authoritative** — clean, restrained interface signals production quality.
+- **Consistent** — one design system applied uniformly across all screens.
+- **Accessible** — sufficient contrast, visible focus, keyboard support, responsive.
+- **Role-aware** — dashboards and menus adapt to each user's permissions.
 
 ## 2. Design Principles
 
-1. **Enterprise, not decorative.** No gradients, no excess shadows, no decorative cards. The interface is a working tool for business users.
-2. **Dense but readable.** Use available screen width effectively. Avoid overly narrow centered content. Aim for high information density without sacrificing readability.
-3. **Status semantics preserved.** Success = green, Warning = amber, Danger = red, Info/blue. Do not recolor status badges into green.
-4. **Consistent spacing.** Use Tailwind's spacing scale (0.25rem increments) and a 4px baseline grid.
-5. **Component reuse.** Reuse existing React/Tailwind components. Do not introduce a new UI library. Do not duplicate design systems.
-6. **No breaking changes.** The redesign must not change RBAC, navigation permissions, API contracts, form validation, or business workflows.
+1. **Enterprise, not decorative.** No gradients, no excess shadows, no decorative cards.
+2. **Dense but readable.** Use available screen width effectively. No narrow centered content.
+3. **Status semantics preserved.** Success = green, Warning = amber, Danger = red, Info = blue.
+4. **Consistent spacing.** 4px baseline grid, Tailwind spacing scale.
+5. **Component reuse.** No new UI library. No duplicate design systems.
+6. **No breaking changes.** RBAC, API, validation, and business workflows unchanged.
 
 ## 3. Color Palette and Design Tokens
 
-### 3.1 Primary Colors
+### 3.1 Primary Colors (Green Enterprise)
 
 | Token | Hex | Usage |
 |---|---|---|
-| `green-950` | `#123B2B` | High-contrast text, dark brands, footer |
+| `green-950` | `#123B2B` | High-contrast text, dark brands |
 | `green-900` | `#174D36` | Dark brand, hover dark states |
-| `green-800` | `#176B45` | Primary action, active nav item, brand logo |
+| `green-800` | `#176B45` | Primary action, active nav, brand |
 | `green-700` | `#218653` | Hover states, active icons |
 | `green-600` | `#2D9B63` | Focus ring, accent, active states |
-| `green-100` | `#E5F4EB` | Selected surface, active badge, subtle highlights |
+| `green-100` | `#E5F4EB` | Selected surface, active badge |
 | `green-50` | `#F1F8F3` | Soft background, calm sections |
 
 ### 3.2 Surfaces
@@ -60,30 +62,30 @@ This redesign transforms GABAH from a functional internal tool into a profession
 
 | Token | Hex | Usage |
 |---|---|---|
-| `success` | `#176B45` (green-800) | Success state |
-| `warning` | `#F7B733` (gold) | Warning / pending |
-| `danger` | `#FC4A1A` (coral) | Error / urgent / destructive |
-| `info` | `#2D9B63` (green-600) / blue | Information |
+| `success` | `#176B45` | Success state |
+| `warning` | `#F7B733` (amber) | Warning / pending |
+| `danger` | `#FC4A1A` (red) | Error / urgent / destructive |
+| `info` | `#2D9B63` (green-600) | Information |
 
 **Rule:** Do not convert every badge into green. Keep semantic distinction between status types.
 
 ## 4. Typography
 
-**Font:** Plus Jakarta Sans (already referenced in `src/index.css`).
+**Font:** Plus Jakarta Sans.
 
 | Level | Class | Size |
 |---|---|---|
 | Page title | `text-xl sm:text-2xl font-bold tracking-tight` | 20–24px |
 | Section title | `text-base sm:text-lg font-semibold` | 16–18px |
-| Body | `text-xs sm:text-sm` | 14–16px |
-| Metadata | `text-[10px] sm:text-[11px]` | 10–12px |
+| Body | `text-sm text-slate-700` | 14px |
+| Metadata | `text-xs text-slate-500` | 10–12px |
 | Table cell (body) | `text-xs` | 14px |
-| Table header | `text-xs font-semibold` | 14px |
+| Table header | `text-xs font-semibold uppercase` | 14px |
 
 **Rules:**
 - Do not oversize headings.
 - Do not leave excessive whitespace.
-- Keep line-height at 1.5 for body text, 1.2 for headings.
+- Keep line-height at 1.5 for body, 1.2 for headings.
 
 ## 5. Spacing and Sizing Standards
 
@@ -271,7 +273,7 @@ This redesign transforms GABAH from a functional internal tool into a profession
 - **UI automation:** no browser automation tool available; visual verification is source-level.
 - **Production DB:** no live PostgreSQL in sandbox; DB constraints verified statically.
 - **Role simulation:** RBAC behavior verified by code review, not by live UI interaction.
-- **Recommended gaps:** table column overflow across all legacy screens; modal resize on tablet.
+- **Remaining work:** tables, forms, modals, asset/loan/room/ticket screens, reports, responsive/a11y audit, functional regression testing.
 
 ---
 
