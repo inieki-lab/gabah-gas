@@ -226,7 +226,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      <aside className="w-64 bg-[#f8fbf8] border-r border-[#e1ebe4] flex flex-col shrink-0 min-h-[calc(100vh-4rem)] shadow-xs">
+      <aside className="gabah-sidebar w-64 bg-[#f8fbf8] border-r border-[#e1ebe4] flex flex-col shrink-0 min-h-[calc(100vh-4rem)] shadow-xs">
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
           {visibleSections.map((section, idx) => (
             <div key={idx} className="space-y-1">
