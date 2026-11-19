@@ -118,10 +118,10 @@ export function normalizeCategoryMaster(list: unknown): AssetTaxonomyItem[] {
 export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
   // IT Hardware (IT-H) - Milik IT
   { code: 'HLT', name: 'Laptop / Notebook', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Laptop komputasi portabel dinas (Milik IT)', is_loanable_by_default: true },
-  { code: 'HPC', name: 'Komputer Desktop / PC', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Komputer kerja / PC tower (Milik IT)', is_loanable_by_default: false },
+  { code: 'HPC', name: 'Komputer Desktop / PC', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Komputer kerja / PC tower (Milik IT; dapat dipinjam bila unit memang disiapkan sebagai pool)', is_loanable_by_default: true },
   { code: 'HSV', name: 'Server & Rackmount', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Server datacenter & cloud on-premise (Milik IT)', is_loanable_by_default: false },
   { code: 'HWS', name: 'Workstation', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Workstation spesifikasi tinggi desain/analisis (Milik IT)', is_loanable_by_default: false },
-  { code: 'HMON', name: 'Monitor Komputer', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Display layar monitor PC (Milik IT)', is_loanable_by_default: false },
+  { code: 'HMON', name: 'Monitor Komputer / Portable Monitor', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Monitor kerja dan monitor portable (Milik IT)', is_loanable_by_default: true },
   { code: 'HPRN', name: 'Printer & Barcode Scanner', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Printer dokumen laser/tinta & barcode (Milik IT)', is_loanable_by_default: false },
   { code: 'HSCN', name: 'Scanner Dokumen', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Scanner flatbed & ADF arsip (Milik IT)', is_loanable_by_default: false },
   { code: 'HNET', name: 'Perangkat Jaringan (Switch/Router)', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Switch, router, access point wifi (Milik IT)', is_loanable_by_default: false },
@@ -129,6 +129,16 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
   { code: 'HSTG', name: 'Storage NAS / SAN', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Storage network attached backup (Milik IT)', is_loanable_by_default: false },
   { code: 'HUPS', name: 'UPS Daya Cadangan', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Baterai cadangan server & jaringan (Milik IT)', is_loanable_by_default: false },
   { code: 'HRCK', name: 'Rack Server Enclosure', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Lemari server rackmount datacenter (Milik IT)', is_loanable_by_default: false },
+  // IT loan pool peripherals — only individual inventory items explicitly marked loanable.
+  { code: 'HHDM', name: 'Kabel HDMI / DisplayPort / VGA', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Kabel display untuk presentasi dan kebutuhan kerja (Milik IT)', is_loanable_by_default: true },
+  { code: 'HPTR', name: 'Wireless Presenter / Pointer', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Presenter nirkabel dan pointer presentasi (Milik IT)', is_loanable_by_default: true },
+  { code: 'HADP', name: 'Adaptor & Video Converter', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Adaptor USB-C, HDMI converter, charger dan adaptor laptop (Milik IT)', is_loanable_by_default: true },
+  { code: 'HDCK', name: 'Docking Station & USB Hub', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Docking station, USB-C hub dan multiport adapter (Milik IT)', is_loanable_by_default: true },
+  { code: 'HKEY', name: 'Keyboard & Mouse', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Keyboard dan mouse eksternal (Milik IT)', is_loanable_by_default: true },
+  { code: 'HWEB', name: 'Webcam & Headset', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Webcam, headset dan perangkat konferensi personal (Milik IT)', is_loanable_by_default: true },
+  { code: 'HAUD', name: 'Audio Portable & Mikrofon', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Speaker portable, mikrofon dan perangkat audio presentasi (Milik IT)', is_loanable_by_default: true },
+  { code: 'HUSB', name: 'Flashdisk & Media Penyimpanan Portable', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Flashdisk dan media penyimpanan portable milik IT (Milik IT)', is_loanable_by_default: true },
+  { code: 'HEXT', name: 'External HDD / SSD', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Hard disk dan SSD eksternal portable (Milik IT)', is_loanable_by_default: true },
 
   // IT Software & License (IT-S) - Milik IT
   { code: 'SLIC', name: 'Software License / SaaS', main_type: 'IT-S', owner_division: 'IT', category_type: 'License', description: 'Lisensi M365, ERP, OS, Antivirus (Milik IT, GA hanya bisa lihat)', is_loanable_by_default: false },
@@ -206,6 +216,15 @@ export function resolveTaxonomyByHumanName(
   if (query.includes('server')) return pick('HSV');
   if (query.includes('workstation')) return pick('HWS');
   if (query.includes('monitor') || query.includes('display')) return pick('HMON');
+  if (query.includes('hdmi') || query.includes('displayport') || query.includes('vga cable') || query.includes('kabel display')) return pick('HHDM');
+  if (query.includes('pointer') || query.includes('presenter')) return pick('HPTR');
+  if (query.includes('adapter') || query.includes('adaptor') || query.includes('converter') || query.includes('charger')) return pick('HADP');
+  if (query.includes('docking') || query.includes('usb hub')) return pick('HDCK');
+  if (query.includes('keyboard') || query.includes('mouse')) return pick('HKEY');
+  if (query.includes('webcam') || query.includes('headset')) return pick('HWEB');
+  if (query.includes('mikrofon') || query.includes('microphone') || query.includes('speaker portable') || query.includes('speaker')) return pick('HAUD');
+  if (query.includes('flashdisk') || query.includes('usb drive')) return pick('HUSB');
+  if (query.includes('external hdd') || query.includes('external ssd') || query.includes('hard disk eksternal')) return pick('HEXT');
   if (query.includes('printer')) return pick('HPRN');
   if (query.includes('scanner')) return pick('HSCN');
   if (query.includes('network') || query.includes('switch') || query.includes('router')) return pick('HNET');
