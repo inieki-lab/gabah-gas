@@ -226,7 +226,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      <aside className="gabah-sidebar w-64 bg-[#f8fbf8] border-r border-[#e1ebe4] flex flex-col shrink-0 min-h-[calc(100vh-4rem)] shadow-xs">
+      <aside aria-label="Navigasi utama GABAH" className="gabah-sidebar w-64 bg-white border-r border-[#e1ebe4] flex flex-col shrink-0 min-h-[calc(100vh-4rem)] shadow-xs">
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
           {visibleSections.map((section, idx) => (
             <div key={idx} className="space-y-1">
@@ -244,8 +244,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     key={item.id}
                     id={`nav-item-${item.id}`}
+                    aria-current={isActive ? 'page' : undefined}
                     onClick={() => onTabChange(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all group ${
+                    className={`gabah-nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all duration-150 group ${
                       isActive
                         ? 'bg-[#e5f4eb] text-[#176b45] ring-1 ring-inset ring-[#cfe7d8] font-bold'
                         : 'text-slate-600 hover:text-[#176b45] hover:bg-[#edf6ef] font-medium'

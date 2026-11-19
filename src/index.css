@@ -286,3 +286,38 @@ body,
     display: none;
   }
 }
+
+/* Sidebar navigation polish: clear hierarchy, consistent hit targets and active state. */
+#root .gabah-sidebar {
+  background: #fff;
+  border-color: var(--gabah-border);
+}
+#root .gabah-sidebar nav {
+  scrollbar-width: thin;
+  scrollbar-color: #c8d8cd transparent;
+}
+#root .gabah-sidebar nav > div > div:first-child span {
+  letter-spacing: .11em;
+}
+#root .gabah-sidebar .gabah-nav-item {
+  min-height: 2.75rem;
+  border: 1px solid transparent;
+}
+#root .gabah-sidebar .gabah-nav-item[aria-current="page"] {
+  background: var(--gabah-green-50);
+  border-color: #cfe7d8;
+  box-shadow: inset 3px 0 0 var(--gabah-green-700);
+}
+#root .gabah-sidebar .gabah-nav-item:not([aria-current="page"]):hover {
+  background: #f6faf7;
+  border-color: #e7f0e9;
+}
+#root .gabah-sidebar .gabah-nav-item:focus-visible {
+  outline: 2px solid var(--gabah-green-600);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .gabah-sidebar .gabah-nav-item {
+    transition: none;
+  }
+}
