@@ -3100,6 +3100,25 @@ async function startServer() {
       const ticket = db.tickets.find(t => t.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
 
+      // A broad tickets.update permission is not sufficient to mutate every
+      // ticket. Match the same object-level boundary used by the ticket list.
+      const isReporter = ticket.reporter_id === actor.id
+        || (!ticket.reporter_id && Boolean(ticket.reporter_name)
+          && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+      const canReadTicketOwner = isPostgresPersistenceActive()
+        ? hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
+        : actor.role === ticket.category;
+      const canUpdateTicket = isSuperadminActor(actor)
+        || isReporter
+        || ticket.assigned_agent_id === actor.id
+        || canReadTicketOwner;
+      if (!canUpdateTicket) {
+        return res.status(403).json({
+          success: false,
+          message: 'Akses ditolak: tiket ini bukan milik Anda dan tidak termasuk cakupan penugasan/divisi Anda.',
+        });
+      }
+
       const { status, resolutionNotes } = req.body || {};
       if (resolutionNotes !== undefined
         && (typeof resolutionNotes !== 'string' || resolutionNotes.length > 4000)) {
