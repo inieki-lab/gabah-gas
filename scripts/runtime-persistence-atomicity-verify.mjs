@@ -21,6 +21,6 @@ assert.match(persist, /if \(postgresFailureLatched\)[\s\S]*Promise\.reject/, 'Al
 assert.match(persist, /if \(!isPostgresAvailable\)[\s\S]*saveStateToFile\(payload\)[\s\S]*return persistQueue/, 'File store is available only for the startup fallback state');
 assert.match(persist, /const committedPayload = await persistPostgresState\(\)[\s\S]*saveStateToFile\(committedPayload\)/, 'Recovery snapshot must publish only after the authoritative transaction commits');
 assert.ok(persist.indexOf('saveStateToFile(committedPayload)') > persist.indexOf('await persistPostgresState()'), 'Local snapshot publication must follow PostgreSQL commit');
-assert.match(persist, /postgresFailureLatched = true;[\s\S]*isPostgresAvailable = false;[\s\S]*throw new Error/, 'A failed authoritative write must latch closed and reject the caller');
+assert.match(persist, /postgresFailureLatched = true;[\s\S]*isPostgresAvailable = false;[\s\S]*throw Object\.assign\(/, 'A failed authoritative write must latch closed, reject the caller, and expose HTTP 503');
 
 console.log('PASS: PostgreSQL runtime failure latch, shared transaction rollback, and post-commit snapshot ordering');
