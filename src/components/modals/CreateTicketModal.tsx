@@ -47,6 +47,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
 
   const isAuditor = currentUser?.role === 'Auditor';
+  const canRequestMe = currentUser.role === 'Admin GABAH' || currentUser.permission_keys?.includes('tickets.create.me') || currentUser.permission_keys?.includes('*');
 
   // Freshservice-inspired Quick Service Catalog Templates
   const serviceCatalogTemplates = [
@@ -78,12 +79,12 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       icon: '❄️',
     },
     {
-      id: 'sc-weighbridge',
-      label: 'Timbangan & Mesin Pabrik',
-      category: 'SC' as TicketCategory,
+      id: 'me-maintenance',
+      label: 'Mesin, Listrik & Perawatan',
+      category: 'ME' as TicketCategory,
       priority: 'urgent' as TicketPriority,
-      title: 'Kendala Mesin Pabrik Beras / Jembatan Timbang Truk',
-      desc: 'Sensor jembatan timbang atau conveyor penggilingan beras mengalami deviasi/error butuh kalibrasi darurat.',
+      title: 'Kendala Mekanikal / Elektrikal / Perawatan',
+      desc: 'Gangguan mesin, kelistrikan, mekanikal, jembatan timbang, atau fasilitas teknis yang memerlukan Tim Perawatan (ME).',
       icon: '🌾',
     },
     {
@@ -260,7 +261,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               <span className="text-[10px] text-slate-500 font-normal">Klik untuk auto-fill standar ITSM</span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              {serviceCatalogTemplates.map(tpl => (
+              {serviceCatalogTemplates.filter(tpl => tpl.category !== 'ME' || canRequestMe).map(tpl => (
                 <button
                   key={tpl.id}
                   type="button"
@@ -313,7 +314,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
-                disabled={currentUser.role !== 'Admin GABAH' && !currentUser.permission_keys?.includes('tickets.create.me') && !currentUser.permission_keys?.includes('*')}
+                disabled={!canRequestMe}
                 title="Akses Pemohon Tiket ME harus diberikan oleh Superadmin"
                 onClick={() => { setCategory('ME'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
