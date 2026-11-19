@@ -39,6 +39,7 @@ FROM (
   SELECT
     dv.id AS division_id,
     CASE
+      WHEN UPPER(dv.code) IN ('SC', 'PIBC') THEN NULL
       WHEN EXISTS (SELECT 1 FROM org_units u WHERE u.id = 'UNIT-' || dv.code AND u.division_code = dv.code)
         THEN (SELECT u.id FROM org_units u WHERE u.id = 'UNIT-' || dv.code AND u.division_code = dv.code LIMIT 1)
       WHEN (SELECT COUNT(*) FROM org_units u WHERE u.division_code = dv.code) = 1
