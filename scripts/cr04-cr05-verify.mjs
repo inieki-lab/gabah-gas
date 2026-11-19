@@ -712,7 +712,7 @@ async function main() {
       && String(stateAfterFault.rows[0]?.updated_at) === String(stateBeforeFault.rows[0]?.updated_at);
     record('Runtime normalized-table failure rolls back gabah_state snapshot', 'unchanged JSONB + updated_at',
       `HTTP ${faultedPasswordReset.status}; rollback=${rolledBackState}`,
-      faultedPasswordReset.status === 400 && rolledBackState);
+      faultedPasswordReset.status === 503 && rolledBackState);
 
     const subsequentMutation = await req(base, 'POST', `/api/users/${itUserId}/reset-password`, { token: adminToken2 });
     const stateAfterLatchedWrite = await faultClient.query('SELECT payload, updated_at FROM gabah_state WHERE id = 1');
@@ -720,7 +720,7 @@ async function main() {
       && String(stateAfterLatchedWrite.rows[0]?.updated_at) === String(stateBeforeFault.rows[0]?.updated_at);
     record('Subsequent mutation remains fail-closed after runtime PostgreSQL failure', 'HTTP 400; no second snapshot write',
       `HTTP ${subsequentMutation.status}; unchanged=${latchPreservedState}`,
-      subsequentMutation.status === 400 && latchPreservedState);
+      subsequentMutation.status === 503 && latchPreservedState);
     await faultClient.query('DROP TRIGGER IF EXISTS gabah_ci_reject_user_sync ON users');
     await faultClient.query('DROP FUNCTION IF EXISTS gabah_ci_reject_user_sync()');
     await faultClient.end();
