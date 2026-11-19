@@ -51,3 +51,5 @@ const catchBlocks = [...server.matchAll(/catch \(err: any\) \{([\s\S]{0,500}?)re
 assert.ok(catchBlocks.some(match => /err\?\.statusCode/.test(match[2])), 'Route catches must preserve persistence HTTP status codes');
 
 assert.doesNotMatch(server, /: \((?:400|500)\)\)\)\.json/, 'Persistence status mapping must remain valid TypeScript');
+
+assert.doesNotMatch(server, /await persistDataStore\(\);\s*(?!\(req as any\).__gabahPersisted = true;)/, 'A route that explicitly awaited persistence must mark the response as already committed');
