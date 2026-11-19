@@ -874,16 +874,16 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           {/* Table */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="w-full min-w-[1500px] text-left border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-bold">
-                    <th className="py-3 px-4">No. Reservasi & Prioritas</th>
-                    <th className="py-3 px-4">Ruangan</th>
-                    <th className="py-3 px-4">Agenda & Penyelenggara</th>
-                    <th className="py-3 px-4">Tanggal & Waktu</th>
-                    <th className="py-3 px-4">Layanan & Fasilitas</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Aksi</th>
+                    <th className="py-4 px-5 min-w-[190px]">No. Reservasi & Prioritas</th>
+                    <th className="py-4 px-5 min-w-[180px]">Ruangan</th>
+                    <th className="py-4 px-5 min-w-[320px]">Agenda & Penyelenggara</th>
+                    <th className="py-4 px-5 min-w-[180px]">Tanggal & Waktu</th>
+                    <th className="py-4 px-5 min-w-[280px]">Layanan & Fasilitas</th>
+                    <th className="py-4 px-5 min-w-[140px]">Status</th>
+                    <th className="py-4 px-5 min-w-[180px] text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-800">
@@ -933,8 +933,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                           </td>
 
                           {/* Agenda & Organizer */}
-                          <td className="py-3.5 px-4 max-w-xs">
-                            <p className="font-bold text-slate-900 truncate" title={r.title}>
+                          <td className="py-4 px-5 min-w-[320px]">
+                            <p className="font-bold text-slate-900 whitespace-normal break-words" title={r.title}>
                               {r.title}
                             </p>
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -946,7 +946,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                               </span>
                             </div>
                             {r.attendees_list && (
-                              <p className="text-[10px] text-slate-500 truncate mt-1" title={r.attendees_list}>
+                              <p className="text-xs text-slate-500 whitespace-normal break-words mt-1" title={r.attendees_list}>
                                 👥 Peserta: {r.attendees_list}
                               </p>
                             )}

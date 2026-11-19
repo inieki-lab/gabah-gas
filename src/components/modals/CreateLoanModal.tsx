@@ -78,7 +78,12 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   // Default tomorrow 09:00 to 17:00
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  // datetime-local expects the browser's local calendar date, not a UTC date.
+  const tomorrowStr = [
+    tomorrow.getFullYear(),
+    String(tomorrow.getMonth() + 1).padStart(2, '0'),
+    String(tomorrow.getDate()).padStart(2, '0'),
+  ].join('-');
 
   const [startDate, setStartDate] = useState<string>(`${tomorrowStr}T09:00`);
   const [dueDate, setDueDate] = useState<string>(`${tomorrowStr}T17:00`);
