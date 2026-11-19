@@ -64,7 +64,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   });
 
   // Category filter for convenience
-  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA' | 'SC'>('ALL');
+  const [filterDivision, setFilterDivision] = useState<'ALL' | 'IT' | 'GA'>('ALL');
 
   // Sync preselectedAssetId if opened with specific asset
   React.useEffect(() => {
@@ -169,7 +169,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-base text-slate-900">Pengajuan Peminjaman Barang GABAH</h3>
-              <p className="text-xs text-slate-500">Bisa pinjam Laptop (IT) &amp; Mobil (GA) di waktu bersamaan (persetujuan terpisah)</p>
+              <p className="text-xs text-slate-500">Laptop, PC, kabel HDMI, pointer, adaptor, dan perlengkapan IT lain dapat dipinjam sesuai ketersediaan. Persetujuan mengikuti pemilik aset.</p>
             </div>
           </div>
 
@@ -213,7 +213,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                   Pilih Aset yang Ingin Dipinjam:
                 </label>
                 <p className="text-[11px] text-slate-500">
-                  Centang satu atau beberapa barang (misal: Laptop IT + Mobil Operasional GA).
+                  Pilih satu atau beberapa barang. Setiap barang diproses oleh unit pemiliknya.
                 </p>
               </div>
 
@@ -235,7 +235,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                     filterDivision === 'IT' ? 'bg-white text-blue-700 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  IT / Laptop
+                  IT / Perangkat
                 </button>
                 <button
                   type="button"
@@ -244,7 +244,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                     filterDivision === 'GA' ? 'bg-white text-amber-700 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  GA / Mobil
+                  GA / Fasilitas
                 </button>
               </div>
             </div>
@@ -278,7 +278,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
                       {/* Icon */}
                       <div className={`p-1.5 rounded-lg shrink-0 ${isIT ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                        {isIT ? <Laptop className="w-4 h-4" /> : <Car className="w-4 h-4" />}
+                        {isIT ? <Laptop className="w-4 h-4" /> : <Boxes className="w-4 h-4" />}
                       </div>
 
                       {/* Info */}
@@ -320,7 +320,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
               {displayedPool.length === 0 && (
                 <div className="text-center py-6 text-slate-400 text-xs">
-                  Tidak ada aset pool pinjaman dalam kategori ini.
+                  Belum ada barang yang terdaftar sebagai aset pinjaman tersedia dalam kategori ini.
                 </div>
               )}
             </div>
@@ -334,7 +334,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                     Dipilih <strong>{selectedCounts.total} barang</strong>:
                     {selectedCounts.it > 0 && ` ${selectedCounts.it} Aset IT (Approve: IT)`}
                     {selectedCounts.it > 0 && selectedCounts.ga > 0 && ` + `}
-                    {selectedCounts.ga > 0 && ` ${selectedCounts.ga} Kendaraan (Approve: GA)`}
+                    {selectedCounts.ga > 0 && ` ${selectedCounts.ga} Aset GA (Approve: GA)`}
                   </span>
                 </div>
                 <span className="text-emerald-700 font-bold text-[10px]">
