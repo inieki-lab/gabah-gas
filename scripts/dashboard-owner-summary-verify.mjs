@@ -26,7 +26,7 @@ const checks = [
     'Operational dashboard persona follows effective operational permissions for custom roles',
     /operationalManagementPermissions = \\[/.test(source)
       && /hasOperationalManagementAccess = operationalManagementPermissions\\.some/.test(source)
-      && /isEmployee = isStaff && !hasOperationalManagementAccess/.test(source),
+      && /isEmployee = !isAuditor && isStaff && !hasOperationalManagementAccess/.test(source),
   ],
   [
     'Loan, ticket, and asset quick actions require their own effective create permissions',
