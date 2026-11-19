@@ -18,6 +18,7 @@ const checks = [
   ['PostgreSQL persistence stores assigned unit and notification recipient unit', /assigned_unit_id,related_asset_id/.test(persistence) && /recipient_unit_id,title/.test(persistence)],
   ['Ticket model carries ME and assigned_unit_id', /category: 'IT' \| 'GA' \| 'ME' \| 'SC' \| 'PIBC'/.test(db) && /assigned_unit_id\?: string/.test(db)],
   ['Ticket form uses GA category correctly and exposes permission-gated ME, not SC/PIBC choices', /setCategory\('GA'\)/.test(form) && /setCategory\('ME'\)/.test(form) && !/setCategory\('SC'\)|setCategory\('PIBC'\)/.test(form)],
+  ['Machine and electrical service catalog template targets ME and is permission-gated', /category: 'ME' as TicketCategory/.test(form) && /serviceCatalogTemplates\.filter\(tpl => tpl\.category !== 'ME' \|\| canRequestMe\)/.test(form) && !/category: 'SC' as TicketCategory/.test(form)],
   ['ME operator receives an ME queue view', /admin_tiket_me/.test(ticketView) && /Helpdesk & Tiket ME/.test(ticketView)],
 ];
 
