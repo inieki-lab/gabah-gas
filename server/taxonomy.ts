@@ -148,6 +148,8 @@ export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
 
   // General Affairs: Peralatan (INV-P)
   { code: 'INV-P', name: 'Inventaris Peralatan & Perlengkapan', main_type: 'INV-P', owner_division: 'GA', category_type: 'General', description: 'Kompor, dispenser, AC, microwave, vacuum cleaner, APAR (Milik GA)', is_loanable_by_default: true },
+  { code: 'GPRJ', name: 'Projector & Perangkat Presentasi GA', main_type: 'INV-P', owner_division: 'GA', category_type: 'General', description: 'Projector dan perlengkapan presentasi milik GA; peminjaman disetujui GA', is_loanable_by_default: true },
+  { code: 'GCCTV', name: 'CCTV & Perangkat Pengawasan', main_type: 'INV-P', owner_division: 'GA', category_type: 'General', description: 'Kamera CCTV dan perangkat pengawasan milik GA untuk instalasi tetap; bukan barang pinjaman umum', is_loanable_by_default: false },
 
   // Kendaraan (KDR) - GA atau SC
   { code: 'KDR', name: 'Kendaraan Dinas & Operasional', main_type: 'KDR', owner_division: 'GA', category_type: 'General', description: 'Mobil dinas, minibus operasional, sepeda motor (Milik GA)', is_loanable_by_default: true },
@@ -235,6 +237,8 @@ export function resolveTaxonomyByHumanName(
   if (query.includes('license') || query.includes('lisensi') || query.includes('saas') || query.includes('software') || query.includes('it-s') || query.includes('slic')) {
     return pick('SLIC');
   }
+  if (query.includes('projector') || query.includes('proyektor') || query.includes('infocus')) return pick('GPRJ');
+  if (query.includes('cctv') || query.includes('kamera pengawas') || query.includes('surveillance camera')) return pick('GCCTV');
   if (query.includes('furniture') || query.includes('kursi') || query.includes('meja') || query.includes('lemari') || query.includes('inv-f')) {
     return pick('INV-F');
   }
