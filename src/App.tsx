@@ -310,9 +310,7 @@ export default function App() {
   const activeTab: NavTab | null = currentUser
     ? (isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys) && isModuleAvailable(currentTab)
       ? currentTab
-      : (activeModuleKeys === undefined
-        ? fallbackRoleTab
-        : (activeModuleKeys.find(key => isNavTabAllowedForRole(currentUser.role, key as NavTab, currentUser.permission_keys)) as NavTab | undefined) || null))
+      : fallbackRoleTab)
     : 'dashboard';
 
   const navigateToTab = (tab: NavTab) => {
