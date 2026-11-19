@@ -53,7 +53,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isHumas = currentRoleKeys.includes('humas') || currentUser?.role === 'Humas';
   const isSekdir = currentRoleKeys.includes('sekretaris_direksi') || currentUser?.role === 'Sekretaris Direksi';
   const isStaff = currentUser?.role === 'Karyawan' || isHumas || isSekdir;
-  const isEmployee = isStaff;
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasEffectivePermission = (permission: string, legacyRoles: string[] = []): boolean => {
+    if (isAuditor) return false;
+    if (Array.isArray(currentUser.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permission);
+    }
+    return legacyRoles.includes(currentUser.role);
+  };
+  const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canCreateAsset = hasEffectivePermission('assets.create', ['Admin GABAH', 'IT', 'GA']);
+  const operationalManagementPermissions = [
+    'assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign',
+    'assets.move', 'assets.lifecycle', 'loans.approve', 'loans.reject',
+    'loans.handover', 'tickets.assign', 'tickets.update', 'maintenances.create',
+    'maintenances.update', 'room_reservations.approve', 'room_reservations.reject',
+    'meeting_rooms.update', 'meeting_types.manage', 'meeting_facilities.manage',
+    'licenses.manage', 'knowledge.create', 'knowledge.update',
+    'contracts.create', 'contracts.update', 'contracts.documents.upload',
+    'vendors.create', 'vendors.update', 'organization.manage', 'master_data.manage',
+  ];
+  const hasOperationalManagementAccess = operationalManagementPermissions.some(permission =>
+    hasEffectivePermission(permission, ['Admin GABAH', 'IT', 'GA'])
+  );
+  const isEmployee = isStaff && !hasOperationalManagementAccess;
   const roleDescriptions: Record<UserRole, string> = {
     'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
@@ -74,9 +98,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isAuditor = GabahService.isAuditor(currentUser);
   const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || isAuditor;
-  const isDivisionDashboard = !isGlobalDashboard && (currentUser.role === 'IT' || currentUser.role === 'GA');
+  const isDivisionDashboard = !isGlobalDashboard && hasOperationalManagementAccess;
   // Dashboard labels reflect persisted owner domains in the already scoped asset data.
   const visibleOwnerDomains = Array.from(new Set(
     dashboardAssets.map(asset => String(asset.owner_division || '').trim().toUpperCase()).filter(Boolean)
@@ -87,7 +110,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
-  const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
+  const isLicenseDashboard = isGlobalDashboard || hasEffectivePermission('licenses.read', ['IT']);
   const roleDescription = isAuditor
     ? roleDescriptions.Auditor
     : currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
@@ -183,7 +206,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {!isAuditor && (
+            {canCreateLoan && (
               <button
                 id="btn-quick-loan"
                 onClick={onOpenNewLoanModal}
@@ -193,7 +216,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Pinjam Aset
               </button>
             )}
-            {!isAuditor ? (
+            {canCreateTicket ? (
               <button
                 id="btn-quick-ticket"
                 onClick={onOpenNewTicketModal}
@@ -208,7 +231,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span>Tiket (Read-Only)</span>
               </div>
             )}
-            {!isEmployee && !isAuditor && (
+            {canCreateAsset && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
