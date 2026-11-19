@@ -1836,7 +1836,7 @@ async function startServer() {
         code: normalizedCode,
         name: name.trim(),
         main_type,
-        owner_division,
+        owner_division: normalizedOwnerCode,
         category_type: normalizedCategoryType,
         description: description || `Kategori ${name.trim()} (Milik ${owner_division})`,
         is_loanable_by_default: is_loanable_by_default === undefined ? false : is_loanable_by_default,
@@ -1909,7 +1909,7 @@ async function startServer() {
 
       if (name) target.name = String(name).trim();
       if (main_type) target.main_type = main_type;
-      if (owner_division) target.owner_division = owner_division;
+      if (owner_division) target.owner_division = String(owner_division).trim().toUpperCase();
       if (category_type) target.category_type = category_type;
       if (description !== undefined) target.description = description;
       if (is_loanable_by_default !== undefined) target.is_loanable_by_default = is_loanable_by_default;
