@@ -18,4 +18,4 @@ assert.match(dashboard, /currentRoleKeys\.includes\('sekretaris_direksi'\)/);
 assert.match(header, /currentUser\.role_keys\?\.includes\('humas'\)/);
 assert.match(dashboard, /const isEmployee = !isAuditor && !hasOperationalManagementAccess/);\nassert.match(dashboard, /roleDescriptions\[currentUser\.role\] \|\| roleDescriptions\.Karyawan/);
 assert.match(dynamic, /Legacy function roles are assigned after normalized user rows exist/);
-console.log('Employee role normalization: 12 checks passed');
+console.log('Employee role normalization: 13 checks passed');
