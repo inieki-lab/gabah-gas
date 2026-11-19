@@ -737,7 +737,7 @@ export class GabahDomainService {
     if (!assetId) throw Object.assign(new Error('ID aset wajib diisi.'), { statusCode: 400 });
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw Object.assign(new Error('Aset tidak ditemukan.'), { statusCode: 404 });
-    if (!asset.is_loanable) throw new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).');
+    if (!asset.is_loanable) throw Object.assign(new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).'), { statusCode: 409 });
     if (asset.status !== 'available') {
       throw Object.assign(new Error(`Aset tidak tersedia untuk dipinjam (status saat ini: "${asset.status}").`), { statusCode: 409 });
     }
@@ -782,7 +782,7 @@ export class GabahDomainService {
     });
 
     if (conflicting) {
-      throw new Error(`Tabrakan Jadwal! Aset "${asset.name}" (${asset.asset_number}) sudah dipinjam / disetujui pada periode tersebut (${conflicting.start_date.split('T')[0]} s/d ${conflicting.due_date.split('T')[0]}).`);
+      throw Object.assign(new Error(`Tabrakan Jadwal! Aset "${asset.name}" (${asset.asset_number}) sudah dipinjam / disetujui pada periode tersebut (${conflicting.start_date.split('T')[0]} s/d ${conflicting.due_date.split('T')[0]}).`), { statusCode: 409 });
     }
 
     const loanNumber = AssetNumberingEngine.generateLoanNumber();
