@@ -78,7 +78,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const hasOperationalManagementAccess = operationalManagementPermissions.some(permission =>
     hasEffectivePermission(permission, ['Admin GABAH', 'IT', 'GA'])
   );
-  const isEmployee = isStaff && !hasOperationalManagementAccess;
+  const isEmployee = !isAuditor && isStaff && !hasOperationalManagementAccess;
   const roleDescriptions: Record<UserRole, string> = {
     'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
