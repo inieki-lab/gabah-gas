@@ -60,7 +60,8 @@
     "docker:logs": "docker compose logs -f --tail=200",
     "docker:ps": "docker compose ps",
     "test:auditor-additional-role": "tsx scripts/auditor-additional-role-verify.ts",
-    "test:asset-owner-filter": "node scripts/asset-owner-filter-verify.mjs"
+    "test:asset-owner-filter": "node scripts/asset-owner-filter-verify.mjs",
+    "test:contract-owner-filter": "node scripts/contract-owner-filter-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
