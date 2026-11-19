@@ -7,8 +7,7 @@ import {
   Laptop, 
   Car, 
   KeyRound, 
-  Package,
-  Store,
+  Wrench,
   Info 
 } from 'lucide-react';
 import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
