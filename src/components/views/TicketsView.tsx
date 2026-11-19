@@ -87,8 +87,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     ? ['ALL', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'GA')]
     : isSC
     ? ['ALL', 'SC', ...Array.from(baseCategorySet).filter(c => c !== 'SC')]
-    : isMEOperator
-    ? ['ALL', 'ME', ...Array.from(baseCategorySet).filter(c => c !== 'ME')]
+    : isPIBC
+    ? ['ALL', 'PIBC', ...Array.from(baseCategorySet).filter(c => c !== 'PIBC')]
     : ['ALL', 'IT', 'GA', 'ME', ...Array.from(baseCategorySet).filter(c => !['IT', 'GA', 'ME'].includes(c))];
   const availableCategories = Array.from(new Set(defaultCategories));
 
