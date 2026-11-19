@@ -859,7 +859,7 @@ export function persistDataStore(): Promise<void> {
   // unavailable during startup. Once PostgreSQL has been authoritative, never
   // report success or write a newer local snapshot after a runtime outage.
   if (postgresFailureLatched) {
-    return Promise.reject(new Error('PostgreSQL authoritative store mengalami gangguan; perubahan ditolak sampai layanan dipulihkan dan aplikasi direstart.'));
+    return Promise.reject(Object.assign(new Error('PostgreSQL authoritative store mengalami gangguan; perubahan ditolak sampai layanan dipulihkan dan aplikasi direstart.'), { statusCode: 503 }));
   }
   if (!isPostgresAvailable) {
     saveStateToFile(payload);
@@ -868,7 +868,7 @@ export function persistDataStore(): Promise<void> {
 
   const write = persistQueue.then(async () => {
     if (!isPostgresAvailable || postgresFailureLatched) {
-      throw new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.');
+      throw Object.assign(new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.'), { statusCode: 503 });
     }
     try {
       const committedPayload = await persistPostgresState();
@@ -879,7 +879,7 @@ export function persistDataStore(): Promise<void> {
       postgresFailureLatched = true;
       isPostgresAvailable = false;
       console.error('[GABAH Persistence] PostgreSQL write failed; authoritative writes are now latched closed:', error.message || error);
-      throw new Error('Gagal menyimpan perubahan ke PostgreSQL: ' + (error.message || String(error)));
+      throw Object.assign(new Error('Gagal menyimpan perubahan ke PostgreSQL: ' + (error.message || String(error))), { statusCode: 503 });
     }
   });
 
