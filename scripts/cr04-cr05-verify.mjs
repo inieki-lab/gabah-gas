@@ -716,9 +716,11 @@ async function main() {
       "SELECT user_json->>'password_hash' AS password_hash FROM gabah_state, jsonb_array_elements(payload->'users') AS users_json(user_json) WHERE user_json->>'email' = $1",
       [IT_EMAIL],
     );
-    const rolledBackState = passwordAfterFault.rows[0]?.password_hash === passwordBeforeFault.rows[0]?.password_hash
+    const rolledBackState = passwordBeforeFault.rowCount === 1 && passwordAfterFault.rowCount === 1
+      && snapshotPasswordBeforeFault.rowCount === 1 && snapshotPasswordAfterFault.rowCount === 1
+      && passwordAfterFault.rows[0]?.password_hash === passwordBeforeFault.rows[0]?.password_hash
       && snapshotPasswordAfterFault.rows[0]?.password_hash === snapshotPasswordBeforeFault.rows[0]?.password_hash;
-    record('Runtime normalized-table failure rolls back gabah_state snapshot', 'unchanged JSONB + updated_at',
+    record('Runtime normalized-table failure rolls back gabah_state snapshot', 'unchanged user row + JSONB credential',
       `HTTP ${faultedPasswordReset.status}; rollback=${rolledBackState}`,
       faultedPasswordReset.status === 503 && rolledBackState);
 
@@ -728,7 +730,8 @@ async function main() {
       "SELECT user_json->>'password_hash' AS password_hash FROM gabah_state, jsonb_array_elements(payload->'users') AS users_json(user_json) WHERE user_json->>'email' = $1",
       [IT_EMAIL],
     );
-    const latchPreservedState = passwordAfterLatchedWrite.rows[0]?.password_hash === passwordBeforeFault.rows[0]?.password_hash
+    const latchPreservedState = passwordAfterLatchedWrite.rowCount === 1 && snapshotPasswordAfterLatchedWrite.rowCount === 1
+      && passwordAfterLatchedWrite.rows[0]?.password_hash === passwordBeforeFault.rows[0]?.password_hash
       && snapshotPasswordAfterLatchedWrite.rows[0]?.password_hash === snapshotPasswordBeforeFault.rows[0]?.password_hash;
     record('Subsequent mutation remains fail-closed after runtime PostgreSQL failure', 'HTTP 400; no second snapshot write',
       `HTTP ${subsequentMutation.status}; unchanged=${latchPreservedState}`,
