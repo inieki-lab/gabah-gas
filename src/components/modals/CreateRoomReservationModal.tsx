@@ -820,7 +820,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                     <div className="flex items-start gap-2 p-2.5 rounded-lg bg-green-50 border border-green-200 text-sky-950 text-xs animate-in fade-in">
                       <Laptop className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold text-sky-900">Notifikasi Otomatis ke Tim IT Support: </span>
+                        <span className="font-bold text-green-900">Notifikasi Otomatis ke Tim IT Support: </span>
                         <span className="text-sky-800">{selectedIT.map(f => f.name).join(', ')}</span>
                         <p className="text-[10px] text-sky-600 mt-0.5">Tiket persiapan perangkat &amp; uji koneksi vicon akan otomatis diteruskan ke petugas IT.</p>
                       </div>

@@ -212,7 +212,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-              isITAsset ? 'bg-green-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+              isITAsset ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
             }`}>
               {isITAsset ? <Laptop className="w-5 h-5" /> : <Car className="w-5 h-5" />}
             </div>
@@ -223,7 +223,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   {asset.asset_number}
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  asset.owner_division === 'IT' ? 'bg-green-50 text-blue-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  asset.owner_division === 'IT' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
                 }`}>
                   Divisi: {asset.owner_division}
                 </span>
@@ -269,7 +269,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
             <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50/70 to-indigo-50/70 border border-green-200 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-blue-700" />
+                  <UserCheck className="w-4 h-4 text-green-700" />
                   <h4 className="text-xs font-black uppercase tracking-wider text-blue-900">
                     Penugasan Pengguna (PIC Karyawan)
                   </h4>

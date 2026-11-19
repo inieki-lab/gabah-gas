@@ -138,7 +138,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-              isIT ? 'bg-blue-100 text-green-700' :
+              isIT ? 'bg-green-100 text-green-700' :
               isSC ? 'bg-green-100 text-green-700' :
               isPIBC ? 'bg-purple-100 text-purple-700' :
               'bg-amber-100 text-amber-700'
@@ -152,7 +152,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-base text-slate-900">{asset.name}</h3>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                  isIT ? 'bg-blue-50 text-blue-800 border-green-200' :
+                  isIT ? 'bg-green-50 text-blue-800 border-green-200' :
                   isSC ? 'bg-green-50 text-green-800 border-green-200' :
                   isPIBC ? 'bg-purple-50 text-purple-800 border-purple-200' :
                   'bg-amber-50 text-amber-800 border-amber-200'
@@ -316,7 +316,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     {canEdit && !isEditingCorpNumber && (
                       <button
                         onClick={() => setIsEditingCorpNumber(true)}
-                        className="text-[10px] font-bold text-green-700 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded border border-green-200"
+                        className="text-[10px] font-bold text-green-700 hover:text-blue-800 flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded border border-green-200"
                       >
                         <Edit2 className="w-3 h-3" /> Edit/Sync
                       </button>
@@ -722,7 +722,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     onClose();
                     onEditThisAsset(asset);
                   }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-green-700 border border-green-200 font-bold transition-colors"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 font-bold transition-colors"
                   title="Edit Aset / Tugaskan Pengguna"
                 >
                   <Edit2 className="w-4 h-4" />

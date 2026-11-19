@@ -221,7 +221,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
               </button>
             </div>
             {confirmPassword.length > 0 && confirmPassword === newPassword && (
-              <div className="flex items-center gap-1 mt-1.5 text-[10px] font-bold text-emerald-600">
+              <div className="flex items-center gap-1 mt-1.5 text-[10px] font-bold text-green-600">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Konfirmasi cocok
               </div>
             )}

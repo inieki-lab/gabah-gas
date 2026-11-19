@@ -540,7 +540,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
                   </td>
                   <td className="py-2.5 px-3 text-green-600">
                     {group.code.startsWith('IT') ? (
-                      <span className="px-2 py-0.5 rounded bg-blue-50 text-green-700 font-semibold border border-green-200 text-[10px]">
+                      <span className="px-2 py-0.5 rounded bg-green-50 text-green-700 font-semibold border border-green-200 text-[10px]">
                         Devisi IT (Milik IT, GA Read-only)
                       </span>
                     ) : group.code === 'INV-F' ? (

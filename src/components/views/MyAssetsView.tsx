@@ -135,7 +135,7 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
         <div className="p-4 rounded-2xl bg-white border border-green-200 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-green-400">Perangkat Kerja</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-green-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
               <Laptop className="w-4 h-4" />
             </div>
           </div>
@@ -275,7 +275,7 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-mono text-[11px] font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-green-200">
+                              <span className="font-mono text-[11px] font-extrabold px-2 py-0.5 rounded bg-green-50 text-blue-800 border border-green-200">
                                 {asset.asset_number}
                               </span>
                               {asset.corporate_asset_number && (
