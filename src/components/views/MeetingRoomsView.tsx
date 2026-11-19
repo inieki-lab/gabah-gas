@@ -872,9 +872,18 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1500px] text-left border-collapse text-sm">
+          <div className="w-full max-w-full min-w-0 bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-2 text-[11px] text-slate-500">
+              <span>Geser tabel ke kanan untuk melihat kolom Status dan Aksi.</span>
+              <span className="shrink-0 font-semibold text-emerald-700">↔ Geser horizontal</span>
+            </div>
+            <div
+              className="block w-full max-w-full min-w-0 overflow-x-scroll overscroll-x-contain"
+              role="region"
+              aria-label="Tabel reservasi ruang rapat. Geser ke kanan untuk melihat seluruh kolom."
+              tabIndex={0}
+            >
+              <table className="w-max min-w-[1500px] text-left border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-bold">
                     <th className="py-4 px-5 min-w-[190px]">No. Reservasi & Prioritas</th>
