@@ -108,7 +108,7 @@ async function main() {
     const assets0 = (await req(s1.base, 'GET', '/api/assets', { token: admin })).json?.data || [];
     const unmapped = assets0.filter(a => !a.asset_location_id);
     const undefinedCount = assets0.filter(a => a.asset_location_id === undefined).length;
-    const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: 'UNIT-SC', PIBC: 'UNIT-PIBC', GA: null };
+    const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: null, PIBC: null, GA: null };
     const unitOk = assets0.every(a => a.managing_unit_id === (EXPECTED_BY_DIV[a.owner_division] ?? null));
     rec('B1: seluruh aset seed terpetakan deterministik (exact-match path)', '0 belum terpetak, 0 undefined',
       `total=${assets0.length}, unMapped=${unmapped.length}, undefined=${undefinedCount}`,
@@ -169,12 +169,12 @@ async function main() {
 
     // ================= 6. Lokasi nonaktif =================
     await req(s1.base, 'PATCH', `/api/master/asset-locations/${disabledId}`, { token: admin, body: { is_active: false } });
-    const cBad = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'PIBC', name: 'Aset Uji T2B-2 nonaktif', asset_location_id: disabledId } });
+    const cBad = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'GA', name: 'Aset Uji T2B-2 nonaktif', asset_location_id: disabledId } });
     const pBad = await req(s1.base, 'PATCH', `/api/assets/${before.id}`, { token: admin, body: { asset_location_id: disabledId } });
     rec('6a: lokasi nonaktif ditolak untuk aset baru & perubahan', '400 + 400', `${cBad.status} + ${pBad.status}`,
       cBad.status === 400 && pBad.status === 400);
     // Kompatibilitas historis: kirim ulang nilai yang SUDAH melekat (kini nonaktif) → diperbolehkan
-    const cAct = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'PIBC', name: 'Aset Uji T2B-2 historis', asset_location_id: 'ALOC-PIBC-KANTOR-1' } });
+    const cAct = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'GA', name: 'Aset Uji T2B-2 historis', asset_location_id: 'ALOC-PIBC-KANTOR-1' } });
     const histId = cAct.json?.data?.id;
     await req(s1.base, 'PATCH', `/api/master/asset-locations/ALOC-PIBC-KANTOR-1`, { token: admin, body: { is_active: false } });
     const histKeep = await req(s1.base, 'PATCH', `/api/assets/${histId}`, { token: admin, body: { asset_location_id: 'ALOC-PIBC-KANTOR-1', notes: 'catatan historis' } });
@@ -183,7 +183,7 @@ async function main() {
       histKeep.status === 200 && histKeep.json?.data?.asset_location_id === 'ALOC-PIBC-KANTOR-1');
 
     // ================= 8. Backfill tidak menebak (teks bebas) =================
-    const cCust = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'PIBC', name: 'Aset Uji T2B-2 teks bebas', location: 'Lokasi Misterius 999' } });
+    const cCust = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'GA', name: 'Aset Uji T2B-2 teks bebas', location: 'Lokasi Misterius 999' } });
     const cust = cCust.json?.data;
     rec('8a: teks tanpa cocokan unik → relasi null (tidak ditebak)', '201 & asset_location_id=null',
       `${cCust.status} & ${cust?.asset_location_id} & location=${cust?.location}`,
@@ -197,7 +197,7 @@ async function main() {
       legacy.status === 200 && listAll.status === 200 && legacy.json?.data?.location === 'Lokasi Misterius 999');
 
     // ================= Move: reolusi deterministik =================
-    const cMove = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'PIBC', name: 'Aset Uji T2B-2 move', location: 'Pasar Induk Beras Cipinang - Kantor Pos 1' } });
+    const cMove = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'MSN', owner_division: 'GA', name: 'Aset Uji T2B-2 move', location: 'Pasar Induk Beras Cipinang - Kantor Pos 1' } });
     const mvMapped = cMove.json?.data?.asset_location_id;
     const mv1 = await req(s1.base, 'POST', `/api/assets/${cMove.json?.data?.id}/move`, { token: admin, body: { newLocation: 'Lokasi Manual Belum Di Master', reason: 'uji T2B-2' } });
     const mvAfter = mv1.json?.data;
