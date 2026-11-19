@@ -81,6 +81,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
   const defaultCategories = isSelfTicketsOnly
     ? ['ALL', ...Array.from(baseCategorySet)]
+    : isMEOperator
+    ? ['ALL', 'ME', ...Array.from(baseCategorySet).filter(c => c !== 'ME')]
     : isGA
     ? ['ALL', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'GA')]
     : isSC
