@@ -231,7 +231,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <LifeBuoy className="w-4 h-4 text-slate-400" />
                 <span>Tiket (Read-Only)</span>
               </div>
-            )}
+            ) : null}
             {canCreateAsset && (
               <button
                 id="btn-quick-asset"
