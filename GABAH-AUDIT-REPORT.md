@@ -411,8 +411,8 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 # 13. Follow-up — PostgreSQL runtime failure latch and atomic state synchronization (2026-11-19)
 
 **Branch:** `fix/persistence-failure-latch-snapshot-order`  
-**Base:** `main` at `bcced0011d0e5db0d89ace2623ad07c135febaaa`  
-**Status:** implementation added; exact-head CI and integration verification pending.
+**Base:** `main` at `b46b4bed23bb48b76975a108d22b5b4ea791f720`  
+**Status:** implementation and PostgreSQL fault-injection integration test added; exact-head CI pending.
 
 ## Verified implementation changes
 
@@ -425,7 +425,8 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 ## Remaining verification
 
 - CI must pass on the final branch SHA.
-- A live PostgreSQL fault-injection test must force a normalized-table write failure and verify rollback of `gabah_state`.
+- CI now injects a PostgreSQL trigger failure during normalized user synchronization and verifies both the normalized user row and the JSONB credential snapshot remain unchanged; it also verifies subsequent writes return HTTP 503 after the failure latch is set.
+- Manual legacy-database upgrade rehearsal, production backup/restore rehearsal, browser UAT, and deployment rehearsal remain release gates.
 - Verify startup fallback when PostgreSQL is unavailable before it ever becomes authoritative.
 - Verify runtime pool failure rejects all subsequent writes until process restart and recovery.
 - Browser UAT and legacy database upgrade rehearsal remain release gates.
