@@ -1,3 +1,13 @@
+## [2026-11-19] — Latch PostgreSQL runtime failures and make state synchronization atomic
+
+- Once PostgreSQL has become the authoritative runtime store, a pool or write failure now latches subsequent mutations closed; development no longer silently reports success by switching subsequent writes to the JSON fallback.
+- The JSON recovery snapshot is published only after the corresponding PostgreSQL commit, using the exact payload committed.
+- The `gabah_state` snapshot, normalized domain tables, and dynamic primary-role mirror now share one PostgreSQL transaction; a normalized sync failure rolls the state snapshot back as well.
+- Added `test:runtime-persistence-atomicity` and made it a required CI step.
+- This is an application-level persistence hardening change. Live PostgreSQL fault injection, browser UAT, legacy database upgrade rehearsal, and multi-instance asset numbering remain separate release gates.
+
+---
+
 ## [2026-11-16] — Green theme enforcement & asset numbering rule management
 
 - Extend the green enterprise palette across legacy Tailwind color utilities so administration, forms, cards, and neutral surfaces no longer retain the previous gray/teal appearance.
