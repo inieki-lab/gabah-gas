@@ -225,7 +225,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <LifeBuoy className="w-4 h-4 text-rose-600" />
                 Buat Tiket Kendala
               </button>
-            ) : (
+            ) : isAuditor ? (
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs font-semibold" title="Auditor berstatus Read-Only">
                 <LifeBuoy className="w-4 h-4 text-slate-400" />
                 <span>Tiket (Read-Only)</span>
