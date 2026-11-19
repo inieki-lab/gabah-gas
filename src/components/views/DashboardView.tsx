@@ -194,7 +194,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-green-100 text-emerald-800 border border-green-300 text-xs font-bold mb-2">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-green-100 text-green-800 border border-green-300 text-xs font-bold mb-2">
               <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
               Sistem Aktif: GABAH Food Station Enterprise
             </div>
@@ -211,7 +211,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 id="btn-quick-loan"
                 onClick={onOpenNewLoanModal}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white text-xs font-bold transition-all shadow-xs"
               >
                 <CalendarClock className="w-4 h-4" />
                 Pinjam Aset
@@ -293,7 +293,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="text-[11px] text-slate-500 font-medium mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
                   <span>Inventaris Tetap</span>
-                  <ArrowRight className="w-3 h-3 text-blue-600" />
+                  <ArrowRight className="w-3 h-3 text-green-600" />
                 </div>
               </div>
             </div>
@@ -495,7 +495,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <button
                   onClick={() => onNavigate('meeting_rooms')}
-                  className="text-xs text-green-700 hover:text-sky-800 font-bold flex items-center gap-1"
+                  className="text-xs text-green-700 hover:text-green-800 font-bold flex items-center gap-1"
                 >
                   Buka Ruang Rapat <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -510,7 +510,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </p>
                   <button
                     onClick={() => onNavigate('meeting_rooms')}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all shadow-xs"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-sky-700 text-white text-xs font-bold transition-all shadow-xs"
                   >
                     <Building2 className="w-4 h-4" />
                     Lihat Semua Jadwal Rapat
@@ -530,7 +530,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-sm text-slate-900">{res.title}</span>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white text-sky-800 border border-sky-300 shadow-2xs">
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white text-green-800 border border-sky-300 shadow-2xs">
                               {res.room_name}
                             </span>
                           </div>
@@ -551,8 +551,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                       <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0 gap-1.5">
                         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                          res.status === 'approved' ? 'bg-green-100 text-emerald-800 border border-green-300' :
-                          res.status === 'in_use' ? 'bg-green-100 text-green-800 border border-blue-300 animate-pulse' :
+                          res.status === 'approved' ? 'bg-green-100 text-green-800 border border-green-300' :
+                          res.status === 'in_use' ? 'bg-green-100 text-green-800 border border-green-300 animate-pulse' :
                           'bg-amber-100 text-amber-800 border border-amber-300'
                         }`}>
                           {res.status === 'approved' ? 'Disetujui GA' : res.status === 'in_use' ? 'Sedang Berlangsung' : 'Menunggu GA'}
@@ -582,7 +582,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <button
                   onClick={() => onNavigate('loans')}
-                  className="text-xs text-green-700 hover:text-emerald-800 font-bold flex items-center gap-1"
+                  className="text-xs text-green-700 hover:text-green-800 font-bold flex items-center gap-1"
                 >
                   Lihat Semua <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -597,7 +597,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </p>
                   <button
                     onClick={onOpenNewLoanModal}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-700 hover:bg-green-800 text-white text-xs font-bold transition-all shadow-xs"
                   >
                     <Plus className="w-4 h-4" />
                     Ajukan Peminjaman Sekarang
@@ -618,7 +618,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-sm text-slate-900">{loan.asset_name}</span>
                             {loan.corporate_asset_number && (
-                              <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-emerald-800 border border-green-300 font-bold">
+                              <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-green-800 border border-green-300 font-bold">
                                 {loan.corporate_asset_number}
                               </span>
                             )}
@@ -632,9 +632,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                       <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
                         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                          loan.status === 'approved' ? 'bg-green-100 text-emerald-800 border border-green-300' :
+                          loan.status === 'approved' ? 'bg-green-100 text-green-800 border border-green-300' :
                           loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                          loan.status === 'returned' ? 'bg-green-100 text-green-800 border border-blue-300' :
+                          loan.status === 'returned' ? 'bg-green-100 text-green-800 border border-green-300' :
                           'bg-slate-200 text-slate-700'
                         }`}>
                           {loan.status}
@@ -668,7 +668,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 )}
                 <button
                   onClick={() => onNavigate('tickets')}
-                  className="text-xs text-green-700 hover:text-emerald-800 font-bold"
+                  className="text-xs text-green-700 hover:text-green-800 font-bold"
                 >
                   Lihat Semua
                 </button>
@@ -734,7 +734,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               <button
                 onClick={() => onNavigate('loans')}
-                className="text-xs text-green-700 hover:text-emerald-800 font-bold flex items-center gap-1"
+                className="text-xs text-green-700 hover:text-green-800 font-bold flex items-center gap-1"
               >
                 Lihat Semua <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -755,7 +755,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-sm text-slate-900">{loan.asset_name}</span>
                           {loan.corporate_asset_number && (
-                            <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-emerald-800 border border-green-300 font-bold">
+                            <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-green-800 border border-green-300 font-bold">
                               {loan.corporate_asset_number}
                             </span>
                           )}
@@ -771,9 +771,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                        loan.status === 'approved' ? 'bg-green-100 text-emerald-800 border border-green-300' :
+                        loan.status === 'approved' ? 'bg-green-100 text-green-800 border border-green-300' :
                         loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                        loan.status === 'returned' ? 'bg-green-100 text-green-800 border border-blue-300' :
+                        loan.status === 'returned' ? 'bg-green-100 text-green-800 border border-green-300' :
                         'bg-slate-200 text-slate-700'
                       }`}>
                         {loan.status}
@@ -809,7 +809,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   )}
                   <button
                     onClick={() => onNavigate('tickets')}
-                    className="text-xs text-green-700 hover:text-emerald-800 font-bold"
+                    className="text-xs text-green-700 hover:text-green-800 font-bold"
                   >
                     Lihat Semua
                   </button>

@@ -254,7 +254,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border border-emerald-800/40">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold mb-2 border border-emerald-400/30">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-semibold mb-2 border border-green-400/30">
             <Building2 className="w-3.5 h-3.5" />
             <span>Fasilitas General Affairs (GA)</span>
           </div>
@@ -273,7 +273,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center gap-2"
               title="Kelola Master Tipe Rapat & Fasilitas IT/GA"
             >
-              <Settings className="w-4 h-4 text-emerald-300" />
+              <Settings className="w-4 h-4 text-green-300" />
               <span>Master Tipe & Fasilitas</span>
             </button>
           )}
@@ -284,7 +284,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                 setSelectedRoomForBooking(undefined);
                 setIsCreateModalOpen(true);
               }}
-              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/30 transition-all flex items-center gap-2"
+              className="px-4 py-2.5 bg-green-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/30 transition-all flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               <span>Pesan Ruangan</span>
@@ -297,9 +297,9 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
       <div className="bg-slate-900 text-white rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 border border-slate-800 text-xs shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-slate-400">Pengguna Login:</span>
+          <span className="text-green-400">Pengguna Login:</span>
           <strong className="text-white">{currentUser.name}</strong>
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-950 text-green-300 border border-emerald-700">
             {currentUser.role_label || currentUser.role}
           </span>
           {isSekdir && (
@@ -315,7 +315,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             </span>
           )}
           {currentUser.role === 'GA' && (
-            <span className="text-emerald-300 text-[11px] font-medium ml-1 flex items-center gap-1">
+            <span className="text-green-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Building2 className="w-3.5 h-3.5 text-emerald-400" />
               Akses GA Sarpras: Verifikasi ruangan, sarana IT/audio-visual, dan layanan pantry konsumsi.
             </span>
@@ -353,36 +353,36 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
+        <div className="bg-white rounded-xl p-4 border border-green-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Ruangan Aktif</span>
-            <Building2 className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-medium text-green-400">Ruangan Aktif</span>
+            <Building2 className="w-4 h-4 text-green-600" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{stats.activeRooms}</p>
-          <span className="text-[11px] text-slate-500">dari total {rooms.length} ruangan GA</span>
+          <p className="text-2xl font-bold text-green-900 mt-2">{stats.activeRooms}</p>
+          <span className="text-[11px] text-green-400">dari total {rooms.length} ruangan GA</span>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
+        <div className="bg-white rounded-xl p-4 border border-green-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Rapat Hari Ini</span>
-            <Calendar className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-medium text-green-400">Rapat Hari Ini</span>
+            <Calendar className="w-4 h-4 text-green-600" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{stats.todayCount}</p>
-          <span className="text-[11px] text-slate-500">agenda terjadwal</span>
+          <p className="text-2xl font-bold text-green-900 mt-2">{stats.todayCount}</p>
+          <span className="text-[11px] text-green-400">agenda terjadwal</span>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
+        <div className="bg-white rounded-xl p-4 border border-green-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Sedang Digunakan</span>
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+            <span className="text-xs font-medium text-green-400">Sedang Digunakan</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
           </div>
-          <p className="text-2xl font-bold text-emerald-700 mt-2">{stats.inUseCount}</p>
-          <span className="text-[11px] text-emerald-600 font-medium">ruangan in use</span>
+          <p className="text-2xl font-bold text-green-700 mt-2">{stats.inUseCount}</p>
+          <span className="text-[11px] text-green-600 font-medium">ruangan in use</span>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
+        <div className="bg-white rounded-xl p-4 border border-green-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Menunggu Approval GA</span>
+            <span className="text-xs font-medium text-green-400">Menunggu Approval GA</span>
             <Clock className="w-4 h-4 text-amber-600" />
           </div>
           <p className="text-2xl font-bold text-amber-600 mt-2">{stats.pendingCount}</p>
@@ -391,14 +391,14 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+      <div className="flex items-center justify-between border-b border-green-200 pb-2">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('calendar')}
             className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
               activeTab === 'calendar'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                : 'text-green-600 hover:bg-green-50 hover:text-green-900'
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
@@ -410,7 +410,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
               activeTab === 'rooms'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                : 'text-green-600 hover:bg-green-50 hover:text-green-900'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -422,7 +422,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all relative ${
               activeTab === 'reservations' && categoryFilter !== 'documentation'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                : 'text-green-600 hover:bg-green-50 hover:text-green-900'
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
@@ -440,14 +440,14 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               }}
               className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
                 activeTab === 'reservations' && categoryFilter === 'documentation'
-                  ? 'bg-sky-600 text-white shadow-xs ring-2 ring-sky-400'
-                  : 'text-sky-700 bg-sky-50 hover:bg-sky-100 hover:text-sky-900 border border-sky-200'
+                  ? 'bg-green-600 text-white shadow-xs ring-2 ring-sky-400'
+                  : 'text-sky-700 bg-green-50 hover:bg-sky-100 hover:text-sky-900 border border-green-200'
               }`}
             >
               <Camera className="w-3.5 h-3.5 text-sky-500" />
               <span>Request Foto &amp; Liputan ({stats.documentationCount})</span>
               {stats.documentationCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-sky-600 text-white text-[10px] font-black">
+                <span className="px-1.5 py-0.2 rounded-full bg-green-600 text-white text-[10px] font-black">
                   {stats.documentationCount}
                 </span>
               )}
@@ -463,11 +463,11 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
         <div className="space-y-4">
           
           {/* Date Selector Controls */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="bg-white rounded-xl p-4 border border-green-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleShiftDate(-1)}
-                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600"
+                className="p-1.5 rounded-lg border border-green-200 hover:bg-green-50 text-green-600"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -475,27 +475,27 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                 type="date"
                 value={selectedDate}
                 onChange={e => setSelectedDate(e.target.value)}
-                className="px-3 py-1.5 text-xs font-semibold border border-slate-300 rounded-lg bg-white"
+                className="px-3 py-1.5 text-xs font-semibold border border-green-300 rounded-lg bg-white"
               />
               <button
                 onClick={() => handleShiftDate(1)}
-                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600"
+                className="p-1.5 rounded-lg border border-green-200 hover:bg-green-50 text-green-600"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-                className="px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100"
+                className="px-3 py-1.5 text-xs font-semibold text-green-800 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100"
               >
                 Hari Ini
               </button>
 
-              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
-                <span className="text-xs font-semibold text-slate-600">Ruangan:</span>
+              <div className="flex items-center gap-1.5 pl-2 border-l border-green-200">
+                <span className="text-xs font-semibold text-green-600">Ruangan:</span>
                 <select
                   value={roomFilter}
                   onChange={e => setRoomFilter(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs font-semibold border border-sky-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800"
+                  className="px-2.5 py-1.5 text-xs font-semibold border border-sky-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-green-800"
                 >
                   <option value="all">Semua Ruangan</option>
                   {rooms.map(room => (
@@ -508,31 +508,31 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             </div>
 
             <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1.5 text-slate-600">
-                <span className="w-3 h-3 rounded-xs bg-emerald-600 inline-block" />
+              <span className="flex items-center gap-1.5 text-green-600">
+                <span className="w-3 h-3 rounded-xs bg-green-600 inline-block" />
                 Disetujui
               </span>
-              <span className="flex items-center gap-1.5 text-slate-600">
-                <span className="w-3 h-3 rounded-xs bg-blue-600 inline-block" />
+              <span className="flex items-center gap-1.5 text-green-600">
+                <span className="w-3 h-3 rounded-xs bg-green-600 inline-block" />
                 Sedang Digunakan
               </span>
-              <span className="flex items-center gap-1.5 text-slate-600">
+              <span className="flex items-center gap-1.5 text-green-600">
                 <span className="w-3 h-3 rounded-xs bg-amber-500 inline-block" />
                 Menunggu GA
               </span>
-              <span className="flex items-center gap-1.5 text-slate-600">
-                <span className="w-3 h-3 rounded-xs bg-slate-200 border border-slate-300 inline-block" />
+              <span className="flex items-center gap-1.5 text-green-600">
+                <span className="w-3 h-3 rounded-xs border-green-200 border border-green-300 inline-block" />
                 Tersedia
               </span>
             </div>
           </div>
 
           {/* Timeline View per Room */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-x-auto">
+          <div className="bg-white rounded-xl border border-green-200 shadow-xs overflow-x-auto">
             <div className="min-w-[850px]">
               
               {/* Timeline Header (Hours: 08:00 - 18:00) */}
-              <div className="grid grid-cols-12 border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600 py-2.5 px-4">
+              <div className="grid grid-cols-12 border-b border-green-200 bg-green-50 text-[11px] font-bold text-green-600 py-2.5 px-4">
                 <div className="col-span-3">Ruang Rapat</div>
                 <div className="col-span-9 flex justify-between pr-2 font-mono">
                   {HOURS.map(h => (
@@ -553,19 +553,19 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                   );
 
                   return (
-                    <div key={room.id} className="grid grid-cols-12 items-center px-4 py-3 hover:bg-slate-50/50 transition-colors">
+                    <div key={room.id} className="grid grid-cols-12 items-center px-4 py-3 hover:bg-green-50/50 transition-colors">
                       {/* Room Info */}
                       <div className="col-span-3 pr-3">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-slate-900">{room.name}</h4>
+                          <h4 className="text-xs font-bold text-green-900">{room.name}</h4>
                           {room.status === 'maintenance' && (
                             <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-sm font-semibold">
                               Perawatan
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-500">{room.building} - {room.floor}</p>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5">
+                        <p className="text-[11px] text-green-400">{room.building} - {room.floor}</p>
+                        <div className="flex items-center gap-1 text-[10px] text-green-400 mt-0.5">
                           <Users className="w-3 h-3" />
                           <span>{room.capacity} Orang</span>
                           <span className="mx-1">•</span>
@@ -574,12 +574,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                       </div>
 
                       {/* Visual Timeline Bar */}
-                      <div className="col-span-9 relative h-12 bg-slate-100/80 rounded-lg border border-slate-200 overflow-hidden">
+                      <div className="col-span-9 relative h-12 bg-green-50/80 rounded-lg border border-green-200 overflow-hidden">
                         
                         {/* Hour Grid Lines */}
                         <div className="absolute inset-0 flex justify-between pointer-events-none px-4">
                           {HOURS.map((h, i) => (
-                            <div key={i} className="border-r border-dashed border-slate-200 h-full" />
+                            <div key={i} className="border-r border-dashed border-green-200 h-full" />
                           ))}
                         </div>
 
@@ -589,8 +589,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                           const rightPct = parseHourToPercent(r.end_time);
                           const widthPct = Math.max(5, rightPct - leftPct);
 
-                          let bgClass = 'bg-emerald-600 border-emerald-700 text-white';
-                          if (r.status === 'in_use') bgClass = 'bg-blue-600 border-blue-700 text-white animate-pulse';
+                          let bgClass = 'bg-green-600 border-emerald-700 text-white';
+                          if (r.status === 'in_use') bgClass = 'bg-green-600 border-blue-700 text-white animate-pulse';
                           if (r.status === 'pending_approval') bgClass = 'bg-amber-500 border-amber-600 text-white';
                           if (r.status === 'completed') bgClass = 'bg-slate-500 border-slate-600 text-white opacity-80';
 
@@ -619,7 +619,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                               setSelectedRoomForBooking(room.id);
                               setIsCreateModalOpen(true);
                             }}
-                            className="absolute inset-0 flex items-center justify-center text-[11px] text-slate-400 hover:text-emerald-700 hover:bg-emerald-50/40 cursor-pointer transition-colors"
+                            className="absolute inset-0 flex items-center justify-center text-[11px] text-green-400 hover:text-green-700 hover:bg-green-50/40 cursor-pointer transition-colors"
                           >
                             + Klik untuk pesan ruangan ini
                           </div>
@@ -645,7 +645,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             return (
               <div 
                 key={room.id}
-                className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                className="bg-white rounded-2xl border border-green-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
               >
                 <div>
                   {/* Photo & Status Badge */}
@@ -666,12 +666,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                           Pemeliharaan
                         </span>
                       ) : room.status === 'in_use' ? (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-600 text-white shadow-sm flex items-center gap-1">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-600 text-white shadow-sm flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                           Sedang Digunakan
                         </span>
                       ) : (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white shadow-sm">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-600 text-white shadow-sm">
                           Tersedia
                         </span>
                       )}
@@ -681,13 +681,13 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                   {/* Room Details */}
                   <div className="p-5 space-y-3">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">{room.name}</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">{room.building} • {room.floor}</p>
+                      <h3 className="text-sm font-bold text-green-900">{room.name}</h3>
+                      <p className="text-xs text-green-400 mt-0.5">{room.building} • {room.floor}</p>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs text-slate-600">
-                      <span className="flex items-center gap-1 font-semibold text-slate-800">
-                        <Users className="w-3.5 h-3.5 text-slate-500" />
+                    <div className="flex items-center gap-3 text-xs text-green-600">
+                      <span className="flex items-center gap-1 font-semibold text-green-800">
+                        <Users className="w-3.5 h-3.5 text-green-400" />
                         Maks {room.capacity} Orang
                       </span>
                       <span>•</span>
@@ -696,12 +696,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                     {/* Facilities Chips */}
                     <div>
-                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      <p className="text-[11px] font-bold text-green-400 uppercase tracking-wider mb-1.5">
                         Fasilitas Tersedia:
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {room.facilities.map((fac, idx) => (
-                          <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                          <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-green-50 text-green-700 border border-green-200">
                             {fac}
                           </span>
                         ))}
@@ -711,14 +711,14 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                 </div>
 
                 {/* Footer Actions */}
-                <div className="p-5 pt-0 flex items-center justify-between gap-2 border-t border-slate-100 mt-4">
+                <div className="p-5 pt-0 flex items-center justify-between gap-2 border-t border-green-100 mt-4">
                   {isGAOrAdmin && onUpdateRoomStatus && (
                     <button
                       onClick={() => onUpdateRoomStatus(room.id, isMnt ? 'available' : 'maintenance')}
                       className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${
                         isMnt 
-                          ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                          ? 'border-green-300 bg-green-50 text-green-800 hover:bg-green-100'
+                          : 'border-green-200 bg-white text-green-600 hover:bg-green-50'
                       }`}
                     >
                       {isMnt ? 'Aktifkan Ruangan' : 'Set Pemeliharaan'}
@@ -732,7 +732,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                         setSelectedRoomForBooking(room.id);
                         setIsCreateModalOpen(true);
                       }}
-                      className="ml-auto px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                      className="ml-auto px-4 py-2 bg-green-800 hover:bg-green-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Pesan Ruangan Ini</span>
@@ -758,7 +758,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 categoryFilter === 'all'
                   ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  : 'bg-white text-green-600 hover:bg-green-50 border border-green-200'
               }`}
             >
               Semua ({reservations.length})
@@ -767,8 +767,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               onClick={() => setCategoryFilter('it_facilities')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
                 categoryFilter === 'it_facilities'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-white text-sky-800 hover:bg-sky-50 border border-sky-200'
+                  ? 'bg-green-600 text-white shadow-xs'
+                  : 'bg-white text-green-800 hover:bg-green-50 border border-green-200'
               }`}
             >
               <Laptop className="w-3.5 h-3.5 text-sky-500" />
@@ -778,8 +778,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               onClick={() => setCategoryFilter('ga_facilities')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
                 categoryFilter === 'ga_facilities'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-200'
+                  ? 'bg-green-600 text-white shadow-xs'
+                  : 'bg-white text-green-800 hover:bg-green-50 border border-green-200'
               }`}
             >
               <Building2 className="w-3.5 h-3.5 text-emerald-500" />
@@ -801,7 +801,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
                 categoryFilter === 'documentation'
                   ? 'bg-sky-700 text-white shadow-xs'
-                  : 'bg-white text-sky-800 hover:bg-sky-50 border border-sky-200'
+                  : 'bg-white text-green-800 hover:bg-green-50 border border-green-200'
               }`}
             >
               <Camera className="w-3.5 h-3.5" />
@@ -821,27 +821,27 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           </div>
 
           {/* Filters & Search */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="bg-white rounded-xl p-4 border border-green-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1 max-w-md">
               <div className="relative w-full">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Search className="w-4 h-4 text-green-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
                   placeholder="Cari agenda, pemohon, ruangan, atau no. booking..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                 />
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Meeting Room:</span>
+                <span className="text-xs font-bold text-green-700 whitespace-nowrap">Meeting Room:</span>
                 <select
                   value={roomFilter}
                   onChange={e => setRoomFilter(e.target.value)}
-                  className="px-3 py-2 text-xs border border-sky-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-semibold text-slate-800 shadow-2xs"
+                  className="px-3 py-2 text-xs border border-sky-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-semibold text-green-800 shadow-2xs"
                 >
                   <option value="all">Select Meeting Room (Semua)</option>
                   {rooms.map(room => (
@@ -853,11 +853,11 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                <Filter className="w-3.5 h-3.5 text-green-400" />
                 <select
                   value={statusFilter}
                   onChange={e => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  className="px-3 py-2 text-xs border border-green-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                 >
                   <option value="all">Semua Status</option>
                   <option value="pending_approval">Menunggu Approval GA</option>
@@ -872,11 +872,11 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-white rounded-xl border border-green-200 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-bold">
+                  <tr className="border-b border-green-200 bg-green-50/80 text-green-600 font-bold">
                     <th className="py-3 px-4">No. Reservasi & Prioritas</th>
                     <th className="py-3 px-4">Ruangan</th>
                     <th className="py-3 px-4">Agenda & Penyelenggara</th>
@@ -886,10 +886,10 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                     <th className="py-3 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-800">
+                <tbody className="divide-y divide-slate-100 text-green-800">
                   {filteredReservations.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-10 text-slate-400 text-xs">
+                      <td colSpan={7} className="text-center py-10 text-green-400 text-xs">
                         Tidak ada data reservasi ruang rapat yang cocok.
                       </td>
                     </tr>
@@ -899,22 +899,22 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                       const isLoading = actionLoadingId === r.id;
 
                       return (
-                        <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                        <tr key={r.id} className="hover:bg-green-50/60 transition-colors">
                           
                           {/* No RSV & Prioritas */}
                           <td className="py-3.5 px-4 font-mono">
-                            <p className="font-semibold text-emerald-800">{r.reservation_number}</p>
+                            <p className="font-semibold text-green-800">{r.reservation_number}</p>
                             <div className="mt-1">
                               {r.priority === 'high' ? (
                                 <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-100 text-purple-800 border border-purple-300 inline-flex items-center gap-1">
                                   <Sparkles className="w-2.5 h-2.5" /> High / Direksi
                                 </span>
                               ) : r.priority === 'low' ? (
-                                <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-green-50 text-green-600 border border-green-200">
                                   Low / Internal
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-green-100 text-blue-800 border border-green-200">
                                   Medium / Reguler
                                 </span>
                               )}
@@ -923,8 +923,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                           {/* Ruangan */}
                           <td className="py-3.5 px-4">
-                            <p className="font-bold text-slate-900">{r.room_name}</p>
-                            <p className="text-[11px] text-slate-500">{r.room_location}</p>
+                            <p className="font-bold text-green-900">{r.room_name}</p>
+                            <p className="text-[11px] text-green-400">{r.room_location}</p>
                             {r.was_interrupted && (
                               <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-semibold" title={`Dialihkan dari ${r.original_room_name || 'Setra Wangi'}: ${r.interruption_reason || 'Prioritas Rapat Direksi'}`}>
                                 <span>⚠️ Dialihkan dari {r.original_room_name || 'Setra Wangi'}</span>
@@ -934,19 +934,19 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                           {/* Agenda & Organizer */}
                           <td className="py-3.5 px-4 max-w-xs">
-                            <p className="font-bold text-slate-900 truncate" title={r.title}>
+                            <p className="font-bold text-green-900 truncate" title={r.title}>
                               {r.title}
                             </p>
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 text-[10px] font-medium capitalize">
+                              <span className="px-1.5 py-0.2 rounded bg-green-50 text-green-700 text-[10px] font-medium capitalize">
                                 {r.meeting_type}
                               </span>
-                              <span className="text-[11px] text-slate-500">
-                                Oleh: <strong className="text-slate-700">{r.organizer_name}</strong> ({r.organizer_department})
+                              <span className="text-[11px] text-green-400">
+                                Oleh: <strong className="text-green-700">{r.organizer_name}</strong> ({r.organizer_department})
                               </span>
                             </div>
                             {r.attendees_list && (
-                              <p className="text-[10px] text-slate-500 truncate mt-1" title={r.attendees_list}>
+                              <p className="text-[10px] text-green-400 truncate mt-1" title={r.attendees_list}>
                                 👥 Peserta: {r.attendees_list}
                               </p>
                             )}
@@ -954,8 +954,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                           {/* Jadwal */}
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            <p className="font-semibold text-slate-800">{r.date}</p>
-                            <p className="text-[11px] font-mono text-emerald-700">
+                            <p className="font-semibold text-green-800">{r.date}</p>
+                            <p className="text-[11px] font-mono text-green-700">
                               {r.start_time} - {r.end_time} WIB
                             </p>
                           </td>
@@ -963,7 +963,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                           {/* Layanan & Fasilitas */}
                           <td className="py-3.5 px-4">
                             <div className="space-y-1">
-                              <div className="text-[11px] font-semibold text-slate-800">
+                              <div className="text-[11px] font-semibold text-green-800">
                                 👥 {r.attendees_count} Peserta
                               </div>
                               {r.consumption_requested ? (
@@ -972,10 +972,10 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                                   <span>{r.consumption_type || 'Pantry'} ({r.consumption_pax || r.attendees_count} pax)</span>
                                 </div>
                               ) : (
-                                <span className="text-[10px] text-slate-400 block">Tanpa Konsumsi</span>
+                                <span className="text-[10px] text-green-400 block">Tanpa Konsumsi</span>
                               )}
                               {r.documentation_requested && (
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-50 text-sky-900 text-[10px] font-semibold border border-sky-200">
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-green-50 text-sky-900 text-[10px] font-semibold border border-green-200">
                                   <Camera className="w-3 h-3 text-sky-600" />
                                   <span>{r.documentation_type || 'Liputan Humas'}</span>
                                 </div>
@@ -986,19 +986,19 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                                 return (
                                   <div className="pt-0.5 space-y-1">
                                     {itItems.length > 0 && (
-                                      <div className="flex items-start gap-1 text-[10px] text-sky-800 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">
+                                      <div className="flex items-start gap-1 text-[10px] text-green-800 bg-green-50 px-1.5 py-0.5 rounded border border-green-200">
                                         <Laptop className="w-3 h-3 text-sky-600 shrink-0 mt-0.5" />
                                         <span className="font-medium">IT: {itItems.join(', ')}</span>
                                       </div>
                                     )}
                                     {gaItems.length > 0 && (
-                                      <div className="flex items-start gap-1 text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                        <Building2 className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
+                                      <div className="flex items-start gap-1 text-[10px] text-green-800 bg-green-50 px-1.5 py-0.5 rounded border border-green-200">
+                                        <Building2 className="w-3 h-3 text-green-600 shrink-0 mt-0.5" />
                                         <span className="font-medium">GA: {gaItems.join(', ')}</span>
                                       </div>
                                     )}
                                     {itItems.length === 0 && gaItems.length === 0 && (
-                                      <p className="text-[10px] text-slate-500">
+                                      <p className="text-[10px] text-green-400">
                                         🛠️ {r.facilities_requested.join(', ')}
                                       </p>
                                     )}
@@ -1011,13 +1011,13 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                           {/* Status */}
                           <td className="py-3.5 px-4">
                             {r.status === 'approved' && (
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200">
                                 Disetujui GA
                               </span>
                             )}
                             {r.status === 'in_use' && (
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1 w-fit">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping" />
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-100 text-blue-800 border border-green-200 flex items-center gap-1 w-fit">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-600 animate-ping" />
                                 Sedang Dipakai
                               </span>
                             )}
@@ -1027,7 +1027,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                               </span>
                             )}
                             {r.status === 'completed' && (
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-600 border border-green-200">
                                 Selesai
                               </span>
                             )}
@@ -1037,7 +1037,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                               </span>
                             )}
                             {r.status === 'cancelled' && (
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-400 border border-green-200">
                                 Dibatalkan
                               </span>
                             )}
@@ -1050,7 +1050,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             <button
                               onClick={() => setSelectedSlipReservation(r)}
                               title="Cetak Bukti Booking"
-                              className="p-1.5 text-slate-600 hover:text-emerald-800 hover:bg-slate-100 rounded-lg transition-colors inline-flex items-center gap-1"
+                              className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors inline-flex items-center gap-1"
                             >
                               <Printer className="w-3.5 h-3.5" />
                               <span className="text-[11px] font-semibold">Slip Bukti</span>
@@ -1062,7 +1062,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                                 <button
                                   disabled={isLoading}
                                   onClick={() => handleApprove(r.id)}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
+                                  className="px-2.5 py-1 bg-green-600 hover:bg-green-800 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
                                 >
                                   Setujui
                                 </button>
@@ -1081,7 +1081,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                               <button
                                 disabled={isLoading}
                                 onClick={() => handleCheckin(r.id)}
-                                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs inline-flex items-center gap-1"
+                                className="px-2.5 py-1 bg-green-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs inline-flex items-center gap-1"
                               >
                                 <LogIn className="w-3 h-3" />
                                 <span>Check-In</span>
@@ -1104,7 +1104,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                               <button
                                 disabled={isLoading}
                                 onClick={() => setCancelConfirmId(r.id)}
-                                className="px-2 py-1 text-slate-500 hover:text-rose-600 text-[11px] font-semibold transition-colors"
+                                className="px-2 py-1 text-green-400 hover:text-rose-600 text-[11px] font-semibold transition-colors"
                               >
                                 Batalkan
                               </button>
@@ -1140,15 +1140,15 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
       {/* Cancel Confirmation Modal */}
       {cancelConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-sm space-y-3 border border-slate-200">
-            <h4 className="text-sm font-bold text-slate-900">Batalkan Reservasi Ruangan</h4>
-            <p className="text-xs text-slate-600">
+          <div className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-sm space-y-3 border border-green-200">
+            <h4 className="text-sm font-bold text-green-900">Batalkan Reservasi Ruangan</h4>
+            <p className="text-xs text-green-600">
               Apakah Anda yakin ingin membatalkan reservasi ini? Tindakan ini tidak dapat dibatalkan.
             </p>
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setCancelConfirmId(null)}
-                className="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-xl font-semibold"
+                className="px-3.5 py-1.5 text-xs text-green-600 hover:bg-green-50 rounded-xl font-semibold"
               >
                 Kembali
               </button>
@@ -1167,13 +1167,13 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
       {rejectReasonPromptId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="bg-white rounded-xl shadow-xl p-5 w-full max-w-md space-y-3">
-            <h4 className="text-sm font-bold text-slate-900">Alasan Penolakan Reservasi Ruang Rapat</h4>
+            <h4 className="text-sm font-bold text-green-900">Alasan Penolakan Reservasi Ruang Rapat</h4>
             <textarea
               rows={3}
               value={rejectionReason}
               onChange={e => setRejectionReason(e.target.value)}
               placeholder="Contoh: Bentrok dengan agenda prioritas Rapat Direksi & Komisaris..."
-              className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-600"
+              className="w-full text-xs p-2.5 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-600"
             />
             <div className="flex justify-end gap-2 pt-2">
               <button
@@ -1181,7 +1181,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                   setRejectReasonPromptId(null);
                   setRejectionReason('');
                 }}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+                className="px-3 py-1.5 text-xs text-green-600 hover:bg-green-50 rounded-lg"
               >
                 Batal
               </button>

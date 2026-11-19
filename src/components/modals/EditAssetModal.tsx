@@ -212,18 +212,18 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-              isITAsset ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+              isITAsset ? 'bg-green-100 text-blue-700' : 'bg-amber-100 text-amber-700'
             }`}>
               {isITAsset ? <Laptop className="w-5 h-5" /> : <Car className="w-5 h-5" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-black text-slate-900">Kelola &amp; Edit Aset</h3>
-                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-green-100 text-emerald-800 border border-emerald-200">
                   {asset.asset_number}
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  asset.owner_division === 'IT' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  asset.owner_division === 'IT' ? 'bg-green-50 text-blue-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
                 }`}>
                   Divisi: {asset.owner_division}
                 </span>
@@ -266,7 +266,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
           <form id="edit-asset-form" onSubmit={handleSubmit} className="space-y-6">
             
             {/* Section 1: Assignment to User (PIC Penugasan) */}
-            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50/70 to-indigo-50/70 border border-blue-200 space-y-3">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50/70 to-indigo-50/70 border border-green-200 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-blue-700" />
@@ -278,7 +278,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenBastModal(asset, targetAssignedUser)}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white hover:bg-blue-100/60 text-blue-800 border border-blue-300 text-xs font-bold transition-all shadow-2xs"
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white hover:bg-green-100/60 text-green-800 border border-blue-300 text-xs font-bold transition-all shadow-2xs"
                   >
                     <FileText className="w-3.5 h-3.5 text-blue-600" />
                     <span>Cetak BAST Penugasan</span>
@@ -340,8 +340,8 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   <span className="text-[11px] text-slate-600">Status Aset Setelah Disimpan:</span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                     selectedUserId 
-                      ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                      : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      ? 'bg-green-100 text-green-800 border border-green-200' 
+                      : 'bg-green-100 text-emerald-800 border border-emerald-200'
                   }`}>
                     {selectedUserId ? 'Sedang Digunakan (Assigned / In Use)' : 'Tersedia di Gudang (Available / Idle)'}
                   </span>
@@ -375,7 +375,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   </label>
                   <span className="text-xs font-bold text-slate-800">
                     {formData.is_loanable ? (
-                      <span className="text-emerald-700">Dapat Dipinjam (Masuk Pool Reservasi)</span>
+                      <span className="text-green-700">Dapat Dipinjam (Masuk Pool Reservasi)</span>
                     ) : (
                       <span className="text-slate-500">Inventaris Tetap (Non-loanable)</span>
                     )}
@@ -412,7 +412,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
             {/* Section 3: Informasi Utama Aset */}
             <div className="space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-emerald-700" />
+                <Tag className="w-3.5 h-3.5 text-green-700" />
                 Spesifikasi &amp; Identitas Fisik
               </h4>
 
@@ -476,7 +476,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     <button
                       type="button"
                       onClick={handleAutoGenerateFst}
-                      className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      className="text-[10px] text-blue-600 hover:text-green-800 flex items-center gap-1"
                     >
                       <Sparkles className="w-3 h-3" /> Auto Sync
                     </button>
@@ -581,7 +581,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         {/* Modal Footer */}
         <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <ShieldCheck className="w-4 h-4 text-green-600" />
             <span>Hak Akses: <strong>{currentUser?.role || 'Pengguna'}</strong></span>
           </div>
 

@@ -314,7 +314,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-slate-500">Role Sistem:</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
+              <span className="px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold border border-green-200">
                 {currentUser.role}
               </span>
               {canOverride && (
@@ -371,12 +371,12 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                 </div>
 
                 {/* Requested Reservation */}
-                <div className="bg-white border border-emerald-300 rounded-lg p-3 text-xs shadow-xs space-y-1.5">
+                <div className="bg-white border border-green-300 rounded-lg p-3 text-xs shadow-xs space-y-1.5">
                   <div className="flex items-center justify-between pb-1 border-b border-emerald-100">
-                    <span className="font-bold text-emerald-800 text-[11px] uppercase tracking-wide">
+                    <span className="font-bold text-green-800 text-[11px] uppercase tracking-wide">
                       2. Pengajuan Jadwal Anda
                     </span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800">
                       Baru
                     </span>
                   </div>
@@ -390,7 +390,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                   </div>
                   <div>
                     <span className="text-slate-500">Waktu:</span>{' '}
-                    <span className="font-semibold text-emerald-800">{date} ({startTime} - {endTime} WIB)</span>
+                    <span className="font-semibold text-green-800">{date} ({startTime} - {endTime} WIB)</span>
                   </div>
                   <div>
                     <span className="text-slate-500">Prioritas:</span>{' '}
@@ -478,8 +478,8 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                 </p>
               </div>
               {selectedRoom && (
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5 shadow-2xs">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-[11px] font-bold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5 shadow-2xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                   Ruangan Terpilih: <strong>{selectedRoom.name}</strong>
                 </span>
               )}
@@ -506,7 +506,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                       isMnt
                         ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
                         : isSelected
-                          ? 'bg-emerald-50/90 border-emerald-600 shadow-md ring-2 ring-emerald-500/20'
+                          ? 'bg-green-50/90 border-green-600 shadow-md ring-2 ring-emerald-500/20'
                           : 'bg-white border-slate-200 hover:border-emerald-400 hover:bg-slate-50/70 shadow-2xs'
                     }`}
                   >
@@ -514,7 +514,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-black text-slate-900 group-hover:text-emerald-700 transition-colors">
+                          <span className="text-xs font-black text-slate-900 group-hover:text-green-700 transition-colors">
                             {room.name}
                           </span>
                           {room.name.toLowerCase().includes('setrawangi') && (
@@ -531,7 +531,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
 
                       <div className="shrink-0 pt-0.5">
                         {isSelected ? (
-                          <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                          <div className="w-5 h-5 rounded-full bg-green-600 text-white flex items-center justify-center shadow-xs">
                             <Check className="w-3.5 h-3.5 stroke-[3]" />
                           </div>
                         ) : (
@@ -544,7 +544,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                     <div className="flex items-center justify-between gap-2 text-[11px] pt-1">
                       <span className={`inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-md border ${
                         isSelected
-                          ? 'bg-white border-emerald-200 text-emerald-800 shadow-2xs'
+                          ? 'bg-white border-green-200 text-green-800 shadow-2xs'
                           : 'bg-slate-100 border-slate-200 text-slate-700'
                       }`}>
                         <Users className="w-3 h-3 text-slate-500" />
@@ -556,7 +556,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                           Perawatan
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-bold text-green-700 bg-green-100/70 px-2 py-0.5 rounded">
                           Tersedia
                         </span>
                       )}
@@ -568,9 +568,9 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
 
             {/* Selected Room Full Details Strip */}
             {selectedRoom ? (
-              <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="p-3.5 rounded-xl border border-green-200 bg-green-50/50 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-green-100 text-green-700 flex items-center justify-center font-bold shrink-0">
                     <Building2 className="w-4 h-4" />
                   </div>
                   <div>
@@ -612,7 +612,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                 placeholder="Contoh: Rapat Koordinasi Distribusi Beras SPHP & Stabilisasi Pasokan"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
               />
             </div>
 
@@ -624,7 +624,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
               <select
                 value={meetingType}
                 onChange={e => setMeetingType(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600 font-medium"
               >
                 {meetingTypes.map(t => (
                   <option key={t.id} value={t.code}>
@@ -670,7 +670,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                   required
                   value={date}
                   onChange={e => { setDate(e.target.value); setServerConflictData(null); }}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                 />
               </div>
 
@@ -682,7 +682,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                 <select
                   value={startTime}
                   onChange={e => { setStartTime(e.target.value); setServerConflictData(null); }}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                 >
                   {TIME_SLOTS.map(t => (
                     <option key={t} value={t}>{t} WIB</option>
@@ -698,7 +698,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                 <select
                   value={endTime}
                   onChange={e => { setEndTime(e.target.value); setServerConflictData(null); }}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                 >
                   {TIME_SLOTS.map(t => (
                     <option key={t} value={t}>{t} WIB</option>
@@ -720,7 +720,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                   className={`w-full px-3 py-2 text-xs border rounded-lg bg-white focus:outline-none focus:ring-2 ${
                     isCapacityExceeded 
                       ? 'border-rose-400 focus:ring-rose-500/20 text-rose-700' 
-                      : 'border-slate-300 focus:ring-emerald-500/20 focus:border-emerald-600'
+                      : 'border-slate-300 focus:ring-emerald-500/20 focus:border-green-600'
                   }`}
                 />
               </div>
@@ -728,8 +728,8 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
 
             {/* Availability status line */}
             {!activeConflict && !isCapacityExceeded && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-xs text-emerald-900 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 text-xs text-emerald-900 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
                 <span>
                   <strong>Ruangan Tersedia!</strong> Tidak ada bentrok jadwal pada {date} pukul {startTime} - {endTime} WIB di {selectedRoom?.name}.
                 </span>
@@ -748,7 +748,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
               value={attendeesList}
               onChange={e => setAttendeesList(e.target.value)}
               placeholder="Contoh: 1. Direktur Utama, 2. Direktur Operasional, 3. Kadiv GA, 4. Kadiv Komersial, 5. Perwakilan Bulog (5 orang)"
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
             />
           </div>
 
@@ -779,20 +779,20 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                     onClick={() => toggleFacility(item.name)}
                     className={`p-2.5 rounded-lg border text-left flex items-center justify-between gap-2 transition-all ${
                       checked 
-                        ? 'border-emerald-600 bg-emerald-50/70 text-emerald-950 font-medium' 
+                        ? 'border-green-600 bg-green-50/70 text-green-950 font-medium' 
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <div className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] shrink-0 ${
-                        checked ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+                        checked ? 'bg-green-600 border-green-600 text-white' : 'border-slate-300 bg-white'
                       }`}>
                         {checked && '✓'}
                       </div>
                       <span className="truncate">{item.name}</span>
                     </div>
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 uppercase ${
-                      isIT ? 'bg-sky-100 text-sky-700' : 'bg-emerald-100 text-emerald-700'
+                      isIT ? 'bg-sky-100 text-sky-700' : 'bg-green-100 text-green-700'
                     }`}>
                       {item.category}
                     </span>
@@ -817,7 +817,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
               return (
                 <div className="mt-2.5 space-y-1.5">
                   {selectedIT.length > 0 && (
-                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-950 text-xs animate-in fade-in">
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-green-50 border border-green-200 text-sky-950 text-xs animate-in fade-in">
                       <Laptop className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
                       <div>
                         <span className="font-bold text-sky-900">Notifikasi Otomatis ke Tim IT Support: </span>
@@ -827,12 +827,12 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                     </div>
                   )}
                   {selectedGA.length > 0 && (
-                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs animate-in fade-in">
-                      <Building2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-green-50 border border-green-200 text-green-950 text-xs animate-in fade-in">
+                      <Building2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                       <div>
                         <span className="font-bold text-emerald-900">Notifikasi Otomatis ke Tim GA (Sarpras): </span>
-                        <span className="text-emerald-800">{selectedGA.map(f => f.name).join(', ')}</span>
-                        <p className="text-[10px] text-emerald-600 mt-0.5">Penyiapan fisik tata ruang, mikrofon, dan sarana umum akan otomatis diteruskan ke petugas GA.</p>
+                        <span className="text-green-800">{selectedGA.map(f => f.name).join(', ')}</span>
+                        <p className="text-[10px] text-green-600 mt-0.5">Penyiapan fisik tata ruang, mikrofon, dan sarana umum akan otomatis diteruskan ke petugas GA.</p>
                       </div>
                     </div>
                   )}
@@ -870,7 +870,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                   onChange={e => setConsumptionRequested(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
               </label>
             </div>
 
@@ -941,7 +941,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
           <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-800 flex items-center justify-center border border-sky-200">
+                <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-800 flex items-center justify-center border border-green-200">
                   <Camera className="w-4 h-4" />
                 </div>
                 <div>
@@ -1009,7 +1009,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Tambahkan catatan susunan acara, nomor kontak PIC di ruangan, atau hal khusus lainnya..."
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
             />
           </div>
 
@@ -1036,7 +1036,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
                 className={`px-5 py-2 text-xs font-bold text-white rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
                   enableOverride 
                     ? 'bg-amber-600 hover:bg-amber-700' 
-                    : 'bg-emerald-700 hover:bg-emerald-800'
+                    : 'bg-green-700 hover:bg-emerald-800'
                 }`}
               >
                 {isSubmitting ? (

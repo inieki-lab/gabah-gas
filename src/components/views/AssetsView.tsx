@@ -129,11 +129,11 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
       {/* Header & Concept Explanation Banner */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-            <Package className="w-5 h-5 text-emerald-600" />
+          <h2 className="text-xl font-black text-green-900 flex items-center gap-2">
+            <Package className="w-5 h-5 text-green-600" />
             Manajemen Aset Korporat &amp; Inventaris
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-green-400 mt-1">
             Pengelolaan aset IT, General Affairs, armada operasional, dan lisensi software enterprise.
           </p>
         </div>
@@ -141,38 +141,38 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={onOpenScannerModal}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-emerald-700 border border-emerald-300 text-xs font-bold transition-all shadow-xs"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-green-50 text-green-700 border border-green-300 text-xs font-bold transition-all shadow-xs"
             title="Buka Kamera / Barcode Gun Scanner untuk Stock Opname Cepat"
           >
-            <ScanLine className="w-4 h-4 text-emerald-600" />
+            <ScanLine className="w-4 h-4 text-green-600" />
             <span>Scan Barcode / QR</span>
           </button>
 
           <button
             onClick={() => setIsBatchQrOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-green-50 text-green-700 border border-green-300 text-xs font-semibold transition-all shadow-xs"
             title="Cetak Lembar Stiker Barcode & QR Code A4 untuk Labeling Aset"
           >
-            <Printer className="w-4 h-4 text-emerald-600" />
+            <Printer className="w-4 h-4 text-green-600" />
             <span>Cetak Stiker QR (Sheet)</span>
           </button>
 
           <button
             onClick={() => exportAssetsToCsv(filteredAssets)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-green-50 text-green-700 border border-green-300 text-xs font-semibold transition-all shadow-xs"
             title="Download CSV Master Aset untuk Excel"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-green-600" />
             <span>Export CSV</span>
           </button>
 
           {canImportAssets && onOpenImportModal && (
             <button
               onClick={onOpenImportModal}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-green-50 text-green-700 border border-green-300 text-xs font-semibold transition-all shadow-xs"
               title="Import massal aset dari berkas CSV/Excel"
             >
-              <FileUp className="w-4 h-4 text-emerald-600" />
+              <FileUp className="w-4 h-4 text-green-600" />
               <span>Import CSV</span>
             </button>
           )}
@@ -181,7 +181,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
             <button
               id="btn-add-asset"
               onClick={handleOpenCreate}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-800 hover:bg-green-800 text-white text-xs font-bold transition-all shadow-xs"
             >
               <Plus className="w-4 h-4" />
               Tambah Aset Baru
@@ -191,24 +191,24 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
       </div>
 
       {/* Search and Filters */}
-      <div className="rounded-xl bg-white border border-slate-200 p-4 space-y-3 shadow-xs">
+      <div className="rounded-xl bg-white border border-green-200 p-4 space-y-3 shadow-xs">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           
           {/* Search Bar */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-green-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Cari nomor aset (IT-HLT-2026-0001), Corporate (FST-), nama aset, serial number..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
+              className="w-full pl-10 pr-4 py-2 bg-green-50 border border-green-200 rounded-xl text-xs text-green-900 placeholder-slate-400 focus:outline-none focus:border-green-600 focus:bg-white transition-colors"
             />
           </div>
 
           {/* Owner-domain tabs are derived from persisted owner values in the actor's visible asset set. */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto">
-            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Owner aset:</span>
+          <div className="flex items-center gap-1 bg-green-50 p-1 rounded-xl border border-green-200 overflow-x-auto">
+            <span className="text-[11px] font-bold text-green-400 px-2 shrink-0">Owner aset:</span>
             {[
               { id: 'ALL', label: 'Semua Owner' },
               ...ownerDomainOptions.map(code => ({
@@ -220,7 +220,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                 key={d.id}
                 onClick={() => setSelectedDivision(d.id)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                  selectedDivision === d.id ? 'bg-emerald-700 text-white font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  selectedDivision === d.id ? 'bg-green-800 text-white font-bold shadow-xs' : 'text-green-600 hover:text-green-900'
                 }`}
               >
                 {d.label}
@@ -231,8 +231,8 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
         </div>
 
         {/* Jenis Aset Tetap Row */}
-        <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 text-xs overflow-x-auto">
-          <span className="text-slate-500 font-bold shrink-0 flex items-center gap-1 text-[11px]">
+        <div className="flex items-center gap-1.5 pt-2 border-t border-green-100 text-xs overflow-x-auto">
+          <span className="text-green-400 font-bold shrink-0 flex items-center gap-1 text-[11px]">
             <Tag className="w-3 h-3" /> Jenis Aset:
           </span>
           {[
@@ -253,7 +253,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
               className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors whitespace-nowrap ${
                 selectedCategory === cat.id
                   ? 'bg-slate-900 text-white'
-                  : 'bg-slate-50 hover:bg-slate-200 text-slate-600 border border-slate-200'
+                  : 'bg-green-50 hover:border-green-200 text-green-600 border border-green-200'
               }`}
             >
               {cat.label}
@@ -262,8 +262,8 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
         </div>
 
         {/* Status Filter Row */}
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-xs overflow-x-auto">
-          <span className="text-slate-500 font-medium shrink-0 flex items-center gap-1">
+        <div className="flex items-center gap-2 pt-2 border-t border-green-100 text-xs overflow-x-auto">
+          <span className="text-green-400 font-medium shrink-0 flex items-center gap-1">
             <Filter className="w-3 h-3" /> Status:
           </span>
           {[
@@ -278,13 +278,13 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
               onClick={() => setSelectedStatus(item.id)}
               className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${
                 selectedStatus === item.id 
-                  ? 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-300' 
-                  : 'text-slate-600 hover:text-slate-900 bg-slate-50 border border-transparent'
+                  ? 'bg-green-100 text-green-800 font-bold border border-green-300' 
+                  : 'text-green-600 hover:text-green-900 bg-green-50 border border-transparent'
               }`}
             >
               <span>{item.label}</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
-                selectedStatus === item.id ? 'bg-emerald-200/70 text-emerald-900' : 'bg-slate-200 text-slate-600'
+                selectedStatus === item.id ? 'bg-emerald-200/70 text-emerald-900' : 'border-green-200 text-green-600'
               }`}>
                 {item.count}
               </span>
@@ -294,10 +294,10 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
       </div>
 
       {/* Assets Table */}
-      <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs">
+      <div className="rounded-2xl bg-white border border-green-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
+            <thead className="bg-green-50 border-b border-green-200 text-green-400 uppercase tracking-wider font-bold text-[10px]">
               <tr>
                 <th className="px-4 py-3.5">Nomor Aset &amp; Kode Label</th>
                 <th className="px-4 py-3.5">Nama &amp; Spesifikasi</th>
@@ -317,22 +317,22 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                 return (
                   <tr 
                     key={asset.id} 
-                    className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                    className="hover:bg-green-50/80 transition-colors group cursor-pointer"
                     onClick={() => onSelectAsset(asset)}
                   >
                     
                     {/* Dual Asset Numbering */}
                     <td className="px-4 py-3.5 align-top">
                       <div className="flex flex-col gap-1">
-                        <span className="font-mono font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded w-fit text-[11px]">
+                        <span className="font-mono font-bold text-green-800 bg-green-100 border border-green-200 px-2 py-0.5 rounded w-fit text-[11px]">
                           {asset.asset_number}
                         </span>
                         {asset.corporate_asset_number ? (
-                          <span className="font-mono text-slate-700 text-[10px] bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded w-fit">
+                          <span className="font-mono text-green-700 text-[10px] bg-green-50 border border-green-200 px-1.5 py-0.5 rounded w-fit">
                             Corp: {asset.corporate_asset_number}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400 italic">
+                          <span className="text-[10px] text-green-400 italic">
                             Non-Corporate (Internal)
                           </span>
                         )}
@@ -341,13 +341,13 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
 
                     {/* Name & Specifications */}
                     <td className="px-4 py-3.5 align-top">
-                      <div className="font-bold text-slate-900 text-xs group-hover:text-emerald-700 transition-colors">
+                      <div className="font-bold text-green-900 text-xs group-hover:text-green-700 transition-colors">
                         {asset.name}
                       </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
+                      <div className="text-[11px] text-green-400 mt-0.5">
                         {asset.brand} • {asset.model}
                       </div>
-                      <div className="text-[10px] text-slate-400 line-clamp-1 mt-0.5 font-mono">
+                      <div className="text-[10px] text-green-400 line-clamp-1 mt-0.5 font-mono">
                         S/N: {asset.serial_number}
                       </div>
                     </td>
@@ -355,7 +355,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                     {/* Category Type */}
                     <td className="px-4 py-3.5 align-top">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                        isIT ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                        isIT ? 'bg-green-100 text-green-800 border border-green-200' :
                         isGA ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                         'bg-purple-100 text-purple-800 border border-purple-200'
                       }`}>
@@ -368,14 +368,14 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
 
                     {/* Location / User */}
                     <td className="px-4 py-3.5 align-top">
-                      <div className="text-slate-800 font-medium text-[11px]">{asset.location}</div>
+                      <div className="text-green-800 font-medium text-[11px]">{asset.location}</div>
                       {asset.assigned_to ? (
                         <div className="mt-1">
-                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
-                            <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-green-800 border border-green-200 text-[10px] font-bold">
+                            <UserCheck className="w-3 h-3 text-green-600 shrink-0" />
                             <span className="truncate max-w-[150px]">PIC: {asset.assigned_to.name}</span>
                           </div>
-                          <div className="text-[9px] text-slate-500 mt-0.5 truncate max-w-[170px]">
+                          <div className="text-[9px] text-green-400 mt-0.5 truncate max-w-[170px]">
                             {asset.assigned_to.department}
                           </div>
                         </div>
@@ -405,8 +405,8 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                     {/* Status */}
                     <td className="px-4 py-3.5 align-top">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        asset.status === 'available' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                        asset.status === 'in_use' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                        asset.status === 'available' ? 'bg-green-100 text-green-800 border border-green-300' :
+                        asset.status === 'in_use' ? 'bg-green-100 text-green-800 border border-blue-300' :
                         asset.status === 'loaned' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                         'bg-rose-100 text-rose-800 border border-rose-300'
                       }`}>
@@ -421,11 +421,11 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                     {/* Can be borrowed */}
                     <td className="px-4 py-3.5 align-top">
                       {asset.is_loanable ? (
-                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <span className="text-[10px] font-bold text-green-800 bg-emerald-50 px-2 py-0.5 rounded border border-green-200">
                           Bisa Dipinjam
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[10px] text-green-400">
                           Aset Tetap
                         </span>
                       )}
@@ -437,7 +437,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         {onEditAsset && GabahService.canEditAsset(currentUser, asset) && (
                           <button
                             onClick={() => onEditAsset(asset)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                            className="p-1.5 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 hover:text-blue-700 transition-colors"
                             title="Edit Aset / Penugasan Pegawai"
                           >
                             <Pencil className="w-4 h-4" />
@@ -445,7 +445,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         )}
                         <button
                           onClick={() => onOpenQrModal(asset)}
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-emerald-700 transition-colors"
+                          className="p-1.5 rounded-lg bg-green-50 hover:border-green-200 text-green-600 hover:text-green-700 transition-colors"
                           title="Cetak Label QR Barcode"
                         >
                           <QrCode className="w-4 h-4" />
@@ -453,7 +453,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         {onReportAsset && currentUser?.role !== 'Auditor' && (
                           <button
                             onClick={() => onReportAsset(asset)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
+                            className="p-1.5 rounded-lg bg-green-50 hover:bg-rose-100 text-green-600 hover:text-rose-700 transition-colors"
                             title="Laporkan Kendala Aset Ini"
                           >
                             <LifeBuoy className="w-4 h-4" />
@@ -461,7 +461,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         )}
                         <button
                           onClick={() => onSelectAsset(asset)}
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition-colors"
+                          className="p-1.5 rounded-lg bg-green-50 hover:border-green-200 text-green-600 hover:text-green-900 transition-colors"
                           title="Lihat Detail Aset"
                         >
                           <Eye className="w-4 h-4" />
@@ -475,7 +475,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
 
               {filteredAssets.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-green-400">
                     <Package className="w-8 h-8 mx-auto text-slate-300 mb-2" />
                     Tidak ada aset yang sesuai dengan kriteria filter atau pencarian.
                   </td>
@@ -486,9 +486,9 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
         </div>
 
         {/* Footer Summary */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center justify-between">
+        <div className="p-3 bg-green-50 border-t border-green-200 text-xs text-green-400 flex items-center justify-between">
           <span>Menampilkan <strong>{filteredAssets.length}</strong> dari <strong>{assets.length}</strong> total aset terdaftar</span>
-          <span className="text-[11px] text-emerald-700 font-bold">GABAH Dual-Numbering Engine: Active</span>
+          <span className="text-[11px] text-green-700 font-bold">GABAH Dual-Numbering Engine: Active</span>
         </div>
       </div>
 

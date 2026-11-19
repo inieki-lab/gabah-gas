@@ -194,7 +194,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 value={borrowerPhone}
                 onChange={(e) => setBorrowerPhone(e.target.value)}
                 placeholder="0812-xxxx-xxxx"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono mt-0.5 focus:outline-none focus:border-emerald-600"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono mt-0.5 focus:outline-none focus:border-green-600"
               />
             </div>
           </div>
@@ -218,7 +218,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                   type="button"
                   onClick={() => setFilterDivision('ALL')}
                   className={`px-2 py-1 rounded text-[11px] font-semibold transition-colors ${
-                    filterDivision === 'ALL' ? 'bg-white text-emerald-800 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    filterDivision === 'ALL' ? 'bg-white text-green-800 font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Semua ({availablePool.length})
@@ -257,7 +257,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                     onClick={() => handleToggleAsset(asset.id)}
                     className={`p-2.5 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 ${
                       isSelected 
-                        ? 'bg-emerald-50/80 border border-emerald-300' 
+                        ? 'bg-emerald-50/80 border border-green-300' 
                         : 'bg-white hover:bg-slate-100 border border-transparent'
                     }`}
                   >
@@ -265,14 +265,14 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                       {/* Checkbox Icon */}
                       <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-all ${
                         isSelected 
-                          ? 'bg-emerald-600 border-emerald-600 text-white' 
+                          ? 'bg-emerald-600 border-green-600 text-white' 
                           : 'border-slate-300 bg-white'
                       }`}>
                         {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                       </div>
 
                       {/* Icon */}
-                      <div className={`p-1.5 rounded-lg shrink-0 ${isIT ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                      <div className={`p-1.5 rounded-lg shrink-0 ${isIT ? 'bg-green-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
                         {isIT ? <Laptop className="w-4 h-4" /> : <Car className="w-4 h-4" />}
                       </div>
 
@@ -303,7 +303,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                             <AlertTriangle className="w-3 h-3" /> Bentrok
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-green-800 border border-green-200">
                             <CheckCircle2 className="w-3 h-3" /> Tersedia
                           </span>
                         )}
@@ -348,7 +348,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-green-600"
               />
             </div>
 
@@ -359,7 +359,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-green-600"
               />
             </div>
           </div>
@@ -383,7 +383,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
               </p>
             </div>
           ) : (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-emerald-50 border border-green-200 text-xs text-emerald-900 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
                 <strong>Jadwal Bebas Bentrok!</strong> {selectedAssetIds.length > 0 ? `Semua ${selectedAssetIds.length} barang yang dipilih` : 'Aset'} siap dipinjam pada rentang waktu tersebut.
@@ -400,7 +400,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
               placeholder="Contoh: Kunjungan dinas luar kota, presentasi laporan beras BUMD di Balai Kota, monitoring distributor Karawang..."
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600"
+              className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-green-600"
             />
           </div>
 
@@ -419,7 +419,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
               className={`px-5 py-2 rounded-xl font-bold transition-all ${
                 hasAnyConflict || selectedAssetIds.length === 0
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                  : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs'
+                  : 'bg-emerald-700 hover:bg-green-800 text-white shadow-xs'
               }`}
             >
               {selectedAssetIds.length > 1

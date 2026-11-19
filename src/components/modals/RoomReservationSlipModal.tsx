@@ -35,9 +35,9 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
-        return <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full border border-emerald-300">DISETUJUI (APPROVED)</span>;
+        return <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full border border-emerald-300">DISETUJUI (APPROVED)</span>;
       case 'in_use':
-        return <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full border border-blue-300">SEDANG BERLANGSUNG</span>;
+        return <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full border border-green-300">SEDANG BERLANGSUNG</span>;
       case 'completed':
         return <span className="px-3 py-1 bg-slate-100 text-slate-800 text-xs font-bold rounded-full border border-slate-300">SELESAI (COMPLETED)</span>;
       case 'pending_approval':
@@ -64,7 +64,7 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-green-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
             >
               <Printer className="w-4 h-4" />
               <span>Cetak / PDF</span>
@@ -105,7 +105,7 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
 
               <div className="text-right">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">NO. RESERVASI</p>
-                <p className="text-sm font-black font-mono text-emerald-800">{reservation.reservation_number}</p>
+                <p className="text-sm font-black font-mono text-green-800">{reservation.reservation_number}</p>
                 <p className="text-[10px] text-slate-500">Tgl Buat: {new Date(reservation.created_at).toLocaleDateString('id-ID')}</p>
               </div>
             </div>
@@ -136,7 +136,7 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
                     ? 'bg-purple-100 text-purple-800 border border-purple-200'
                     : reservation.priority === 'low'
                       ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                      : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      : 'bg-green-100 text-green-800 border border-green-200'
                 }`}>
                   Prioritas: {reservation.priority || 'medium'}
                 </span>
@@ -158,7 +158,7 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
                 <Clock className="w-3 h-3 text-slate-400" />
                 Waktu Pelaksanaan
               </p>
-              <p className="text-xs font-bold text-emerald-800 mt-0.5 font-mono">
+              <p className="text-xs font-bold text-green-800 mt-0.5 font-mono">
                 {reservation.start_time} - {reservation.end_time} WIB
               </p>
             </div>
@@ -213,7 +213,7 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
 
               {reservation.documentation_requested && (
                 <div className="border border-sky-200 bg-sky-50/50 rounded-xl p-3.5">
-                  <p className="text-[10px] uppercase font-bold text-sky-900 flex items-center gap-1.5">
+                  <p className="text-[10px] uppercase font-bold text-green-900 flex items-center gap-1.5">
                     <span>📸</span>
                     Layanan Dokumentasi & Humas
                   </p>
@@ -250,13 +250,13 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
                 <p className="text-[10px] uppercase font-bold text-slate-500">Fasilitas GA &amp; IT yang Disiapkan</p>
                 {itItems.length > 0 && (
                   <div>
-                    <span className="text-[11px] font-bold text-sky-900 flex items-center gap-1 mb-1">
+                    <span className="text-[11px] font-bold text-green-900 flex items-center gap-1 mb-1">
                       <Laptop className="w-3.5 h-3.5 text-sky-600" />
                       Dukungan Tim IT Support:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {itItems.map((f, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-sky-50 text-sky-900 text-[11px] border border-sky-200 font-medium">
+                        <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-sky-50 text-green-900 text-[11px] border border-sky-200 font-medium">
                           <Check className="w-3 h-3 text-sky-600" />
                           {f}
                         </span>
@@ -267,13 +267,13 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
                 {gaItems.length > 0 && (
                   <div>
                     <span className="text-[11px] font-bold text-emerald-900 flex items-center gap-1 mb-1">
-                      <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <Building2 className="w-3.5 h-3.5 text-green-600" />
                       Sarana Tim General Affairs (GA):
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {gaItems.map((f, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-900 text-[11px] border border-emerald-200 font-medium">
-                          <Check className="w-3 h-3 text-emerald-600" />
+                        <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 text-emerald-900 text-[11px] border border-emerald-200 font-medium">
+                          <Check className="w-3 h-3 text-green-600" />
                           {f}
                         </span>
                       ))}
@@ -284,7 +284,7 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
                   <div className="flex flex-wrap gap-1.5">
                     {reservation.facilities_requested.map((f, i) => (
                       <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-[11px] border border-slate-200">
-                        <Check className="w-3 h-3 text-emerald-600" />
+                        <Check className="w-3 h-3 text-green-600" />
                         {f}
                       </span>
                     ))}
@@ -322,7 +322,7 @@ export const RoomReservationSlipModal: React.FC<RoomReservationSlipModalProps> =
               <p className="text-slate-500 text-[11px]">General Affairs (GA) Approval,</p>
               <div className="h-16 flex items-center justify-center">
                 {reservation.approver_name ? (
-                  <div className="border border-emerald-500 rounded px-2 py-1 bg-emerald-50 text-emerald-800 text-[10px] font-bold">
+                  <div className="border border-emerald-500 rounded px-2 py-1 bg-green-50 text-green-800 text-[10px] font-bold">
                     VERIFIED & APPROVED
                   </div>
                 ) : (

@@ -138,8 +138,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-              isIT ? 'bg-blue-100 text-blue-700' :
-              isSC ? 'bg-emerald-100 text-emerald-700' :
+              isIT ? 'bg-blue-100 text-green-700' :
+              isSC ? 'bg-green-100 text-green-700' :
               isPIBC ? 'bg-purple-100 text-purple-700' :
               'bg-amber-100 text-amber-700'
             }`}>
@@ -152,8 +152,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-base text-slate-900">{asset.name}</h3>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                  isIT ? 'bg-blue-50 text-blue-800 border-blue-200' :
-                  isSC ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                  isIT ? 'bg-blue-50 text-blue-800 border-green-200' :
+                  isSC ? 'bg-green-50 text-green-800 border-green-200' :
                   isPIBC ? 'bg-purple-50 text-purple-800 border-purple-200' :
                   'bg-amber-50 text-amber-800 border-amber-200'
                 }`}>
@@ -177,7 +177,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           
           {/* Corporate Rule Callout Banner */}
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
+            <div className="p-1.5 rounded-lg bg-green-100 text-green-700 shrink-0">
               <Info className="w-4 h-4" />
             </div>
             <div className="text-[11px] text-slate-600">
@@ -207,14 +207,14 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       isCurrent
                         ? 'bg-emerald-600 text-white ring-4 ring-emerald-100 font-black scale-105'
                         : isPassed
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        ? 'bg-green-100 text-green-800 border border-green-300'
                         : 'bg-white text-slate-400 border border-slate-200'
                     }`}>
                       {isPassed ? <Check className="w-3.5 h-3.5" /> : stepItem.step}
                     </div>
                     <div>
                       <div className={`text-[10px] font-bold truncate ${
-                        isCurrent ? 'text-emerald-800' : isPassed ? 'text-slate-700' : 'text-slate-400'
+                        isCurrent ? 'text-green-800' : isPassed ? 'text-slate-700' : 'text-slate-400'
                       }`}>
                         {stepItem.label}
                       </div>
@@ -280,7 +280,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 <div>
                   <div className="flex items-center justify-between">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1">
-                      <Tag className="w-3.5 h-3.5 text-blue-600" /> Asset Number (Official)
+                      <Tag className="w-3.5 h-3.5 text-green-600" /> Asset Number (Official)
                     </div>
                     <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 bg-slate-200/80 px-1.5 py-0.5 rounded">
                       <Lock className="w-2.5 h-2.5 text-slate-500" /> Readonly
@@ -300,23 +300,23 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       className="p-2 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-lg border border-slate-300 transition-colors flex items-center justify-center"
                       title="Copy Nomor Aset"
                     >
-                      {copiedAssetNumber ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      {copiedAssetNumber ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
                   <div className="text-[10px] text-slate-500 mt-1">
-                    Format resmi: <code className="font-bold text-slate-700">&#123;DIVISI&#125;-&#123;KODE&#125;-&#123;TAHUN&#125;-&#123;URUT&#125;</code> (Divisi Pemilik: <strong className="text-emerald-700">{asset.owner_division}</strong>)
+                    Format resmi: <code className="font-bold text-slate-700">&#123;DIVISI&#125;-&#123;KODE&#125;-&#123;TAHUN&#125;-&#123;URUT&#125;</code> (Divisi Pemilik: <strong className="text-green-700">{asset.owner_division}</strong>)
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1">
-                      <Package className="w-3.5 h-3.5 text-blue-600" /> Corporate Asset Number (Accurate)
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-green-700 flex items-center gap-1">
+                      <Package className="w-3.5 h-3.5 text-green-600" /> Corporate Asset Number (Accurate)
                     </div>
                     {canEdit && !isEditingCorpNumber && (
                       <button
                         onClick={() => setIsEditingCorpNumber(true)}
-                        className="text-[10px] font-bold text-blue-700 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded border border-blue-200"
+                        className="text-[10px] font-bold text-green-700 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded border border-green-200"
                       >
                         <Edit2 className="w-3 h-3" /> Edit/Sync
                       </button>
@@ -383,11 +383,11 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               {/* Asset Specs & Properties */}
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
                   Spesifikasi &amp; Identitas Fisik
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600">
-                  <div><strong>Serial Number:</strong> <span className="font-mono text-emerald-700 font-bold">{asset.serial_number}</span></div>
+                  <div><strong>Serial Number:</strong> <span className="font-mono text-green-700 font-bold">{asset.serial_number}</span></div>
                   <div><strong>Kondisi:</strong> <span className="capitalize">{asset.condition}</span></div>
                   <div><strong>Status Saat Ini:</strong> <span className="capitalize font-bold text-slate-900">{asset.status}</span></div>
                   <div><strong>Lokasi Penempatan:</strong> {asset.location}
@@ -405,7 +405,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               {asset.assigned_to ? (
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-lg bg-green-100 text-green-700 flex items-center justify-center font-bold">
                       <User className="w-4 h-4" />
                     </div>
                     <div>
@@ -421,7 +421,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         onClick={() => onOpenBastModal(asset)}
                         className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
                       >
-                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        <FileText className="w-3.5 h-3.5 text-green-600" />
                         <span>Cetak BAST</span>
                       </button>
                     )}
@@ -469,7 +469,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
             <div className="space-y-4">
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                  <DollarSign className="w-3.5 h-3.5 text-green-600" />
                   Finansial &amp; Garansi
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600">
@@ -479,7 +479,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                   <div>
                     <strong>Peminjaman:</strong>{' '}
                     {asset.is_loanable ? (
-                      <span className="text-emerald-700 font-bold">Dapat dipinjam (Aset Idle / Reservasi)</span>
+                      <span className="text-green-700 font-bold">Dapat dipinjam (Aset Idle / Reservasi)</span>
                     ) : (
                       <span className="text-slate-500">Aset Tetap (Non-loanable)</span>
                     )}
@@ -491,7 +491,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-                    <Calculator className="w-4 h-4 text-emerald-600" />
+                    <Calculator className="w-4 h-4 text-green-600" />
                     Kalkulasi Penyusutan &amp; Nilai Buku (PSAK 16 - Garis Lurus)
                   </h4>
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
@@ -502,7 +502,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
                   <div className="p-2.5 rounded-lg bg-white border border-slate-200">
                     <div className="text-slate-500 text-[10px]">Nilai Buku Bersih</div>
-                    <div className="text-sm font-extrabold text-emerald-700 mt-0.5">
+                    <div className="text-sm font-extrabold text-green-700 mt-0.5">
                       {formatRupiah(depreciation.netBookValue)}
                     </div>
                   </div>
@@ -539,7 +539,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     <div 
                       className={`h-2 rounded-full transition-all ${
                         depreciation.depreciationPercentage > 80 ? 'bg-rose-500' :
-                        depreciation.depreciationPercentage > 50 ? 'bg-amber-500' : 'bg-emerald-500'
+                        depreciation.depreciationPercentage > 50 ? 'bg-amber-500' : 'bg-green-500'
                       }`}
                       style={{ width: `${depreciation.depreciationPercentage}%` }}
                     />
@@ -563,7 +563,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <div className="font-semibold text-slate-800">Inspeksi Rutin &amp; Pembersihan Internal</div>
                       <div className="text-[10px] text-slate-500">Teknisi: Tim Internal IT • Status: Baik</div>
                     </div>
-                    <span className="text-[10px] text-emerald-700 font-mono font-bold">15 Jul 2026</span>
+                    <span className="text-[10px] text-green-700 font-mono font-bold">15 Jul 2026</span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
                     <div>
@@ -597,7 +597,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               title: 'Aset didaftarkan ke sistem',
               subtitle: `Nomor kanonikal ${asset.asset_number} • Divisi pemilik ${asset.owner_division}`,
               meta: `Perolehan: ${formatDate(asset.purchase_date)}${asset.purchase_price ? ` • Nilai: ${formatRupiah(asset.purchase_price)}` : ''}`,
-              tone: 'bg-emerald-100 text-emerald-700',
+              tone: 'bg-green-100 text-green-700',
               icon: Sparkles,
             });
 
@@ -696,7 +696,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 onClick={() => onOpenQrModal(asset)}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors"
               >
-                <QrCode className="w-4 h-4 text-emerald-600" />
+                <QrCode className="w-4 h-4 text-green-600" />
                 Cetak Label QR
               </button>
 
@@ -722,7 +722,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     onClose();
                     onEditThisAsset(asset);
                   }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold transition-colors"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-green-700 border border-green-200 font-bold transition-colors"
                   title="Edit Aset / Tugaskan Pengguna"
                 >
                   <Edit2 className="w-4 h-4" />
@@ -751,7 +751,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     onClose();
                     onLoanThisAsset(asset);
                   }}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold transition-all shadow-xs"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-green-800 text-white font-bold transition-all shadow-xs"
                 >
                   <CalendarClock className="w-4 h-4" />
                   Reservasi Peminjaman

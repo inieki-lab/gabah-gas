@@ -121,7 +121,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const prioritySlaGroups = [
     { label: 'URGENT', description: 'Prioritas tertinggi', stats: getPrioritySlaStats(['urgent']), textColor: 'text-rose-700' },
     { label: 'HIGH', description: 'Prioritas tinggi', stats: getPrioritySlaStats(['high']), textColor: 'text-amber-700' },
-    { label: 'MEDIUM & LOW', description: 'Prioritas sedang dan rendah', stats: getPrioritySlaStats(['medium', 'low']), textColor: 'text-blue-700' },
+    { label: 'MEDIUM & LOW', description: 'Prioritas sedang dan rendah', stats: getPrioritySlaStats(['medium', 'low']), textColor: 'text-green-700' },
   ];
 
   const totalAssetValue = filteredAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
@@ -185,11 +185,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       {/* Header & Export Toolbar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-emerald-600" />
+          <h2 className="text-xl font-black text-green-900 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-green-600" />
             Laporan Eksekutif, SLA & KPI Portal GABAH
           </h2>
-          <p className="text-xs text-slate-600 mt-1">
+          <p className="text-xs text-green-600 mt-1">
             Ringkasan analitik kepatuhan SLA Helpdesk, utilisasi peminjaman barang, dan valuasi aset korporat.
           </p>
         </div>
@@ -198,7 +198,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <button
             onClick={() => exportDivisionSummaryToCsv(filteredAssets)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-green-50 text-green-700 border border-green-300 text-xs font-semibold transition-all shadow-xs"
             title="Rekapitulasi jumlah aset, nilai perolehan, akumulasi depresiasi, dan nilai buku per divisi"
           >
             <PieChart className="w-3.5 h-3.5 text-indigo-600" />
@@ -207,7 +207,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
           <button
             onClick={() => exportAssetsToCsv(filteredAssets)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-800 hover:bg-green-800 text-white text-xs font-semibold transition-all shadow-xs"
             title="Download CSV Master Aset untuk Microsoft Excel — hanya data sesuai filter divisi/departemen aktif"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -216,16 +216,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
           <button
             onClick={() => exportLoansToCsv(filteredLoans)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-green-50 text-green-700 border border-green-300 text-xs font-semibold transition-all shadow-xs"
             title="Download CSV Rekapitulasi Peminjaman Barang — mengikuti filter aktif"
           >
-            <Download className="w-3.5 h-3.5 text-blue-600" />
+            <Download className="w-3.5 h-3.5 text-green-600" />
             <span>Rekap Pinjam</span>
           </button>
 
           <button
             onClick={() => exportTicketsToCsv(filteredTickets)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-green-50 text-green-700 border border-green-300 text-xs font-semibold transition-all shadow-xs"
             title="Download CSV Rekapitulasi Tiket Helpdesk & SLA — mengikuti filter aktif"
           >
             <Download className="w-3.5 h-3.5 text-purple-600" />
@@ -234,7 +234,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
           <button
             onClick={() => exportMaintenanceToCsv(filteredMaintenances)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-green-50 text-green-700 border border-green-300 text-xs font-semibold transition-all shadow-xs"
             title="Download CSV Rekapitulasi Pemeliharaan & Kalibrasi — mengikuti filter aktif"
           >
             <Download className="w-3.5 h-3.5 text-amber-600" />
@@ -243,7 +243,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 hover:border-green-200 text-green-700 border border-green-300 text-xs font-semibold transition-all shadow-xs"
             title="Simpan laporan jako PDF via dialog cetak browser"
           >
             <Printer className="w-3.5 h-3.5" />
@@ -253,16 +253,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       </div>
 
       {/* Filter Laporan per Bagian/Departemen/Divisi */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-4 flex flex-col md:flex-row md:items-center gap-3 shadow-xs print:hidden">
+      <div className="rounded-2xl bg-white border border-green-200 p-4 flex flex-col md:flex-row md:items-center gap-3 shadow-xs print:hidden">
         <div className="flex items-center gap-2 shrink-0">
-          <PieChart className="w-4 h-4 text-emerald-600" />
-          <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">Filter Laporan</span>
+          <PieChart className="w-4 h-4 text-green-600" />
+          <span className="text-xs font-extrabold text-green-800 uppercase tracking-wide">Filter Laporan</span>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <select
             value={divisionFilter}
             onChange={e => setDivisionFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-semibold focus:outline-none focus:border-emerald-500"
+            className="px-3 py-1.5 rounded-xl border border-green-200 bg-white font-semibold focus:outline-none focus:border-emerald-500"
             title="Filter semua laporan berdasarkan divisi pemilik aset / kategori tiket"
           >
             <option value="all">Semua Divisi ({divisionOptions.length})</option>
@@ -273,7 +273,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           <select
             value={departmentFilter}
             onChange={e => setDepartmentFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-semibold focus:outline-none focus:border-emerald-500"
+            className="px-3 py-1.5 rounded-xl border border-green-200 bg-white font-semibold focus:outline-none focus:border-emerald-500"
             title="Filter berdasarkan departemen penanggung jawab / peminjam / pelapor"
           >
             <option value="all">Semua Departemen ({departmentOptions.length})</option>
@@ -284,13 +284,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
           {isFilterActive && (
             <button
               onClick={() => { setDivisionFilter('all'); setDepartmentFilter('all'); }}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 font-bold hover:bg-slate-200 transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-green-50 border border-green-200 text-green-600 font-bold hover:border-green-200 transition-colors"
             >
               Reset Filter
             </button>
           )}
         </div>
-        <div className="md:ml-auto flex items-center gap-3 text-[11px] text-slate-500 font-medium">
+        <div className="md:ml-auto flex items-center gap-3 text-[11px] text-green-400 font-medium">
           <span>{filteredAssets.length} aset</span>
           <span>·</span>
           <span>{filteredLoans.length} peminjaman</span>
@@ -303,97 +303,97 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
 
       {/* Top Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-bold uppercase text-slate-500">Tingkat Kepatuhan SLA</div>
-          <div className="text-3xl font-black text-emerald-700 mt-2">{slaOnTimePct === null ? '—' : `${slaOnTimePct}%`}</div>
-          <div className="text-xs text-slate-600 mt-1 font-medium">
+        <div className="p-5 rounded-2xl bg-white border border-green-200 shadow-xs">
+          <div className="text-xs font-bold uppercase text-green-400">Tingkat Kepatuhan SLA</div>
+          <div className="text-3xl font-black text-green-700 mt-2">{slaOnTimePct === null ? '—' : `${slaOnTimePct}%`}</div>
+          <div className="text-xs text-green-600 mt-1 font-medium">
             {slaOnTimePct === null
               ? 'Belum ada data penyelesaian dan deadline SLA yang lengkap'
               : `${slaOnTimeCount} dari ${slaMeasuredTickets.length} tiket selesai tepat waktu · ${slaOnTimePct >= 95 ? 'Target ≥95% tercapai' : 'Di bawah target ≥95%'}`}
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-bold uppercase text-slate-500">Rata-Rata Respon Helpdesk</div>
-          <div className="text-3xl font-black text-slate-900 mt-2">—</div>
-          <div className="text-xs text-slate-600 font-medium mt-1">Belum tersedia · timestamp respons pertama belum dicatat</div>
+        <div className="p-5 rounded-2xl bg-white border border-green-200 shadow-xs">
+          <div className="text-xs font-bold uppercase text-green-400">Rata-Rata Respon Helpdesk</div>
+          <div className="text-3xl font-black text-green-900 mt-2">—</div>
+          <div className="text-xs text-green-600 font-medium mt-1">Belum tersedia · timestamp respons pertama belum dicatat</div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-bold uppercase text-slate-500">Total Reservasi Pinjam</div>
+        <div className="p-5 rounded-2xl bg-white border border-green-200 shadow-xs">
+          <div className="text-xs font-bold uppercase text-green-400">Total Reservasi Pinjam</div>
           <div className="text-3xl font-black text-amber-600 mt-2">{filteredLoans.length} Sesi</div>
-          <div className="text-xs text-slate-600 mt-1 font-medium">Jumlah record peminjaman sesuai filter aktif</div>
+          <div className="text-xs text-green-600 mt-1 font-medium">Jumlah record peminjaman sesuai filter aktif</div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-bold uppercase text-slate-500">Total Nilai Perolehan Aset</div>
+        <div className="p-5 rounded-2xl bg-white border border-green-200 shadow-xs">
+          <div className="text-xs font-bold uppercase text-green-400">Total Nilai Perolehan Aset</div>
           <div className="text-2xl font-black text-indigo-700 mt-2">{formatRupiah(totalAssetValue)}</div>
-          <div className="text-xs text-slate-600 mt-1 font-medium">Nilai perolehan aset pada cakupan filter aktif</div>
+          <div className="text-xs text-green-600 mt-1 font-medium">Nilai perolehan aset pada cakupan filter aktif</div>
         </div>
       </div>
 
       {/* Depresiasi Akuntansi PSAK 16 Card */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+      <div className="rounded-2xl bg-white border border-green-200 p-5 space-y-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-green-200 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <div className="p-2 rounded-xl bg-green-50 text-green-700 border border-emerald-200">
               <Calculator className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-base text-slate-900">
+              <h3 className="font-extrabold text-base text-green-900">
                 Estimasi Nilai Buku &amp; Penyusutan Indikatif Aset
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-green-400">
                 Simulasi internal berdasarkan asumsi umur manfaat; bukan pembukuan atau perhitungan PSAK 16.
               </p>
             </div>
           </div>
-          <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 w-fit">
+          <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-green-50 text-green-800 border border-green-300 w-fit">
             Estimasi garis lurus (asumsi sistem)
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Nilai Buku Bersih (Net Book Value)</div>
-            <div className="text-2xl font-black text-emerald-700">{formatRupiah(totalNetBookValue)}</div>
-            <div className="text-[10px] text-slate-500">Estimasi nilai setelah penyusutan indikatif</div>
+          <div className="p-4 rounded-xl bg-green-50 border border-green-200 space-y-1">
+            <div className="text-green-400 text-[11px] font-medium">Nilai Buku Bersih (Net Book Value)</div>
+            <div className="text-2xl font-black text-green-700">{formatRupiah(totalNetBookValue)}</div>
+            <div className="text-[10px] text-green-400">Estimasi nilai setelah penyusutan indikatif</div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Akumulasi Beban Penyusutan</div>
+          <div className="p-4 rounded-xl bg-green-50 border border-green-200 space-y-1">
+            <div className="text-green-400 text-[11px] font-medium">Akumulasi Beban Penyusutan</div>
             <div className="text-2xl font-black text-rose-600">{formatRupiah(totalAccumulatedDepreciation)}</div>
-            <div className="text-[10px] text-slate-500">Akumulasi hasil simulasi, bukan jurnal pembukuan</div>
+            <div className="text-[10px] text-green-400">Akumulasi hasil simulasi, bukan jurnal pembukuan</div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Beban Penyusutan / Bulan</div>
-            <div className="text-xl font-black text-slate-900">{formatRupiah(totalMonthlyDepreciation)}</div>
-            <div className="text-[10px] text-slate-500">Estimasi penyusutan bulanan; bukan amortisasi lisensi</div>
+          <div className="p-4 rounded-xl bg-green-50 border border-green-200 space-y-1">
+            <div className="text-green-400 text-[11px] font-medium">Beban Penyusutan / Bulan</div>
+            <div className="text-xl font-black text-green-900">{formatRupiah(totalMonthlyDepreciation)}</div>
+            <div className="text-[10px] text-green-400">Estimasi penyusutan bulanan; bukan amortisasi lisensi</div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Rasio Penyusutan Indikatif</div>
+          <div className="p-4 rounded-xl bg-green-50 border border-green-200 space-y-1">
+            <div className="text-green-400 text-[11px] font-medium">Rasio Penyusutan Indikatif</div>
             <div className="text-2xl font-black text-amber-600">
               {totalAssetValue > 0 ? Math.round((totalAccumulatedDepreciation / totalAssetValue) * 100) : 0}%
             </div>
-            <div className="text-[10px] text-slate-500">Estimasi terhadap nilai perolehan aset</div>
+            <div className="text-[10px] text-green-400">Estimasi terhadap nilai perolehan aset</div>
           </div>
         </div>
       </div>
 
       {/* Pemeliharaan & Kalibrasi Preventif KPI Card */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+      <div className="rounded-2xl bg-white border border-green-200 p-5 space-y-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-green-200 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
               <Wrench className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-base text-slate-900">
+              <h3 className="font-extrabold text-base text-green-900">
                 Realisasi Program Pemeliharaan Preventif &amp; Kalibrasi (Food Station)
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-green-400">
                 Monitoring servis armada truk logistik, kalibrasi tera jembatan timbang PIBC, dan AC precision ruang server.
               </p>
             </div>
@@ -404,24 +404,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Total Jadwal Pemeliharaan</div>
-            <div className="text-2xl font-black text-slate-900">{filteredMaintenances.length} Jadwal</div>
-            <div className="text-[10px] text-slate-500">Mengikuti record pemeliharaan yang tersedia dalam cakupan filter</div>
+          <div className="p-4 rounded-xl bg-green-50 border border-green-200 space-y-1">
+            <div className="text-green-400 text-[11px] font-medium">Total Jadwal Pemeliharaan</div>
+            <div className="text-2xl font-black text-green-900">{filteredMaintenances.length} Jadwal</div>
+            <div className="text-[10px] text-green-400">Mengikuti record pemeliharaan yang tersedia dalam cakupan filter</div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Realisasi Selesai / On-Track</div>
-            <div className="text-2xl font-black text-emerald-700">
+          <div className="p-4 rounded-xl bg-green-50 border border-green-200 space-y-1">
+            <div className="text-green-400 text-[11px] font-medium">Realisasi Selesai / On-Track</div>
+            <div className="text-2xl font-black text-green-700">
               {filteredMaintenances.length === 0 ? '—' : `${completedMaintenanceCount} Selesai (${Math.round((completedMaintenanceCount / filteredMaintenances.length) * 100)}%)`}
             </div>
-            <div className="text-[10px] text-emerald-600 font-medium">Proporsi jadwal berstatus selesai; bukan penilaian kondisi aset</div>
+            <div className="text-[10px] text-green-600 font-medium">Proporsi jadwal berstatus selesai; bukan penilaian kondisi aset</div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <div className="text-slate-500 text-[11px] font-medium">Biaya Pemeliharaan (Aktual / Estimasi)</div>
+          <div className="p-4 rounded-xl bg-green-50 border border-green-200 space-y-1">
+            <div className="text-green-400 text-[11px] font-medium">Biaya Pemeliharaan (Aktual / Estimasi)</div>
             <div className="text-xl font-black text-amber-700">{formatRupiah(totalMaintenanceBudget)}</div>
-            <div className="text-[10px] text-slate-500">Mengutamakan biaya aktual; jika kosong memakai estimasi</div>
+            <div className="text-[10px] text-green-400">Mengutamakan biaya aktual; jika kosong memakai estimasi</div>
           </div>
         </div>
       </div>
@@ -430,29 +430,29 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Division Distribution */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
-          <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-emerald-600" />
+        <div className="rounded-2xl bg-white border border-green-200 p-5 space-y-4 shadow-xs">
+          <h3 className="font-bold text-base text-green-900 flex items-center gap-2">
+            <PieChart className="w-4 h-4 text-green-600" />
             Distribusi Aset Berdasarkan Owner Divisi
           </h3>
-          <p className="text-[11px] text-slate-500">Mengikuti nilai owner_division pada data aset. RPC/SC dan PIBC adalah lokasi kantor, bukan divisi; record lama yang menaruhnya sebagai owner dipisahkan untuk koreksi.</p>
+          <p className="text-[11px] text-green-400">Mengikuti nilai owner_division pada data aset. RPC/SC dan PIBC adalah lokasi kantor, bukan divisi; record lama yang menaruhnya sebagai owner dipisahkan untuk koreksi.</p>
           <div className="space-y-3 text-xs">
             {ownerDivisionStats.length === 0 && unclassifiedOwnerAssets.length === 0 && (
-              <div className="text-slate-500">Belum ada data aset dalam filter ini.</div>
+              <div className="text-green-400">Belum ada data aset dalam filter ini.</div>
             )}
             {ownerDivisionStats.map((group, index) => {
               const percentage = Math.round((group.count / totalAssetCount) * 100);
-              const barColors = ['bg-blue-600', 'bg-amber-500', 'bg-emerald-600', 'bg-purple-600', 'bg-cyan-600'];
+              const barColors = ['bg-blue-600', 'bg-amber-500', 'bg-green-600', 'bg-purple-600', 'bg-cyan-600'];
               return (
                 <div key={group.owner}>
-                  <div className="flex justify-between text-slate-700 mb-1 font-medium">
+                  <div className="flex justify-between text-green-700 mb-1 font-medium">
                     <span>{group.owner}</span>
-                    <span className="font-bold text-slate-900">{group.count} Unit ({percentage}%)</span>
+                    <span className="font-bold text-green-900">{group.count} Unit ({percentage}%)</span>
                   </div>
-                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-green-50 h-2.5 rounded-full overflow-hidden">
                     <div className={`${barColors[index % barColors.length]} h-2.5 rounded-full`} style={{ width: `${percentage}%` }} />
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Nilai perolehan: {formatRupiah(group.value)}</div>
+                  <div className="text-[11px] text-green-400 mt-0.5">Nilai perolehan: {formatRupiah(group.value)}</div>
                 </div>
               );
             })}
@@ -469,28 +469,28 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
         </div>
 
         {/* SLA Breakdown by Priority */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
-          <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-emerald-600" />
+        <div className="rounded-2xl bg-white border border-green-200 p-5 space-y-4 shadow-xs">
+          <h3 className="font-bold text-base text-green-900 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-green-600" />
             Kinerja Penyelesaian SLA Helpdesk
           </h3>
           <div className="space-y-3 text-xs">
             {prioritySlaGroups.map(group => (
-              <div key={group.label} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div key={group.label} className="p-3 bg-green-50 rounded-xl border border-green-200 flex items-center justify-between">
                 <div>
                   <div className={`font-bold ${group.textColor}`}>{group.label}</div>
-                  <div className="text-[11px] text-slate-500">{group.description} · {group.stats.completedCount} tiket selesai</div>
+                  <div className="text-[11px] text-green-400">{group.description} · {group.stats.completedCount} tiket selesai</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-base font-extrabold text-slate-900">
+                  <div className="text-base font-extrabold text-green-900">
                     {group.stats.onTimePct === null ? '—' : `${group.stats.onTimePct}%`}
                   </div>
-                  <div className="text-[10px] text-slate-600 font-medium">
+                  <div className="text-[10px] text-green-600 font-medium">
                     {group.stats.averageResolutionHours === null
                       ? 'Durasi penyelesaian belum tersedia'
                       : `Rata-rata ${group.stats.averageResolutionHours.toFixed(1)} jam`}
                   </div>
-                  <div className="text-[10px] text-slate-500">{group.stats.measuredCount} tiket memiliki data SLA lengkap</div>
+                  <div className="text-[10px] text-green-400">{group.stats.measuredCount} tiket memiliki data SLA lengkap</div>
                 </div>
               </div>
             ))}
@@ -500,18 +500,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
       </div>
 
       {/* Rekapitulasi Kategori Aset Berdasarkan Kode Saat Ini */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-5 space-y-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+      <div className="rounded-2xl bg-white border border-green-200 p-5 space-y-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-green-200 pb-3">
           <div>
-            <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-              <PackageCheck className="w-5 h-5 text-emerald-600" />
+            <h3 className="font-extrabold text-base text-green-900 flex items-center gap-2">
+              <PackageCheck className="w-5 h-5 text-green-600" />
               Rekapitulasi Kategori Aset Berdasarkan Kode Saat Ini
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-green-400">
               Pengelompokan indikatif dari kode kategori dan nomor aset yang tersimpan; bukan standar akuntansi atau daftar kategori resmi.
             </p>
           </div>
-          <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-green-50 text-green-700 border border-green-200">
             Total {filteredAssets.length} Aset Terdata
           </span>
         </div>
@@ -519,7 +519,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              <tr className="border-b border-green-200 bg-green-50 text-[11px] font-bold text-green-600 uppercase tracking-wider">
                 <th className="py-2.5 px-3">Kode</th>
                 <th className="py-2.5 px-3">Klasifikasi Aktiva Tetap</th>
                 <th className="py-2.5 px-3">Kategori / Owner Data</th>
@@ -529,18 +529,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
             </thead>
             <tbody className="divide-y divide-slate-100">
               {taxonomyGroups.map((group) => (
-                <tr key={group.code} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                    <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                <tr key={group.code} className="hover:bg-green-50/70 transition-colors">
+                  <td className="py-2.5 px-3 font-mono font-bold text-green-900">
+                    <span className="px-2 py-0.5 rounded bg-green-50 border border-green-200">
                       {group.code}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 font-medium text-slate-800">
+                  <td className="py-2.5 px-3 font-medium text-green-800">
                     {group.name}
                   </td>
-                  <td className="py-2.5 px-3 text-slate-600">
+                  <td className="py-2.5 px-3 text-green-600">
                     {group.code.startsWith('IT') ? (
-                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-200 text-[10px]">
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-green-700 font-semibold border border-green-200 text-[10px]">
                         Devisi IT (Milik IT, GA Read-only)
                       </span>
                     ) : group.code === 'INV-F' ? (
@@ -548,29 +548,29 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
                         Devisi GA (Semua Lokasi Milik GA)
                       </span>
                     ) : group.code === 'MSN' ? (
-                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200 text-[10px]">
+                      <span className="px-2 py-0.5 rounded bg-green-50 text-green-700 font-semibold border border-emerald-200 text-[10px]">
                         SC / PIBC (Pabrik &amp; Timbangan)
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold border border-slate-200 text-[10px]">
+                      <span className="px-2 py-0.5 rounded bg-green-50 text-green-700 font-semibold border border-green-200 text-[10px]">
                         GA / Operasional
                       </span>
                     )}
                   </td>
-                  <td className="py-2.5 px-3 text-center font-bold text-slate-900">
+                  <td className="py-2.5 px-3 text-center font-bold text-green-900">
                     {group.count} Unit
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                  <td className="py-2.5 px-3 text-right font-mono font-bold text-green-900">
                     {formatRupiah(group.value)}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold text-slate-900">
+              <tr className="border-t-2 border-green-300 bg-green-50 font-bold text-green-900">
                 <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px]">Total Seluruh Aktiva</td>
                 <td className="py-3 px-3 text-center">{filteredAssets.length} Unit</td>
-                <td className="py-3 px-3 text-right font-mono text-emerald-700">{formatRupiah(totalAssetValue)}</td>
+                <td className="py-3 px-3 text-right font-mono text-green-700">{formatRupiah(totalAssetValue)}</td>
               </tr>
             </tfoot>
           </table>

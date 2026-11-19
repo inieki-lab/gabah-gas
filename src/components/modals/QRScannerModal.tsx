@@ -145,13 +145,13 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-green-100 text-green-700 border border-green-200 flex items-center justify-center">
               <ScanLine className="w-5 h-5 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-extrabold text-slate-900">Scanner Barcode &amp; QR Code Aset</h3>
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-green-100 text-green-800 border border-green-200">
                   Stock Opname &amp; Handover
                 </span>
               </div>
@@ -165,7 +165,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
               className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
               title={soundEnabled ? 'Mute Suara Beep' : 'Nyalakan Suara Beep'}
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-700" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-green-700" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
             </button>
 
             <button
@@ -201,11 +201,11 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
             {/* Target Reticle Overlay */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-48 h-48 sm:w-56 sm:h-56 border-2 border-emerald-400/80 rounded-2xl relative shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
-                <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
-                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+              <div className="w-48 h-48 sm:w-56 sm:h-56 border-2 border-green-400/80 rounded-2xl relative shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-green-400 rounded-tl-lg" />
+                <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-green-400 rounded-tr-lg" />
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-green-400 rounded-bl-lg" />
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-green-400 rounded-br-lg" />
                 
                 {/* Laser scan line animation */}
                 <div className="absolute inset-x-0 top-0 h-0.5 bg-emerald-400/80 shadow-[0_0_8px_#34d399] animate-[bounce_2s_infinite]" />
@@ -240,7 +240,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 value={scanInput}
                 onChange={handleInputChange}
                 placeholder="Contoh: IT-HLT-2026-0001 atau SN: PF-4X99Z1..."
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-none"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono text-sm focus:border-green-600 focus:ring-1 focus:ring-emerald-600 outline-none"
               />
             </div>
           </div>
@@ -255,7 +255,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 <button
                   key={a.id}
                   onClick={() => handleSimulatedScan(a.asset_number)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-mono text-emerald-800 border border-slate-200 transition-colors font-semibold"
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-mono text-green-800 border border-slate-200 transition-colors font-semibold"
                 >
                   {a.asset_number}
                 </button>
@@ -265,19 +265,19 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
           {/* Matched Asset Preview Card */}
           {matchedAsset ? (
-            <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-300 space-y-3 animate-in fade-in slide-in-from-bottom-2">
-              <div className="flex items-center justify-between pb-2 border-b border-emerald-200">
+            <div className="p-4 rounded-xl bg-emerald-50/50 border border-green-300 space-y-3 animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex items-center justify-between pb-2 border-b border-green-200">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
                   <span className="text-xs font-bold text-emerald-900">Aset Berhasil Terdeteksi</span>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-green-100 text-green-800 border border-green-200">
                   {matchedAsset.asset_number}
                 </span>
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-emerald-700 shadow-xs">
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-green-700 shadow-xs">
                   {matchedAsset.category_type === 'IT' && <Laptop className="w-6 h-6" />}
                   {matchedAsset.category_type === 'General' && <Car className="w-6 h-6" />}
                   {matchedAsset.category_type === 'License' && <KeyRound className="w-6 h-6" />}
@@ -295,7 +295,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
               </div>
 
               {/* Quick action buttons */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-emerald-200">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-green-200">
                 <button
                   onClick={() => {
                     onClose();
@@ -332,7 +332,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                       onClose();
                       onOpenLoanModal(matchedAsset);
                     }}
-                    className="px-2 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold text-center transition-all shadow-xs"
+                    className="px-2 py-2 rounded-lg bg-emerald-700 hover:bg-green-800 text-white text-xs font-bold text-center transition-all shadow-xs"
                   >
                     Pinjam Aset
                   </button>
