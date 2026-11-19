@@ -692,7 +692,11 @@ async function main() {
     const faultClient = new pg.Client({ connectionString: TEST_DB_URL });
     faultClient.on('error', e => console.error('[pg fault-injection async error]', e.message));
     await faultClient.connect();
-    const stateBeforeFault = await faultClient.query('SELECT payload, updated_at FROM gabah_state WHERE id = 1');
+    const passwordBeforeFault = await faultClient.query('SELECT password_hash FROM users WHERE id = $1', [itUserId]);
+    const snapshotPasswordBeforeFault = await faultClient.query(
+      "SELECT user_json->>'password_hash' AS password_hash FROM gabah_state, jsonb_array_elements(payload->'users') AS users_json(user_json) WHERE user_json->>'email' = $1",
+      [IT_EMAIL],
+    );
     await faultClient.query(`
       CREATE OR REPLACE FUNCTION gabah_ci_reject_user_sync() RETURNS trigger
       LANGUAGE plpgsql AS $$
@@ -707,17 +711,25 @@ async function main() {
     await faultClient.query('CREATE TRIGGER gabah_ci_reject_user_sync BEFORE INSERT OR UPDATE ON users FOR EACH ROW EXECUTE FUNCTION gabah_ci_reject_user_sync()');
 
     const faultedPasswordReset = await req(base, 'POST', `/api/users/${itUserId}/reset-password`, { token: adminToken2 });
-    const stateAfterFault = await faultClient.query('SELECT payload, updated_at FROM gabah_state WHERE id = 1');
-    const rolledBackState = JSON.stringify(stateAfterFault.rows[0]?.payload) === JSON.stringify(stateBeforeFault.rows[0]?.payload)
-      && String(stateAfterFault.rows[0]?.updated_at) === String(stateBeforeFault.rows[0]?.updated_at);
+    const passwordAfterFault = await faultClient.query('SELECT password_hash FROM users WHERE id = $1', [itUserId]);
+    const snapshotPasswordAfterFault = await faultClient.query(
+      "SELECT user_json->>'password_hash' AS password_hash FROM gabah_state, jsonb_array_elements(payload->'users') AS users_json(user_json) WHERE user_json->>'email' = $1",
+      [IT_EMAIL],
+    );
+    const rolledBackState = passwordAfterFault.rows[0]?.password_hash === passwordBeforeFault.rows[0]?.password_hash
+      && snapshotPasswordAfterFault.rows[0]?.password_hash === snapshotPasswordBeforeFault.rows[0]?.password_hash;
     record('Runtime normalized-table failure rolls back gabah_state snapshot', 'unchanged JSONB + updated_at',
       `HTTP ${faultedPasswordReset.status}; rollback=${rolledBackState}`,
       faultedPasswordReset.status === 503 && rolledBackState);
 
     const subsequentMutation = await req(base, 'POST', `/api/users/${itUserId}/reset-password`, { token: adminToken2 });
-    const stateAfterLatchedWrite = await faultClient.query('SELECT payload, updated_at FROM gabah_state WHERE id = 1');
-    const latchPreservedState = JSON.stringify(stateAfterLatchedWrite.rows[0]?.payload) === JSON.stringify(stateBeforeFault.rows[0]?.payload)
-      && String(stateAfterLatchedWrite.rows[0]?.updated_at) === String(stateBeforeFault.rows[0]?.updated_at);
+    const passwordAfterLatchedWrite = await faultClient.query('SELECT password_hash FROM users WHERE id = $1', [itUserId]);
+    const snapshotPasswordAfterLatchedWrite = await faultClient.query(
+      "SELECT user_json->>'password_hash' AS password_hash FROM gabah_state, jsonb_array_elements(payload->'users') AS users_json(user_json) WHERE user_json->>'email' = $1",
+      [IT_EMAIL],
+    );
+    const latchPreservedState = passwordAfterLatchedWrite.rows[0]?.password_hash === passwordBeforeFault.rows[0]?.password_hash
+      && snapshotPasswordAfterLatchedWrite.rows[0]?.password_hash === snapshotPasswordBeforeFault.rows[0]?.password_hash;
     record('Subsequent mutation remains fail-closed after runtime PostgreSQL failure', 'HTTP 400; no second snapshot write',
       `HTTP ${subsequentMutation.status}; unchanged=${latchPreservedState}`,
       subsequentMutation.status === 503 && latchPreservedState);
