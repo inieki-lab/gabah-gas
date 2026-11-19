@@ -72,6 +72,18 @@ async function main() {
   };
   process.on('exit', restore);
 
+  // ================= Test 1 (statis): owner fallback fails closed =================
+  const taxonomySource = fs.readFileSync(path.resolve('server/taxonomy.ts'), 'utf8');
+  const servicesSource = fs.readFileSync(path.resolve('server/services.ts'), 'utf8');
+  rec('0a: kategori dengan owner tidak dikenal menjadi UNASSIGNED, bukan GA',
+    'owner_division fallback UNASSIGNED',
+    taxonomySource.includes("isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED'"),
+    taxonomySource.includes("isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED'"));
+  rec('0b: owner SC/PIBC/UNASSIGNED ditolak untuk aset baru',
+    'server createAsset rejects legacy/unassigned owner',
+    servicesSource.includes("['SC', 'PIBC', 'UNASSIGNED'].includes(String(resolvedOwnerDivision || '').trim().toUpperCase())"),
+    servicesSource.includes("['SC', 'PIBC', 'UNASSIGNED'].includes(String(resolvedOwnerDivision || '').trim().toUpperCase())"));
+
   // ================= Test 1 (statis): migration 009 additive & idempotent =================
   const migRaw = fs.readFileSync(path.resolve('server/migrations/009_asset_category_master.sql'), 'utf8');
   // Abaikan baris komentar (--) saat inspeksi statis agar tidak false-positive.
