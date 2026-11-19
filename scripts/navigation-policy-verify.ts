@@ -73,8 +73,8 @@ assert.equal(isNavTabAllowedForRole('GA', 'licenses', ['dashboard.read', 'assets
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'reports', ['reports.read']));
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
 
-// Custom roles land on the first readable module; no read permission means no landing page.
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'reports');
+// Every authenticated role lands on the always-available core Dashboard before optional modules.
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'dashboard');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loans.read']), 'tickets');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), 'dashboard');
