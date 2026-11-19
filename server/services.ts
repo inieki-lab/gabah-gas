@@ -739,8 +739,8 @@ export class GabahDomainService {
     if (!asset) throw Object.assign(new Error('Aset tidak ditemukan.'), { statusCode: 404 });
     const categoryCode = String((asset as any).category_code || (asset as any).asset_code || '').trim().toUpperCase();
     const mainType = String((asset as any).main_type || '').trim().toUpperCase();
-    const nonLoanableInfrastructureCodes = new Set(['HSV', 'HFW', 'HSTG', 'HNET', 'HUPS', 'HRCK']);
-    if (mainType === 'IT-S' || nonLoanableInfrastructureCodes.has(categoryCode)) {
+    const nonLoanableInfrastructureCodes = new Set(['HSV', 'HFW', 'HSTG', 'HNET', 'HUPS', 'HRCK', 'SLIC']);
+    if (mainType === 'IT-S' || String((asset as any).category_type || '').toLowerCase() === 'license' || nonLoanableInfrastructureCodes.has(categoryCode)) {
       throw Object.assign(new Error('Perangkat infrastruktur/server dan lisensi tidak boleh diajukan melalui peminjaman umum.'), { statusCode: 409 });
     }
     if (!asset.is_loanable) throw Object.assign(new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).'), { statusCode: 409 });
