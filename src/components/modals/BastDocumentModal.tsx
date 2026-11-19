@@ -92,7 +92,7 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
                 <h3 className="text-base font-extrabold text-slate-900">
                   {isAssignmentMode ? 'BAST Penugasan Aset Inventaris' : 'Berita Acara Serah Terima (BAST)'}
                 </h3>
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-green-100 text-emerald-800 border border-emerald-200">
                   Dokumen Resmi BUMD
                 </span>
               </div>
@@ -224,7 +224,7 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
                       <div>Corp ID: {corporateNumber}</div>
                     )}
                   </td>
-                  <td className="border border-slate-400 p-2.5 text-center font-bold text-emerald-700">
+                  <td className="border border-slate-400 p-2.5 text-center font-bold text-green-700">
                     {asset?.condition ? asset.condition.toUpperCase() : 'BAIK (NORMAL)'}
                   </td>
                 </tr>
@@ -240,7 +240,7 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
                 <div>Tanggal Serah Terima: <strong>{isAssignmentMode ? todayFormatted : formatDateTime(loan!.start_date)}</strong></div>
                 <div>
                   {isAssignmentMode ? (
-                    <span>Status: <strong className="text-emerald-700">Inventaris Kerja Pegawai (Aktif)</strong></span>
+                    <span>Status: <strong className="text-green-700">Inventaris Kerja Pegawai (Aktif)</strong></span>
                   ) : (
                     <span>Batas Akhir Pengembalian: <strong className="text-rose-700">{formatDateTime(loan!.due_date)}</strong></span>
                   )}
@@ -317,8 +317,8 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
 
         {/* Modal Footer */}
         <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex items-center justify-between print:hidden">
-          <span className="flex items-center gap-1.5 text-emerald-700 font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Siap Dicetak ke Kertas A4 Standar
+          <span className="flex items-center gap-1.5 text-green-700 font-medium">
+            <CheckCircle2 className="w-4 h-4 text-green-600" /> Siap Dicetak ke Kertas A4 Standar
           </span>
           <button
             onClick={onClose}

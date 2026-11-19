@@ -91,11 +91,11 @@ export const LoansView: React.FC<LoansViewProps> = ({
       {/* Header & Schedule Guarantee */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-            <CalendarClock className="w-5 h-5 text-emerald-600" />
+          <h2 className="text-xl font-black text-green-900 flex items-center gap-2">
+            <CalendarClock className="w-5 h-5 text-green-600" />
             Peminjaman Barang &amp; Reservasi
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-green-400 mt-1">
             {isEmployee
               ? 'Daftar riwayat dan status pengajuan peminjaman kendaraan operasional serta laptop kerja Anda.'
               : 'Sistem peminjaman kendaraan operasional, laptop cadangan, kamera rapat, dan ruang meeting dengan validasi kalender otomatis.'}
@@ -105,10 +105,10 @@ export const LoansView: React.FC<LoansViewProps> = ({
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => exportLoansToCsv(filteredLoans)}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-green-50 text-green-700 border border-green-300 text-xs font-semibold transition-all shadow-xs"
             title="Download CSV Rekapitulasi Peminjaman untuk Excel"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-green-600" />
             <span>Export CSV</span>
           </button>
 
@@ -116,7 +116,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
             <button
               id="btn-create-loan"
               onClick={handleOpenCreate}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-800 hover:bg-green-800 text-white text-xs font-bold transition-all shadow-xs"
             >
               <Plus className="w-4 h-4" />
               Ajukan Peminjaman Baru
@@ -126,30 +126,30 @@ export const LoansView: React.FC<LoansViewProps> = ({
       </div>
 
       {/* Schedule Engine Infobox */}
-      <div className="rounded-xl bg-emerald-50/70 border border-emerald-200 p-4 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+      <div className="rounded-xl bg-green-50/70 border border-emerald-200 p-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-lg bg-green-100 text-green-700 flex items-center justify-center shrink-0 mt-0.5">
           <ShieldCheck className="w-5 h-5" />
         </div>
         <div className="text-xs">
-          <div className="font-bold text-slate-900 flex items-center gap-2">
+          <div className="font-bold text-green-900 flex items-center gap-2">
             Sistem Sinkronisasi Kalender Reservasi Aktif
           </div>
-          <p className="text-slate-600 mt-0.5 leading-relaxed">
+          <p className="text-green-600 mt-0.5 leading-relaxed">
             Setiap pengajuan diverifikasi secara otomatis terhadap jadwal reservasi yang sudah disetujui. Aset tidak dapat dipinjam ulang pada rentang waktu yang bertabrakan (overlap) demi memastikan ketersediaan aset di lapangan.
           </p>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs w-fit overflow-x-auto">
+      <div className="flex items-center gap-1 bg-green-50 p-1 rounded-xl border border-green-200 text-xs w-fit overflow-x-auto">
         {['ALL', 'pending', 'approved', 'active', 'returned'].map((status) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
             className={`px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-colors ${
               statusFilter === status 
-                ? 'bg-emerald-700 text-white font-bold shadow-xs' 
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-green-800 text-white font-bold shadow-xs' 
+                : 'text-green-600 hover:text-green-900'
             }`}
           >
             {status === 'ALL' ? (isEmployee ? 'Semua Peminjaman Saya' : 'Semua Reservasi') :
@@ -170,25 +170,25 @@ export const LoansView: React.FC<LoansViewProps> = ({
           return (
             <div 
               key={loan.id}
-              className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs space-y-4"
+              className="rounded-2xl bg-white border border-green-200 p-5 shadow-xs space-y-4"
             >
               
               {/* Top row: Code, Asset Name, Status */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-green-100 pb-3">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl ${isIT ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
                     {isIT ? <Laptop className="w-5 h-5" /> : <Car className="w-5 h-5" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-bold text-slate-400">{loan.loan_number}</span>
-                      <span className="font-extrabold text-slate-900 text-sm">{loan.asset_name}</span>
-                      <span className="font-mono text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                      <span className="font-mono text-xs font-bold text-green-400">{loan.loan_number}</span>
+                      <span className="font-extrabold text-green-900 text-sm">{loan.asset_name}</span>
+                      <span className="font-mono text-[11px] font-bold text-green-800 bg-green-100 px-2 py-0.5 rounded border border-emerald-200">
                         {loan.asset_number}
                       </span>
                     </div>
                     {loan.corporate_asset_number && (
-                      <span className="text-[10px] text-slate-500 font-mono">
+                      <span className="text-[10px] text-green-400 font-mono">
                         Corporate Asset: {loan.corporate_asset_number}
                       </span>
                     )}
@@ -198,10 +198,10 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 {/* Status Badge */}
                 <div>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                    loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                    loan.status === 'approved' ? 'bg-green-100 text-green-800 border border-green-300' :
                     (loan.status === 'pending') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                     (loan.status === 'active' || loan.status === 'overdue') ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
-                    loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                    loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-green-300' :
                     'bg-rose-100 text-rose-800 border border-rose-300'
                   }`}>
                     {loan.status === 'approved' && <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -221,38 +221,38 @@ export const LoansView: React.FC<LoansViewProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 
                 {/* Borrower Information */}
-                <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Peminjam</div>
-                  <div className="font-bold text-slate-900 text-sm">{loan.borrower_name}</div>
-                  <div className="text-slate-600">{loan.borrower_department}</div>
-                  <div className="text-slate-500 font-mono text-[11px]">{loan.borrower_phone}</div>
+                <div className="space-y-1 bg-green-50 p-3 rounded-xl border border-green-200">
+                  <div className="text-[10px] uppercase font-bold text-green-400">Peminjam</div>
+                  <div className="font-bold text-green-900 text-sm">{loan.borrower_name}</div>
+                  <div className="text-green-600">{loan.borrower_department}</div>
+                  <div className="text-green-400 font-mono text-[11px]">{loan.borrower_phone}</div>
                 </div>
 
                 {/* Schedule Range */}
-                <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Jadwal Pinjam Terverifikasi</div>
-                  <div className="text-slate-700">
-                    <strong className="text-emerald-700">Mulai:</strong> {formatDateTime(loan.start_date)}
+                <div className="space-y-1 bg-green-50 p-3 rounded-xl border border-green-200">
+                  <div className="text-[10px] uppercase font-bold text-green-400">Jadwal Pinjam Terverifikasi</div>
+                  <div className="text-green-700">
+                    <strong className="text-green-700">Mulai:</strong> {formatDateTime(loan.start_date)}
                   </div>
-                  <div className="text-slate-700">
+                  <div className="text-green-700">
                     <strong className="text-amber-700">Selesai:</strong> {formatDateTime(loan.due_date)}
                   </div>
-                  <div className="text-[10px] text-slate-400">
+                  <div className="text-[10px] text-green-400">
                     Diajukan pada: {formatDateTime(loan.created_at)}
                   </div>
                 </div>
 
                 {/* Purpose & Approval Info */}
-                <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Keperluan &amp; Otorisasi</div>
-                  <p className="text-slate-700 italic line-clamp-2">"{loan.purpose}"</p>
+                <div className="space-y-1 bg-green-50 p-3 rounded-xl border border-green-200">
+                  <div className="text-[10px] uppercase font-bold text-green-400">Keperluan &amp; Otorisasi</div>
+                  <p className="text-green-700 italic line-clamp-2">"{loan.purpose}"</p>
                   {loan.approver_name && (
-                    <div className="text-[11px] text-emerald-700 font-semibold pt-1 border-t border-slate-200">
+                    <div className="text-[11px] text-green-700 font-semibold pt-1 border-t border-green-200">
                       Disetujui oleh: {loan.approver_name}
                     </div>
                   )}
                   {loan.actual_returned_at && (
-                    <div className="text-[11px] text-blue-700 font-medium">
+                    <div className="text-[11px] text-green-700 font-medium">
                       Dikembalikan: {formatDateTime(loan.actual_returned_at)} ({loan.return_condition})
                     </div>
                   )}
@@ -262,8 +262,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
               {/* Action buttons per status & RBAC role */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 text-slate-400" />
+                <div className="text-xs text-green-400 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 text-green-400" />
                   {isIT ? 'Otoritas persetujuan: Divisi IT (Laptop/Hardware)' : 'Otoritas persetujuan: Divisi General Affair (Kendaraan/Fasilitas)'}
                 </div>
 
@@ -274,7 +274,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                     <>
                       <button
                         onClick={() => onApproveLoan(loan.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-800 hover:bg-green-800 text-white text-xs font-bold transition-all shadow-xs"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Setujui Reservasi
@@ -316,7 +316,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   {loan.status !== 'rejected' && (
                     <button
                       onClick={() => handleOpenBastDoc(loan)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-300 text-xs font-semibold transition-all shadow-xs"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-green-50 text-green-700 hover:text-green-900 border border-green-300 text-xs font-semibold transition-all shadow-xs"
                       title="Cetak Berita Acara Serah Terima Resmi"
                     >
                       <FileText className="w-3.5 h-3.5 text-indigo-600" />
@@ -332,12 +332,12 @@ export const LoansView: React.FC<LoansViewProps> = ({
         })}
 
         {filteredLoans.length === 0 && (
-          <div className="text-center py-12 rounded-2xl bg-white border border-slate-200 p-8 space-y-3 shadow-xs">
+          <div className="text-center py-12 rounded-2xl bg-white border border-green-200 p-8 space-y-3 shadow-xs">
             <CalendarClock className="w-12 h-12 mx-auto text-slate-300" />
-            <h4 className="font-bold text-slate-800 text-sm">
+            <h4 className="font-bold text-green-800 text-sm">
               {isEmployee ? 'Belum Ada Riwayat Peminjaman dari Anda' : 'Tidak Ada Data Peminjaman'}
             </h4>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
+            <p className="text-xs text-green-400 max-w-md mx-auto">
               {isEmployee 
                 ? 'Anda belum memiliki riwayat pengajuan peminjaman barang. Klik tombol "Ajukan Peminjaman Baru" untuk meminjam mobil operasional atau laptop cadangan.'
                 : 'Tidak ada data peminjaman untuk filter status ini.'}
@@ -345,7 +345,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
             {isEmployee && (
               <button
                 onClick={handleOpenCreate}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-green-800 hover:bg-green-800 text-white text-xs font-bold transition-all shadow-xs"
               >
                 <Plus className="w-4 h-4" />
                 Ajukan Peminjaman Baru
@@ -358,20 +358,20 @@ export const LoansView: React.FC<LoansViewProps> = ({
       {/* Reject Modal */}
       {rejectingLoanId && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xl">
-            <h3 className="font-bold text-base text-slate-900">Tolak Pengajuan Peminjaman</h3>
-            <p className="text-xs text-slate-600">Berikan alasan penolakan untuk pemohon:</p>
+          <div className="w-full max-w-md bg-white border border-green-200 rounded-2xl p-6 space-y-4 shadow-xl">
+            <h3 className="font-bold text-base text-green-900">Tolak Pengajuan Peminjaman</h3>
+            <p className="text-xs text-green-600">Berikan alasan penolakan untuk pemohon:</p>
             <textarea
               rows={3}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Contoh: Unit sedang dijadwalkan servis berkala, atau keperluan rapat direksi..."
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500 focus:bg-white"
+              className="w-full p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-900 placeholder-slate-400 focus:outline-none focus:border-rose-500 focus:bg-white"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setRejectingLoanId(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-green-50 text-green-700 hover:border-green-200 text-xs font-semibold"
               >
                 Batal
               </button>
@@ -393,14 +393,14 @@ export const LoansView: React.FC<LoansViewProps> = ({
       {/* Return Inspection Modal */}
       {returningLoan && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-xl">
-            <h3 className="font-bold text-base text-slate-900">Verifikasi Pengembalian Aset</h3>
-            <p className="text-xs text-slate-600">
+          <div className="w-full max-w-md bg-white border border-green-200 rounded-2xl p-6 space-y-4 shadow-xl">
+            <h3 className="font-bold text-base text-green-900">Verifikasi Pengembalian Aset</h3>
+            <p className="text-xs text-green-600">
               Periksa kondisi fisik <strong>{returningLoan.asset_name}</strong> ({returningLoan.asset_number}):
             </p>
 
             <div className="space-y-2">
-              <label className="text-xs text-slate-600 font-semibold">Kondisi Saat Dikembalikan:</label>
+              <label className="text-xs text-green-600 font-semibold">Kondisi Saat Dikembalikan:</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { value: 'excellent', label: 'Sangat Baik (Mulus)' },
@@ -414,8 +414,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
                     onClick={() => setReturnCondition(item.value as any)}
                     className={`p-2.5 rounded-xl text-xs font-semibold border transition-all text-left ${
                       returnCondition === item.value 
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-400 font-bold' 
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                        ? 'bg-green-50 text-green-800 border-emerald-400 font-bold' 
+                        : 'bg-green-50 text-green-700 border-green-200 hover:border-green-300'
                     }`}
                   >
                     {item.label}
@@ -425,20 +425,20 @@ export const LoansView: React.FC<LoansViewProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-slate-600 font-semibold">Catatan Pengembalian (Opsional):</label>
+              <label className="text-xs text-green-600 font-semibold">Catatan Pengembalian (Opsional):</label>
               <textarea
                 rows={2}
                 value={returnNotes}
                 onChange={(e) => setReturnNotes(e.target.value)}
                 placeholder="Kelengkapan adapter charger, e-Toll, surat jalan..."
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                className="w-full p-2.5 bg-green-50 border border-green-200 rounded-xl text-xs text-green-900 placeholder-slate-400 focus:outline-none focus:border-green-600 focus:bg-white"
               />
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setReturningLoan(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-green-50 text-green-700 hover:border-green-200 text-xs font-semibold"
               >
                 Batal
               </button>
@@ -448,7 +448,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   setReturningLoan(null);
                   setReturnNotes('');
                 }}
-                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold"
+                className="px-4 py-2 rounded-xl bg-green-800 hover:bg-green-800 text-white text-xs font-bold"
               >
                 Simpan &amp; Selesaikan
               </button>

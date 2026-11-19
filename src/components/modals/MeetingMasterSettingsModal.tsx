@@ -234,7 +234,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-white tracking-tight">Master Data Tipe & Fasilitas Rapat</h2>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 border border-emerald-400/30">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-green-500/30 text-emerald-300 border border-emerald-400/30">
                   Akses Admin
                 </span>
               </div>
@@ -256,7 +256,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
               onClick={() => setActiveTab('types')}
               className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'types'
-                  ? 'border-emerald-600 text-emerald-800 bg-white shadow-xs'
+                  ? 'border-green-600 text-green-800 bg-white shadow-xs'
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
@@ -269,7 +269,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
               onClick={() => setActiveTab('facilities')}
               className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
                 activeTab === 'facilities'
-                  ? 'border-emerald-600 text-emerald-800 bg-white shadow-xs'
+                  ? 'border-green-600 text-green-800 bg-white shadow-xs'
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
@@ -284,7 +284,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
             {activeTab === 'types' ? (
               <button
                 onClick={handleStartCreateType}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg flex items-center gap-1.5 shadow-xs"
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-green-700 hover:bg-green-800 rounded-lg flex items-center gap-1.5 shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Tambah Tipe Rapat</span>
@@ -292,7 +292,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
             ) : (
               <button
                 onClick={handleStartCreateFacility}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg flex items-center gap-1.5 shadow-xs"
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-green-700 hover:bg-green-800 rounded-lg flex items-center gap-1.5 shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Tambah Fasilitas</span>
@@ -315,8 +315,8 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
           )}
 
           {successMessage && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-3.5 text-xs flex items-center gap-2.5 animate-in fade-in">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="bg-green-50 border border-green-200 text-green-800 rounded-xl p-3.5 text-xs flex items-center gap-2.5 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
               <span>{successMessage}</span>
             </div>
           )}
@@ -327,10 +327,10 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
               
               {/* Add / Edit Form Drawer */}
               {(isCreatingType || editingType) && (
-                <form onSubmit={handleSaveType} className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-emerald-200">
+                <form onSubmit={handleSaveType} className="bg-green-50/50 border border-green-200 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-green-200">
                     <h3 className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                      <Sparkles className="w-4 h-4 text-green-600" />
                       {editingType ? `Edit Tipe Rapat: ${editingType.name}` : 'Tambah Tipe Rapat Baru'}
                     </h3>
                     <button
@@ -353,7 +353,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                         placeholder="Contoh: Rapat Dewan Direksi"
                         value={typeName}
                         onChange={e => setTypeName(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                       />
                     </div>
 
@@ -364,7 +364,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                       <select
                         value={typePriority}
                         onChange={e => setTypePriority(e.target.value as MeetingPriority)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                       >
                         <option value="high">High (Prioritas Utama / Direksi)</option>
                         <option value="medium">Medium (Koordinasi Antar Divisi)</option>
@@ -379,7 +379,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                       <select
                         value={typeColor}
                         onChange={e => setTypeColor(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                       >
                         <option value="purple">Ungu / Purple (Direksi / Pimpinan)</option>
                         <option value="blue">Biru / Blue (Internal / Proyek)</option>
@@ -399,7 +399,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                       placeholder="Contoh: Digunakan khusus agenda rapat pimpinan direksi, komisaris, atau tamu kehormatan."
                       value={typeDesc}
                       onChange={e => setTypeDesc(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                     />
                   </div>
 
@@ -413,7 +413,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs flex items-center gap-1.5"
+                      className="px-4 py-1.5 text-xs font-bold text-white bg-green-700 hover:bg-green-800 rounded-lg shadow-xs flex items-center gap-1.5"
                     >
                       <Check className="w-3.5 h-3.5" />
                       <span>{editingType ? 'Simpan Perubahan' : 'Tambah Tipe Rapat'}</span>
@@ -441,9 +441,9 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                           <div className="flex items-center gap-2">
                             <span className={`w-2.5 h-2.5 rounded-full ${
                               item.color === 'purple' ? 'bg-purple-600' :
-                              item.color === 'emerald' ? 'bg-emerald-600' :
+                              item.color === 'emerald' ? 'bg-green-600' :
                               item.color === 'amber' ? 'bg-amber-600' :
-                              item.color === 'rose' ? 'bg-rose-600' : 'bg-blue-600'
+                              item.color === 'rose' ? 'bg-rose-600' : 'bg-green-600'
                             }`} />
                             <span>{item.name}</span>
                           </div>
@@ -453,7 +453,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                             item.priority_level === 'high' 
                               ? 'bg-purple-100 text-purple-800 border border-purple-200' 
                               : item.priority_level === 'medium'
-                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                ? 'bg-blue-100 text-blue-800 border border-green-200'
                                 : 'bg-slate-100 text-slate-700 border border-slate-200'
                           }`}>
                             {item.priority_level}
@@ -470,7 +470,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                             <button
                               onClick={() => handleStartEditType(item)}
                               title="Edit Tipe Rapat"
-                              className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-100 rounded-md transition-colors"
+                              className="p-1.5 text-slate-600 hover:text-green-700 hover:bg-slate-100 rounded-md transition-colors"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
@@ -505,10 +505,10 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
               
               {/* Add / Edit Form Drawer for Facilities */}
               {(isCreatingFacility || editingFacility) && (
-                <form onSubmit={handleSaveFacility} className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-emerald-200">
+                <form onSubmit={handleSaveFacility} className="bg-green-50/50 border border-green-200 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-green-200">
                     <h3 className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                      <Sparkles className="w-4 h-4 text-green-600" />
                       {editingFacility ? `Edit Fasilitas: ${editingFacility.name}` : 'Tambah Fasilitas Rapat Baru'}
                     </h3>
                     <button
@@ -531,7 +531,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                         placeholder="Contoh: Polycom Studio Video Conference / Mic Wireless"
                         value={facName}
                         onChange={e => setFacName(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                       />
                     </div>
 
@@ -542,7 +542,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                       <select
                         value={facCategory}
                         onChange={e => setFacCategory(e.target.value as 'GA' | 'IT')}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                       >
                         <option value="GA">GA (General Affairs / Sarpras)</option>
                         <option value="IT">IT (Teknologi Informasi / Jaringan)</option>
@@ -560,7 +560,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                         placeholder="Contoh: Termasuk 2 mic meja nirkabel dan kabel type-C"
                         value={facDesc}
                         onChange={e => setFacDesc(e.target.value)}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-green-600"
                       />
                     </div>
 
@@ -572,7 +572,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                           onChange={e => setFacIsActive(e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600"></div>
+                        <div className="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-green-600"></div>
                       </label>
                       <span className="text-xs font-semibold text-slate-700">Status Aktif</span>
                     </div>
@@ -588,7 +588,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs flex items-center gap-1.5"
+                      className="px-4 py-1.5 text-xs font-bold text-white bg-green-700 hover:bg-green-800 rounded-lg shadow-xs flex items-center gap-1.5"
                     >
                       <Check className="w-3.5 h-3.5" />
                       <span>{editingFacility ? 'Simpan Perubahan' : 'Tambah Fasilitas'}</span>
@@ -618,8 +618,8 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                         <td className="py-3 px-4">
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             item.category === 'IT'
-                              ? 'bg-sky-100 text-sky-800 border border-sky-200'
-                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              ? 'bg-sky-100 text-green-800 border border-green-200'
+                              : 'bg-green-100 text-green-800 border border-green-200'
                           }`}>
                             {item.category === 'IT' ? 'IT Technical' : 'GA Sarpras'}
                           </span>
@@ -630,7 +630,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                         <td className="py-3 px-4">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                             item.is_active 
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                              ? 'bg-green-50 text-green-700 border border-green-200' 
                               : 'bg-slate-100 text-slate-500 border border-slate-200'
                           }`}>
                             {item.is_active ? 'Aktif Tersedia' : 'Non-Aktif'}
@@ -641,7 +641,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                             <button
                               onClick={() => handleStartEditFacility(item)}
                               title="Edit Fasilitas"
-                              className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-100 rounded-md transition-colors"
+                              className="p-1.5 text-slate-600 hover:text-green-700 hover:bg-slate-100 rounded-md transition-colors"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>

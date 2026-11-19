@@ -106,7 +106,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
       <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xl my-8">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded-xl bg-green-100 text-green-700 flex items-center justify-center font-bold">
               <FileText className="w-5 h-5" />
             </div>
             <div>
@@ -123,12 +123,12 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Judul Kontrak *</label>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="PKS Security PT ABC 2026"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-500" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-green-500" />
             </div>
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Vendor / Pihak Kedua *</label>
               <input value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder="PT ABC Security Services"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-500" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-green-500" />
             </div>
           </div>
 
@@ -152,7 +152,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
               <label className="font-bold text-slate-700">Divisi Pemilik *</label>
               <select value={ownerDivision} onChange={e => setOwnerDivision(e.target.value)}
                 disabled={!isAdmin}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-emerald-500 disabled:bg-slate-100">
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-green-500 disabled:bg-slate-100">
                 {Array.from(new Set([ownDivision, ...OWNER_DIVISION_OPTIONS])).map(d => (
                   <option key={d} value={d}>{d}{d === ownDivision ? ' (divisi Anda)' : ''}</option>
                 ))}
@@ -162,7 +162,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
             <div className="space-y-1">
               <label className="font-bold text-slate-700">PIC Kontrak *</label>
               <select value={picUserId} onChange={e => setPicUserId(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-emerald-500">
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-green-500">
                 {picCandidates.map(u => (
                   <option key={u.id} value={u.id}>{u.name} — {u.role_label || u.role}</option>
                 ))}
@@ -175,17 +175,17 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Mulai *</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-500" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-green-500" />
             </div>
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Berakhir *</label>
               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-500" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-green-500" />
             </div>
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Notice Period (hari)</label>
               <input type="number" min={0} value={noticeDays} onChange={e => setNoticeDays(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-500" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-green-500" />
               {noticeDate && <p className="text-[10px] text-amber-700 font-semibold">Notice date: {noticeDate}</p>}
             </div>
           </div>
@@ -195,12 +195,12 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Nilai Kontrak (IDR, opsional)</label>
               <input type="number" min={0} value={contractValue} onChange={e => setContractValue(e.target.value)} placeholder="0"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-500" />
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-green-500" />
             </div>
             <div className="space-y-1">
               <label className="font-bold text-slate-700">Eskalasi Untuk (35/7 hari)</label>
               <select value={escalationUserId} onChange={e => setEscalationUserId(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-emerald-500">
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-green-500">
                 <option value="">— Tidak ada —</option>
                 {picCandidates.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
@@ -243,7 +243,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
           <div className="space-y-1">
             <label className="font-bold text-slate-700">Catatan</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-emerald-500" />
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-green-500" />
           </div>
 
           {error && (
