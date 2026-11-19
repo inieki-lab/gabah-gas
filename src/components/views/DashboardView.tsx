@@ -194,8 +194,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold mb-2">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-green-100 text-emerald-800 border border-green-300 text-xs font-bold mb-2">
+              <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
               Sistem Aktif: GABAH Food Station Enterprise
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900">
@@ -238,7 +238,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={onOpenNewAssetModal}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-semibold transition-all"
               >
-                <Plus className="w-4 h-4 text-emerald-600" />
+                <Plus className="w-4 h-4 text-green-600" />
                 Registrasi Aset
               </button>
             )}
@@ -254,40 +254,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {isHumas ? (
             <div 
               onClick={() => onNavigate('meeting_rooms')}
-              className="p-5 rounded-2xl bg-white border border-sky-200 hover:border-sky-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
+              className="p-5 rounded-2xl bg-white border border-green-200 hover:border-green-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-sky-700">Request Foto Rapat</span>
-                <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span className="text-xs font-bold uppercase tracking-wider text-green-700">Request Foto Rapat</span>
+                <div className="w-9 h-9 rounded-xl bg-green-100 text-green-700 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Camera className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-black text-slate-900">{docReservations.length} Permintaan</div>
-                <div className="text-xs text-sky-700 mt-1 flex items-center gap-1.5 font-bold">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
+                <div className="text-xs text-green-700 mt-1 flex items-center gap-1.5 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                   Bebas Ruangan Mana Saja
                 </div>
-                <div className="text-[11px] text-sky-700 font-bold mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                <div className="text-[11px] text-green-700 font-bold mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
                   <span>Lihat Agenda Liputan</span>
-                  <ArrowRight className="w-3 h-3 text-sky-600" />
+                  <ArrowRight className="w-3 h-3 text-green-600" />
                 </div>
               </div>
             </div>
           ) : (
             <div 
               onClick={() => onNavigate('my_assets')}
-              className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
+              className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-green-400 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Aset Saya</span>
-                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <div className="w-9 h-9 rounded-xl bg-green-100 text-green-700 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Laptop className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-3">
                 <div className="text-2xl font-black text-slate-900">{myAssignedAssets.length} Unit</div>
-                <div className="text-xs text-blue-700 mt-1 flex items-center gap-1.5 font-bold">
+                <div className="text-xs text-green-700 mt-1 flex items-center gap-1.5 font-bold">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Perangkat Kerja Ditugaskan
                 </div>
@@ -350,24 +350,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Ruang Rapat & Fasilitas GA */}
           <div 
             onClick={() => onNavigate('meeting_rooms')}
-            className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
+            className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-green-300 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 {isHumas ? 'Agenda Ruang Rapat' : 'Ruang Rapat & GA'}
               </span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-green-100 text-green-700 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Building2 className="w-5 h-5" />
               </div>
             </div>
             <div className="mt-3">
               <div className="text-2xl font-black text-slate-900">{todayMeetings.length} Hari Ini</div>
-              <div className="text-xs text-emerald-700 font-medium mt-1">
+              <div className="text-xs text-green-700 font-medium mt-1">
                 {safeReservations.length} Total Jadwal Rapat
               </div>
-              <div className="text-[11px] text-emerald-700 font-bold mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+              <div className="text-[11px] text-green-700 font-bold mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
                 <span>{isHumas ? 'Pantau Semua Ruang' : 'Pesan & Cek Jadwal'}</span>
-                <ArrowRight className="w-3 h-3 text-emerald-600" />
+                <ArrowRight className="w-3 h-3 text-green-600" />
               </div>
             </div>
           </div>
@@ -379,11 +379,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Total Aset */}
           <div 
             onClick={() => onNavigate('assets')}
-            className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
+            className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-green-300 hover:shadow-md cursor-pointer transition-all hover:translate-y-[-2px] group"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Aset Fisik &amp; Lisensi</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-green-100 text-green-700 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Package className="w-5 h-5" />
               </div>
             </div>
@@ -392,7 +392,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between font-medium flex-wrap gap-1">
                 <span>{isGlobalDashboard ? `${ownerAssetSummary || 'Belum ada owner terklasifikasi'} • ${unclassifiedOwnerAssets} tanpa owner • ${licenseAssets.length} Lisensi` : isDivisionDashboard ? `${divisionLabel} • ${dashboardAssets.length} aset dalam cakupan` : `${dashboardAssets.length} aset dalam cakupan`}</span>
               </div>
-              <div className="text-[11px] text-emerald-700 font-bold mt-2 pt-2 border-t border-slate-100">
+              <div className="text-[11px] text-green-700 font-bold mt-2 pt-2 border-t border-slate-100">
                 Valuasi: {formatRupiah(totalAssetValue)}
               </div>
             </div>
@@ -416,7 +416,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {pendingLoans.length} Menunggu Persetujuan
               </div>
               <div className="text-[11px] text-slate-500 font-medium mt-2 pt-2 border-t border-slate-100 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                 Validasi Jadwal Siaga
               </div>
             </div>
@@ -486,7 +486,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                    <Camera className="w-4 h-4 text-sky-600" />
+                    <Camera className="w-4 h-4 text-green-600" />
                     Permintaan Dokumentasi &amp; Foto Rapat (Semua Ruangan)
                   </h3>
                   <p className="text-xs text-slate-500">
@@ -495,7 +495,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <button
                   onClick={() => onNavigate('meeting_rooms')}
-                  className="text-xs text-sky-700 hover:text-sky-800 font-bold flex items-center gap-1"
+                  className="text-xs text-green-700 hover:text-sky-800 font-bold flex items-center gap-1"
                 >
                   Buka Ruang Rapat <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -521,10 +521,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {docReservations.map((res) => (
                     <div 
                       key={res.id}
-                      className="p-3.5 rounded-xl bg-sky-50/60 border border-sky-200/80 hover:border-sky-300 transition-colors flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                      className="p-3.5 rounded-xl bg-green-50/60 border border-green-200/80 hover:border-sky-300 transition-colors flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="p-2.5 rounded-xl bg-sky-500 text-white mt-0.5 shadow-xs shrink-0">
+                        <div className="p-2.5 rounded-xl bg-green-500 text-white mt-0.5 shadow-xs shrink-0">
                           <Camera className="w-4 h-4" />
                         </div>
                         <div>
@@ -542,7 +542,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             <span>Pemohon: <strong>{res.organizer_name}</strong> ({res.organizer_department})</span>
                           </div>
                           {res.documentation_notes && (
-                            <p className="text-xs text-sky-900 bg-sky-100/70 p-2 rounded-lg mt-2 border border-sky-200 font-medium">
+                            <p className="text-xs text-sky-900 bg-green-100/70 p-2 rounded-lg mt-2 border border-green-200 font-medium">
                               📸 <strong>Instruksi Liputan Humas:</strong> {res.documentation_notes}
                             </p>
                           )}
@@ -551,15 +551,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                       <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0 gap-1.5">
                         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                          res.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                          res.status === 'in_use' ? 'bg-blue-100 text-blue-800 border border-blue-300 animate-pulse' :
+                          res.status === 'approved' ? 'bg-green-100 text-emerald-800 border border-green-300' :
+                          res.status === 'in_use' ? 'bg-green-100 text-green-800 border border-blue-300 animate-pulse' :
                           'bg-amber-100 text-amber-800 border border-amber-300'
                         }`}>
                           {res.status === 'approved' ? 'Disetujui GA' : res.status === 'in_use' ? 'Sedang Berlangsung' : 'Menunggu GA'}
                         </span>
                         <button
                           onClick={() => onNavigate('meeting_rooms')}
-                          className="text-[11px] font-bold text-sky-700 hover:text-sky-900 underline flex items-center gap-1 mt-1"
+                          className="text-[11px] font-bold text-green-700 hover:text-sky-900 underline flex items-center gap-1 mt-1"
                         >
                           Buka Agenda Rapat
                         </button>
@@ -575,14 +575,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                    <CalendarClock className="w-4 h-4 text-emerald-600" />
+                    <CalendarClock className="w-4 h-4 text-green-600" />
                     Peminjaman Barang Saya
                   </h3>
                   <p className="text-xs text-slate-500">Daftar riwayat dan pengajuan peminjaman aset yang Anda ajukan</p>
                 </div>
                 <button
                   onClick={() => onNavigate('loans')}
-                  className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1"
+                  className="text-xs text-green-700 hover:text-emerald-800 font-bold flex items-center gap-1"
                 >
                   Lihat Semua <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -611,14 +611,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`p-2 rounded-lg mt-0.5 ${loan.category_type === 'IT' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                        <div className={`p-2 rounded-lg mt-0.5 ${loan.category_type === 'IT' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                           {loan.category_type === 'IT' ? <Laptop className="w-4 h-4" /> : <Car className="w-4 h-4" />}
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-sm text-slate-900">{loan.asset_name}</span>
                             {loan.corporate_asset_number && (
-                              <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-emerald-800 border border-emerald-300 font-bold">
+                              <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-emerald-800 border border-green-300 font-bold">
                                 {loan.corporate_asset_number}
                               </span>
                             )}
@@ -632,9 +632,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                       <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
                         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                          loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                          loan.status === 'approved' ? 'bg-green-100 text-emerald-800 border border-green-300' :
                           loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                          loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                          loan.status === 'returned' ? 'bg-green-100 text-green-800 border border-blue-300' :
                           'bg-slate-200 text-slate-700'
                         }`}>
                           {loan.status}
@@ -668,7 +668,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 )}
                 <button
                   onClick={() => onNavigate('tickets')}
-                  className="text-xs text-emerald-700 hover:text-emerald-800 font-bold"
+                  className="text-xs text-green-700 hover:text-emerald-800 font-bold"
                 >
                   Lihat Semua
                 </button>
@@ -677,14 +677,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {myTickets.length === 0 ? (
               <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                <CheckCircle2 className="w-8 h-8 text-green-600 mx-auto" />
                 <p className="text-xs font-semibold text-slate-700">Tidak Ada Kendala Aktif</p>
                 <p className="text-[11px] text-slate-500">
                   Seluruh perangkat dan fasilitas Anda dalam kondisi prima.
                 </p>
                 <button
                   onClick={onOpenNewTicketModal}
-                  className="mt-2 text-xs font-bold text-emerald-700 hover:underline inline-block"
+                  className="mt-2 text-xs font-bold text-green-700 hover:underline inline-block"
                 >
                   + Lapor Kendala Baru
                 </button>
@@ -709,7 +709,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <h4 className="font-semibold text-slate-900 line-clamp-2">{t.title}</h4>
                     <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200">
                       <span>Prioritas: <strong className="uppercase">{t.priority}</strong></span>
-                      <span className="text-emerald-700 font-bold">SLA: {t.sla_hours} Jam</span>
+                      <span className="text-green-700 font-bold">SLA: {t.sla_hours} Jam</span>
                     </div>
                   </div>
                 ))}
@@ -727,14 +727,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                  <CalendarClock className="w-4 h-4 text-emerald-600" />
+                  <CalendarClock className="w-4 h-4 text-green-600" />
                   {isDivisionDashboard ? `Jadwal Peminjaman ${divisionLabel}` : isAuditor ? 'Pemantauan Peminjaman Lintas Divisi' : 'Jadwal Peminjaman Aset Terintegrasi'}
                 </h3>
                 <p className="text-xs text-slate-500">{isDivisionDashboard ? `Data peminjaman yang terkait dengan pengelolaan ${divisionLabel}` : isAuditor ? 'Ringkasan read-only peminjaman lintas unit kerja' : 'Reservasi mobil dinas, laptop cadangan, dan fasilitas ruang rapat'}</p>
               </div>
               <button
                 onClick={() => onNavigate('loans')}
-                className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1"
+                className="text-xs text-green-700 hover:text-emerald-800 font-bold flex items-center gap-1"
               >
                 Lihat Semua <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -748,14 +748,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg mt-0.5 ${loan.category_type === 'IT' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <div className={`p-2 rounded-lg mt-0.5 ${loan.category_type === 'IT' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                         {loan.category_type === 'IT' ? <Laptop className="w-4 h-4" /> : <Car className="w-4 h-4" />}
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-sm text-slate-900">{loan.asset_name}</span>
                           {loan.corporate_asset_number && (
-                            <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-emerald-800 border border-emerald-300 font-bold">
+                            <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white text-emerald-800 border border-green-300 font-bold">
                               {loan.corporate_asset_number}
                             </span>
                           )}
@@ -771,9 +771,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                     <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                        loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                        loan.status === 'approved' ? 'bg-green-100 text-emerald-800 border border-green-300' :
                         loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                        loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                        loan.status === 'returned' ? 'bg-green-100 text-green-800 border border-blue-300' :
                         'bg-slate-200 text-slate-700'
                       }`}>
                         {loan.status}
@@ -809,7 +809,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   )}
                   <button
                     onClick={() => onNavigate('tickets')}
-                    className="text-xs text-emerald-700 hover:text-emerald-800 font-bold"
+                    className="text-xs text-green-700 hover:text-emerald-800 font-bold"
                   >
                     Lihat Semua
                   </button>
@@ -835,7 +835,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <h4 className="font-semibold text-slate-900 line-clamp-2">{t.title}</h4>
                     <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200">
                       <span>Oleh: {t.reporter_name}</span>
-                      <span className="text-emerald-700 font-bold">SLA: {t.sla_hours} Jam</span>
+                      <span className="text-green-700 font-bold">SLA: {t.sla_hours} Jam</span>
                     </div>
                   </div>
                 ))}
@@ -845,14 +845,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {!isDivisionDashboard ? (
             <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs">
               <h3 className="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
+                <TrendingUp className="w-4 h-4 text-green-600" />
                 {isAuditor ? 'Audit Log Lintas Divisi' : 'Audit Log Aktivitas Terakhir'}
               </h3>
               <div className="space-y-2.5 text-xs">
                 {auditLogs.slice(0, 4).map((log) => (
                   <div key={log.id} className="pb-2 border-b border-slate-100 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between text-slate-500 text-[10px]">
-                      <span className="font-bold text-emerald-700">{log.user_name} ({log.role})</span>
+                      <span className="font-bold text-green-700">{log.user_name} ({log.role})</span>
                       <span>{log.timestamp}</span>
                     </div>
                     <p className="text-slate-700 text-xs mt-0.5">{log.details}</p>
