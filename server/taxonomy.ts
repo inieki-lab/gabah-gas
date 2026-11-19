@@ -101,7 +101,8 @@ export function normalizeCategoryMaster(list: unknown): AssetTaxonomyItem[] {
       code,
       name: String(raw.name || code).trim(),
       main_type: mainType,
-      owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'GA',
+      // Unknown ownership must remain unassigned; never silently classify it as GA.
+      owner_division: isOwnerDivision(raw.owner_division) ? raw.owner_division : 'UNASSIGNED',
       category_type: isGabahCategoryType(raw.category_type)
         ? raw.category_type
         : (raw.owner_division === 'IT' ? 'IT' : 'General'),
