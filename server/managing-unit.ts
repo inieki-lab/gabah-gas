@@ -15,9 +15,9 @@ import { db, OrgUnit } from './db';
  * server/migrations/007_asset_managing_unit.sql):
  *   1. SC/PIBC adalah kode lokasi legacy; tidak pernah dipakai untuk menebak unit.
  *   2. Unit dengan id persis `UNIT-{DIVISION}` dan division_code = DIVISION.
- *   2. Jika tidak ada, tepat SATU unit dengan division_code = DIVISION
+ *   3. Jika tidak ada, tepat SATU unit dengan division_code = DIVISION
  *      (IT → UNIT-IT-MIS).
- *   3. Selain itu NULL — mapping ambigu TIDAK ditebak (contoh: GA memiliki dua
+ *   4. Selain itu NULL — mapping ambigu TIDAK ditebak (contoh: GA memiliki dua
  *      kandidat UNIT-GA-SARPRAS & UNIT-GA-UMUM → unresolved, biarkan kosong).
  */
 
