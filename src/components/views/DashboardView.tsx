@@ -188,7 +188,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="gabah-dashboard space-y-6">
       
       {/* Welcome Banner with Fast Actions (Clean White) */}
       <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-xs relative overflow-hidden">
