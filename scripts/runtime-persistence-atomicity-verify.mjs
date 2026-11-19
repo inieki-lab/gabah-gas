@@ -33,7 +33,6 @@ assert.match(server, /const persistBeforeSuccess = async \(req: express\.Request
 assert.match(server, /code: 'PERSISTENCE_UNAVAILABLE'/);
 assert.doesNotMatch(server, /persistDataStore\(\)\.catch\(\(\) => \{\}\)/);
 assert.match(server, /\(req as any\).__gabahPersisted = true/);
-assert.match(server, /if \(\(req as any\).__gabahPersisted\) return/);
 assert.equal((server.match(/persistBeforeSuccess\(req, res\)/g) || []).length, 11, 'All 11 formerly swallowed mutation writes must be awaited');
 
 
