@@ -166,6 +166,9 @@ jobs:
       - name: Ticket reporter ownership regression
         run: npm run test:ticket-reporter-ownership
 
+      - name: Direct IT Support ticket routing regression
+        run: npm run test:ticket-direct-it-routing
+
       - name: Ticket related-asset visibility regression
         run: npm run test:ticket-related-asset-scope
 
