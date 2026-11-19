@@ -688,6 +688,39 @@ async function main() {
     const health2 = await req(base, 'GET', '/api/health');
     record('CR-04 health after restart still postgresql', 'postgresql', health2.json?.persistence, health2.json?.persistence === 'postgresql');
 
+    // ---------- 6b. Runtime PostgreSQL failure must rollback and latch closed ----------
+    const stateBeforeFault = await mig.query('SELECT payload, updated_at FROM gabah_state WHERE id = 1');
+    await mig.query(`
+      CREATE OR REPLACE FUNCTION gabah_ci_reject_user_sync() RETURNS trigger
+      LANGUAGE plpgsql AS $
+      BEGIN
+        IF NEW.email = 'it.support@foodstation.co.id' THEN
+          RAISE EXCEPTION 'CI forced normalized user sync failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $;
+    `);
+    await mig.query('CREATE TRIGGER gabah_ci_reject_user_sync BEFORE INSERT OR UPDATE ON users FOR EACH ROW EXECUTE FUNCTION gabah_ci_reject_user_sync()');
+
+    const faultedPasswordReset = await req(base, 'POST', `/api/users/${itUserId}/reset-password`, { token: adminToken2 });
+    const stateAfterFault = await mig.query('SELECT payload, updated_at FROM gabah_state WHERE id = 1');
+    const rolledBackState = JSON.stringify(stateAfterFault.rows[0]?.payload) === JSON.stringify(stateBeforeFault.rows[0]?.payload)
+      && String(stateAfterFault.rows[0]?.updated_at) === String(stateBeforeFault.rows[0]?.updated_at);
+    record('Runtime normalized-table failure rolls back gabah_state snapshot', 'unchanged JSONB + updated_at',
+      `HTTP ${faultedPasswordReset.status}; rollback=${rolledBackState}`,
+      faultedPasswordReset.status === 400 && rolledBackState);
+
+    const subsequentMutation = await req(base, 'POST', `/api/users/${itUserId}/reset-password`, { token: adminToken2 });
+    const stateAfterLatchedWrite = await mig.query('SELECT payload, updated_at FROM gabah_state WHERE id = 1');
+    const latchPreservedState = JSON.stringify(stateAfterLatchedWrite.rows[0]?.payload) === JSON.stringify(stateBeforeFault.rows[0]?.payload)
+      && String(stateAfterLatchedWrite.rows[0]?.updated_at) === String(stateBeforeFault.rows[0]?.updated_at);
+    record('Subsequent mutation remains fail-closed after runtime PostgreSQL failure', 'HTTP 400; no second snapshot write',
+      `HTTP ${subsequentMutation.status}; unchanged=${latchPreservedState}`,
+      subsequentMutation.status === 400 && latchPreservedState);
+    await mig.query('DROP TRIGGER IF EXISTS gabah_ci_reject_user_sync ON users');
+    await mig.query('DROP FUNCTION IF EXISTS gabah_ci_reject_user_sync()');
+
     child2.kill('SIGKILL');
     await new Promise(r => setTimeout(r, 500));
 
