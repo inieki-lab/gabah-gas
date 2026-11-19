@@ -412,7 +412,7 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 
 **Branch:** `fix/persistence-failure-latch-snapshot-order`  
 **Base:** `main` at `b46b4bed23bb48b76975a108d22b5b4ea791f720`  
-**Status:** implementation and PostgreSQL fault-injection integration test added; exact-head CI pending.
+**Status:** implementation and PostgreSQL fault-injection integration test added; exact-head CI passed on 2026-11-19.
 
 ## Verified implementation changes
 
@@ -449,7 +449,8 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 
 ### Verification status
 - Branch is now based on current `main` ancestry and GitHub reports it mergeable.
-- Exact-head GitHub Actions/check-run records are not yet visible. Typecheck, build, live PostgreSQL fault injection, and full CI must pass before merge.
+- Exact-head GitHub Actions CI passed on `59383ef2541a20d1aeea9ce858bc64f28492a841` (workflow run 44446847040): TypeScript lint, persistence contract test, 67-step pipeline, production build, Docker image/runtime smoke, PostgreSQL 17 migration/persistence integration, P0 security HTTP checks, and the remaining regression suite all passed.
+- The CI install log still reports 3 npm vulnerabilities (1 moderate, 2 high) and Multer 1.x deprecation. The owner ran `npm audit fix` locally and got 0 vulnerabilities, but that updated lockfile has not yet reached this branch. Do not merge until the verified local lockfile fix is committed/pushed and CI reruns.
 - Browser UAT, legacy database upgrade rehearsal, backup/restore rehearsal, and deployment rehearsal remain outstanding release gates.
 
 ### Important limitation
