@@ -114,43 +114,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
   if (!isOpen || !asset) return null;
 
-  // Role authority check
-  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
-  const isITUser = currentUser?.role === 'IT';
-  const isGAUser = currentUser?.role === 'GA';
-  const isSCUser = currentUser?.role === 'Supply Chain';
-
+  // Match the asset list/detail action and PostgreSQL Dynamic RBAC policy.
+  // Object owner scope is already applied by the API; the client checks the
+  // effective operation permission and never infers authority from role labels.
   const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
-  const isGAAsset = asset.owner_division === 'GA' || asset.category_type === 'General';
-  const isSCAsset = asset.owner_division === 'SC';
-
-  let canEditThisAsset = false;
-  let authorityWarning = '';
-
-  if (isSuperAdmin) {
-    canEditThisAsset = true;
-  } else if (isITUser) {
-    if (isITAsset) {
-      canEditThisAsset = true;
-    } else {
-      canEditThisAsset = false;
-      authorityWarning = 'Personel IT hanya berwenang mengedit aset IT (Hardware/Software). Aset GA dan Supply Chain berstatus Read-Only.';
-    }
-  } else if (isGAUser) {
-    if (isGAAsset && !isITAsset) {
-      canEditThisAsset = true;
-    } else {
-      canEditThisAsset = false;
-      authorityWarning = 'Semua perangkat IT & Lisensi adalah milik IT. Divisi GA hanya memiliki izin lihat (read-only).';
-    }
-  } else if (isSCUser) {
-    if (isSCAsset) {
-      canEditThisAsset = true;
-    } else {
-      canEditThisAsset = false;
-      authorityWarning = 'Personel Supply Chain hanya berwenang mengedit aset Supply Chain (Logistik & Pabrik Cipinang).';
-    }
-  }
+  const canEditThisAsset = GabahService.canEditAsset(currentUser, asset);
+  const authorityWarning = 'Hak edit untuk aset ini tidak diberikan pada akun Anda. Hubungi Superadmin bila akses perlu disesuaikan.';
 
   const handleAutoGenerateFst = () => {
     const auto = GabahService.generateCorporateAssetNumber(allAssets);
