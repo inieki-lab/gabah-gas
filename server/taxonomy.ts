@@ -118,10 +118,10 @@ export function normalizeCategoryMaster(list: unknown): AssetTaxonomyItem[] {
 export const CANONICAL_TAXONOMY: AssetTaxonomyItem[] = [
   // IT Hardware (IT-H) - Milik IT
   { code: 'HLT', name: 'Laptop / Notebook', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Laptop komputasi portabel dinas (Milik IT)', is_loanable_by_default: true },
-  { code: 'HPC', name: 'Komputer Desktop / PC', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Komputer kerja / PC tower (Milik IT; dapat dipinjam bila unit memang disiapkan sebagai pool)', is_loanable_by_default: true },
+  { code: 'HPC', name: 'Komputer Desktop / PC', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Komputer kerja / PC tower (Milik IT; tandai loanable hanya untuk unit pool yang disiapkan untuk dipinjam)', is_loanable_by_default: false },
   { code: 'HSV', name: 'Server & Rackmount', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Server datacenter & cloud on-premise (Milik IT)', is_loanable_by_default: false },
   { code: 'HWS', name: 'Workstation', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Workstation spesifikasi tinggi desain/analisis (Milik IT)', is_loanable_by_default: false },
-  { code: 'HMON', name: 'Monitor Komputer / Portable Monitor', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Monitor kerja dan monitor portable (Milik IT)', is_loanable_by_default: true },
+  { code: 'HMON', name: 'Monitor Komputer / Portable Monitor', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Monitor kerja dan monitor portable (Milik IT; tandai loanable hanya untuk unit pool)', is_loanable_by_default: false },
   { code: 'HPRN', name: 'Printer & Barcode Scanner', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Printer dokumen laser/tinta & barcode (Milik IT)', is_loanable_by_default: false },
   { code: 'HSCN', name: 'Scanner Dokumen', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Scanner flatbed & ADF arsip (Milik IT)', is_loanable_by_default: false },
   { code: 'HNET', name: 'Perangkat Jaringan (Switch/Router)', main_type: 'IT-H', owner_division: 'IT', category_type: 'IT', description: 'Switch, router, access point wifi (Milik IT)', is_loanable_by_default: false },
