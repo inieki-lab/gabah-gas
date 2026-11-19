@@ -27,6 +27,7 @@
     "test:maintenance-input-validation": "node scripts/maintenance-input-validation-verify.mjs",
     "test:navigation-policy": "tsx scripts/navigation-policy-verify.ts",
     "test:dashboard-scope": "tsx scripts/dashboard-scope-verify.ts",
+    "test:dashboard-audience": "tsx scripts/dashboard-audience-verify.ts",
     "test:dashboard-attention-scope": "tsx scripts/dashboard-attention-scope-verify.ts",
     "test:asset-scope-policy": "node scripts/asset-scope-policy-verify.mjs",
     "test:asset-assignment-active-user": "node --import tsx scripts/asset-assignment-active-user-verify.mjs",
