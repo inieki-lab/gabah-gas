@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ROLE_NAVIGATION, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../src/navigation/roleNavigation';
+import { CORE_NAVIGATION_TABS, ROLE_NAVIGATION, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../src/navigation/roleNavigation';
 
 const expectedRoles = [
   'Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas',
@@ -38,7 +38,7 @@ const mustNotSee: Record<string, string[]> = {
   'Sekretaris Direksi': ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Humas: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Karyawan: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
-  Auditor: ['my_assets', 'meeting_rooms'],
+  Auditor: ['meeting_rooms'],
 };
 for (const [role, tabs] of Object.entries(mustNotSee)) {
   for (const tab of tabs) assert.equal(isNavTabAllowedForRole(role as keyof typeof ROLE_NAVIGATION, tab as any), false);
@@ -77,7 +77,17 @@ assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'reports');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loans.read']), 'tickets');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), null);
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), 'dashboard');
+
+// Core employee workspace stays visible even when a role has no optional module grants.
+assert.deepEqual([...CORE_NAVIGATION_TABS], ['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge']);
+for (const role of [...expectedRoles, 'Custom Role']) {
+  for (const tab of CORE_NAVIGATION_TABS) {
+    assert.ok(isNavTabAllowedForRole(role as any, tab, []), `${role} must always see core menu ${tab}`);
+  }
+}
+assert.ok(isNavTabAllowedForRole('Auditor', 'my_assets'));
+assert.ok(isNavTabAllowedForRole('Auditor', 'knowledge', []));
 
 // Administration visibility follows effective Superadmin capability, not a legacy label.
 assert.equal(isSuperadminNavigationAllowed('Admin GABAH', false, ['dashboard.read']), false);
