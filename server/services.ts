@@ -856,7 +856,7 @@ export class GabahDomainService {
     });
 
     if (conflicting) {
-      throw new Error(`Tidak dapat disetujui: Tabrakan jadwal dengan peminjaman ${conflicting.loan_number} (${conflicting.borrower_name}) yang telah disetujui untuk aset ini.`);
+      throw Object.assign(new Error(`Tidak dapat disetujui: Tabrakan jadwal dengan peminjaman ${conflicting.loan_number} (${conflicting.borrower_name}) yang telah disetujui untuk aset ini.`), { statusCode: 409 });
     }
 
     loan.status = 'approved';
