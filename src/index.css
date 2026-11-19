@@ -152,3 +152,36 @@ body,
 #root a:focus-visible {
   outline-color: var(--gabah-control-focus);
 }
+
+/* GABAH Enterprise Workspace v2: structural visual redesign layer */
+:root{--gabah-canvas:#f3f7f4;--gabah-border:#dce7df;--gabah-text:#142d20;--gabah-muted:#65796c;--gabah-shadow-card:0 1px 2px rgba(17,55,34,.04),0 8px 24px rgba(17,55,34,.045);--gabah-shadow-float:0 18px 48px rgba(13,42,27,.16)}
+html,body,#root{min-height:100%}body{font-size:14px;line-height:1.5}
+.gabah-app-shell{min-height:100vh;background:var(--gabah-canvas)}
+.gabah-topbar{min-height:72px;background:rgba(255,255,255,.97);border-bottom:1px solid var(--gabah-border);box-shadow:0 4px 18px rgba(19,59,37,.045)}
+.gabah-topbar>div{max-width:none!important;min-height:72px;padding-inline:clamp(18px,2.4vw,40px)}
+.gabah-workspace{max-width:none!important;align-items:stretch;min-height:calc(100vh - 72px)}
+.gabah-sidebar{position:sticky;top:72px;align-self:flex-start;width:272px;min-width:248px;height:calc(100vh - 72px);min-height:0;overflow:hidden;background:#123b2b;color:#e8f3ec;border:0;border-right:1px solid #28533d;box-shadow:8px 0 28px rgba(15,54,33,.07)}
+.gabah-sidebar nav{padding:22px 16px 28px;scrollbar-color:#47745a #123b2b}
+.gabah-sidebar nav>div>div:first-child span{color:#a9c6b3!important;letter-spacing:.13em;font-size:10px}
+.gabah-sidebar nav button{min-height:44px;border-radius:10px;color:#d6e6dc!important;padding:10px 12px}
+.gabah-sidebar nav button:hover{background:rgba(255,255,255,.09)!important;color:#fff!important}
+.gabah-sidebar nav button[aria-current=page],.gabah-sidebar nav button.bg-\[\#e5f4eb\]{background:#e5f4eb!important;color:#123b2b!important;box-shadow:inset 3px 0 #52b77a}
+.gabah-sidebar nav button[aria-current=page] svg,.gabah-sidebar nav button.bg-\[\#e5f4eb\] svg{color:#176b45!important}
+.gabah-sidebar nav .border-t{border-color:rgba(220,239,226,.18)!important}
+.gabah-sidebar nav button .text-slate-400,.gabah-sidebar nav button .text-slate-500{color:#a9c6b3!important}
+.gabah-main-content{padding:clamp(22px,3vw,44px) clamp(20px,3vw,48px) 56px;background:var(--gabah-canvas);overflow-x:hidden}
+.gabah-dashboard{max-width:1680px;margin-inline:auto;display:flex;flex-direction:column;gap:26px}
+.gabah-dashboard h1{color:var(--gabah-text);letter-spacing:-.035em;font-size:clamp(26px,2.1vw,34px);line-height:1.15;font-weight:800}
+.gabah-dashboard h2,.gabah-dashboard h3{letter-spacing:-.02em}
+.gabah-dashboard .grid>[class*=rounded-2xl],.gabah-dashboard [class*=rounded-2xl][class*=bg-white]{border:1px solid var(--gabah-border);border-radius:16px;box-shadow:var(--gabah-shadow-card);transition:box-shadow .18s ease,transform .18s ease,border-color .18s ease}
+.gabah-dashboard .grid>[class*=rounded-2xl]:hover{box-shadow:0 12px 30px rgba(17,55,34,.09)}
+.gabah-dashboard [class*=text-2xl]{letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.gabah-main-content>section{max-width:1680px;margin-inline:auto}
+.gabah-main-content table{min-width:100%;border-collapse:separate;border-spacing:0}
+.gabah-main-content thead th{position:sticky;top:0;z-index:1;background:#f2f7f3;color:#355744;font-size:11px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;border-bottom:1px solid var(--gabah-border)}
+.gabah-main-content tbody tr{transition:background .12s ease}.gabah-main-content tbody tr:hover{background:#f5faf6}
+.gabah-main-content input:not([type=checkbox]):not([type=radio]),.gabah-main-content select,.gabah-main-content textarea{min-height:42px;border-radius:9px;padding:9px 12px}
+#root [role=dialog],#root [class*=shadow-2xl]{box-shadow:var(--gabah-shadow-float)}
+@media(min-width:1600px){.gabah-main-content{padding-inline:52px}.gabah-sidebar{width:288px}}
+@media(max-width:1023px){.gabah-sidebar{width:232px;min-width:220px}.gabah-main-content{padding:22px}}
+@media(max-width:767px){.gabah-topbar,.gabah-topbar>div{min-height:60px}.gabah-topbar>div{padding-inline:14px}.gabah-workspace{display:block;min-height:calc(100vh - 60px)}.gabah-sidebar{position:relative;top:auto;width:100%;min-width:0;height:auto;min-height:0;overflow:visible;border-right:0;border-bottom:1px solid #28533d}.gabah-sidebar nav{display:flex;gap:6px;overflow-x:auto;padding:10px 12px}.gabah-sidebar nav>div{display:flex;align-items:center;flex:0 0 auto;gap:4px}.gabah-sidebar nav>div>div:first-child{display:none}.gabah-sidebar nav button{width:auto;min-width:max-content;min-height:40px;padding:9px 12px}.gabah-sidebar nav button>div>div>div:nth-child(2){display:none}.gabah-sidebar nav>div.pt-2{display:none}.gabah-main-content{padding:18px 14px 36px}.gabah-dashboard{gap:18px}}
