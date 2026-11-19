@@ -6,6 +6,10 @@ const taxonomy = fs.readFileSync('server/taxonomy.ts', 'utf8');
 const checks = [
   ['Both data sources pass through one eligibility filter', /const source = loanableAssets[\s\S]*?\? loanableAssets[\s\S]*?: \(Array\.isArray\(assets\) \? assets : \[\]\);[\s\S]*?return source\.filter\(a => a\.is_loanable === true && a\.status === 'available'\);/.test(source)],
   ['Available inventory alone is not treated as loanable', !/a\.is_loanable \|\| a\.status === 'available'/.test(source)],
+  ['IT loan catalog includes laptop, PC, monitor and portable presentation peripherals', ['HLT', 'HPC', 'HMON', 'HHDM', 'HPTR', 'HADP', 'HDCK', 'HKEY', 'HWEB', 'HAUD', 'HUSB', 'HEXT'].every(code => taxonomy.includes(`code: '${code}'`))],
+  ['Server, firewall, network core, storage, UPS and rack remain non-loanable by default', ['HSV', 'HFW', 'HSTG', 'HNET', 'HUPS', 'HRCK'].every(code => new RegExp(`code: '${code}'[\\s\\S]{0,300}is_loanable_by_default: false`).test(taxonomy))],
+  ['Backend rejects infrastructure and license assets even if marked loanable', /nonLoanableInfrastructureCodes = new Set\(\['HSV', 'HFW', 'HSTG', 'HNET', 'HUPS', 'HRCK', 'SLIC'\]\)/.test(services) && /category_type \|\| ''\)\.toLowerCase\(\) === 'license'/.test(services)],
+  ['Loan form explains IT peripherals and owner-based approval', /kabel HDMI, pointer, adaptor/.test(source) && /Persetujuan mengikuti pemilik aset/.test(source)],
   ['Preselected asset must belong to eligible pool', /preselectedAssetId && availablePool\.some\(a => a\.id === preselectedAssetId\)/.test(source)],
   ['Submit handler rejects stale or ineligible selected IDs', /selectedAssetIds\.every\(id => availablePool\.some\(asset => asset\.id === id\)\)/.test(source)],
   ['Submit control is disabled for ineligible selected IDs', /disabled=\{isAuditor \|\| hasAnyConflict \|\| selectedAssetIds\.length === 0 \|\| selectedAssetIds\.some\(id => !availablePool\.some\(asset => asset\.id === id\)\)\}/.test(source)],
