@@ -20,23 +20,22 @@
 - **Enforcement Kode**: `server/services.ts` (baris 120-123 & 135-137), `server/taxonomy.ts` (baris 51-53).
 - **Konsekuensi**: Pendaftaran kategori furniture secara otomatis dialokasikan ke divisi pemilik `GA`.
 
-### BR-01.3: Kepemilikan Armada & Mesin Pabrik (SC & PIBC)
+### BR-01.3: Kepemilikan Aset Operasional di RPC dan PIBC
 - **Aturan**:
-  - Truk muatan beras (`KDR-SC`) dan mesin pabrik/forklift (`MSN`) adalah hak milik Divisi Supply Chain.
-  - Mesin jembatan timbang truk 60 ton (`MSN-PIBC`) dan sarana pasar induk adalah hak milik Divisi PIBC.
-  - Kendaraan dinas operasional kantor (`KDR`) adalah hak milik Divisi GA.
-- **Enforcement Kode**: `server/services.ts` (baris 138-144), `server/taxonomy.ts` (baris 57-64).
+  - RPC dan PIBC adalah lokasi/unit operasional, bukan divisi owner atau role aplikasi otomatis.
+  - Data aset lama dengan owner code `SC`/`PIBC` dipertahankan sebagai histori sampai ditinjau satu per satu oleh Superadmin dan pemilik fungsi terkait.
+  - Aset baru harus memakai owner yang telah disahkan pada master owner; lokasi fisik RPC/PIBC tidak boleh menentukan owner.
+  - Kendaraan dinas operasional kantor (`KDR`) yang ditetapkan sebagai aset umum dikelola GA.
+- **Enforcement Kode**: `server/services.ts` menolak owner `SC`/`PIBC` untuk aset baru; master lokasi dan owner dipisahkan.
 
 ---
 
 ## 2. Aturan Penomoran Aset & Rekonsiliasi ERP Accurate (BR-02)
 
 ### BR-02.1: Format Nomor Kanonikal
-- **Aturan**: Format nomor aset resmi sistem adalah:
-  `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}`
-  - Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`, `SC-KDR-SC-2026-0001`, `PIBC-MSN-2026-0001`.
-- **Enforcement Kode**: `server/numbering.ts` (`AssetNumberingEngine.generateAssetNumber()`).
-- **Ketentuan Sequence**: Nomor urut (*sequence*) dimulai dari `0001` dan mereset setiap pergantian tahun takwim per kombinasi unik `owner_division` dan `asset_code`.
+- **Aturan**: Pola nomor aset dikelola Superadmin melalui master Aturan Penomoran. Format tidak dianggap standar final sampai perusahaan mengesahkannya. Aturan baru hanya memengaruhi nomor yang diterbitkan setelah perubahan; nomor historis tidak ditulis ulang.
+- **Catatan**: Prefix `SC`/`PIBC` pada nomor historis bukan izin untuk membuat nomor baru dengan owner tersebut. Owner baru harus dipilih dari master owner yang disahkan.
+- **Enforcement Kode**: `server/numbering.ts` (`AssetNumberingEngine.generateAssetNumber()`) dan `server/migrations/043_asset_numbering_rules.sql`.
 
 ### BR-02.2: Integritas Nomor Seri & Accurate ERP
 - **Aturan**:
@@ -62,7 +61,7 @@
 - **Aturan**:
   - Peminjaman aset IT wajib disetujui oleh personel `IT` atau `Admin GABAH`.
   - Peminjaman aset GA (mobil dinas) wajib disetujui oleh personel `GA` atau `Admin GABAH`.
-  - Peminjaman aset SC wajib disetujui oleh personel `Supply Chain` atau `Admin GABAH`.
+  - Peminjaman aset dengan owner legacy `SC`/`PIBC` memerlukan review owner dan persetujuan petugas yang ditetapkan Superadmin; jangan menganggap role/lokasi Supply Chain atau PIBC sebagai approver otomatis.
 - **Transisi Status Aset**:
   1. Pinjaman disetujui (`approved`) $\to$ status aset menjadi `reserved`.
   2. Serah terima fisik (`handoverLoan`) $\to$ status aset menjadi `assigned` (borrowed).
