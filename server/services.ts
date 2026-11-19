@@ -1130,6 +1130,7 @@ export class GabahDomainService {
     if (payload.category === 'IT' && isPostgresPersistenceActive()) {
       const eligibleAgents = db.users.filter(user =>
         user.is_active !== false
+        && !isSuperadminActor(user)
         && hasRbacPermission(String(user.id), 'tickets.update')
         && hasRbacScope(String(user.id), 'division', 'IT', 'tickets')
       );
