@@ -58,6 +58,15 @@ Gunakan **Plus Jakarta Sans**. Hierarki:
 - **Forms:** label jelas, input putih, border netral, focus ring green.
 - **Badges:** gunakan warna semantik; jangan memakai hijau untuk semua status.
 
+## 4.1 Perlindungan Overflow dan Layar Kecil
+
+- Tabel operasional harus tetap terbaca pada layar laptop dan ponsel. Jika kolom melebihi lebar viewport, gulir horizontal terjadi pada tabel, bukan pada seluruh halaman.
+- Container workspace, section, dan root layout wajib mengizinkan flex/grid children menyusut (min-width: 0) agar tidak memaksa halaman melebar.
+- Dialog pada layar kecil dibatasi terhadap tinggi dan lebar viewport serta dapat digulir di dalam dialog.
+- Input dan select tidak boleh melebar melewati viewport.
+- Hormati preferensi prefers-reduced-motion untuk mengurangi animasi dan transisi.
+- Validasi visual minimum: tabel aset, tiket, peminjaman, dan panel Administration pada desktop serta lebar ponsel.
+
 ## 5. Batasan Perubahan
 
 Perubahan tema hanya menyentuh presentasi. Tidak boleh mengubah:
