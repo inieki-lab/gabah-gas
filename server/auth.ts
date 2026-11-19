@@ -19,6 +19,11 @@ let loginAttemptCleanupCounter = 0;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
+function isLoginLockoutDisabled(): boolean {
+  return process.env.NODE_ENV !== 'production'
+    && process.env.GABAH_DISABLE_LOGIN_LOCKOUT === 'true';
+}
+
 // Rate limiting state for general API endpoints
 interface ApiRateLimitRecord {
   count: number;
@@ -73,6 +78,7 @@ function pruneExpiredLoginAttempts(now: number): void {
  * Check and record failed login attempt for rate limiting
  */
 export function recordFailedLogin(identifier: string): { isLocked: boolean; remainingLockoutSeconds?: number } {
+  if (isLoginLockoutDisabled()) return { isLocked: false };
   const now = Date.now();
   pruneExpiredLoginAttempts(now);
   let record = loginAttempts.get(identifier);
