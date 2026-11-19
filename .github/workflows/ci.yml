@@ -208,6 +208,9 @@ jobs:
       - name: Organization model regression
         run: npm run test:org-model
 
+      - name: RPC/PIBC location label and legacy owner safety regression
+        run: npm run test:rpc-location-label
+
       - name: Division reference integrity regression
         run: npm run test:division-reference-integrity
 
