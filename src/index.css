@@ -248,3 +248,41 @@ body,
     font-size: .8125rem;
   }
 }
+
+
+/* Header: fluid width with graceful wrapping on compact laptop and tablet viewports. */
+#root .gabah-header-inner {
+  min-width: 0;
+}
+#root .gabah-header-inner > * {
+  min-width: 0;
+}
+#root .gabah-header-actions {
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  #root .gabah-header-inner {
+    min-height: 4rem;
+    height: auto;
+    flex-wrap: wrap;
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+    row-gap: .5rem;
+  }
+  #root .gabah-header-inner > div:first-child {
+    flex: 1 1 auto;
+  }
+  #root .gabah-header-actions {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 420px) {
+  #root .gabah-header-inner {
+    padding-left: .75rem;
+    padding-right: .75rem;
+  }
+  #root .gabah-header-inner > div:first-child > div:last-child p {
+    display: none;
+  }
+}
