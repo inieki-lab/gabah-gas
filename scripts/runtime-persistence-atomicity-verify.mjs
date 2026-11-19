@@ -53,3 +53,5 @@ assert.ok(catchBlocks.some(match => /err\?\.statusCode/.test(match[2])), 'Route 
 assert.doesNotMatch(server, /: \((?:400|500)\)\)\)\.json/, 'Persistence status mapping must remain valid TypeScript');
 
 assert.doesNotMatch(server, /await persistDataStore\(\);(?!\s*\(req as any\).__gabahPersisted = true;)/, 'A route that explicitly awaited persistence must mark the response as already committed');
+
+assert.match(server, /if \(\(req as any\).__gabahPersisting\) return res/, 'Duplicate sends must not bypass the persistence gate while the first write is pending');

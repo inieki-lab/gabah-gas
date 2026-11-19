@@ -68,10 +68,11 @@ async function startServer() {
     if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
     const originalSend = res.send.bind(res);
     res.send = ((body?: any) => {
-      if (res.statusCode < 200 || res.statusCode >= 400
-        || (req as any).__gabahPersisted || (req as any).__gabahPersisting) {
+      if (res.statusCode < 200 || res.statusCode >= 400 || (req as any).__gabahPersisted) {
         return originalSend(body);
       }
+      // A duplicate send during the persistence wait must not bypass the gate.
+      if ((req as any).__gabahPersisting) return res;
       (req as any).__gabahPersisting = true;
       void persistDataStore().then(() => {
         (req as any).__gabahPersisted = true;
