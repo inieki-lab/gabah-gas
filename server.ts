@@ -800,7 +800,7 @@ async function startServer() {
         data: sanitizeUser(newUser, { includeTelegramChatId: true }),
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -971,7 +971,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -1143,7 +1143,7 @@ async function startServer() {
 
       res.json({ success: true, data: sanitizeUser(targetUser, { includeTelegramChatId: true }) });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -1219,7 +1219,7 @@ async function startServer() {
         message: `Pengguna ${targetUser.name} berhasil dihapus.`
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -1344,7 +1344,7 @@ async function startServer() {
       res.status(201).json({ success: true, data: { ...result.rows[0], usage_count: 0 } });
     } catch (err: any) {
       const duplicate = err.code === '23505';
-      res.status(duplicate ? 409 : 400).json({ success: false, message: duplicate ? `Aturan ${owner}/${code} sudah terdaftar.` : (err.message || 'Gagal membuat aturan penomoran.') });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (duplicate ? 409 : 400))).json({ success: false, message: duplicate ? `Aturan ${owner}/${code} sudah terdaftar.` : (err.message || 'Gagal membuat aturan penomoran.') });
     }
   });
 
@@ -1414,7 +1414,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: { ...updated.rows[0], usage_count: usageCount } });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message || 'Gagal memperbarui aturan penomoran.' });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message || 'Gagal memperbarui aturan penomoran.' });
     }
   });
 
@@ -1459,7 +1459,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: { id: rule.id, deleted: true } });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message || 'Gagal menghapus aturan penomoran.' });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message || 'Gagal menghapus aturan penomoran.' });
     }
   });
 
@@ -1792,7 +1792,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -1893,7 +1893,7 @@ async function startServer() {
 
       res.status(201).json({ success: true, data: newCategory });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (500))).json({ success: false, message: err.message });
     }
   });
 
@@ -1969,7 +1969,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: target });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (500))).json({ success: false, message: err.message });
     }
   });
 
@@ -1999,7 +1999,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, message: `Kategori ${code} berhasil dihapus.` });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (500))).json({ success: false, message: err.message });
     }
   });
 
@@ -2030,7 +2030,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: newLoc });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (500))).json({ success: false, message: err.message });
     }
   });
 
@@ -2053,7 +2053,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: target });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (500))).json({ success: false, message: err.message });
     }
   });
 
@@ -2072,7 +2072,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, message: `Lokasi ${loc.name} berhasil dihapus.` });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (500))).json({ success: false, message: err.message });
     }
   });
 
@@ -2111,7 +2111,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: newDiv });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (500))).json({ success: false, message: err.message });
     }
   });
 
@@ -2135,7 +2135,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: div });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (500))).json({ success: false, message: err.message });
     }
   });
 
@@ -2174,7 +2174,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, message: `Divisi ${code} berhasil dihapus.` });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (500))).json({ success: false, message: err.message });
     }
   });
 
@@ -2208,7 +2208,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: level });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -2231,7 +2231,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: level });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -2261,7 +2261,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: unit });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -2302,7 +2302,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: unit });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -2328,7 +2328,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -2350,7 +2350,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -2388,7 +2388,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -2431,7 +2431,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: loc });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -2682,7 +2682,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -3714,7 +3714,7 @@ async function startServer() {
       await persistDataStore();
       res.status(201).json({ success: true, data: created });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -3727,7 +3727,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -3846,7 +3846,7 @@ async function startServer() {
       if (savedFilePath) {
         await fs.rm(savedFilePath, { force: true }).catch(() => undefined);
       }
-      return res.status(400).json({ success: false, message: err.message });
+      return res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -3897,7 +3897,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -3910,7 +3910,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 
@@ -3924,7 +3924,7 @@ async function startServer() {
       await persistDataStore();
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : (400))).json({ success: false, message: err.message });
     }
   });
 

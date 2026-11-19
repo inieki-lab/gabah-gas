@@ -44,3 +44,9 @@ assert.match(server, /void persistDataStore\(\)\.then\(\(\) =>/);
 assert.match(server, /originalSend\(body\)/);
 assert.match(server, /PERSISTENCE_UNAVAILABLE/);
 assert.doesNotMatch(server, /res\.on\('finish',[\s\S]*persistDataStore/);
+
+
+// Persistence failures carry statusCode=503; route catch blocks must preserve it
+// instead of flattening database outages into client validation errors.
+const catchBlocks = [...server.matchAll(/catch \(err: any\) \{([\s\S]{0,500}?)res\.status\(([^)]+)\)/g)];
+assert.ok(catchBlocks.some(match => /err\?\.statusCode/.test(match[2])), 'Route catches must preserve persistence HTTP status codes');
