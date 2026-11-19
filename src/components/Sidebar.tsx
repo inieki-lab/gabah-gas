@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { AdministrationModal } from './modals/AdministrationModal';
-import { AppNavTab, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../navigation/roleNavigation';
+import { AppNavTab, isCoreNavigationTab, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../navigation/roleNavigation';
 
 export type NavTab = AppNavTab;
 
@@ -219,7 +219,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ...section,
       items: section.items.filter(item => activeRole
         ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions)
-          && (activeModuleKeys === undefined || activeModuleKeys.includes(item.id))
+          && (isCoreNavigationTab(item.id) || activeModuleKeys === undefined || activeModuleKeys.includes(item.id))
         : false),
     }))
     .filter(section => section.items.length > 0);

@@ -56,6 +56,16 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
   ],
 };
 
+// Core employee workspace is always present for every authenticated role.
+// This is navigation visibility only; backend endpoints still enforce data scope and actions.
+export const CORE_NAVIGATION_TABS: readonly AppNavTab[] = [
+  'dashboard', 'my_assets', 'loans', 'tickets', 'knowledge',
+];
+
+export function isCoreNavigationTab(tab: AppNavTab): boolean {
+  return CORE_NAVIGATION_TABS.includes(tab);
+}
+
 const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   dashboard: ['dashboard.read'],
   my_assets: ['assets.read'],
@@ -109,6 +119,7 @@ export function isNavTabAllowedForRole(
   permissionKeys?: readonly string[],
 ): boolean {
   if (!role) return false;
+  if (isCoreNavigationTab(tab)) return true;
   if (permissionKeys !== undefined) {
     if (permissionKeys.includes('*')) return true;
     // The room workspace loads both the room catalogue and reservation queue.
