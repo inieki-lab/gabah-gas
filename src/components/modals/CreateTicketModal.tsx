@@ -313,7 +313,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
-                disabled={!currentUser.permission_keys?.includes('tickets.create.me') && !currentUser.permission_keys?.includes('*')}
+                disabled={currentUser.role !== 'Admin GABAH' && !currentUser.permission_keys?.includes('tickets.create.me') && !currentUser.permission_keys?.includes('*')}
                 title="Akses Pemohon Tiket ME harus diberikan oleh Superadmin"
                 onClick={() => { setCategory('ME'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
