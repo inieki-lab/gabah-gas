@@ -516,7 +516,7 @@ export const db = {
     { id: 'UNIT-IT-MIS', name: 'IT & MIS', division_code: 'IT', is_active: true },
     { id: 'UNIT-GA-SARPRAS', name: 'GA / Sarpras', division_code: 'GA', is_active: true },
     { id: 'UNIT-GA-UMUM', name: 'GA / Urus Rumah Tangga', division_code: 'GA', is_active: true },
-    { id: 'UNIT-SC', name: 'Supply Chain', division_code: 'SC', is_active: true },
+    { id: 'UNIT-SC', name: 'RPC', division_code: 'SC', is_active: true },
     { id: 'UNIT-PIBC', name: 'PIBC', division_code: 'PIBC', is_active: true },
     { id: 'UNIT-PANGSUB', name: 'Pangsub', division_code: 'SC', is_active: true },
     { id: 'UNIT-AUDIT', name: 'Satuan Pengawas Internal', division_code: 'Audit', is_active: true },
@@ -529,7 +529,7 @@ export const db = {
     // Lokasi kantor aktif saat ini. IDs dipertahankan agar relasi user historis aman.
     { id: 'OFF-KP', name: 'HO', is_active: true },
     { id: 'OFF-PIBC', name: 'PIBC', is_active: true },
-    { id: 'OFF-RPC', name: 'RPC/SC', is_active: true },
+    { id: 'OFF-RPC', name: 'RPC', is_active: true },
     { id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true },
     { id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true },
   ] as OrgOfficeLocation[],
@@ -542,8 +542,8 @@ export const db = {
   assetLocations: DEFAULT_ASSET_LOCATIONS,
 
   divisions: [
-    { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
-    { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
+    { code: 'SC', name: 'RPC (legacy references)', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
+    { code: 'PIBC', name: 'PIBC (legacy references)', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
     { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
     { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
     { code: 'Audit', name: 'Satuan Pengawas Internal (SPI)', leader: 'Kepala SPI', depts: ['Audit Kepatuhan & PSAK 16', 'Tinjauan Tata Kelola Aset'] },
@@ -635,7 +635,7 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     name: 'Agus Pratama',
     email: 'sc.warehouse@foodstation.co.id',
     role: 'Karyawan',
-    role_label: 'Karyawan — Lokasi Supply Chain',
+    role_label: 'Karyawan — Lokasi RPC',
     division: 'SC',
     department: 'Pergudangan Beras Induk & Distribusi',
     job_level_code: 'STAF',
