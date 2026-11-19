@@ -1123,6 +1123,24 @@ export class GabahDomainService {
       updated_at: new Date().toISOString(),
     };
 
+    // IT Support routing is direct: only an explicitly authorized active agent
+    // with tickets.update + IT owner scope qualifies. Never guess by job title
+    // or assign randomly; if staffing is zero/ambiguous, keep the IT queue.
+    let directItAgent: ServerUser | undefined;
+    if (payload.category === 'IT' && isPostgresPersistenceActive()) {
+      const eligibleAgents = db.users.filter(user =>
+        user.is_active !== false
+        && hasRbacPermission(String(user.id), 'tickets.update')
+        && hasRbacScope(String(user.id), 'division', 'IT', 'tickets')
+      );
+      if (eligibleAgents.length === 1) {
+        directItAgent = eligibleAgents[0];
+        newTicket.assigned_agent_id = directItAgent.id;
+        newTicket.assigned_agent_name = directItAgent.name;
+        newTicket.status = 'assigned';
+      }
+    }
+
     db.tickets.unshift(newTicket);
 
     // Contract linkage was validated before ticket creation.
@@ -1134,8 +1152,9 @@ export class GabahDomainService {
     // Notify respective division (IT covers software/license/SaaS)
     const targetDivision = payload.category;
     this.notify({
-      recipient_role: targetDivision,
-      recipient_division: targetDivision,
+      recipient_user_id: directItAgent?.id,
+      recipient_role: directItAgent ? undefined : targetDivision,
+      recipient_division: directItAgent ? undefined : targetDivision,
       title: `Tiket Baru: [${payload.priority.toUpperCase()}] ${ticketNumber}`,
       message: `${actor.name} (${actor.department}) melaporkan: ${payload.title}`,
       severity: payload.priority === 'urgent' ? 'critical' : payload.priority === 'high' ? 'action_required' : 'info',
