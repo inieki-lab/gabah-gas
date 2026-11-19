@@ -692,14 +692,14 @@ async function main() {
     const stateBeforeFault = await mig.query('SELECT payload, updated_at FROM gabah_state WHERE id = 1');
     await mig.query(`
       CREATE OR REPLACE FUNCTION gabah_ci_reject_user_sync() RETURNS trigger
-      LANGUAGE plpgsql AS $
+      LANGUAGE plpgsql AS $$
       BEGIN
         IF NEW.email = 'it.support@foodstation.co.id' THEN
           RAISE EXCEPTION 'CI forced normalized user sync failure';
         END IF;
         RETURN NEW;
       END;
-      $;
+      $$;
     `);
     await mig.query('CREATE TRIGGER gabah_ci_reject_user_sync BEFORE INSERT OR UPDATE ON users FOR EACH ROW EXECUTE FUNCTION gabah_ci_reject_user_sync()');
 
