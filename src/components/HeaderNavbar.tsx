@@ -170,7 +170,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
               >
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-emerald-600" />
+                    <Bell className="w-4 h-4 text-green-600" />
                     Notifikasi Sistem ({totalNotifications})
                   </h4>
                   <button 
@@ -192,13 +192,13 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                           setShowNotifications(false);
                           onNavigateToMeetingRooms?.('it_facilities');
                         }}
-                        className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 hover:bg-sky-100/70 cursor-pointer transition-colors"
+                        className="p-2.5 rounded-lg bg-green-50 border border-green-200 hover:bg-green-100/70 cursor-pointer transition-colors"
                       >
                         <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="font-bold text-sky-900 flex items-center gap-1">
-                            <Laptop className="w-3.5 h-3.5 text-sky-600" /> Fasilitas IT: {res.room_name}
+                          <span className="font-bold text-green-900 flex items-center gap-1">
+                            <Laptop className="w-3.5 h-3.5 text-green-600" /> Fasilitas IT: {res.room_name}
                           </span>
-                          <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">{res.date}</span>
+                          <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-bold">{res.date}</span>
                         </div>
                         <p className="text-xs text-slate-800 font-semibold line-clamp-1">{res.title}</p>
                         <p className="text-[11px] text-slate-600 mt-0.5">
@@ -206,7 +206,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                         </p>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {itItems.map((item, idx) => (
-                            <span key={idx} className="text-[10px] bg-sky-100/90 text-sky-900 px-1.5 py-0.2 rounded font-medium">
+                            <span key={idx} className="text-[10px] bg-green-100/90 text-green-900 px-1.5 py-0.2 rounded font-medium">
                               🖥️ {item}
                             </span>
                           ))}
@@ -225,18 +225,18 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                           setShowNotifications(false);
                           onNavigateToMeetingRooms?.(res.consumption_requested ? 'consumption' : 'ga_facilities');
                         }}
-                        className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/70 cursor-pointer transition-colors"
+                        className="p-2.5 rounded-lg bg-green-50 border border-green-200 hover:bg-green-100/70 cursor-pointer transition-colors"
                       >
                         <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="font-bold text-emerald-900 flex items-center gap-1">
+                          <span className="font-bold text-green-900 flex items-center gap-1">
                             {res.status === 'pending_approval' ? (
                               <CalendarClock className="w-3.5 h-3.5 text-amber-600" />
                             ) : (
-                              <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <Building2 className="w-3.5 h-3.5 text-green-600" />
                             )}
                             {res.status === 'pending_approval' ? 'Approval Ruangan' : 'Fasilitas & Pantry GA'}: {res.room_name}
                           </span>
-                          <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">{res.date}</span>
+                          <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-bold">{res.date}</span>
                         </div>
                         <p className="text-xs text-slate-800 font-semibold line-clamp-1">{res.title}</p>
                         <p className="text-[11px] text-slate-600 mt-0.5">
@@ -249,7 +249,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                             </span>
                           )}
                           {gaItems.map((item, idx) => (
-                            <span key={idx} className="text-[10px] bg-emerald-100/90 text-emerald-900 px-1.5 py-0.2 rounded font-medium">
+                            <span key={idx} className="text-[10px] bg-green-100/90 text-green-900 px-1.5 py-0.2 rounded font-medium">
                               🏢 {item}
                             </span>
                           ))}
@@ -266,20 +266,20 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                         setShowNotifications(false);
                         onNavigateToMeetingRooms?.('documentation');
                       }}
-                      className="p-2.5 rounded-lg bg-sky-50 border border-sky-200 hover:bg-sky-100/70 cursor-pointer transition-colors"
+                      className="p-2.5 rounded-lg bg-green-50 border border-green-200 hover:bg-green-100/70 cursor-pointer transition-colors"
                     >
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-bold text-sky-800 flex items-center gap-1">
-                          <Camera className="w-3.5 h-3.5 text-sky-600" /> Request Foto: {res.room_name}
+                        <span className="font-bold text-green-800 flex items-center gap-1">
+                          <Camera className="w-3.5 h-3.5 text-green-600" /> Request Foto: {res.room_name}
                         </span>
-                        <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">{res.date}</span>
+                        <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-bold">{res.date}</span>
                       </div>
                       <p className="text-xs text-slate-800 font-semibold line-clamp-1">{res.title}</p>
                       <p className="text-[11px] text-slate-600 mt-0.5">
                         {res.start_time} - {res.end_time} WIB • {res.organizer_name} ({res.organizer_department})
                       </p>
                       {res.documentation_notes && (
-                        <p className="text-[11px] text-sky-700 italic mt-0.5 bg-sky-100/50 px-1.5 py-0.5 rounded">
+                        <p className="text-[11px] text-green-700 italic mt-0.5 bg-green-100/50 px-1.5 py-0.5 rounded">
                           "{res.documentation_notes}"
                         </p>
                       )}
@@ -293,10 +293,10 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                         setShowNotifications(false);
                         onNavigateToTickets();
                       }}
-                      className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 hover:bg-rose-100/70 cursor-pointer transition-colors"
+                      className="p-2.5 rounded-lg bg-red-50 border border-red-200 hover:bg-red-100/70 cursor-pointer transition-colors"
                     >
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-bold text-rose-700 flex items-center gap-1">
+                        <span className="font-bold text-red-700 flex items-center gap-1">
                           <AlertTriangle className="w-3.5 h-3.5" /> SLA URGENT ({ticket.ticket_code})
                         </span>
                         <span className="text-slate-500 font-medium">SLA 4 Jam</span>
@@ -327,7 +327,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
 
                   {totalNotifications === 0 && (
                     <div className="text-center py-6 text-slate-500 text-xs flex flex-col items-center gap-2">
-                      <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                      <CheckCircle2 className="w-8 h-8 text-green-600" />
                       Semua antrean tiket dan peminjaman dalam kondisi bersih.
                     </div>
                   )}
@@ -351,7 +351,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
               <div className="hidden lg:block">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-slate-900 truncate max-w-[120px]">{currentUser.name}</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-green-100 text-green-800 border border-green-200">
                     {currentUser.role_label}
                   </span>
                 </div>
@@ -368,7 +368,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                 <div className="px-3 py-2 border-b border-slate-100 mb-2">
                   <div className="flex items-center justify-between">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                      <Shield className="w-3.5 h-3.5 text-emerald-600" /> Switch Role & Persona
+                      <Shield className="w-3.5 h-3.5 text-green-600" /> Switch Role & Persona
                     </p>
                     {currentUser.id.startsWith('SIM-') && (
                       <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
@@ -396,7 +396,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                           }}
                           className={`w-full text-left p-2 rounded-xl flex items-center gap-2.5 transition-colors ${
                             isSelected 
-                              ? 'bg-emerald-50 border border-emerald-300 text-emerald-900' 
+                              ? 'bg-green-50 border border-green-300 text-green-900' 
                               : 'hover:bg-slate-50 text-slate-700 hover:text-slate-900'
                           }`}
                         >
@@ -404,10 +404,10 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-bold truncate text-slate-900">{user.name}</span>
-                              {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                              {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />}
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                              <span className="text-emerald-700 font-bold">{user.role}</span>
+                              <span className="text-green-700 font-bold">{user.role}</span>
                               <span>•</span>
                               <span className="truncate">{user.department}</span>
                             </div>
@@ -429,12 +429,12 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                       { role: 'Admin GABAH' as UserRole, label: 'Super Admin', color: 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100' },
                       { role: 'Karyawan' as UserRole, label: 'Karyawan / Staf', color: 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' },
                       { role: 'Sekretaris Direksi' as UserRole, label: 'Sekretaris Direksi', color: 'border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100' },
-                      { role: 'Humas' as UserRole, label: 'Staf Humas', color: 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100' },
+                      { role: 'Humas' as UserRole, label: 'Staf Humas', color: 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100' },
                       { role: 'GA' as UserRole, label: 'GA & Sarpras', color: 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100' },
-                      { role: 'IT' as UserRole, label: 'IT Support', color: 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' },
-                      { role: 'Supply Chain' as UserRole, label: 'Supply Chain', color: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
+                      { role: 'IT' as UserRole, label: 'IT Support', color: 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100' },
+                      { role: 'Supply Chain' as UserRole, label: 'Supply Chain', color: 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100' },
                       { role: 'PIBC' as UserRole, label: 'Pasar PIBC', color: 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' },
-                      { role: 'Auditor' as UserRole, label: 'Auditor SPI', color: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100' },
+                      { role: 'Auditor' as UserRole, label: 'Auditor SPI', color: 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' },
                     ].map(item => {
                       const isActive = currentUser.role === item.role;
                       return (
@@ -455,7 +455,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                           }`}
                         >
                           <span className="truncate">{item.label}</span>
-                          {isActive && <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0 ml-1" />}
+                          {isActive && <CheckCircle2 className="w-3 h-3 text-green-600 shrink-0 ml-1" />}
                         </button>
                       );
                     })}
@@ -475,7 +475,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                       }}
                       className="w-full py-1.5 px-3 rounded-xl bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                      <Shield className="w-3.5 h-3.5 text-green-400" />
                       <span>Kembali ke Akun Super Admin ({allUsers?.[0]?.name || 'Admin'})</span>
                     </button>
                   </div>
@@ -502,7 +502,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           {/* Logout Button */}
           <button
             onClick={onLogout}
-            className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors"
+            className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors"
             title="Keluar / Logout ke Beranda"
           >
             <LogOut className="w-4 h-4" />

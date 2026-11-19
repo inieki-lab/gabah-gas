@@ -124,10 +124,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ? (gaRequestsCount || pendingReservationsCount)
             : null,
           badgeColor: isHumas 
-            ? 'bg-sky-600 text-white' 
+            ? 'bg-green-600 text-white' 
             : activeRole === 'IT'
-            ? 'bg-sky-600 text-white'
-            : 'bg-emerald-600 text-white',
+            ? 'bg-green-600 text-white'
+            : 'bg-green-600 text-white',
         },
         {
           id: 'loans',
