@@ -127,6 +127,11 @@ const checks = [
   ['maintenance division authority mirrors asset write authority via all/division scopes', server.includes("hasDynamicDivisionAuthority") && server.split('hasDynamicDivisionAuthority').length >= 7],
   ['dynamic read scopes are reusable via one Stage 11 asset matcher', domainServices.includes('export function assetVisibleUnderDynamicScopes') && domainServices.includes('export function filterMaintenanceSchedulesByDynamicScopes')],
   ['backfill is one-time bootstrap: no recurring canonical delete in persistPostgresState', !persistence.includes('await backfillDynamicRbacUserRoles();') && persistence.includes('bootstrapDynamicRbacUserRoles();')],
+  ['per-user assignment endpoint returns assigned role objects for every account', server.includes("app.get('/api/admin/rbac/user-assignments'") && server.includes("AS assigned_roles")],
+  ['Administration UI normalizes assigned_roles objects into numeric role IDs', frontend.includes('Array.isArray(a.assigned_roles)') && frontend.includes('Number(role.id)')],
+  ['Administration UI renders a role assignment control for each user', frontend.includes('Assignment Role per Pengguna') && frontend.includes('userAssignmentUsers.map(user =>') && frontend.includes('handleToggleUserAssignment(user.id')],
+  ['role assignment save is scoped to the selected user', frontend.includes('handleSaveUserAssignments(user.id)') && frontend.includes('.filter(([id]) => !userId || id === userId)')],
+  ['API client exposes read and write operations for per-user role assignments', apiClient.includes("'/api/admin/rbac/user-assignments'") && apiClient.includes("'/api/admin/rbac/users/'")],
 ];
 
 let failed = 0;
