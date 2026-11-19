@@ -10,6 +10,7 @@ assert.ok(service.includes("const dateTime = /^(\\d{4})-(\\d{2})-(\\d{2})T"), 'B
 assert.ok(service.includes("const dateOnly = /^(\\d{4})-(\\d{2})-(\\d{2})$"), 'Backend remains compatible with legacy date-only values');
 assert.match(service, /start >= due/, 'Backend rejects non-increasing loan schedules');
 assert.match(service, /Tabrakan Jadwal![\s\S]*?statusCode: 409/, 'Overlapping approved/borrowed asset schedules are HTTP 409 conflicts');
+assert.match(service, /Tidak dapat disetujui: Tabrakan jadwal[\s\S]*?statusCode: 409/, 'Approval-time overlapping schedules are also HTTP 409 conflicts');
 assert.match(service, /if \(!asset\.is_loanable\)[\s\S]*?statusCode: 409/, 'Assets outside the loan pool are rejected as HTTP 409 conflicts');
 
 assert.match(modal, /type="datetime-local"/, 'Loan form uses datetime-local controls');
