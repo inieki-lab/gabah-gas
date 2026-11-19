@@ -629,6 +629,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   // User Role Assignments (Dynamic RBAC assignment API) — persisted to PostgreSQL.
   const [userAssignments, setUserAssignments] = useState<Record<string, number[]>>({});
+  const [userAssignmentUsers, setUserAssignmentUsers] = useState<Array<{ id: string; name: string; email: string; legacy_role: string; is_active: boolean }>>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [assignmentsSaving, setAssignmentsSaving] = useState(false);
 
@@ -636,11 +637,27 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     setAssignmentsLoading(true);
     try {
       const assignments = await gabahApi.getRbacUserAssignments();
+      const rows = Array.isArray(assignments) ? assignments : [];
       const map: Record<string, number[]> = {};
-      for (const a of Array.isArray(assignments) ? assignments : []) {
-        map[String(a.user_id)] = Array.isArray(a.role_ids) ? a.role_ids : [];
+      for (const a of rows) {
+        // API returns assigned_roles (objects), not role_ids. Accept both shapes
+        // so the administration UI remains compatible with either response.
+        const roleIds = Array.isArray(a.role_ids)
+          ? a.role_ids.map(Number)
+          : (Array.isArray(a.assigned_roles) ? a.assigned_roles
+            .filter((role: any) => role && role.is_active !== false)
+            .map((role: any) => Number(role.id))
+            .filter((id: number) => Number.isSafeInteger(id) && id > 0) : []);
+        map[String(a.user_id ?? a.id)] = roleIds;
       }
       setUserAssignments(map);
+      setUserAssignmentUsers(rows.map((a: any) => ({
+        id: String(a.user_id ?? a.id),
+        name: String(a.name || a.user_name || 'Tanpa nama'),
+        email: String(a.email || a.user_email || ''),
+        legacy_role: String(a.legacy_role || ''),
+        is_active: a.is_active !== false,
+      })));
     } catch (error: any) {
       showToast(error?.message || 'Gagal memuat daftar assignment role.', 'warning');
     } finally {
@@ -661,16 +678,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     });
   };
 
-  const handleSaveUserAssignments = async () => {
-    const entries = Object.entries(userAssignments) as [string, number[]][];
+  const handleSaveUserAssignments = async (userId?: string) => {
+    const entries = (Object.entries(userAssignments) as [string, number[]][])
+      .filter(([id]) => !userId || id === userId);
     if (entries.length === 0) return;
     setAssignmentsSaving(true);
     try {
-      for (const [userId, roleIds] of entries) {
-        await gabahApi.setRbacUserRoles(userId, roleIds);
+      // Save one user at a time: a failure cannot leave a misleading "all saved"
+      // state after a sequence of partially successful user updates.
+      for (const [id, roleIds] of entries) {
+        await gabahApi.setRbacUserRoles(id, roleIds);
       }
       await refreshUserAssignments();
-      showToast('Daftar assignment role berhasil disimpan.', 'success');
+      showToast('Assignment role pengguna berhasil disimpan.', 'success');
     } catch (error: any) {
       showToast(error?.message || 'Gagal menyimpan assignment role.', 'warning');
     } finally {
@@ -2609,6 +2629,55 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <Plus className="w-4 h-4" /> Buat Role
                     </button>
                   </form>
+
+                  <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                      <div>
+                        <h4 className="font-extrabold text-sm text-slate-900">Assignment Role per Pengguna</h4>
+                        <p className="text-xs text-slate-500 mt-1">Pilih role yang melekat pada setiap akun. Jabatan, unit, dan lokasi tetap atribut terpisah.</p>
+                      </div>
+                      <button type="button" onClick={() => void refreshUserAssignments()} disabled={assignmentsLoading || assignmentsSaving} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold disabled:opacity-50">
+                        {assignmentsLoading ? 'Memuat...' : 'Muat Ulang Pengguna'}
+                      </button>
+                    </div>
+                    {assignmentsLoading && userAssignmentUsers.length === 0 ? (
+                      <div className="p-6 text-center text-sm text-slate-500">Memuat assignment dari PostgreSQL...</div>
+                    ) : userAssignmentUsers.length === 0 ? (
+                      <div className="p-6 text-center text-sm text-slate-500">Belum ada data pengguna atau assignment tidak dapat dimuat.</div>
+                    ) : (
+                      <div className="divide-y divide-slate-100">
+                        {userAssignmentUsers.map(user => (
+                          <div key={user.id} className="p-4 grid grid-cols-1 xl:grid-cols-[minmax(180px,0.8fr)_minmax(0,2fr)_auto] gap-3 items-start">
+                            <div className="min-w-0">
+                              <div className="font-bold text-sm text-slate-800 break-words">{user.name}</div>
+                              <div className="text-xs text-slate-500 break-all">{user.email}</div>
+                              <div className="text-[11px] text-slate-400 mt-1">Role legacy: {user.legacy_role || '—'} · {user.is_active ? 'Aktif' : 'Nonaktif'}</div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                              {rbacRoles.filter(role => role.is_active).map(role => (
+                                <label key={role.id} className="flex items-start gap-2 rounded-lg border border-slate-100 p-2 text-xs text-slate-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={(userAssignments[user.id] || []).includes(Number(role.id))}
+                                    onChange={event => handleToggleUserAssignment(user.id, Number(role.id), event.target.checked)}
+                                    disabled={assignmentsSaving || !user.is_active}
+                                    className="mt-0.5"
+                                  />
+                                  <span>{role.name}{role.is_superadmin ? ' (terlindungi)' : ''}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <button type="button" onClick={() => void handleSaveUserAssignments(user.id)} disabled={assignmentsSaving || !user.is_active} className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">
+                              {assignmentsSaving ? 'Menyimpan...' : 'Simpan'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="px-4 py-3 bg-amber-50 border-t border-amber-100 text-[11px] text-amber-900">
+                      Perubahan disimpan per pengguna dalam transaksi PostgreSQL. Role legacy masih dipakai oleh sebagian aturan lama sampai tahap migrasi otorisasi berikutnya selesai.
+                    </div>
+                  </section>
 
                   {rbacLoading && rbacRoles.length === 0 ? (
                     <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">Memuat role dan permission dari PostgreSQL...</div>
