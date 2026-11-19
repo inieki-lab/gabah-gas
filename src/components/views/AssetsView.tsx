@@ -69,21 +69,18 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
 
   const safeAssets = Array.isArray(assets) ? assets : [];
 
+  const ownerDomainOptions = useMemo(() => Array.from(new Set(
+    safeAssets
+      .map(asset => String(asset.owner_division || '').trim().toUpperCase())
+      .filter(Boolean)
+  )).sort(), [safeAssets]);
+
   const filteredAssets = useMemo(() => {
     return safeAssets.filter(asset => {
-      // Division filter
-      if (selectedDivision !== 'ALL') {
-        const div = asset.owner_division || (asset.asset_number ? asset.asset_number.split('-')[0] : '');
-        if (selectedDivision === 'SC') {
-          if (div !== 'SC' && div !== 'Supply Chain') return false;
-        } else if (selectedDivision === 'PIBC') {
-          if (div !== 'PIBC') return false;
-        } else if (selectedDivision === 'IT') {
-          if (div !== 'IT') return false;
-        } else if (selectedDivision === 'GA') {
-          if (div !== 'GA') return false;
-        }
-      }
+      // Owner filter uses only the persisted owner domain. Asset-number prefixes
+      // and office/location labels are never treated as ownership evidence.
+      if (selectedDivision !== 'ALL'
+        && String(asset.owner_division || '').trim().toUpperCase() !== selectedDivision) return false;
 
       // Kategori mengikuti kode taksonomi/nomor aset. Nama hanya dipakai
       // sebagai fallback untuk data legacy tanpa kode; mencegah substring
@@ -209,15 +206,15 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
             />
           </div>
 
-          {/* Division Tabs */}
+          {/* Owner-domain tabs are derived from persisted owner values in the actor's visible asset set. */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto">
-            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Devisi:</span>
+            <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Owner aset:</span>
             {[
-              { id: 'ALL', label: 'Semua Devisi' },
-              { id: 'IT', label: 'IT' },
-              { id: 'GA', label: 'GA' },
-              { id: 'SC', label: 'SC' },
-              { id: 'PIBC', label: 'PIBC' },
+              { id: 'ALL', label: 'Semua Owner' },
+              ...ownerDomainOptions.map(code => ({
+                id: code,
+                label: ['SC', 'PIBC'].includes(code) ? `${code} (legacy — review)` : code,
+              })),
             ].map(d => (
               <button
                 key={d.id}

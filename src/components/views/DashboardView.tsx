@@ -53,7 +53,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isHumas = currentRoleKeys.includes('humas') || currentUser?.role === 'Humas';
   const isSekdir = currentRoleKeys.includes('sekretaris_direksi') || currentUser?.role === 'Sekretaris Direksi';
   const isStaff = currentUser?.role === 'Karyawan' || isHumas || isSekdir;
-  const isEmployee = isStaff;
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasEffectivePermission = (permission: string, legacyRoles: string[] = []): boolean => {
+    if (isAuditor) return false;
+    if (currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH' || currentUser.role_keys?.includes('superadmin')) return true;
+    if (Array.isArray(currentUser.permission_keys)) {
+      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permission);
+    }
+    return legacyRoles.includes(currentUser.role);
+  };
+  const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canCreateAsset = hasEffectivePermission('assets.create', ['Admin GABAH', 'IT', 'GA']);
+  const operationalManagementPermissions = [
+    'assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign',
+    'assets.move', 'assets.lifecycle', 'loans.approve', 'loans.reject',
+    'loans.handover', 'tickets.assign', 'tickets.update', 'maintenances.create',
+    'maintenances.update', 'room_reservations.approve', 'room_reservations.reject',
+    'meeting_rooms.update', 'meeting_types.manage', 'meeting_facilities.manage',
+    'licenses.manage', 'knowledge.create', 'knowledge.update',
+    'contracts.create', 'contracts.update', 'contracts.documents.upload',
+    'vendors.create', 'vendors.update', 'organization.manage', 'master_data.manage',
+  ];
+  const hasOperationalManagementAccess = operationalManagementPermissions.some(permission =>
+    hasEffectivePermission(permission, ['Admin GABAH', 'IT', 'GA'])
+  );
+  const isEmployee = !isAuditor && isStaff && !hasOperationalManagementAccess;
   const roleDescriptions: Record<UserRole, string> = {
     'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
@@ -74,14 +99,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isAuditor = GabahService.isAuditor(currentUser);
   const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || isAuditor;
-  const isDivisionDashboard = !isGlobalDashboard && (currentUser.role === 'IT' || currentUser.role === 'GA');
-  const divisionLabel = isDivisionDashboard ? currentUser.role : 'Unit kerja';
+  const isDivisionDashboard = !isGlobalDashboard && hasOperationalManagementAccess;
+  // Dashboard labels reflect persisted owner domains in the already scoped asset data.
+  const visibleOwnerDomains = Array.from(new Set(
+    dashboardAssets.map(asset => String(asset.owner_division || '').trim().toUpperCase()).filter(Boolean)
+  )).sort();
+  const divisionLabel = isDivisionDashboard
+    ? (visibleOwnerDomains.length > 0 ? visibleOwnerDomains.join(' / ') : 'Operasional')
+    : 'Unit kerja';
   const attentionAssets = dashboardAssets.filter(a =>
     ['in_repair', 'damaged', 'maintenance', 'lost'].includes(a.status)
   );
-  const isLicenseDashboard = isGlobalDashboard || currentUser.role === 'IT' || Boolean(currentUser.permission_keys?.includes('licenses.read'));
+  const isLicenseDashboard = isGlobalDashboard || hasEffectivePermission('licenses.read', ['IT']);
   const roleDescription = isAuditor
     ? roleDescriptions.Auditor
     : currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
@@ -105,10 +135,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const todayMeetings = safeReservations.filter(r => r.date === todayStr && !['cancelled', 'rejected'].includes(r.status));
 
-  const itAssets = dashboardAssets.filter(a => a.owner_division === 'IT');
-  const gaAssets = dashboardAssets.filter(a => a.owner_division === 'GA');
-  const scAssets = dashboardAssets.filter(a => a.owner_division === 'SC');
-  const pibcAssets = dashboardAssets.filter(a => a.owner_division === 'PIBC');
+  const ownerAssetCounts = dashboardAssets.reduce<Record<string, number>>((counts, asset) => {
+    const owner = String(asset.owner_division || '').trim().toUpperCase();
+    if (owner) counts[owner] = (counts[owner] || 0) + 1;
+    return counts;
+  }, {});
+  const ownerAssetSummary = Object.entries(ownerAssetCounts)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([owner, count]) => `${owner}${['SC', 'PIBC'].includes(owner) ? ' (legacy owner — review)' : ''}: ${count}`)
+    .join(' • ');
+  const unclassifiedOwnerAssets = dashboardAssets.filter(asset => !String(asset.owner_division || '').trim()).length;
   const licenseAssets = dashboardAssets.filter(a => a.category_type === 'License');
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
@@ -171,7 +207,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {!isAuditor && (
+            {canCreateLoan && (
               <button
                 id="btn-quick-loan"
                 onClick={onOpenNewLoanModal}
@@ -181,7 +217,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Pinjam Aset
               </button>
             )}
-            {!isAuditor ? (
+            {canCreateTicket ? (
               <button
                 id="btn-quick-ticket"
                 onClick={onOpenNewTicketModal}
@@ -190,13 +226,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <LifeBuoy className="w-4 h-4 text-rose-600" />
                 Buat Tiket Kendala
               </button>
-            ) : (
+            ) : isAuditor ? (
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs font-semibold" title="Auditor berstatus Read-Only">
                 <LifeBuoy className="w-4 h-4 text-slate-400" />
                 <span>Tiket (Read-Only)</span>
               </div>
-            )}
-            {!isEmployee && !isAuditor && (
+            ) : null}
+            {canCreateAsset && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
@@ -354,7 +390,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="mt-3">
               <div className="text-2xl font-black text-slate-900">{dashboardAssets.length} Item</div>
               <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between font-medium flex-wrap gap-1">
-                <span>{isGlobalDashboard ? `${itAssets.length} IT • ${gaAssets.length} GA • ${scAssets.length} owner legacy SC • ${pibcAssets.length} owner legacy PIBC • ${licenseAssets.length} Lisensi` : isDivisionDashboard ? `${divisionLabel} • ${dashboardAssets.length} aset dalam cakupan` : `${dashboardAssets.length} aset dalam cakupan`}</span>
+                <span>{isGlobalDashboard ? `${ownerAssetSummary || 'Belum ada owner terklasifikasi'} • ${unclassifiedOwnerAssets} tanpa owner • ${licenseAssets.length} Lisensi` : isDivisionDashboard ? `${divisionLabel} • ${dashboardAssets.length} aset dalam cakupan` : `${dashboardAssets.length} aset dalam cakupan`}</span>
               </div>
               <div className="text-[11px] text-emerald-700 font-bold mt-2 pt-2 border-t border-slate-100">
                 Valuasi: {formatRupiah(totalAssetValue)}

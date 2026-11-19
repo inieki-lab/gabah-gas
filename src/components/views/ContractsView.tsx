@@ -83,12 +83,16 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
     }
     return legacyRoles.includes(currentUser.role);
   };
-  const canManage = !isAuditor && hasPermission('contracts.create', ['IT', 'GA', 'Supply Chain', 'PIBC']);
-  const canUploadDocuments = !isAuditor && hasPermission('contracts.documents.upload', ['IT', 'GA', 'Supply Chain', 'PIBC']);
-
+  // Legacy file-store compatibility is restricted to actual IT/GA roles.
+  // Supply Chain and PIBC are office/location labels, not application roles.
+  const canManage = !isAuditor && hasPermission('contracts.create', ['IT', 'GA']);
+  const canUploadDocuments = !isAuditor && hasPermission('contracts.documents.upload', ['IT', 'GA']);
 
   const vendors = useMemo(() => Array.from(new Set(contracts.map(c => c.vendor_name))).sort(), [contracts]);
   const types = useMemo(() => Array.from(new Set(contracts.map(c => c.contract_type))).sort(), [contracts]);
+  const ownerDomains = useMemo(() => Array.from(new Set(
+    contracts.map(contract => String(contract.owner_division || '').trim().toUpperCase()).filter(Boolean)
+  )).sort(), [contracts]);
 
   const filtered = contracts.filter(c => {
     if (deptFilter !== 'ALL' && c.owner_division !== deptFilter) return false;
@@ -251,7 +255,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           />
         </div>
         {[
-          { value: deptFilter, set: setDeptFilter, options: ['ALL', 'GA', 'IT', 'SC', 'PIBC'], label: 'Divisi' },
+          { value: deptFilter, set: setDeptFilter, options: ['ALL', ...ownerDomains], label: 'Owner' },
           { value: vendorFilter, set: setVendorFilter, options: ['ALL', ...vendors], label: 'Vendor' },
           { value: typeFilter, set: setTypeFilter, options: ['ALL', ...types], label: 'Tipe' },
           { value: statusFilter, set: setStatusFilter, options: ['ALL', 'draft', 'active', 'expiring', 'renewal_in_progress', 'renewed', 'terminated', 'expired'], label: 'Status' },
@@ -278,7 +282,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           const rb = reminderBadge(contract);
           const st = STATUS_META[contract.status] || STATUS_META.active;
           const isOpen = expandedId === contract.id;
-          const canDecide = !isAuditor && hasPermission('contracts.renewal.decide', ['IT', 'GA', 'Supply Chain', 'PIBC']);
+          const canDecide = !isAuditor && hasPermission('contracts.renewal.decide', ['IT', 'GA']);
 
           return (
             <div key={contract.id} className="rounded-2xl bg-white border border-slate-200 shadow-xs overflow-hidden">
