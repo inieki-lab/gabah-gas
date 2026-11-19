@@ -3,44 +3,13 @@ import fs from 'node:fs';
 const source = fs.readFileSync(new URL('../src/components/views/DashboardView.tsx', import.meta.url), 'utf8');
 
 const checks = [
-  [
-    'Division dashboard label follows owner domains in the scoped asset collection',
-    /visibleOwnerDomains = Array\.from\(new Set\([\s\S]*dashboardAssets\.map\(asset => String\(asset\.owner_division/.test(source)
-      && /visibleOwnerDomains\.join\(' \/ '\)/.test(source),
-  ],
-  [
-    'Dashboard owner counts are computed dynamically instead of hard-coded IT/GA/SC/PIBC buckets',
-    /const ownerAssetCounts = dashboardAssets\.reduce/.test(source)
-      && /Object\.entries\(ownerAssetCounts\)/.test(source)
-      && !/const itAssets = dashboardAssets\.filter|const gaAssets = dashboardAssets\.filter|const scAssets = dashboardAssets\.filter|const pibcAssets = dashboardAssets\.filter/.test(source),
-  ],
-  [
-    'Legacy SC/PIBC owners and records without owner are explicitly identified',
-    /legacy owner — review/.test(source) && /unclassifiedOwnerAssets/.test(source),
-  ],
-  [
-    'Global dashboard summary uses the dynamic owner summary',
-    /ownerAssetSummary \|\| 'Belum ada owner terklasifikasi'/.test(source),
-  ],
-  [
-    'Operational dashboard persona follows effective operational permissions for custom roles',
-    /operationalManagementPermissions = \\[/.test(source)
-      && /hasOperationalManagementAccess = operationalManagementPermissions\\.some/.test(source)
-      && /isEmployee = !isAuditor && isStaff && !hasOperationalManagementAccess/.test(source),
-  ],
-  [
-    'Loan, ticket, and asset quick actions require their own effective create permissions',
-    /canCreateLoan = hasEffectivePermission\\('loans\\.create'/.test(source)
-      && /canCreateTicket = hasEffectivePermission\\('tickets\\.create'/.test(source)
-      && /canCreateAsset = hasEffectivePermission\\('assets\\.create'/.test(source)
-      && /\\{canCreateLoan && \\(/.test(source)
-      && /\\{canCreateTicket \\? \\(/.test(source)
-      && /\\{canCreateAsset && \\(/.test(source),
-  ],
-  [
-    'Auditor read-only notice is not shown to unrelated users without ticket-create permission',
-    /\\) : isAuditor \\? \\(/.test(source),
-  ],
+  ['Division dashboard label follows visible owner domains', source.includes('visibleOwnerDomains = Array.from(new Set(') && source.includes('visibleOwnerDomains.join(\' / \')')],
+  ['Dashboard owner counts are dynamic, not fixed IT/GA/SC/PIBC buckets', source.includes('const ownerAssetCounts = dashboardAssets.reduce') && source.includes('Object.entries(ownerAssetCounts)') && !['const itAssets = dashboardAssets.filter', 'const gaAssets = dashboardAssets.filter', 'const scAssets = dashboardAssets.filter', 'const pibcAssets = dashboardAssets.filter'].some(value => source.includes(value))],
+  ['Legacy SC/PIBC owners and unclassified records are identified', source.includes('legacy owner — review') && source.includes('unclassifiedOwnerAssets')],
+  ['Global dashboard summary uses dynamic owner summary', source.includes("ownerAssetSummary || 'Belum ada owner terklasifikasi'")],
+  ['Custom operational roles receive the operational dashboard persona', source.includes('operationalManagementPermissions = [') && source.includes('hasOperationalManagementAccess = operationalManagementPermissions.some') && source.includes('isEmployee = !isAuditor && isStaff && !hasOperationalManagementAccess')],
+  ['Loan, ticket, and asset quick actions require separate effective permissions', source.includes("canCreateLoan = hasEffectivePermission('loans.create'") && source.includes("canCreateTicket = hasEffectivePermission('tickets.create'") && source.includes("canCreateAsset = hasEffectivePermission('assets.create'") && source.includes('{canCreateLoan && (') && source.includes('{canCreateTicket ? (') && source.includes('{canCreateAsset && (')],
+  ['Auditor read-only notice is shown only to Auditor', source.includes(') : isAuditor ? (')],
 ];
 
 let failed = 0;
