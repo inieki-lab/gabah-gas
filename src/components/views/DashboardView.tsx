@@ -52,7 +52,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const currentRoleKeys = currentUser?.role_keys || [];
   const isHumas = currentRoleKeys.includes('humas') || currentUser?.role === 'Humas';
   const isSekdir = currentRoleKeys.includes('sekretaris_direksi') || currentUser?.role === 'Sekretaris Direksi';
-  const isStaff = currentUser?.role === 'Karyawan' || isHumas || isSekdir;
   const isAuditor = GabahService.isAuditor(currentUser);
   const hasEffectivePermission = (permission: string, legacyRoles: string[] = []): boolean => {
     if (isAuditor) return false;
@@ -78,7 +77,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const hasOperationalManagementAccess = operationalManagementPermissions.some(permission =>
     hasEffectivePermission(permission, ['Admin GABAH', 'IT', 'GA'])
   );
-  const isEmployee = !isAuditor && isStaff && !hasOperationalManagementAccess;
+  // A non-auditor without operational-management capabilities gets the self-service dashboard.
+  // Do not infer staff status from legacy role labels: departments and job titles are configurable.
+  const isEmployee = !isAuditor && !hasOperationalManagementAccess;
   const roleDescriptions: Record<UserRole, string> = {
     'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
@@ -118,7 +119,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       ? roleDescriptions.Humas
     : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
       ? roleDescriptions['Sekretaris Direksi']
-      : roleDescriptions[currentUser.role];
+      : (roleDescriptions[currentUser.role] || roleDescriptions.Karyawan);
   const expiringLicenses = dashboardAssets.filter(asset => {
     const expiry = asset.license_detail?.expiration_date;
     if (!expiry) return false;
