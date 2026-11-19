@@ -64,6 +64,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const isGA = currentUser?.role === 'GA';
   const isSC = currentUser?.role === 'Supply Chain';
   const isPIBC = currentUser?.role === 'PIBC';
+  const isMEOperator = Array.isArray(currentUser?.role_keys) && currentUser.role_keys.includes('admin_tiket_me');
   const isAuditor = currentUser?.role === 'Auditor';
   // Self-service roles see their own submissions; operating divisions see the
   // tickets already authorized for their division by GabahService.
@@ -74,19 +75,21 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const hasScopedQueueTickets = Array.isArray(currentUser?.permission_keys) && baseTickets.some(t =>
     t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
   );
-  const isSelfTicketsOnly = !hasScopedQueueTickets
+  const isSelfTicketsOnly = !isMEOperator && !hasScopedQueueTickets
     && ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
   const defaultCategories = isSelfTicketsOnly
     ? ['ALL', ...Array.from(baseCategorySet)]
+    : isMEOperator
+    ? ['ALL', 'ME', ...Array.from(baseCategorySet).filter(c => c !== 'ME')]
     : isGA
     ? ['ALL', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'GA')]
     : isSC
     ? ['ALL', 'SC', ...Array.from(baseCategorySet).filter(c => c !== 'SC')]
     : isPIBC
     ? ['ALL', 'PIBC', ...Array.from(baseCategorySet).filter(c => c !== 'PIBC')]
-    : ['ALL', 'IT', 'GA', 'SC', 'PIBC'];
+    : ['ALL', 'IT', 'GA', 'ME', ...Array.from(baseCategorySet).filter(c => !['IT', 'GA', 'ME'].includes(c))];
   const availableCategories = Array.from(new Set(defaultCategories));
 
   const filteredTickets = baseTickets.filter((t) => {
@@ -122,8 +125,10 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Helpdesk & Tiket Layanan GA'
               : isSC
               ? 'Helpdesk & Tiket Supply Chain'
+              : isMEOperator
+              ? 'Helpdesk & Tiket ME'
               : isPIBC
-              ? 'Helpdesk & Tiket PIBC'
+              ? 'Helpdesk & Tiket (Legacy PIBC)'
               : isAuditor
               ? 'Pemantauan Tiket Helpdesk (Read-Only)'
               : 'Helpdesk & Tiket Layanan Internal'}
@@ -135,8 +140,10 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Daftar tiket kendala fasilitas gedung & sarana GA, serta tiket kendala yang Anda ajukan.'
               : isSC
               ? 'Daftar kendala operasional Supply Chain dan tiket yang Anda ajukan.'
+              : isMEOperator
+              ? 'Daftar antrean Mechanical, Electrical, dan Perawatan unit ME.'
               : isPIBC
-              ? 'Daftar kendala operasional PIBC dan tiket yang Anda ajukan.'
+              ? 'Daftar tiket historis PIBC dan tiket yang Anda ajukan.'
               : isAuditor
               ? 'Pemantauan read-only tiket helpdesk lintas divisi untuk kebutuhan audit.'
               : 'Laporan insiden, kerusakan perangkat IT, pemeliharaan fasilitas GA, dan permintaan lisensi software.'}

@@ -3055,10 +3055,14 @@ async function startServer() {
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, 'tickets')
         : actor.role === owner;
+    const canReadTicketUnit = (unitId?: string) =>
+      Boolean(unitId && isPostgresPersistenceActive()
+        && hasRbacScope(String(actor.id), 'unit', unitId, 'tickets'));
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
       || ticket.assigned_agent_id === actor.id
       || canReadTicketOwner(ticket.category)
+      || canReadTicketUnit(ticket.assigned_unit_id)
     );
     return res.json({ success: true, data });
   });
@@ -3066,7 +3070,9 @@ async function startServer() {
   app.post('/api/tickets', async (req, res) => {
     try {
       
-    if (!requireRbacPermission(req, res, 'tickets.create')) return;
+    const requestedCategory = String(req.body?.category || '').trim().toUpperCase();
+    const createPermission = requestedCategory === 'ME' ? 'tickets.create.me' : 'tickets.create';
+    if (!requireRbacPermission(req, res, createPermission)) return;
     const actor = getActor(req);
       const newTicket = GabahDomainService.createTicket(req.body, actor);
       // Domain service validates optional asset/contract relations before creating the ticket.
@@ -3108,10 +3114,13 @@ async function startServer() {
       const canReadTicketOwner = isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
         : actor.role === ticket.category;
+      const canReadTicketUnit = Boolean(ticket.assigned_unit_id && isPostgresPersistenceActive()
+        && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'));
       const canUpdateTicket = isSuperadminActor(actor)
         || isReporter
         || ticket.assigned_agent_id === actor.id
-        || canReadTicketOwner;
+        || canReadTicketOwner
+        || canReadTicketUnit;
       if (!canUpdateTicket) {
         return res.status(403).json({
           success: false,
@@ -3581,6 +3590,10 @@ async function startServer() {
     if (isSuperadminActor(actor)) return true;
     // Explicit user recipient takes precedence over role/division fallbacks.
     if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
+    if (notification.recipient_unit_id) {
+      return isPostgresPersistenceActive()
+        && hasRbacScope(String(actor.id), 'unit', notification.recipient_unit_id, 'tickets');
+    }
     // A user may hold additional RBAC roles beyond the primary profile role.
     if (notification.recipient_role) {
       return hasApplicationRole(actor, primaryRoleKey(notification.recipient_role));
@@ -3653,6 +3666,8 @@ async function startServer() {
         ticket.reporter_id === actor.id
         || ticket.assigned_agent_id === actor.id
         || canReadOwnerScope(ticket.category, 'tickets')
+        || Boolean(ticket.assigned_unit_id && isPostgresPersistenceActive()
+          && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'))
       );
 
     const activeLoans = visibleLoans.filter(l => l.status === 'borrowed').length;

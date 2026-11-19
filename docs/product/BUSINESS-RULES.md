@@ -85,11 +85,13 @@
 ---
 
 ## 5. Aturan Kategori Helpdesk Ticket (BR-04b)
-- Kategori tiket **terbatas pada**: `IT`, `GA`, `SC`, `PIBC`. Tidak ada kategori `License`, `General`, atau `Contract`.
-- Software/License/SaaS (Accurate, M365, VPN) adalah domain IT → seluruh tiket terkait menggunakan kategori `IT`.
-- Hardware/jaringan/server/akun → `IT`; fasilitas gedung → `GA`; permintaan SC → `SC`; PIBC → `PIBC`.
+- Kategori tiket baru adalah `IT`, `GA`, dan `ME` (Mechanical, Electrical & Tim Perawatan). `SC`/`PIBC` hanya dipertahankan untuk histori lama; keduanya bukan kategori layanan baru karena merupakan unit/lokasi organisasi.
+- Software/License/SaaS (Accurate, M365, VPN), hardware, jaringan, server, dan akun → `IT`.
+- Fasilitas gedung, kendaraan dinas, dan sarana-prasarana umum → `GA`.
+- Mesin, mekanikal, elektrikal, dan perawatan teknis lingkup Tim Perawatan PIBC → `ME`, diarahkan ke antrean unit `UNIT-PIBC-ME`.
+- Tiket IT diarahkan langsung ke satu petugas aktif yang memiliki `tickets.update` dan scope IT; jika kandidat tidak tunggal, tiket tetap di antrean IT.
 - **Contract Management adalah domain tersendiri. Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti.
-- Data tiket lama berkategori `License`/`General` dinormalisasi otomatis saat server boot (License→IT, General→GA).
+- Data tiket lama berkategori `License`/`General` tetap dinormalisasi otomatis saat server boot (License→IT, General→GA); histori SC/PIBC tetap dapat dibaca.
 
 ## 6. Aturan Contract Management (BR-06)
 - Contract = record bisnis: nomor `CTR-YYYY-NNNN`, tipe, vendor, divisi pemilik (tidak terbatas GA/IT/SC/PIBC), PIC, periode, notice period, nilai, auto-renewal, status, dokumen append-only, notes.
