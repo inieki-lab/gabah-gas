@@ -10,6 +10,30 @@ assert.deepEqual(Object.keys(ROLE_NAVIGATION).sort(), [...expectedRoles].sort())
 for (const role of expectedRoles) {
   assert.ok(ROLE_NAVIGATION[role as keyof typeof ROLE_NAVIGATION].includes('dashboard'), `${role} must have a dashboard`);
 }
+
+/**
+ * Stage 2: lock the complete legacy navigation matrix. A partial assertion
+ * (e.g. only checking hidden tabs) can miss accidental menu exposure after
+ * adding or renaming a role. Keep the expected matrix explicit and reviewable.
+ */
+const expectedVisibleTabs: Record<string, string[]> = {
+  'Admin GABAH': ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
+  IT: ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
+  GA: ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'contracts', 'vendors', 'knowledge', 'reports'],
+  'Sekretaris Direksi': ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  Humas: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  'Supply Chain': ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  PIBC: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  Karyawan: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
+  Auditor: ['dashboard', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
+};
+for (const [role, expected] of Object.entries(expectedVisibleTabs)) {
+  assert.deepEqual(
+    [...ROLE_NAVIGATION[role as keyof typeof ROLE_NAVIGATION]].sort(),
+    [...expected].sort(),
+    `Complete menu visibility matrix changed unexpectedly for ${role}`,
+  );
+}
 const mustNotSee: Record<string, string[]> = {
   'Sekretaris Direksi': ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
   Humas: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
@@ -61,4 +85,4 @@ assert.ok(isSuperadminNavigationAllowed('Admin GABAH', true, ['dashboard.read'])
 assert.ok(isSuperadminNavigationAllowed('Custom Role' as any, false, ['*']));
 assert.ok(isSuperadminNavigationAllowed('Admin GABAH', false, undefined));
 
-console.log('Role navigation policy: PASS (9 roles, effective permission and landing-page checks)');
+console.log('Role navigation policy: PASS (9 roles, complete menu matrix, effective permissions and landing-page checks)');
