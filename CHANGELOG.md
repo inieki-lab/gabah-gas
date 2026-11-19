@@ -1506,3 +1506,5 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Memperbarui design tokens global, header, sidebar aktif, dan canvas workspace.
 - Tidak mengganti stack, menambah dependency UI, atau mengubah RBAC, API, route, workflow, maupun data.
 - Perlu verifikasi lint/build dan UAT visual lintas role sebelum merge.
+
+- 2026-11-19: Gate successful state-changing API responses on durable persistence; return HTTP 503 on write failure; remove swallowed persistence errors and preserve persistence status codes.

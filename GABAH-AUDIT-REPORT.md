@@ -432,3 +432,25 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 - Browser UAT and legacy database upgrade rehearsal remain release gates.
 
 **Data safety:** no existing asset, owner, location, contract, ticket, or user records are intentionally rewritten by this patch. It changes runtime persistence behavior only.
+
+
+## 14. Follow-up — mutation response persistence gate (2026-11-19)
+
+**Branch:** `fix/persistence-failure-latch-snapshot-order`  
+**Implementation commit:** `15ec303400e83688fc59142d5c725bb232944d03` plus subsequent response-gate and status-propagation commits.
+
+### Changes
+- Replaced the post-response-only persistence behavior with a response gate for state-changing `/api/*` requests. Successful JSON/send responses are not emitted until `persistDataStore()` resolves.
+- On authoritative persistence failure, the API returns a sanitized `503 PERSISTENCE_UNAVAILABLE` response instead of reporting success.
+- The gate marks requests already persisted by route-level logic to avoid an additional write from the response middleware.
+- Removed all 11 `persistDataStore().catch(() => {})` call sites. Those routes now use a shared helper that awaits persistence and returns a controlled failure response.
+- Updated route catch handlers on persistence paths to preserve an attached HTTP status code (including 503) rather than converting database failures into validation errors.
+- Added static regression assertions for the response gate, swallowed-error removal, and status propagation.
+
+### Verification status
+- Branch is now based on current `main` ancestry and GitHub reports it mergeable.
+- Exact-head GitHub Actions/check-run records are not yet visible. Typecheck, build, live PostgreSQL fault injection, and full CI must pass before merge.
+- Browser UAT, legacy database upgrade rehearsal, backup/restore rehearsal, and deployment rehearsal remain outstanding release gates.
+
+### Important limitation
+- The response gate prevents a false success response; it does not provide in-memory rollback for every legacy handler. After an authoritative write failure, the PostgreSQL failure latch rejects subsequent writes. Restart/recovery and a targeted runtime test remain necessary to prove operational recovery behavior.
