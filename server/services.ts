@@ -386,6 +386,15 @@ export class GabahDomainService {
       resolvedOwnerDivision = payload.owner_division;
     }
 
+    // SC/PIBC are historical office/location labels, not valid owner domains
+    // for new assets. UNASSIGNED is also fail-closed until an owner is reviewed.
+    if (['SC', 'PIBC', 'UNASSIGNED'].includes(String(resolvedOwnerDivision || '').trim().toUpperCase())) {
+      throw Object.assign(
+        new Error('Owner SC/PIBC adalah kode lokasi legacy, bukan owner aset baru. Owner yang belum terklasifikasi juga harus direview terlebih dahulu.'),
+        { statusCode: 409 }
+      );
+    }
+
     const configuredOwner = (db.divisions || []).some(division =>
       division.is_active !== false &&
       String(division.code || '').trim().toUpperCase() === String(resolvedOwnerDivision || '').trim().toUpperCase()

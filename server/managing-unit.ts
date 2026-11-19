@@ -13,11 +13,11 @@ import { db, OrgUnit } from './db';
  *
  * ATURAN DETERMINISTIK (harus dijaga sinkron dengan backfill SQL di
  * server/migrations/007_asset_managing_unit.sql):
- *   1. Unit dengan id persis `UNIT-{DIVISION}` dan division_code = DIVISION
- *      (unit level divisi: SC → UNIT-SC, PIBC → UNIT-PIBC).
- *   2. Jika tidak ada, tepat SATU unit dengan division_code = DIVISION
+ *   1. SC/PIBC adalah kode lokasi legacy; tidak pernah dipakai untuk menebak unit.
+ *   2. Unit dengan id persis `UNIT-{DIVISION}` dan division_code = DIVISION.
+ *   3. Jika tidak ada, tepat SATU unit dengan division_code = DIVISION
  *      (IT → UNIT-IT-MIS).
- *   3. Selain itu NULL — mapping ambigu TIDAK ditebak (contoh: GA memiliki dua
+ *   4. Selain itu NULL — mapping ambigu TIDAK ditebak (contoh: GA memiliki dua
  *      kandidat UNIT-GA-SARPRAS & UNIT-GA-UMUM → unresolved, biarkan kosong).
  */
 
@@ -27,8 +27,8 @@ export function resolveManagingUnitForOwnerDivision(
   units: OrgUnit[] = db.orgUnits,
 ): string | null {
   if (!ownerDivision) return null;
-  const div = String(ownerDivision).trim();
-  if (!div) return null;
+  const div = String(ownerDivision).trim().toUpperCase();
+  if (!div || ['SC', 'PIBC'].includes(div)) return null;
   const byExactId = units.find(u => u && u.id === `UNIT-${div}` && u.division_code === div);
   if (byExactId) return byExactId.id;
   const candidates = units.filter(u => u && u.division_code === div);
