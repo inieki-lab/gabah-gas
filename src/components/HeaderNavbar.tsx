@@ -96,7 +96,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
     (currentUser.role === 'Admin GABAH' ? (docReservations.length + itFacilityReservations.length + gaReservations.length) : 0);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#e1ebe4] text-slate-800 shadow-[0_1px_2px_rgba(20,60,35,0.04)]">
+    <header className="gabah-topbar sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#e1ebe4] text-slate-800 shadow-[0_1px_2px_rgba(20,60,35,0.04)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         
         {/* Brand Logo & Tagline */}
