@@ -116,8 +116,9 @@ export function recordFailedLogin(identifier: string): { isLocked: boolean; rema
  */
 export function isLoginLocked(identifier: string): { isLocked: boolean; remainingLockoutSeconds?: number } {
   pruneExpiredLoginAttempts(Date.now());
-  // Dalam mode pengembangan, matikan lockout IP agar tidak memblokir pengujian multi-akun
-  if (process.env.NODE_ENV !== 'production') {
+  // Keep brute-force protection enabled by default in every environment.
+  // Only isolated local development may opt out explicitly.
+  if (isLoginLockoutDisabled()) {
     return { isLocked: false };
   }
   const record = loginAttempts.get(identifier);
