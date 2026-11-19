@@ -132,10 +132,10 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xl my-8">
+    <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      <div className="w-full max-w-2xl bg-white border border-green-200 rounded-2xl overflow-hidden shadow-2xl my-8">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="px-6 py-4 border-b border-green-200 flex items-center justify-between bg-green-50">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
               isIT ? 'bg-green-100 text-green-700' :
@@ -150,7 +150,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base text-slate-900">{asset.name}</h3>
+                <h3 className="font-extrabold text-base text-green-900">{asset.name}</h3>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                   isIT ? 'bg-green-50 text-blue-800 border-green-200' :
                   isSC ? 'bg-green-50 text-green-800 border-green-200' :
@@ -160,38 +160,38 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                   Devisi {ownerDivision} • {asset.category_code || asset.category_type}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">{asset.brand} • {asset.model}</p>
+              <p className="text-xs text-green-400 mt-0.5">{asset.brand} • {asset.model}</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
+            className="p-1.5 rounded-lg bg-green-50 hover:bg-slate-200 text-green-400 hover:text-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 text-xs text-slate-700">
+        <div className="p-6 space-y-5 text-xs text-green-700">
           
           {/* Corporate Rule Callout Banner */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2.5">
+          <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2.5">
             <div className="p-1.5 rounded-lg bg-green-100 text-green-700 shrink-0">
               <Info className="w-4 h-4" />
             </div>
-            <div className="text-[11px] text-slate-600">
-              <strong className="text-slate-900">Kaidah Kepemilikan Korporat:</strong> {ownershipRuleText}
+            <div className="text-[11px] text-green-500">
+              <strong className="text-green-900">Kaidah Kepemilikan Korporat:</strong> {ownershipRuleText}
             </div>
           </div>
 
           {/* Freshservice ITAM Lifecycle Visual Stepper */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-extrabold text-[11px] uppercase tracking-wider text-slate-700">
+              <span className="font-extrabold text-[11px] uppercase tracking-wider text-green-700">
                 Siklus Hidup Aset (ITAM Lifecycle Pipeline)
               </span>
-              <span className="font-mono text-[10px] font-bold bg-white px-2 py-0.5 rounded-full border border-slate-200 text-slate-600">
+              <span className="font-mono text-[10px] font-bold bg-white px-2 py-0.5 rounded-full border border-green-200 text-green-500">
                 Tahap {currentStep} dari 5
               </span>
             </div>
@@ -208,13 +208,13 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         ? 'bg-emerald-600 text-white ring-4 ring-emerald-100 font-black scale-105'
                         : isPassed
                         ? 'bg-green-100 text-green-800 border border-green-300'
-                        : 'bg-white text-slate-400 border border-slate-200'
+                        : 'bg-white text-slate-400 border border-green-200'
                     }`}>
                       {isPassed ? <Check className="w-3.5 h-3.5" /> : stepItem.step}
                     </div>
                     <div>
                       <div className={`text-[10px] font-bold truncate ${
-                        isCurrent ? 'text-green-800' : isPassed ? 'text-slate-700' : 'text-slate-400'
+                        isCurrent ? 'text-green-800' : isPassed ? 'text-green-700' : 'text-slate-400'
                       }`}>
                         {stepItem.label}
                       </div>
@@ -229,13 +229,13 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           </div>
 
           {/* Freshservice Detail Tabs Navigation */}
-          <div className="flex items-center gap-1 border-b border-slate-200 pb-1">
+          <div className="flex items-center gap-1 border-b border-green-200 pb-1">
             <button
               onClick={() => setActiveDetailTab('overview')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 activeDetailTab === 'overview'
                   ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
+                  : 'text-green-400 hover:text-green-900'
               }`}
             >
               Identitas &amp; Pengguna
@@ -245,7 +245,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 activeDetailTab === 'financials'
                   ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
+                  : 'text-green-400 hover:text-green-900'
               }`}
             >
               Finansial &amp; PSAK 16
@@ -255,7 +255,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 activeDetailTab === 'maintenance'
                   ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
+                  : 'text-green-400 hover:text-green-900'
               }`}
             >
               Log Servis &amp; Pemeliharaan
@@ -265,7 +265,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 activeDetailTab === 'history'
                   ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
+                  : 'text-green-400 hover:text-green-900'
               }`}
             >
               Riwayat Lengkap
@@ -276,20 +276,20 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           {activeDetailTab === 'overview' && (
             <div className="space-y-4">
               {/* Dual Asset Numbering Visual Highlight */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-green-50 border border-green-200">
                 <div>
                   <div className="flex items-center justify-between">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1">
                       <Tag className="w-3.5 h-3.5 text-green-600" /> Asset Number (Official)
                     </div>
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 bg-slate-200/80 px-1.5 py-0.5 rounded">
-                      <Lock className="w-2.5 h-2.5 text-slate-500" /> Readonly
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-green-400 bg-slate-200/80 px-1.5 py-0.5 rounded">
+                      <Lock className="w-2.5 h-2.5 text-green-400" /> Readonly
                     </span>
                   </div>
                   <div className="mt-1 flex items-center gap-1.5">
                     <div 
                       id="asset-detail-number-display"
-                      className="flex-1 font-mono text-base font-black text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm flex items-center justify-between"
+                      className="flex-1 font-mono text-base font-black text-green-900 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm flex items-center justify-between"
                     >
                       <span>{asset.asset_number}</span>
                     </div>
@@ -297,14 +297,14 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       type="button"
                       id="btn-copy-asset-detail-number"
                       onClick={() => handleCopyAssetNumber(asset.asset_number)}
-                      className="p-2 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-lg border border-slate-300 transition-colors flex items-center justify-center"
+                      className="p-2 bg-white hover:bg-green-50 text-green-700 hover:text-green-900 rounded-lg border border-slate-300 transition-colors flex items-center justify-center"
                       title="Copy Nomor Aset"
                     >
                       {copiedAssetNumber ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-1">
-                    Format resmi: <code className="font-bold text-slate-700">&#123;DIVISI&#125;-&#123;KODE&#125;-&#123;TAHUN&#125;-&#123;URUT&#125;</code> (Divisi Pemilik: <strong className="text-green-700">{asset.owner_division}</strong>)
+                  <div className="text-[10px] text-green-400 mt-1">
+                    Format resmi: <code className="font-bold text-green-700">&#123;DIVISI&#125;-&#123;KODE&#125;-&#123;TAHUN&#125;-&#123;URUT&#125;</code> (Divisi Pemilik: <strong className="text-green-700">{asset.owner_division}</strong>)
                   </div>
                 </div>
 
@@ -331,13 +331,13 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                           value={editedCorpNumber}
                           onChange={(e) => setEditedCorpNumber(e.target.value)}
                           placeholder="FST-24-XXXX"
-                          className="w-full px-2 py-1 bg-white border border-blue-400 rounded text-xs font-mono text-slate-900 focus:outline-none"
+                          className="w-full px-2 py-1 bg-white border border-blue-400 rounded text-xs font-mono text-green-900 focus:outline-none"
                         />
                         <button
                           type="button"
                           onClick={handleAutoFillFst}
                           title="Generate FST Sequence"
-                          className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300"
+                          className="p-1 rounded bg-green-50 hover:bg-slate-200 text-green-700 border border-slate-300"
                         >
                           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                         </button>
@@ -354,25 +354,25 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                             setEditedCorpNumber(asset.corporate_asset_number || '');
                             setIsEditingCorpNumber(false);
                           }}
-                          className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[11px]"
+                          className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-green-700 rounded text-[11px]"
                         >
                           Batal
                         </button>
                       </div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] text-green-400">
                         Format ERP Accurate: <span className="font-mono font-bold">FST-XX-XXXX</span>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="font-mono text-base font-bold text-slate-900 mt-1">
+                      <div className="font-mono text-base font-bold text-green-900 mt-1">
                         {asset.corporate_asset_number || (
                           <span className="text-slate-400 font-normal italic text-xs">
                             Non-Corporate / Belum Disinkron
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">
+                      <div className="text-[10px] text-green-400 mt-0.5">
                         Nomor aktiva tetap Accurate ERP (format FST-XX-XXXX).
                       </div>
                     </>
@@ -381,37 +381,37 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               </div>
 
               {/* Asset Specs & Properties */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div className="p-3.5 bg-green-50 rounded-xl border border-green-200 space-y-2">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
                   <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
                   Spesifikasi &amp; Identitas Fisik
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-green-500">
                   <div><strong>Serial Number:</strong> <span className="font-mono text-green-700 font-bold">{asset.serial_number}</span></div>
                   <div><strong>Kondisi:</strong> <span className="capitalize">{asset.condition}</span></div>
-                  <div><strong>Status Saat Ini:</strong> <span className="capitalize font-bold text-slate-900">{asset.status}</span></div>
+                  <div><strong>Status Saat Ini:</strong> <span className="capitalize font-bold text-green-900">{asset.status}</span></div>
                   <div><strong>Lokasi Penempatan:</strong> {asset.location}
                     {asset.asset_location_id && (
                       <span className="ml-1.5 text-[10px] font-bold text-[#206f65] bg-[#4ABDAC]/10 px-1.5 py-0.5 rounded-md align-middle">Master Lokasi</span>
                     )}
                   </div>
                 </div>
-                <div className="text-slate-500 text-[11px] pt-1 border-t border-slate-200">
+                <div className="text-green-400 text-[11px] pt-1 border-t border-green-200">
                   <strong>Deskripsi:</strong> {asset.specifications}
                 </div>
               </div>
 
               {/* Assigned PIC if any or Unassigned Callout */}
               {asset.assigned_to ? (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                <div className="p-3 bg-green-50 rounded-xl border border-green-200 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-green-100 text-green-700 flex items-center justify-center font-bold">
                       <User className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-slate-500">Pengguna Terdaftar (PIC)</div>
-                      <div className="font-bold text-slate-900 text-xs">{asset.assigned_to.name}</div>
-                      <div className="text-[11px] text-slate-500">{asset.assigned_to.department} • {asset.assigned_to.email}</div>
+                      <div className="text-[10px] uppercase font-bold text-green-400">Pengguna Terdaftar (PIC)</div>
+                      <div className="font-bold text-green-900 text-xs">{asset.assigned_to.name}</div>
+                      <div className="text-[11px] text-green-400">{asset.assigned_to.department} • {asset.assigned_to.email}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -419,7 +419,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <button
                         type="button"
                         onClick={() => onOpenBastModal(asset)}
-                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-green-50 text-green-700 border border-green-200 text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
                       >
                         <FileText className="w-3.5 h-3.5 text-green-600" />
                         <span>Cetak BAST</span>
@@ -429,9 +429,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                       <button
                         type="button"
                         onClick={() => onEditThisAsset(asset)}
-                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-green-50 text-green-700 border border-green-200 text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
                       >
-                        <Edit2 className="w-3.5 h-3.5 text-slate-600" />
+                        <Edit2 className="w-3.5 h-3.5 text-green-500" />
                         <span>Ubah / Lepas</span>
                       </button>
                     )}
@@ -445,8 +445,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     </div>
                     <div>
                       <div className="text-[10px] uppercase font-bold text-amber-800">Status Penugasan Karyawan</div>
-                      <div className="font-bold text-slate-900 text-xs">Belum Ditugaskan (Aset Tersedia di Pool Gudang)</div>
-                      <div className="text-[11px] text-slate-600">Aset siap ditugaskan secara manual ke karyawan Food Station.</div>
+                      <div className="font-bold text-green-900 text-xs">Belum Ditugaskan (Aset Tersedia di Pool Gudang)</div>
+                      <div className="text-[11px] text-green-500">Aset siap ditugaskan secara manual ke karyawan Food Station.</div>
                     </div>
                   </div>
                   {onEditThisAsset && canEdit && (
@@ -467,12 +467,12 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           {/* Tab 2: Finansial & PSAK 16 */}
           {activeDetailTab === 'financials' && (
             <div className="space-y-4">
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div className="p-3.5 bg-green-50 rounded-xl border border-green-200 space-y-2">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
                   <DollarSign className="w-3.5 h-3.5 text-green-600" />
                   Finansial &amp; Garansi
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-green-500">
                   <div><strong>Harga Perolehan:</strong> {formatRupiah(asset.purchase_price)}</div>
                   <div><strong>Tanggal Beli:</strong> {formatDate(asset.purchase_date)}</div>
                   <div><strong>Garansi Hingga:</strong> {formatDate(asset.warranty_until)}</div>
@@ -481,48 +481,48 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     {asset.is_loanable ? (
                       <span className="text-green-700 font-bold">Dapat dipinjam (Aset Idle / Reservasi)</span>
                     ) : (
-                      <span className="text-slate-500">Aset Tetap (Non-loanable)</span>
+                      <span className="text-green-400">Aset Tetap (Non-loanable)</span>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Depresiasi Nilai Buku (PSAK 16 - Straight Line) */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+              <div className="p-4 bg-green-50 rounded-xl border border-green-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
                     <Calculator className="w-4 h-4 text-green-600" />
                     Kalkulasi Penyusutan &amp; Nilai Buku (PSAK 16 - Garis Lurus)
                   </h4>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white text-green-700 border border-green-200">
                     Umur: {depreciation.usefulLifeYears} Tahun ({depreciation.usefulLifeMonths} Bln)
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                    <div className="text-slate-500 text-[10px]">Nilai Buku Bersih</div>
+                  <div className="p-2.5 rounded-lg bg-white border border-green-200">
+                    <div className="text-green-400 text-[10px]">Nilai Buku Bersih</div>
                     <div className="text-sm font-extrabold text-green-700 mt-0.5">
                       {formatRupiah(depreciation.netBookValue)}
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                    <div className="text-slate-500 text-[10px]">Akumulasi Penyusutan</div>
+                  <div className="p-2.5 rounded-lg bg-white border border-green-200">
+                    <div className="text-green-400 text-[10px]">Akumulasi Penyusutan</div>
                     <div className="text-sm font-extrabold text-rose-600 mt-0.5">
                       {formatRupiah(depreciation.accumulatedDepreciation)}
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                    <div className="text-slate-500 text-[10px]">Penyusutan / Bulan</div>
+                  <div className="p-2.5 rounded-lg bg-white border border-green-200">
+                    <div className="text-green-400 text-[10px]">Penyusutan / Bulan</div>
                     <div className="text-xs font-bold text-slate-800 mt-0.5">
                       {formatRupiah(depreciation.monthlyDepreciation)}
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200">
-                    <div className="text-slate-500 text-[10px]">Masa Pakai Berjalan</div>
+                  <div className="p-2.5 rounded-lg bg-white border border-green-200">
+                    <div className="text-green-400 text-[10px]">Masa Pakai Berjalan</div>
                     <div className="text-xs font-bold text-slate-800 mt-0.5">
                       {depreciation.elapsedMonths} Bln ({depreciation.depreciationPercentage}%)
                     </div>
@@ -531,7 +531,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
 
                 {/* Progress Bar Penyusutan */}
                 <div className="space-y-1">
-                  <div className="flex justify-between text-[10px] text-slate-500">
+                  <div className="flex justify-between text-[10px] text-green-400">
                     <span>Rasio Penyusutan Berjalan</span>
                     <span>Sisa Umur: {depreciation.remainingMonths} Bulan</span>
                   </div>
@@ -552,25 +552,25 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           {/* Tab 3: Log Servis & Pemeliharaan */}
           {activeDetailTab === 'maintenance' && (
             <div className="space-y-4">
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div className="p-3.5 bg-green-50 rounded-xl border border-green-200 space-y-2">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
                   <Wrench className="w-3.5 h-3.5 text-amber-600" />
                   Riwayat Servis &amp; Maintenance Log
                 </h4>
                 <div className="space-y-1.5 text-xs">
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
+                  <div className="p-2.5 rounded-lg bg-white border border-green-200 flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-slate-800">Inspeksi Rutin &amp; Pembersihan Internal</div>
-                      <div className="text-[10px] text-slate-500">Teknisi: Tim Internal IT • Status: Baik</div>
+                      <div className="text-[10px] text-green-400">Teknisi: Tim Internal IT • Status: Baik</div>
                     </div>
                     <span className="text-[10px] text-green-700 font-mono font-bold">15 Jul 2026</span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
+                  <div className="p-2.5 rounded-lg bg-white border border-green-200 flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-slate-800">Pembaruan Firmware &amp; Kalibrasi Sistem</div>
-                      <div className="text-[10px] text-slate-500">Vendor: PT Mitra Solusi • Biaya: Rp 0 (Garansi)</div>
+                      <div className="text-[10px] text-green-400">Vendor: PT Mitra Solusi • Biaya: Rp 0 (Garansi)</div>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">10 Jan 2026</span>
+                    <span className="text-[10px] text-green-400 font-mono">10 Jan 2026</span>
                   </div>
                 </div>
               </div>
@@ -650,12 +650,12 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
 
             return (
               <div className="space-y-3">
-                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="p-3.5 bg-green-50 rounded-xl border border-green-200">
                   <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-                    <FileText className="w-3.5 h-3.5 text-slate-700" />
+                    <FileText className="w-3.5 h-3.5 text-green-700" />
                     Timeline Riwayat Aset ({entries.length} peristiwa)
                   </h4>
-                  <p className="text-[10px] text-slate-500 mt-0.5">
+                  <p className="text-[10px] text-green-400 mt-0.5">
                     Rekap kronologis: pendaftaran, mutasi (server-tracked), peminjaman, dan tiket gangguan yang terkait aset ini.
                   </p>
                 </div>
@@ -673,13 +673,13 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         <span className={`absolute -left-[22px] top-0.5 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm ${e.tone}`}>
                           <Icon className="w-3 h-3" />
                         </span>
-                        <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs space-y-0.5">
+                        <div className="p-3 rounded-xl bg-white border border-green-200 shadow-xs space-y-0.5">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="text-xs font-bold text-slate-900 leading-tight">{e.title}</div>
+                            <div className="text-xs font-bold text-green-900 leading-tight">{e.title}</div>
                             <span className="text-[10px] font-mono text-slate-400 whitespace-nowrap">{formatDateTime(new Date(e.date).toISOString())}</span>
                           </div>
-                          <div className="text-[11px] text-slate-600">{e.subtitle}</div>
-                          <div className="text-[10px] text-slate-500">{e.meta}</div>
+                          <div className="text-[11px] text-green-500">{e.subtitle}</div>
+                          <div className="text-[10px] text-green-400">{e.meta}</div>
                         </div>
                       </div>
                     );
@@ -690,11 +690,11 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           })()}
 
           {/* Action buttons */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-green-200">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onOpenQrModal(asset)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-green-50 hover:bg-slate-200 text-green-700 font-semibold transition-colors"
               >
                 <QrCode className="w-4 h-4 text-green-600" />
                 Cetak Label QR

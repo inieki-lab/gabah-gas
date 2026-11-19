@@ -206,10 +206,10 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   const targetAssignedUser = (activeUsers || []).find(u => u.id === selectedUserId);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in">
-      <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xl my-8 flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in">
+      <div className="w-full max-w-3xl bg-white border border-green-200 rounded-2xl overflow-hidden shadow-2xl my-8 flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-green-200 bg-green-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
               isITAsset ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
@@ -218,7 +218,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-slate-900">Kelola &amp; Edit Aset</h3>
+                <h3 className="text-base font-black text-green-900">Kelola &amp; Edit Aset</h3>
                 <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-green-100 text-emerald-800 border border-emerald-200">
                   {asset.asset_number}
                 </span>
@@ -228,7 +228,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   Divisi: {asset.owner_division}
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-green-400">
                 {asset.name} • {asset.brand} {asset.model}
               </p>
             </div>
@@ -236,7 +236,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors"
+            className="p-1.5 rounded-lg bg-green-50 hover:bg-slate-200 text-slate-400 hover:text-green-700 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -288,7 +288,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-green-700 mb-1">
                     Pilih Karyawan Penerima Aset
                   </label>
                   <select
@@ -302,7 +302,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                         setFormData(prev => ({ ...prev, status: 'available' }));
                       }
                     }}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-green-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
                     <option value="">— Tidak Ada PIC / Idle di Pool Gudang (Tersedia) —</option>
                     {(activeUsers || []).map(u => (
@@ -311,13 +311,13 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                       </option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-green-400 mt-1">
                     Pilih nama karyawan untuk menugaskan laptop/aset ini secara tetap dengan BAST.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-green-700 mb-1">
                     Keperluan / Alasan Penugasan
                   </label>
                   <input
@@ -326,9 +326,9 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     value={assignmentReason}
                     onChange={(e) => setAssignmentReason(e.target.value)}
                     placeholder="Contoh: Laptop kerja dinas staf akuntansi baru"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-green-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-green-400 mt-1">
                     Akan dicatat di riwayat mutasi (Asset Movement Log).
                   </p>
                 </div>
@@ -337,7 +337,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
               {/* Status explanation badge */}
               <div className="p-2.5 rounded-lg bg-white/80 border border-blue-100 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-600">Status Aset Setelah Disimpan:</span>
+                  <span className="text-[11px] text-green-500">Status Aset Setelah Disimpan:</span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                     selectedUserId 
                       ? 'bg-green-100 text-green-800 border border-green-200' 
@@ -355,11 +355,11 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
             </div>
 
             {/* Section 2: Peminjaman / Loanable & Status Operasional */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-green-50 border border-green-200">
               
               {/* Loanable Toggle */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                <label className="block text-[11px] font-bold text-green-700 mb-1">
                   Kebijakan Peminjaman (Loanable)
                 </label>
                 <div className="mt-2 flex items-center gap-3">
@@ -377,32 +377,32 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     {formData.is_loanable ? (
                       <span className="text-green-700">Dapat Dipinjam (Masuk Pool Reservasi)</span>
                     ) : (
-                      <span className="text-slate-500">Inventaris Tetap (Non-loanable)</span>
+                      <span className="text-green-400">Inventaris Tetap (Non-loanable)</span>
                     )}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1.5">
+                <p className="text-[10px] text-green-400 mt-1.5">
                   Jika aktif, karyawan dapat mengajukan pinjam pakai laptop/aset ini di menu Peminjaman.
                 </p>
               </div>
 
               {/* Status Operasional */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                <label className="block text-[11px] font-bold text-green-700 mb-1">
                   Status Operasional
                 </label>
                 <select
                   disabled={!canEditThisAsset || isSubmitting || Boolean(selectedUserId)}
                   value={formData.status}
                   onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as AssetStatus }))}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 >
                   <option value="available">Tersedia / Idle (Siap Digunakan)</option>
                   <option value="assigned">Digunakan Pegawai (Assigned)</option>
                   <option value="maintenance">Dalam Pemeliharaan / Servis (Maintenance)</option>
                   <option value="retired">Afkir / Hapus Buku (Retired)</option>
                 </select>
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[10px] text-green-400 mt-1">
                   {selectedUserId ? 'Otomatis diatur ke Assigned karena ada PIC.' : 'Pilih status ketersediaan barang di gudang.'}
                 </p>
               </div>
@@ -418,7 +418,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-green-700 mb-1">
                     Nama Aset <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -427,12 +427,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     disabled={!canEditThisAsset || isSubmitting}
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-green-700 mb-1">
                     Merk / Brand
                   </label>
                   <input
@@ -440,12 +440,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     disabled={!canEditThisAsset || isSubmitting}
                     value={formData.brand}
                     onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-green-700 mb-1">
                     Model / Tipe
                   </label>
                   <input
@@ -453,12 +453,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     disabled={!canEditThisAsset || isSubmitting}
                     value={formData.model}
                     onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-green-700 mb-1">
                     Nomor Seri (Serial Number)
                   </label>
                   <input
@@ -466,12 +466,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     disabled={!canEditThisAsset || isSubmitting}
                     value={formData.serial_number}
                     onChange={(e) => setFormData(prev => ({ ...prev, serial_number: e.target.value }))}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-green-700 mb-1 flex items-center justify-between">
                     <span>Nomor Accurate ERP (FST-XX-XXXX)</span>
                     <button
                       type="button"
@@ -487,12 +487,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     value={formData.corporate_asset_number}
                     onChange={(e) => setFormData(prev => ({ ...prev, corporate_asset_number: e.target.value }))}
                     placeholder="FST-24-0010"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-green-700 mb-1">
                     Lokasi Penempatan
                   </label>
                   <select
@@ -506,7 +506,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                         location: id ? assetLocationPath(id) : prev.location,
                       }));
                     }}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   >
                     <option value="">— Di luar master (teks legacy) —</option>
                     {assetLocations.filter((l: any) => l.is_active || l.id === asset.asset_location_id).map((l: any) => (
@@ -519,7 +519,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                       disabled={!canEditThisAsset || isSubmitting}
                       value={formData.location}
                       onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                      className="w-full px-3 py-2 mt-1.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 mt-1.5 bg-white border border-slate-300 rounded-xl text-xs text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                     />
                   )}
                   {asset.asset_location_id && !formData.asset_location_id && (
@@ -528,14 +528,14 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-green-700 mb-1">
                     Kondisi Fisik
                   </label>
                   <select
                     disabled={!canEditThisAsset || isSubmitting}
                     value={formData.condition}
                     onChange={(e) => setFormData(prev => ({ ...prev, condition: e.target.value as AssetCondition }))}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   >
                     <option value="good">Baik / Prima (Good)</option>
                     <option value="fair">Cukup / Normal (Fair)</option>
@@ -546,7 +546,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                <label className="block text-[11px] font-bold text-green-700 mb-1">
                   Spesifikasi Teknis
                 </label>
                 <textarea
@@ -555,12 +555,12 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   value={formData.specifications}
                   onChange={(e) => setFormData(prev => ({ ...prev, specifications: e.target.value }))}
                   placeholder="Misal: Processor Intel Core i7, RAM 16GB, SSD 512GB, Windows 11 Pro"
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                <label className="block text-[11px] font-bold text-green-700 mb-1">
                   Catatan Internal Pengelola Aset
                 </label>
                 <textarea
@@ -569,7 +569,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                   placeholder="Catatan servis, histori pemakaian, dsb."
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-green-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
             </div>
@@ -579,8 +579,8 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+        <div className="px-6 py-4 border-t border-green-200 bg-green-50 flex items-center justify-between">
+          <div className="text-[11px] text-green-400 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-green-600" />
             <span>Hak Akses: <strong>{currentUser?.role || 'Pengguna'}</strong></span>
           </div>
@@ -589,7 +589,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold transition-colors"
+              className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-green-700 text-xs font-semibold transition-colors"
             >
               Batal
             </button>

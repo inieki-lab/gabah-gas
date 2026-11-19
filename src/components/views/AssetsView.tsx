@@ -308,7 +308,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                 <th className="px-4 py-3.5 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-green-100">
               {filteredAssets.map((asset) => {
                 const isIT = asset.category_type === 'IT';
                 const isGA = asset.category_type === 'General';

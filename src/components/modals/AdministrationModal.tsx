@@ -1739,16 +1739,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/45 backdrop-blur-[3px] flex items-start justify-center p-3 sm:p-5 lg:p-8 overflow-y-auto">
-      <section className="w-full max-w-7xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[90vh]">
+      <section className="w-full max-w-7xl bg-white rounded-3xl shadow-2xl border border-green-200 overflow-hidden flex flex-col my-auto max-h-[90vh]">
         {/* Header */}
-        <header className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-[#4ABDAC]/10 via-white to-[#F7B733]/10 flex items-center justify-between gap-4 shrink-0">
+        <header className="px-6 py-4 border-b border-green-200 bg-gradient-to-r from-[#4ABDAC]/10 via-white to-[#F7B733]/10 flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#4ABDAC] text-white flex items-center justify-center shadow-md shadow-[#4ABDAC]/20 shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-black text-slate-900">Administration Control Panel</h2>
+                <h2 className="text-lg font-black text-green-900">Administration Control Panel</h2>
                 <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 shrink-0 bg-green-100 text-green-800 border-green-300">
                   <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
                   <span>SUPER ADMIN (FULL ACCESS)</span>
@@ -1756,7 +1756,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <span className="text-green-950 font-extrabold">{currentUser?.name || 'Budi Santoso'}</span>
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-green-400">
                 PT Food Station Tjipinang Jaya · Tata kelola sistem, otorisasi, master data, dan pemantauan layanan
               </p>
             </div>
@@ -1766,14 +1766,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             {activeSection !== 'overview' && (
               <button
                 onClick={() => setActiveSection('overview')}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50 hover:text-green-900 transition-colors flex items-center gap-1.5"
               >
                 <span>Semua Menu</span>
               </button>
             )}
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 flex items-center justify-center transition-colors"
+              className="w-9 h-9 rounded-xl border border-green-200 text-green-400 hover:text-green-900 hover:bg-green-50 flex items-center justify-center transition-colors"
               aria-label="Tutup Administration"
             >
               <X className="w-5 h-5" />
@@ -1829,7 +1829,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         </div>
 
         {/* Quick Nav Tabs */}
-        <div className="px-6 py-2 border-b border-slate-100 bg-slate-50/70 overflow-x-auto flex items-center gap-1 shrink-0 text-xs font-medium text-slate-600">
+        <div className="px-6 py-2 border-b border-slate-100 bg-green-50/70 overflow-x-auto flex items-center gap-1 shrink-0 text-xs font-medium text-green-500">
           <button
             onClick={() => setActiveSection('overview')}
             className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap ${
@@ -1854,7 +1854,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         </div>
 
         {/* Modal Main Content Body */}
-        <div className="p-6 overflow-y-auto flex-1 bg-slate-50/30">
+        <div className="p-6 overflow-y-auto flex-1 bg-green-50/30">
           {/* =========================================================
               VIEW: OVERVIEW (CARD GRID)
               ========================================================= */}
@@ -1868,21 +1868,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       key={item.id}
                       type="button"
                       onClick={() => setActiveSection(item.id)}
-                      className="text-left p-4 rounded-2xl border border-slate-200 bg-white hover:border-[#4ABDAC] hover:shadow-lg hover:shadow-[#4ABDAC]/10 transition-all group flex flex-col justify-between active:scale-[0.99] cursor-pointer"
+                      className="text-left p-4 rounded-2xl border border-green-200 bg-white hover:border-[#4ABDAC] hover:shadow-lg hover:shadow-[#4ABDAC]/10 transition-all group flex flex-col justify-between active:scale-[0.99] cursor-pointer"
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-[#4ABDAC] group-hover:text-white text-[#4ABDAC] border border-slate-200 flex items-center justify-center transition-colors">
+                          <div className="w-10 h-10 rounded-xl bg-green-50 group-hover:bg-[#4ABDAC] group-hover:text-white text-[#4ABDAC] border border-green-200 flex items-center justify-center transition-colors">
                             <Icon className="w-5 h-5" />
                           </div>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 group-hover:bg-[#4ABDAC]/15 group-hover:text-[#206f65] transition-colors">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-500 group-hover:bg-[#4ABDAC]/15 group-hover:text-[#206f65] transition-colors">
                             {item.badge}
                           </span>
                         </div>
                         <h3 className="text-sm font-black text-slate-800 group-hover:text-[#206f65] transition-colors">
                           {item.label}
                         </h3>
-                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        <p className="text-xs text-green-400 mt-1 leading-relaxed">
                           {item.description}
                         </p>
                       </div>
@@ -1897,13 +1897,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               {/* Status Banner */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 flex items-center justify-between flex-wrap gap-4">
+              <div className="rounded-2xl border border-green-200 bg-white p-4 flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-green-500 text-white flex items-center justify-center shrink-0">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-extrabold text-slate-900">Ringkasan Status Administrasi</h4>
+                    <h4 className="text-sm font-extrabold text-green-900">Ringkasan Status Administrasi</h4>
                     <p className="text-xs text-green-700">
                       Status layanan belum dianggap sehat sebelum pemeriksaan langsung. Periksa API di sini; status database, backup, dan rekonsiliasi harus diverifikasi terpisah.
                     </p>
@@ -1913,7 +1913,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <button
                     onClick={pingHealthCheck}
                     disabled={healthStatus.isChecking}
-                    className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-green-700 text-xs font-bold hover:bg-green-50 flex items-center gap-1.5 transition-colors"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${healthStatus.isChecking ? 'animate-spin' : ''}`} />
                     <span>Ping API ({healthStatus.latency !== null ? `${healthStatus.latency} ms` : '…'})</span>
@@ -1928,10 +1928,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'users' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-3 bg-white p-4 rounded-2xl border border-slate-200">
+              <div className="flex items-center justify-between flex-wrap gap-3 bg-white p-4 rounded-2xl border border-green-200">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">User Management</h3>
-                  <p className="text-xs text-slate-500">Kelola akun pegawai, penetapan peran (RBAC), dan sandi akses</p>
+                  <h3 className="text-base font-black text-green-900">User Management</h3>
+                  <p className="text-xs text-green-400">Kelola akun pegawai, penetapan peran (RBAC), dan sandi akses</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="relative">
@@ -1941,13 +1941,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       placeholder="Cari nama atau email..."
                       value={userSearch}
                       onChange={e => setUserSearch(e.target.value)}
-                      className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#4ABDAC] w-56"
+                      className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-green-200 focus:outline-none focus:border-[#4ABDAC] w-56"
                     />
                   </div>
                   <select
                     value={userRoleFilter}
                     onChange={e => setUserRoleFilter(e.target.value)}
-                    className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#4ABDAC]"
+                    className="px-3 py-1.5 text-xs rounded-xl border border-green-200 focus:outline-none focus:border-[#4ABDAC]"
                   >
                     <option value="all">Semua Peran ({SYSTEM_ROLES.length})</option>
                     {SYSTEM_ROLES.map(r => (
@@ -1958,7 +1958,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <>
                       <button
                         onClick={() => setIsImportOpen(v => !v)}
-                        className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 text-green-700 text-xs font-bold hover:bg-green-50 flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                         title="Impor massal pegawai dari berkas CSV / Excel (upsert per email: akun baru dibuat, profil akun lama diperbarui)"
                       >
                         <Upload className="w-4 h-4 text-green-600" />
@@ -1966,7 +1966,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </button>
                       <button
                         onClick={() => exportUsersToCsv(userList)}
-                        className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 text-green-700 text-xs font-bold hover:bg-green-50 flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                         title="Unduh daftar pegawai sebagai CSV siap Excel (juga bisa dipakai sebagai template impor)"
                       >
                         <Download className="w-4 h-4 text-green-600" />
@@ -1982,11 +1982,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </>
                   ) : (
                     <>
-                      <div className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5" title="Hanya Admin GABAH yang berhak mengimpor data pegawai">
+                      <div className="px-3 py-1.5 rounded-xl bg-white border border-green-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5" title="Hanya Admin GABAH yang berhak mengimpor data pegawai">
                         <LockKeyhole className="w-3.5 h-3.5" />
                         <span>Import CSV (Terkunci)</span>
                       </div>
-                      <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed" title="Hanya Admin GABAH yang berhak menambah akun pengguna">
+                      <div className="px-3 py-1.5 rounded-xl bg-green-50 border border-green-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed" title="Hanya Admin GABAH yang berhak menambah akun pengguna">
                         <LockKeyhole className="w-3.5 h-3.5" />
                         <span>Tambah Pengguna (Terkunci)</span>
                       </div>
@@ -2003,11 +2003,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <Upload className="w-4 h-4 text-green-600" />
                       Import Massal Data Pegawai (CSV / Excel)
                     </h4>
-                    <button type="button" onClick={() => { setIsImportOpen(false); setImportPreview(null); }} className="text-slate-400 hover:text-slate-700">
+                    <button type="button" onClick={() => { setIsImportOpen(false); setImportPreview(null); }} className="text-slate-400 hover:text-green-700">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                  <p className="text-[11px] text-green-500 leading-relaxed">
                     Tidak perlu input karyawan satu per satu: unduh template, isi di Excel, lalu unggah di sini.
                     <b> Email yang sudah terdaftar</b> akan <b>diperbarui</b> (nama, divisi, departemen, telepon, peran) tanpa mengubah sandi;
                     <b> email baru</b> otomatis dibuatkan akun (sandi awal diterbitkan server, sampaikan via kanal aman).
@@ -2062,7 +2062,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       {importPreview.valid.length > 0 && (
                         <div className="max-h-44 overflow-y-auto rounded-xl border border-green-200 bg-white">
                           <table className="w-full text-left text-[11px]">
-                            <thead className="bg-slate-50 text-slate-500 uppercase tracking-wide">
+                            <thead className="bg-green-50 text-green-400 uppercase tracking-wide">
                               <tr>
                                 <th className="px-3 py-2">Nama</th>
                                 <th className="px-3 py-2">Email</th>
@@ -2075,10 +2075,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               {importPreview.valid.slice(0, 50).map((r, i) => (
                                 <tr key={i}>
                                   <td className="px-3 py-1.5 font-semibold text-slate-800">{r.name}</td>
-                                  <td className="px-3 py-1.5 text-slate-600">{r.email}</td>
-                                  <td className="px-3 py-1.5 text-slate-600">{r.role}</td>
-                                  <td className="px-3 py-1.5 text-slate-600">{r.division || '-'}</td>
-                                  <td className="px-3 py-1.5 text-slate-600">{r.department || '-'}</td>
+                                  <td className="px-3 py-1.5 text-green-500">{r.email}</td>
+                                  <td className="px-3 py-1.5 text-green-500">{r.role}</td>
+                                  <td className="px-3 py-1.5 text-green-500">{r.division || '-'}</td>
+                                  <td className="px-3 py-1.5 text-green-500">{r.department || '-'}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -2118,35 +2118,35 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 <form onSubmit={handleAddUserSubmit} className="bg-green-50/50 p-4 rounded-2xl border border-green-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-extrabold text-green-950 uppercase tracking-wider">Form Tambah Pengguna Baru</h4>
-                    <button type="button" onClick={() => setIsAddUserOpen(false)} className="text-slate-400 hover:text-slate-700">
+                    <button type="button" onClick={() => setIsAddUserOpen(false)} className="text-slate-400 hover:text-green-700">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Nama Lengkap</label>
+                      <label className="block text-green-500 mb-1 font-medium">Nama Lengkap</label>
                       <input
                         type="text"
                         required
                         value={newUserData.name}
                         onChange={e => setNewUserData({ ...newUserData, name: e.target.value })}
                         placeholder="Contoh: Rian Pratama, S.T."
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Email Kantor</label>
+                      <label className="block text-green-500 mb-1 font-medium">Email Kantor</label>
                       <input
                         type="email"
                         required
                         value={newUserData.email}
                         onChange={e => setNewUserData({ ...newUserData, email: e.target.value })}
                         placeholder="rian@foodstation.co.id"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Role Primer</label>
+                      <label className="block text-green-500 mb-1 font-medium">Role Primer</label>
                       <select
                         value={newUserData.role}
                         onChange={e => {
@@ -2154,20 +2154,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           const found = PRIMARY_PROFILE_ROLES.find(x => x.value === r);
                           setNewUserData({ ...newUserData, role: r, role_label: found?.label || r });
                         }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white font-semibold"
                       >
                         {PRIMARY_PROFILE_ROLES.map(r => (
                           <option key={r.value} value={r.value}>{r.label}</option>
                         ))}
                       </select>
-                      <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
+                      <p className="mt-1 text-[10px] text-green-400">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
+                      <label className="block text-green-500 mb-1 font-medium">Divisi</label>
                       <select
                         value={newUserData.division || ''}
                         onChange={e => setNewUserData({ ...newUserData, division: e.target.value as OwnerDivision })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white font-semibold"
                       >
                         <option value="">— Pilih divisi —</option>
                         {divisions.map(d => (
@@ -2176,21 +2176,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Departemen</label>
+                      <label className="block text-green-500 mb-1 font-medium">Departemen</label>
                       <input
                         type="text"
                         value={newUserData.department}
                         onChange={e => setNewUserData({ ...newUserData, department: e.target.value })}
                         placeholder="Contoh: Distribusi Beras"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Jabatan</label>
+                      <label className="block text-green-500 mb-1 font-medium">Jabatan</label>
                       <select
                         value={newUserData.job_level_code || ''}
                         onChange={e => setNewUserData({ ...newUserData, job_level_code: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white"
                       >
                         <option value="">— Pilih jabatan —</option>
                         {jobLevels.filter(level => level.is_active).map(level => (
@@ -2199,11 +2199,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Unit Organisasi</label>
+                      <label className="block text-green-500 mb-1 font-medium">Unit Organisasi</label>
                       <select
                         value={newUserData.unit_id || ''}
                         onChange={e => setNewUserData({ ...newUserData, unit_id: e.target.value || null })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white"
                       >
                         <option value="">— Pilih unit —</option>
                         {orgUnits.filter(unit => unit.is_active).map(unit => (
@@ -2212,11 +2212,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Lokasi Kerja / Kantor</label>
+                      <label className="block text-green-500 mb-1 font-medium">Lokasi Kerja / Kantor</label>
                       <select
                         value={newUserData.office_location_id || ''}
                         onChange={e => setNewUserData({ ...newUserData, office_location_id: e.target.value || null })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white"
                       >
                         <option value="">— Pilih lokasi kerja —</option>
                         {officeLocations.filter(location => location.is_active).map(location => (
@@ -2225,19 +2225,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Nomor Telepon / WhatsApp</label>
+                      <label className="block text-green-500 mb-1 font-medium">Nomor Telepon / WhatsApp</label>
                       <input
                         type="text"
                         value={newUserData.phone || ''}
                         onChange={e => setNewUserData({ ...newUserData, phone: e.target.value })}
                         placeholder="0812xxxxxxxx"
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white"
                       />
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+                    <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-[11px] text-green-500">
                       Sandi awal dibuat otomatis oleh server (CSPRNG) dan dikirim out-of-band oleh Administrator — tidak ditampilkan di UI.
                     </div>
-                    <div className="sm:col-span-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-500">
+                    <div className="sm:col-span-3 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] text-green-400">
                       Role primer tidak otomatis mengikuti jabatan atau lokasi kerja. Setelah akun dibuat, Super Admin dapat menetapkan role tambahan melalui tombol Role pada daftar pengguna.
                     </div>
                   </div>
@@ -2246,7 +2246,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       type="button"
                       disabled={isSubmittingUser}
                       onClick={() => setIsAddUserOpen(false)}
-                      className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs text-slate-600"
+                      className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs text-green-500"
                     >
                       Batal
                     </button>
@@ -2269,9 +2269,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               )}
 
               {/* Users Table */}
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="bg-white rounded-2xl border border-green-200 overflow-hidden shadow-xs">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold">
+                  <thead className="bg-green-50 border-b border-green-200 text-green-500 font-extrabold">
                     <tr>
                       <th className="px-4 py-3">Nama & Profil</th>
                       <th className="px-4 py-3">Peran (Role)</th>
@@ -2288,13 +2288,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         return matchSearch && matchRole;
                       })
                       .map(user => (
-                        <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
+                        <tr key={user.id} className="hover:bg-green-50/80 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <img
                                 src={user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
                                 alt={user.name}
-                                className="w-8 h-8 rounded-full border border-slate-200 object-cover"
+                                className="w-8 h-8 rounded-full border border-green-200 object-cover"
                               />
                               <div>
                                 <div className="font-bold text-slate-800">{user.name}</div>
@@ -2321,7 +2321,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                                   : user.role === 'Humas'
                                   ? 'bg-pink-50 text-pink-700 border-pink-200'
-                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                                  : 'bg-green-50 text-green-700 border-green-200'
                               }`}>
                                 {user.role}
                               </span>
@@ -2343,10 +2343,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="font-medium text-slate-700">{user.division || '-'}</div>
+                            <div className="font-medium text-green-700">{user.division || '-'}</div>
                             <div className="text-[11px] text-slate-400">{user.department}</div>
                           </td>
-                          <td className="px-4 py-3 font-mono text-[11px] text-slate-500">
+                          <td className="px-4 py-3 font-mono text-[11px] text-green-400">
                             ********
                           </td>
                           <td className="px-4 py-3 text-right">
@@ -2375,7 +2375,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                     type="button"
                                     title={`Terbitkan sandi sementara untuk ${user.name}`}
                                     onClick={() => { setPasswordResetTarget(user); setTempIssuedPassword(null); }}
-                                    className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer"
+                                    className="px-2.5 py-1 rounded-lg border border-green-200 text-green-500 hover:bg-green-50 text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer"
                                   >
                                     Reset Sandi
                                   </button>
@@ -2389,7 +2389,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                   </button>
                                 </>
                               ) : (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-400 border border-green-200 flex items-center gap-1">
                                   <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
                                   <span>Hanya-Baca</span>
                                 </span>
@@ -2405,21 +2405,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Edit User Modal */}
               {isEditUserOpen && userToEdit && (
                 <div className="fixed inset-0 z-[90] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
                           <Pencil className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Edit Data Pengguna</h4>
-                          <p className="text-xs text-slate-500">ID: {userToEdit.id} · Perbarui profil dan hak akses</p>
+                          <h4 className="text-base font-extrabold text-green-900">Edit Data Pengguna</h4>
+                          <p className="text-xs text-green-400">ID: {userToEdit.id} · Perbarui profil dan hak akses</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => { setIsEditUserOpen(false); setUserToEdit(null); }}
-                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                        className="p-1.5 rounded-xl hover:bg-green-50 text-slate-400 hover:text-green-500 transition-colors"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -2428,49 +2428,49 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <form onSubmit={handleEditUserSubmit} className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         <div className="space-y-1.5 md:col-span-2">
-                          <label className="text-xs font-bold text-slate-700">Nama Lengkap *</label>
+                          <label className="text-xs font-bold text-green-700">Nama Lengkap *</label>
                           <input
                             type="text"
                             required
                             value={editUserData.name}
                             onChange={e => setEditUserData(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                             placeholder="Contoh: Budi Santoso"
                           />
                         </div>
 
                         <div className="space-y-1.5 md:col-span-2">
-                          <label className="text-xs font-bold text-slate-700">Email Kantor (Login) *</label>
+                          <label className="text-xs font-bold text-green-700">Email Kantor (Login) *</label>
                           <input
                             type="email"
                             required
                             value={editUserData.email}
                             onChange={e => setEditUserData(prev => ({ ...prev, email: e.target.value }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                             placeholder="nama@foodstation.co.id"
                           />
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Peran Akses (Role) *</label>
+                          <label className="text-xs font-bold text-green-700">Peran Akses (Role) *</label>
                           <select
                             value={editUserData.role}
                             onChange={e => setEditUserData(prev => ({ ...prev, role: e.target.value as UserRole }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                           >
                             {PRIMARY_PROFILE_ROLES.map(r => (
                               <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>
-                          <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat ditetapkan sebagai role fungsi. RPC/SC dan PIBC dicatat melalui unit serta lokasi kantor.</p>
+                          <p className="mt-1 text-[10px] text-green-400">Humas/Sekretariat ditetapkan sebagai role fungsi. RPC/SC dan PIBC dicatat melalui unit serta lokasi kantor.</p>
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Divisi Utama *</label>
+                          <label className="text-xs font-bold text-green-700">Divisi Utama *</label>
                           <select
                             value={editUserData.division}
                             onChange={e => setEditUserData(prev => ({ ...prev, division: e.target.value as OwnerDivision }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                           >
                             {divisions.map(d => (
                               <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
@@ -2479,13 +2479,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Departemen / Unit</label>
+                          <label className="text-xs font-bold text-green-700">Departemen / Unit</label>
                           <input
                             type="text"
                             value={editUserData.department}
                             onChange={e => setEditUserData(prev => ({ ...prev, department: e.target.value }))}
                             list="department-suggestions"
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                             placeholder="Contoh: Operasional Beras SPHP"
                           />
                           <datalist id="department-suggestions">
@@ -2496,50 +2496,50 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Nomor Telepon / WhatsApp</label>
+                          <label className="text-xs font-bold text-green-700">Nomor Telepon / WhatsApp</label>
                           <input
                             type="text"
                             value={editUserData.phone}
                             onChange={e => setEditUserData(prev => ({ ...prev, phone: e.target.value }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                             placeholder="0812xxxxxxxx"
                           />
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">
+                          <label className="text-xs font-bold text-green-700">
                             Telegram Chat ID <span className="text-slate-400 font-normal">(opsional, untuk reminder)</span>
                           </label>
                           <input
                             type="text"
                             value={editUserData.telegram_chat_id}
                             onChange={e => setEditUserData(prev => ({ ...prev, telegram_chat_id: e.target.value }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-mono font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                             placeholder="Contoh: 123456789"
                           />
                           <p className="text-[10px] text-slate-400">Dipakai engine reminder kontrak (CR-05) untuk pengiriman Telegram ke user ini.</p>
                         </div>
 
                         <div className="space-y-1.5 md:col-span-2">
-                          <label className="text-xs font-bold text-slate-700">
+                          <label className="text-xs font-bold text-green-700">
                             Ubah Kata Sandi Baru <span className="text-slate-400 font-normal">(Kosongkan bila tidak diubah)</span>
                           </label>
                           <input
                             type="password"
                             value={editUserData.new_password}
                             onChange={e => setEditUserData(prev => ({ ...prev, new_password: e.target.value }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                             placeholder="Minimal 6 karakter"
                           />
                         </div>
 
                         {/* ORG-MODEL: atribut jabatan/unit/lokasi — independen dari role */}
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Jabatan / Level</label>
+                          <label className="text-xs font-bold text-green-700">Jabatan / Level</label>
                           <select
                             value={editUserData.job_level_code || ''}
                             onChange={e => setEditUserData(prev => ({ ...prev, job_level_code: e.target.value }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                           >
                             <option value="">— Tidak ditentukan —</option>
                             {jobLevels.filter(j => j.is_active || j.code === editUserData.job_level_code).map(j => (
@@ -2550,11 +2550,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-slate-700">Unit / Bagian</label>
+                          <label className="text-xs font-bold text-green-700">Unit / Bagian</label>
                           <select
                             value={editUserData.unit_id || ''}
                             onChange={e => setEditUserData(prev => ({ ...prev, unit_id: e.target.value }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                           >
                             <option value="">— Tidak ditentukan —</option>
                             {orgUnits.filter(u => u.is_active || u.id === editUserData.unit_id).map(u => (
@@ -2565,11 +2565,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
 
                         <div className="space-y-1.5 md:col-span-2">
-                          <label className="text-xs font-bold text-slate-700">Lokasi / Kantor Penempatan</label>
+                          <label className="text-xs font-bold text-green-700">Lokasi / Kantor Penempatan</label>
                           <select
                             value={editUserData.office_location_id || ''}
                             onChange={e => setEditUserData(prev => ({ ...prev, office_location_id: e.target.value }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
+                            className="w-full px-3.5 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-green-500"
                           >
                             <option value="">— Tidak ditentukan —</option>
                             {officeLocations.filter(l => l.is_active || l.id === editUserData.office_location_id).map(l => (
@@ -2597,7 +2597,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           type="button"
                           disabled={isSubmittingEditUser}
                           onClick={() => { setIsEditUserOpen(false); setUserToEdit(null); }}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50 transition-colors"
                         >
                           Batal
                         </button>
@@ -2637,28 +2637,28 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
                 return (
                   <div className="fixed inset-0 z-[90] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                    <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                    <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
                           <Trash2 className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Hapus Pengguna</h4>
-                          <p className="text-xs text-slate-500">Konfirmasi penghapusan akun dari sistem GABAH</p>
+                          <h4 className="text-base font-extrabold text-green-900">Hapus Pengguna</h4>
+                          <p className="text-xs text-green-400">Konfirmasi penghapusan akun dari sistem GABAH</p>
                         </div>
                       </div>
 
-                      <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                      <div className="bg-green-50 p-3.5 rounded-2xl border border-green-200 space-y-2">
                         <div className="flex items-center gap-3">
                           <img
                             src={userToDelete.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
                             alt={userToDelete.name}
-                            className="w-10 h-10 rounded-full border border-slate-200 object-cover"
+                            className="w-10 h-10 rounded-full border border-green-200 object-cover"
                           />
                           <div>
                             <div className="font-bold text-sm text-slate-800">{userToDelete.name}</div>
-                            <div className="text-xs text-slate-500">{userToDelete.email}</div>
-                            <div className="text-[11px] font-semibold text-slate-600 mt-0.5">{userToDelete.role} · Divisi {userToDelete.division || 'Umum'}</div>
+                            <div className="text-xs text-green-400">{userToDelete.email}</div>
+                            <div className="text-[11px] font-semibold text-green-500 mt-0.5">{userToDelete.role} · Divisi {userToDelete.division || 'Umum'}</div>
                           </div>
                         </div>
                       </div>
@@ -2695,8 +2695,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           </p>
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          Apakah Anda yakin ingin menghapus akun <span className="font-bold text-slate-900">{userToDelete.name}</span>? Tindakan ini akan menghapus akses login pengguna dan data akun dari database sistem.
+                        <p className="text-xs text-green-500 leading-relaxed">
+                          Apakah Anda yakin ingin menghapus akun <span className="font-bold text-green-900">{userToDelete.name}</span>? Tindakan ini akan menghapus akses login pengguna dan data akun dari database sistem.
                         </p>
                       )}
 
@@ -2705,7 +2705,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           type="button"
                           disabled={isDeletingUser}
                           onClick={() => setUserToDelete(null)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50 transition-colors"
                         >
                           Batal
                         </button>
@@ -2738,14 +2738,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* P1#2: Reset Sandi — konfirmasi + hasil sandi sementara (tampil SEKALI) */}
               {passwordResetTarget && (
                 <div className="fixed inset-0 z-[92] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                  <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
                         <RotateCcw className="w-5 h-5" />
                       </div>
                       <div>
-                        <h4 className="text-base font-extrabold text-slate-900">Reset Sandi Pengguna</h4>
-                        <p className="text-xs text-slate-500">
+                        <h4 className="text-base font-extrabold text-green-900">Reset Sandi Pengguna</h4>
+                        <p className="text-xs text-green-400">
                           {tempIssuedPassword
                             ? 'Sandi sementara diterbitkan oleh server — sampaikan via kanal aman (WA/telepon/pertemuan), bukan email biasa.'
                             : `Terbitkan sandi sementara baru untuk ${passwordResetTarget.name}? Sesi aktif pengguna akan dicabut.`}
@@ -2759,7 +2759,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 mb-1">Sandi Sementara (tampil sekali)</div>
                           <div className="font-mono text-lg font-black text-amber-900 select-all break-all">{tempIssuedPassword}</div>
                         </div>
-                        <p className="text-[11px] text-slate-500 leading-relaxed">
+                        <p className="text-[11px] text-green-400 leading-relaxed">
                           Server menyimpan versi hash-nya (PBKDF2). Sandi plaintext ini tidak akan ditampilkan lagi — salin sekarang sebelum menutup dialog.
                         </p>
                         <div className="flex justify-end gap-2">
@@ -2773,15 +2773,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 flex items-center gap-3">
+                      <div className="rounded-2xl border border-green-200 bg-green-50 p-3.5 flex items-center gap-3">
                         <img
                           src={passwordResetTarget.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
                           alt={passwordResetTarget.name}
-                          className="w-10 h-10 rounded-full border border-slate-200 object-cover"
+                          className="w-10 h-10 rounded-full border border-green-200 object-cover"
                         />
                         <div>
                           <div className="font-bold text-sm text-slate-800">{passwordResetTarget.name}</div>
-                          <div className="text-xs text-slate-500">{passwordResetTarget.email}</div>
+                          <div className="text-xs text-green-400">{passwordResetTarget.email}</div>
                         </div>
                       </div>
                     )}
@@ -2791,7 +2791,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setPasswordResetTarget(null)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50"
                         >
                           Batal
                         </button>
@@ -2812,22 +2812,22 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
               {roleAssignmentTarget && (
                 <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-xl max-h-[85vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col">
+                  <div className="w-full max-w-xl max-h-[85vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-green-200 flex flex-col">
                     <div className="p-5 border-b border-slate-100">
-                      <h3 className="font-black text-slate-900">Penetapan Role Pegawai</h3>
-                      <p className="text-xs text-slate-500 mt-1">{roleAssignmentTarget.name} · {roleAssignmentTarget.email}</p>
-                      <p className="text-[11px] text-slate-500 mt-2">Role utama mengikuti profil pegawai. Pilih role tambahan hanya jika pegawai memang memiliki tanggung jawab lintas fungsi.</p>
+                      <h3 className="font-black text-green-900">Penetapan Role Pegawai</h3>
+                      <p className="text-xs text-green-400 mt-1">{roleAssignmentTarget.name} · {roleAssignmentTarget.email}</p>
+                      <p className="text-[11px] text-green-400 mt-2">Role utama mengikuti profil pegawai. Pilih role tambahan hanya jika pegawai memang memiliki tanggung jawab lintas fungsi.</p>
                       <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mt-2">Penting: jika Auditor dipilih sebagai role tambahan, akun menjadi read-only untuk seluruh operasi tulis, meskipun role lain memiliki hak mutasi.</p>
                     </div>
                     <div className="p-4 overflow-y-auto space-y-2">
                       {assignmentsLoading ? (
-                        <p className="text-sm text-slate-500 text-center py-6">Memuat assignment role...</p>
+                        <p className="text-sm text-green-400 text-center py-6">Memuat assignment role...</p>
                       ) : rbacRoles.filter((role: any) => role.is_active).map((role: any) => {
                         const roleId = Number(role.id);
                         const isPrimary = primaryRoleIds[String(roleAssignmentTarget.id)] === roleId;
                         const checked = roleAssignmentDraft.includes(roleId);
                         return (
-                          <label key={roleId} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
+                          <label key={roleId} className="flex items-start gap-3 p-3 rounded-xl border border-green-200 hover:bg-green-50">
                             <input
                               type="checkbox"
                               checked={checked}
@@ -2841,17 +2841,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                 {isPrimary && <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-bold">Role utama</span>}
                                 {role.is_superadmin && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">Superadmin</span>}
                               </span>
-                              <span className="block text-[11px] text-slate-500">{role.description || role.role_key}</span>
+                              <span className="block text-[11px] text-green-400">{role.description || role.role_key}</span>
                             </span>
                           </label>
                         );
                       })}
                       {!assignmentsLoading && rbacRoles.filter((role: any) => role.is_active).length === 0 && (
-                        <p className="text-sm text-slate-500 text-center py-6">Belum ada role aktif. Muat ulang konfigurasi RBAC.</p>
+                        <p className="text-sm text-green-400 text-center py-6">Belum ada role aktif. Muat ulang konfigurasi RBAC.</p>
                       )}
                     </div>
                     <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
-                      <button type="button" onClick={() => setRoleAssignmentTarget(null)} disabled={assignmentsSaving} className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">Batal</button>
+                      <button type="button" onClick={() => setRoleAssignmentTarget(null)} disabled={assignmentsSaving} className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500">Batal</button>
                       <button type="button" onClick={() => void saveRoleAssignment()} disabled={assignmentsSaving || assignmentsLoading || !primaryRoleIds[String(roleAssignmentTarget.id)]} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">
                         {assignmentsSaving ? 'Menyimpan...' : 'Simpan Role'}
                       </button>
@@ -2867,13 +2867,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'roles' && (
             <div className="space-y-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-3">
+              <div className="bg-white p-5 rounded-2xl border border-green-200 flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Dynamic Role Management</h3>
-                  <p className="text-xs text-slate-500 mt-1">Role tidak dibatasi sembilan nama. Superadmin mengelola role, permission, dan cakupan data dari database.</p>
+                  <h3 className="text-base font-black text-green-900">Dynamic Role Management</h3>
+                  <p className="text-xs text-green-400 mt-1">Role tidak dibatasi sembilan nama. Superadmin mengelola role, permission, dan cakupan data dari database.</p>
                 </div>
                 {isCurrentUserAdmin && (
-                  <button type="button" onClick={() => void refreshRbac()} disabled={rbacLoading} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold hover:bg-slate-50 disabled:opacity-50">
+                  <button type="button" onClick={() => void refreshRbac()} disabled={rbacLoading} className="px-3 py-2 rounded-xl border border-green-200 text-xs font-bold hover:bg-green-50 disabled:opacity-50">
                     {rbacLoading ? 'Memuat...' : 'Muat Ulang'}
                   </button>
                 )}
@@ -2884,32 +2884,32 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               {!isCurrentUserAdmin ? (
-                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+                <div className="bg-white rounded-2xl border border-green-200 p-8 text-center text-sm text-green-400">
                   <LockKeyhole className="w-6 h-6 mx-auto mb-2" />
                   Hanya Superadmin yang dapat mengelola role dan permission.
                 </div>
               ) : (
                 <>
-                  <form onSubmit={handleCreateRbacRole} className="bg-white p-4 rounded-2xl border border-slate-200 space-y-4">
+                  <form onSubmit={handleCreateRbacRole} className="bg-white p-4 rounded-2xl border border-green-200 space-y-4">
                     <div>
-                      <h4 className="font-extrabold text-sm text-slate-900">Buat Role dan Pilih Hak Akses</h4>
-                      <p className="text-xs text-slate-500 mt-1">Pilih permission yang akan dimiliki role ini. Role baru tidak mendapat akses otomatis.</p>
+                      <h4 className="font-extrabold text-sm text-green-900">Buat Role dan Pilih Hak Akses</h4>
+                      <p className="text-xs text-green-400 mt-1">Pilih permission yang akan dimiliki role ini. Role baru tidak mendapat akses otomatis.</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama role baru</label>
-                        <input value={rbacNewName} onChange={e => setRbacNewName(e.target.value)} required minLength={2} maxLength={120} placeholder="Contoh: Petugas Pengadaan" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                        <label className="block text-xs font-bold text-green-700 mb-1">Nama role baru</label>
+                        <input value={rbacNewName} onChange={e => setRbacNewName(e.target.value)} required minLength={2} maxLength={120} placeholder="Contoh: Petugas Pengadaan" className="w-full px-3 py-2 rounded-xl border border-green-200 text-sm" />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi / tanggung jawab</label>
-                        <input value={rbacNewDescription} onChange={e => setRbacNewDescription(e.target.value)} maxLength={500} placeholder="Contoh: Melihat dan mengelola permintaan pengadaan" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm" />
+                        <label className="block text-xs font-bold text-green-700 mb-1">Deskripsi / tanggung jawab</label>
+                        <input value={rbacNewDescription} onChange={e => setRbacNewDescription(e.target.value)} maxLength={500} placeholder="Contoh: Melihat dan mengelola permintaan pengadaan" className="w-full px-3 py-2 rounded-xl border border-green-200 text-sm" />
                       </div>
                     </div>
-                    <div className="rounded-xl border border-slate-200 p-3 space-y-3">
+                    <div className="rounded-xl border border-green-200 p-3 space-y-3">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div>
                           <h5 className="text-xs font-extrabold text-slate-800">Pilih Permission</h5>
-                          <p className="text-[11px] text-slate-500">Centang tindakan yang boleh dilakukan role ini.</p>
+                          <p className="text-[11px] text-green-400">Centang tindakan yang boleh dilakukan role ini.</p>
                         </div>
                         <span className="text-xs font-bold text-green-700">{rbacNewPermissionKeys.length} dipilih</span>
                       </div>
@@ -2924,12 +2924,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             if (activeItems.length === 0) return null;
                             return (
                               <div key={moduleName} className="border border-slate-100 rounded-xl p-3">
-                                <h6 className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wide mb-2">{moduleName.replace(/_/g, ' ')}</h6>
+                                <h6 className="text-[11px] font-extrabold text-green-700 uppercase tracking-wide mb-2">{moduleName.replace(/_/g, ' ')}</h6>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
                                   {activeItems.map((permission: any) => (
-                                    <label key={permission.permission_key} className="flex items-start gap-2 text-xs text-slate-700 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                                    <label key={permission.permission_key} className="flex items-start gap-2 text-xs text-green-700 p-2 rounded-lg hover:bg-green-50 cursor-pointer">
                                       <input type="checkbox" checked={rbacNewPermissionKeys.includes(permission.permission_key)} onChange={e => setRbacNewPermissionKeys(current => e.target.checked ? [...new Set([...current, permission.permission_key])] : current.filter(key => key !== permission.permission_key))} disabled={rbacSaving} className="mt-0.5" />
-                                      <span><span className="font-bold">{permission.action}</span><span className="block text-[10px] text-slate-500">{permission.description || permission.permission_key} · {permission.permission_key}</span></span>
+                                      <span><span className="font-bold">{permission.action}</span><span className="block text-[10px] text-green-400">{permission.description || permission.permission_key} · {permission.permission_key}</span></span>
                                     </label>
                                   ))}
                                 </div>
@@ -2940,7 +2940,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       )}
                     </div>
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <span className="text-[11px] text-slate-500">Role dibuat tanpa akses lain di luar permission yang dipilih.</span>
+                      <span className="text-[11px] text-green-400">Role dibuat tanpa akses lain di luar permission yang dipilih.</span>
                       <button type="submit" disabled={rbacSaving || !rbacPermissions.some((permission: any) => permission.is_active) || rbacNewPermissionKeys.length === 0} className="px-4 py-2 rounded-xl bg-green-600 text-white text-xs font-bold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2">
                         <Plus className="w-4 h-4" /> {rbacSaving ? 'Menyimpan...' : 'Buat Role + Simpan Hak Akses'}
                       </button>
@@ -2948,17 +2948,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </form>
 
                   {rbacLoading && rbacRoles.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">Memuat role dan permission dari PostgreSQL...</div>
+                    <div className="bg-white rounded-2xl border border-green-200 p-8 text-center text-sm text-green-400">Memuat role dan permission dari PostgreSQL...</div>
                   ) : rbacRoles.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+                    <div className="bg-white rounded-2xl border border-green-200 p-8 text-center text-sm text-green-400">
                       Data Dynamic RBAC belum tersedia. Pastikan migration 010/011 telah dijalankan dan PostgreSQL aktif.
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 xl:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.6fr)] gap-4 items-start">
-                      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                      <div className="bg-white rounded-2xl border border-green-200 overflow-hidden">
                         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                          <h4 className="font-extrabold text-sm text-slate-900">Daftar Role</h4>
-                          <span className="text-[11px] text-slate-500">{rbacRoles.length} role</span>
+                          <h4 className="font-extrabold text-sm text-green-900">Daftar Role</h4>
+                          <span className="text-[11px] text-green-400">{rbacRoles.length} role</span>
                         </div>
                         <div className="divide-y divide-slate-100">
                           {rbacRoles.map(role => (
@@ -2966,12 +2966,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <button type="button" onClick={() => handleSelectRbacRole(role)} className="w-full text-left">
                                 <div className="flex items-start justify-between gap-2">
                                   <span className="font-bold text-sm text-slate-800">{role.name}</span>
-                                  <span className={'shrink-0 text-[10px] px-2 py-0.5 rounded-full font-bold ' + (role.is_active ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-500')}>
+                                  <span className={'shrink-0 text-[10px] px-2 py-0.5 rounded-full font-bold ' + (role.is_active ? 'bg-green-100 text-green-800' : 'bg-green-50 text-green-400')}>
                                     {role.is_active ? 'Aktif' : 'Nonaktif'}
                                   </span>
                                 </div>
                                 <div className="text-[10px] text-slate-400 mt-1">{role.role_key} · {role.assigned_user_count} user</div>
-                                {role.description && <div className="text-xs text-slate-500 mt-1">{role.description}</div>}
+                                {role.description && <div className="text-xs text-green-400 mt-1">{role.description}</div>}
                               </button>
                               <div className="flex items-center gap-2 mt-2">
                                 <button type="button" onClick={() => handleSelectRbacRole(role)} className="text-[11px] font-bold text-green-700 hover:underline">Kelola</button>
@@ -2992,53 +2992,53 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
                       {selectedRbacRole ? (
                         <div className="space-y-4">
-                          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                          <div className="bg-white rounded-2xl border border-green-200 p-4 space-y-3">
                             <div className="flex items-center justify-between gap-2">
                               <div>
-                                <h4 className="font-extrabold text-sm text-slate-900">Detail Role</h4>
-                                <p className="text-[11px] text-slate-500">Kunci internal tidak berubah ketika nama role diganti.</p>
+                                <h4 className="font-extrabold text-sm text-green-900">Detail Role</h4>
+                                <p className="text-[11px] text-green-400">Kunci internal tidak berubah ketika nama role diganti.</p>
                               </div>
-                              <span className="text-[10px] font-mono bg-slate-100 px-2 py-1 rounded-lg">{selectedRbacRole.role_key}</span>
+                              <span className="text-[10px] font-mono bg-green-50 px-2 py-1 rounded-lg">{selectedRbacRole.role_key}</span>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Nama tampilan</label>
-                                <input value={rbacName} onChange={e => setRbacName(e.target.value)} minLength={2} maxLength={120} disabled={rbacSaving} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm disabled:bg-slate-50" />
+                                <label className="block text-xs font-bold text-green-700 mb-1">Nama tampilan</label>
+                                <input value={rbacName} onChange={e => setRbacName(e.target.value)} minLength={2} maxLength={120} disabled={rbacSaving} className="w-full px-3 py-2 rounded-xl border border-green-200 text-sm disabled:bg-green-50" />
                               </div>
                               <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi</label>
-                                <input value={rbacDescription} onChange={e => setRbacDescription(e.target.value)} maxLength={500} disabled={rbacSaving} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm disabled:bg-slate-50" />
+                                <label className="block text-xs font-bold text-green-700 mb-1">Deskripsi</label>
+                                <input value={rbacDescription} onChange={e => setRbacDescription(e.target.value)} maxLength={500} disabled={rbacSaving} className="w-full px-3 py-2 rounded-xl border border-green-200 text-sm disabled:bg-green-50" />
                               </div>
                             </div>
                             <div className="flex items-center justify-between flex-wrap gap-2">
-                              <span className="text-xs text-slate-500">{selectedRbacRole.assigned_user_count} user ditetapkan</span>
+                              <span className="text-xs text-green-400">{selectedRbacRole.assigned_user_count} user ditetapkan</span>
                               <button type="button" onClick={() => void handleSaveRbacRole()} disabled={rbacSaving || rbacName.trim().length < 2} className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold disabled:opacity-50">Simpan Detail</button>
                             </div>
                             {selectedRbacRole.is_superadmin && <div className="text-xs rounded-lg bg-green-50 text-green-800 p-3">Ini role Superadmin. Hak kendali tertinggi dilindungi dan tidak dapat dihapus atau dinonaktifkan.</div>}
                           </div>
 
-                          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                          <div className="bg-white rounded-2xl border border-green-200 p-4 space-y-3">
                             <div className="flex items-center justify-between gap-2">
                               <div>
-                                <h4 className="font-extrabold text-sm text-slate-900">Permission per Modul</h4>
-                                <p className="text-[11px] text-slate-500">Pilih tindakan yang diizinkan untuk role ini.</p>
+                                <h4 className="font-extrabold text-sm text-green-900">Permission per Modul</h4>
+                                <p className="text-[11px] text-green-400">Pilih tindakan yang diizinkan untuk role ini.</p>
                               </div>
-                              <span className="text-[11px] text-slate-500">{rbacSelectedPermissionKeys.length} dipilih</span>
+                              <span className="text-[11px] text-green-400">{rbacSelectedPermissionKeys.length} dipilih</span>
                             </div>
                             {selectedRbacRole.is_superadmin ? (
-                              <p className="text-xs text-slate-500">Permission Superadmin dilindungi; hak tertingginya tidak dapat diubah melalui matriks role.</p>
+                              <p className="text-xs text-green-400">Permission Superadmin dilindungi; hak tertingginya tidak dapat diubah melalui matriks role.</p>
                             ) : (
                               <>
                                 {rbacPermissions.filter((permission: any) => permission.is_active).length === 0 ? (
                                   <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">Tidak ada permission aktif di katalog. Periksa migration katalog pada database preview.</p>
                                 ) : Object.entries(rbacPermissionGroups).map(([moduleName, items]) => (
                                   <div key={moduleName} className="border border-slate-100 rounded-xl p-3">
-                                    <h5 className="text-xs font-extrabold text-slate-700 uppercase tracking-wide mb-2">{moduleName.replace(/_/g, ' ')}</h5>
+                                    <h5 className="text-xs font-extrabold text-green-700 uppercase tracking-wide mb-2">{moduleName.replace(/_/g, ' ')}</h5>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                       {items.map(permission => (
-                                        <label key={permission.permission_key} className="flex items-start gap-2 text-xs text-slate-700 p-2 rounded-lg hover:bg-slate-50">
+                                        <label key={permission.permission_key} className="flex items-start gap-2 text-xs text-green-700 p-2 rounded-lg hover:bg-green-50">
                                           <input type="checkbox" checked={rbacSelectedPermissionKeys.includes(permission.permission_key)} onChange={e => handleToggleRbacPermission(permission.permission_key, e.target.checked)} disabled={rbacSaving || !permission.is_active} className="mt-0.5" />
-                                          <span><span className="font-bold">{permission.action}</span><span className="block text-[10px] text-slate-500">{permission.description || permission.permission_key}</span></span>
+                                          <span><span className="font-bold">{permission.action}</span><span className="block text-[10px] text-green-400">{permission.description || permission.permission_key}</span></span>
                                         </label>
                                       ))}
                                     </div>
@@ -3051,23 +3051,23 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             )}
                           </div>
 
-                          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                          <div className="bg-white rounded-2xl border border-green-200 p-4 space-y-3">
                             <div>
-                              <h4 className="font-extrabold text-sm text-slate-900">Cakupan Data (Scope)</h4>
-                              <p className="text-[11px] text-slate-500">Permission menentukan tindakan; scope membatasi data yang dapat disentuh.</p>
+                              <h4 className="font-extrabold text-sm text-green-900">Cakupan Data (Scope)</h4>
+                              <p className="text-[11px] text-green-400">Permission menentukan tindakan; scope membatasi data yang dapat disentuh.</p>
                             </div>
                             {selectedRbacRole.is_superadmin ? (
-                              <p className="text-xs text-slate-500">Scope Superadmin dilindungi dan tidak dapat dibatasi melalui konfigurasi role.</p>
+                              <p className="text-xs text-green-400">Scope Superadmin dilindungi dan tidak dapat dibatasi melalui konfigurasi role.</p>
                             ) : (
                               <>
                                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.5fr_auto] gap-2">
-                                  <select value={rbacScopeModule} onChange={e => setRbacScopeModule(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                                  <select value={rbacScopeModule} onChange={e => setRbacScopeModule(e.target.value)} className="px-3 py-2 rounded-xl border border-green-200 text-xs">
                                     <option value="*">Semua modul</option>
                                     {Array.from(new Set(rbacPermissions.map((permission: any) => permission.module).filter(Boolean))).sort().map((module: string) => (
                                       <option key={module} value={module}>{module}</option>
                                     ))}
                                   </select>
-                                  <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as any)} className="px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                                  <select value={rbacScopeType} onChange={e => setRbacScopeType(e.target.value as any)} className="px-3 py-2 rounded-xl border border-green-200 text-xs">
                                     <option value="division">Owner / divisi tertentu</option>
                                     <option value="division_except">Semua owner kecuali</option>
                                     <option value="unit">Unit</option>
@@ -3075,13 +3075,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                     <option value="own">Data sendiri</option>
                                     <option value="all">Semua data</option>
                                   </select>
-                                  <input value={rbacScopeValue} onChange={e => setRbacScopeValue(e.target.value)} disabled={['all', 'own'].includes(rbacScopeType)} placeholder={rbacScopeType === 'division_except' ? 'Kode owner yang dikecualikan' : 'Kode owner / unit / lokasi'} className="px-3 py-2 rounded-xl border border-slate-200 text-xs disabled:bg-slate-50" />
-                                  <button type="button" onClick={handleAddRbacScope} className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold hover:bg-slate-50">Tambah Scope</button>
+                                  <input value={rbacScopeValue} onChange={e => setRbacScopeValue(e.target.value)} disabled={['all', 'own'].includes(rbacScopeType)} placeholder={rbacScopeType === 'division_except' ? 'Kode owner yang dikecualikan' : 'Kode owner / unit / lokasi'} className="px-3 py-2 rounded-xl border border-green-200 text-xs disabled:bg-green-50" />
+                                  <button type="button" onClick={handleAddRbacScope} className="px-3 py-2 rounded-xl border border-green-200 text-xs font-bold hover:bg-green-50">Tambah Scope</button>
                                 </div>
                                 {rbacScopes.length === 0 ? <p className="text-xs text-slate-400">Belum ada scope yang dikonfigurasi.</p> : (
                                   <div className="flex flex-wrap gap-2">
                                     {rbacScopes.map((scope, index) => (
-                                      <span key={(scope.module || '*') + ':' + scope.type + ':' + (scope.value || '') + ':' + index} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-100 text-xs text-slate-700">
+                                      <span key={(scope.module || '*') + ':' + scope.type + ':' + (scope.value || '') + ':' + index} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-green-50 text-xs text-green-700">
                                         {(scope.module || '*') + ' / ' + scope.type}{scope.value ? ': ' + scope.value : ''}
                                         <button type="button" onClick={() => setRbacScopes(current => current.filter((_, i) => i !== index))} className="text-rose-600 font-bold" aria-label="Hapus scope">×</button>
                                       </span>
@@ -3096,7 +3096,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">Pilih role di sebelah kiri untuk mengatur detail, permission, dan scope.</div>
+                        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-green-400">Pilih role di sebelah kiri untuk mengatur detail, permission, dan scope.</div>
                       )}
                     </div>
                   )}
@@ -3107,10 +3107,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
           {false && activeSection === 'roles' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white p-4 rounded-2xl border border-green-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Role &amp; Permission Matrix</h3>
-                  <p className="text-xs text-slate-500">
+                  <h3 className="text-base font-black text-green-900">Role &amp; Permission Matrix</h3>
+                  <p className="text-xs text-green-400">
                     Matriks otorisasi hak akses modul dan pembatasan scope divisi untuk tata kelola BUMD
                   </p>
                 </div>
@@ -3118,17 +3118,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <button
                     type="button"
                     onClick={handleResetRolePermissions}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50 flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                    <RotateCcw className="w-3.5 h-3.5 text-green-400" />
                     <span>Reset Default Matriks</span>
                   </button>
                 )}
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
+              <div className="bg-white rounded-2xl border border-green-200 overflow-x-auto shadow-xs">
                 <table className="w-full text-left text-xs min-w-[760px]">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-extrabold">
+                  <thead className="bg-green-50 border-b border-green-200 text-green-700 font-extrabold">
                     <tr>
                       <th className="px-4 py-3">Peran (Role)</th>
                       <th className="px-3 py-3 text-center">Aset Fisik</th>
@@ -3143,13 +3143,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {permissions.map((row) => (
-                      <tr key={row.role} className="hover:bg-slate-50">
+                      <tr key={row.role} className="hover:bg-green-50">
                         <td className="px-4 py-3">
                           <div className="font-bold text-slate-800">{row.role}</div>
                           <div className="text-[11px] text-slate-400">{row.desc}</div>
                         </td>
                         <td className="px-3 py-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">{row.assets}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700">{row.assets}</span>
                         </td>
                         <td className="px-3 py-3 text-center">
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700">{row.loans}</span>
@@ -3158,7 +3158,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700">{row.tickets}</span>
                         </td>
                         <td className="px-3 py-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">{row.licenses}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700">{row.licenses}</span>
                         </td>
                         <td className="px-3 py-3 text-center">
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">{row.reports}</span>
@@ -3188,7 +3188,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <span>Ubah Otorisasi</span>
                             </button>
                           ) : (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 inline-flex items-center gap-1">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-400 border border-green-200 inline-flex items-center gap-1">
                               <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
                               <span>Terkunci</span>
                             </span>
@@ -3203,21 +3203,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Edit Role Permission Modal */}
               {isEditRoleOpen && editRoleRow && (
                 <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
                           <LockKeyhole className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Ubah Otorisasi Peran: {editRoleRow.role}</h4>
-                          <p className="text-xs text-slate-500">Sesuaikan lingkup hak akses per modul GABAH Enterprise</p>
+                          <h4 className="text-base font-extrabold text-green-900">Ubah Otorisasi Peran: {editRoleRow.role}</h4>
+                          <p className="text-xs text-green-400">Sesuaikan lingkup hak akses per modul GABAH Enterprise</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsEditRoleOpen(false)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-green-700 hover:bg-green-50"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -3225,13 +3225,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
                     <form onSubmit={handleSaveRolePermissions} className="space-y-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi Peran</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Deskripsi Peran</label>
                         <input
                           type="text"
                           value={editRoleRow.desc}
                           onChange={e => setEditRoleRow({ ...editRoleRow, desc: e.target.value })}
                           list="role-desc-suggestions"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-medium"
                         />
                         <datalist id="role-desc-suggestions">
                           {DEFAULT_PERMISSIONS.map(p => (
@@ -3252,11 +3252,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           ] as Array<[keyof typeof PERMISSION_TEMPLATE_FIELDS, string]>
                         ).map(([field, label]) => (
                           <div key={field}>
-                            <label className="block font-bold text-slate-700 mb-1">{label}</label>
+                            <label className="block font-bold text-green-700 mb-1">{label}</label>
                             <select
                               value={editRoleRow[field]}
                               onChange={e => setEditRoleRow({ ...editRoleRow, [field]: e.target.value })}
-                              className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-medium cursor-pointer"
+                              className="w-full px-3 py-1.5 rounded-xl border border-green-200 bg-white font-medium cursor-pointer"
                             >
                               {/* Nilai tersimpan di luar template tetap ditampilkan agar tidak hilang diam-diam. */}
                               {!PERMISSION_TEMPLATE_FIELDS[field].includes(editRoleRow[field]) && (
@@ -3277,7 +3277,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsEditRoleOpen(false)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50"
                         >
                           Batal
                         </button>
@@ -3300,10 +3300,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'organization' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white p-4 rounded-2xl border border-green-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Struktur Organisasi &amp; Divisi BUMD</h3>
-                  <p className="text-xs text-slate-500">
+                  <h3 className="text-base font-black text-green-900">Struktur Organisasi &amp; Divisi BUMD</h3>
+                  <p className="text-xs text-green-400">
                     Pemetaan kepemilikan aset (Owner Division) dan tanggung jawab departemen PT Food Station Tjipinang Jaya
                   </p>
                 </div>
@@ -3320,9 +3320,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <button
                       type="button"
                       onClick={handleResetDivisions}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50 flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                      <RotateCcw className="w-3.5 h-3.5 text-green-400" />
                       <span>Reset Default</span>
                     </button>
                   </div>
@@ -3333,7 +3333,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 {divisions.map(div => {
                   const assetsCount = assets.filter(a => a.owner_division === div.code).length;
                   return (
-                    <div key={div.code} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs flex flex-col justify-between">
+                    <div key={div.code} className="p-4 rounded-2xl border border-green-200 bg-white shadow-xs flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2.5">
@@ -3342,17 +3342,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             </span>
                             <div>
                               <h4 className="text-sm font-extrabold text-slate-800">{div.name}</h4>
-                              <div className="text-[11px] text-slate-500">{div.leader}</div>
+                              <div className="text-[11px] text-green-400">{div.leader}</div>
                             </div>
                           </div>
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700">
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-green-50 text-green-700">
                             {assetsCount} Aset Terdaftar
                           </span>
                         </div>
                         <div className="space-y-1.5 pt-3 border-t border-slate-100">
-                          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Departemen Terkait:</div>
+                          <div className="text-[11px] font-bold text-green-400 uppercase tracking-wider">Departemen Terkait:</div>
                           {div.depts.map((d, i) => (
-                            <div key={i} className="text-xs text-slate-700 flex items-center gap-2">
+                            <div key={i} className="text-xs text-green-700 flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#4ABDAC]" />
                               <span>{d}</span>
                             </div>
@@ -3389,7 +3389,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             )}
                           </div>
                         ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 inline-flex items-center gap-1">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-400 border border-green-200 inline-flex items-center gap-1">
                             <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
                             <span>Read-Only</span>
                           </span>
@@ -3403,21 +3403,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Add Division Modal */}
               {isAddDivisionOpen && (
                 <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
                           <Building2 className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Tambah Divisi / Departemen Baru</h4>
-                          <p className="text-xs text-slate-500">Daftarkan divisi baru untuk klasifikasi kepemilikan aset</p>
+                          <h4 className="text-base font-extrabold text-green-900">Tambah Divisi / Departemen Baru</h4>
+                          <p className="text-xs text-green-400">Daftarkan divisi baru untuk klasifikasi kepemilikan aset</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsAddDivisionOpen(false)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-green-700 hover:bg-green-50"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -3426,48 +3426,48 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <form onSubmit={handleAddDivisionSubmit} className="space-y-4">
                       <div className="grid grid-cols-3 gap-3">
                         <div className="col-span-1">
-                          <label className="block text-xs font-bold text-slate-700 mb-1">Kode Divisi *</label>
+                          <label className="block text-xs font-bold text-green-700 mb-1">Kode Divisi *</label>
                           <input
                             type="text"
                             required
                             placeholder="Contoh: HC, FIN"
                             value={newDivisionData.code}
                             onChange={e => setNewDivisionData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-green-500"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-green-500"
                           />
                         </div>
                         <div className="col-span-2">
-                          <label className="block text-xs font-bold text-slate-700 mb-1">Nama Divisi *</label>
+                          <label className="block text-xs font-bold text-green-700 mb-1">Nama Divisi *</label>
                           <input
                             type="text"
                             required
                             placeholder="Contoh: Human Capital & Korporat"
                             value={newDivisionData.name}
                             onChange={e => setNewDivisionData(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-green-500"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-semibold focus:outline-none focus:border-green-500"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Pimpinan / Kepala Divisi</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Pimpinan / Kepala Divisi</label>
                         <input
                           type="text"
                           placeholder="Contoh: Kepala Divisi Human Capital"
                           value={newDivisionData.leader}
                           onChange={e => setNewDivisionData(prev => ({ ...prev, leader: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:border-green-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Departemen / Unit Awal</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Departemen / Unit Awal</label>
                         <input
                           type="text"
                           placeholder="Contoh: Personalia & Pengembangan SDM"
                           value={newDivisionData.initialDept}
                           onChange={e => setNewDivisionData(prev => ({ ...prev, initialDept: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:border-green-500"
                         />
                         <p className="text-[10px] text-slate-400 mt-1">Departemen tambahan dapat dikelola kapan saja lewat tombol Edit Divisi</p>
                       </div>
@@ -3476,7 +3476,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsAddDivisionOpen(false)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50"
                         >
                           Batal
                         </button>
@@ -3496,21 +3496,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Edit Division Modal */}
               {isEditDivisionOpen && divisionToEdit && (
                 <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
                           <Building2 className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Edit Struktur Divisi {divisionToEdit.code}</h4>
-                          <p className="text-xs text-slate-500">Kelola nama divisi, pimpinan, dan departemen operasional</p>
+                          <h4 className="text-base font-extrabold text-green-900">Edit Struktur Divisi {divisionToEdit.code}</h4>
+                          <p className="text-xs text-green-400">Kelola nama divisi, pimpinan, dan departemen operasional</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsEditDivisionOpen(false)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-green-700 hover:bg-green-50"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -3518,30 +3518,30 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
                     <form onSubmit={handleSaveDivision} className="space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama Divisi</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Nama Divisi</label>
                         <input
                           type="text"
                           required
                           value={divisionToEdit.name}
                           onChange={e => setDivisionToEdit({ ...divisionToEdit, name: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-semibold"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Pimpinan / Penanggung Jawab</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Pimpinan / Penanggung Jawab</label>
                         <input
                           type="text"
                           required
                           value={divisionToEdit.leader}
                           onChange={e => setDivisionToEdit({ ...divisionToEdit, leader: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-medium"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Departemen Terdaftar</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Departemen Terdaftar</label>
                         <div className="space-y-1.5 mb-2">
                           {divisionToEdit.depts.map((dept, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                            <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-green-50 border border-green-200 text-xs">
                               <span>{dept}</span>
                               <button
                                 type="button"
@@ -3564,7 +3564,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             placeholder="Nama departemen baru..."
                             value={newDeptInput}
                             onChange={e => setNewDeptInput(e.target.value)}
-                            className="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 text-xs"
+                            className="flex-1 px-3 py-1.5 rounded-xl border border-green-200 text-xs"
                           />
                           <button
                             type="button"
@@ -3588,7 +3588,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsEditDivisionOpen(false)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50"
                         >
                           Batal
                         </button>
@@ -3623,20 +3623,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               {/* Master Jabatan/Level */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <div className="bg-white rounded-2xl border border-green-200 p-4">
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Master Jabatan / Level ({jobLevels.length})</h4>
+                  <h4 className="text-xs font-extrabold text-green-700 uppercase tracking-wider">Master Jabatan / Level ({jobLevels.length})</h4>
                 </div>
                 <form onSubmit={handleAddJobLevel} className="flex flex-wrap gap-2 items-end mb-3">
                   <input type="text" placeholder="Kode (mis. MANAGER)" value={newJobLevelData.code}
                     onChange={e => setNewJobLevelData(p => ({ ...p, code: e.target.value }))}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-40 focus:outline-none focus:border-green-500" />
+                    className="px-2.5 py-1.5 rounded-lg border border-green-200 text-xs w-40 focus:outline-none focus:border-green-500" />
                   <input type="text" placeholder="Nama jabatan" value={newJobLevelData.label}
                     onChange={e => setNewJobLevelData(p => ({ ...p, label: e.target.value }))}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-48 focus:outline-none focus:border-green-500" />
+                    className="px-2.5 py-1.5 rounded-lg border border-green-200 text-xs w-48 focus:outline-none focus:border-green-500" />
                   <input type="number" placeholder="Urutan" value={newJobLevelData.order}
                     onChange={e => setNewJobLevelData(p => ({ ...p, order: e.target.value }))}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-24 focus:outline-none focus:border-green-500" />
+                    className="px-2.5 py-1.5 rounded-lg border border-green-200 text-xs w-24 focus:outline-none focus:border-green-500" />
                   <button type="submit" disabled={isSubmittingOrgMaster}
                     className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-[11px] font-bold hover:bg-green-700 disabled:opacity-50 flex items-center gap-1">
                     <Plus className="w-3 h-3" /> Tambah
@@ -3644,7 +3644,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </form>
                 <div className="space-y-1.5">
                   {[...jobLevels].sort((a, b) => (a.order || 99) - (b.order || 99)).map(jl => (
-                    <div key={jl.code} className={`flex items-center justify-between p-2.5 rounded-xl border ${jl.is_active ? 'border-slate-200 bg-slate-50/70' : 'border-slate-100 bg-slate-100/60 opacity-60'} group`}>
+                    <div key={jl.code} className={`flex items-center justify-between p-2.5 rounded-xl border ${jl.is_active ? 'border-green-200 bg-green-50/70' : 'border-slate-100 bg-green-50/60 opacity-60'} group`}>
                       <div className="flex items-center gap-2.5">
                         <span className="w-7 h-7 rounded-lg bg-[#4ABDAC]/15 text-[#206f65] flex items-center justify-center text-[10px] font-black">{jl.order}</span>
                         <div>
@@ -3655,7 +3655,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       {isCurrentUserAdmin && (
                         <button type="button" onClick={() => handleToggleJobLevel(jl.code, !jl.is_active)}
                           title={jl.is_active ? 'Nonaktifkan jabatan' : 'Aktifkan jabatan'}
-                          className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-colors ${jl.is_active ? 'text-green-700 hover:bg-green-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+                          className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-colors ${jl.is_active ? 'text-green-700 hover:bg-green-50' : 'text-slate-400 hover:bg-green-50'}`}>
                           <Power className="w-3.5 h-3.5" />
                           {jl.is_active ? 'Aktif' : 'Nonaktif'}
                         </button>
@@ -3667,17 +3667,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               {/* Master Unit */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <div className="bg-white rounded-2xl border border-green-200 p-4">
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Master Unit / Bagian ({orgUnits.length})</h4>
+                  <h4 className="text-xs font-extrabold text-green-700 uppercase tracking-wider">Master Unit / Bagian ({orgUnits.length})</h4>
                 </div>
                 <form onSubmit={handleAddOrgUnit} className="flex flex-wrap gap-2 items-end mb-3">
                   <input type="text" placeholder="Nama unit (mis. Logistik)" value={newOrgUnitData.name}
                     onChange={e => setNewOrgUnitData(p => ({ ...p, name: e.target.value }))}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-56 focus:outline-none focus:border-green-500" />
+                    className="px-2.5 py-1.5 rounded-lg border border-green-200 text-xs w-56 focus:outline-none focus:border-green-500" />
                   <select value={newOrgUnitData.division_code}
                     onChange={e => setNewOrgUnitData(p => ({ ...p, division_code: e.target.value }))}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-500">
+                    className="px-2.5 py-1.5 rounded-lg border border-green-200 text-xs focus:outline-none focus:border-green-500">
                     {['IT', 'GA', 'SC', 'PIBC', 'Audit', 'Umum'].map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                   <button type="submit" disabled={isSubmittingOrgMaster}
@@ -3687,14 +3687,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </form>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {orgUnits.map(u => (
-                    <div key={u.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${u.is_active ? 'border-slate-200 bg-slate-50/70' : 'border-slate-100 bg-slate-100/60 opacity-60'}`}>
+                    <div key={u.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${u.is_active ? 'border-green-200 bg-green-50/70' : 'border-slate-100 bg-green-50/60 opacity-60'}`}>
                       <div>
                         <div className="text-xs font-extrabold text-slate-800">{u.name}</div>
                         <div className="text-[10px] text-slate-400">Divisi: {u.division_code}</div>
                       </div>
                       {isCurrentUserAdmin && (
                         <button type="button" onClick={() => handleToggleOrgUnit(u.id, !u.is_active)}
-                          className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold ${u.is_active ? 'text-green-700 hover:bg-green-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+                          className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold ${u.is_active ? 'text-green-700 hover:bg-green-50' : 'text-slate-400 hover:bg-green-50'}`}>
                           <Power className="w-3.5 h-3.5" />
                           {u.is_active ? 'Aktif' : 'Nonaktif'}
                         </button>
@@ -3705,14 +3705,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               {/* Master Kantor/Lokasi */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <div className="bg-white rounded-2xl border border-green-200 p-4">
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Master Kantor / Lokasi Penempatan ({officeLocations.length})</h4>
+                  <h4 className="text-xs font-extrabold text-green-700 uppercase tracking-wider">Master Kantor / Lokasi Penempatan ({officeLocations.length})</h4>
                 </div>
                 <form onSubmit={handleAddOffice} className="flex flex-wrap gap-2 items-end mb-3">
                   <input type="text" placeholder="Nama lokasi kantor (mis. Kantor Wilayah Timur)" value={newOfficeData.name}
                     onChange={e => setNewOfficeData(p => ({ ...p, name: e.target.value }))}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-64 focus:outline-none focus:border-green-500" />
+                    className="px-2.5 py-1.5 rounded-lg border border-green-200 text-xs w-64 focus:outline-none focus:border-green-500" />
                   <button type="submit" disabled={isSubmittingOrgMaster}
                     className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-[11px] font-bold hover:bg-green-700 disabled:opacity-50 flex items-center gap-1">
                     <Plus className="w-3 h-3" /> Tambah
@@ -3720,14 +3720,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </form>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {officeLocations.map(loc => (
-                    <div key={loc.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${loc.is_active ? 'border-slate-200 bg-slate-50/70' : 'border-slate-100 bg-slate-100/60 opacity-60'}`}>
+                    <div key={loc.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${loc.is_active ? 'border-green-200 bg-green-50/70' : 'border-slate-100 bg-green-50/60 opacity-60'}`}>
                       <div className="flex items-center gap-2.5">
                         <Building2 className="w-4 h-4 text-[#206f65]" />
                         <span className="text-xs font-extrabold text-slate-800">{loc.name}</span>
                       </div>
                       {isCurrentUserAdmin && (
                         <button type="button" onClick={() => handleToggleOffice(loc.id, !loc.is_active)}
-                          className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold ${loc.is_active ? 'text-green-700 hover:bg-green-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+                          className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold ${loc.is_active ? 'text-green-700 hover:bg-green-50' : 'text-slate-400 hover:bg-green-50'}`}>
                           <Power className="w-3.5 h-3.5" />
                           {loc.is_active ? 'Aktif' : 'Nonaktif'}
                         </button>
@@ -3740,17 +3740,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
               {/* T2B-2: Master Lokasi Fisik Aset — terpisah dari lokasi kantor
                   user; mendukung hierarki sederhana (induk → anak). */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <div className="bg-white rounded-2xl border border-green-200 p-4">
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Master Lokasi Fisik Aset ({assetLocations.length})</h4>
+                  <h4 className="text-xs font-extrabold text-green-700 uppercase tracking-wider">Master Lokasi Fisik Aset ({assetLocations.length})</h4>
                 </div>
                 <form onSubmit={handleAddAssetLocation} className="flex flex-wrap gap-2 items-end mb-3">
                   <input type="text" placeholder="Nama lokasi fisik (mis. Gudang Utama Lt. 1)" value={newAssetLocationData.name}
                     onChange={e => setNewAssetLocationData(p => ({ ...p, name: e.target.value }))}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs w-64 focus:outline-none focus:border-green-500" />
+                    className="px-2.5 py-1.5 rounded-lg border border-green-200 text-xs w-64 focus:outline-none focus:border-green-500" />
                   <select value={newAssetLocationData.parent_id}
                     onChange={e => setNewAssetLocationData(p => ({ ...p, parent_id: e.target.value }))}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-500">
+                    className="px-2.5 py-1.5 rounded-lg border border-green-200 text-xs focus:outline-none focus:border-green-500">
                     <option value="">— Lokasi induk (opsional) —</option>
                     {assetLocations.map(l => (
                       <option key={l.id} value={l.id}>{l.name}</option>
@@ -3765,7 +3765,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   {assetLocations.map(loc => {
                     const parent = loc.parent_id ? assetLocations.find(p => p.id === loc.parent_id) : null;
                     return (
-                      <div key={loc.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${loc.is_active ? 'border-slate-200 bg-slate-50/70' : 'border-slate-100 bg-slate-100/60 opacity-60'}`}>
+                      <div key={loc.id} className={`flex items-center justify-between p-2.5 rounded-xl border ${loc.is_active ? 'border-green-200 bg-green-50/70' : 'border-slate-100 bg-green-50/60 opacity-60'}`}>
                         <div className="flex items-center gap-2.5 min-w-0">
                           <MapPin className="w-4 h-4 text-[#206f65] shrink-0" />
                           <div className="min-w-0">
@@ -3775,7 +3775,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
                         {isCurrentUserAdmin && (
                           <button type="button" onClick={() => handleToggleAssetLocation(loc.id, !loc.is_active)}
-                            className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold ${loc.is_active ? 'text-green-700 hover:bg-green-50' : 'text-slate-400 hover:bg-slate-100'}`}>
+                            className={`p-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold ${loc.is_active ? 'text-green-700 hover:bg-green-50' : 'text-slate-400 hover:bg-green-50'}`}>
                             <Power className="w-3.5 h-3.5" />
                             {loc.is_active ? 'Aktif' : 'Nonaktif'}
                           </button>
@@ -3795,10 +3795,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
           {activeSection === 'master_data' && (
             <div className="space-y-6">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white p-4 rounded-2xl border border-green-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Master Data Sistem</h3>
-                  <p className="text-xs text-slate-500">Konfigurasi kategori aset, lokasi fasilitas PIBC, dan standar SLA Helpdesk</p>
+                  <h3 className="text-base font-black text-green-900">Master Data Sistem</h3>
+                  <p className="text-xs text-green-400">Konfigurasi kategori aset, lokasi fasilitas PIBC, dan standar SLA Helpdesk</p>
                 </div>
                 {isCurrentUserAdmin ? (
                   <button
@@ -3809,7 +3809,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <span>Tambah Kategori</span>
                   </button>
                 ) : (
-                  <div className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed" title="Hanya Admin GABAH yang berhak menambah kategori">
+                  <div className="px-3 py-1.5 rounded-xl bg-green-50 border border-green-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed" title="Hanya Admin GABAH yang berhak menambah kategori">
                     <LockKeyhole className="w-3.5 h-3.5" />
                     <span>Tambah Kategori (Terkunci)</span>
                   </div>
@@ -3819,21 +3819,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Add Category Modal */}
               {isAddCategoryOpen && (
                 <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
                           <Plus className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Tambah Master Kategori Aset</h4>
-                          <p className="text-xs text-slate-500">Daftarkan taksonomi klasifikasi dan kode aset korporat</p>
+                          <h4 className="text-base font-extrabold text-green-900">Tambah Master Kategori Aset</h4>
+                          <p className="text-xs text-green-400">Daftarkan taksonomi klasifikasi dan kode aset korporat</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsAddCategoryOpen(false)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-green-700 hover:bg-green-50 transition-colors"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -3842,7 +3842,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <form onSubmit={handleAddCategorySubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-xs font-bold text-green-700 mb-1">
                             Kode Aset (3-5 Huruf) <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -3851,13 +3851,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             value={newCategoryData.code}
                             onChange={e => setNewCategoryData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
                             placeholder="Contoh: PRN, HLT, FLT"
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-green-500"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-mono font-bold uppercase focus:outline-none focus:border-green-500"
                           />
                           <span className="text-[10px] text-slate-400">Digunakan pada nomor aset otomatis</span>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-xs font-bold text-green-700 mb-1">
                             Divisi Pemilik (Owner) <span className="text-rose-500">*</span>
                           </label>
                           <select
@@ -3870,7 +3870,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                 category_type: div === 'IT' ? 'IT' : 'General'
                               }));
                             }}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:border-green-500"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-bold focus:outline-none focus:border-green-500"
                           >
                             <option value="IT">IT (Teknologi Informasi)</option>
                             <option value="GA">GA (General Affairs / Umum)</option>
@@ -3881,7 +3881,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-green-700 mb-1">
                           Nama Kategori <span className="text-rose-500">*</span>
                         </label>
                         <input
@@ -3890,60 +3890,60 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           value={newCategoryData.name}
                           onChange={e => setNewCategoryData(prev => ({ ...prev, name: e.target.value }))}
                           placeholder="Misal: Printer Laser & Scanner Dokumen"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs focus:outline-none focus:border-green-500"
                         />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-xs font-bold text-green-700 mb-1">
                             Jenis Utama Aset (Main Type) *
                           </label>
                           <select
                             value={newCategoryData.main_type}
                             onChange={e => setNewCategoryData(prev => ({ ...prev, main_type: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-green-500"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-semibold focus:outline-none focus:border-green-500"
                           >
                             {ASSET_MAIN_TYPES.map(t => (
                               <option key={t.value} value={t.value}>{t.label}</option>
                             ))}
                           </select>
-                          <p className="text-[10px] text-slate-500 mt-1">
+                          <p className="text-[10px] text-green-400 mt-1">
                             Standar PSAK 16 BUMD untuk kelompok depresiasi &amp; pelaporan akuntansi aset tetap.
                           </p>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                          <label className="block text-xs font-bold text-green-700 mb-1">
                             Tipe Taksonomi GABAH *
                           </label>
                           <select
                             value={newCategoryData.category_type}
                             onChange={e => setNewCategoryData(prev => ({ ...prev, category_type: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-green-500"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-semibold focus:outline-none focus:border-green-500"
                           >
                             {GABAH_TAXONOMY_TYPES.map(g => (
                               <option key={g.value} value={g.value}>{g.label}</option>
                             ))}
                           </select>
-                          <p className="text-[10px] text-slate-500 mt-1">
+                          <p className="text-[10px] text-green-400 mt-1">
                             Modul sistem: menentukan atribut spesifikasi teknis (IT=CPU/RAM/IP/MAC, License=seat/expiry, General=fisik).
                           </p>
                         </div>
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-start gap-2">
+                      <div className="p-2.5 rounded-xl bg-green-50 border border-green-200 text-[11px] text-green-500 flex items-start gap-2">
                         <Info className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                         <div>
                           <span className="font-bold text-slate-800">Petunjuk Klasifikasi GABAH:</span>
-                          <span className="text-slate-600 ml-1">
+                          <span className="text-green-500 ml-1">
                             Pilih <b>Jenis Utama</b> sesuai akun neraca keuangan aset tetap (Peralatan, Kendaraan, Gedung), dan <b>Tipe Taksonomi</b> sesuai form spesifikasi yang dibutuhkan saat pencatatan aset baru.
                           </span>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-bold text-green-700 mb-1">
                           Deskripsi / Catatan Taksonomi
                         </label>
                         <textarea
@@ -3951,14 +3951,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           value={newCategoryData.description}
                           onChange={e => setNewCategoryData(prev => ({ ...prev, description: e.target.value }))}
                           placeholder="Keterangan singkat klasifikasi aset ini..."
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs focus:outline-none focus:border-green-500"
                         />
                       </div>
 
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                      <div className="p-3 bg-green-50 rounded-xl border border-green-200 flex items-center justify-between">
                         <div>
                           <div className="text-xs font-bold text-slate-800">Dapat Dipinjam Secara Default (Loanable)</div>
-                          <div className="text-[10px] text-slate-500">Aset dalam kategori ini dapat masuk formulir peminjaman sementara</div>
+                          <div className="text-[10px] text-green-400">Aset dalam kategori ini dapat masuk formulir peminjaman sementara</div>
                         </div>
                         <input
                           type="checkbox"
@@ -3972,7 +3972,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsAddCategoryOpen(false)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50 transition-colors"
                         >
                           Batal
                         </button>
@@ -4002,21 +4002,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Edit Category Modal */}
               {isEditCategoryOpen && categoryToEdit && (
                 <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
                           <Pencil className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Edit Kategori Aset ({categoryToEdit.code})</h4>
-                          <p className="text-xs text-slate-500">Perbarui nama kategori, klasifikasi PSAK 16, dan taksonomi</p>
+                          <h4 className="text-base font-extrabold text-green-900">Edit Kategori Aset ({categoryToEdit.code})</h4>
+                          <p className="text-xs text-green-400">Perbarui nama kategori, klasifikasi PSAK 16, dan taksonomi</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsEditCategoryOpen(false)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-green-700 hover:bg-green-50 transition-colors"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -4025,20 +4025,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <form onSubmit={handleEditCategorySubmit} className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">Kode Aset</label>
+                          <label className="block text-xs font-bold text-green-700 mb-1">Kode Aset</label>
                           <input
                             type="text"
                             disabled
                             value={categoryToEdit.code}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 text-xs font-mono font-bold cursor-not-allowed"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50 text-green-400 text-xs font-mono font-bold cursor-not-allowed"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">Divisi Pemilik (Owner) *</label>
+                          <label className="block text-xs font-bold text-green-700 mb-1">Divisi Pemilik (Owner) *</label>
                           <select
                             value={editCategoryData.owner_division}
                             onChange={e => setEditCategoryData(prev => ({ ...prev, owner_division: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:border-green-500"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-bold focus:outline-none focus:border-green-500"
                           >
                             {divisions.map(d => (
                               <option key={d.code} value={d.code}>{d.code} - {d.name}</option>
@@ -4048,23 +4048,23 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama Kategori *</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Nama Kategori *</label>
                         <input
                           type="text"
                           required
                           value={editCategoryData.name}
                           onChange={e => setEditCategoryData(prev => ({ ...prev, name: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs focus:outline-none focus:border-green-500"
                         />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Utama Aset (Main Type)</label>
+                          <label className="block text-xs font-bold text-green-700 mb-1">Jenis Utama Aset (Main Type)</label>
                           <select
                             value={editCategoryData.main_type}
                             onChange={e => setEditCategoryData(prev => ({ ...prev, main_type: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-green-500"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-semibold focus:outline-none focus:border-green-500"
                           >
                             {ASSET_MAIN_TYPES.map(t => (
                               <option key={t.value} value={t.value}>{t.label}</option>
@@ -4073,11 +4073,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">Tipe Taksonomi GABAH</label>
+                          <label className="block text-xs font-bold text-green-700 mb-1">Tipe Taksonomi GABAH</label>
                           <select
                             value={editCategoryData.category_type}
                             onChange={e => setEditCategoryData(prev => ({ ...prev, category_type: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-green-500"
+                            className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-semibold focus:outline-none focus:border-green-500"
                           >
                             {GABAH_TAXONOMY_TYPES.map(g => (
                               <option key={g.value} value={g.value}>{g.label}</option>
@@ -4087,19 +4087,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Deskripsi / Catatan Taksonomi</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Deskripsi / Catatan Taksonomi</label>
                         <textarea
                           rows={2}
                           value={editCategoryData.description}
                           onChange={e => setEditCategoryData(prev => ({ ...prev, description: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs focus:outline-none focus:border-green-500"
                         />
                       </div>
 
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                      <div className="p-3 bg-green-50 rounded-xl border border-green-200 flex items-center justify-between">
                         <div>
                           <div className="text-xs font-bold text-slate-800">Dapat Dipinjam Secara Default (Loanable)</div>
-                          <div className="text-[10px] text-slate-500">Aset dalam kategori ini dapat masuk formulir peminjaman sementara</div>
+                          <div className="text-[10px] text-green-400">Aset dalam kategori ini dapat masuk formulir peminjaman sementara</div>
                         </div>
                         <input
                           type="checkbox"
@@ -4113,7 +4113,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsEditCategoryOpen(false)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50 transition-colors"
                         >
                           Batal
                         </button>
@@ -4131,13 +4131,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               )}
 
               {/* Master Kategori List */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <div className="bg-white rounded-2xl border border-green-200 p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                  <h4 className="text-xs font-extrabold text-green-700 uppercase tracking-wider">
                     Kategori Aset Terdaftar ({categories.length})
                   </h4>
                   {!isCurrentUserAdmin && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-400 border border-green-200 flex items-center gap-1">
                       <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
                       <span>Hanya-Baca</span>
                     </span>
@@ -4145,11 +4145,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {categories.map(cat => (
-                    <div key={cat.code} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex items-center justify-between group">
+                    <div key={cat.code} className="p-3 rounded-xl border border-green-200 bg-green-50/70 flex items-center justify-between group">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-black text-[#206f65]">{cat.code}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-semibold">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white border border-green-200 text-green-500 font-semibold">
                             {cat.type}
                           </span>
                           {cat.is_active === false && (
@@ -4159,12 +4159,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           )}
                         </div>
                         <div className="text-xs font-bold text-slate-800 mt-1">{cat.name}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">
+                        <div className="text-[10px] text-green-400 mt-0.5">
                           {cat.loanable ? 'Dapat Dipinjam (Loanable)' : 'Inventaris Tetap'}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        <span className="text-xs font-black text-slate-700 bg-white px-2 py-1 rounded-lg border border-slate-200">
+                        <span className="text-xs font-black text-green-700 bg-white px-2 py-1 rounded-lg border border-green-200">
                           {cat.total} Unit
                         </span>
                         {isCurrentUserAdmin && (
@@ -4173,7 +4173,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               type="button"
                               onClick={() => handleToggleCategoryActive(cat.code, cat.name, cat.is_active === false)}
                               title={cat.is_active === false ? `Aktifkan kategori ${cat.name}` : `Nonaktifkan kategori ${cat.name} (tetap terbaca untuk aset historis)`}
-                              className="p-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 opacity-80 group-hover:opacity-100 transition-all cursor-pointer"
+                              className="p-1 rounded-md text-green-400 hover:bg-green-50 hover:text-green-700 opacity-80 group-hover:opacity-100 transition-all cursor-pointer"
                             >
                               <Power className="w-3.5 h-3.5" />
                             </button>
@@ -4216,9 +4216,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               {/* Master Lokasi */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <div className="bg-white rounded-2xl border border-green-200 p-4">
                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                  <h4 className="text-xs font-extrabold text-green-700 uppercase tracking-wider">
                     Master Lokasi &amp; Fasilitas Gudang PIBC ({locations.length})
                   </h4>
                   {isCurrentUserAdmin ? (
@@ -4231,7 +4231,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <span>Tambah Lokasi</span>
                     </button>
                   ) : (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-400 border border-green-200 flex items-center gap-1">
                       <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
                       <span>Hanya-Baca</span>
                     </span>
@@ -4239,14 +4239,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {locations.map((loc, idx) => (
-                    <div key={idx} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex items-start justify-between gap-3 group">
+                    <div key={idx} className="p-3 rounded-xl border border-green-200 bg-green-50/70 flex items-start justify-between gap-3 group">
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-lg bg-[#4ABDAC]/15 text-[#206f65] flex items-center justify-center shrink-0 mt-0.5">
                           <Building2 className="w-4 h-4" />
                         </div>
                         <div>
                           <div className="text-xs font-extrabold text-slate-800">{loc.name}</div>
-                          <div className="text-[11px] text-slate-500">{loc.address}</div>
+                          <div className="text-[11px] text-green-400">{loc.address}</div>
                           <span className="inline-block mt-1 text-[10px] font-bold text-[#206f65] bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
                             Kapasitas: {loc.capacity}
                           </span>
@@ -4291,21 +4291,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Add Location Modal */}
               {isAddLocationOpen && (
                 <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
                           <Building2 className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Tambah Lokasi Fasilitas Baru</h4>
-                          <p className="text-xs text-slate-500">Daftarkan gudang, gedung kantor, atau fasilitas logistik PIBC</p>
+                          <h4 className="text-base font-extrabold text-green-900">Tambah Lokasi Fasilitas Baru</h4>
+                          <p className="text-xs text-green-400">Daftarkan gudang, gedung kantor, atau fasilitas logistik PIBC</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsAddLocationOpen(false)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-green-700 hover:bg-green-50"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -4313,36 +4313,36 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
                     <form onSubmit={handleAddLocationSubmit} className="space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama Lokasi / Fasilitas *</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Nama Lokasi / Fasilitas *</label>
                         <input
                           type="text"
                           required
                           placeholder="Contoh: Gedung Penggilingan Beras Cipinang"
                           value={newLocationData.name}
                           onChange={e => setNewLocationData(prev => ({ ...prev, name: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-semibold focus:outline-none focus:border-green-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Alamat / Area Lokasi</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Alamat / Area Lokasi</label>
                         <input
                           type="text"
                           placeholder="Contoh: Blok G No. 12-14, Kawasan PIBC, Jakarta Timur"
                           value={newLocationData.address}
                           onChange={e => setNewLocationData(prev => ({ ...prev, address: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:border-green-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Kapasitas / Peruntukan Fasilitas</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Kapasitas / Peruntukan Fasilitas</label>
                         <input
                           type="text"
                           placeholder="Contoh: 15.000 Ton Beras / Kantor 30 Staf"
                           value={newLocationData.capacity}
                           onChange={e => setNewLocationData(prev => ({ ...prev, capacity: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:border-green-500"
                         />
                       </div>
 
@@ -4350,7 +4350,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsAddLocationOpen(false)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50"
                         >
                           Batal
                         </button>
@@ -4370,21 +4370,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               {/* Edit Location Modal */}
               {isEditLocationOpen && locationToEdit && (
                 <div className="fixed inset-0 z-[95] bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
+                  <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-green-200 p-6 space-y-4 animate-in fade-in zoom-in duration-150">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center shrink-0">
                           <Pencil className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className="text-base font-extrabold text-slate-900">Edit Lokasi Fasilitas</h4>
-                          <p className="text-xs text-slate-500">Perbarui data lokasi dan peruntukan fasilitas gudang</p>
+                          <h4 className="text-base font-extrabold text-green-900">Edit Lokasi Fasilitas</h4>
+                          <p className="text-xs text-green-400">Perbarui data lokasi dan peruntukan fasilitas gudang</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsEditLocationOpen(false)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-green-700 hover:bg-green-50"
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -4392,33 +4392,33 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
                     <form onSubmit={handleEditLocationSubmit} className="space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama Lokasi / Fasilitas *</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Nama Lokasi / Fasilitas *</label>
                         <input
                           type="text"
                           required
                           value={editLocationData.name}
                           onChange={e => setEditLocationData(prev => ({ ...prev, name: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-semibold focus:outline-none focus:border-green-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Alamat / Area Lokasi</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Alamat / Area Lokasi</label>
                         <input
                           type="text"
                           value={editLocationData.address}
                           onChange={e => setEditLocationData(prev => ({ ...prev, address: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:border-green-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Kapasitas / Peruntukan Fasilitas</label>
+                        <label className="block text-xs font-bold text-green-700 mb-1">Kapasitas / Peruntukan Fasilitas</label>
                         <input
                           type="text"
                           value={editLocationData.capacity}
                           onChange={e => setEditLocationData(prev => ({ ...prev, capacity: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-green-500"
+                          className="w-full px-3 py-2 rounded-xl border border-green-200 text-xs font-medium focus:outline-none focus:border-green-500"
                         />
                       </div>
 
@@ -4426,7 +4426,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsEditLocationOpen(false)}
-                          className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                          className="px-4 py-2 rounded-xl border border-green-200 text-xs font-bold text-green-500 hover:bg-green-50"
                         >
                           Batal
                         </button>
@@ -4450,10 +4450,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'numbering' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200">
-                <h3 className="text-base font-black text-slate-900">Asset Numbering & Sequence Engine</h3>
-                <p className="text-xs text-slate-500">
-                  Format otoritatif: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[#206f65] font-bold">{'{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}'}</code>
+              <div className="bg-white p-4 rounded-2xl border border-green-200">
+                <h3 className="text-base font-black text-green-900">Asset Numbering & Sequence Engine</h3>
+                <p className="text-xs text-green-400">
+                  Format otoritatif: <code className="font-mono bg-green-50 px-1.5 py-0.5 rounded text-[#206f65] font-bold">{'{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}'}</code>
                 </p>
               </div>
 
@@ -4462,7 +4462,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
                     <h4 className="text-sm font-extrabold text-green-950">Master Aturan Penomoran</h4>
-                    <p className="text-[11px] text-slate-500 mt-1">Aturan disimpan di PostgreSQL dan berlaku untuk nomor yang diterbitkan setelah perubahan.</p>
+                    <p className="text-[11px] text-green-400 mt-1">Aturan disimpan di PostgreSQL dan berlaku untuk nomor yang diterbitkan setelah perubahan.</p>
                   </div>
                   <span className="text-[10px] font-bold rounded-full bg-green-50 text-green-800 border border-green-200 px-2.5 py-1">Superadmin</span>
                 </div>
@@ -4478,39 +4478,39 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-xs font-extrabold text-green-950">{editingNumberingRuleId ? 'Edit format aturan' : 'Tambah aturan baru'}</div>
                     {editingNumberingRuleId && (
-                      <button type="button" onClick={resetNumberingRuleForm} className="text-[11px] font-bold text-slate-500 hover:text-slate-800">Batal edit</button>
+                      <button type="button" onClick={resetNumberingRuleForm} className="text-[11px] font-bold text-green-400 hover:text-slate-800">Batal edit</button>
                     )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-                    <label className="text-[10px] font-bold text-slate-600">
+                    <label className="text-[10px] font-bold text-green-500">
                       Divisi pemilik
-                      <select value={numberingRuleForm.owner_division} disabled={!!editingNumberingRuleId} onChange={e => setNumberingRuleForm(prev => ({ ...prev, owner_division: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs disabled:bg-slate-100">
+                      <select value={numberingRuleForm.owner_division} disabled={!!editingNumberingRuleId} onChange={e => setNumberingRuleForm(prev => ({ ...prev, owner_division: e.target.value }))} className="mt-1 w-full rounded-lg border border-green-200 bg-white px-2.5 py-2 text-xs disabled:bg-green-50">
                         <option value="IT">IT</option><option value="GA">GA</option><option value="SC">RPC / SC</option><option value="PIBC">PIBC</option><option value="Umum">Umum</option>
                       </select>
                     </label>
-                    <label className="text-[10px] font-bold text-slate-600">
+                    <label className="text-[10px] font-bold text-green-500">
                       Kode aset
-                      <input value={numberingRuleForm.asset_code} disabled={!!editingNumberingRuleId} onChange={e => setNumberingRuleForm(prev => ({ ...prev, asset_code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') }))} placeholder="Contoh HLT" maxLength={30} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-mono disabled:bg-slate-100" />
+                      <input value={numberingRuleForm.asset_code} disabled={!!editingNumberingRuleId} onChange={e => setNumberingRuleForm(prev => ({ ...prev, asset_code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') }))} placeholder="Contoh HLT" maxLength={30} className="mt-1 w-full rounded-lg border border-green-200 bg-white px-2.5 py-2 text-xs font-mono disabled:bg-green-50" />
                     </label>
-                    <label className="text-[10px] font-bold text-slate-600">
+                    <label className="text-[10px] font-bold text-green-500">
                       Pemisah
-                      <select value={numberingRuleForm.separator} onChange={e => setNumberingRuleForm(prev => ({ ...prev, separator: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs">
+                      <select value={numberingRuleForm.separator} onChange={e => setNumberingRuleForm(prev => ({ ...prev, separator: e.target.value }))} className="mt-1 w-full rounded-lg border border-green-200 bg-white px-2.5 py-2 text-xs">
                         <option value="-">Strip (-)</option><option value="_">Underscore (_)</option><option value="/">Garis miring (/)</option>
                       </select>
                     </label>
-                    <label className="text-[10px] font-bold text-slate-600">
+                    <label className="text-[10px] font-bold text-green-500">
                       Digit sequence
-                      <select value={numberingRuleForm.sequence_digits} onChange={e => setNumberingRuleForm(prev => ({ ...prev, sequence_digits: Number(e.target.value) }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs">
+                      <select value={numberingRuleForm.sequence_digits} onChange={e => setNumberingRuleForm(prev => ({ ...prev, sequence_digits: Number(e.target.value) }))} className="mt-1 w-full rounded-lg border border-green-200 bg-white px-2.5 py-2 text-xs">
                         {[3,4,5,6,7,8].map(n => <option key={n} value={n}>{n} digit</option>)}
                       </select>
                     </label>
-                    <label className="text-[10px] font-bold text-slate-600">
+                    <label className="text-[10px] font-bold text-green-500">
                       Catatan
-                      <input value={numberingRuleForm.notes} onChange={e => setNumberingRuleForm(prev => ({ ...prev, notes: e.target.value }))} maxLength={500} placeholder="Opsional" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs" />
+                      <input value={numberingRuleForm.notes} onChange={e => setNumberingRuleForm(prev => ({ ...prev, notes: e.target.value }))} maxLength={500} placeholder="Opsional" className="mt-1 w-full rounded-lg border border-green-200 bg-white px-2.5 py-2 text-xs" />
                     </label>
                   </div>
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <p className="text-[10px] text-slate-500">Contoh: {numberingRuleForm.owner_division}{numberingRuleForm.separator}{numberingRuleForm.asset_code || 'KODE'}{numberingRuleForm.separator}{new Date().getFullYear()}{numberingRuleForm.separator}{String(1).padStart(numberingRuleForm.sequence_digits, '0')}</p>
+                    <p className="text-[10px] text-green-400">Contoh: {numberingRuleForm.owner_division}{numberingRuleForm.separator}{numberingRuleForm.asset_code || 'KODE'}{numberingRuleForm.separator}{new Date().getFullYear()}{numberingRuleForm.separator}{String(1).padStart(numberingRuleForm.sequence_digits, '0')}</p>
                     <button type="submit" disabled={isSavingNumberingRule || !numberingRuleForm.asset_code.trim()} className="inline-flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-2 text-xs font-bold text-white hover:bg-green-800 disabled:opacity-50">
                       {editingNumberingRuleId ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                       {isSavingNumberingRule ? 'Menyimpan…' : editingNumberingRuleId ? 'Simpan perubahan' : 'Tambah aturan'}
@@ -4521,24 +4521,24 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 {numberingRules === null ? (
                   <div className="py-4 text-center text-xs text-slate-400">Memuat aturan dari server…</div>
                 ) : numberingRules.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-green-200 bg-green-50/40 p-4 text-center text-xs text-slate-500">
+                  <div className="rounded-xl border border-dashed border-green-200 bg-green-50/40 p-4 text-center text-xs text-green-400">
                     Belum ada aturan khusus tersimpan. Generator tetap memakai format baku GABAH sampai aturan ditambahkan.
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {numberingRules.map(rule => (
-                      <div key={rule.id} className="rounded-xl border border-slate-200 bg-white p-3 flex flex-col lg:flex-row lg:items-center gap-3">
+                      <div key={rule.id} className="rounded-xl border border-green-200 bg-white p-3 flex flex-col lg:flex-row lg:items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono text-xs font-extrabold text-slate-900">{rule.owner_division}{rule.separator}{rule.asset_code}{rule.separator}{new Date().getFullYear()}{rule.separator}{String(1).padStart(rule.sequence_digits, '0')}</span>
-                            <span className={`text-[9px] font-bold rounded-full px-2 py-0.5 ${rule.is_active ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-500'}`}>{rule.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                            <span className="font-mono text-xs font-extrabold text-green-900">{rule.owner_division}{rule.separator}{rule.asset_code}{rule.separator}{new Date().getFullYear()}{rule.separator}{String(1).padStart(rule.sequence_digits, '0')}</span>
+                            <span className={`text-[9px] font-bold rounded-full px-2 py-0.5 ${rule.is_active ? 'bg-green-100 text-green-800' : 'bg-green-50 text-green-400'}`}>{rule.is_active ? 'Aktif' : 'Nonaktif'}</span>
                           </div>
-                          <div className="mt-1 text-[10px] text-slate-500">{rule.usage_count} aset memakai kombinasi ini · counter {rule.sequence_current || 0} · {rule.sequence_digits} digit · pemisah "{rule.separator}"</div>
+                          <div className="mt-1 text-[10px] text-green-400">{rule.usage_count} aset memakai kombinasi ini · counter {rule.sequence_current || 0} · {rule.sequence_digits} digit · pemisah "{rule.separator}"</div>
                           {rule.notes && <div className="mt-1 text-[10px] text-slate-400">{rule.notes}</div>}
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <button type="button" onClick={() => { setEditingNumberingRuleId(rule.id); setNumberingRuleForm({ owner_division: rule.owner_division, asset_code: rule.asset_code, separator: rule.separator, sequence_digits: rule.sequence_digits, notes: rule.notes || '' }); setNumberingRuleDeleteTarget(null); }} className="inline-flex items-center gap-1 rounded-lg border border-green-200 px-2.5 py-1.5 text-[10px] font-bold text-green-800 hover:bg-green-50"><Pencil className="w-3 h-3" />Edit</button>
-                          <button type="button" onClick={() => handleToggleNumberingRule(rule)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50"><Power className="w-3 h-3" />{rule.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+                          <button type="button" onClick={() => handleToggleNumberingRule(rule)} className="inline-flex items-center gap-1 rounded-lg border border-green-200 px-2.5 py-1.5 text-[10px] font-bold text-green-500 hover:bg-green-50"><Power className="w-3 h-3" />{rule.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
                           {rule.usage_count === 0 && (rule.sequence_current || 0) === 0 ? (
                             <button type="button" onClick={() => { setNumberingRuleDeleteTarget(rule); setNumberingRuleDeleteCode(''); setNumberingRuleDeleteReason(''); }} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="w-3 h-3" />Hapus</button>
                           ) : (
@@ -4563,7 +4563,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       <textarea value={numberingRuleDeleteReason} onChange={e => setNumberingRuleDeleteReason(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-rose-200 bg-white px-2.5 py-2 text-xs" />
                     </label>
                     <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => setNumberingRuleDeleteTarget(null)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold text-slate-600">Batal</button>
+                      <button type="button" onClick={() => setNumberingRuleDeleteTarget(null)} className="rounded-lg border border-green-200 bg-white px-3 py-1.5 text-[10px] font-bold text-green-500">Batal</button>
                       <button type="button" disabled={numberingRuleDeleteCode.trim().toUpperCase() !== `${numberingRuleDeleteTarget.owner_division}/${numberingRuleDeleteTarget.asset_code}` || numberingRuleDeleteReason.trim().length < 20} onClick={handleDeleteNumberingRule} className="rounded-lg bg-rose-700 px-3 py-1.5 text-[10px] font-bold text-white disabled:opacity-40">Hapus permanen</button>
                     </div>
                   </div>
@@ -4577,7 +4577,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Divisi Pemilik (Owner)</label>
+                    <label className="block text-xs font-semibold text-green-700 mb-1">Divisi Pemilik (Owner)</label>
                     <select
                       value={testDiv}
                       onChange={e => {
@@ -4585,7 +4585,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         setTestDiv(d);
                         setSimulatedNumber(`${d}-${testCode}-${new Date().getFullYear()}-0001`);
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold"
+                      className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white text-xs font-bold"
                     >
                       <option value="IT">IT (Teknologi Informasi)</option>
                       <option value="SC">SC (Supply Chain Beras)</option>
@@ -4594,7 +4594,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Kode Aset (Asset Code)</label>
+                    <label className="block text-xs font-semibold text-green-700 mb-1">Kode Aset (Asset Code)</label>
                     <input
                       type="text"
                       value={testCode}
@@ -4603,12 +4603,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         setTestCode(c);
                         setSimulatedNumber(`${testDiv}-${c}-${new Date().getFullYear()}-0001`);
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-mono font-bold uppercase"
+                      className="w-full px-3 py-2 rounded-xl border border-green-200 bg-white text-xs font-mono font-bold uppercase"
                       placeholder="Contoh: HLT, FLT, BLD"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Hasil Nomor Otomatis</label>
+                    <label className="block text-xs font-semibold text-green-700 mb-1">Hasil Nomor Otomatis</label>
                     <div className="px-3 py-2 rounded-xl border border-green-300 bg-white text-xs font-mono font-black text-green-800 flex items-center justify-between">
                       <span>{simulatedNumber}</span>
                       <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -4623,25 +4623,25 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               {/* Status Sequence Terkini — live dari server (P2#10) */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4">
-                <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
+              <div className="bg-white rounded-2xl border border-green-200 p-4">
+                <h4 className="text-xs font-extrabold text-green-700 uppercase tracking-wider mb-3">
                   Sequence Counter Terdaftar (Live dari Server)
                 </h4>
                 {liveSequences === null ? (
                   <div className="text-xs text-slate-400 py-3 text-center">Memuat snapshot sequence dari server…</div>
                 ) : liveSequences.length === 0 ? (
-                  <div className="text-xs text-slate-500 py-3 text-center">
+                  <div className="text-xs text-green-400 py-3 text-center">
                     Belum ada sequence terdaftar — counter terisi otomatis saat aset pertama didaftarkan per kombinasi (Divisi, Kode, Tahun).
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {liveSequences.slice(0, 12).map(seq => (
-                      <div key={seq.key} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
-                        <div className="text-[10px] font-mono text-slate-500 font-bold">{seq.key}</div>
+                      <div key={seq.key} className="p-3 rounded-xl border border-green-200 bg-green-50/70">
+                        <div className="text-[10px] font-mono text-green-400 font-bold">{seq.key}</div>
                         <div className="text-xs font-extrabold text-slate-800 mt-0.5">Divisi {seq.division} · {seq.code}</div>
                         <div className="mt-2 flex items-center justify-between text-xs">
-                          <span className="text-slate-500">Terakhir: <b>{seq.current}</b></span>
-                          <span className="font-mono font-bold text-[#206f65] bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]">
+                          <span className="text-green-400">Terakhir: <b>{seq.current}</b></span>
+                          <span className="font-mono font-bold text-[#206f65] bg-white px-2 py-0.5 rounded border border-green-200 text-[11px]">
                             Next: {seq.division}-{seq.code}-{seq.year}-{String(seq.current + 1).padStart(4, '0')}
                           </span>
                         </div>
@@ -4661,15 +4661,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'notifications' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white p-4 rounded-2xl border border-green-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Notification Center &amp; Alert Rules</h3>
-                  <p className="text-xs text-slate-500">
+                  <h3 className="text-base font-black text-green-900">Notification Center &amp; Alert Rules</h3>
+                  <p className="text-xs text-green-400">
                     Aturan otomasi peringatan sistem, masa tenggat peminjaman, batas SLA tiket, dan masa garansi
                   </p>
                 </div>
                 {!isCurrentUserAdmin && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-400 border border-green-200 flex items-center gap-1">
                     <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
                     <span>Konfigurasi Terkunci (Mode Audit)</span>
                   </span>
@@ -4678,18 +4678,18 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
               <div className="space-y-3">
                 {notificationRules.map((rule, idx) => (
-                  <div key={rule.id || idx} className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-4 flex-wrap">
+                  <div key={rule.id || idx} className="p-4 rounded-2xl border border-green-200 bg-white flex items-center justify-between gap-4 flex-wrap">
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="text-xs font-extrabold text-slate-800">{rule.title}</h4>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          rule.status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                          rule.status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-green-50 text-green-400 border border-green-200'
                         }`}>
                           {rule.status}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-500 mt-1">
-                        Pemicu: <span className="font-semibold text-slate-700">{rule.trigger}</span>
+                      <div className="text-xs text-green-400 mt-1">
+                        Pemicu: <span className="font-semibold text-green-700">{rule.trigger}</span>
                       </div>
                       <div className="text-[11px] text-slate-400 mt-0.5">
                         Penerima: {rule.target}
@@ -4704,14 +4704,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                             rule.status === 'Aktif'
                               ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
-                              : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                              : 'border-green-200 bg-green-50 text-green-400 hover:bg-green-50'
                           }`}
                         >
                           <span className={`w-2 h-2 rounded-full ${rule.status === 'Aktif' ? 'bg-green-500' : 'bg-slate-300'}`} />
                           <span>{rule.status === 'Aktif' ? 'Aktif' : 'Nonaktif'}</span>
                         </button>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-400 border border-green-200 flex items-center gap-1">
                           <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
                           <span>Read-Only</span>
                         </span>
@@ -4726,17 +4726,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               {/* P2#11: CR-05 reminder subsystem overview — live dari server */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+              <div className="bg-white rounded-2xl border border-green-200 p-4 space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                  <h4 className="text-xs font-extrabold text-green-700 uppercase tracking-wider">
                     Reminder Kontrak CR-05 — Status Live Subsistem
                   </h4>
                   <button
                     type="button"
                     onClick={refreshReminderOverview}
-                    className="px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg border border-green-200 text-[11px] font-bold text-green-500 hover:bg-green-50 flex items-center gap-1 cursor-pointer"
                   >
-                    <RefreshCw className="w-3 h-3 text-slate-500" />
+                    <RefreshCw className="w-3 h-3 text-green-400" />
                     <span>Muat Ulang</span>
                   </button>
                 </div>
@@ -4750,9 +4750,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 ) : (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">Scheduler</div>
-                        <div className={`text-sm font-black mt-0.5 ${reminderOverview.scheduler?.enabled ? 'text-green-700' : 'text-slate-500'}`}>
+                      <div className="p-3 rounded-xl border border-green-200 bg-green-50/70">
+                        <div className="text-[10px] font-bold text-green-400 uppercase">Scheduler</div>
+                        <div className={`text-sm font-black mt-0.5 ${reminderOverview.scheduler?.enabled ? 'text-green-700' : 'text-green-400'}`}>
                           {reminderOverview.scheduler?.enabled ? 'Aktif' : 'Nonaktif'}
                         </div>
                         <div className="text-[10px] text-slate-400 mt-1">
@@ -4770,8 +4770,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           )}
                         </div>
                       </div>
-                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">Provider Eksternal</div>
+                      <div className="p-3 rounded-xl border border-green-200 bg-green-50/70">
+                        <div className="text-[10px] font-bold text-green-400 uppercase">Provider Eksternal</div>
                         <div className="text-sm font-black mt-0.5 text-slate-800">
                           Email: {reminderOverview.providers?.email_configured ? 'Terkonfigurasi' : 'Belum'}
                           {' · '}
@@ -4781,8 +4781,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           Provider belum dikonfigurasi → pengiriman berstatus skipped (jujur, bukan gagal).
                         </div>
                       </div>
-                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">Threshold (hari)</div>
+                      <div className="p-3 rounded-xl border border-green-200 bg-green-50/70">
+                        <div className="text-[10px] font-bold text-green-400 uppercase">Threshold (hari)</div>
                         <div className="text-sm font-black mt-0.5 text-slate-800">
                           {reminderOverview.thresholds?.reminder1_days ?? 60} / {reminderOverview.thresholds?.reminder2_days ?? 35} / {reminderOverview.thresholds?.reminder3_days ?? 7}
                         </div>
@@ -4790,8 +4790,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           {reminderOverview.contracts_monitored} kontrak aktif terpantau
                         </div>
                       </div>
-                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase">Statistik Pengiriman</div>
+                      <div className="p-3 rounded-xl border border-green-200 bg-green-50/70">
+                        <div className="text-[10px] font-bold text-green-400 uppercase">Statistik Pengiriman</div>
                         <div className="text-sm font-black mt-0.5">
                           <span className="text-green-700">{reminderOverview.delivery?.by_status?.sent ?? 0} sent</span>
                           {' · '}
@@ -4826,15 +4826,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'audit_log' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white p-4 rounded-2xl border border-green-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black text-slate-900">Audit Trail &amp; Activity Log</h3>
+                    <h3 className="text-base font-black text-green-900">Audit Trail &amp; Activity Log</h3>
                     <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-300">
                       WORM IMMUTABLE (KEPATUHAN BPK / INSPEKTORAT)
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">Rekam jejak kepatuhan dan audit forensik seluruh operasi sistem — tidak dapat diedit/dihapus siapapun</p>
+                  <p className="text-xs text-green-400 mt-0.5">Rekam jejak kepatuhan dan audit forensik seluruh operasi sistem — tidak dapat diedit/dihapus siapapun</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="relative">
@@ -4844,13 +4844,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       placeholder="Cari pengguna/aksi/rincian..."
                       value={auditSearch}
                       onChange={e => { setAuditSearch(e.target.value); setAuditPage(0); }}
-                      className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#4ABDAC] w-52"
+                      className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-green-200 focus:outline-none focus:border-[#4ABDAC] w-52"
                     />
                   </div>
                   <select
                     value={auditActionFilter}
                     onChange={e => { setAuditActionFilter(e.target.value); setAuditPage(0); }}
-                    className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#4ABDAC]"
+                    className="px-3 py-1.5 text-xs rounded-xl border border-green-200 focus:outline-none focus:border-[#4ABDAC]"
                   >
                     <option value="ALL">Semua Aksi</option>
                     {[...new Set(auditLogs.map(l => l.action))].sort().map(action => (
@@ -4859,14 +4859,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </select>
                   <button
                     onClick={exportAuditLogsCsv}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl border border-green-200 text-xs font-bold text-green-700 hover:bg-green-50 flex items-center gap-1.5 cursor-pointer"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-green-600" />
                     <span>Ekspor CSV</span>
                   </button>
                   <button
                     onClick={() => exportDataJson('gabah_audit_logs', auditLogs)}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl border border-green-200 text-xs font-bold text-green-700 hover:bg-green-50 flex items-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Ekspor JSON</span>
@@ -4882,9 +4882,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="bg-white rounded-2xl border border-green-200 overflow-hidden shadow-xs">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-extrabold">
+                  <thead className="bg-green-50 border-b border-green-200 text-green-700 font-extrabold">
                     <tr>
                       <th className="px-4 py-3">Waktu &amp; Tanggal</th>
                       <th className="px-4 py-3">Pengguna &amp; Peran</th>
@@ -4920,8 +4920,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       return (
                         <>
                           {rows.map(log => (
-                            <tr key={log.id} className="hover:bg-slate-50 font-medium">
-                              <td className="px-4 py-2.5 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                            <tr key={log.id} className="hover:bg-green-50 font-medium">
+                              <td className="px-4 py-2.5 font-mono text-[11px] text-green-400 whitespace-nowrap">
                                 {log.timestamp}
                               </td>
                               <td className="px-4 py-2.5">
@@ -4932,15 +4932,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
                                   log.action.includes('CREATE') ? 'bg-green-50 text-green-700' :
                                   log.action.includes('UPDATE') ? 'bg-green-50 text-green-700' :
-                                  log.action.includes('DELETE') ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-700'
+                                  log.action.includes('DELETE') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
                                 }`}>
                                   {log.action}
                                 </span>
                               </td>
-                              <td className="px-4 py-2.5 font-mono text-[11px] text-slate-700">
+                              <td className="px-4 py-2.5 font-mono text-[11px] text-green-700">
                                 {log.entity} {log.entity_id ? `(${log.entity_id})` : ''}
                               </td>
-                              <td className="px-4 py-2.5 text-slate-600 max-w-md truncate">
+                              <td className="px-4 py-2.5 text-green-500 max-w-md truncate">
                                 {log.details}
                               </td>
                             </tr>
@@ -4948,12 +4948,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           {filtered.length > AUDIT_PAGE_SIZE && (
                             <tr>
                               <td colSpan={5} className="px-4 py-3">
-                                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                                <div className="flex items-center justify-between text-[11px] text-green-400">
                                   <span>Menampilkan {page * AUDIT_PAGE_SIZE + 1}–{Math.min((page + 1) * AUDIT_PAGE_SIZE, filtered.length)} dari {filtered.length} log (total {auditLogs.length})</span>
                                   <div className="flex items-center gap-1.5">
-                                    <button type="button" disabled={page === 0} onClick={() => setAuditPage(page - 1)} className="px-2.5 py-1 rounded-lg border border-slate-200 font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer">← Sebelumnya</button>
+                                    <button type="button" disabled={page === 0} onClick={() => setAuditPage(page - 1)} className="px-2.5 py-1 rounded-lg border border-green-200 font-bold disabled:opacity-40 hover:bg-green-50 cursor-pointer">← Sebelumnya</button>
                                     <span className="px-2 font-bold">Hal. {page + 1}/{pageCount}</span>
-                                    <button type="button" disabled={page >= pageCount - 1} onClick={() => setAuditPage(page + 1)} className="px-2.5 py-1 rounded-lg border border-slate-200 font-bold disabled:opacity-40 hover:bg-slate-50 cursor-pointer">Berikutnya →</button>
+                                    <button type="button" disabled={page >= pageCount - 1} onClick={() => setAuditPage(page + 1)} className="px-2.5 py-1 rounded-lg border border-green-200 font-bold disabled:opacity-40 hover:bg-green-50 cursor-pointer">Berikutnya →</button>
                                   </div>
                                 </div>
                               </td>
@@ -4973,14 +4973,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'settings' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200">
+              <div className="bg-white p-4 rounded-2xl border border-green-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-black text-slate-900">System Parameters &amp; BUMD Policies</h3>
-                    <p className="text-xs text-slate-500">Konfigurasi entitas organisasi, standar pelaporan PSAK 16, dan SLA</p>
+                    <h3 className="text-base font-black text-green-900">System Parameters &amp; BUMD Policies</h3>
+                    <p className="text-xs text-green-400">Konfigurasi entitas organisasi, standar pelaporan PSAK 16, dan SLA</p>
                   </div>
                   {!isCurrentUserAdmin && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-400 border border-green-200 flex items-center gap-1">
                       <LockKeyhole className="w-2.5 h-2.5 text-slate-400" />
                       <span>Parameter Terkunci (Read-Only)</span>
                     </span>
@@ -4997,45 +4997,45 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 </div>
               )}
 
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+              <div className="bg-white rounded-2xl border border-green-200 p-5 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">                    <div>
-                      <label className="block text-slate-600 mb-1 font-semibold">Nama BUMD / Instansi</label>
+                      <label className="block text-green-500 mb-1 font-semibold">Nama BUMD / Instansi</label>
                       <input
                         type="text"
                         disabled={!isCurrentUserAdmin}
                         value={settingsForm.companyName}
                         onChange={e => setSettingsForm({ ...settingsForm, companyName: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50/50 disabled:bg-green-50 disabled:text-green-400 disabled:cursor-not-allowed font-medium"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-semibold">Standar Akuntansi Aset Tetap</label>
+                      <label className="block text-green-500 mb-1 font-semibold">Standar Akuntansi Aset Tetap</label>
                       <input
                         type="text"
                         disabled={!isCurrentUserAdmin}
                         value={settingsForm.accountingStandard}
                         onChange={e => setSettingsForm({ ...settingsForm, accountingStandard: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50/50 disabled:bg-green-50 disabled:text-green-400 disabled:cursor-not-allowed font-medium"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-semibold">Mata Uang Basis</label>
+                      <label className="block text-green-500 mb-1 font-semibold">Mata Uang Basis</label>
                       <input
                         type="text"
                         disabled={!isCurrentUserAdmin}
                         value={settingsForm.baseCurrency}
                         onChange={e => setSettingsForm({ ...settingsForm, baseCurrency: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-medium"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50/50 disabled:bg-green-50 disabled:text-green-400 disabled:cursor-not-allowed font-medium"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-semibold">Tahun Buku Fiskal</label>
+                      <label className="block text-green-500 mb-1 font-semibold">Tahun Buku Fiskal</label>
                       <input
                         type="text"
                         disabled={!isCurrentUserAdmin}
                         value={settingsForm.fiscalYear}
                         onChange={e => setSettingsForm({ ...settingsForm, fiscalYear: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed font-mono font-medium"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50/50 disabled:bg-green-50 disabled:text-green-400 disabled:cursor-not-allowed font-mono font-medium"
                       />
                     </div>
                   </div>
@@ -5045,7 +5045,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
 
                 <div className="pt-4 border-t border-slate-100">
-                  <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
+                  <h4 className="text-xs font-extrabold text-green-700 uppercase tracking-wider mb-3">
                     Batas Waktu Resolusi SLA Helpdesk (Jam)
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -5056,7 +5056,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         disabled={!isCurrentUserAdmin}
                         value={settingsForm.slaUrgentHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaUrgentHours: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl border border-red-200 bg-red-50/30 font-bold text-red-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 rounded-xl border border-red-200 bg-red-50/30 font-bold text-red-800 disabled:bg-green-50 disabled:text-green-400 disabled:border-green-200 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -5066,7 +5066,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         disabled={!isCurrentUserAdmin}
                         value={settingsForm.slaHighHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaHighHours: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-amber-50/30 font-bold text-amber-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-amber-50/30 font-bold text-amber-800 disabled:bg-green-50 disabled:text-green-400 disabled:border-green-200 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -5076,17 +5076,17 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         disabled={!isCurrentUserAdmin}
                         value={settingsForm.slaMediumHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaMediumHours: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50/30 font-bold text-blue-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:border-slate-200 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50/30 font-bold text-blue-800 disabled:bg-green-50 disabled:text-green-400 disabled:border-green-200 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 mb-1 font-bold">Low (Rendah)</label>
+                      <label className="block text-green-500 mb-1 font-bold">Low (Rendah)</label>
                       <input
                         type="number"
                         disabled={!isCurrentUserAdmin}
                         value={settingsForm.slaLowHours}
                         onChange={e => setSettingsForm({ ...settingsForm, slaLowHours: Number(e.target.value) })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 rounded-xl border border-green-200 bg-green-50/50 font-bold text-slate-800 disabled:bg-green-50 disabled:text-green-400 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -5101,7 +5101,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       Simpan Pengaturan Sistem
                     </button>
                   ) : (
-                    <div className="px-4 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed">
+                    <div className="px-4 py-2 rounded-xl bg-green-50 border border-green-200 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed">
                       <LockKeyhole className="w-3.5 h-3.5" />
                       <span>Simpan Terkunci (Read-Only)</span>
                     </div>
@@ -5116,10 +5116,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
              ========================================================= */}
           {activeSection === 'data_admin' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white p-4 rounded-2xl border border-green-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Data Administration &amp; Reconciliation</h3>
-                  <p className="text-xs text-slate-500">Ekspor data komprehensif, backup database, dan rekonsiliasi SAP</p>
+                  <h3 className="text-base font-black text-green-900">Data Administration &amp; Reconciliation</h3>
+                  <p className="text-xs text-green-400">Ekspor data komprehensif, backup database, dan rekonsiliasi SAP</p>
                 </div>
                 {isCurrentUserAdmin && (
                   <button
@@ -5133,13 +5133,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-2xl border border-slate-200 bg-white flex flex-col justify-between">
+                <div className="p-4 rounded-2xl border border-green-200 bg-white flex flex-col justify-between">
                   <div>
                     <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center mb-3">
                       <Download className="w-5 h-5" />
                     </div>
                     <h4 className="text-sm font-extrabold text-slate-800">Ekspor Seluruh Data Aset</h4>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-green-400 mt-1">
                       Unduh daftar {assets.length} unit aset beserta nilai buku, depresiasi PSAK 16, dan riwayat mutasi.
                     </p>
                   </div>
@@ -5152,13 +5152,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </button>
                 </div>
 
-                <div className="p-4 rounded-2xl border border-slate-200 bg-white flex flex-col justify-between">
+                <div className="p-4 rounded-2xl border border-green-200 bg-white flex flex-col justify-between">
                   <div>
                     <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center mb-3">
                       <FileSpreadsheet className="w-5 h-5" />
                     </div>
                     <h4 className="text-sm font-extrabold text-slate-800">Ekspor Peminjaman &amp; BAST</h4>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-green-400 mt-1">
                       Unduh riwayat reservasi, status serah terima fisik, dan log pengembalian aset Food Station.
                     </p>
                   </div>
@@ -5171,13 +5171,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </button>
                 </div>
 
-                <div className="p-4 rounded-2xl border border-slate-200 bg-white flex flex-col justify-between">
+                <div className="p-4 rounded-2xl border border-green-200 bg-white flex flex-col justify-between">
                   <div>
                     <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
                       <RefreshCw className="w-5 h-5" />
                     </div>
                     <h4 className="text-sm font-extrabold text-slate-800">Audit Rekonsiliasi SAP</h4>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-green-400 mt-1">
                       Cocokkan kode aset fisik ASTICK dengan catatan akuntansi buku besar SAP BUMD.
                     </p>
                   </div>
@@ -5202,10 +5202,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
           {activeSection === 'health' && (
             <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white p-4 rounded-2xl border border-green-200 flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">System Health & Service Diagnostics</h3>
-                  <p className="text-xs text-slate-500">Status operasional API, memori, engine penomoran, dan konektivitas</p>
+                  <h3 className="text-base font-black text-green-900">System Health & Service Diagnostics</h3>
+                  <p className="text-xs text-green-400">Status operasional API, memori, engine penomoran, dan konektivitas</p>
                 </div>
                 <button
                   onClick={pingHealthCheck}
@@ -5218,19 +5218,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-4 rounded-2xl border border-slate-200 bg-white">
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                <div className="p-4 rounded-2xl border border-green-200 bg-white">
+                  <div className="flex items-center justify-between text-xs text-green-400 mb-2">
                     <span>API Express Server</span>
                     <Activity className="w-4 h-4 text-emerald-500" />
                   </div>
-                  <div className={`text-lg font-black ${healthStatus.latency === null ? 'text-slate-400' : 'text-slate-900'}`}>{healthStatus.status}</div>
+                  <div className={`text-lg font-black ${healthStatus.latency === null ? 'text-slate-400' : 'text-green-900'}`}>{healthStatus.status}</div>
                   <div className="text-[11px] text-slate-400 mt-1">
                     Latency: <b className={healthStatus.latency !== null ? 'text-green-600' : 'text-slate-400'}>{healthStatus.latency !== null ? `${healthStatus.latency} ms` : 'belum diukur'}</b> · Diperiksa: {healthStatus.timestamp || '—'}
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl border border-slate-200 bg-white">
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                <div className="p-4 rounded-2xl border border-green-200 bg-white">
+                  <div className="flex items-center justify-between text-xs text-green-400 mb-2">
                     <span>Persistence (CR-04)</span>
                     <Database className="w-4 h-4 text-blue-500" />
                   </div>
@@ -5254,13 +5254,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl border border-slate-200 bg-white">
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                <div className="p-4 rounded-2xl border border-green-200 bg-white">
+                  <div className="flex items-center justify-between text-xs text-green-400 mb-2">
                     <span>Reminder Scheduler (CR-05)</span>
                     <Bell className="w-4 h-4 text-purple-500" />
                   </div>
                   <div className={`text-lg font-black ${
-                    healthStatus.scheduler?.enabled === false ? 'text-slate-500'
+                    healthStatus.scheduler?.enabled === false ? 'text-green-400'
                     : healthStatus.scheduler ? 'text-green-700'
                     : 'text-slate-400'
                   }`}>
@@ -5275,20 +5275,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl border border-slate-200 bg-white">
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                <div className="p-4 rounded-2xl border border-green-200 bg-white">
+                  <div className="flex items-center justify-between text-xs text-green-400 mb-2">
                     <span>Data Records Active</span>
                     <Cpu className="w-4 h-4 text-amber-500" />
                   </div>
-                  <div className="text-lg font-black text-slate-900">{assets.length + loans.length + tickets.length} Records</div>
+                  <div className="text-lg font-black text-green-900">{assets.length + loans.length + tickets.length} Records</div>
                   <div className="text-[11px] text-slate-400 mt-1">
                     {assets.length} Aset · {loans.length} Pinjam · {tickets.length} Tiket
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50 text-xs font-mono text-slate-700 space-y-1">
-                <div className="text-[11px] font-bold uppercase text-slate-500 mb-1">Diagnostic Log Snapshot (dari respons /api/health):</div>
+              <div className="p-4 rounded-2xl border border-green-200 bg-green-50 text-xs font-mono text-green-700 space-y-1">
+                <div className="text-[11px] font-bold uppercase text-green-400 mb-1">Diagnostic Log Snapshot (dari respons /api/health):</div>
                 <div>[GABAH Health] persistence: {healthStatus.persistence || 'belum diperiksa'}</div>
                 <div>[GABAH Scheduler] enabled: {healthStatus.scheduler?.enabled ?? 'belum diperiksa'} · timezone: {healthStatus.scheduler?.timezone || '-'} · intervalMs: {healthStatus.scheduler?.intervalMs ?? '-'}</div>
                 <div>[GABAH Data] {assets.length} aset · {loans.length} peminjaman · {tickets.length} tiket · {userList.length} pengguna · {auditLogs.length} log audit</div>

@@ -527,7 +527,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
                 <th className="py-2.5 px-3 text-right">Nilai Perolehan</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-green-100">
               {taxonomyGroups.map((group) => (
                 <tr key={group.code} className="hover:bg-green-50/70 transition-colors">
                   <td className="py-2.5 px-3 font-mono font-bold text-green-900">

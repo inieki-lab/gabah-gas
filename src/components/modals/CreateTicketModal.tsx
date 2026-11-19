@@ -222,23 +222,23 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="w-full max-w-xl bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xl my-8">
+    <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      <div className="w-full max-w-xl bg-white border border-green-200 rounded-2xl overflow-hidden shadow-2xl my-8">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="px-6 py-4 border-b border-green-200 flex items-center justify-between bg-green-50">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
               <LifeBuoy className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-base text-slate-900">Buat Tiket Kendala Helpdesk</h3>
-              <p className="text-xs text-slate-500">Laporan penanganan IT, sarana GA, atau permintaan lisensi</p>
+              <h3 className="font-extrabold text-base text-green-900">Buat Tiket Kendala Helpdesk</h3>
+              <p className="text-xs text-green-400">Laporan penanganan IT, sarana GA, atau permintaan lisensi</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
+            className="p-1.5 rounded-lg bg-green-50 hover:bg-slate-200 text-green-400 hover:text-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -248,11 +248,11 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           
           {/* Reporter info */}
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+          <div className="p-3 bg-green-50 rounded-xl border border-green-200 flex items-center justify-between">
             <div>
-              <div className="text-[10px] uppercase font-bold text-slate-500">Pelapor</div>
-              <div className="font-bold text-slate-900 text-sm">{currentUser.name}</div>
-              <div className="text-slate-500">{currentUser.department} ({currentUser.email})</div>
+              <div className="text-[10px] uppercase font-bold text-green-400">Pelapor</div>
+              <div className="font-bold text-green-900 text-sm">{currentUser.name}</div>
+              <div className="text-green-400">{currentUser.department} ({currentUser.email})</div>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200 text-[11px]">
               {currentUser.role_label}
@@ -260,10 +260,10 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           </div>
 
           {/* Freshservice-style Quick Service Catalog Selector */}
-          <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="flex items-center justify-between text-slate-700 font-bold text-[11px]">
+          <div className="space-y-1.5 p-3 rounded-xl bg-green-50 border border-green-200">
+            <div className="flex items-center justify-between text-green-700 font-bold text-[11px]">
               <span>Katalog Layanan Cepat (Freshservice-Style Service Catalog):</span>
-              <span className="text-[10px] text-slate-500 font-normal">Klik untuk auto-fill standar ITSM</span>
+              <span className="text-[10px] text-green-400 font-normal">Klik untuk auto-fill standar ITSM</span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
               {serviceCatalogTemplates.map(tpl => (
@@ -271,7 +271,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                   key={tpl.id}
                   type="button"
                   onClick={() => applyCatalogTemplate(tpl)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 text-[11px] font-semibold whitespace-nowrap transition-all shadow-2xs shrink-0"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-emerald-50 text-green-700 hover:text-emerald-800 border border-green-200 hover:border-emerald-300 text-[11px] font-semibold whitespace-nowrap transition-all shadow-2xs shrink-0"
                 >
                   <span>{tpl.icon}</span>
                   <span>{tpl.label}</span>
@@ -282,7 +282,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
           {/* Category */}
           <div className="space-y-1.5">
-            <label className="text-slate-700 font-bold">Departemen Penanganan:</label>
+            <label className="text-green-700 font-bold">Departemen Penanganan:</label>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               <button
                 type="button"
@@ -290,7 +290,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'IT'
                     ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    : 'bg-white text-green-500 border-green-200 hover:bg-green-50'
                 }`}
               >
                 <Laptop className="w-4 h-4" /> IT / Lisensi
@@ -301,7 +301,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'GA' 
                     ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    : 'bg-white text-green-500 border-green-200 hover:bg-green-50'
                 }`}
               >
                 <Car className="w-4 h-4" /> General Affair (GA)
@@ -312,7 +312,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'IT' && title.toLowerCase().includes('lisensi')
                     ? 'bg-purple-600 text-white border-purple-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    : 'bg-white text-green-500 border-green-200 hover:bg-green-50'
                 }`}
               >
                 <KeyRound className="w-4 h-4" /> Lisensi (IT)
@@ -323,7 +323,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'SC' 
                     ? 'bg-orange-600 text-white border-orange-600 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    : 'bg-white text-green-500 border-green-200 hover:bg-green-50'
                 }`}
               >
                 <Package className="w-4 h-4" /> Supply Chain
@@ -334,7 +334,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'PIBC' 
                     ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    : 'bg-white text-green-500 border-green-200 hover:bg-green-50'
                 }`}
               >
                 <Store className="w-4 h-4" /> PIBC
@@ -345,7 +345,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           {/* Priority Level & Dynamic SLA Preview */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-slate-700 font-bold">Tingkat Prioritas (SLA Target):</label>
+              <label className="text-green-700 font-bold">Tingkat Prioritas (SLA Target):</label>
               <span className="text-emerald-700 font-bold flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-emerald-600" /> Target Penyelesaian: {slaHours} Jam
               </span>
@@ -364,11 +364,11 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                   className={`p-2 rounded-xl border text-center transition-all ${
                     priority === p.val
                       ? 'bg-rose-50 text-rose-800 border-rose-500 ring-1 ring-rose-500 shadow-xs'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      : 'bg-white text-green-500 border-green-200 hover:bg-green-50'
                   }`}
                 >
                   <div className="font-bold text-[11px]">{p.label}</div>
-                  <div className="text-[10px] text-slate-500 truncate mt-0.5">{p.desc}</div>
+                  <div className="text-[10px] text-green-400 truncate mt-0.5">{p.desc}</div>
                 </button>
               ))}
             </div>
@@ -377,7 +377,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           {/* Related Asset Selector (Mengacu Khusus Aset Pelapor) */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-slate-700 font-bold">Pilih Aset Terkait Pelapor:</label>
+              <label className="text-green-700 font-bold">Pilih Aset Terkait Pelapor:</label>
               <span className="text-[11px] text-emerald-700 font-semibold">
                 {reporterAssets.length} aset milik pelapor tersedia
               </span>
@@ -385,7 +385,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             <select
               value={relatedAssetId}
               onChange={(e) => handleAssetSelect(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-rose-500 text-xs"
+              className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-green-900 font-medium focus:outline-none focus:border-rose-500 text-xs"
             >
               <option value="">-- Tidak Terkait Aset Tertentu / Kendala Umum / Fasilitas Kantor --</option>
               {reporterAssets.length === 0 ? (
@@ -400,34 +400,34 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
                 ))
               )}
             </select>
-            <p className="text-[10px] text-slate-500">
-              * Opsi aset langsung mengacu ke perangkat yang ditugaskan resmi atau sedang dipinjam oleh <span className="font-semibold text-slate-700">{currentUser.name}</span>.
+            <p className="text-[10px] text-green-400">
+              * Opsi aset langsung mengacu ke perangkat yang ditugaskan resmi atau sedang dipinjam oleh <span className="font-semibold text-green-700">{currentUser.name}</span>.
             </p>
           </div>
 
           {/* Ticket Title */}
           <div className="space-y-1">
-            <label className="text-slate-700 font-bold">Judul Singkat Kendala:</label>
+            <label className="text-green-700 font-bold">Judul Singkat Kendala:</label>
             <input
               type="text"
               required
               placeholder="Contoh: AC Lantai 3 Bocor, VPN tidak bisa login, Permintaan lisensi M365..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500"
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-green-900 placeholder-slate-400 focus:outline-none focus:border-rose-500"
             />
           </div>
 
           {/* Ticket Description */}
           <div className="space-y-1">
-            <label className="text-slate-700 font-bold">Deskripsi Rinci Masalah:</label>
+            <label className="text-green-700 font-bold">Deskripsi Rinci Masalah:</label>
             <textarea
               rows={3}
               required
               placeholder="Jelaskan sejak kapan terjadi, pesan error yang muncul, dan dampak operasionalnya..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500"
+              className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-green-900 placeholder-slate-400 focus:outline-none focus:border-rose-500"
             />
           </div>
 
@@ -440,11 +440,11 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           )}
 
           {/* Footer Submit */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-green-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-colors"
+              className="px-4 py-2 rounded-xl bg-green-50 hover:bg-slate-200 text-green-700 font-semibold transition-colors"
             >
               Batal
             </button>
@@ -453,7 +453,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               disabled={isAuditor}
               className={`px-5 py-2 rounded-xl font-bold transition-all shadow-xs ${
                 isAuditor 
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                  ? 'bg-slate-300 text-green-400 cursor-not-allowed' 
                   : 'bg-rose-600 hover:bg-rose-700 text-white'
               }`}
             >

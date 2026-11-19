@@ -544,7 +544,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               </div>
 
               {/* Rows per Room */}
-              <div className="divide-y divide-slate-200">
+              <div className="divide-y divide-green-200">
                 {rooms.filter(room => roomFilter === 'all' || room.id === roomFilter).map(room => {
                   const roomReservationsToday = reservations.filter(
                     r => r.room_id === room.id && 
@@ -886,7 +886,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                     <th className="py-3 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-green-800">
+                <tbody className="divide-y divide-green-100 text-green-800">
                   {filteredReservations.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="text-center py-10 text-green-400 text-xs">
