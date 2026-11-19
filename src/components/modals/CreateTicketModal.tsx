@@ -169,11 +169,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
       const selected = safeAssets.find(a => a.id === assetId);
       if (selected) {
         // License/SaaS is an IT domain: software & license tickets route to IT
-        if (selected.owner_division === 'SC') {
-          setCategory('SC');
-        } else if (selected.owner_division === 'PIBC') {
-          setCategory('PIBC');
-        } else if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
+        if (selected.category_type === 'GA' || selected.owner_division === 'GA') {
           setCategory('GA');
         } else {
           setCategory('IT');
@@ -195,10 +191,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         setDescription(
           `Tiket kerja terkait kontrak ${linkedContract.contract_number} (${linkedContract.title}) dengan vendor ${linkedContract.vendor_name}. Divisi pemilik: ${linkedContract.owner_division}.`
         );
-        setCategory((linkedContract.owner_division === 'IT' ? 'IT'
-          : linkedContract.owner_division === 'SC' ? 'SC'
-          : linkedContract.owner_division === 'PIBC' ? 'PIBC'
-          : 'GA') as TicketCategory);
+        if (linkedContract.owner_division === 'IT' || linkedContract.owner_division === 'GA') {
+          setCategory(linkedContract.owner_division as TicketCategory);
+        }
       }
     }
   }, [isOpen, preselectedAssetId, linkedContract]);
@@ -297,7 +292,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { setCategory('General'); setRelatedAssetId(''); }}
+                onClick={() => { setCategory('GA'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'GA' 
                     ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
@@ -319,25 +314,16 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { setCategory('SC'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'SC' 
-                    ? 'bg-orange-600 text-white border-orange-600 shadow-sm' 
+                disabled={!currentUser.permission_keys?.includes('tickets.create.me') && !currentUser.permission_keys?.includes('*')}
+                title="Akses Pemohon Tiket ME harus diberikan oleh Superadmin"
+                onClick={() => { setCategory('ME'); setRelatedAssetId(''); }}
+                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                  category === 'ME'
+                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm'
                     : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <Package className="w-4 h-4" /> Supply Chain
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCategory('PIBC'); setRelatedAssetId(''); }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
-                  category === 'PIBC' 
-                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm' 
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <Store className="w-4 h-4" /> PIBC
+                <Wrench className="w-4 h-4" /> ME / Perawatan
               </button>
             </div>
           </div>
