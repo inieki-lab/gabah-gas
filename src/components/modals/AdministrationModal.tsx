@@ -567,7 +567,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       : item.required;
     const availableKeys = keysToChange.filter(key => activePermissionKeys.has(key));
     if (enabled) {
-      const missing = item.required.filter(key => !activePermissionKeys.has(key));
+      const missing = getMissingSidebarMenuPermissions(item);
       if (missing.length) {
         showToast('Permission menu belum tersedia di katalog: ' + missing.join(', '), 'warning');
         return;
