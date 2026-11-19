@@ -721,7 +721,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f8f5] text-slate-900 flex flex-col selection:bg-emerald-700 selection:text-white">
+    <div className="gabah-app-shell min-h-screen bg-[#f4f8f5] text-slate-900 flex flex-col selection:bg-emerald-700 selection:text-white">
       
       {/* Toast Floating Notification */}
       {toastMessage && (
@@ -778,7 +778,7 @@ export default function App() {
       />
 
       {/* App Shell: Sidebar + Main Content */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
+      <div className="gabah-workspace flex-1 flex w-full mx-auto">
         
         {/* Left Navigation Sidebar */}
         <Sidebar
@@ -808,7 +808,7 @@ export default function App() {
         />
 
         {/* Main Content Pane */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto bg-[#f4f8f5]">
+        <main className="gabah-main-content flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto bg-[#f4f8f5]">
           {activeTab === null && (
             <section role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
               <h2 className="font-bold">Belum ada akses modul</h2>
