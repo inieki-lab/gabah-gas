@@ -25,6 +25,7 @@ import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation }
 import { GabahService, formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
+import { isEmployeeFacingDashboardRole } from '../../dashboard/dashboardAudience';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -54,7 +55,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const currentRoleKeys = currentUser?.role_keys || [];
   const isHumas = currentRoleKeys.includes('humas') || currentUser?.role === 'Humas';
   const isSekdir = currentRoleKeys.includes('sekretaris_direksi') || currentUser?.role === 'Sekretaris Direksi';
-  const isStaff = currentUser?.role === 'Karyawan' || isHumas || isSekdir;
+  // Legacy location labels remain compatible as employee-facing accounts; they do not grant division-wide data scope.
+  const isStaff = isEmployeeFacingDashboardRole(currentUser?.role, currentRoleKeys);
   const isAuditor = GabahService.isAuditor(currentUser);
   
   const hasEffectivePermission = (permission: string, legacyRoles: string[] = []): boolean => {

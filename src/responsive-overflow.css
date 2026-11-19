@@ -1,0 +1,157 @@
+/*
+ * GABAH responsive overflow safeguards.
+ *
+ * Keep wide operational tables readable on laptop and mobile screens:
+ * the page itself must not grow horizontally, while each table can scroll
+ * inside its own viewport. This is presentation-only and does not alter data.
+ */
+
+html,
+body,
+#root {
+  max-width: 100%;
+  min-width: 0;
+}
+
+body {
+  overflow-x: clip;
+}
+
+.gabah-app-shell,
+.gabah-workspace,
+.gabah-main-content,
+.gabah-main-content > section {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.gabah-main-content {
+  overflow-x: clip;
+}
+
+.gabah-main-content table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.gabah-main-content table th,
+.gabah-main-content table td {
+  min-width: max-content;
+}
+
+.gabah-main-content table thead th {
+  white-space: nowrap;
+}
+
+.gabah-main-content table td {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 767px) {
+  .gabah-main-content {
+    padding-inline: 12px;
+  }
+
+  .gabah-main-content table {
+    max-width: calc(100vw - 24px);
+  }
+
+  .gabah-main-content [role="dialog"] {
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .gabah-main-content input:not([type="checkbox"]):not([type="radio"]),
+  .gabah-main-content select,
+  .gabah-main-content textarea {
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gabah-main-content *,
+  .gabah-sidebar * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* Shared responsive rules for every feature view and modal. */
+#root,
+#root * {
+  box-sizing: border-box;
+}
+
+.gabah-topbar > div,
+.gabah-workspace > *,
+.gabah-main-content > * {
+  min-width: 0;
+}
+
+.gabah-main-content [role="dialog"],
+#root [role="dialog"] {
+  width: min(100% - 2rem, 72rem);
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.gabah-main-content img,
+.gabah-main-content video,
+.gabah-main-content canvas {
+  max-width: 100%;
+}
+
+.gabah-main-content pre,
+.gabah-main-content code {
+  overflow-wrap: anywhere;
+}
+
+.gabah-main-content form,
+.gabah-main-content fieldset {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.gabah-main-content input,
+.gabah-main-content select,
+.gabah-main-content textarea,
+.gabah-main-content button {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  .gabah-topbar > div {
+    gap: 8px;
+  }
+
+  .gabah-main-content [role="dialog"],
+  #root [role="dialog"] {
+    width: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+    margin: 0.5rem;
+    border-radius: 12px;
+  }
+
+  .gabah-main-content [class*="grid-cols-"] {
+    min-width: 0;
+  }
+
+  .gabah-main-content [class*="min-w-"] {
+    max-width: 100%;
+  }
+}
