@@ -509,7 +509,7 @@ export const db = {
   ] as OrgJobLevel[],
 
   // ORG-MODEL: Master Unit/Bagian — terpisah dari jabatan & lokasi.
-  // PIBC / Supply Chain / Pangsub adalah UNIT, bukan jabatan.
+  // RPC / PIBC / Pangsub adalah unit/lokasi operasional, bukan jabatan atau role aplikasi.
   orgUnits: [
     { id: 'UNIT-SEKDIR', name: 'Sekretariat Direksi', division_code: 'Umum', is_active: true },
     { id: 'UNIT-HUMAS', name: 'Humas & Protokoler', division_code: 'Umum', is_active: true },
