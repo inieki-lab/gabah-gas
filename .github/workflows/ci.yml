@@ -95,6 +95,9 @@ jobs:
       - name: Role dashboard scope checks
         run: npm run test:dashboard-scope
 
+      - name: Employee-facing dashboard classification regression
+        run: npm run test:dashboard-audience
+
       - name: Dashboard attention data-scope checks
         run: npm run test:dashboard-attention-scope
 
