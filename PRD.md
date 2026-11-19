@@ -186,10 +186,12 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
   - `low`: SLA 48 jam
 - Penugasan teknisi (*Assignee*), pelacakan status (`open`, `in_progress`, `pending_vendor`, `resolved`, `closed`), catatan solusi (*resolution notes*), dan rating kepuasan.
 
-### 3.5 Kategori Helpdesk Ticket (Strict Divisional)
-Kategori tiket helpdesk bersifat divisial dan **terbatas**: `IT`, `GA`, `SC`, `PIBC`.
-- Software/License/SaaS (Accurate, Microsoft 365, VPN, aktivasi lisensi) → kategori `IT` (License adalah domain aset, bukan kategori tiket).
-- Hardware, jaringan, server, akun → `IT`. Fasilitas gedung → `GA`. Permintaan pergudangan → `SC`. Kendaraan Pasar Induk → `PIBC`.
+### 3.5 Kategori Helpdesk Ticket
+Kategori tiket baru adalah `IT`, `GA`, dan `ME` (Mechanical, Electrical & Tim Perawatan). `SC`/`PIBC` hanya dipertahankan untuk membaca histori tiket lama; lokasi RPC/PIBC tidak menjadi kategori tiket.
+- Software/License/SaaS, hardware, jaringan, server, dan akun → `IT`.
+- Fasilitas umum/gedung, kendaraan dinas, dan sarana-prasarana GA → `GA`.
+- Mesin, mekanikal, elektrikal, dan perawatan teknis lingkup Tim Perawatan PIBC → `ME`, diarahkan ke antrean unit `UNIT-PIBC-ME`.
+- Tiket IT otomatis ditugaskan langsung kepada satu petugas aktif dengan permission dan scope IT yang sesuai; bila kandidat tidak tunggal, tiket tetap berada di antrean IT.
 - **Contract Management adalah domain tersendiri dan BUKAN kategori Helpdesk.** Ticket dapat ditautkan ke Contract apabila terdapat pekerjaan/action yang perlu ditindaklanjuti (`contract_id` pada tiket).
 
 ### 3.6 Preventive Maintenance & Kalibrasi Tera
