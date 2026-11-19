@@ -27,8 +27,8 @@ export function resolveManagingUnitForOwnerDivision(
   units: OrgUnit[] = db.orgUnits,
 ): string | null {
   if (!ownerDivision) return null;
-  const div = String(ownerDivision).trim();
-  if (!div) return null;
+  const div = String(ownerDivision).trim().toUpperCase();
+  if (!div || ['SC', 'PIBC'].includes(div)) return null;
   const byExactId = units.find(u => u && u.id === `UNIT-${div}` && u.division_code === div);
   if (byExactId) return byExactId.id;
   const candidates = units.filter(u => u && u.division_code === div);
