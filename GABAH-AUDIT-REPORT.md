@@ -404,3 +404,30 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 ---
 
 *Akhir laporan — dibuat untuk review pemilik repository sebelum keputusan perbaikan. Tidak ada perubahan kode yang dilakukan dalam audit ini.*
+
+
+---
+
+# 13. Follow-up — PostgreSQL runtime failure latch and atomic state synchronization (2026-11-19)
+
+**Branch:** `fix/persistence-failure-latch-snapshot-order`  
+**Base:** `main` at `bcced0011d0e5db0d89ace2623ad07c135febaaa`  
+**Status:** implementation added; exact-head CI and integration verification pending.
+
+## Verified implementation changes
+
+1. After PostgreSQL has been active, a pool error or authoritative write failure sets a process-level failure latch. Later mutations reject instead of silently returning success through the development JSON fallback.
+2. The JSON recovery snapshot is written only after PostgreSQL confirms the transaction commit, using the exact payload committed.
+3. The `gabah_state` JSONB row, normalized domain-table synchronization, and dynamic primary-role mirror now use one shared PostgreSQL transaction/client.
+4. Nested normalized-table synchronization no longer begins, commits, or releases the caller's transaction.
+5. A regression test checks the failure latch, shared transaction client, rollback path, and snapshot ordering; the test is required in CI.
+
+## Remaining verification
+
+- CI must pass on the final branch SHA.
+- A live PostgreSQL fault-injection test must force a normalized-table write failure and verify rollback of `gabah_state`.
+- Verify startup fallback when PostgreSQL is unavailable before it ever becomes authoritative.
+- Verify runtime pool failure rejects all subsequent writes until process restart and recovery.
+- Browser UAT and legacy database upgrade rehearsal remain release gates.
+
+**Data safety:** no existing asset, owner, location, contract, ticket, or user records are intentionally rewritten by this patch. It changes runtime persistence behavior only.
