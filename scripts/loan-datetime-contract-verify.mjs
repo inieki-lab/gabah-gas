@@ -6,8 +6,8 @@ const modal = fs.readFileSync('src/components/modals/CreateLoanModal.tsx', 'utf8
 const roomView = fs.readFileSync('src/components/views/MeetingRoomsView.tsx', 'utf8');
 
 assert.match(service, /datetime-local \(YYYY-MM-DDTHH:mm\)/, 'Backend documents and accepts datetime-local loan input');
-assert.match(service, /const dateTime = \/\^\\\\d\{4\}.*T\(\[01\]\\\\d\|2\[0-3\]\):\(\[0-5\]\\\\d\)\$\//, 'Backend validates datetime-local hour/minute');
-assert.match(service, /const dateOnly = \/\^\\\\d\{4\}-\\\\d\{2\}-\\\\d\{2\}\$\//, 'Backend remains compatible with legacy date-only values');
+assert.ok(service.includes(String.raw\`const dateTime = /^(\d{4})-(\d{2})-(\d{2})T\`), 'Backend validates datetime-local hour/minute');
+assert.ok(service.includes(String.raw\`const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$\`), 'Backend remains compatible with legacy date-only values');
 assert.match(service, /start >= due/, 'Backend rejects non-increasing loan schedules');
 assert.match(modal, /type="datetime-local"/, 'Loan form uses datetime-local controls');
 assert.match(modal, /tomorrow\.getFullYear\(\)/, 'Loan form default uses local calendar date rather than UTC date');

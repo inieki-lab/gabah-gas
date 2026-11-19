@@ -749,8 +749,8 @@ export class GabahDomainService {
       const text = typeof value === 'string' ? value.trim() : '';
       // The browser loan form submits datetime-local (YYYY-MM-DDTHH:mm).
       // Accept legacy date-only records/clients as well, but validate both strictly.
-      const dateOnly = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(text);
-      const dateTime = /^(\\d{4})-(\\d{2})-(\\d{2})T([01]\\d|2[0-3]):([0-5]\\d)$/.exec(text);
+      const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+      const dateTime = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d)$/.exec(text);
       const match = dateTime || dateOnly;
       if (!match) return { text, timestamp: Number.NaN };
       const [, year, month, day, hour = '00', minute = '00'] = match;
