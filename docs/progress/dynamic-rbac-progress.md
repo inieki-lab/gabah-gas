@@ -739,7 +739,7 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added regression assertions for the meeting-facility permission path, IT workstation capability overlay, and separation of contract create/update capability.
 
 
-- Header notification queues now resolve IT/GA/Humas/Superadmin from effective assigned `role_keys`/Superadmin metadata, so a generic Karyawan profile with an explicitly assigned operational role receives the corresponding queue indicator.
+- Header notification queues now resolve IT/GA/Humas/Superadmin from effective permission keys (and Superadmin metadata), not role-name matching. Custom-named roles can receive the correct queue indicator by being granted the corresponding queue capability.
 - Director-priority room-reservation override UI now checks `room_reservations.override_priority` when PostgreSQL permission metadata is present. Legacy Sekdir/GA/Admin fallback is retained only for file-store development.
 
 **Validation boundary:** changes are committed on this branch; exact-head CI is required before merge. These are source-level fixes and regression assertions, not a claim of live browser UAT or production deployment.
