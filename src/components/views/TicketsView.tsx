@@ -66,10 +66,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   // SC/PIBC are historical location labels, never operational roles in PostgreSQL.
   const isSC = !Array.isArray(currentUser?.permission_keys) && currentUser?.role === 'Supply Chain';
   const isPIBC = !Array.isArray(currentUser?.permission_keys) && currentUser?.role === 'PIBC';
-  const isMEOperator = hasAssignedRole('admin_tiket_me')
-    || (Array.isArray(currentUser?.permission_keys) && currentUser.permission_keys.some(key =>
-      ['tickets.assign', 'tickets.update', 'tickets.close'].includes(key)
-    ) && baseTickets.some(ticket => ticket.category === 'ME'));
+  const isMEOperator = hasAssignedRole('admin_tiket_me');
   const isAuditor = GabahService.isAuditor(currentUser);
   // Self-service roles see their own submissions; operating divisions see the
   // tickets already authorized for their division by GabahService.
