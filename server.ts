@@ -2929,20 +2929,35 @@ async function startServer() {
 
   // Loans
   app.get('/api/loans', (req, res) => {
-    
     if (!requireRbacPermission(req, res, 'loans.read')) return;
     const actor = getActor(req);
-    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
-      return res.json({ success: true, data: db.loans });
-    }
-    // Loan visibility follows borrower ownership or an explicit owner scope
-    // for this module. Employee work location never grants owner-domain access.
-    const data = db.loans.filter(loan =>
-      loan.borrower_id === actor.id
-      || (isPostgresPersistenceActive()
-        ? hasRbacScope(String(actor.id), 'division', loan.owner_division, 'loans')
-        : actor.role === loan.owner_division)
-    );
+    const visibleLoans = (isSuperadminActor(actor) || isAuditorActor(actor))
+      ? db.loans
+      : db.loans.filter(loan =>
+          loan.borrower_id === actor.id
+          || (isPostgresPersistenceActive()
+            ? hasRbacScope(String(actor.id), 'division', loan.owner_division, 'loans')
+            : actor.role === loan.owner_division)
+        );
+
+    // Return server-authoritative action capabilities with each visible loan.
+    // The UI must not infer owner custody from a role label or borrower visibility.
+    const data = visibleLoans.map(loan => ({
+      ...loan,
+      allowed_actions: {
+        approve: loan.status === 'pending_approval'
+          && GabahDomainService.canOperateLoan(loan, actor, 'loans.approve'),
+        reject: loan.status === 'pending_approval'
+          && GabahDomainService.canOperateLoan(loan, actor, 'loans.reject'),
+        handover: loan.status === 'approved'
+          && GabahDomainService.canOperateLoan(loan, actor, 'loans.handover'),
+        return: loan.status === 'borrowed'
+          && !isAuditorActor(actor)
+          && hasRbacPermission(String(actor.id), 'loans.return')
+          && (loan.borrower_id === actor.id
+            || GabahDomainService.canOperateLoan(loan, actor, 'loans.return')),
+      },
+    }));
     return res.json({ success: true, data });
   });
 

@@ -89,11 +89,14 @@ export const LoansView: React.FC<LoansViewProps> = ({
     return status === statusFilter;
   });
 
-  const canApprove = (loan: Loan) => {
-    // Superadmin remains global even when dynamic permission metadata exists.
-    // Other actors use effective operation permission; the API enforces owner scope.
-    return hasEffectivePermission('loans.approve', ['Admin GABAH', 'IT', 'GA']);
-  };
+  const canApprove = (loan: Loan) => loan.allowed_actions?.approve
+    ?? hasEffectivePermission('loans.approve', ['Admin GABAH', 'IT', 'GA']);
+  const canReject = (loan: Loan) => loan.allowed_actions?.reject
+    ?? hasEffectivePermission('loans.reject', ['Admin GABAH', 'IT', 'GA']);
+  const canHandover = (loan: Loan) => loan.allowed_actions?.handover
+    ?? hasEffectivePermission('loans.handover', ['Admin GABAH', 'IT', 'GA']);
+  const canReturn = (loan: Loan) => loan.allowed_actions?.return
+    ?? (!isAuditor && (hasEffectivePermission('loans.return', ['Admin GABAH', 'IT', 'GA']) || loan.borrower_id === currentUser.id));
 
   return (
     <div className="space-y-6">
@@ -175,6 +178,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
           const loanStatus = normalizeLoanStatus(loan.status);
           const isIT = loan.category_type === 'IT' || loan.owner_division === 'IT';
           const userCanApprove = canApprove(loan);
+          const userCanReject = canReject(loan);
+          const userCanHandover = canHandover(loan);
+          const userCanReturn = canReturn(loan);
 
           return (
             <div 
@@ -279,27 +285,31 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 <div className="flex items-center gap-2">
                   
                   {/* Status: Pending -> Approve or Reject */}
-                  {(loanStatus === 'pending') && userCanApprove && (
+                  {(loanStatus === 'pending') && (userCanApprove || userCanReject) && (
                     <>
-                      <button
-                        onClick={() => onApproveLoan(loan.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Setujui Reservasi
-                      </button>
-                      <button
-                        onClick={() => setRejectingLoanId(loan.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        Tolak
-                      </button>
+                      {userCanApprove && (
+                        <button
+                          onClick={() => onApproveLoan(loan.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Setujui Reservasi
+                        </button>
+                      )}
+                      {userCanReject && (
+                        <button
+                          onClick={() => setRejectingLoanId(loan.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          Tolak
+                        </button>
+                      )}
                     </>
                   )}
 
                   {/* Status: Approved -> Handover to user */}
-                  {loanStatus === 'approved' && userCanApprove && (
+                  {loanStatus === 'approved' && userCanHandover && (
                     <button
                       onClick={() => onHandoverLoan(loan.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
@@ -310,8 +320,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Status: Active -> Return inspection */}
-                  {!isAuditor && (loanStatus === 'active' || loanStatus === 'overdue') &&
-                    (userCanApprove || loan.borrower_id === currentUser.id) && (
+                  {(loanStatus === 'active' || loanStatus === 'overdue') && userCanReturn && (
                     <button
                       onClick={() => setReturningLoan(loan)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"

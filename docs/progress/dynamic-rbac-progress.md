@@ -930,3 +930,5 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Asset edit, loan approval, and ticket management helpers now consistently honor Superadmin metadata and wildcard permission while preserving Auditor deny-write precedence.
 - Legacy fallback is limited to legacy role sessions; dynamic sessions no longer infer Admin GABAH authority from a persona label.
 - Added CI regression contract for Superadmin identity, wildcard permissions, and all affected helper methods.
+
+- Loans API now computes per-record server-authoritative action flags. The UI separately gates approve, reject, handover, and return buttons from those flags; borrower visibility no longer implies owner-division approval authority.
