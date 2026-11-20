@@ -70,7 +70,8 @@
     "test:rpc-location-label": "node scripts/rpc-location-label-verify.mjs",
     "test:ticket-owner-id-only": "node scripts/ticket-owner-id-only-verify.mjs",
     "test:maintenance-seed-relations": "node --import tsx scripts/maintenance-seed-relations-verify.mjs",
-    "test:contract-creation-relations": "node --import tsx scripts/contract-creation-relations-verify.mjs"
+    "test:contract-creation-relations": "node --import tsx scripts/contract-creation-relations-verify.mjs",
+    "test:superadmin-administration-entry": "node scripts/superadmin-administration-entry-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
