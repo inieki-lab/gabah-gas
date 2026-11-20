@@ -895,3 +895,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Loan request service rechecks the authoritative category policy before accepting a request.
 - Added HTTP regression coverage for infrastructure creation, PATCH override, and loan request rejection.
 - Exact-head CI run #44689553042 passed 78/78 checks.
+
+
+## 2026-11-20 — Superadmin Administration entry guard
+
+- Replaced the Administration modal's active-role-only Superadmin check with authoritative identity checks: `is_superadmin` and stable `role_keys=superadmin`.
+- Legacy `Admin GABAH` label fallback is retained only when permission metadata is absent, preventing a dashboard persona/active-role label from granting or hiding administrative access in dynamic-RBAC sessions.
+- Added `test:superadmin-administration-entry` and wired it into CI.
+- Work is isolated on `fix/rbac-superadmin-admin-entry-2026-11-20`, created from current `main`; no changes were made to `main` or the divergent 544-commit PR #36 branch.
+- Exact-head CI and browser UAT are pending; this is a focused regression guard, not a production-readiness claim.
