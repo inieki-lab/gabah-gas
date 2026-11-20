@@ -16,7 +16,7 @@ const checks = [
   ['Client-side ticket ownership uses immutable reporter ID only', /ticket\.reporter_id && ticket\.reporter_id === currentUserId/.test(client) && !client.includes('isExactIdentityNameMatch')],
   ['Dashboard regression test rejects legacy name-only and same-name other-user tickets', /t-own-legacy/.test(test) && /t-same-name-other-id/.test(test) && !/ticket-own-legacy', 'ticket-owner-scope'/.test(test)],
   ['Server dashboard filter no longer passes actor display name as an ownership key', !/actorName: String\(actor\.name/.test(server)],
-  ['Personal loan scope uses borrower ID only', roleDashboard.includes('item.borrower_id === user.id') && !roleDashboard.includes('isExactIdentityNameMatch') && loansView.includes('l.borrower_id === currentUserId') && !loansView.includes('isExactIdentityNameMatch')],
+  ['Personal loan scope uses borrower ID only', roleDashboard.includes('item.borrower_id === user.id') && !roleDashboard.includes('isExactIdentityNameMatch') && loansView.includes('loan.borrower_id === currentUser.id') && !loansView.includes('isExactIdentityNameMatch')],
   ['Personal asset scope uses assigned user ID only', roleDashboard.includes('asset.assigned_to?.id === user.id') && myAssetsView.includes('assignedId === currentUser.id') && !myAssetsView.includes('assignedEmail') && !myAssetsView.includes('isExactIdentityNameMatch')],
   ['Dashboard and ticket modal use reporter/borrower/assignee IDs only', dashboardView.includes('t.reporter_id === currentUserId') && dashboardView.includes('l.borrower_id === currentUserId') && createTicketModal.includes('loan.borrower_id === currentUser?.id') && !dashboardView.includes('isExactIdentityNameMatch') && !createTicketModal.includes('isExactIdentityNameMatch')],
 ];
