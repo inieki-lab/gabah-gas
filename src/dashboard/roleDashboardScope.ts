@@ -1,5 +1,4 @@
 import type { Asset, Loan, Ticket, UserProfile, UserRole } from '../types';
-import { isExactIdentityNameMatch } from '../utils/identityMatching';
 
 /**
  * Presentation scope for operational dashboards.
@@ -49,15 +48,13 @@ export function filterDashboardTickets(items: Ticket[], role: UserRole): Ticket[
 
 export function filterPersonalLoans(items: Loan[], user: UserProfile): Loan[] {
   return items.filter(item =>
-    item.borrower_id === user.id || isExactIdentityNameMatch(item.borrower_name, user.name)
+    item.borrower_id === user.id
   );
 }
 
 export function filterPersonalAssets(items: Asset[], loans: Loan[], user: UserProfile): Asset[] {
   const assigned = items.filter(asset =>
-    asset.assigned_to?.id === user.id ||
-    Boolean(asset.assigned_to?.email && user.email && asset.assigned_to.email.toLowerCase() === user.email.toLowerCase()) ||
-    isExactIdentityNameMatch(asset.assigned_to?.name, user.name)
+    asset.assigned_to?.id === user.id
   );
   const activeLoanAssetIds = new Set(
     filterPersonalLoans(loans, user)
