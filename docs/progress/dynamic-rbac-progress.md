@@ -799,3 +799,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Auditor detection uses all effective role assignments and continues to override write shortcuts.
 - Dashboard ticket heading no longer infers IT queue access from the primary role name.
 - CI run #2657 passed all 75 checks, including employee profile capability normalization and dashboard owner-scope regression.
+
+### Ticket creation modal — dynamic Auditor precedence — 2026-11-20
+
+**PR:** #159 — merged to `main` as `0ded801`.
+
+- Ticket creation modal now uses `GabahService.isAuditor`, so Auditor additional-role membership blocks all ticket creation controls and submit paths.
+- ME ticket request access uses stable Superadmin metadata or the explicit `tickets.create.me` capability. A primary-role label alone no longer bypasses PostgreSQL permission metadata.
+- Regression coverage includes the ME requester permission and Auditor additional-role deny-write behavior.
+- CI run #2665 passed all 75 checks, including Dynamic RBAC, ticket queue, production build, Docker runtime smoke, PostgreSQL 17 integration, and security assertions.
