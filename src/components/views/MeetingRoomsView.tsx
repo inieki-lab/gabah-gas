@@ -658,7 +658,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                         })}
 
                         {/* Empty Click-to-book hint */}
-                        {roomReservationsToday.length === 0 && room.status !== 'maintenance' && !isAuditor && (
+                        {roomReservationsToday.length === 0 && room.status !== 'maintenance' && canCreateReservations && (
                           <div 
                             onClick={() => {
                               setSelectedRoomForBooking(room.id);
