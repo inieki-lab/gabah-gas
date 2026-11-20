@@ -289,12 +289,15 @@ export default function App() {
 
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
-  const activeTab: NavTab = currentUser && isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)
+  const effectiveNavigationPermissions = currentUser?.is_superadmin
+    ? ['*']
+    : currentUser?.permission_keys;
+  const activeTab: NavTab = currentUser && isNavTabAllowedForRole(currentUser.role, currentTab, effectiveNavigationPermissions)
     ? currentTab
     : 'dashboard';
 
   const navigateToTab = (tab: NavTab) => {
-    if (!currentUser || !isNavTabAllowedForRole(currentUser.role, tab, currentUser.permission_keys)) {
+    if (!currentUser || !isNavTabAllowedForRole(currentUser.role, tab, currentUser.is_superadmin ? ['*'] : currentUser.permission_keys)) {
       showToast('Menu tersebut tidak tersedia untuk peran Anda.', 'warning');
       return;
     }
