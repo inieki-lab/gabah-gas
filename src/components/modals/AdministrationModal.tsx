@@ -1572,6 +1572,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         unit_id: null
       });
       if (onRefreshData) await onRefreshData();
+      // New employees always start with the baseline Karyawan profile. Operational
+      // access is assigned explicitly through Dynamic RBAC, never inferred from
+      // department, job title, or office location.
+      await refreshUserAssignments();
+      setRoleAssignmentDraft([]);
+      setRoleAssignmentTarget(created);
     } catch (err: any) {
       showToast(`Gagal menambahkan pengguna: ${err.message}`, 'warning');
     } finally {
@@ -2199,22 +2205,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
                       />
                     </div>
-                    <div>
-                      <label className="block text-slate-600 mb-1 font-medium">Role Primer</label>
-                      <select
-                        value={newUserData.role}
-                        onChange={e => {
-                          const r = e.target.value as UserRole;
-                          const found = PRIMARY_PROFILE_ROLES.find(x => x.value === r);
-                          setNewUserData({ ...newUserData, role: r, role_label: found?.label || r });
-                        }}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
-                      >
-                        {PRIMARY_PROFILE_ROLES.map(r => (
-                          <option key={r.value} value={r.value}>{r.label}</option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-[10px] text-slate-500">Humas/Sekretariat Direksi ditetapkan sebagai role tambahan setelah akun dibuat. Supply Chain/PIBC dicatat sebagai unit dan lokasi kerja, bukan role aplikasi.</p>
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-3">
+                      <label className="block text-indigo-900 mb-1 font-semibold">Profil dasar akun</label>
+                      <div className="text-sm font-bold text-indigo-950">Pegawai (Karyawan)</div>
+                      <p className="mt-1 text-[10px] leading-relaxed text-indigo-800">Hak akses pekerjaan tidak ditentukan dari jabatan, divisi, atau lokasi. Setelah akun dibuat, pilih role operasional yang sesuai dari daftar Dynamic RBAC.</p>
                     </div>
                     <div>
                       <label className="block text-slate-600 mb-1 font-medium">Divisi</label>
@@ -2879,7 +2873,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       ) : rbacRoles.filter((role: any) => role.is_active).map((role: any) => {
                         const roleId = Number(role.id);
                         const isPrimary = primaryRoleIds[String(roleAssignmentTarget.id)] === roleId;
-                        const checked = roleAssignmentDraft.includes(roleId);
+                        const checked = isPrimary || roleAssignmentDraft.includes(roleId);
                         return (
                           <label key={roleId} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
                             <input
