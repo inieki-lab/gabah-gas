@@ -212,13 +212,17 @@ async function main() {
       [L1, L2, L3, L4, L5].filter(l => l.id).length + ' ids',
       [L1, L2, L3, L4, L5].every(l => l.id));
 
-    // Approve: IT approves IT loans, GA approves GA loan
+    // Approval matrix: Superadmin is global; other approvers need permission + matching owner scope.
     const appr = async (loanId, token) => req(base, 'POST', `/api/loans/${loanId}/approve`, { token, body: {} });
-    const aL1 = await appr(L1.id, it.token);
+    const deniedHumasApproval = await appr(L3.id, humas.token);
+    record('Unauthorized approval: Humas without loans.approve on pending IT loan', '403', `HTTP ${deniedHumasApproval.status}`, deniedHumasApproval.status === 403);
+    const aL1 = await appr(L1.id, admin.token);
     const aL2 = await appr(L2.id, it.token);
     const aL4 = await appr(L4.id, ga.token);
     const aL5 = await appr(L5.id, it.token);
-    record('Setup: loans approved by owner-division custodians', '200', [aL1, aL2, aL4, aL5].map(r => r.status).join(','), [aL1, aL2, aL4, aL5].every(r => r.status === 200));
+    record('Approval authority: Superadmin global + IT/GA owner-scope custodians', '200 / 200 / 200 / 200',
+      [aL1, aL2, aL4, aL5].map(r => r.status).join(' / '),
+      [aL1, aL2, aL4, aL5].every(r => r.status === 200));
 
     // Availability preview checks every reservation but returns no borrower data.
     const availability = await req(base, 'POST', '/api/loans/availability', {
