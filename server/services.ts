@@ -286,29 +286,22 @@ export class GabahDomainService {
     // assigned dynamic role scope. A Karyawan can receive extra job-function
     // roles without changing employee identity or office location.
     const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
-    if (user.role === 'GA') {
-      const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
-      const isItWorkstation = (asset: ServerAsset) =>
-        ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
-      // GA's writable inventory follows its explicit dynamic owner scope.
-      // The optional IT workstation exception is strictly read-only and limited
-      // to laptop/desktop categories, independent of the GA owner scope.
-      // Keep every explicitly scoped owner domain, including additional
-      // operational capabilities assigned to a GA employee. The IT workstation
-      // exception remains a separate read-only addition.
-      const readOnlyItWorkstations = canReadItWorkstations
-        ? db.assets.filter(asset =>
-          String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
-        )
-        : [];
-      const visibleIds = new Set([...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
-      return db.assets.filter(asset => visibleIds.has(asset.id));
-    }
+    const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
+    const isItWorkstation = (asset: ServerAsset) =>
+      ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+    // This read-only exception is a capability, not a primary-role shortcut.
+    // Any explicitly assigned role can grant it, while the category + IT owner
+    // filter prevents access to servers, network infrastructure, or IT write paths.
+    const readOnlyItWorkstations = canReadItWorkstations
+      ? db.assets.filter(asset =>
+        String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
+      )
+      : [];
 
     const personalAssets = isEmployeeBaseline
       ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
       : [];
-    const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
+    const visibleIds = new Set([...personalAssets, ...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
     return db.assets.filter(asset => visibleIds.has(asset.id));
   }
 
