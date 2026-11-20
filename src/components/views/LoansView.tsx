@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { Loan, Asset, UserProfile, LoanStatus } from '../../types';
 import { GabahService, formatDateTime, exportLoansToCsv } from '../../services/gabahService';
-import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface LoansViewProps {
   loans?: Loan[];
