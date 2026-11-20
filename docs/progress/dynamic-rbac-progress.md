@@ -1,3 +1,24 @@
+# Pembaruan operasional — 20 November 2026
+
+## Verifikasi terbaru
+
+- **PR #163** `fix/ui: derive sidebar queue indicators from dynamic permissions` telah **MERGED** ke `main`.
+- Merge commit/main HEAD: `a5838bae7b2e2faf854d605420f0e39b330d144f`.
+- CI exact-head PR #163: **SUCCESS** pada SHA `59f1dbfd59af0436fbe4b8a6fb92f57a3afa8c34`; seluruh 71 langkah pemeriksaan substantif lulus, termasuk typecheck, regression RBAC/UI, production build, Docker runtime, PostgreSQL 17 integration, P0 security, loan, room reservation, ticket, asset, maintenance, dan persistence.
+- Perubahan sidebar memakai effective permission keys untuk indikator antrean Humas, Sekdir, IT, dan GA. Nama role hanya fallback kompatibilitas file-store jika metadata permission tidak tersedia. Tidak mengubah API, grant permission, scope data, atau transaksi.
+- **Tidak ada klaim UAT browser atau production deployment** dari hasil CI tersebut.
+
+## Fokus kerja berikutnya
+
+1. Audit sisa PR/branch lama sebelum mengambil perubahan unik; jangan merge branch yang base-nya sudah tertinggal atau bukan `main`.
+2. Lengkapi pemeriksaan end-to-end semua workflow aset, pinjaman, tiket, maintenance, reservasi, kontrak, vendor, lisensi, laporan, dan notifikasi.
+3. Jalankan UAT browser dengan akun per persona dan lokasi terhadap PostgreSQL.
+4. Buktikan role assignment bertahan setelah write normal dan restart; uji upgrade dari snapshot legacy.
+5. Rehearsal backup/restore PostgreSQL **bersama** volume uploads, lalu staging deploy/rollback.
+6. Tetap NO-GO untuk produksi sampai bukti G3/G4 dan persetujuan pemilik proses tersedia.
+
+---
+
 # Status terkini — Stabilisasi GABAH (2026-11-09)
 
 > Bagian ini adalah status operasional terbaru. Catatan Stage lama di bawah dipertahankan sebagai histori, bukan status branch/PR saat ini.

@@ -1,3 +1,5 @@
+> **Pembaruan verifikasi 20 November 2026:** PR #163 merged; main HEAD `a5838bae7b2e2faf854d605420f0e39b330d144f`. CI exact-head PR #163 lulus pada SHA `59f1dbfd59af0436fbe4b8a6fb92f57a3afa8c34` (71 langkah pemeriksaan substantif). Ini menguatkan G0 untuk lint/typecheck, regression suite, build, Docker runtime, PostgreSQL 17, dan P0 security pada tree yang di-merge. Pemeriksaan dead menu actions/placeholder routes dan hidden runtime exceptions tetap terbuka. CI bukan pengganti browser UAT, legacy upgrade rehearsal, backup/restore, staging, atau sign-off. Status keseluruhan tetap **NO-GO**.
+
 # GABAH — Production Readiness Gates
 
 **Owner:** PT Food Station Tjipinang Jaya (Perseroda)  
