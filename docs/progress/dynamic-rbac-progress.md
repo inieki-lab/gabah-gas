@@ -738,4 +738,8 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Contract creation now has a dedicated `canCreateContract` domain check. A role with only `contracts.update` can no longer pass the shared create/manage helper and create a contract through a domain-service call. The existing `canManageContracts` helper remains available for combined UI/manage capability checks.
 - Added regression assertions for the meeting-facility permission path, IT workstation capability overlay, and separation of contract create/update capability.
 
+
+- Header notification queues now resolve IT/GA/Humas/Superadmin from effective assigned `role_keys`/Superadmin metadata, so a generic Karyawan profile with an explicitly assigned operational role receives the corresponding queue indicator.
+- Director-priority room-reservation override UI now checks `room_reservations.override_priority` when PostgreSQL permission metadata is present. Legacy Sekdir/GA/Admin fallback is retained only for file-store development.
+
 **Validation boundary:** changes are committed on this branch; exact-head CI is required before merge. These are source-level fixes and regression assertions, not a claim of live browser UAT or production deployment.
