@@ -726,3 +726,16 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 **Data migration boundary:** legacy SC/PIBC codes are excluded from new owner choices because they are historical operational/location labels under the current organization decision. No asset owner, category, number, ticket, or user data is rewritten in this change. The canonical RPC owner master and category mapping must be established before RPC becomes a selectable creation domain.
 
 **Validation:** TypeScript, the asset-scope policy regression, production build, Docker image/runtime smoke, PostgreSQL fresh-database/persistence integration, and the full CI workflow are required on the exact PR head. This change is not a production approval and does not replace browser UAT for IT, GA, Superadmin, and custom multi-role accounts.
+
+### Dynamic domain authorization hardening — 2026-11-20
+
+**Branch:** `fix/dynamic-rbac-domain-authorization`  
+**Base:** `main` after PR #152 was merged.
+
+**Changes in this work batch:**
+- Meeting-facility CRUD no longer rejects a custom role after the API permission gate has already accepted `meeting_facilities.manage`. PostgreSQL authorization now consistently uses the effective permission; the GA/IT role-label fallback remains only for file-store development.
+- IT workstation read-only visibility is now a capability overlay, not a `user.role === 'GA'` branch. Any explicitly assigned role can grant `assets.read.it_workstations`; the overlay is limited to IT-owned HLT/HPC workstation categories and does not grant mutation authority.
+- Contract creation now has a dedicated `canCreateContract` domain check. A role with only `contracts.update` can no longer pass the shared create/manage helper and create a contract through a domain-service call. The existing `canManageContracts` helper remains available for combined UI/manage capability checks.
+- Added regression assertions for the meeting-facility permission path, IT workstation capability overlay, and separation of contract create/update capability.
+
+**Validation boundary:** changes are committed on this branch; exact-head CI is required before merge. These are source-level fixes and regression assertions, not a claim of live browser UAT or production deployment.
