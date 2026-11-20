@@ -192,6 +192,27 @@ async function main() {
       [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].every(a => a.id));
 
     const patchAsset = (assetId, body) => req(base, 'PATCH', `/api/assets/${assetId}`, { token: admin.token, body });
+    const protectedInfrastructure = await req(base, 'POST', '/api/assets', {
+      token: admin.token,
+      body: { category_name_or_code: 'HSV', name: 'LoanAuthz Protected Server', owner_division: 'IT', is_loanable: true },
+    });
+    const protectedInfrastructureId = protectedInfrastructure.json?.data?.id;
+    record('Infrastructure asset creation ignores forced loanable=true', '201 + is_loanable=false',
+      `HTTP ${protectedInfrastructure.status} + ${protectedInfrastructure.json?.data?.is_loanable}`,
+      protectedInfrastructure.status === 201 && protectedInfrastructure.json?.data?.is_loanable === false);
+    const infrastructureEnableAttempt = protectedInfrastructureId
+      ? await req(base, 'PATCH', `/api/assets/${protectedInfrastructureId}`, { token: admin.token, body: { is_loanable: true } })
+      : { status: 0 };
+    record('Infrastructure loanability cannot be enabled through asset PATCH API', '409',
+      `HTTP ${infrastructureEnableAttempt.status}`, infrastructureEnableAttempt.status === 409);
+    const infrastructureLoanAttempt = protectedInfrastructureId
+      ? await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
+          asset_id: protectedInfrastructureId, purpose: 'Must reject infrastructure loan',
+          start_date: isoDatePlus(1), due_date: isoDatePlus(7),
+        } })
+      : { status: 0 };
+    record('Infrastructure loan request is rejected even after direct asset creation', '409',
+      `HTTP ${infrastructureLoanAttempt.status}`, infrastructureLoanAttempt.status === 409);
     const setAssetStatus = (assetId, status) => patchAsset(assetId, { status });
     const invalidAssetStatus = await setAssetStatus(itAsset5.id, 'not-a-real-status');
     record('Asset update rejects unknown status values', '400', `HTTP ${invalidAssetStatus.status}`, invalidAssetStatus.status === 400);
