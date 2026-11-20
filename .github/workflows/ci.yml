@@ -202,6 +202,9 @@ jobs:
       - name: Contract renewal linkage integrity
         run: npm run test:contract-renewal-integrity
 
+      - name: Immutable ticket and personal-record ownership regression
+        run: npm run test:ticket-owner-id-only
+
       - name: Contract creation and update relation integrity
         run: npm run test:contract-creation-relations
 
