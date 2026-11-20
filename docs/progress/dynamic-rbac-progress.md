@@ -779,3 +779,23 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added UI permission regression assertions to the asset-scope policy verifier.
 
 **Validation boundary:** exact-head CI required. No backend permission catalogue, vendor/contract records, or database grants are changed by this UI-only batch.
+
+### Meeting-room UI capability alignment — 2026-11-20
+
+**PR:** #156 — merged to `main` as part of commit `974fe03`.
+
+- Meeting-room UI reads PostgreSQL `permission_keys` as the authority for room workflows; legacy role-name checks remain only as file-store compatibility.
+- Facility master/status controls use `meeting_facilities.manage`; approve, reject, check-in, check-out, cancel, and create actions each use their own capability.
+- Humas documentation and Sekdir priority override use `room_reservations.documentation.read` and `room_reservations.override_priority`.
+- Auditor additional-role membership is read-only precedence over all room write controls, including when another role or Superadmin metadata is present.
+- CI run #2661 passed all 75 checks, including typecheck, room capability UI regression, production build, Docker runtime smoke, PostgreSQL 17 integration, and security checks.
+
+### Dashboard capability alignment — 2026-11-20
+
+**PR:** #158 — merged to `main` as `472dc24`.
+
+- Superadmin dashboard identity uses stable `is_superadmin` / `role_keys.superadmin`; the legacy Admin GABAH fallback applies only without PostgreSQL permission metadata.
+- Humas and Sekretariat Direksi indicators derive from `room_reservations.documentation.read` and `room_reservations.override_priority`.
+- Auditor detection uses all effective role assignments and continues to override write shortcuts.
+- Dashboard ticket heading no longer infers IT queue access from the primary role name.
+- CI run #2657 passed all 75 checks, including employee profile capability normalization and dashboard owner-scope regression.
