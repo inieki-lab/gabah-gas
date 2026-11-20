@@ -756,3 +756,17 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added regression checks to the ME/PIBC ticket queue verifier for Auditor additional-role, IT/GA assignments, and SC/PIBC compatibility boundaries.
 
 **Previous integration:** PR #153 passed CI run #2644 (TypeScript, Dynamic RBAC/asset-scope regression, production build, Docker runtime smoke, PostgreSQL 17 integration, live HTTP security, room/ticket/org/master-data regressions) and was merged to `main` as `81cbb2d`.
+
+### Meeting-room UI capability alignment — 2026-11-20
+
+**Branch:** `fix/meeting-room-dynamic-ui-capabilities`
+
+- Meeting-room UI now reads PostgreSQL `permission_keys` as the authority for room workflows; legacy role-name checks are only fallbacks when permission metadata is absent (file-store development).
+- Facility master/status controls use `meeting_facilities.manage`.
+- Approval and rejection controls are independently gated by `room_reservations.approve` and `room_reservations.reject`.
+- Check-in, check-out, cancellation, and reservation creation controls use their corresponding permission keys.
+- Humas documentation and Sekdir priority-override indicators use `room_reservations.documentation.read` and `room_reservations.override_priority`.
+- Auditor detection now uses `GabahService.isAuditor`, including additional role assignments; the booking calendar and create actions respect the read-only restriction.
+- Added/updated room capability UI regression assertions. Server-side route/domain authorization remains authoritative and unchanged.
+
+**Validation boundary:** exact-head CI required for typecheck, room capability UI contract, production build, Docker runtime smoke, and PostgreSQL 17 integration. No reservation data or permission grants are modified.
