@@ -1,3 +1,27 @@
+# Pembaruan operasional — 20 November 2026 (setelah PR #172)
+
+## Verifikasi terbaru di main
+
+- **Main HEAD:** `12c6d6830039e4effbd18125effead97b91983ef`.
+- **PR #165 — validasi relasi kontrak:** MERGED; CI exact-head lulus **76/76**.
+- **PR #167 — integritas seed maintenance:** MERGED; CI exact-head lulus **77/77**. Jadwal maintenance kini menunjuk master aset/vendor yang tepat; kode owner legacy `SC` dipertahankan sebagai domain divisi, sedangkan RPC tetap lokasi.
+- **PR #169 — kepemilikan data berbasis immutable user ID:** MERGED; CI exact-head lulus **78/78**. Kepemilikan tiket, pinjaman, dan aset pribadi tidak lagi diperoleh dari kecocokan nama/email.
+- **PR #170 — ID akun collision-resistant:** MERGED; CI exact-head lulus **78/78**. Create tunggal dan bulk import memakai `crypto.randomUUID()`; regression HTTP menguji dua create paralel.
+- **PR #172 — session revocation pada perubahan dynamic RBAC:** MERGED; CI exact-head lulus **78/78**. Setiap perubahan assignment role mencabut sesi target; integrasi PostgreSQL membuktikan token lama ditolak (401), kemudian user dapat login ulang dan hak baru diterapkan.
+- Smoke test direktori user memakai port ephemeral untuk mengurangi benturan port antar-run CI. Pengujian PostgreSQL menguji ulang alur autentikasi setelah role assignment berubah.
+- **PR #164** memperbarui catatan readiness sebelumnya. Dokumen ini menyegarkan status tersebut setelah perubahan #165–#172.
+
+## Fokus kerja berikutnya
+
+1. Audit sisa PR/branch lama; port hanya perubahan unik yang sudah dibandingkan dengan main.
+2. Lengkapi browser UAT per persona dan lokasi: Karyawan, IT, GA, ME/PIBC, Humas, Sekdir, Auditor, dan Superadmin.
+3. Verifikasi user-role assignment tetap benar setelah restart dan upgrade dari snapshot legacy.
+4. Uji alur lengkap aset, pinjaman, tiket, maintenance, reservasi, kontrak/vendor, lisensi, laporan, dan notifikasi dengan akun peran nyata.
+5. Rehearsal backup/restore PostgreSQL **bersama** volume uploads, lalu staging deploy dan rollback.
+6. Tetap **NO-GO untuk produksi** sampai bukti UAT, backup/restore, staging, dan sign-off pemilik proses lengkap. CI hijau bukan bukti deployment atau browser UAT.
+
+---
+
 # Pembaruan operasional — 20 November 2026
 
 ## Verifikasi terbaru
