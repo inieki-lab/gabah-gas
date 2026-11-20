@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Asset, Loan, TicketCategory, TicketPriority, UserProfile, Contract } from '../../types';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
+import { GabahService } from '../../services/gabahService';
 
 interface CreateTicketModalProps {
   isOpen: boolean;
@@ -46,8 +47,13 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
 
-  const isAuditor = currentUser?.role === 'Auditor';
-  const canRequestMe = currentUser.role === 'Admin GABAH' || currentUser.permission_keys?.includes('tickets.create.me') || currentUser.permission_keys?.includes('*');
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const canRequestMe = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    ? currentUser.permission_keys!.includes('tickets.create.me') || currentUser.permission_keys!.includes('*')
+    : false));
 
   // Freshservice-inspired Quick Service Catalog Templates
   const serviceCatalogTemplates = [
