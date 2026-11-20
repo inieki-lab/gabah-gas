@@ -676,6 +676,8 @@ async function startServer() {
           primary_role_id: primaryRoleId,
         };
       });
+      // A role-set change is a material privilege change: invalidate every existing session.
+      revokeUserSessions(userId);
       await refreshRbacPolicy();
      GabahDomainService.recordAudit(
         'RBAC_USER_ROLES_UPDATED',
