@@ -1957,8 +1957,9 @@ export class GabahDomainService {
   }
 
   static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
-      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menambah fasilitas.');
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', 'GA') &&
+        !(isPostgresPersistenceActive() ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage') : actor.role === 'IT')) {
+      throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
     const newFac: ServerMeetingFacility = {
@@ -1977,8 +1978,9 @@ export class GabahDomainService {
   }
 
   static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
-      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang mengubah fasilitas.');
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', 'GA') &&
+        !(isPostgresPersistenceActive() ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage') : actor.role === 'IT')) {
+      throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
     if (!item) throw new Error('Fasilitas tidak ditemukan.');
@@ -1992,8 +1994,9 @@ export class GabahDomainService {
   }
 
   static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
-      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menghapus fasilitas.');
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', 'GA') &&
+        !(isPostgresPersistenceActive() ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage') : actor.role === 'IT')) {
+      throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
     const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);
     if (idx === -1) throw new Error('Fasilitas tidak ditemukan.');
