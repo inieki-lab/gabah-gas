@@ -54,7 +54,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     return source.filter(a => a.is_loanable === true && a.status === 'available');
   }, [loanableAssets, assets]);
 
-  const isAuditor = currentUser?.role === 'Auditor';
+  const isAuditor = GabahService.isAuditor(currentUser);
 
   // Selected asset IDs (supports multiple selections, e.g. 1 Laptop IT + 1 Mobil GA)
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(() => {
