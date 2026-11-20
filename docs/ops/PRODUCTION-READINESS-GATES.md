@@ -84,6 +84,10 @@ Run docs/testing/UAT.md in a browser against PostgreSQL using disposable test da
 - [ ] No test credentials, demo login shortcuts, file-store fallback, or debug endpoints are enabled in production.
 - [ ] Business owner signs off UAT and records GO/NO-GO.
 
+## Additional verified security evidence
+
+- **PR #174 / commit `51928b5c1e371d7c2e02ca866c02f821be74f519`:** Infrastructure and software/license categories are non-loanable across asset creation, direct PATCH, bulk update, and loan request. Exact-head CI run #44689553042 passed 78/78 checks. This is CI evidence only; it does not replace manual browser UAT or production restore/deployment gates.
+
 ## Evidence record
 
 | Gate | Commit SHA | Result | Evidence / run URL | Reviewer | Date |
