@@ -52,7 +52,16 @@ assert.match(bulk, /roleRaw === 'Supply Chain' \? 'OFF-RPC' : roleRaw === 'PIBC'
 assert.match(bulk, /requestedRole === 'Supply Chain' \|\| requestedRole === 'PIBC' \? 'Karyawan'/);
 assert.match(bulk, /lokasi kantor; unit organisasi tetap independen/);
 
-// User administration UI and CSV template expose separate employee attributes.
+// User creation uses a neutral employee profile; operational permissions are
+// assigned explicitly after account creation through Dynamic RBAC.
+const createFormStart = modal.indexOf('{/* Add User Form Modal */}');
+const createFormEnd = modal.indexOf('{/* Edit User Modal */}', createFormStart);
+assert.ok(createFormStart >= 0 && createFormEnd > createFormStart, 'User creation form boundaries exist');
+const createForm = modal.slice(createFormStart, createFormEnd);
+assert.match(createForm, /Profil dasar akun/);
+assert.match(createForm, /Hak akses pekerjaan tidak ditentukan dari jabatan, divisi, atau lokasi/);
+assert.doesNotMatch(createForm, /PRIMARY_PROFILE_ROLES\.map/);
+assert.match(modal, /await refreshUserAssignments\(\);\s*setRoleAssignmentDraft\(\[\]\);\s*setRoleAssignmentTarget\(created\)/);
 assert.match(modal, /PRIMARY_PROFILE_ROLES\.map/);
 assert.match(modal, /'Supply Chain', 'PIBC'/);
 assert.match(modal, /job_level_code/);
