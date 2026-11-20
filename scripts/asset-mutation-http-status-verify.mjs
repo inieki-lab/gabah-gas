@@ -9,7 +9,7 @@ for (const [method, permission] of [
   ['moveAsset', 'assets.move'],
 ]) {
   const start = services.indexOf(`static ${method}(`);
-  const end = services.indexOf('\\n  /**', start + 10);
+  const end = services.indexOf('\n  /**', start + 10);
   assert.ok(start >= 0 && end > start, `${method} must exist`);
   const body = services.slice(start, end);
   assert.ok(body.includes(`canMutateAssetOwner(actor, asset.owner_division, '${permission}')`));
