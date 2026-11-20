@@ -781,7 +781,7 @@ async function startServer() {
       const { hash, salt } = hashPassword(generatedTempPassword);
 
       const newUser: ServerUser = {
-        id: `USR-${Date.now().toString().slice(-6)}`,
+        id: `USR-${crypto.randomUUID()}`,
         name: name.trim(),
         email: email.trim().toLowerCase(),
         role: primaryRole,
@@ -939,7 +939,7 @@ async function startServer() {
           const generatedTempPassword = crypto.randomBytes(12).toString('base64url');
           const { hash, salt } = hashPassword(generatedTempPassword);
           const newUser: ServerUser = {
-            id: `USR-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`,
+            id: `USR-${crypto.randomUUID()}`,
             name,
             email,
             role: role as ServerUser['role'],
