@@ -98,10 +98,27 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
   const canApprove = (loan: Loan) => {
     if (isAuditorUser) return false;
+    if (typeof loan.allowed_actions?.approve === 'boolean') return loan.allowed_actions.approve;
     if (isSuperAdminUser) return true;
     return Array.isArray(currentUser?.permission_keys)
       ? hasPermission('loans.approve')
       : GabahService.canApproveLoan(currentUser, loan);
+  };
+  const canReject = (loan: Loan) => {
+    if (isAuditorUser) return false;
+    if (typeof loan.allowed_actions?.reject === 'boolean') return loan.allowed_actions.reject;
+    return canRejectLoan;
+  };
+  const canHandover = (loan: Loan) => {
+    if (isAuditorUser) return false;
+    if (typeof loan.allowed_actions?.handover === 'boolean') return loan.allowed_actions.handover;
+    return canHandoverLoan;
+  };
+  const userCanApproveFallback = (loan: Loan) => canApprove(loan);
+  const canReturn = (loan: Loan) => {
+    if (isAuditorUser) return false;
+    if (typeof loan.allowed_actions?.return === 'boolean') return loan.allowed_actions.return;
+    return canReturnLoan && (loan.borrower_id === currentUserId || isSuperAdminUser || userCanApproveFallback(loan));
   };
 
   return (
@@ -298,7 +315,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                       Setujui Reservasi
                     </button>
                   )}
-                  {(loan.status === 'pending_approval' || loan.status === 'pending') && canRejectLoan && (
+                  {(loan.status === 'pending_approval' || loan.status === 'pending') && canReject(loan) && (
                     <button
                       onClick={() => setRejectingLoanId(loan.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
@@ -309,7 +326,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Status: Approved -> Handover to user */}
-                  {loan.status === 'approved' && canHandoverLoan && (
+                  {loan.status === 'approved' && canHandover(loan) && (
                     <button
                       onClick={() => onHandoverLoan(loan.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
@@ -320,8 +337,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Status: Active -> Return inspection */}
-                  {canReturnLoan && (['borrowed', 'active', 'overdue'].includes(loan.status)) &&
-                    (userCanApprove || loan.borrower_id === currentUser.id || isExactIdentityNameMatch(loan.borrower_name, currentUser.name)) && (
+                  {canReturn(loan) && (['borrowed', 'active', 'overdue'].includes(loan.status)) && (
                     <button
                       onClick={() => setReturningLoan(loan)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
