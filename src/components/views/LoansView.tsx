@@ -300,7 +300,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <div className="text-xs text-slate-500 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5 text-slate-400" />
-                  {isIT ? 'Otoritas persetujuan: Divisi IT (Laptop/Hardware)' : 'Otoritas persetujuan: Divisi General Affair (Kendaraan/Fasilitas)'}
+                  {'Otoritas persetujuan: Owner aset ' + (loan.owner_division || 'belum ditentukan')}
                 </div>
 
                 <div className="flex items-center gap-2">
