@@ -23,9 +23,10 @@ assert.match(app, /currentUser\.is_superadmin \? \['\*'\] : currentUser\.permiss
 
 // Loan actions must use the same Superadmin precedence, while server RBAC remains authoritative.
 assert.match(loans, /const isSuperAdminUser = isSuperAdmin\(currentUser\)/);
-assert.match(loans, /if \(isSuperAdminUser\) return true/);
 assert.match(loans, /const isEmployee = !isSuperAdminUser/);
-assert.match(loans, /if \(isSuperAdminUser\) return true/);
-assert.match(loans, /const canApprove = \(loan: Loan\) => \{[\\s\\S]*?if \(isSuperAdminUser\) return true/);
+const canApproveStart = loans.indexOf('const canApprove = (loan: Loan) => {');
+const canApproveEnd = loans.indexOf('\\n  };', canApproveStart);
+assert.ok(canApproveStart >= 0 && canApproveEnd > canApproveStart, 'canApprove handler must exist');
+assert.match(loans.slice(canApproveStart, canApproveEnd), /if \\(isSuperAdminUser\\) return true;/);
 
 console.log('Superadmin persona regression: PASS');
