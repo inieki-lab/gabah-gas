@@ -8,7 +8,7 @@ import { createServer as createViteServer } from 'vite';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole } from './server/services';
+import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole, isNonLoanableInfrastructureAsset } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -2663,6 +2663,10 @@ async function startServer() {
           }
 
           // UPDATE path — allowlist eksplisit, asset_number & owner_division server-owned
+          if (isLoanable === true && isNonLoanableInfrastructureAsset(existing as any)) {
+            errors.push(`Baris ${rowNo}: ${existing.asset_number} termasuk kategori infrastruktur/lisensi dan tidak dapat dijadikan aset pinjaman.`);
+            continue;
+          }
           for (const key of UPDATE_FIELDS) {
             if (key === 'condition') {
               if (condition) (existing as any).condition = condition;
@@ -2791,6 +2795,9 @@ async function startServer() {
     }
     if (req.body.is_loanable !== undefined && typeof req.body.is_loanable !== 'boolean') {
       return res.status(400).json({ success: false, message: 'is_loanable harus berupa boolean.' });
+    }
+    if (req.body.is_loanable === true && isNonLoanableInfrastructureAsset(asset as any)) {
+      return res.status(409).json({ success: false, message: 'Kategori infrastruktur/server dan lisensi tidak boleh dikonfigurasikan sebagai aset pinjaman.' });
     }
 
     // Loan workflow owns status and loanability while a reservation is approved

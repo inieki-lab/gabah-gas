@@ -9,6 +9,28 @@ import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
 
+/**
+ * Infrastructure/software categories are never eligible for general loans.
+ * Resolve policy from the authoritative category master, not client-supplied
+ * fields. This also protects custom/renamed categories by checking their
+ * canonical metadata and descriptive name.
+ */
+export function isNonLoanableInfrastructureAsset(asset: Partial<ServerAsset> & Record<string, any>): boolean {
+  const code = String(asset.category_code || asset.asset_code || '').trim().toUpperCase();
+  const catalog = Array.isArray(db.categories) && db.categories.length ? db.categories : CANONICAL_TAXONOMY;
+  const category = catalog.find(item => String(item.code || '').trim().toUpperCase() === code);
+  const mainType = String(category?.main_type || asset.main_type || '').trim().toUpperCase();
+  const categoryType = String(category?.category_type || asset.category_type || '').trim().toLowerCase();
+  const label = [category?.name, category?.description, asset.name, asset.category_name]
+    .filter(Boolean).join(' ').toLowerCase();
+  const protectedCodes = new Set(['HSV', 'HFW', 'HSTG', 'HNET', 'HUPS', 'HRCK', 'SLIC']);
+  const protectedDescription = /\b(server|firewall|nas|san|storage|switch|router|access[ -]?point|network|jaringan|ups|rack|lisensi|license|software|saas)\b/i.test(label);
+  return mainType === 'IT-S'
+    || categoryType === 'license'
+    || protectedCodes.has(code)
+    || protectedDescription;
+}
+
 /** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
 const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
 
@@ -451,9 +473,13 @@ export class GabahDomainService {
       assetLocationId = resolveAssetLocationIdByText(payload.location);
     }
 
-    // 4. Resolve assignment if provided
+    // 4. Resolve assignment if provided. Infrastructure/software categories
+    // are forced non-loanable even when an API caller submits is_loanable=true.
+    const policyAsset = { category_code: taxonomy.code, category_type: taxonomy.category_type, name: payload.name } as any;
+    const effectiveLoanable = !isNonLoanableInfrastructureAsset(policyAsset)
+      && (payload.is_loanable ?? taxonomy.is_loanable_by_default);
     let assignedObj = null;
-    let initialStatus: ServerAsset['status'] = payload.is_loanable ? 'available' : 'active';
+    let initialStatus: ServerAsset['status'] = effectiveLoanable ? 'available' : 'active';
 
     if (assignedUser) {
       assignedObj = {
@@ -486,7 +512,7 @@ export class GabahDomainService {
       status: initialStatus,
       condition: payload.condition || 'new',
       location: payload.location?.trim() || 'Head Office - Gudang Utama',
-      is_loanable: payload.is_loanable ?? taxonomy.is_loanable_by_default,
+      is_loanable: effectiveLoanable,
       assigned_to: assignedObj,
       license_detail: payload.license_detail,
       notes: payload.notes?.trim(),
@@ -735,10 +761,7 @@ export class GabahDomainService {
     if (!assetId) throw Object.assign(new Error('ID aset wajib diisi.'), { statusCode: 400 });
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw Object.assign(new Error('Aset tidak ditemukan.'), { statusCode: 404 });
-    const categoryCode = String((asset as any).category_code || (asset as any).asset_code || '').trim().toUpperCase();
-    const mainType = String((asset as any).main_type || '').trim().toUpperCase();
-    const nonLoanableInfrastructureCodes = new Set(['HSV', 'HFW', 'HSTG', 'HNET', 'HUPS', 'HRCK', 'SLIC']);
-    if (mainType === 'IT-S' || String((asset as any).category_type || '').toLowerCase() === 'license' || nonLoanableInfrastructureCodes.has(categoryCode)) {
+    if (isNonLoanableInfrastructureAsset(asset as any)) {
       throw Object.assign(new Error('Perangkat infrastruktur/server dan lisensi tidak boleh diajukan melalui peminjaman umum.'), { statusCode: 409 });
     }
     if (!asset.is_loanable) throw Object.assign(new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).'), { statusCode: 409 });
