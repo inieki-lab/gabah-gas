@@ -13,8 +13,8 @@ assert.match(persistence, /INSERT INTO gabah_user_roles \(user_id, role_id, is_p
 assert.match(persistence, /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/);
 assert.match(persistence, /user\.office_location_id = 'OFF-RPC'/);
 assert.match(persistence, /user\.office_location_id = 'OFF-PIBC'/);
-assert.match(dashboard, /currentRoleKeys\.includes\('humas'\)/);
-assert.match(dashboard, /currentRoleKeys\.includes\('sekretaris_direksi'\)/);
+assert.match(dashboard, /hasEffectivePermission\('room_reservations\.documentation\.read', \['Humas'\]\)/);
+assert.match(dashboard, /hasEffectivePermission\('room_reservations\.override_priority', \['Sekretaris Direksi'\]\)/);
 assert.match(header, /currentUser\.role_keys\?\.includes\('humas'\)/);
 assert.match(dashboard, /const isEmployee = !isAuditor && !hasOperationalManagementAccess/);
 assert.match(dashboard, /roleDescriptions\[currentUser\.role\] \|\| roleDescriptions\.Karyawan/);
