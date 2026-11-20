@@ -106,6 +106,25 @@ async function main() {
     record('Admin login (env-provisioned password)', 'token issued', adminToken ? 'token issued' : 'none', Boolean(adminToken));
     if (!adminToken) throw new Error('No admin token — cannot continue.');
 
+    // ---------- Concurrent single-user creation must not collide on IDs ----------
+    const idSuffix = crypto.randomBytes(4).toString('hex');
+    const [createdA, createdB] = await Promise.all([
+      req(base, 'POST', '/api/users', { token: adminToken, body: {
+        name: 'ID Collision A', email: `id.collision.a.${idSuffix}@foodstation.co.id`, role: 'Karyawan',
+      } }),
+      req(base, 'POST', '/api/users', { token: adminToken, body: {
+        name: 'ID Collision B', email: `id.collision.b.${idSuffix}@foodstation.co.id`, role: 'Karyawan',
+      } }),
+    ]);
+    const createdAId = createdA.json?.data?.id;
+    const createdBId = createdB.json?.data?.id;
+    record('Concurrent single-user creation succeeds', 'HTTP 201 for both', `HTTP ${createdA.status} / HTTP ${createdB.status}`,
+      createdA.status === 201 && createdB.status === 201);
+    record('Concurrent user creation generates distinct stable IDs', 'two distinct USR UUIDs',
+      `${createdAId || 'missing'} / ${createdBId || 'missing'}`,
+      typeof createdAId === 'string' && typeof createdBId === 'string' && createdAId !== createdBId
+        && /^USR-[0-9a-f-]{36}$/i.test(createdAId) && /^USR-[0-9a-f-]{36}$/i.test(createdBId));
+
     // NOTE: /api/auth/switch-role ROTATES the session (old token destroyed).
     // The non-admin guard test therefore runs LAST, after all admin-token tests.
 
