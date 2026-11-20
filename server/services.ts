@@ -1721,7 +1721,7 @@ export class GabahDomainService {
     return reservation;
   }
 
-  static async approveRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async approveRoomReservation(reservationId: Promise<ServerRoomReservation>{
     if (!hasRoomPermission(actor, 'room_reservations.approve', 'GA')) {
       throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.approve.'), { statusCode: 403 });
     }
@@ -1803,7 +1803,7 @@ export class GabahDomainService {
     return reservation;
   }
 
-  static async rejectRoomReservation(reservationId: string, reason: string, actor: ServerUser): ServerRoomReservation {
+  static async rejectRoomReservation(reservationId: Promise<ServerRoomReservation>{
     if (!hasRoomPermission(actor, 'room_reservations.reject', 'GA')) {
       throw Object.assign(new Error('Akses ditolak: tidak memiliki permission room_reservations.reject.'), { statusCode: 403 });
     }
@@ -1833,7 +1833,7 @@ export class GabahDomainService {
     return reservation;
   }
 
-  static async checkinRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async checkinRoomReservation(reservationId: Promise<ServerRoomReservation>{
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
@@ -1858,7 +1858,7 @@ export class GabahDomainService {
     return reservation;
   }
 
-  static async checkoutRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async checkoutRoomReservation(reservationId: Promise<ServerRoomReservation>{
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
@@ -1883,7 +1883,7 @@ export class GabahDomainService {
     return reservation;
   }
 
-  static async cancelRoomReservation(reservationId: string, actor: ServerUser): ServerRoomReservation {
+  static async cancelRoomReservation(reservationId: Promise<ServerRoomReservation>{
     const reservation = (db.roomReservations || []).find(r => r.id === reservationId);
     if (!reservation) throw new Error('Reservasi tidak ditemukan.');
 
@@ -1906,7 +1906,7 @@ export class GabahDomainService {
     return reservation;
   }
 
-  static async updateMeetingRoom(roomId: string, updates: Partial<ServerMeetingRoom>, actor: ServerUser): Promise<ServerMeetingRoom> {
+  static async updateMeetingRoom(roomId: Promise<ServerMeetingRoom>{
     if (!hasRoomPermission(actor, 'meeting_rooms.update', 'GA')) {
       throw Object.assign(new Error('Akses ditolak: tidak memiliki permission meeting_rooms.update.'), { statusCode: 403 });
     }
@@ -1956,7 +1956,7 @@ export class GabahDomainService {
     return newItem;
   }
 
-  static async updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
+  static async updateMeetingType(id: Promise<ServerMeetingType>{
     if (!isSuperadminActor(actor)) {
       throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang mengubah tipe rapat.');
     }
@@ -2010,7 +2010,7 @@ export class GabahDomainService {
     return newFac;
   }
 
-  static async updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
+  static async updateMeetingFacility(id: Promise<ServerMeetingFacility>{
     if (!hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])) {
       throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
@@ -2025,7 +2025,7 @@ export class GabahDomainService {
     return item;
   }
 
-  static async deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
+  static async deleteMeetingFacility(id: Promise<{ success: boolean }>{
     if (!hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])) {
       throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
