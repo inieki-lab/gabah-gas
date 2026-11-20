@@ -59,13 +59,18 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     'Dokumen BAST serah terima perangkat pengganti telah diterbitkan secara resmi melalui GABAH.',
   ];
 
-  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
-  const isIT = currentUser?.role === 'IT';
-  const isGA = currentUser?.role === 'GA';
-  const isSC = currentUser?.role === 'Supply Chain';
-  const isPIBC = currentUser?.role === 'PIBC';
-  const isMEOperator = Array.isArray(currentUser?.role_keys) && currentUser.role_keys.includes('admin_tiket_me');
-  const isAuditor = currentUser?.role === 'Auditor';
+  const isSuperAdmin = currentUser?.is_superadmin === true || currentUser?.role_keys?.includes('superadmin') === true;
+  const hasAssignedRole = (key: string) => currentUser?.role_keys?.includes(key) === true;
+  const isIT = hasAssignedRole('it') || (!Array.isArray(currentUser?.permission_keys) && currentUser?.role === 'IT');
+  const isGA = hasAssignedRole('ga') || (!Array.isArray(currentUser?.permission_keys) && currentUser?.role === 'GA');
+  // SC/PIBC are historical location labels, never operational roles in PostgreSQL.
+  const isSC = !Array.isArray(currentUser?.permission_keys) && currentUser?.role === 'Supply Chain';
+  const isPIBC = !Array.isArray(currentUser?.permission_keys) && currentUser?.role === 'PIBC';
+  const isMEOperator = hasAssignedRole('admin_tiket_me')
+    || (Array.isArray(currentUser?.permission_keys) && currentUser.permission_keys.some(key =>
+      ['tickets.assign', 'tickets.update', 'tickets.close'].includes(key)
+    ) && baseTickets.some(ticket => ticket.category === 'ME'));
+  const isAuditor = GabahService.isAuditor(currentUser);
   // Self-service roles see their own submissions; operating divisions see the
   // tickets already authorized for their division by GabahService.
   const safeTickets = Array.isArray(tickets) ? tickets : [];
@@ -76,7 +81,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     t.reporter_id !== currentUser?.id && t.assigned_agent_id !== currentUser?.id
   );
   const isSelfTicketsOnly = !isMEOperator && !hasScopedQueueTickets
-    && ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
+    && !GabahService.canManageTickets(currentUser);
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
   const defaultCategories = isSelfTicketsOnly
