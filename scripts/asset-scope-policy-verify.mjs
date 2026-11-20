@@ -12,6 +12,9 @@ const persistence = read('server/persistence.ts');
 const dbSeed = read('server/db.ts');
 const contracts = read('server/contracts.ts');
 const vendorUi = read('src/components/views/VendorsView.tsx');
+const licenseUi = read('src/components/views/LicensesView.tsx');
+const contractUi = read('src/components/views/ContractsView.tsx');
+const contractModalUi = read('src/components/modals/CreateContractModal.tsx');
 const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
@@ -127,6 +130,10 @@ const checks = [
     });
   })()],
   ['Meeting facility legacy GA/IT access is confined to the file-store fallback helper', /function hasRoomPermission\(actor: ServerUser, permissionKey: string, legacyRole\?: string \| string\[\]\): boolean[\s\S]*if \(isPostgresPersistenceActive\(\)\) return hasRbacPermission\(String\(actor.id\), permissionKey\);[\s\S]*Array\.isArray\(legacyRole\)/.test(services)],
+  ['License creation UI follows assets.create and Auditor read-only precedence', /const canCreateLicense = !isAuditor[\\s\\S]*assets\\.create/.test(licenseUi) && /GabahService\\.isAuditor\\(currentUser\\)/.test(licenseUi) && !/currentUser\\.role === 'Admin GABAH' \\|\\| currentUser\\.role === 'IT'/.test(licenseUi)],
+  ['Vendor create/update UI requires explicit vendor permissions when PostgreSQL metadata exists', /const hasPermission = \\(permission: string\\)/.test(vendorUi) && /vendors\\.create/.test(vendorUi) && /vendors\\.update/.test(vendorUi) && !/currentUser\\.role === 'Admin GABAH'\\s*\\|\\|\\s*currentUser\\.permission_keys/.test(vendorUi)],
+  ['Contract view treats Superadmin metadata as authority and uses effective Auditor membership', /const isAdmin = currentUser\\.is_superadmin === true \\|\\| currentUser\\.role_keys\\?\\.includes\\('superadmin'\\) === true/.test(contractUi) && /GabahService\\.isAuditor\\(currentUser\\)/.test(contractUi)],
+  ['Contract owner-selector privilege is Superadmin-only with legacy fallback only when permission metadata is absent', /const hasPermissionMetadata = Array\\.isArray\\(currentUser\\.permission_keys\\)/.test(contractModalUi) && /!hasPermissionMetadata && currentUser\\.role === 'Admin GABAH'/.test(contractModalUi)],
   ['Contract creation requires contracts.create specifically; update-only permission cannot create contracts', /export function canCreateContract\(user: ServerUser\): boolean[\s\S]*hasRbacPermission\(String\(user.id\), 'contracts.create'\)/.test(contracts) && /createContract\([\s\S]*if \(!canCreateContract\(actor\)\)/.test(contracts)],
 ];
 
