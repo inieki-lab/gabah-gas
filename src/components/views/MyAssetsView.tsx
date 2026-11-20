@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { Asset, Loan, UserProfile } from '../../types';
 import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
-import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface MyAssetsViewProps {
   assets: Asset[];
@@ -54,17 +53,14 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
     const currentEmail = currentUser.email?.toLowerCase();
 
     return (
-      assignedId === currentUser.id ||
-      (assignedEmail && currentEmail && assignedEmail === currentEmail) ||
-      isExactIdentityNameMatch(asset.assigned_to.name, currentUser.name)
+      assignedId === currentUser.id
     );
   });
 
   // Find active loans currently held by this user
   const myCurrentLoans = loans.filter((loan) => {
     const isBorrower =
-      loan.borrower_id === currentUser.id ||
-      isExactIdentityNameMatch(loan.borrower_name, currentUser.name);
+      loan.borrower_id === currentUser.id;
     const isActive = ['approved', 'active', 'overdue'].includes(loan.status);
     return isBorrower && isActive;
   });
