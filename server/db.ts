@@ -1436,7 +1436,7 @@ export function seedInitialData() {
       technician_name: 'Tim Pemeliharaan Internal Gudang',
       estimated_cost: 6500000,
       notes: 'Pemeriksaan berkala forklift operasional gudang, termasuk sistem penggerak, rem, hidrolik, baterai, dan mast.',
-      checklist: ['Pemeriksaan kondisi baterai dan konektor', 'Pemeriksaan sistem rem dan kemudi', 'Pemeriksaan kebocoran dan level oli hidrolik', 'Pemeriksaan rantai, mast, garpu, dan roda']
+      checklist: ['Pemeriksaan kondisi baterai dan konektor', 'Pemeriksaan sistem rem dan kemudi', 'Pemeriksaan kebocoran dan level oli hidrolik', 'Pemeriksaan rantai, mast, garpu, dan roda'],
       created_at: '2026-08-15T11:00:00Z',
     },
   ];
