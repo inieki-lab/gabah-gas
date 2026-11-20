@@ -117,8 +117,6 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const reporterAssignedAssets = safeAssets.filter((asset) => {
     if (!asset.assigned_to) return false;
     const assignedId = asset.assigned_to.id;
-    const assignedEmail = asset.assigned_to.email?.toLowerCase();
-    const currentEmail = currentUser?.email?.toLowerCase();
 
     return (
       (assignedId && assignedId === currentUser?.id)
