@@ -16,6 +16,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { KnowledgeArticle, UserProfile } from '../../types';
+import { GabahService } from '../../services/gabahService';
 
 interface KnowledgeBaseViewProps {
   articles: KnowledgeArticle[];
@@ -49,13 +50,17 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
   const [votedArticles, setVotedArticles] = useState<Record<string, number>>({});
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  // Dynamic RBAC is authoritative when permission_keys are present; legacy role fallback is file-store only.
-  const canCreate = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('knowledge.create')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const canUpdate = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('knowledge.update')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  // Dynamic RBAC is authoritative when permission_keys are present; Auditor is always read-only.
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const hasKnowledgePermission = (permission: string) => !isAuditor && (isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
+      : ['IT', 'GA'].includes(currentUser.role)));
+  const canCreate = hasKnowledgePermission('knowledge.create');
+  const canUpdate = hasKnowledgePermission('knowledge.update');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
