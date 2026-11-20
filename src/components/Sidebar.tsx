@@ -78,14 +78,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
-  const isHumas = activeRole === 'Humas';
-  const isSekdir = activeRole === 'Sekretaris Direksi';
-  // In PostgreSQL/Dynamic RBAC mode, the effective superadmin capability is authoritative.
-  // Keep the role-label fallback only for legacy file-store sessions without permission keys.
-  const isSuperAdmin = currentUserPermissions !== undefined
-    ? currentUserIsSuperAdmin || currentUserPermissions.includes('*')
-    : currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
+  // Resolve the administrative capability before deriving any role-specific
+  // presentation. A Superadmin account may also carry an operational role.
+  const isSuperAdmin = currentUserIsSuperAdmin || currentUserPermissions?.includes('*') === true
+    || (currentUserPermissions === undefined && activeRole === 'Admin GABAH');
+  const isStaff = !isSuperAdmin && activeRole
+    ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole)
+    : false;
+  const isHumas = !isSuperAdmin && activeRole === 'Humas';
+  const isSekdir = !isSuperAdmin && activeRole === 'Sekretaris Direksi';
 
   const sections: NavSectionConfig[] = [
     {
@@ -211,7 +212,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const visibleSections = sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => activeRole ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions) : false),
+      items: section.items.filter(item => isSuperAdmin || (activeRole ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions) : false)),
     }))
     .filter(section => section.items.length > 0);
 
