@@ -115,9 +115,15 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   // Sekretariat Direksi is an additional capability, not a primary profile role.
   const isSekdir = currentUser.role === 'Sekretaris Direksi'
     || currentUser.role_keys?.includes('sekretaris_direksi') === true;
-  const canOverride = useMemo(() => (
-    isSekdir || currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
-  ), [currentUser.role, isSekdir]);
+  const canOverride = useMemo(() => {
+    if (Array.isArray(currentUser.permission_keys)) {
+      return currentUser.is_superadmin === true
+        || currentUser.permission_keys.includes('*')
+        || currentUser.permission_keys.includes('room_reservations.override_priority');
+    }
+    // File-store compatibility only; PostgreSQL uses explicit capability grants.
+    return isSekdir || currentUser.role === 'GA' || currentUser.role === 'Admin GABAH';
+  }, [currentUser.permission_keys, currentUser.is_superadmin, currentUser.role, isSekdir]);
 
   // Load master types and facilities
   useEffect(() => {

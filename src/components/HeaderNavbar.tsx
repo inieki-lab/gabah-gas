@@ -58,12 +58,23 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
 
   const safeLoans = Array.isArray(pendingLoans) ? pendingLoans : [];
   const safeTickets = Array.isArray(urgentTickets) ? urgentTickets : [];
-  const isHumas = currentUser.role_keys?.includes('humas') === true || currentUser.role === 'Humas';
-  const isIT = currentUser.role === 'IT' || currentUser.role === 'Admin GABAH';
-  const isGA = currentUser.role === 'GA' || currentUser.role === 'Admin GABAH';
+  const isSuperadmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true;
+  const hasEffectivePermission = (permission: string) => isSuperadmin
+    || currentUser.permission_keys?.includes('*') === true
+    || currentUser.permission_keys?.includes(permission) === true;
+  const hasLegacyRole = (...roles: string[]) => roles.includes(currentUser.role);
+  const isHumas = Array.isArray(currentUser.permission_keys)
+    ? hasEffectivePermission('room_reservations.documentation.read')
+    : currentUser.role_keys?.includes('humas') === true || hasLegacyRole('Humas');
+  const isIT = Array.isArray(currentUser.permission_keys)
+    ? hasEffectivePermission('room_reservations.it_facilities.read')
+    : hasLegacyRole('IT', 'Admin GABAH');
+  const isGA = Array.isArray(currentUser.permission_keys)
+    ? hasEffectivePermission('room_reservations.approve') || hasEffectivePermission('room_reservations.reject')
+    : hasLegacyRole('GA', 'Admin GABAH');
 
-  // 1. Photo & documentation request notifications - strictly for Humas (and Admin GABAH)
-  const docReservations = (isHumas || currentUser.role === 'Admin GABAH')
+  // 1. Photo & documentation request notifications - strictly for Humas capability (and Superadmin)
+  const docReservations = (isHumas || isSuperadmin)
     ? (roomReservations || []).filter(
         r => r.documentation_requested && !['cancelled', 'rejected'].includes(r.status)
       )
@@ -87,13 +98,12 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
       )
     : [];
 
-  const totalNotifications = 
-    safeLoans.length + 
-    safeTickets.length + 
-    (isHumas ? docReservations.length : 0) +
-    (currentUser.role === 'IT' ? itFacilityReservations.length : 0) +
-    (currentUser.role === 'GA' ? gaReservations.length : 0) +
-    (currentUser.role === 'Admin GABAH' ? (docReservations.length + itFacilityReservations.length + gaReservations.length) : 0);
+  const totalNotifications =
+    safeLoans.length +
+    safeTickets.length +
+    (isHumas || isSuperadmin ? docReservations.length : 0) +
+    (isIT ? itFacilityReservations.length : 0) +
+    (isGA ? gaReservations.length : 0);
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#e1ebe4] text-slate-800 shadow-[0_1px_2px_rgba(20,60,35,0.04)]">
@@ -259,7 +269,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   })}
 
                   {/* Photo / Documentation Requests - Strictly for Humas employees only (or Admin GABAH) */}
-                  {(isHumas || currentUser.role === 'Admin GABAH') && docReservations.map(res => (
+                  {(isHumas || isSuperadmin) && docReservations.map(res => (
                     <div 
                       key={`doc-${res.id}`}
                       onClick={() => {

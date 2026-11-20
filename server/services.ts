@@ -19,10 +19,10 @@ export function isLegacyScopedRole(role: string): boolean {
 
 interface AssetScopeSpec { type: string; value: string | null }
 
-function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
+function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string | string[]): boolean {
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
-  return Boolean(legacyRole && actor.role === legacyRole);
+  return Boolean(legacyRole && (Array.isArray(legacyRole) ? legacyRole.includes(actor.role) : actor.role === legacyRole));
 }
 
 /**
@@ -286,29 +286,22 @@ export class GabahDomainService {
     // assigned dynamic role scope. A Karyawan can receive extra job-function
     // roles without changing employee identity or office location.
     const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
-    if (user.role === 'GA') {
-      const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
-      const isItWorkstation = (asset: ServerAsset) =>
-        ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
-      // GA's writable inventory follows its explicit dynamic owner scope.
-      // The optional IT workstation exception is strictly read-only and limited
-      // to laptop/desktop categories, independent of the GA owner scope.
-      // Keep every explicitly scoped owner domain, including additional
-      // operational capabilities assigned to a GA employee. The IT workstation
-      // exception remains a separate read-only addition.
-      const readOnlyItWorkstations = canReadItWorkstations
-        ? db.assets.filter(asset =>
-          String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
-        )
-        : [];
-      const visibleIds = new Set([...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
-      return db.assets.filter(asset => visibleIds.has(asset.id));
-    }
+    const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
+    const isItWorkstation = (asset: ServerAsset) =>
+      ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+    // This read-only exception is a capability, not a primary-role shortcut.
+    // Any explicitly assigned role can grant it, while the category + IT owner
+    // filter prevents access to servers, network infrastructure, or IT write paths.
+    const readOnlyItWorkstations = canReadItWorkstations
+      ? db.assets.filter(asset =>
+        String(asset.owner_division || '').toUpperCase() === 'IT' && isItWorkstation(asset)
+      )
+      : [];
 
     const personalAssets = isEmployeeBaseline
       ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
       : [];
-    const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
+    const visibleIds = new Set([...personalAssets, ...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
     return db.assets.filter(asset => visibleIds.has(asset.id));
   }
 
@@ -1957,8 +1950,8 @@ export class GabahDomainService {
   }
 
   static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
-      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menambah fasilitas.');
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])) {
+      throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
     const newFac: ServerMeetingFacility = {
@@ -1977,8 +1970,8 @@ export class GabahDomainService {
   }
 
   static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
-      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang mengubah fasilitas.');
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])) {
+      throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
     if (!item) throw new Error('Fasilitas tidak ditemukan.');
@@ -1992,8 +1985,8 @@ export class GabahDomainService {
   }
 
   static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
-    if (!isSuperadminActor(actor) && actor.role !== 'GA' && actor.role !== 'IT') {
-      throw new Error('Akses ditolak: Hanya Admin GABAH, GA, atau IT yang berwenang menghapus fasilitas.');
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])) {
+      throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
     const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);
     if (idx === -1) throw new Error('Fasilitas tidak ditemukan.');

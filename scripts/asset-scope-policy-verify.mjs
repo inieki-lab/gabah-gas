@@ -62,6 +62,7 @@ const checks = [
   ['GA and additional capabilities retain explicitly scoped owner domains', /const dynamicAssets = filterAssetsByDynamicScopes\(db\.assets, user\)/.test(services) && /\.\.\.dynamicAssets, \.\.\.readOnlyItWorkstations/.test(services)],
   ['GA IT read scope memerlukan permission khusus', /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)],
   ['GA IT read scope dibatasi taxonomy HLT dan HPC', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(services) && /readOnlyItWorkstations/.test(services)],
+  ['IT workstation read-only exception is driven by explicit permission, not primary GA profile', /const canReadItWorkstations = hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services) && /const readOnlyItWorkstations = canReadItWorkstations/.test(services) && !/if \(user\.role === 'GA'\)[\s\S]{0,500}readOnlyItWorkstations/.test(services)],
   ['Asset creation authorization is not hardcoded to job-title labels', /Effective permission and explicit owner-domain scope are enforced by/.test(server) && !/if \(actor\.role === 'Karyawan'\)[\s\S]{0,180}wewenang mendaftarkan aset baru/.test(server)],
   ['Tidak ada lagi scope aset berdasarkan lokasi SC/PIBC di resolver utama', !/user\.role === 'Supply Chain'[\s\S]{0,500}owner_division === 'SC'|user\.role === 'PIBC'[\s\S]{0,500}owner_division === 'PIBC'/.test(services)],
   ['Direct asset guard reuses the canonical getScopedAssets resolver', /function canSeeAsset\(actor: ServerUser, assetId: string\): boolean \{[\s\S]*GabahDomainService\.getScopedAssets\(actor\)\.some\(asset => asset\.id === assetId\)/.test(hardening)],
@@ -115,6 +116,18 @@ const checks = [
   ['Dashboard ticket counts reuse dynamic ticket owner scope and personal visibility', /canReadOwnerScope = \(owner: string, module: 'loans' \| 'tickets'\)/.test(server) && /canReadOwnerScope\(ticket\.category, 'tickets'\)/.test(server) && /ticket\.reporter_id === actor\.id/.test(server)],
   ['Loan list and dashboard counts follow borrower and explicit owner scope', /hasRbacScope\(String\(actor.id\), 'division', loan\.owner_division, 'loans'\)/.test(server) && /canReadOwnerScope\(loan\.owner_division, 'loans'\)/.test(server) && /loans\.approve[\s\S]*hasRbacScope/.test(services)],
   ['User-targeted notifications remain private and role recipients honor additional RBAC assignments', /if \(notification\.recipient_user_id\) return notification\.recipient_user_id === actor\.id;[\s\S]*hasApplicationRole\(actor, primaryRoleKey\(notification\.recipient_role\)\)/.test(server) && /const isRecipient = notif \? isNotificationRecipient\(actor, notif\) : false;/.test(server) && /const isRecipient = isNotificationRecipient\(actor, n\);/.test(server)],
+
+  ['Meeting facility create/update/delete honor meeting_facilities.manage for custom roles in PostgreSQL', (() => {
+    const methods = ['createMeetingFacility', 'updateMeetingFacility', 'deleteMeetingFacility'];
+    return methods.every((name) => {
+      const start = services.indexOf(`static ${name}(`);
+      const next = services.indexOf('static ', start + 8);
+      const body = services.slice(start, next < 0 ? services.length : next);
+      return start >= 0 && body.includes("hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])");
+    });
+  })()],
+  ['Meeting facility legacy GA/IT access is confined to the file-store fallback helper', /function hasRoomPermission\(actor: ServerUser, permissionKey: string, legacyRole\?: string \| string\[\]\): boolean[\s\S]*if \(isPostgresPersistenceActive\(\)\) return hasRbacPermission\(String\(actor.id\), permissionKey\);[\s\S]*Array\.isArray\(legacyRole\)/.test(services)],
+  ['Contract creation requires contracts.create specifically; update-only permission cannot create contracts', /export function canCreateContract\(user: ServerUser\): boolean[\s\S]*hasRbacPermission\(String\(user.id\), 'contracts.create'\)/.test(contracts) && /createContract\([\s\S]*if \(!canCreateContract\(actor\)\)/.test(contracts)],
 ];
 
 let failed = 0;

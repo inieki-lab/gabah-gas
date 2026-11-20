@@ -86,6 +86,13 @@ export function canManageContracts(user: ServerUser): boolean {
   return user.role === 'IT' || user.role === 'GA';
 }
 
+/** Creation is a distinct capability; update-only users must not create records. */
+export function canCreateContract(user: ServerUser): boolean {
+  if (isSuperadminActor(user)) return true;
+  if (isPostgresPersistenceActive()) return hasRbacPermission(String(user.id), 'contracts.create');
+  return user.role === 'IT' || user.role === 'GA';
+}
+
 // SEC-08: Expose canEditContract for server.ts file upload validation
 export function canEditContract(user: ServerUser, contract: ServerContract): boolean {
   if (isSuperadminActor(user)) return true;
@@ -139,7 +146,7 @@ export const ContractDomainService = {
   },
 
   createContract(payload: Partial<ServerContract> & { end_date: string; start_date: string; title: string; vendor_name: string; owner_division: string; pic_user_id: string }, actor: ServerUser): ServerContract {
-    if (!canManageContracts(actor)) {
+    if (!canCreateContract(actor)) {
       throw new Error('Akses ditolak: permission contracts.create tidak diberikan.');
     }
     const ownerDivision = (payload.owner_division || actor.division).toString().trim().toUpperCase();
