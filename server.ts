@@ -2663,16 +2663,16 @@ async function startServer() {
           }
 
           // UPDATE path — allowlist eksplisit, asset_number & owner_division server-owned
+          if (isLoanable === true && isNonLoanableInfrastructureAsset(existing as any)) {
+            errors.push(`Baris ${rowNo}: ${existing.asset_number} termasuk kategori infrastruktur/lisensi dan tidak dapat dijadikan aset pinjaman.`);
+            continue;
+          }
           for (const key of UPDATE_FIELDS) {
             if (key === 'condition') {
               if (condition) (existing as any).condition = condition;
               continue;
             }
             if (key === 'is_loanable') {
-              if (isLoanable === true && isNonLoanableInfrastructureAsset(existing as any)) {
-                errors.push(`Baris ${rowNo}: ${existing.asset_number} termasuk kategori infrastruktur/lisensi dan tidak dapat dijadikan aset pinjaman.`);
-                continue;
-              }
               if (isLoanable !== undefined) (existing as any).is_loanable = isLoanable;
               continue;
             }
