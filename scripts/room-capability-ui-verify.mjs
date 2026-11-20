@@ -45,3 +45,18 @@ assert.doesNotMatch(header, /currentUser\.role === 'IT' \? itFacilityReservation
 assert.doesNotMatch(header, /currentUser\.role === 'GA' \? gaReservations\.length/);
 
 console.log('Room and meeting additional-role UI contract: passed');
+
+
+// Sidebar queue badges and contextual labels must use effective capability grants.
+const sidebar = fs.readFileSync('src/components/Sidebar.tsx', 'utf8');
+assert.match(sidebar, /const hasPermissionMetadata = Array\.isArray\(currentUserPermissions\)/);
+assert.match(sidebar, /hasPermission\('room_reservations\.documentation\.read', \['Humas'\]\)/);
+assert.match(sidebar, /hasPermission\('room_reservations\.override_priority', \['Sekretaris Direksi'\]\)/);
+assert.match(sidebar, /hasPermission\('room_reservations\.it_facilities\.read', \['IT', 'Admin GABAH'\]\)/);
+assert.match(sidebar, /hasPermission\('room_reservations\.approve'/);
+assert.match(sidebar, /hasPermission\('room_reservations\.reject'/);
+assert.match(sidebar, /isIT && itFacilitiesCount > 0/);
+assert.match(sidebar, /isGA && \(gaRequestsCount > 0 \|\| pendingReservationsCount > 0\)/);
+assert.doesNotMatch(sidebar, /activeRole === 'IT' && itFacilitiesCount/);
+assert.doesNotMatch(sidebar, /activeRole === 'GA' \|\| activeRole === 'Admin GABAH'/);
+console.log('Sidebar dynamic queue capability contract: passed');
