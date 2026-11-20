@@ -18,7 +18,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { Loan, Asset, UserProfile, LoanStatus } from '../../types';
-import { isAuditor } from '../../utils/access';
+import { isAuditor, isSuperAdmin } from '../../utils/access';
 import { GabahService, formatDateTime, exportLoansToCsv } from '../../services/gabahService';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
@@ -60,12 +60,14 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
   const [returnNotes, setReturnNotes] = useState<string>('');
 
-  const isAuditorUser = isAuditor(currentUser);
+  const isSuperAdminUser = isSuperAdmin(currentUser);
+  const isAuditorUser = !isSuperAdminUser && isAuditor(currentUser);
   const hasPermission = (key: string, legacyRoles: string[] = []) => {
+    // A server-confirmed Superadmin capability supersedes narrower role permissions.
+    if (isSuperAdminUser) return true;
     if (Array.isArray(currentUser?.permission_keys)) {
       return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
     }
-    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     return legacyRoles.includes(currentUser?.role || '');
   };
   const canCreateLoan = !isAuditorUser && hasPermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
@@ -77,7 +79,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const currentUserId = currentUser?.id || '';
   // PostgreSQL already returns loans inside the effective permission/scope.
   // Only file-store compatibility applies the legacy personal-view filter.
-  const isEmployee = !isAuditorUser && !['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
+  const isEmployee = !isSuperAdminUser && !isAuditorUser && !['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
   const baseLoans = Array.isArray(currentUser?.permission_keys)
     ? safeLoans
     : isEmployee
