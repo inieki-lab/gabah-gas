@@ -11,10 +11,10 @@ const statusRoute = source.slice(statusStart, statusEnd);
 
 const checks = [
   ['Reporter ID remains the primary ownership key', block.includes('ticket.reporter_id === actor.id')],
-  ['Name fallback is restricted to legacy records without reporter ID', block.includes('!ticket.reporter_id && Boolean(ticket.reporter_name)')],
-  ['Name equality cannot override a different reporter ID', block.includes('|| (!ticket.reporter_id')],
+  ['Name fallback never grants ticket ownership', !block.includes('reporter_name') && !block.includes('actor.name')],
   ['Ticket list still filters through the reporter predicate', source.slice(end, end + 1200).includes('isReporter(ticket)')],
   ['Ticket status mutation checks reporter, assignee, owner scope, or Superadmin', statusRoute.includes('ticket.reporter_id === actor.id') && statusRoute.includes('ticket.assigned_agent_id === actor.id') && statusRoute.includes('canReadTicketOwner') && statusRoute.includes('isSuperadminActor(actor)')],
+  ['Ticket status mutation never uses reporter display-name fallback', !statusRoute.includes('reporter_name') && !statusRoute.includes('actor.name')],
   ['Unrelated ticket status mutation is rejected with 403', statusRoute.includes('if (!canUpdateTicket)') && statusRoute.includes('res.status(403)')],
 ];
 
