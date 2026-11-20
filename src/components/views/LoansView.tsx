@@ -90,7 +90,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
   });
 
   const canApprove = (loan: Loan) => {
-    return GabahService.canApproveLoan(currentUser, loan);
+    // Superadmin remains global even when dynamic permission metadata exists.
+    // Other actors use effective operation permission; the API enforces owner scope.
+    return hasEffectivePermission('loans.approve', ['Admin GABAH', 'IT', 'GA']);
   };
 
   return (
