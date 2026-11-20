@@ -2873,7 +2873,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                       ) : rbacRoles.filter((role: any) => role.is_active).map((role: any) => {
                         const roleId = Number(role.id);
                         const isPrimary = primaryRoleIds[String(roleAssignmentTarget.id)] === roleId;
-                        const checked = roleAssignmentDraft.includes(roleId);
+                        const checked = isPrimary || roleAssignmentDraft.includes(roleId);
                         return (
                           <label key={roleId} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50">
                             <input
