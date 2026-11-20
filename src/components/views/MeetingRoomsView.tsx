@@ -380,7 +380,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               <span>Permintaan Dokumentasi ({stats.documentationCount})</span>
             </button>
           )}
-          {isGAOrAdmin && (
+          {canOperateReservations && (
             <button
               onClick={() => { setActiveTab('reservations'); setCategoryFilter('consumption'); }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1.5 ${
@@ -770,7 +770,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                     </button>
                   )}
 
-                  {!isAuditor && (
+                  {canCreateReservations && (
                     <button
                       disabled={isMnt}
                       onClick={() => {
@@ -1064,12 +1064,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                           {/* Status */}
                           <td className="py-3.5 px-4">
-                            {canCheckinReservations && r.status === 'approved' && (
+                            {r.status === 'approved' && (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                 Disetujui GA
                               </span>
                             )}
-                            {canCheckoutReservations && r.status === 'in_use' && (
+                            {r.status === 'in_use' && (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1 w-fit">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping" />
                                 Sedang Dipakai
@@ -1135,7 +1135,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             )}
 
                             {/* Check-In / Check-Out */}
-                            {r.status === 'approved' && (
+                            {canCheckinReservations && r.status === 'approved' && (
                               <button
                                 disabled={isLoading}
                                 onClick={() => handleCheckin(r.id)}
@@ -1146,7 +1146,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                               </button>
                             )}
 
-                            {r.status === 'in_use' && (
+                            {canCheckoutReservations && r.status === 'in_use' && (
                               <button
                                 disabled={isLoading}
                                 onClick={() => handleCheckout(r.id)}
