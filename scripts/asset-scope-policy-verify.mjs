@@ -28,7 +28,6 @@ const assetDetailUi = read('src/components/modals/AssetDetailModal.tsx');
 const assetEditUi = read('src/components/modals/EditAssetModal.tsx');
 const gabahService = read('src/services/gabahService.ts');
 const dashboardUi = read('src/components/views/DashboardView.tsx');
-const appUi = read('src/App.tsx');
 
 const checks = [
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
