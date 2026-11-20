@@ -66,7 +66,8 @@
     "test:runtime-persistence-atomicity": "node scripts/runtime-persistence-atomicity-verify.mjs",
     "test:loan-datetime-contract": "node scripts/loan-datetime-contract-verify.mjs",
     "test:ticket-direct-it-routing": "node scripts/ticket-direct-it-routing-verify.mjs",
-    "test:pibc-me-ticket-queue": "node scripts/pibc-me-ticket-queue-verify.mjs"
+    "test:pibc-me-ticket-queue": "node scripts/pibc-me-ticket-queue-verify.mjs",
+    "test:rpc-location-label": "node scripts/rpc-location-label-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
