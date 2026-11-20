@@ -826,3 +826,15 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Existing canonical Admin Tiket ME template receives the capability idempotently; custom-named roles receive nothing automatically.
 - Superadmin can create a custom role and explicitly assign `tickets.queue.me` plus `UNIT-PIBC-ME` scope to expose the ME queue.
 - CI run #2672 passed all 75 checks, including migration validation, ticket queue regressions, Docker runtime smoke, PostgreSQL 17 integration, and security checks.
+
+
+### Sidebar queue indicator capability alignment — 2026-11-20
+
+**Branch:** `fix/dynamic-sidebar-queue-indicators`
+
+- Sidebar Humas, Sekdir, IT, and GA queue labels/badges now derive from effective PostgreSQL permission keys rather than the primary role label.
+- Legacy role-name checks remain only as file-store compatibility when permission metadata is absent.
+- Custom-named roles with the corresponding documentation, priority override, IT facilities, approval/rejection, or facility-management capabilities now receive the matching contextual indicator.
+- Added regression assertions to the meeting-room capability verifier; backend queue data remains server-scoped and no API/data permissions were broadened.
+
+**Validation:** exact-head CI required before merge.
