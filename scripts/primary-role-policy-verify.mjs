@@ -29,6 +29,14 @@ const patch = routeBody("app.patch('/api/users/:id'", [
   "app.delete('/api/users/:id'",
 ]);
 
+const applicationRoleStart = server.indexOf('const hasApplicationRole');
+const applicationRoleEnd = server.indexOf('// Permission guard for migrated endpoints', applicationRoleStart);
+assert.ok(applicationRoleStart >= 0 && applicationRoleEnd > applicationRoleStart, 'Application role resolver exists');
+const applicationRole = server.slice(applicationRoleStart, applicationRoleEnd);
+assert.match(applicationRole, /if \(isPostgresPersistenceActive\(\)\)\s*\{\s*return getEffectiveRoleKeys\(String\(actor\.id\)\)\.includes\(roleKey\);/);
+assert.match(applicationRole, /return actor\.role === legacyLabels\[roleKey\];/);
+assert.ok(applicationRole.indexOf('if (isPostgresPersistenceActive())') < applicationRole.indexOf('return actor.role === legacyLabels[roleKey]'), 'PostgreSQL assignment check precedes legacy development fallback');
+
 // Primary profile roles are deliberately narrower than functional capabilities.
 assert.match(create, /validPrimaryRoles = \['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor'\]/);
 assert.match(patch, /validRoles = \['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Auditor', 'Karyawan'\]/);
@@ -52,4 +60,4 @@ assert.match(modal, /unit_id/);
 assert.match(modal, /office_location_id/);
 assert.match(service, /'Kode Jabatan', 'ID Unit', 'ID Lokasi Kantor'/);
 
-console.log('Canonical primary-role policy: 15 checks passed');
+console.log('Canonical primary-role policy: 18 checks passed');
