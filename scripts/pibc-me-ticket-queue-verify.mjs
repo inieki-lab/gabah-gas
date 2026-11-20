@@ -20,6 +20,10 @@ const checks = [
   ['Ticket form uses GA category correctly and exposes permission-gated ME, not SC/PIBC choices', /setCategory\('GA'\)/.test(form) && /setCategory\('ME'\)/.test(form) && !/setCategory\('SC'\)|setCategory\('PIBC'\)/.test(form)],
   ['Machine and electrical service catalog template targets ME and is permission-gated', /category: 'ME' as TicketCategory/.test(form) && /serviceCatalogTemplates\.filter\(tpl => tpl\.category !== 'ME' \|\| canRequestMe\)/.test(form) && !/category: 'SC' as TicketCategory/.test(form)],
   ['ME operator receives an ME queue view and an ME-only category filter', /admin_tiket_me/.test(ticketView) && /Helpdesk & Tiket ME/.test(ticketView) && ticketView.includes(": isMEOperator\n    ? ['ALL', 'ME'")],
+  ['Ticket UI resolves Auditor deny-write from additional Dynamic RBAC assignments', /const isAuditor = GabahService\.isAuditor\(currentUser\)/.test(ticketView)],
+  ['Ticket UI uses effective ticket-management permissions instead of a hardcoded employee-role list', /!GabahService\.canManageTickets\(currentUser\)/.test(ticketView) && !/\['Karyawan', 'Sekretaris Direksi', 'Humas'\]\.includes\(currentUser\?\.role/.test(ticketView)],
+  ['SC/PIBC ticket role labels remain compatibility-only and are ignored when PostgreSQL permission metadata exists', /!Array\.isArray\(currentUser\?\.permission_keys\) && currentUser\?\.role === 'Supply Chain'/.test(ticketView) && /!Array\.isArray\(currentUser\?\.permission_keys\) && currentUser\?\.role === 'PIBC'/.test(ticketView)],
+  ['Ticket UI resolves IT and GA functions from additional role assignments', /hasAssignedRole\('it'\)/.test(ticketView) && /hasAssignedRole\('ga'\)/.test(ticketView)],
 ];
 
 for (const [name, pass] of checks) console.log(`${pass ? 'PASS' : 'FAIL'} | ${name}`);

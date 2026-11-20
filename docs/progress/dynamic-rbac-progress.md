@@ -743,3 +743,16 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Director-priority room-reservation override UI now checks `room_reservations.override_priority` when PostgreSQL permission metadata is present. Legacy Sekdir/GA/Admin fallback is retained only for file-store development.
 
 **Validation boundary:** changes are committed on this branch; exact-head CI is required before merge. These are source-level fixes and regression assertions, not a claim of live browser UAT or production deployment.
+
+### Ticket workspace dynamic-role UI hardening — 2026-11-20
+
+**Branch:** `fix/dynamic-role-workflow-ui`  
+**PR:** #154 (CI pending)
+
+- Ticket UI now derives Auditor read-only precedence from `GabahService.isAuditor()`, which recognizes additional Dynamic RBAC assignments.
+- Superadmin UI identity uses stable `is_superadmin` / effective `role_keys` metadata.
+- IT/GA operational indicators recognize assigned canonical role keys. SC/PIBC labels are retained only as file-store compatibility; PostgreSQL permission metadata disables those legacy role branches.
+- The personal-ticket-only view is based on ticket-management capability and actual server-scoped queue data rather than a hardcoded list of employee/job labels.
+- Added regression checks to the ME/PIBC ticket queue verifier for Auditor additional-role, IT/GA assignments, and SC/PIBC compatibility boundaries.
+
+**Previous integration:** PR #153 passed CI run #2644 (TypeScript, Dynamic RBAC/asset-scope regression, production build, Docker runtime smoke, PostgreSQL 17 integration, live HTTP security, room/ticket/org/master-data regressions) and was merged to `main` as `81cbb2d`.
