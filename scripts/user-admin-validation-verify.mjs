@@ -5,6 +5,8 @@ const routeEnd = source.indexOf("app.delete('/api/users/:id'", routeStart);
 if (routeStart < 0 || routeEnd < 0) throw new Error('User PATCH route not found');
 const route = source.slice(routeStart, routeEnd);
 const checks = [
+  ['Single and bulk user creation use CSPRNG UUIDs', (source.match(/id: `USR-\$\{crypto\.randomUUID\(\)\}`/g) || []).length === 2],
+  ['User creation no longer derives IDs from timestamps or Math.random', !/id: `USR-\$\{Date\.now\(\)/.test(source) && !/id: `USR-\$\{Date\.now\(\)[^`]*Math\.random/.test(source)],
   ['PATCH validates string types and length limits', /stringFields: Array<\[string, unknown, number\]>/.test(route)],
   ['PATCH validates email syntax', /Format email tidak valid/.test(route)],
   ['PATCH validates built-in primary role labels', /const validRoles = \['Admin GABAH'/.test(route)],
