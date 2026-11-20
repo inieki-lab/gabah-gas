@@ -2497,7 +2497,24 @@ async function startServer() {
       || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', loan.owner_division, 'loans')
         : actor.role === loan.owner_division)
-    ).map(exposeEffectiveStatus);
+    ).map(loan => {
+      const effectiveLoan = exposeEffectiveStatus(loan);
+      const isBorrower = loan.borrower_id === actor.id;
+      // Return the server-calculated object-level actions so the UI never
+      // guesses authority from a primary role or a permission without scope.
+      // Endpoint guards and domain services still revalidate every mutation.
+      const canReturn = (isBorrower || GabahDomainService.canOperateLoan(loan, actor, 'loans.return'))
+        && (!isPostgresPersistenceActive() || hasRbacPermission(String(actor.id), 'loans.return'));
+      return {
+        ...effectiveLoan,
+        allowed_actions: {
+          approve: loan.status === 'pending_approval' && GabahDomainService.canOperateLoan(loan, actor, 'loans.approve'),
+          reject: loan.status === 'pending_approval' && GabahDomainService.canOperateLoan(loan, actor, 'loans.reject'),
+          handover: loan.status === 'approved' && GabahDomainService.canOperateLoan(loan, actor, 'loans.handover'),
+          return: ['borrowed', 'overdue'].includes(effectiveLoan.status) && canReturn,
+        },
+      };
+    });
     return res.json({ success: true, data });
   });
 
