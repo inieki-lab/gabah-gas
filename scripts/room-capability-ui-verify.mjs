@@ -20,8 +20,10 @@ assert.match(form, /!isSekdir/);
 assert.match(form, /\[meetingType, meetingTypes, currentUser\.role, isSekdir\]/);
 assert.doesNotMatch(form, /currentUser\.role === 'Sekretaris Direksi' \|\| meetingType/);
 
-assert.match(header, /currentUser\.role_keys\?\.includes\('it'\) === true/);
-assert.match(header, /currentUser\.role_keys\?\.includes\('ga'\) === true/);
+assert.match(header, /room_reservations\.it_facilities\.read/);
+assert.match(header, /room_reservations\.approve/);
+assert.match(header, /room_reservations\.documentation\.read/);
+assert.match(header, /Array\.isArray\(currentUser\.permission_keys\)/);
 assert.match(header, /const isSuperadmin = currentUser\.is_superadmin === true \|\| currentUser\.role_keys\?\.includes\('superadmin'\) === true/);
 assert.doesNotMatch(header, /currentUser\.role === 'IT' \? itFacilityReservations\.length/);
 assert.doesNotMatch(header, /currentUser\.role === 'GA' \? gaReservations\.length/);
