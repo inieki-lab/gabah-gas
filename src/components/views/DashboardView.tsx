@@ -179,8 +179,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const myAssignedAssets = dashboardAssets.filter(a => {
     if (!a.assigned_to) return false;
     const assignedId = a.assigned_to.id;
-    const assignedEmail = a.assigned_to.email?.toLowerCase();
-    const currentEmail = currentUser?.email?.toLowerCase();
     return (
       assignedId === currentUserId
     );
