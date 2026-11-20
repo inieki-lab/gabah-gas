@@ -23,4 +23,15 @@ for (const action of ['approve', 'reject', 'handover', 'return']) assert.ok(loan
 assert.ok(ui.includes('loan.allowed_actions?.approve') && ui.includes('loan.allowed_actions?.handover') && ui.includes('loan.allowed_actions?.return'));
 const normalize = s => s === 'pending_approval' ? 'pending' : s === 'borrowed' ? 'active' : s;
 for (const [a,b] of [['pending_approval','pending'],['pending','pending'],['borrowed','active'],['active','active'],['approved','approved'],['returned','returned'],['rejected','rejected']]) assert.equal(normalize(a),b);
-console.log('PASS: Loan API/UI states are normalized and approval transitions are guarded.');
+
+const rejectStart = services.indexOf('static rejectLoan(');
+const rejectEnd = services.indexOf('\n  /**', rejectStart + 10);
+assert.ok(rejectStart >= 0 && rejectEnd > rejectStart, 'rejectLoan must exist');
+const reject = services.slice(rejectStart, rejectEnd);
+assert.ok(reject.indexOf('this.canOperateLoan(loan, actor, \'loans.reject\')') < reject.indexOf("loan.status !== 'pending_approval'"),
+  'rejection authorization must run before workflow-state disclosure');
+assert.ok(reject.includes('LOAN_REJECT_DENIED'), 'unauthorized rejection attempts must be audited');
+assert.ok(reject.includes('statusCode: 409'), 'invalid rejection state must return conflict');
+assert.ok(reject.includes('reason.trim().length > 1000'), 'rejection reason must be length-limited');
+
+console.log('PASS: Loan API/UI states, approval/rejection transitions, and rejection authorization are guarded.');
