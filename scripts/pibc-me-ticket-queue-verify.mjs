@@ -5,6 +5,7 @@ const server = fs.readFileSync('server.ts', 'utf8');
 const db = fs.readFileSync('server/db.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const migration = fs.readFileSync('server/migrations/044_pibc_me_helpdesk_queue.sql', 'utf8');
+const meQueueCapabilityMigration = fs.readFileSync('server/migrations/046_dynamic_me_queue_capability.sql', 'utf8');
 const form = fs.readFileSync('src/components/modals/CreateTicketModal.tsx', 'utf8');
 const ticketView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
 const checks = [
@@ -21,7 +22,9 @@ const checks = [
   ['ME ticket request UI uses stable Superadmin metadata or tickets.create.me permission, not primary role labels', /const hasPermissionMetadata = Array\.isArray\(currentUser\.permission_keys\)/.test(form) && /tickets\.create\.me/.test(form) && !/currentUser\.role === 'Admin GABAH' \|\| currentUser\.permission_keys/.test(form)],
   ['Ticket form uses GA category correctly and exposes permission-gated ME, not SC/PIBC choices', /setCategory\('GA'\)/.test(form) && /setCategory\('ME'\)/.test(form) && !/setCategory\('SC'\)|setCategory\('PIBC'\)/.test(form)],
   ['Machine and electrical service catalog template targets ME and is permission-gated', /category: 'ME' as TicketCategory/.test(form) && /serviceCatalogTemplates\.filter\(tpl => tpl\.category !== 'ME' \|\| canRequestMe\)/.test(form) && !/category: 'SC' as TicketCategory/.test(form)],
-  ['ME operator receives an ME queue view and an ME-only category filter', /admin_tiket_me/.test(ticketView) && /Helpdesk & Tiket ME/.test(ticketView) && ticketView.includes(": isMEOperator\n    ? ['ALL', 'ME'")],
+  ['ME queue UI is driven by explicit tickets.queue.me capability, with file-store role fallback only', /currentUser\?\.permission_keys\)/.test(ticketView) && /tickets\.queue\.me/.test(ticketView) && /: hasAssignedRole\('admin_tiket_me'\)/.test(ticketView) && /Helpdesk & Tiket ME/.test(ticketView) && ticketView.includes(": isMEOperator\n    ? ['ALL', 'ME'")],
+  ['ME queue capability is seeded only for the canonical ME operator template; custom roles require explicit Superadmin assignment', /tickets\.queue\.me/.test(meQueueCapabilityMigration) && /WHERE r\.role_key = 'admin_tiket_me'/.test(meQueueCapabilityMigration) && !/INSERT INTO gabah_role_permissions[\s\S]*SELECT .*FROM gabah_roles r[\s\S]*WHERE r\.role_key <> 'admin_tiket_me'/.test(meQueueCapabilityMigration)],
+
   ['Ticket UI resolves Auditor deny-write from additional Dynamic RBAC assignments', /const isAuditor = GabahService\.isAuditor\(currentUser\)/.test(ticketView)],
   ['Ticket UI uses effective ticket-management permissions instead of a hardcoded employee-role list', /!GabahService\.canManageTickets\(currentUser\)/.test(ticketView) && !/\['Karyawan', 'Sekretaris Direksi', 'Humas'\]\.includes\(currentUser\?\.role/.test(ticketView)],
   ['SC/PIBC ticket role labels remain compatibility-only and are ignored when PostgreSQL permission metadata exists', /!Array\.isArray\(currentUser\?\.permission_keys\) && currentUser\?\.role === 'Supply Chain'/.test(ticketView) && /!Array\.isArray\(currentUser\?\.permission_keys\) && currentUser\?\.role === 'PIBC'/.test(ticketView)],
