@@ -85,12 +85,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const isHumas = activeRole === 'Humas' || currentUserRoleKeys?.includes('humas') === true;
-  const isSekdir = activeRole === 'Sekretaris Direksi' || currentUserRoleKeys?.includes('sekretaris_direksi') === true;
+  const hasPermissionMetadata = Array.isArray(currentUserPermissions);
+  const isSuperAdmin = isSuperadminNavigationAllowed(activeRole, currentUserIsSuperAdmin, currentUserPermissions);
+  const hasPermission = (permission: string, legacyRoles: string[] = []) => isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUserPermissions!.includes('*') || currentUserPermissions!.includes(permission)
+      : (!!activeRole && legacyRoles.includes(activeRole)) || legacyRoles.some(role => currentUserRoleKeys?.includes(role.toLowerCase().replace(/[^a-z0-9]+/g, '_')) === true));
+  // Queue badges and labels follow effective capabilities in PostgreSQL mode.
+  // Legacy role keys are only a file-store compatibility fallback.
+  const isHumas = hasPermission('room_reservations.documentation.read', ['Humas']);
+  const isSekdir = hasPermission('room_reservations.override_priority', ['Sekretaris Direksi']);
+  const isIT = hasPermission('room_reservations.it_facilities.read', ['IT', 'Admin GABAH']);
+  const isGA = hasPermission('room_reservations.approve', ['GA', 'Admin GABAH'])
+    || hasPermission('room_reservations.reject', ['GA', 'Admin GABAH'])
+    || hasPermission('meeting_facilities.manage', ['GA', 'Admin GABAH']);
   const isStaff = activeRole
     ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) || isSekdir || isHumas
     : isSekdir || isHumas;
-  const isSuperAdmin = isSuperadminNavigationAllowed(activeRole, currentUserIsSuperAdmin, currentUserPermissions);
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
@@ -118,14 +129,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: isHumas ? Camera : Building2,
           badge: isHumas
             ? (documentationRequestsCount > 0 ? `${documentationRequestsCount} Foto` : null)
-            : (activeRole === 'IT' && itFacilitiesCount > 0)
+            : isIT && itFacilitiesCount > 0
             ? `${itFacilitiesCount} IT`
-            : (activeRole === 'GA' || activeRole === 'Admin GABAH') && (gaRequestsCount > 0 || pendingReservationsCount > 0)
+            : isGA && (gaRequestsCount > 0 || pendingReservationsCount > 0)
             ? (gaRequestsCount || pendingReservationsCount)
             : null,
-          badgeColor: isHumas 
-            ? 'bg-sky-600 text-white' 
-            : activeRole === 'IT'
+          badgeColor: isHumas || isIT
             ? 'bg-sky-600 text-white'
             : 'bg-emerald-600 text-white',
         },
