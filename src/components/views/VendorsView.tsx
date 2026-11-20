@@ -50,12 +50,16 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
     });
     return () => { active = false; };
   }, []);
-  const legacyVendorManager = currentUser.permission_keys === undefined
-    && ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const canCreate = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH'
-    || currentUser.permission_keys?.includes('vendors.create') === true || legacyVendorManager;
-  const canUpdate = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH'
-    || currentUser.permission_keys?.includes('vendors.update') === true || legacyVendorManager;
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const legacyVendorManager = !hasPermissionMetadata && ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const hasPermission = (permission: string) => isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
+      : legacyVendorManager);
+  const canCreate = hasPermission('vendors.create');
+  const canUpdate = hasPermission('vendors.update');
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
