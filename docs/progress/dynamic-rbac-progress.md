@@ -932,3 +932,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added CI regression contract for Superadmin identity, wildcard permissions, and all affected helper methods.
 
 - Loans API now computes per-record server-authoritative action flags. The UI separately gates approve, reject, handover, and return buttons from those flags; borrower visibility no longer implies owner-division approval authority.
+
+
+### Superadmin dashboard persona correction — 2026-11-20
+
+- Fixed dashboard persona precedence: Superadmin remains the global administration persona even though its wildcard permissions include Humas and Sekretaris Direksi capabilities.
+- Humas/Sekdir-only dashboard panels and labels are suppressed for Superadmin; the global Admin GABAH dashboard description is shown. Auditor read-only precedence remains higher.
+- Extended the dashboard scope regression script to prevent this persona regression.

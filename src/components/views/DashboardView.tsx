@@ -61,8 +61,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
     return legacyRoles.includes(currentUser.role);
   };
-  const isHumas = hasEffectivePermission('room_reservations.documentation.read', ['Humas']);
-  const isSekdir = hasEffectivePermission('room_reservations.override_priority', ['Sekretaris Direksi']);
+  // Superadmin is a system-wide persona, not a Humas/Sekdir persona merely because
+  // its wildcard permission set includes their module-specific capabilities.
+  const isHumas = !isSuperAdmin && hasEffectivePermission('room_reservations.documentation.read', ['Humas']);
+  const isSekdir = !isSuperAdmin && hasEffectivePermission('room_reservations.override_priority', ['Sekretaris Direksi']);
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const canCreateAsset = hasEffectivePermission('assets.create', ['Admin GABAH', 'IT', 'GA']);
@@ -117,6 +119,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isLicenseDashboard = isGlobalDashboard || hasEffectivePermission('licenses.read', ['IT']);
   const roleDescription = isAuditor
     ? roleDescriptions.Auditor
+    : isSuperAdmin
+      ? roleDescriptions['Admin GABAH']
     : isHumas
       ? roleDescriptions.Humas
     : isSekdir
