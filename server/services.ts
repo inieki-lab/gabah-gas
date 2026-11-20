@@ -923,16 +923,24 @@ export class GabahDomainService {
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
-    if (loan.status !== 'pending_approval') {
-      throw new Error('Hanya pinjaman berstatus menunggu persetujuan yang dapat ditolak.');
-    }
-
+    // Authorize before revealing workflow state to callers who know a loan ID.
     if (!this.canOperateLoan(loan, actor, 'loans.reject')) {
+      this.recordAudit('LOAN_REJECT_DENIED', 'Loans', `Ditolak: ${actor.name} (${actor.role}) tidak memiliki permission reject dan scope owner aset untuk pinjaman ${loan.loan_number}`, actor, loan.id);
       throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission reject dan scope owner aset yang sesuai atau Super Admin yang dapat menolak pinjaman.'), { statusCode: 403 });
     }
 
+    if (loan.status !== 'pending_approval') {
+      throw Object.assign(new Error('Hanya pinjaman berstatus menunggu persetujuan yang dapat ditolak.'), { statusCode: 409 });
+    }
+
+    if (reason !== undefined && (typeof reason !== 'string' || reason.trim().length > 1000)) {
+      throw Object.assign(new Error('Alasan penolakan tidak valid (maksimal 1.000 karakter).'), { statusCode: 400 });
+    }
+
     loan.status = 'rejected';
-    loan.rejection_reason = reason || 'Ditolak oleh divisi pemilik aset';
+    loan.rejection_reason = typeof reason === 'string' && reason.trim()
+      ? reason.trim()
+      : 'Ditolak oleh divisi pemilik aset';
     loan.updated_at = new Date().toISOString();
 
     this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id);
