@@ -939,3 +939,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Fixed dashboard persona precedence: Superadmin remains the global administration persona even though its wildcard permissions include Humas and Sekretaris Direksi capabilities.
 - Humas/Sekdir-only dashboard panels and labels are suppressed for Superadmin; the global Admin GABAH dashboard description is shown. Auditor read-only precedence remains higher.
 - Extended the dashboard scope regression script to prevent this persona regression.
+
+
+### Loan rejection authorization hardening — 2026-11-20
+
+- Rejection now verifies the actor's loans.reject permission and matching owner scope before returning workflow-state details, avoiding state disclosure to callers who know a loan ID.
+- Unauthorized rejection attempts are written to the audit trail.
+- Rejection accepts an optional reason only when it is a string of at most 1,000 characters; stored text is trimmed and empty input uses the standard fallback.
+- Invalid state transitions return HTTP 409; invalid reason input returns HTTP 400.
+- Extended the loan contract regression to assert authorization ordering, denied-attempt audit, state conflict, and reason-length validation.
+- No loan records, user assignments, role grants, or owner scopes were changed.
