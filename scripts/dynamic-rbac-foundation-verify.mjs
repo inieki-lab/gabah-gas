@@ -51,7 +51,7 @@ const checks = [
   ['role scope mapping exists', /CREATE TABLE IF NOT EXISTS gabah_role_division_scopes/i.test(migration)],
   ['user-role assignment mapping exists', /CREATE TABLE IF NOT EXISTS gabah_user_roles/i.test(migration)],
   ['Superadmin capability is a stable field', /is_superadmin BOOLEAN NOT NULL DEFAULT FALSE/i.test(migration)],
-  ['Auditor read-only is derived from effective assigned roles, including additional roles', /export function isAuditorActor\([\s\S]*getEffectiveRoleKeys\(actor\.id\)\.includes\('auditor'\)/.test(policy) && /isAuditorActor\(actor\)/.test(runtimeHardening) && /isAuditorActor\(user\)/.test(domainServices)],
+  ['Auditor read-only is derived from effective assigned roles, including additional roles', /export function isAuditorActor\([\s\S]*isAuditorUserId\(actor\.id\)/.test(policy) && /isAuditorActor\(actor\)/.test(runtimeHardening) && /isAuditorActor\(user\)/.test(domainServices)],
   ['Superadmin seed is keyed independently from display name', /\('superadmin',\s*'Admin GABAH'.*TRUE\)/i.test(migration)],
   ['role deletion is restricted while assigned', /gabah_user_roles[\s\S]*?REFERENCES gabah_roles\(id\) ON DELETE RESTRICT/i.test(migration)],
   ['migration does not drop legacy data', !/\bDROP\s+(TABLE|COLUMN|DATABASE)\b/i.test(migration)],
@@ -170,7 +170,6 @@ const checks = [
   ['production image uses Node 22, lockfile installs, non-root runtime, and copied migrations', /FROM node:22-alpine AS build/.test(dockerfile) && /npm ci --omit=dev/.test(dockerfile) && /USER node/.test(dockerfile) && /server\/migrations/.test(dockerfile)],
   ['deployment waits for PostgreSQL health and replaces only the app container', /docker compose up -d database/.test(deployScript) && /DB_HEALTH.*healthy/.test(deployScript) && /--no-deps --force-recreate app/.test(deployScript)],
   ['production Docker runtime smoke checks PostgreSQL and writable uploads', /gabah-gas:ci/.test(dockerSmoke) && /persistence.*postgresql/.test(dockerSmoke) && /touch \/app\/uploads/.test(dockerSmoke)],
-,
 
   ['Auditor role is resolved directly from assigned policies even when another role is Superadmin', /function isAuditorUserId\(userId: string\)/.test(policy) && /policy\.roleKey === 'auditor'/.test(policy) && /return !policies\.some\(policy => policy\.roleKey === 'auditor'\)[\s\S]*policy\.isSuperadmin/.test(policy)],
   ['Auditor effective permissions are read-only and default-deny for new mutation keys', /export function isAuditorReadPermissionKey/.test(policy) && /if \(policies\.some\(policy => policy\.roleKey === 'auditor'\)\)[\s\S]*isAuditorReadPermissionKey\(permissionKey\)/.test(policy) && /if \(!auditor \|\| isAuditorReadPermissionKey\(key\)\)/.test(policy)],
