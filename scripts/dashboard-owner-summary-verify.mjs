@@ -11,6 +11,9 @@ const checks = [
   ['Custom non-operational job roles receive the self-service dashboard without legacy role-name coupling', source.includes('const isEmployee = !isAuditor && !hasOperationalManagementAccess') && source.includes('roleDescriptions[currentUser.role] || roleDescriptions.Karyawan') && !source.includes('const isStaff = currentUser?.role')],
   ['Loan, ticket, and asset quick actions require separate effective permissions', source.includes("canCreateLoan = hasEffectivePermission('loans.create'") && source.includes("canCreateTicket = hasEffectivePermission('tickets.create'") && source.includes("canCreateAsset = hasEffectivePermission('assets.create'") && source.includes('{canCreateLoan && (') && source.includes('{canCreateTicket ? (') && source.includes('{canCreateAsset && (')],
   ['Auditor read-only notice is shown only to Auditor', source.includes(') : isAuditor ? (')],
+  ['Dashboard Superadmin status uses stable metadata and limits legacy Admin GABAH fallback to file-store', source.includes('const hasPermissionMetadata = Array.isArray(currentUser.permission_keys)') && source.includes("!hasPermissionMetadata && currentUser.role === 'Admin GABAH'") && source.includes('const isGlobalDashboard = isSuperAdmin || isAuditor')],
+  ['Humas and Sekdir dashboard indicators use their effective reservation capabilities', source.includes("hasEffectivePermission('room_reservations.documentation.read', ['Humas'])") && source.includes("hasEffectivePermission('room_reservations.override_priority', ['Sekretaris Direksi'])") && source.includes('const isHumas = hasEffectivePermission') && source.includes('const isSekdir = hasEffectivePermission')],
+  ['Dashboard ticket heading does not infer IT queue access from primary role name', !source.includes("currentUser.role === 'IT' ? 'Antrean Helpdesk TI'")],
 ];
 
 let failed = 0;

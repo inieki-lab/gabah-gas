@@ -50,17 +50,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewAssetModal,
 }) => {
   const currentRoleKeys = currentUser?.role_keys || [];
-  const isHumas = currentRoleKeys.includes('humas') || currentUser?.role === 'Humas';
-  const isSekdir = currentRoleKeys.includes('sekretaris_direksi') || currentUser?.role === 'Sekretaris Direksi';
   const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentRoleKeys.includes('superadmin')
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
   const hasEffectivePermission = (permission: string, legacyRoles: string[] = []): boolean => {
     if (isAuditor) return false;
-    if (currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH' || currentUser.role_keys?.includes('superadmin')) return true;
-    if (Array.isArray(currentUser.permission_keys)) {
-      return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permission);
+    if (isSuperAdmin) return true;
+    if (hasPermissionMetadata) {
+      return currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission);
     }
     return legacyRoles.includes(currentUser.role);
   };
+  const isHumas = hasEffectivePermission('room_reservations.documentation.read', ['Humas']);
+  const isSekdir = hasEffectivePermission('room_reservations.override_priority', ['Sekretaris Direksi']);
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const canCreateAsset = hasEffectivePermission('assets.create', ['Admin GABAH', 'IT', 'GA']);
@@ -100,7 +103,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const safeLoans = dashboardLoans;
   const safeTickets = dashboardTickets;
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
-  const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || isAuditor;
+  const isGlobalDashboard = isSuperAdmin || isAuditor;
   const isDivisionDashboard = !isGlobalDashboard && hasOperationalManagementAccess;
   // Dashboard labels reflect persisted owner domains in the already scoped asset data.
   const visibleOwnerDomains = Array.from(new Set(
@@ -115,9 +118,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isLicenseDashboard = isGlobalDashboard || hasEffectivePermission('licenses.read', ['IT']);
   const roleDescription = isAuditor
     ? roleDescriptions.Auditor
-    : currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
+    : isHumas
       ? roleDescriptions.Humas
-    : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
+    : isSekdir
       ? roleDescriptions['Sekretaris Direksi']
       : (roleDescriptions[currentUser.role] || roleDescriptions.Karyawan);
   const expiringLicenses = dashboardAssets.filter(asset => {
@@ -797,7 +800,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                   <LifeBuoy className="w-4 h-4 text-rose-600" />
-                  {isAuditor ? 'Pemantauan Tiket Helpdesk' : currentUser.role === 'IT' ? 'Antrean Helpdesk TI' : `Tiket Helpdesk ${divisionLabel}`}
+                  {isAuditor ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
                   {!isAuditor && (
