@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Vendor, UserProfile } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
+import { GabahService } from '../../services/gabahService';
 
 interface VendorsViewProps {
   vendors: Vendor[];
@@ -50,14 +51,15 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
     });
     return () => { active = false; };
   }, []);
+  const isAuditor = GabahService.isAuditor(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
   const legacyVendorManager = !hasPermissionMetadata && ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const hasPermission = (permission: string) => isSuperAdmin
+  const hasPermission = (permission: string) => !isAuditor && (isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
-      : legacyVendorManager);
+      : legacyVendorManager));
   const canCreate = hasPermission('vendors.create');
   const canUpdate = hasPermission('vendors.update');
   const [formOpen, setFormOpen] = useState(false);
