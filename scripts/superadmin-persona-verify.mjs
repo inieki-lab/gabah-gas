@@ -25,5 +25,7 @@ assert.match(app, /currentUser\.is_superadmin \? \['\*'\] : currentUser\.permiss
 assert.match(loans, /const isSuperAdminUser = isSuperAdmin\(currentUser\)/);
 assert.match(loans, /if \(isSuperAdminUser\) return true/);
 assert.match(loans, /const isEmployee = !isSuperAdminUser/);
+assert.match(loans, /if \(isSuperAdminUser\) return true/);
+assert.match(loans, /const canApprove = \(loan: Loan\) => \{[\\s\\S]*?if \(isSuperAdminUser\) return true/);
 
 console.log('Superadmin persona regression: PASS');
