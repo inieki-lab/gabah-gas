@@ -18,7 +18,7 @@ import {
   Paperclip,
 } from 'lucide-react';
 import { Contract, ContractStatus, UserProfile } from '../../types';
-import { formatRupiah, formatDate, formatDateTime } from '../../services/gabahService';
+import { GabahService, formatRupiah, formatDate, formatDateTime } from '../../services/gabahService';
 import { gabahApi } from '../../services/gabahApi';
 
 interface ContractsViewProps {
@@ -74,8 +74,10 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   const [uploadingContractId, setUploadingContractId] = useState<string | null>(null);
   const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(null);
 
-  const isAdmin = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH';
-  const isAuditor = Array.isArray(currentUser.role_keys) ? currentUser.role_keys.includes('auditor') : currentUser.role === 'Auditor';
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const isAuditor = GabahService.isAuditor(currentUser);
   const hasPermission = (permission: string, legacyRoles: string[] = []) => {
     if (isAdmin) return true;
     if (Array.isArray(currentUser.permission_keys)) {

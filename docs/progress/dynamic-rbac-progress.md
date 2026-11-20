@@ -768,3 +768,14 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Regression coverage extends the canonical primary-role verifier to assert the neutral create flow, immediate assignment handoff, and primary-role checkbox behavior.
 
 **Validation boundary:** this branch requires exact-head CI, including TypeScript, primary-role policy regression, production build, Docker runtime smoke, and PostgreSQL 17 integration. No existing user assignments or production records are modified.
+
+### Additional operational-view permission gates — 2026-11-20
+
+**Branch:** `fix/dynamic-permission-ui-gates`
+
+- License creation shortcut now follows `assets.create` and preserves Auditor read-only precedence; IT/Admin legacy fallback applies only when permission metadata is absent.
+- Vendor create/update shortcuts no longer grant access merely because the primary role label is Admin GABAH when PostgreSQL permission metadata exists. Superadmin metadata and `vendors.create` / `vendors.update` are authoritative; Auditor additional-role membership keeps all write shortcuts hidden.
+- Contract view uses stable Superadmin metadata and `GabahService.isAuditor` for additional Auditor assignments. Contract owner reassignment UI remains Superadmin-only; legacy Admin GABAH fallback is limited to file-store mode.
+- Added UI permission regression assertions to the asset-scope policy verifier.
+
+**Validation boundary:** exact-head CI required. No backend permission catalogue, vendor/contract records, or database grants are changed by this UI-only batch.

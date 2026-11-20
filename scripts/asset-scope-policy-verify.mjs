@@ -12,6 +12,9 @@ const persistence = read('server/persistence.ts');
 const dbSeed = read('server/db.ts');
 const contracts = read('server/contracts.ts');
 const vendorUi = read('src/components/views/VendorsView.tsx');
+const licenseUi = read('src/components/views/LicensesView.tsx');
+const contractUi = read('src/components/views/ContractsView.tsx');
+const contractModalUi = read('src/components/modals/CreateContractModal.tsx');
 const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
@@ -39,7 +42,7 @@ const checks = [
   ['Vendor list uses explicit owner scope and keeps unclassified legacy rows global-only', /const owner = String\(v\.owner_division \|\| ''\)\.trim\(\);[\s\S]*if \(!owner\) return false;[\s\S]*hasRbacScope\(String\(actor\.id\), 'division', owner, 'vendors'\)/.test(server)],
   ['Vendor create requires active owner master and explicit vendors scope', /requestedOwnerInput = String\(req\.body\?\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\)[\s\S]*d\.code \|\| ''[\s\S]*=== requestedOwnerInput && d\.is_active !== false[\s\S]*hasRbacScope\(String\(actor\.id\), 'division', requestedOwner, 'vendors'\)/.test(server)],
   ['Vendor update requires old and new owner scopes and persists owner_division', /canManageExisting[\s\S]*canManageRequested[\s\S]*'owner_division'[\s\S]*vendor as any\)\[key\]/.test(server)],
-  ['Vendor UI loads configurable owner master and uses effective permission keys', /gabahApi\.getDivisions\(\)/.test(vendorUi) && /currentUser\.permission_keys === undefined/.test(vendorUi) && /currentUser\.permission_keys\?\.includes\('vendors\.create'\)/.test(vendorUi) && /currentUser\.permission_keys\?\.includes\('vendors\.update'\)/.test(vendorUi)],
+  ['Vendor UI loads configurable owner master and uses effective permission keys', /gabahApi\.getDivisions\(\)/.test(vendorUi) && /Array\.isArray\(currentUser\.permission_keys\)/.test(vendorUi) && /const hasPermission = \(permission: string\)/.test(vendorUi) && /vendors\.create/.test(vendorUi) && /vendors\.update/.test(vendorUi)],
   ['Vendor API separates category from owner and checks module permission plus owner scope', /requireRbacPermission\(req, res, 'vendors\.create'\)/.test(server) && /requireRbacPermission\(req, res, 'vendors\.update'\)/.test(server) && /hasRbacScope\(String\(actor\.id\), 'division', requestedOwner, 'vendors'\)/.test(server) && /owner_division: requestedOwner/.test(server) && !/requestedCategory === ['"]IT['"]/.test(server)],
   ['Vendor UI shows separate create/update actions and does not fabricate SLA percentage', /const canCreate/.test(vendorUi) && /const canUpdate/.test(vendorUi) && /\{canCreate && \(/.test(vendorUi) && /\{canUpdate && \(/.test(vendorUi) && !/SLA Compliance: 99%/.test(vendorUi)],
   ['Owner master deletion protects vendor and contract references', /vendorsCount/.test(server) && /contractsCount/.test(server) && /references = assetsCount \+ categoriesCount \+ usersCount \+ unitsCount \+ vendorsCount \+ contractsCount/.test(server)],
@@ -127,6 +130,10 @@ const checks = [
     });
   })()],
   ['Meeting facility legacy GA/IT access is confined to the file-store fallback helper', /function hasRoomPermission\(actor: ServerUser, permissionKey: string, legacyRole\?: string \| string\[\]\): boolean[\s\S]*if \(isPostgresPersistenceActive\(\)\) return hasRbacPermission\(String\(actor.id\), permissionKey\);[\s\S]*Array\.isArray\(legacyRole\)/.test(services)],
+  ['License creation UI follows assets.create and Auditor read-only precedence', /const canCreateLicense = !isAuditor[\s\S]*assets\.create/.test(licenseUi) && /GabahService\.isAuditor\(currentUser\)/.test(licenseUi) && !/currentUser\.role === 'Admin GABAH' \|\| currentUser\.role === 'IT'/.test(licenseUi)],
+  ['Vendor create/update UI requires explicit permissions and Auditor deny-write precedence', /const isAuditor = GabahService\.isAuditor\(currentUser\)/.test(vendorUi) && /const hasPermission = \(permission: string\) => !isAuditor &&/.test(vendorUi) && /vendors\.create/.test(vendorUi) && /vendors\.update/.test(vendorUi) && !/currentUser\.role === 'Admin GABAH'\s*\|\|\s*currentUser\.permission_keys/.test(vendorUi)],
+  ['Contract view treats Superadmin metadata as authority and uses effective Auditor membership', /const isAdmin = currentUser\.is_superadmin === true \|\| currentUser\.role_keys\?\.includes\('superadmin'\) === true/.test(contractUi) && /GabahService\.isAuditor\(currentUser\)/.test(contractUi)],
+  ['Contract owner-selector privilege is Superadmin-only with legacy fallback only when permission metadata is absent', /const hasPermissionMetadata = Array\.isArray\(currentUser\.permission_keys\)/.test(contractModalUi) && /!hasPermissionMetadata && currentUser\.role === 'Admin GABAH'/.test(contractModalUi)],
   ['Contract creation requires contracts.create specifically; update-only permission cannot create contracts', /export function canCreateContract\(user: ServerUser\): boolean[\s\S]*hasRbacPermission\(String\(user.id\), 'contracts.create'\)/.test(contracts) && /createContract\([\s\S]*if \(!canCreateContract\(actor\)\)/.test(contracts)],
 ];
 

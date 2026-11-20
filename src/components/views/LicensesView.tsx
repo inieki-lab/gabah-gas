@@ -12,7 +12,7 @@ import {
   Building
 } from 'lucide-react';
 import { Asset, UserProfile } from '../../types';
-import { formatRupiah, formatDate, calculateDaysRemaining } from '../../services/gabahService';
+import { GabahService, formatRupiah, formatDate, calculateDaysRemaining } from '../../services/gabahService';
 
 interface LicensesViewProps {
   assets?: Asset[];
@@ -29,6 +29,14 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
   onOpenNewAssetModal,
   onSelectAsset,
 }) => {
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const canCreateLicense = !isAuditor && (isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUser.permission_keys!.includes('assets.create') || currentUser.permission_keys!.includes('*')
+      : currentUser.role === 'IT'));
   const handleOpenCreate = onOpenCreateLicenseModal || onOpenNewAssetModal || (() => {});
   const safeAssets = Array.isArray(assets) ? assets : [];
   const licenseAssets = safeAssets.filter((a) => a.category_type === 'License');
@@ -55,7 +63,7 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
           </p>
         </div>
 
-        {(currentUser.role === 'Admin GABAH' || currentUser.role === 'IT') && (
+        {canCreateLicense && (
           <button
             onClick={handleOpenCreate}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
