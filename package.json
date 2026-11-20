@@ -68,6 +68,7 @@
     "test:ticket-direct-it-routing": "node scripts/ticket-direct-it-routing-verify.mjs",
     "test:pibc-me-ticket-queue": "node scripts/pibc-me-ticket-queue-verify.mjs",
     "test:rpc-location-label": "node scripts/rpc-location-label-verify.mjs",
+    "test:ticket-owner-id-only": "node scripts/ticket-owner-id-only-verify.mjs",
     "test:contract-creation-relations": "node --import tsx scripts/contract-creation-relations-verify.mjs"
   },
   "dependencies": {
