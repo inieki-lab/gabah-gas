@@ -15,6 +15,7 @@ assert.match(rooms, /'room_reservations\.checkout'/);
 assert.match(rooms, /'room_reservations\.cancel'/);
 assert.match(rooms, /'room_reservations\.create'/);
 assert.match(rooms, /const isAuditor = GabahService\.isAuditor\(currentUser\)/);
+assert.match(rooms, /const hasPermission = \(permission: string, legacyFallback = false\) =>\s*!isAuditor &&/);
 assert.match(rooms, /\{isHumas && \(/);
 assert.match(rooms, /\{isSekdir && \(/);
 assert.match(rooms, /\{canManageMeetingFacilities &&/);
