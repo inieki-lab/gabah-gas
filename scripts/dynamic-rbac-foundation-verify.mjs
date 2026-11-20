@@ -170,7 +170,15 @@ const checks = [
   ['production image uses Node 22, lockfile installs, non-root runtime, and copied migrations', /FROM node:22-alpine AS build/.test(dockerfile) && /npm ci --omit=dev/.test(dockerfile) && /USER node/.test(dockerfile) && /server\/migrations/.test(dockerfile)],
   ['deployment waits for PostgreSQL health and replaces only the app container', /docker compose up -d database/.test(deployScript) && /DB_HEALTH.*healthy/.test(deployScript) && /--no-deps --force-recreate app/.test(deployScript)],
   ['production Docker runtime smoke checks PostgreSQL and writable uploads', /gabah-gas:ci/.test(dockerSmoke) && /persistence.*postgresql/.test(dockerSmoke) && /touch \/app\/uploads/.test(dockerSmoke)],
+,
 
+  ['Auditor role is resolved directly from assigned policies even when another role is Superadmin', /function isAuditorUserId\(userId: string\)/.test(policy) && /policy\.roleKey === 'auditor'/.test(policy) && /return !policies\.some\(policy => policy\.roleKey === 'auditor'\)[\s\S]*policy\.isSuperadmin/.test(policy)],
+  ['Auditor effective permissions are read-only and default-deny for new mutation keys', /export function isAuditorReadPermissionKey/.test(policy) && /if \(policies\.some\(policy => policy\.roleKey === 'auditor'\)\)[\s\S]*isAuditorReadPermissionKey\(permissionKey\)/.test(policy) && /if \(!auditor \|\| isAuditorReadPermissionKey\(key\)\)/.test(policy)],
+  ['Auditor effective role keys and Superadmin counts suppress Superadmin while Auditor is assigned', /policies\.filter\(policy => !policy\.isSuperadmin\)/.test(policy) && /policies\.some\(policy => policy\.roleKey === 'auditor'\)/.test(policy) && /if \(policies\.some\(policy => policy\.roleKey === 'auditor'\)\) continue/.test(policy)],
+  ['API permission guard denies every non-read permission for Auditor in both persistence modes', /isAuditorActor\(actor\) && !isAuditorReadPermissionKey\(permissionKey\)/.test(server) && /Auditor hanya memiliki izin baca/.test(server)],
+  ['Role assignment rejects combining Auditor and Superadmin on the same account', /RBAC_AUDITOR_SUPERADMIN_CONFLICT/.test(server) && /valid\.rows\.some\(row => row\.role_key === 'auditor'\)[\s\S]*valid\.rows\.some\(row => row\.is_superadmin\)/.test(server)],
+  ['Loan and ticket domain writes independently reject Auditor actors', /static requestLoan\([\s\S]*?if \(isAuditorActor\(actor\)\)/.test(domainServices) && /static canOperateLoan\([\s\S]*?if \(isAuditorActor\(actor\)\) return false/.test(domainServices) && /static returnLoan\([\s\S]*?if \(isAuditorActor\(actor\)\)/.test(domainServices) && /static createTicket\([\s\S]*?if \(isAuditorActor\(actor\)\)/.test(domainServices)],
+  ['Room and contract mutation helpers reject Auditor before Superadmin or permission checks', /function hasRoomPermission\([\s\S]*?if \(isAuditorActor\(actor\)\) return false;\s*if \(isSuperadminActor\(actor\)\)/.test(domainServices) && /canCreateContract\([\s\S]*?if \(isAuditorActor\(user\)\) return false/.test(fs.readFileSync('server/contracts.ts', 'utf8')) && /canEditContract\([\s\S]*?if \(isAuditorActor\(user\)\) return false/.test(fs.readFileSync('server/contracts.ts', 'utf8'))],
 
 ];
 
