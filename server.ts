@@ -3057,12 +3057,7 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
-    const isReporter = (ticket: any) =>
-      ticket.reporter_id === actor.id
-      // Legacy name fallback is permitted only when no stable reporter ID
-      // exists. Never let a same-name employee inherit another user's ticket.
-      || (!ticket.reporter_id && Boolean(ticket.reporter_name)
-        && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+    const isReporter = (ticket: any) => ticket.reporter_id === actor.id;
 
     if (isSuperadminActor(actor) || isAuditorActor(actor)) {
       return res.json({ success: true, data: db.tickets });
@@ -3124,9 +3119,7 @@ async function startServer() {
 
       // A broad tickets.update permission is not sufficient to mutate every
       // ticket. Match the same object-level boundary used by the ticket list.
-      const isReporter = ticket.reporter_id === actor.id
-        || (!ticket.reporter_id && Boolean(ticket.reporter_name)
-          && String(ticket.reporter_name).trim().toLowerCase() === String(actor.name || '').trim().toLowerCase());
+      const isReporter = ticket.reporter_id === actor.id;
       const canReadTicketOwner = isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
         : actor.role === ticket.category;
@@ -3716,7 +3709,6 @@ async function startServer() {
         : actor.role === owner;
     const visibleItems = filterDashboardAttentionItems(items, {
       actorId: String(actor.id),
-      actorName: String(actor.name || ''),
       isGlobalReader,
       visibleAssetIds: new Set(visibleAssets.map(asset => asset.id)),
       loans: db.loans,
