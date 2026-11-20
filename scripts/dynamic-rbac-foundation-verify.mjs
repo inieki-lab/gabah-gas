@@ -51,7 +51,7 @@ const checks = [
   ['role scope mapping exists', /CREATE TABLE IF NOT EXISTS gabah_role_division_scopes/i.test(migration)],
   ['user-role assignment mapping exists', /CREATE TABLE IF NOT EXISTS gabah_user_roles/i.test(migration)],
   ['Superadmin capability is a stable field', /is_superadmin BOOLEAN NOT NULL DEFAULT FALSE/i.test(migration)],
-  ['Auditor read-only is derived from effective assigned roles, including additional roles', /export function isAuditorActor\([\s\S]*getEffectiveRoleKeys\(actor\.id\)\.includes\('auditor'\)/.test(policy) && /isAuditorActor\(actor\)/.test(runtimeHardening) && /isAuditorActor\(user\)/.test(domainServices)],
+  ['Auditor read-only is derived from effective assigned roles, including additional roles', /export function isAuditorActor\([\s\S]*isAuditorUserId\(actor\.id\)/.test(policy) && /isAuditorActor\(actor\)/.test(runtimeHardening) && /isAuditorActor\(user\)/.test(domainServices)],
   ['Superadmin seed is keyed independently from display name', /\('superadmin',\s*'Admin GABAH'.*TRUE\)/i.test(migration)],
   ['role deletion is restricted while assigned', /gabah_user_roles[\s\S]*?REFERENCES gabah_roles\(id\) ON DELETE RESTRICT/i.test(migration)],
   ['migration does not drop legacy data', !/\bDROP\s+(TABLE|COLUMN|DATABASE)\b/i.test(migration)],
@@ -171,6 +171,13 @@ const checks = [
   ['deployment waits for PostgreSQL health and replaces only the app container', /docker compose up -d database/.test(deployScript) && /DB_HEALTH.*healthy/.test(deployScript) && /--no-deps --force-recreate app/.test(deployScript)],
   ['production Docker runtime smoke checks PostgreSQL and writable uploads', /gabah-gas:ci/.test(dockerSmoke) && /persistence.*postgresql/.test(dockerSmoke) && /touch \/app\/uploads/.test(dockerSmoke)],
 
+  ['Auditor role is resolved directly from assigned policies even when another role is Superadmin', /function isAuditorUserId\(userId: string\)/.test(policy) && /policy\.roleKey === 'auditor'/.test(policy) && /return !policies\.some\(policy => policy\.roleKey === 'auditor'\)[\s\S]*policy\.isSuperadmin/.test(policy)],
+  ['Auditor effective permissions are read-only and default-deny for new mutation keys', /export function isAuditorReadPermissionKey/.test(policy) && /if \(policies\.some\(policy => policy\.roleKey === 'auditor'\)\)[\s\S]*isAuditorReadPermissionKey\(permissionKey\)/.test(policy) && /if \(!auditor \|\| isAuditorReadPermissionKey\(key\)\)/.test(policy)],
+  ['Auditor effective role keys and Superadmin counts suppress Superadmin while Auditor is assigned', /policies\.filter\(policy => !policy\.isSuperadmin\)/.test(policy) && /policies\.some\(policy => policy\.roleKey === 'auditor'\)/.test(policy) && /if \(policies\.some\(policy => policy\.roleKey === 'auditor'\)\) continue/.test(policy)],
+  ['API permission guard denies every non-read permission for Auditor in both persistence modes', /isAuditorActor\(actor\) && !isAuditorReadPermissionKey\(permissionKey\)/.test(server) && /Auditor hanya memiliki izin baca/.test(server)],
+  ['Role assignment rejects Auditor+Superadmin combinations and excludes Auditor from active Superadmin counts', /RBAC_AUDITOR_SUPERADMIN_CONFLICT/.test(server) && /valid\.rows\.some\(row => row\.role_key === 'auditor'\)[\s\S]*valid\.rows\.some\(row => row\.is_superadmin\)/.test(server) && /NOT EXISTS \(SELECT 1 FROM gabah_user_roles aur[\s\S]*ar\.role_key = \\'auditor\\'/.test(server)],
+  ['Loan and ticket domain writes independently reject Auditor actors', /static requestLoan\([\s\S]*?if \(isAuditorActor\(actor\)\)/.test(domainServices) && /static canOperateLoan\([\s\S]*?if \(isAuditorActor\(actor\)\) return false/.test(domainServices) && /static returnLoan\([\s\S]*?if \(isAuditorActor\(actor\)\)/.test(domainServices) && /static createTicket\([\s\S]*?if \(isAuditorActor\(actor\)\)/.test(domainServices)],
+  ['Room and contract mutation helpers reject Auditor before Superadmin or permission checks', /function hasRoomPermission\([\s\S]*?if \(isAuditorActor\(actor\)\) return false;\s*if \(isSuperadminActor\(actor\)\)/.test(domainServices) && /canCreateContract\([\s\S]*?if \(isAuditorActor\(user\)\) return false/.test(fs.readFileSync('server/contracts.ts', 'utf8')) && /canEditContract\([\s\S]*?if \(isAuditorActor\(user\)\) return false/.test(fs.readFileSync('server/contracts.ts', 'utf8'))],
 
 ];
 

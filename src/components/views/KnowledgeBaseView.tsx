@@ -16,6 +16,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { KnowledgeArticle, UserProfile } from '../../types';
+import { GabahService } from '../../services/gabahService';
 
 interface KnowledgeBaseViewProps {
   articles: KnowledgeArticle[];
@@ -49,13 +50,17 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
   const [votedArticles, setVotedArticles] = useState<Record<string, number>>({});
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  // Dynamic RBAC is authoritative when permission_keys are present; legacy role fallback is file-store only.
-  const canCreate = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('knowledge.create')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const canUpdate = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('knowledge.update')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  // Dynamic RBAC is authoritative when permission_keys are present; Auditor is always read-only.
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const hasKnowledgePermission = (permission: string) => !isAuditor && (isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
+      : ['IT', 'GA'].includes(currentUser.role)));
+  const canCreate = hasKnowledgePermission('knowledge.create');
+  const canUpdate = hasKnowledgePermission('knowledge.update');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -290,22 +295,24 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
               <span className="flex items-center gap-1">
                 <Eye className="w-4 h-4 text-slate-500" /> {selectedArticle.view_count} kali dibaca
               </span>
-              <button
-                onClick={() => handleVote(selectedArticle.id, selectedArticle.helpful_votes)}
-                disabled={votedArticles[selectedArticle.id] !== undefined}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                  votedArticles[selectedArticle.id] !== undefined
-                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300 cursor-default'
-                    : 'bg-white hover:bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
-                }`}
-              >
-                <ThumbsUp className="w-3.5 h-3.5" />
-                <span>
-                  {votedArticles[selectedArticle.id] !== undefined
-                    ? `${votedArticles[selectedArticle.id]} Bermanfaat (Terima kasih!)`
-                    : `${selectedArticle.helpful_votes} Bermanfaat`}
-                </span>
-              </button>
+              {!isAuditor && (
+                <button
+                  onClick={() => handleVote(selectedArticle.id, selectedArticle.helpful_votes)}
+                  disabled={votedArticles[selectedArticle.id] !== undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                    votedArticles[selectedArticle.id] !== undefined
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300 cursor-default'
+                      : 'bg-white hover:bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
+                  }`}
+                >
+                  <ThumbsUp className="w-3.5 h-3.5" />
+                  <span>
+                    {votedArticles[selectedArticle.id] !== undefined
+                      ? `${votedArticles[selectedArticle.id]} Bermanfaat (Terima kasih!)`
+                      : `${selectedArticle.helpful_votes} Bermanfaat`}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>

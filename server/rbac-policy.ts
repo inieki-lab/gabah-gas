@@ -72,8 +72,27 @@ export async function refreshRbacPolicy(): Promise<void> {
   lastLoadedAt = new Date().toISOString();
 }
 
+function isAuditorUserId(userId: string): boolean {
+  return (policiesByUser.get(String(userId)) || []).some(policy => policy.roleKey === 'auditor');
+}
+
+/**
+ * Auditors may receive explicitly assigned read capabilities, but any other
+ * permission is denied even when another assigned role (including Superadmin)
+ * also carries it. New permission keys default to deny for Auditor.
+ */
+export function isAuditorReadPermissionKey(permissionKey: string): boolean {
+  const key = String(permissionKey || '').trim().toLowerCase();
+  const segments = key.split('.');
+  return segments.some(segment =>
+    segment === 'read' || segment.startsWith('read_') || segment === 'view' || segment === 'list'
+  ) || key === 'reports.export' || key === 'tickets.queue.me';
+}
+
 export function isRbacSuperadmin(userId: string): boolean {
-  return (policiesByUser.get(String(userId)) || []).some(policy => policy.isSuperadmin);
+  const policies = policiesByUser.get(String(userId)) || [];
+  return !policies.some(policy => policy.roleKey === 'auditor')
+    && policies.some(policy => policy.isSuperadmin);
 }
 
 /** Preserve local file-store development while making PostgreSQL role identity authoritative. */
@@ -83,7 +102,7 @@ export function isSuperadminActor(actor: { id: string; role?: string }): boolean
 
 /** Auditor is a deny-write capability: assigning it as an additional role must not bypass read-only enforcement. */
 export function isAuditorActor(actor: { id: string; role?: string }): boolean {
-  if (isPostgresPersistenceActive()) return getEffectiveRoleKeys(actor.id).includes('auditor');
+  if (isPostgresPersistenceActive()) return isAuditorUserId(actor.id);
   return actor.role === 'Auditor';
 }
 
@@ -92,26 +111,42 @@ export function countRbacSuperadmins(activeUserIds?: string[]): number {
   let count = 0;
   for (const [userId, policies] of policiesByUser.entries()) {
     if (active && !active.has(userId)) continue;
-    if (policies.some(policy => policy.isSuperadmin)) count++;
+    if (!policies.some(policy => policy.isSuperadmin)) continue;
+    if (policies.some(policy => policy.roleKey === 'auditor')) continue;
+    count++;
   }
   return count;
 }
 
 export function hasRbacPermission(userId: string, permissionKey: string): boolean {
-  return isRbacSuperadmin(userId)
-    || (policiesByUser.get(String(userId)) || []).some(policy => policy.permissions.has(permissionKey));
+  const policies = policiesByUser.get(String(userId)) || [];
+  if (policies.some(policy => policy.roleKey === 'auditor')) {
+    return isAuditorReadPermissionKey(permissionKey)
+      && policies.some(policy => policy.permissions.has(permissionKey));
+  }
+  return isRbacSuperadmin(userId) || policies.some(policy => policy.permissions.has(permissionKey));
 }
 
 export function getEffectiveRoleKeys(userId: string): string[] {
+  const policies = policiesByUser.get(String(userId)) || [];
+  if (policies.some(policy => policy.roleKey === 'auditor')) {
+    // Do not expose a Superadmin role key to the UI while Auditor read-only
+    // precedence is active. Other assigned function roles remain visible.
+    return [...new Set(policies.filter(policy => !policy.isSuperadmin).map(policy => policy.roleKey))];
+  }
   if (isRbacSuperadmin(userId)) return ['superadmin'];
-  return [...new Set((policiesByUser.get(String(userId)) || []).map(policy => policy.roleKey))];
+  return [...new Set(policies.map(policy => policy.roleKey))];
 }
 
 export function getEffectivePermissionKeys(userId: string): string[] {
+  const policies = policiesByUser.get(String(userId)) || [];
   if (isRbacSuperadmin(userId)) return ['*'];
+  const auditor = policies.some(policy => policy.roleKey === 'auditor');
   const keys = new Set<string>();
-  for (const policy of policiesByUser.get(String(userId)) || []) {
-    for (const key of policy.permissions) keys.add(key);
+  for (const policy of policies) {
+    for (const key of policy.permissions) {
+      if (!auditor || isAuditorReadPermissionKey(key)) keys.add(key);
+    }
   }
   return [...keys].sort();
 }

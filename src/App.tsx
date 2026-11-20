@@ -1135,7 +1135,7 @@ export default function App() {
       />
 
       <AdministrationModal
-        isOpen={isAdministrationModalOpen && Boolean(currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH')}
+        isOpen={isAdministrationModalOpen && isSuperadminNavigationAllowed(currentUser?.role, currentUser?.is_superadmin, currentUser?.permission_keys)}
         onClose={() => setIsAdministrationModalOpen(false)}
         users={allUsers}
         auditLogs={auditLogs}

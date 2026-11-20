@@ -20,6 +20,7 @@ export function isLegacyScopedRole(role: string): boolean {
 interface AssetScopeSpec { type: string; value: string | null }
 
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string | string[]): boolean {
+  if (isAuditorActor(actor)) return false;
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
   return Boolean(legacyRole && (Array.isArray(legacyRole) ? legacyRole.includes(actor.role) : actor.role === legacyRole));
@@ -703,6 +704,9 @@ export class GabahDomainService {
     due_date: string;
     borrower_phone?: string;
   }, actor: ServerUser): ServerLoan {
+    if (isAuditorActor(actor)) {
+      throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
+    }
     // Self-service requests may only be created for the authenticated borrower.
     // Creating on behalf of another employee is a separate delegated capability;
     // until that capability exists, only Super Admin may set another borrower.
@@ -923,6 +927,7 @@ export class GabahDomainService {
    * scope for the Loans module. Physical site and employee office do not grant access.
    */
   static canOperateLoan(loan: ServerLoan, actor: ServerUser, permissionKey: 'loans.approve' | 'loans.reject' | 'loans.handover' | 'loans.return' = 'loans.handover'): boolean {
+    if (isAuditorActor(actor)) return false;
     if (isSuperadminActor(actor)) return true;
 
     // Loan authority follows the asset's actual owner domain, not its
@@ -988,6 +993,9 @@ export class GabahDomainService {
    * Admin GABAH. Denied attempts are recorded in the existing audit trail.
    */
   static returnLoan(loanId: string, condition: 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged', returnNotes: string, actor: ServerUser): ServerLoan {
+    if (isAuditorActor(actor)) {
+      throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
+    }
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
@@ -1043,6 +1051,9 @@ export class GabahDomainService {
     related_asset_id?: string;
     contract_id?: string;
   }, actor: ServerUser): ServerTicket {
+    if (isAuditorActor(actor)) {
+      throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
+    }
     // Strict divisional categories per PRD §3.5: a ticket must target an
     // operational division that actually staffs a queue. Without this gate a
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
