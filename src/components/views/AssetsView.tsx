@@ -116,12 +116,16 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
     });
   }, [safeAssets, selectedDivision, selectedCategory, selectedStatus, searchQuery]);
 
-  const canCreateAsset = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('assets.create')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const canImportAssets = Array.isArray(currentUser.permission_keys)
-    ? currentUser.permission_keys.includes('assets.bulk_import')
-    : ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const hasAssetPermission = (permission: string) => !isAuditor && (isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
+      : ['IT', 'GA'].includes(currentUser.role)));
+  const canCreateAsset = hasAssetPermission('assets.create');
+  const canImportAssets = hasAssetPermission('assets.bulk_import');
 
   return (
     <div className="space-y-6">
@@ -450,7 +454,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
-                        {onReportAsset && currentUser?.role !== 'Auditor' && (
+                        {onReportAsset && !isAuditor && (
                           <button
                             onClick={() => onReportAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
