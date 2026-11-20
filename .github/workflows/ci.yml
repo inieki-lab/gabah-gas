@@ -47,6 +47,9 @@ jobs:
       - name: Typecheck (lint)
         run: npm run lint
 
+      - name: Superadmin Administration entry authorization regression
+        run: npm run test:superadmin-administration-entry
+
       - name: PostgreSQL runtime failure latch and atomic snapshot regression
         run: npm run test:runtime-persistence-atomicity
 
