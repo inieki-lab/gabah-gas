@@ -883,3 +883,15 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added regression assertions to the meeting-room capability verifier; backend queue data remains server-scoped and no API/data permissions were broadened.
 
 **Validation:** exact-head CI required before merge.
+
+
+### Infrastructure loanability enforcement — 2026-11-20
+
+**PR:** #174 — merged to `main` as `51928b5c1e371d7c2e02ca866c02f821be74f519`.
+
+- Added one domain-level non-loanable category guard resolved from the authoritative category master, with protected category codes, IT software/license metadata, and infrastructure descriptions.
+- Asset creation forces infrastructure and license categories to `is_loanable=false`, even if a caller submits `true`.
+- Direct asset PATCH and bulk asset update reject attempts to enable loanability for protected categories.
+- Loan request service rechecks the authoritative category policy before accepting a request.
+- Added HTTP regression coverage for infrastructure creation, PATCH override, and loan request rejection.
+- Exact-head CI run #44689553042 passed 78/78 checks.
