@@ -920,3 +920,5 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Frontend LoanStatus includes authoritative server states and legacy aliases.
 - Server approval now accepts only `pending_approval`. Completed, rejected, approved, and borrowed loans cannot be re-approved after the asset later becomes available.
 - Added CI regression coverage for UI/API state mapping and the approval transition guard.
+
+- Superadmin approval button now honors global Superadmin identity even when dynamic permission metadata is present; server remains authoritative for the owner-scope check.

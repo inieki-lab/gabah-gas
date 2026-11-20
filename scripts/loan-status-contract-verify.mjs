@@ -6,6 +6,7 @@ const services = fs.readFileSync('server/services.ts', 'utf8');
 assert.ok(ui.includes("status === 'pending_approval'"));
 assert.ok(ui.includes("status === 'borrowed'"));
 assert.ok(ui.includes('normalizeLoanStatus(loan.status)'));
+assert.ok(ui.includes("hasEffectivePermission('loans.approve'"), 'Superadmin/effective permission must control approval UI');
 assert.ok(types.includes("'pending_approval'") && types.includes("'borrowed'"));
 const start = services.indexOf('static approveLoan(');
 const end = services.indexOf('\n  /**', start + 10);
