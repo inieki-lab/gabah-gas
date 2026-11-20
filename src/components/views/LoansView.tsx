@@ -97,8 +97,10 @@ export const LoansView: React.FC<LoansViewProps> = ({
   });
 
   const canApprove = (loan: Loan) => {
+    if (isAuditorUser) return false;
+    if (isSuperAdminUser) return true;
     return Array.isArray(currentUser?.permission_keys)
-      ? !isAuditorUser && hasPermission('loans.approve')
+      ? hasPermission('loans.approve')
       : GabahService.canApproveLoan(currentUser, loan);
   };
 
