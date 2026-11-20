@@ -295,22 +295,24 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
               <span className="flex items-center gap-1">
                 <Eye className="w-4 h-4 text-slate-500" /> {selectedArticle.view_count} kali dibaca
               </span>
-              <button
-                onClick={() => handleVote(selectedArticle.id, selectedArticle.helpful_votes)}
-                disabled={votedArticles[selectedArticle.id] !== undefined}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                  votedArticles[selectedArticle.id] !== undefined
-                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300 cursor-default'
-                    : 'bg-white hover:bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
-                }`}
-              >
-                <ThumbsUp className="w-3.5 h-3.5" />
-                <span>
-                  {votedArticles[selectedArticle.id] !== undefined
-                    ? `${votedArticles[selectedArticle.id]} Bermanfaat (Terima kasih!)`
-                    : `${selectedArticle.helpful_votes} Bermanfaat`}
-                </span>
-              </button>
+              {!isAuditor && (
+                <button
+                  onClick={() => handleVote(selectedArticle.id, selectedArticle.helpful_votes)}
+                  disabled={votedArticles[selectedArticle.id] !== undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                    votedArticles[selectedArticle.id] !== undefined
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300 cursor-default'
+                      : 'bg-white hover:bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
+                  }`}
+                >
+                  <ThumbsUp className="w-3.5 h-3.5" />
+                  <span>
+                    {votedArticles[selectedArticle.id] !== undefined
+                      ? `${votedArticles[selectedArticle.id]} Bermanfaat (Terima kasih!)`
+                      : `${selectedArticle.helpful_votes} Bermanfaat`}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>
