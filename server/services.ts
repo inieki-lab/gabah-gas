@@ -24,7 +24,7 @@ export function isNonLoanableInfrastructureAsset(asset: Partial<ServerAsset> & R
   const label = [category?.name, category?.description, asset.name, asset.category_name]
     .filter(Boolean).join(' ').toLowerCase();
   const protectedCodes = new Set(['HSV', 'HFW', 'HSTG', 'HNET', 'HUPS', 'HRCK', 'SLIC']);
-  const protectedDescription = /\\b(server|firewall|nas|san|storage|switch|router|access[ -]?point|network|jaringan|ups|rack|lisensi|license|software|saas)\\b/i.test(label);
+  const protectedDescription = /\b(server|firewall|nas|san|storage|switch|router|access[ -]?point|network|jaringan|ups|rack|lisensi|license|software|saas)\b/i.test(label);
   return mainType === 'IT-S'
     || categoryType === 'license'
     || protectedCodes.has(code)
