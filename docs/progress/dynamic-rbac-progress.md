@@ -774,7 +774,7 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 **Branch:** `fix/dynamic-permission-ui-gates`
 
 - License creation shortcut now follows `assets.create` and preserves Auditor read-only precedence; IT/Admin legacy fallback applies only when permission metadata is absent.
-- Vendor create/update shortcuts no longer grant access merely because the primary role label is Admin GABAH when PostgreSQL permission metadata exists. Superadmin metadata and `vendors.create` / `vendors.update` are authoritative.
+- Vendor create/update shortcuts no longer grant access merely because the primary role label is Admin GABAH when PostgreSQL permission metadata exists. Superadmin metadata and `vendors.create` / `vendors.update` are authoritative; Auditor additional-role membership keeps all write shortcuts hidden.
 - Contract view uses stable Superadmin metadata and `GabahService.isAuditor` for additional Auditor assignments. Contract owner reassignment UI remains Superadmin-only; legacy Admin GABAH fallback is limited to file-store mode.
 - Added UI permission regression assertions to the asset-scope policy verifier.
 
