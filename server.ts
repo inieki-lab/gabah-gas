@@ -14,7 +14,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
-import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor } from './server/rbac-policy';
+import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor, isAuditorReadPermissionKey } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -331,8 +331,14 @@ async function startServer() {
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
   // production; JSON/file-store development retains legacy behavior during migration.
   const requireRbacPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
-    if (!isPostgresPersistenceActive()) return true;
     const actor = (req as any).user as ServerUser | undefined;
+    // Auditor deny-write applies in both PostgreSQL and file-store modes and
+    // takes precedence over any other assigned role or permission.
+    if (actor && isAuditorActor(actor) && !isAuditorReadPermissionKey(permissionKey)) {
+      res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+      return false;
+    }
+    if (!isPostgresPersistenceActive()) return true;
     if (!actor || !hasRbacPermission(actor.id, permissionKey)) {
       res.status(403).json({ success: false, message: 'Akses ditolak: permission ' + permissionKey + ' tidak diberikan kepada user ini.' });
       return false;
@@ -412,6 +418,7 @@ async function startServer() {
     if (message === 'RBAC_USER_NOT_FOUND') return res.status(404).json({ success: false, message: 'User target tidak ditemukan.' });
     if (message === 'RBAC_ROLE_INVALID') return res.status(400).json({ success: false, message: 'Satu atau lebih role tidak terdaftar atau sudah nonaktif.' });
     if (message === 'RBAC_LAST_SUPERADMIN') return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh kehilangan role Superadmin.' });
+    if (message === 'RBAC_AUDITOR_SUPERADMIN_CONFLICT') return res.status(409).json({ success: false, message: 'Role Auditor read-only tidak dapat digabung dengan role Superadmin pada satu akun.' });
     return res.status(400).json({ success: false, message: 'Permintaan Dynamic RBAC tidak valid atau gagal diproses.' });
   };
 
@@ -637,6 +644,9 @@ async function startServer() {
         const assignmentIds = [...new Set([...uniqueIds, primaryRoleId])];
         const valid = await client.query('SELECT id, name, role_key, is_superadmin FROM gabah_roles WHERE is_active = TRUE AND id = ANY($1::bigint[])', [assignmentIds]);
         if (valid.rowCount !== assignmentIds.length) throw new Error('RBAC_ROLE_INVALID');
+        if (valid.rows.some(row => row.role_key === 'auditor') && valid.rows.some(row => row.is_superadmin)) {
+          throw new Error('RBAC_AUDITOR_SUPERADMIN_CONFLICT');
+        }
         // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
         // target must keep a superadmin-capable role if it is the only holder.
         const current = await client.query('SELECT ur.role_id FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE ur.user_id = $1 AND r.is_superadmin = TRUE', [userId]);
