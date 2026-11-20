@@ -26,4 +26,4 @@ assert.match(header, /const isSuperadmin = currentUser\.is_superadmin === true \
 assert.doesNotMatch(header, /currentUser\.role === 'IT' \? itFacilityReservations\.length/);
 assert.doesNotMatch(header, /currentUser\.role === 'GA' \? gaReservations\.length/);
 
-console.log('Room and meeting additional-role UI contract: 18 checks passed');
+console.log('Room and meeting additional-role UI contract: passed');
