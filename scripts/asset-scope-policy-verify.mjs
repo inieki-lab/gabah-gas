@@ -115,6 +115,18 @@ const checks = [
   ['Dashboard ticket counts reuse dynamic ticket owner scope and personal visibility', /canReadOwnerScope = \(owner: string, module: 'loans' \| 'tickets'\)/.test(server) && /canReadOwnerScope\(ticket\.category, 'tickets'\)/.test(server) && /ticket\.reporter_id === actor\.id/.test(server)],
   ['Loan list and dashboard counts follow borrower and explicit owner scope', /hasRbacScope\(String\(actor.id\), 'division', loan\.owner_division, 'loans'\)/.test(server) && /canReadOwnerScope\(loan\.owner_division, 'loans'\)/.test(server) && /loans\.approve[\s\S]*hasRbacScope/.test(services)],
   ['User-targeted notifications remain private and role recipients honor additional RBAC assignments', /if \(notification\.recipient_user_id\) return notification\.recipient_user_id === actor\.id;[\s\S]*hasApplicationRole\(actor, primaryRoleKey\(notification\.recipient_role\)\)/.test(server) && /const isRecipient = notif \? isNotificationRecipient\(actor, notif\) : false;/.test(server) && /const isRecipient = isNotificationRecipient\(actor, n\);/.test(server)],
+
+  ['Meeting facility create/update/delete honor meeting_facilities.manage for custom roles in PostgreSQL', (() => {
+    const methods = ['createMeetingFacility', 'updateMeetingFacility', 'deleteMeetingFacility'];
+    return methods.every((name) => {
+      const start = services.indexOf(`static ${name}(`);
+      const next = services.indexOf('static ', start + 8);
+      const body = services.slice(start, next < 0 ? services.length : next);
+      return start >= 0 && body.includes("hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])");
+    });
+  })()],
+  ['Meeting facility legacy GA/IT access is confined to the file-store fallback helper', /function hasRoomPermission\(actor: ServerUser, permissionKey: string, legacyRole\?: string \| string\[\]\): boolean[\s\S]*if \(isPostgresPersistenceActive\(\)\) return hasRbacPermission\(String\(actor.id\), permissionKey\);[\s\S]*Array\.isArray\(legacyRole\)/.test(services)],
+  ['Contract creation requires contracts.create specifically; update-only permission cannot create contracts', /export function canCreateContract\(user: ServerUser\): boolean[\s\S]*hasRbacPermission\(String\(user.id\), 'contracts.create'\)/.test(contracts) && /createContract\([\s\S]*if \(!canCreateContract\(actor\)\)/.test(contracts)],
 ];
 
 let failed = 0;
