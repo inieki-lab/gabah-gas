@@ -19,6 +19,8 @@ const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
+const knowledgeUi = read('src/components/views/KnowledgeBaseView.tsx');
+const appUi = read('src/App.tsx');
 const ticketUi = read('src/components/views/TicketsView.tsx');
 const assetCreateUi = read('src/components/modals/CreateAssetModal.tsx');
 const assetCreateApi = read('src/services/gabahApi.ts');
@@ -130,6 +132,9 @@ const checks = [
     });
   })()],
   ['Meeting facility legacy GA/IT access is confined to the file-store fallback helper', /function hasRoomPermission\(actor: ServerUser, permissionKey: string, legacyRole\?: string \| string\[\]\): boolean[\s\S]*if \(isPostgresPersistenceActive\(\)\) return hasRbacPermission\(String\(actor.id\), permissionKey\);[\s\S]*Array\.isArray\(legacyRole\)/.test(services)],
+  ['Asset create/import/report shortcuts enforce Auditor read-only and stable Superadmin metadata', /const isAuditor = GabahService\\.isAuditor\\(currentUser\\)/.test(assetUi) && /const hasAssetPermission = \\(permission: string\\) => !isAuditor/.test(assetUi) && /onReportAsset && !isAuditor/.test(assetUi)],
+  ['Knowledge article create/update shortcuts enforce Auditor read-only and explicit permissions', /const isAuditor = GabahService\\.isAuditor\\(currentUser\\)/.test(knowledgeUi) && /const hasKnowledgePermission = \\(permission: string\\) => !isAuditor/.test(knowledgeUi) && /knowledge\\.create/.test(knowledgeUi) && /knowledge\\.update/.test(knowledgeUi)],
+  ['Administration modal is gated by effective Superadmin navigation capability, not primary role label', /isOpen=\\{isAdministrationModalOpen && isSuperadminNavigationAllowed\\(currentUser\\?\\.role, currentUser\\?\\.is_superadmin, currentUser\\?\\.permission_keys\\)\\}/.test(appUi)],
   ['License creation UI follows assets.create and Auditor read-only precedence', /const canCreateLicense = !isAuditor[\s\S]*assets\.create/.test(licenseUi) && /GabahService\.isAuditor\(currentUser\)/.test(licenseUi) && !/currentUser\.role === 'Admin GABAH' \|\| currentUser\.role === 'IT'/.test(licenseUi)],
   ['Vendor create/update UI requires explicit permissions and Auditor deny-write precedence', /const isAuditor = GabahService\.isAuditor\(currentUser\)/.test(vendorUi) && /const hasPermission = \(permission: string\) => !isAuditor &&/.test(vendorUi) && /vendors\.create/.test(vendorUi) && /vendors\.update/.test(vendorUi) && !/currentUser\.role === 'Admin GABAH'\s*\|\|\s*currentUser\.permission_keys/.test(vendorUi)],
   ['Contract view treats Superadmin metadata as authority and uses effective Auditor membership', /const isAdmin = currentUser\.is_superadmin === true \|\| currentUser\.role_keys\?\.includes\('superadmin'\) === true/.test(contractUi) && /GabahService\.isAuditor\(currentUser\)/.test(contractUi)],
