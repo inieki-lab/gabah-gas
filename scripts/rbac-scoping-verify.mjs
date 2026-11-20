@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 
 const results = [];
 function record(test, expected, actual, pass) {
@@ -50,6 +51,21 @@ async function waitForServer(base, tries = 80) {
   return false;
 }
 
+async function findAvailablePort() {
+  const probe = net.createServer();
+  await new Promise((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', resolve);
+  });
+  const address = probe.address();
+  if (!address || typeof address === 'string') {
+    await new Promise(resolve => probe.close(resolve));
+    throw new Error('Unable to reserve an ephemeral test port');
+  }
+  await new Promise((resolve, reject) => probe.close(error => error ? reject(error) : resolve()));
+  return address.port;
+}
+
 async function main() {
   const serverPath = path.resolve(process.cwd(), 'dist/server.cjs');
   if (!fs.existsSync(serverPath)) {
@@ -63,7 +79,7 @@ async function main() {
     backupState = fs.readFileSync(stateFile, 'utf8');
     fs.rmSync(stateFile);
   }
-  const PORT = 39000 + Math.floor(Math.random() * 2000);
+  const PORT = await findAvailablePort();
   const base = `http://127.0.0.1:${PORT}`;
   const child = spawn(process.execPath, [serverPath], {
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'development' },
