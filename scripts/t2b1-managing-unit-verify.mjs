@@ -15,6 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import net from 'node:net';
 import { spawn } from 'node:child_process';
 
 const R = [];
@@ -32,6 +33,14 @@ const req = async (b, m, p, o = {}) => {
 // Aturan mapping deterministik (harus identik dengan server/managing-unit.ts
 // dan backfill SQL di server/migrations/007_asset_managing_unit.sql).
 const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: null, PIBC: null, GA: null };
+
+async function getFreePort() {
+  const server = net.createServer();
+  await new Promise((resolve, reject) => server.once('error', reject).listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  await new Promise((resolve, reject) => server.close(err => err ? reject(err) : resolve()));
+  return port;
+}
 
 async function boot(sp, port, env) {
   const c = spawn(process.execPath, [sp], {
@@ -70,7 +79,7 @@ async function main() {
   let s1 = null, s2 = null;
   try {
     // ================= PHASE 1 (fresh seed) =================
-    s1 = await boot(sp, 39100 + Math.floor(Math.random() * 500), env);
+    s1 = await boot(sp, await getFreePort(), env);
     const login = async (b, e, pw) => {
       const r = await req(b, 'POST', '/api/auth/login', { body: { email: e, password: pw } });
       return r.json?.data?.token || '';
@@ -186,7 +195,7 @@ async function main() {
     kill(s1.c); s1 = null;
 
     // ================= PHASE 2 (restart dengan state phase 1) =================
-    s2 = await boot(sp, 39600 + Math.floor(Math.random() * 500), env);
+    s2 = await boot(sp, await getFreePort(), env);
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const phase2 = (await req(s2.base, 'GET', '/api/assets', { token: admin2 })).json?.data || [];
     const num2 = Object.fromEntries(phase2.map(a => [a.id, a.asset_number]));
