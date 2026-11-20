@@ -223,6 +223,21 @@ async function main() {
     record('Approval authority: Superadmin global + IT/GA owner-scope custodians', '200 / 200 / 200 / 200',
       [aL1, aL2, aL4, aL5].map(r => r.status).join(' / '),
       [aL1, aL2, aL4, aL5].every(r => r.status === 200));
+    const adminLoanRows = await req(base, 'GET', '/api/loans', { token: admin.token });
+    const adminPendingL3 = (adminLoanRows.json?.data || []).find(loan => loan.id === L3.id);
+    record('Superadmin loan read model exposes approve action for pending owner domains', 'allowed_actions.approve=true',
+      String(adminPendingL3?.allowed_actions?.approve),
+      adminLoanRows.status === 200 && adminPendingL3?.allowed_actions?.approve === true);
+    const borrowerLoanRows = await req(base, 'GET', '/api/loans', { token: karyawan.token });
+    const borrowerPendingL3 = (borrowerLoanRows.json?.data || []).find(loan => loan.id === L3.id);
+    record('Borrower own pending loan does not expose approval action without owner scope', 'allowed_actions.approve=false',
+      String(borrowerPendingL3?.allowed_actions?.approve),
+      borrowerLoanRows.status === 200 && borrowerPendingL3?.allowed_actions?.approve === false);
+    const itLoanRows = await req(base, 'GET', '/api/loans', { token: it.token });
+    const itApprovedL2 = (itLoanRows.json?.data || []).find(loan => loan.id === L2.id);
+    record('IT owner-scope read model exposes handover action only after approval', 'allowed_actions.handover=true',
+      String(itApprovedL2?.allowed_actions?.handover),
+      itLoanRows.status === 200 && itApprovedL2?.allowed_actions?.handover === true);
 
     // Availability preview checks every reservation but returns no borrower data.
     const availability = await req(base, 'POST', '/api/loans/availability', {
