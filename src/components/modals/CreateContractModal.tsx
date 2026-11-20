@@ -32,7 +32,9 @@ const OWNER_DIVISION_OPTIONS = ['GA', 'IT', 'SC', 'PIBC', 'Sekretariat Direksi',
 const CONTRACT_TYPE_PRESETS = ['Security', 'Maintenance', 'Supplier Barang', 'Layanan Pasar', 'Sewa', 'Konsultansi', 'Langganan Layanan', 'Umum'];
 
 export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen, onClose, users, currentUser, onCreate }) => {
-  const isAdmin = currentUser.role === 'Admin GABAH';
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
   const ownDivision = (currentUser.division || 'GA').toUpperCase();
 
   const [contractType, setContractType] = useState('Umum');
