@@ -202,6 +202,9 @@ jobs:
       - name: Contract renewal linkage integrity
         run: npm run test:contract-renewal-integrity
 
+      - name: Maintenance seed relation integrity
+        run: npm run test:maintenance-seed-relations
+
       - name: Vendor active-contract count server authority
         run: npm run test:vendor-contract-count
 
