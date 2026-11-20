@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { Loan, Asset, UserProfile, LoanStatus } from '../../types';
 import { GabahService, formatDateTime, exportLoansToCsv } from '../../services/gabahService';
-import { isExactIdentityNameMatch } from '../../utils/identityMatching';
 
 interface LoansViewProps {
   loans?: Loan[];
@@ -301,7 +300,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
                   {/* Status: Active -> Return inspection */}
                   {!isAuditor && (loan.status === 'active' || loan.status === 'overdue') &&
-                    (userCanApprove || loan.borrower_id === currentUser.id || isExactIdentityNameMatch(loan.borrower_name, currentUser.name)) && (
+                    (userCanApprove || loan.borrower_id === currentUser.id) && (
                     <button
                       onClick={() => setReturningLoan(loan)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
