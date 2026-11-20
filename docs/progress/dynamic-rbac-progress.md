@@ -768,15 +768,3 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Regression coverage extends the canonical primary-role verifier to assert the neutral create flow, immediate assignment handoff, and primary-role checkbox behavior.
 
 **Validation boundary:** this branch requires exact-head CI, including TypeScript, primary-role policy regression, production build, Docker runtime smoke, and PostgreSQL 17 integration. No existing user assignments or production records are modified.
-
-### Dashboard capability alignment — 2026-11-20
-
-**Branch:** `fix/dashboard-dynamic-role-capabilities`
-
-- Dashboard Superadmin identity now uses `is_superadmin` / `role_keys.superadmin`; legacy primary-role fallback applies only when PostgreSQL permission metadata is absent.
-- Humas and Sekretariat Direksi dashboard indicators derive from `room_reservations.documentation.read` and `room_reservations.override_priority`, not primary role labels.
-- Auditor detection remains based on all effective role assignments and continues to override write shortcuts.
-- Ticket dashboard heading no longer infers IT queue capability from the primary role name; it reflects the scoped dashboard owner label.
-- Extended dashboard owner-summary regression checks for capability-based function indicators and stable Superadmin metadata.
-
-**Validation boundary:** exact-head CI required. No dashboard data queries, server-side scopes, or permission grants are modified.
