@@ -340,7 +340,7 @@ async function main() {
     record('login GA user', '200 + token', `HTTP ${gaLogin.status}`, gaLogin.status === 200 && Boolean(gaToken));
 
     const karyawanLogin = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
-    const karyawanToken = karyawanLogin.json?.data?.token || '';
+    let karyawanToken = karyawanLogin.json?.data?.token || '';
     record('login Karyawan', '200 + token', `HTTP ${karyawanLogin.status}`, karyawanLogin.status === 200 && Boolean(karyawanToken));
 
     const auditorLogin = await req(base, 'POST', '/api/auth/login', { body: { email: AUDITOR_EMAIL, password: USER_PASS } });
@@ -452,6 +452,11 @@ async function main() {
       body: { role_ids: gaRole ? [Number(gaRole.id)] : [] },
     });
     record('Dynamic role assignment adds GA capability without replacing Karyawan primary role', '200 + GA role', `HTTP ${assignment.status}`, assignment.status === 200 && assignment.json?.data?.role_ids?.includes(Number(gaRole?.id)));
+    const oldKaryawanSession = await req(base, 'GET', '/api/auth/me', { token: karyawanToken });
+    record('Role assignment revokes the target user\'s existing session', '401', `HTTP ${oldKaryawanSession.status}`, oldKaryawanSession.status === 401);
+    const karyawanReloginAfterGa = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
+    karyawanToken = karyawanReloginAfterGa.json?.data?.token || '';
+    record('Karyawan can sign in again after role assignment', '200 + new token', `HTTP ${karyawanReloginAfterGa.status}`, karyawanReloginAfterGa.status === 200 && Boolean(karyawanToken));
 
     const karyawanView = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
     record('RBAC Karyawan with GA role cannot read IT-owned contract outside GA scope', '404', `HTTP ${karyawanView.status}`, karyawanView.status === 404);
@@ -564,6 +569,9 @@ async function main() {
       body: { role_ids: [Number(gaRole?.id), vendorRoleId] },
     });
     record('Karyawan can receive a separate vendor owner capability without changing primary role', '200', `HTTP ${assignVendorRole.status}`, assignVendorRole.status === 200);
+    const karyawanReloginAfterVendorRole = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
+    karyawanToken = karyawanReloginAfterVendorRole.json?.data?.token || '';
+    record('Karyawan re-authenticates after vendor role assignment', '200 + new token', `HTTP ${karyawanReloginAfterVendorRole.status}`, karyawanReloginAfterVendorRole.status === 200 && Boolean(karyawanToken));
 
     const rpcscVendor = await req(base, 'POST', '/api/vendors', {
       token: karyawanToken,
@@ -591,6 +599,9 @@ async function main() {
     });
     record('Auditor additional role can be assigned without replacing Karyawan primary', '200 + auditor capability',
       `HTTP ${addAuditorRole.status}`, addAuditorRole.status === 200 && addAuditorRole.json?.data?.role_ids?.includes(Number(auditorRole?.id)));
+    const karyawanReloginAfterAuditor = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
+    karyawanToken = karyawanReloginAfterAuditor.json?.data?.token || '';
+    record('Karyawan re-authenticates after Auditor capability assignment', '200 + new token', `HTTP ${karyawanReloginAfterAuditor.status}`, karyawanReloginAfterAuditor.status === 200 && Boolean(karyawanToken));
     const additionalAuditorWrite = await req(base, 'POST', '/api/tickets', {
       token: karyawanToken,
       body: { title: 'VERIFY Auditor additional role write denial', description: 'must be denied', category: 'IT', priority: 'low' },
