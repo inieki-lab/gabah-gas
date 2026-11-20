@@ -808,3 +808,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - ME ticket request access uses stable Superadmin metadata or the explicit `tickets.create.me` capability. A primary-role label alone no longer bypasses PostgreSQL permission metadata.
 - Regression coverage includes the ME requester permission and Auditor additional-role deny-write behavior.
 - CI run #2665 passed all 75 checks, including Dynamic RBAC, ticket queue, production build, Docker runtime smoke, PostgreSQL 17 integration, and security assertions.
+
+### Loan UI Dynamic RBAC alignment — 2026-11-20
+
+**PR:** #160 — merged to `main` as `07c5302`.
+
+- Loan list now trusts backend borrower/owner/unit scope instead of re-filtering by a hardcoded primary-role list.
+- Loan creation shortcut uses `loans.create` and is hidden when the user lacks that permission.
+- LoansView and CreateLoanModal use `GabahService.isAuditor`; additional Auditor membership remains read-only and blocks creation/return actions.
+- CI run #2669 passed all 75 checks, including typecheck, loanable-pool UI regression, loan authorization/state transitions, Docker runtime smoke, PostgreSQL 17 integration, and security checks.
