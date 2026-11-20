@@ -24,6 +24,7 @@ const employeeCapabilityMigration = fs.readFileSync('server/migrations/031_emplo
 const branchLocationMigration = fs.readFileSync('server/migrations/026_map_branch_accounts_to_employee_location.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
+const assignUserRolesRoute = server.slice(server.indexOf("app.put('/api/admin/rbac/users/:id/roles'"), server.indexOf('// ==========================================\n  // API ROUTES (FIRST)', server.indexOf("app.put('/api/admin/rbac/users/:id/roles'")));
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
 const domainServices = fs.readFileSync('server/services.ts', 'utf8');
@@ -37,6 +38,7 @@ const deployScript = fs.readFileSync('deploy.sh', 'utf8');
 const dockerSmoke = fs.readFileSync('scripts/docker-runtime-smoke.sh', 'utf8');
 const effectivePermissionQuery = policy.slice(policy.indexOf('SELECT ur.user_id'), policy.indexOf('const scopes'));
 const checks = [
+  ['Changing a user\'s dynamic role assignments revokes all existing sessions before success', /revokeUserSessions\(userId\)/.test(assignUserRolesRoute) && assignUserRolesRoute.indexOf('revokeUserSessions(userId)') > assignUserRolesRoute.indexOf('withRbacTransaction')],
   ['Legacy function roles are assigned after normalized user rows exist and before profiles are normalized', /await backfillNormalizedTables\(\);\s*const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments\(\);\s*await ensureEmployeeCapabilityAssignments\(legacyCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/.test(persistence)],
   ['Legacy Humas and Secretariat primary mirrors are reconciled to Karyawan', !/WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas'/.test(persistence) && /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/.test(persistence)],
   ['runtime effective permissions ignore inactive permission catalogue entries', effectivePermissionQuery.includes('p.permission_key') && effectivePermissionQuery.includes('LEFT JOIN gabah_permissions p') && effectivePermissionQuery.includes('p.is_active = TRUE') && !effectivePermissionQuery.includes('rp.permission_key FROM')],
