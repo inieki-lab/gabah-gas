@@ -50,18 +50,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenNewAssetModal,
 }) => {
   const hasPermission = (key: string, legacyRoles: string[] = []) => {
+    // Superadmin is an explicit server-issued capability and takes precedence
+    // over the user's operational role and its narrower permission snapshot.
+    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     if (Array.isArray(currentUser?.permission_keys)) {
       return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(key);
     }
-    if (currentUser?.is_superadmin || currentUser?.role === 'Admin GABAH') return true;
     return legacyRoles.includes(currentUser?.role || '');
   };
-  const isAuditor = currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor';
-  const isEmployee = !isAuditor
+  const isAuditor = !currentUser?.is_superadmin && (currentUser?.role_keys?.includes('auditor') === true || currentUser?.role === 'Auditor');
+  const isEmployee = !currentUser?.is_superadmin && !isAuditor
     && !hasPermission('assets.create', ['Admin GABAH', 'IT', 'GA'])
     && !hasPermission('loans.approve', ['Admin GABAH', 'IT', 'GA'])
     && !hasPermission('tickets.update', ['Admin GABAH', 'IT', 'GA']);
-  const isHumas = hasPermission('room_reservations.documentation.read', ['Humas']);
+  const isHumas = !currentUser?.is_superadmin && hasPermission('room_reservations.documentation.read', ['Humas']);
   const canCreateLoan = !isAuditor && hasPermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Sekretaris Direksi', 'Humas']);
   const canCreateTicket = !isAuditor && hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Sekretaris Direksi', 'Humas']);
   const canCreateAsset = !isAuditor && hasPermission('assets.create', ['Admin GABAH', 'IT', 'GA']);
@@ -93,11 +95,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
   // License dashboard cards are derived from the scoped asset collection, not a separate licenses API.
   const isLicenseDashboard = isGlobalDashboard || (currentUser.permission_keys === undefined && currentUser.role === 'IT') || Boolean(currentUser.permission_keys?.includes('*') || currentUser.permission_keys?.includes('assets.catalog.read'));
-  const roleDescription = currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
-    ? roleDescriptions.Humas
-    : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
-      ? roleDescriptions['Sekretaris Direksi']
-      : roleDescriptions[currentUser.role] || 'Akses dan ringkasan operasional sesuai permission serta scope yang ditetapkan.';
+  const roleDescription = currentUser.is_superadmin || currentUser.role === 'Admin GABAH'
+    ? roleDescriptions['Admin GABAH']
+    : currentUser.role_keys?.includes('humas') || currentUser.role === 'Humas'
+      ? roleDescriptions.Humas
+      : currentUser.role_keys?.includes('sekretaris_direksi') || currentUser.role === 'Sekretaris Direksi'
+        ? roleDescriptions['Sekretaris Direksi']
+        : roleDescriptions[currentUser.role] || 'Akses dan ringkasan operasional sesuai permission serta scope yang ditetapkan.';
   const expiringLicenses = dashboardAssets.filter(asset => {
     const expiry = asset.license_detail?.expiration_date;
     if (!expiry) return false;
