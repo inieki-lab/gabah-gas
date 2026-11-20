@@ -817,3 +817,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Loan creation shortcut uses `loans.create` and is hidden when the user lacks that permission.
 - LoansView and CreateLoanModal use `GabahService.isAuditor`; additional Auditor membership remains read-only and blocks creation/return actions.
 - CI run #2669 passed all 75 checks, including typecheck, loanable-pool UI regression, loan authorization/state transitions, Docker runtime smoke, PostgreSQL 17 integration, and security checks.
+
+### Dynamic ME ticket queue capability — 2026-11-20
+
+**PR:** #161 — merged to `main` as `b425351`.
+
+- Added explicit `tickets.queue.me` capability for the PIBC ME queue UI.
+- Existing canonical Admin Tiket ME template receives the capability idempotently; custom-named roles receive nothing automatically.
+- Superadmin can create a custom role and explicitly assign `tickets.queue.me` plus `UNIT-PIBC-ME` scope to expose the ME queue.
+- CI run #2672 passed all 75 checks, including migration validation, ticket queue regressions, Docker runtime smoke, PostgreSQL 17 integration, and security checks.
