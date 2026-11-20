@@ -59,9 +59,19 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   const safeLoans = Array.isArray(pendingLoans) ? pendingLoans : [];
   const safeTickets = Array.isArray(urgentTickets) ? urgentTickets : [];
   const isSuperadmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true;
-  const isHumas = currentUser.role_keys?.includes('humas') === true || currentUser.role === 'Humas';
-  const isIT = currentUser.role_keys?.includes('it') === true || currentUser.role === 'IT' || isSuperadmin;
-  const isGA = currentUser.role_keys?.includes('ga') === true || currentUser.role === 'GA' || isSuperadmin;
+  const hasEffectivePermission = (permission: string) => isSuperadmin
+    || currentUser.permission_keys?.includes('*') === true
+    || currentUser.permission_keys?.includes(permission) === true;
+  const hasLegacyRole = (...roles: string[]) => roles.includes(currentUser.role);
+  const isHumas = Array.isArray(currentUser.permission_keys)
+    ? hasEffectivePermission('room_reservations.documentation.read')
+    : currentUser.role_keys?.includes('humas') === true || hasLegacyRole('Humas');
+  const isIT = Array.isArray(currentUser.permission_keys)
+    ? hasEffectivePermission('room_reservations.it_facilities.read')
+    : hasLegacyRole('IT', 'Admin GABAH');
+  const isGA = Array.isArray(currentUser.permission_keys)
+    ? hasEffectivePermission('room_reservations.approve') || hasEffectivePermission('room_reservations.reject')
+    : hasLegacyRole('GA', 'Admin GABAH');
 
   // 1. Photo & documentation request notifications - strictly for Humas capability (and Superadmin)
   const docReservations = (isHumas || isSuperadmin)
