@@ -319,8 +319,13 @@ async function startServer() {
       supply_chain: 'Supply Chain',
       pibc: 'PIBC',
     };
-    if (actor.role === legacyLabels[roleKey]) return true;
-    return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
+    // Production authorization is assignment-only: legacy profile labels must
+    // never grant operational capabilities without an active Dynamic RBAC role.
+    if (isPostgresPersistenceActive()) {
+      return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
+    }
+    // File-store development retains compatibility while PostgreSQL is absent.
+    return actor.role === legacyLabels[roleKey];
   };
 
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
