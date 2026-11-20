@@ -536,7 +536,7 @@ export class GabahDomainService {
     if (!asset) throw new Error('Aset tidak ditemukan');
 
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.assign')) {
-      throw new Error('Akses ditolak: Anda tidak memiliki permission assign pada domain pemilik aset ini.');
+      throw Object.assign(new Error('Akses ditolak: Anda tidak memiliki permission assign pada domain pemilik aset ini.'), { statusCode: 403 });
     }
 
     // Loan workflow is the sole authority for custody while a loan is approved
@@ -623,7 +623,7 @@ export class GabahDomainService {
     if (!asset) throw new Error('Aset tidak ditemukan');
 
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.move')) {
-      throw new Error('Akses ditolak: Anda tidak memiliki permission move pada domain pemilik aset ini.');
+      throw Object.assign(new Error('Akses ditolak: Anda tidak memiliki permission move pada domain pemilik aset ini.'), { statusCode: 403 });
     }
 
     const normalizedLocation = typeof newLocation === 'string' ? newLocation.trim() : '';
