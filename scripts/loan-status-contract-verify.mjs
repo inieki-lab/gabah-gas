@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const ui = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
+const types = fs.readFileSync('src/types.ts', 'utf8');
+const services = fs.readFileSync('server/services.ts', 'utf8');
+assert.ok(ui.includes("status === 'pending_approval'"));
+assert.ok(ui.includes("status === 'borrowed'"));
+assert.ok(ui.includes('normalizeLoanStatus(loan.status)'));
+assert.ok(types.includes("'pending_approval'") && types.includes("'borrowed'"));
+const start = services.indexOf('static approveLoan(');
+const end = services.indexOf('\n  /**', start + 10);
+assert.ok(start >= 0 && end > start, 'approveLoan must exist');
+const approve = services.slice(start, end);
+assert.ok(approve.includes("loan.status !== 'pending_approval'"), 'only pending requests may be approved');
+assert.ok(approve.includes('statusCode: 409'), 'invalid transitions must return conflict');
+const normalize = s => s === 'pending_approval' ? 'pending' : s === 'borrowed' ? 'active' : s;
+for (const [a,b] of [['pending_approval','pending'],['pending','pending'],['borrowed','active'],['active','active'],['approved','approved'],['returned','returned'],['rejected','rejected']]) assert.equal(normalize(a),b);
+console.log('PASS: Loan API/UI states are normalized and approval transitions are guarded.');

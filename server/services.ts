@@ -862,6 +862,12 @@ export class GabahDomainService {
       throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission approve dan scope owner aset yang sesuai atau Super Admin yang dapat menyetujui pinjaman.'), { statusCode: 403 });
     }
 
+    // Approval is a one-way transition from pending_approval only.
+    // Prevent re-approving completed/rejected loans after an asset is returned.
+    if (loan.status !== 'pending_approval') {
+      throw Object.assign(new Error('Hanya pengajuan berstatus menunggu persetujuan yang dapat disetujui (status saat ini: ' + loan.status + ').'), { statusCode: 409 });
+    }
+
     // Revalidate the authoritative asset relation at approval time.
     const asset = db.assets.find(a => a.id === loan.asset_id);
     if (!asset || !asset.is_loanable || asset.status !== 'available') {

@@ -912,3 +912,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Explicit module checks retain exact matching; e.g. a `tickets` scope does not grant `loans` access.
 - Added a CI regression contract for omitted-module, exact-module, cross-module, global, and wildcard cases.
 - This is authorization hardening only; it does not alter existing role assignments, scope rows, or business records.
+
+
+### Loan state/UI contract repair — 2026-11-20
+
+- UI normalizes persisted API states: `pending_approval` maps to pending and `borrowed` maps to active. Filters, counts, badges, and action buttons use the same helper.
+- Frontend LoanStatus includes authoritative server states and legacy aliases.
+- Server approval now accepts only `pending_approval`. Completed, rejected, approved, and borrowed loans cannot be re-approved after the asset later becomes available.
+- Added CI regression coverage for UI/API state mapping and the approval transition guard.

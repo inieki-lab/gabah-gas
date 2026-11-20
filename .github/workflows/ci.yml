@@ -181,6 +181,9 @@ jobs:
       - name: Ticket related-asset visibility regression
         run: npm run test:ticket-related-asset-scope
 
+      - name: Loan API/UI status contract regression
+        run: npm run test:loan-status-contract
+
       - name: Loan authorization and state transitions
         run: npm run test:loan-authz
 

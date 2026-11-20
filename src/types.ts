@@ -114,7 +114,7 @@ export interface Asset {
   updated_at: string;
 }
 
-export type LoanStatus = 'pending' | 'approved' | 'rejected' | 'active' | 'returned' | 'overdue';
+export type LoanStatus = 'pending' | 'pending_approval' | 'approved' | 'rejected' | 'active' | 'borrowed' | 'returned' | 'overdue';
 
 export interface Loan {
   id: string;
