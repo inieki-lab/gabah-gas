@@ -10,11 +10,11 @@ assert.ok(actor, 'IT actor fixture exists');
 
 // Permission regression: update-only RBAC grants must never imply create authority.
 const contractSource = readFileSync(new URL('../server/contracts.ts', import.meta.url), 'utf8');
-const manageStart = contractSource.indexOf('export function canManageContracts(');
-const manageEnd = contractSource.indexOf('// SEC-08:', manageStart);
-const manageGuard = contractSource.slice(manageStart, manageEnd);
-assert.ok(manageGuard.includes("'contracts.create'"), 'Create permission must be checked explicitly');
-assert.ok(!manageGuard.includes("'contracts.update'"), 'Update permission must not imply create authority');
+const createStart = contractSource.indexOf('export function canCreateContract(');
+const createEnd = contractSource.indexOf('// SEC-08:', createStart);
+const createGuard = contractSource.slice(createStart, createEnd);
+assert.ok(createGuard.includes("'contracts.create'"), 'Create permission must be checked explicitly');
+assert.ok(!createGuard.includes("'contracts.update'"), 'Update permission must not imply create authority');
 
 
 const base = {
