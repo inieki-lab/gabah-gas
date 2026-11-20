@@ -709,3 +709,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The previous deploy.sh auto-installed Docker from get.docker.com, shut down the existing Compose project with --remove-orphans, and printed success without verifying health. Replaced with fail-fast preflight, .env/PGPASSWORD validation, Compose config check, app-only recreation, health polling, and failure diagnostics. It no longer stops the DB first or claims success without health.
 - PostgreSQL host port now binds only to loopback. Compose now passes GABAH_INITIAL_ADMIN_PASSWORD and GABAH_INITIAL_USER_PASSWORD into the application container (previously documented in runbook but not passed by Compose).
 - CI checks Compose configuration and shell syntax. VM runbook now requires clean main, fast-forward-only update, database backup, health verification, and explicit rollback/restore safeguards. Production deploy remains NO-GO pending merge, UAT, restore rehearsal, TLS, and sign-off.
+
+
+### Loan approval and object-level action authorization — 2026-11-20
+
+- Approval authority remains role-package based, not tied to a hardcoded job title: a Kasi/Kadep/Kadiv can be assigned the required `loans.approve` permission and matching `loans` owner-division scope by Superadmin. The backend requires both for ordinary users; Superadmin remains global.
+- The loan list API now includes per-record `allowed_actions` (`approve`, `reject`, `handover`, `return`) computed from the authenticated actor, current loan state, operation permission, borrower relationship, and owner scope. Superadmin records use the same response contract.
+- `LoansView` consumes those server-calculated actions instead of inferring authority from the primary role or a permission key alone. The API/domain mutation guards remain authoritative and re-check the operation on submit.
+- The loan card now displays the actual `owner_division` as the approval authority instead of assuming every non-IT asset belongs to GA.
+- Expanded `scripts/loan-authz-verify.mjs`: Superadmin approval, IT/GA owner-scope approval, denial for Humas without approval authority, and read-model action visibility for Superadmin, borrower, and IT custodian.
+- CI already includes `npm run test:loan-authz`; the expanded test is covered by that gate. Exact-head CI and browser UAT are still pending and must pass before this work is called verified.
