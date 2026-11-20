@@ -59,20 +59,21 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
   const [returnNotes, setReturnNotes] = useState<string>('');
 
-  const isEmployee = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
-  const isAuditor = currentUser?.role === 'Auditor';
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const hasEffectivePermission = (permission: string, legacyRoles: string[] = []) =>
+    !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+      ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
+      : legacyRoles.includes(currentUser.role)));
+  const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeAssets = Array.isArray(assets) ? assets : [];
-  const currentUserId = currentUser?.id || '';
 
-  const baseLoans = isEmployee
-    ? safeLoans.filter(l => {
-        return (
-          l.borrower_id === currentUserId ||
-          isExactIdentityNameMatch(l.borrower_name, currentUser.name)
-        );
-      })
-    : safeLoans;
+  // The API already returns loans scoped by borrower, owner domain, and RBAC
+  // unit scope. Never narrow that server-authorized result using a primary role.
+  const baseLoans = safeLoans;
 
   const filteredLoans = baseLoans.filter((loan) => {
     if (statusFilter === 'ALL') return true;
@@ -96,9 +97,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
             Peminjaman Barang &amp; Reservasi
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            {isEmployee
-              ? 'Daftar riwayat dan status pengajuan peminjaman kendaraan operasional serta laptop kerja Anda.'
-              : 'Sistem peminjaman kendaraan operasional, laptop cadangan, kamera rapat, dan ruang meeting dengan validasi kalender otomatis.'}
+            Daftar peminjaman sesuai cakupan akses, pemilik aset, dan unit kerja Anda. Persetujuan serta serah terima mengikuti permission yang ditetapkan.
           </p>
         </div>
 
@@ -112,7 +111,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateLoan && (
             <button
               id="btn-create-loan"
               onClick={handleOpenCreate}
@@ -152,7 +151,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {status === 'ALL' ? (isEmployee ? 'Semua Peminjaman Saya' : 'Semua Reservasi') :
+            {status === 'ALL' ? 'Semua Peminjaman' :
              status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => l.status === 'pending').length})` :
              status === 'approved' ? `Disetujui (${baseLoans.filter(l => l.status === 'approved').length})` :
              status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => l.status === 'active' || l.status === 'overdue').length})` :
@@ -335,14 +334,12 @@ export const LoansView: React.FC<LoansViewProps> = ({
           <div className="text-center py-12 rounded-2xl bg-white border border-slate-200 p-8 space-y-3 shadow-xs">
             <CalendarClock className="w-12 h-12 mx-auto text-slate-300" />
             <h4 className="font-bold text-slate-800 text-sm">
-              {isEmployee ? 'Belum Ada Riwayat Peminjaman dari Anda' : 'Tidak Ada Data Peminjaman'}
+              Tidak Ada Data Peminjaman
             </h4>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              {isEmployee 
-                ? 'Anda belum memiliki riwayat pengajuan peminjaman barang. Klik tombol "Ajukan Peminjaman Baru" untuk meminjam mobil operasional atau laptop cadangan.'
-                : 'Tidak ada data peminjaman untuk filter status ini.'}
+              Tidak ada data peminjaman dalam cakupan akses atau filter status ini.
             </p>
-            {isEmployee && (
+            {canCreateLoan && (
               <button
                 onClick={handleOpenCreate}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
