@@ -2487,17 +2487,16 @@ async function startServer() {
         ? 'overdue'
         : loan.status,
     });
-    if (isSuperadminActor(actor)) {
-      return res.json({ success: true, data: db.loans.map(exposeEffectiveStatus) });
-    }
+    const isGlobalLoanReader = isSuperadminActor(actor);
     // Loan visibility follows borrower ownership or an explicit owner scope
     // for this module. Employee work location never grants owner-domain access.
-    const data = db.loans.filter(loan =>
+    const visibleLoans = isGlobalLoanReader ? db.loans : db.loans.filter(loan =>
       loan.borrower_id === actor.id
       || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', loan.owner_division, 'loans')
         : actor.role === loan.owner_division)
-    ).map(loan => {
+    );
+    const data = visibleLoans.map(loan => {
       const effectiveLoan = exposeEffectiveStatus(loan);
       const isBorrower = loan.borrower_id === actor.id;
       // Return the server-calculated object-level actions so the UI never
