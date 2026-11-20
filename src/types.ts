@@ -134,6 +134,13 @@ export interface Loan {
   start_date: string; // YYYY-MM-DDTHH:mm
   due_date: string;   // YYYY-MM-DDTHH:mm (Official due date)
   status: LoanStatus;
+  /** Object-level actions computed by the API from permission + owner scope. */
+  allowed_actions?: {
+    approve: boolean;
+    reject: boolean;
+    handover: boolean;
+    return: boolean;
+  };
   approver_name?: string;
   approved_by?: string;
   approved_at?: string;
