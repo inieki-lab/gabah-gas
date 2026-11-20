@@ -104,6 +104,9 @@ jobs:
       - name: Role dashboard scope checks
         run: npm run test:dashboard-scope
 
+      - name: Superadmin dashboard and loan persona regression
+        run: npm run test:superadmin-persona
+
       - name: Dashboard attention data-scope checks
         run: npm run test:dashboard-attention-scope
 
