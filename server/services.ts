@@ -19,10 +19,10 @@ export function isLegacyScopedRole(role: string): boolean {
 
 interface AssetScopeSpec { type: string; value: string | null }
 
-function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string): boolean {
+function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string | string[]): boolean {
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
-  return Boolean(legacyRole && actor.role === legacyRole);
+  return Boolean(legacyRole && (Array.isArray(legacyRole) ? legacyRole.includes(actor.role) : actor.role === legacyRole));
 }
 
 /**
@@ -1957,8 +1957,7 @@ export class GabahDomainService {
   }
 
   static createMeetingFacility(payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!hasRoomPermission(actor, 'meeting_facilities.manage', 'GA') &&
-        !(isPostgresPersistenceActive() ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage') : actor.role === 'IT')) {
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])) {
       throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
@@ -1978,8 +1977,7 @@ export class GabahDomainService {
   }
 
   static updateMeetingFacility(id: string, payload: Partial<ServerMeetingFacility>, actor: ServerUser): ServerMeetingFacility {
-    if (!hasRoomPermission(actor, 'meeting_facilities.manage', 'GA') &&
-        !(isPostgresPersistenceActive() ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage') : actor.role === 'IT')) {
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])) {
       throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
@@ -1994,8 +1992,7 @@ export class GabahDomainService {
   }
 
   static deleteMeetingFacility(id: string, actor: ServerUser): { success: boolean } {
-    if (!hasRoomPermission(actor, 'meeting_facilities.manage', 'GA') &&
-        !(isPostgresPersistenceActive() ? hasRbacPermission(String(actor.id), 'meeting_facilities.manage') : actor.role === 'IT')) {
+    if (!hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])) {
       throw Object.assign(new Error('Akses ditolak: permission meeting_facilities.manage tidak diberikan.'), { statusCode: 403 });
     }
     const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);
