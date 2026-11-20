@@ -4166,7 +4166,7 @@ async function startServer() {
     res.json({ success: true, data });
   });
 
-  app.post('/api/room-reservations', (req, res) => {
+  app.post('/api/room-reservations', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'room_reservations.create')) return;
@@ -4253,7 +4253,7 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingTypes() });
   });
 
-  app.post('/api/meeting-types', (req, res) => {
+  app.post('/api/meeting-types', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
@@ -4277,7 +4277,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/meeting-types/:id', (req, res) => {
+  app.delete('/api/meeting-types/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_types.manage')) return;
@@ -4296,7 +4296,7 @@ async function startServer() {
     res.json({ success: true, data: GabahDomainService.getMeetingFacilities() });
   });
 
-  app.post('/api/meeting-facilities', (req, res) => {
+  app.post('/api/meeting-facilities', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
@@ -4320,7 +4320,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/meeting-facilities/:id', (req, res) => {
+  app.delete('/api/meeting-facilities/:id', async (req, res) => {
     try {
       
     if (!requireRbacPermission(req, res, 'meeting_facilities.manage')) return;
