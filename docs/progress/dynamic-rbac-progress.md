@@ -904,3 +904,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added `test:superadmin-administration-entry` and wired it into CI.
 - Work is isolated on `fix/rbac-superadmin-admin-entry-2026-11-20`, created from current `main`; no changes were made to `main` or the divergent 544-commit PR #36 branch.
 - Exact-head CI and browser UAT are pending; this is a focused regression guard, not a production-readiness claim.
+
+
+### Dynamic RBAC module-scope fail-closed hardening — 2026-11-20
+
+- Hardened `hasRbacScope()`: when a caller omits the module argument, module-specific grants no longer match. Only unscoped and explicit wildcard (`*`) grants remain applicable.
+- Explicit module checks retain exact matching; e.g. a `tickets` scope does not grant `loans` access.
+- Added a CI regression contract for omitted-module, exact-module, cross-module, global, and wildcard cases.
+- This is authorization hardening only; it does not alter existing role assignments, scope rows, or business records.

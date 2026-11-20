@@ -167,8 +167,10 @@ export function hasRbacScope(
 ): boolean {
   if (isRbacSuperadmin(userId)) return true;
   const policies = policiesByUser.get(String(userId)) || [];
+  // A module-specific grant must never become global merely because a caller
+  // omitted the module argument. Null means only unscoped/'*' grants match.
   const moduleMatches = (scope: RbacScope) =>
-    scope.module == null || scope.module === '*' || module == null || scope.module === module;
+    scope.module == null || scope.module === '*' || (module != null && scope.module === module);
 
   // Owner-domain scopes support broad grants with explicit exclusions:
   // "all except IT" must not be mistaken for unrestricted "all".
