@@ -922,3 +922,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added CI regression coverage for UI/API state mapping and the approval transition guard.
 
 - Superadmin approval button now honors global Superadmin identity even when dynamic permission metadata is present; server remains authoritative for the owner-scope check.
+
+
+### Effective permission UI consistency — 2026-11-20
+
+- Centralized frontend checks for Superadmin identity and effective permission keys (`*` or exact key).
+- Asset edit, loan approval, and ticket management helpers now consistently honor Superadmin metadata and wildcard permission while preserving Auditor deny-write precedence.
+- Legacy fallback is limited to legacy role sessions; dynamic sessions no longer infer Admin GABAH authority from a persona label.
+- Added CI regression contract for Superadmin identity, wildcard permissions, and all affected helper methods.

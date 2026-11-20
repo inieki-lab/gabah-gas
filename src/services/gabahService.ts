@@ -635,13 +635,25 @@ export class GabahService {
     return user.role === 'Auditor';
   }
 
+  static isSuperAdmin(user?: UserProfile): boolean {
+    if (!user) return false;
+    return user.is_superadmin === true
+      || user.role_keys?.includes('superadmin') === true
+      || (!Array.isArray(user.permission_keys) && user.role === 'Admin GABAH');
+  }
+
+  static hasEffectivePermission(user: UserProfile, permission: string): boolean {
+    if (this.isSuperAdmin(user)) return true;
+    return Array.isArray(user.permission_keys)
+      && (user.permission_keys.includes('*') || user.permission_keys.includes(permission));
+  }
+
   static canEditAsset(user?: UserProfile, asset?: Asset | null): boolean {
     if (!user || !asset || this.isAuditor(user)) return false;
     // PostgreSQL/Dynamic RBAC: the API has already applied the object's owner
-    // scope. The client checks the effective permission only; it must not
-    // reconstruct ownership authority from a legacy branch-role label.
-    if (Array.isArray(user.permission_keys)) {
-      return user.permission_keys.includes('assets.update');
+    // scope. The client checks the effective operation permission only.
+    if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
+      return this.hasEffectivePermission(user, 'assets.update');
     }
     // File-store compatibility only. This fallback is not an authorization
     // boundary; production authorization is enforced by the API.
@@ -653,8 +665,8 @@ export class GabahService {
 
   static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
     if (!user || this.isAuditor(user)) return false;
-    if (Array.isArray(user.permission_keys)) {
-      return user.permission_keys.includes('loans.approve');
+    if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
+      return this.hasEffectivePermission(user, 'loans.approve');
     }
     if (user.role === 'Admin GABAH') return true;
     if (!loan) return false;
@@ -666,10 +678,10 @@ export class GabahService {
 
   static canManageTickets(user?: UserProfile): boolean {
     if (!user || this.isAuditor(user)) return false;
-    if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+    if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
+      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => this.hasEffectivePermission(user, key));
     }
-    return ['Admin GABAH', 'IT', 'GA'].includes(user.role);
+    return ['IT', 'GA'].includes(user.role);
   }
 
   /**
@@ -717,10 +729,10 @@ export class GabahService {
 
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
-    if (Array.isArray(user.permission_keys)) {
-      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+    if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
+      return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => this.hasEffectivePermission(user, key));
     }
-    if (user.role === 'Admin GABAH' || user.role === 'IT') return true;
+    if (user.role === 'IT') return true;
     if (user.role === 'GA' && ticket.category === 'GA') return true;
     return false;
   }

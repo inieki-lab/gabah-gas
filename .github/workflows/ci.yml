@@ -184,6 +184,9 @@ jobs:
       - name: Loan API/UI status contract regression
         run: npm run test:loan-status-contract
 
+      - name: Effective permission UI regression (Superadmin + wildcard)
+        run: npm run test:effective-permission-ui
+
       - name: Loan authorization and state transitions
         run: npm run test:loan-authz
 
