@@ -189,6 +189,14 @@ export interface Ticket {
   approved_at?: string;
   resolved_at?: string;
   resolution_notes?: string;
+  /** Server-authoritative object-level actions for the current actor. */
+  allowed_actions?: {
+    start?: boolean;
+    wait_vendor?: boolean;
+    resolve?: boolean;
+    close?: boolean;
+    reopen?: boolean;
+  };
   rating?: number; // 1-5
   created_at: string;
   updated_at: string;
