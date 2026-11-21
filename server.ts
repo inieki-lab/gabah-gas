@@ -3165,6 +3165,92 @@ async function startServer() {
     return res.json({ success: true, data });
   });
 
+  // Ticket discussion is stored in the normalized PostgreSQL ticket_comments table.
+  // Access follows the same per-ticket reporter / assignee / owner-division / unit boundary
+  // as the ticket queue. No client-supplied user identity is trusted.
+  const canAccessTicketRecord = (ticket: any, actor: ServerUser): boolean => {
+    if (isSuperadminActor(actor) || isAuditorActor(actor)) return true;
+    if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+    if (isPostgresPersistenceActive()) {
+      return hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
+        || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets'));
+    }
+    return actor.role === ticket.category;
+  };
+
+  app.get('/api/tickets/:id/comments', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
+    try {
+      const actor = getActor(req);
+      const ticket = db.tickets.find(item => item.id === req.params.id);
+      if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+      if (!canAccessTicketRecord(ticket, actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: tiket di luar cakupan Anda.' });
+      }
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'TICKET_COMMENTS_REQUIRE_POSTGRES', message: 'Diskusi tiket memerlukan penyimpanan PostgreSQL aktif.' });
+      }
+      const result = await queryRbac(
+        `SELECT c.id, c.ticket_id, c.user_id, u.name AS user_name, c.body, c.created_at
+         FROM ticket_comments c
+         INNER JOIN users u ON u.id = c.user_id
+         WHERE c.ticket_id = $1
+         ORDER BY c.created_at ASC, c.id ASC`,
+        [ticket.id],
+      );
+      return res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, code: 'TICKET_COMMENTS_UNAVAILABLE', message: 'Komentar tiket belum dapat dibaca.' });
+    }
+  });
+
+  app.post('/api/tickets/:id/comments', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
+    try {
+      const actor = getActor(req);
+      if (isAuditorActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
+      }
+      const ticket = db.tickets.find(item => item.id === req.params.id);
+      if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+      if (!canAccessTicketRecord(ticket, actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: tiket di luar cakupan Anda.' });
+      }
+      const isReporter = ticket.reporter_id === actor.id;
+      const hasUpdate = !isPostgresPersistenceActive() || hasRbacPermission(String(actor.id), 'tickets.update');
+      const canCommentAsHandler = hasUpdate && (
+        isSuperadminActor(actor)
+        || ticket.assigned_agent_id === actor.id
+        || (isPostgresPersistenceActive()
+          && (hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
+            || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets'))))
+        || (!isPostgresPersistenceActive() && actor.role === ticket.category)
+      );
+      if (!isReporter && !canCommentAsHandler) {
+        return res.status(403).json({ success: false, message: 'Hanya pelapor atau petugas berwenang yang dapat menambahkan komentar.' });
+      }
+      const body = req.body?.body;
+      if (typeof body !== 'string' || !body.trim() || body.trim().length > 4000) {
+        return res.status(400).json({ success: false, message: 'Komentar wajib diisi dan maksimal 4.000 karakter.' });
+      }
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'TICKET_COMMENTS_REQUIRE_POSTGRES', message: 'Diskusi tiket memerlukan penyimpanan PostgreSQL aktif.' });
+      }
+      const saved = await withRbacTransaction(async client => {
+        const result = await client.query(
+          `INSERT INTO ticket_comments (ticket_id, user_id, body)
+           VALUES ($1, $2, $3)
+           RETURNING id, ticket_id, user_id, body, created_at`,
+          [ticket.id, actor.id, body.trim()],
+        );
+        return result.rows[0];
+      });
+      return res.status(201).json({ success: true, data: { ...saved, user_name: actor.name } });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, code: 'TICKET_COMMENT_SAVE_FAILED', message: 'Komentar belum dapat disimpan.' });
+    }
+  });
+
   app.post('/api/tickets', async (req, res) => {
     try {
       
