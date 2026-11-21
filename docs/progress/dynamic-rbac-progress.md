@@ -982,3 +982,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 
 - Updated the loan authorization integration fixture so damaged/available setup uses the dedicated Lifecycle and assignment endpoints. Assertions for generic PATCH rejection remain direct PATCH calls; this preserves the security contract instead of weakening it to satisfy old test setup.
+
+
+### User creation profile validation — 2026-11-21
+
+- Hardened `POST /api/users`: optional division, department, and phone values must be strings within the same length limits used by the update endpoint (120/120/40 characters).
+- Values are trimmed and normalized before creating the profile; missing/blank division and department use the existing defaults.
+- Primary role validation and independent job/unit/office-location validation remain unchanged. Humas/Sekretariat remain function capabilities; RPC/SC and PIBC remain office locations, not primary roles.
+- Added `test:user-create-profile-validation` and wired it into CI.
