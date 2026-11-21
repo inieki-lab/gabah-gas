@@ -1154,3 +1154,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Follow-up branch: `audit/remaining-ui-permission-parity-2026-11-21`; exact-head CI required before merge.
 
 - Global Search review found its asset/loan/ticket visibility and result-selection guards called `isNavTabAllowedForRole` without the user's effective permission keys. Updated all Global Search checks to pass `currentUser.permission_keys`, matching Sidebar and the central navigation guard; added a regression assertion.
+
+
+## 2026-11-21 — PR #180 merged; creation-form authorization hardening
+
+- PR #180 merged to `main` at `69d6c6a409f1b66a69c91f001e847c29d24ae262`.
+- Exact-head CI run #44922490183 on `2b92f255cee949065a3970569a4999108828e800` completed SUCCESS (**92/92** steps), including typecheck, asset-scope/navigation/dashboard regressions, Docker runtime, PostgreSQL 17, P0 security, and ticket-comments API authorization.
+- Follow-up form audit found `CreateLoanModal` relied only on Auditor exclusion while the API requires `loans.create`; it now independently checks effective permission, blocks submit, and disables the submit control without permission.
+- `CreateContractModal` similarly now checks `contracts.create` plus Auditor deny-write at submit and button level, consistent with ContractsView and backend authorization.
+- Regression coverage added to `scripts/loanable-pool-ui-verify.mjs` and `scripts/contract-owner-filter-verify.mjs`.
+- Working branch: `audit/loan-document-action-permissions-2026-11-21`; exact-head CI required before merge.
