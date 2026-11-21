@@ -277,6 +277,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             { id: 'open', title: 'Tiket Masuk (Open)', badgeBg: 'bg-amber-100 text-amber-800 border-amber-300' },
+            { id: 'assigned', title: 'Sudah Ditugaskan', badgeBg: 'bg-sky-100 text-sky-800 border-sky-300' },
             { id: 'in_progress', title: 'Dalam Penanganan (In Progress)', badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
             { id: 'pending_vendor', title: 'Menunggu Vendor', badgeBg: 'bg-orange-100 text-orange-800 border-orange-300' },
             { id: 'resolved', title: 'Selesai & Solusi (Resolved)', badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300' }
@@ -317,12 +318,20 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                           <span>{ticket.reporter_name} ({ticket.category})</span>
                           {GabahService.canManageTicket(ticket, currentUser) && (
                             <div>
-                              {ticket.status === 'open' && (
+                              {(ticket.status === 'open' || ticket.status === 'assigned' || ticket.status === 'pending_vendor') && (
                                 <button
                                   onClick={() => onUpdateTicketStatus(ticket.id, 'in_progress')}
                                   className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-[10px] transition-all"
                                 >
-                                  Kerjakan
+                                  {ticket.status === 'pending_vendor' ? 'Lanjutkan' : 'Kerjakan'}
+                                </button>
+                              )}
+                              {ticket.status === 'in_progress' && (
+                                <button
+                                  onClick={() => onUpdateTicketStatus(ticket.id, 'pending_vendor')}
+                                  className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded font-bold text-[10px] transition-all"
+                                >
+                                  Tunggu Vendor
                                 </button>
                               )}
                               {ticket.status === 'in_progress' && (
@@ -429,12 +438,21 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   {/* Status action buttons */}
                   {GabahService.canManageTicket(ticket, currentUser) && (
                     <div className="flex items-center gap-2">
-                      {ticket.status === 'open' && (
+                      {(ticket.status === 'open' || ticket.status === 'assigned' || ticket.status === 'pending_vendor') && (
                         <button
                           onClick={() => onUpdateTicketStatus(ticket.id, 'in_progress')}
                           className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-xs shadow-xs"
                         >
-                          Mulai Kerjakan
+                          {ticket.status === 'pending_vendor' ? 'Lanjutkan Penanganan' : 'Mulai Kerjakan'}
+                        </button>
+                      )}
+
+                      {ticket.status === 'in_progress' && (
+                        <button
+                          onClick={() => onUpdateTicketStatus(ticket.id, 'pending_vendor')}
+                          className="px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold transition-all text-xs shadow-xs"
+                        >
+                          Tunggu Vendor
                         </button>
                       )}
 
