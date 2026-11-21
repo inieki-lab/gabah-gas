@@ -5,32 +5,32 @@ const source = fs.readFileSync(new URL('../src/components/views/ContractsView.ts
 const checks = [
   [
     'Contract owner filter options come from persisted owner_division values',
-    /const ownerDomains = useMemo\(\(\) => Array\.from\(new Set\([\s\S]*contract\.owner_division/.test(source)
-      && /options: \['ALL', \.\.\.ownerDomains\], label: 'Owner'/.test(source),
+    /const ownerDomains = useMemo\\(\\(\\) => Array\\.from\\(new Set\\([\\s\\S]*contract\\.owner_division/.test(source)
+      && /options: \\['ALL', \\.\\.\\.ownerDomains\\], label: 'Owner'/.test(source),
   ],
   [
     'Legacy file-store create permission does not grant Supply Chain or PIBC by role label',
-    /hasPermission\('contracts\.create', \['IT', 'GA'\]\)/.test(source)
-      && !/hasPermission\('contracts\.create', \[[^\]]*(?:Supply Chain|PIBC)/.test(source),
+    /hasPermission\\('contracts\\.create', \\['IT', 'GA'\\]\\)/.test(source)
+      && !/hasPermission\\('contracts\\.create', \\[[^\\]]*(?:Supply Chain|PIBC)/.test(source),
   ],
   [
     'Legacy file-store document upload permission does not grant Supply Chain or PIBC by role label',
-    /hasPermission\('contracts\.documents\.upload', \['IT', 'GA'\]\)/.test(source)
-      && !/hasPermission\('contracts\.documents\.upload', \[[^\]]*(?:Supply Chain|PIBC)/.test(source),
+    /hasPermission\\('contracts\\.documents\\.upload', \\['IT', 'GA'\\]\\)/.test(source)
+      && !/hasPermission\\('contracts\\.documents\\.upload', \\[[^\\]]*(?:Supply Chain|PIBC)/.test(source),
   ],
   [
     'Legacy file-store renewal decision permission does not grant Supply Chain or PIBC by role label',
-    /hasPermission\('contracts\.renewal\.decide', \['IT', 'GA'\]\)/.test(source)
-      && !/hasPermission\('contracts\.renewal\.decide', \[[^\]]*(?:Supply Chain|PIBC)/.test(source),
+    /hasPermission\\('contracts\\.renewal\\.decide', \\['IT', 'GA'\\]\\)/.test(source)
+      && !/hasPermission\\('contracts\\.renewal\\.decide', \\[[^\\]]*(?:Supply Chain|PIBC)/.test(source),
+  ],
+  [
+    'Creating a linked helpdesk ticket is gated by tickets.create, not contract renewal decision',
+    /const canCreateLinkedTicket = !isAuditor && hasPermission\\('tickets\\.create'/.test(source)
+      && /\\{canCreateLinkedTicket && \\([\\s\\S]*?onCreateLinkedTicket\\(contract\\)/.test(source)
+      && !/\\{canDecide && \\([\\s\\S]*?onCreateLinkedTicket\\(contract\\)/.test(source),
   ],
 ];
 
-  [
-    'Creating a linked helpdesk ticket is gated by tickets.create, not contract renewal decision',
-    /const canCreateLinkedTicket = !isAuditor && hasPermission\('tickets\.create'/.test(source)
-      && /\{canCreateLinkedTicket && \([\s\S]*?onCreateLinkedTicket\(contract\)/.test(source)
-      && !/\{canDecide && \([\s\S]*?onCreateLinkedTicket\(contract\)/.test(source),
-  ],
 let failed = 0;
 for (const [name, passed] of checks) {
   console.log(`${passed ? 'PASS' : 'FAIL'} | ${name}`);
