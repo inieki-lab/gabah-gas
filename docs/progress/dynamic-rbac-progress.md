@@ -958,3 +958,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Ticket status API previously allowed the ticket reporter to use every operational transition, including marking work resolved or moving tickets into staff progress states.
 - Restricted non-operational reporters to confirming closure after staff resolution (`resolved → closed`) or reopening a closed ticket (`closed → open`). Superadmin, assigned agent, and users with matching ticket owner/unit scope retain the operational transition workflow.
 - Added a regression contract and CI step. No ticket data was changed.
+
+
+### Loan borrower self-return authorization — 2026-11-21
+
+- Fixed a mismatch between loan domain rules and the API: the domain service allowed a borrower to return their own borrowed asset, but the route-level `loans.return` permission gate blocked borrowers without custodian permissions; the UI also hid the return action.
+- The borrower can now return only their own loan. Returns on other borrowers' loans still require the custodian's `loans.return` permission and matching owner scope through the domain service. Auditor remains read-only.
+- Added a regression contract and CI step. No loan records or permissions were modified.
