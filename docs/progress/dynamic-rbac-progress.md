@@ -1200,3 +1200,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Landing-page fallback now selects the first tab that is both authorized for the user's effective permissions and globally active; it returns null if no such module exists rather than routing to a disabled Dashboard.
 - Regression coverage added for deactivating the Dashboard, selecting an active Tickets fallback, and no active modules; module lifecycle UI verification now asserts that Sidebar does not exempt core modules.
 - Working branch: fix/module-lifecycle-core-navigation-2026-11-22; exact-head CI required before merge.
+
+
+## 2026-11-22 — Fail-closed navigation when module registry is unavailable
+
+- Follow-up review found the UI treated an unavailable module registry as “all modules available” while the backend lifecycle middleware fails closed. That mismatch could display links that every managed API request would reject during a database/registry outage.
+- Module availability now has an explicit unverified state. Until the registry returns a verified list, the application hides module navigation and shows a clear loading/error state; a registry failure offers a retry action.
+- An empty verified registry is distinguished from a registry outage and from a user who has no read permission on any active module.
+- Sidebar filtering now requires a verified active-module list. RBAC remains a separate authorization layer and no permission is granted by module activation.
+- Added regression assertions for registry outage, fail-closed Sidebar filtering, and retry/error messaging. Exact-head CI is pending; no merge until all checks pass.
+- Working branch: `fix/module-status-fail-closed-2026-11-22`.
