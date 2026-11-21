@@ -113,6 +113,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   );
   const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canGenerateAssignmentBast = hasEffectivePermission('assets.assign', ['Admin GABAH', 'IT', 'GA']);
 
   let ownershipRuleText = '';
   if (asset.category_code === 'INV-F' || asset.asset_number?.includes('-INV-F-')) {
@@ -428,7 +429,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {onOpenBastModal && (
+                    {onOpenBastModal && canGenerateAssignmentBast && (
                       <button
                         type="button"
                         onClick={() => onOpenBastModal(asset)}
@@ -713,7 +714,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 Cetak Label QR
               </button>
 
-              {onOpenBastModal && (
+              {onOpenBastModal && canGenerateAssignmentBast && (
                 <button
                   type="button"
                   onClick={() => {
