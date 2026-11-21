@@ -1210,3 +1210,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Sidebar filtering now requires a verified active-module list. RBAC remains a separate authorization layer and no permission is granted by module activation.
 - Added regression assertions for registry outage, fail-closed Sidebar filtering, and retry/error messaging. Exact-head CI is pending; no merge until all checks pass.
 - Working branch: `fix/module-status-fail-closed-2026-11-22`.
+
+
+## 2026-11-22 — Meeting master API lifecycle coverage
+
+- Route inventory review found that `/api/meeting-types` and `/api/meeting-facilities` were protected by their own RBAC permissions but absent from the global `meeting_rooms` lifecycle route map.
+- Added both route families to the module resolver and managed-path guard so disabling Meeting Rooms blocks master-data APIs as well as room/reservation operations.
+- Added a regression assertion for both route families. Exact-head CI is pending; no merge until all checks pass.
