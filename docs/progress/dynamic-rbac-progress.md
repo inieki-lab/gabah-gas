@@ -992,3 +992,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added `test:user-create-profile-validation` and wired it into CI.
 
 - Extended the same field limits to bulk employee import: name 160, email 254, division 120, department 120, and phone 40 characters. Invalid rows are reported individually and skipped rather than persisted with oversized values. Regression coverage now checks both account creation and bulk import.
+
+
+### Last active Superadmin assignment guard — 2026-11-21
+
+- Found a count mismatch in the per-user role assignment endpoint: its "remaining Superadmin" SQL count included inactive accounts, unlike the user deactivation/deletion guards.
+- The assignment check now counts only users whose account is active, and only applies the last-active-Superadmin restriction when the target account itself is active.
+- Added a regression assertion to the Dynamic RBAC foundation test. No role assignments were modified.
