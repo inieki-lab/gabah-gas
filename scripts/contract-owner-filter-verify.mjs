@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync(new URL('../src/components/views/ContractsView.tsx', import.meta.url), 'utf8');
+const createModal = fs.readFileSync(new URL('../src/components/modals/CreateContractModal.tsx', import.meta.url), 'utf8');
 const linkedTicketButton = source.indexOf('{canCreateLinkedTicket && (');
 const linkedTicketAction = source.indexOf('onCreateLinkedTicket(contract)', linkedTicketButton);
 const renewalDecisionButton = source.indexOf('{canDecide && (');
@@ -29,6 +30,14 @@ const checks = [
     source.includes("hasPermission('contracts.renewal.decide', ['IT', 'GA'])")
       && !source.includes("hasPermission('contracts.renewal.decide', ['IT', 'GA', 'Supply Chain")
       && !source.includes("hasPermission('contracts.renewal.decide', ['IT', 'GA', 'PIBC"),
+  ],
+  [
+    'Contract creation form independently enforces contracts.create and Auditor deny-write',
+    createModal.includes("const isAuditor = GabahService.isAuditor(currentUser)")
+      && createModal.includes("const canCreateContract = !isAuditor")
+      && createModal.includes("currentUser.permission_keys!.includes('contracts.create')")
+      && createModal.includes('if (!canCreateContract) return;')
+      && createModal.includes('disabled={saving || !canCreateContract}'),
   ],
   [
     'Creating a linked helpdesk ticket is gated by tickets.create, not contract renewal decision',
