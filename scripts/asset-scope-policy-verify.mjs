@@ -19,6 +19,7 @@ const vendorTypes = read('src/types.ts');
 const orgMasterMigration = read('server/migrations/006_org_model_masters.sql');
 const clientService = read('src/services/gabahService.ts');
 const assetUi = read('src/components/views/AssetsView.tsx');
+const myAssetsUi = read('src/components/views/MyAssetsView.tsx');
 const knowledgeUi = read('src/components/views/KnowledgeBaseView.tsx');
 const appUi = read('src/App.tsx');
 const ticketUi = read('src/components/views/TicketsView.tsx');
@@ -97,6 +98,8 @@ const checks = [
   ['Auditor additional-role capability remains deny-write ahead of all effective permissions', /static isAuditor\(user\?: UserProfile\)/.test(gabahService) && /Array\.isArray\(user\.role_keys\)\) return user\.role_keys\.includes\('auditor'\)/.test(gabahService) && /canEditAsset[\s\S]*?this\.isAuditor\(user\)/.test(gabahService) && /canApproveLoan[\s\S]*?this\.isAuditor\(user\)/.test(gabahService) && /canManageTickets[\s\S]*?this\.isAuditor\(user\)/.test(gabahService)],
   ['Asset detail report and loan-request actions use effective create permissions and Auditor deny-write precedence', assetDetailUi.includes("const canCreateTicket = hasEffectivePermission('tickets.create'") && assetDetailUi.includes("const canCreateLoan = hasEffectivePermission('loans.create'") && assetDetailUi.includes('{canCreateTicket && (') && assetDetailUi.includes('asset.is_loanable && canCreateLoan && (')],
 
+  ['My Assets loan and ticket shortcuts require their effective create permissions', myAssetsUi.includes("hasEffectivePermission('tickets.create'") && myAssetsUi.includes("hasEffectivePermission('loans.create'") && myAssetsUi.includes('{canCreateTicket && onOpenNewTicketModal && (') && myAssetsUi.includes('{canCreateLoan && onOpenNewLoanModal && (') && myAssetsUi.includes('{canCreateTicket && onReportAsset && (') && myAssetsUi.includes('{canCreateLoan && onOpenNewLoanModal && (')],
+  ['Ticket page create buttons require tickets.create instead of merely excluding Auditor', ticketUi.includes("const canCreateTicket = !isAuditor") && ticketUi.includes('{canCreateTicket && (') && ticketUi.includes('{isSelfTicketsOnly && canCreateTicket && (')],
   ['Asset detail edit action uses the same effective assets.update permission helper, not a hard-coded primary-role allowlist', /onEditThisAsset && canEdit &&/.test(assetDetailUi) && !/onEditThisAsset && \(currentUser\?\.role/.test(assetDetailUi)],
   ['Asset edit modal uses the same effective Dynamic RBAC helper as the asset list and detail views', /GabahService\.canEditAsset\(currentUser, asset\)/.test(assetEditUi) && !/currentUser\?\.role === '(Admin GABAH|IT|GA|Supply Chain)'/.test(assetEditUi) && !/owner_division === 'SC'/.test(assetEditUi)],
   ['Asset edit submit persists every generic-edit field and excludes workflow-owned status', (() => { const start = appUi.indexOf('const handleUpdateAsset = async'); const end = appUi.indexOf('// 3. Request Loan', start); const handler = appUi.slice(start, end); return ['name', 'brand', 'model', 'serial_number', 'specifications', 'corporate_asset_number', 'location', 'asset_location_id', 'condition', 'is_loanable', 'notes'].every(key => handler.includes(`${key}: updatedAsset.${key}`)) && !handler.includes('status: updatedAsset.status'); })()],
