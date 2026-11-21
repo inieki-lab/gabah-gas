@@ -676,6 +676,14 @@ export class GabahService {
     return false;
   }
 
+  static canAssignTickets(user?: UserProfile): boolean {
+    if (!user || this.isAuditor(user)) return false;
+    if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
+      return this.hasEffectivePermission(user, 'tickets.assign');
+    }
+    return ['IT', 'GA'].includes(user.role);
+  }
+
   static canManageTickets(user?: UserProfile): boolean {
     if (!user || this.isAuditor(user)) return false;
     if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
