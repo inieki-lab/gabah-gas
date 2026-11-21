@@ -2,8 +2,8 @@
  * Loan schedules are entered as browser datetime-local values and represent
  * the company's business timezone (Asia/Jakarta), not the server's timezone.
  * Jakarta is UTC+07:00 year-round. Explicitly zoned ISO timestamps remain
- * absolute instants; legacy date-only and naive datetime strings are treated
- * as Jakarta wall-clock time.
+ * absolute instants; naive datetime-local strings are Jakarta wall-clock time.
+ * Legacy date-only values retain their historical UTC-midnight interpretation.
  */
 const JAKARTA_OFFSET_MS = 7 * 60 * 60 * 1000;
 
@@ -37,7 +37,7 @@ export function parseLoanDateTimestamp(value: unknown): number {
       return Number.NaN;
     }
 
-    return utcWallClock - JAKARTA_OFFSET_MS;
+    return utcWallClock - (dateTime ? JAKARTA_OFFSET_MS : 0);
   }
 
   if (/T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)) {
