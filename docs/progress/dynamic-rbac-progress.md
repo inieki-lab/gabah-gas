@@ -1,3 +1,10 @@
+### Dynamic observer route permission alignment — 2026-11-21
+
+- Removed the stale global middleware role-name gate from `GET /api/audit-logs` and `GET /api/reconciliation`. It had denied custom roles even when Superadmin explicitly granted `audit.read` or `reconciliation.read`.
+- The route handlers remain authoritative: audit logs require `audit.read`; reconciliation requires `reconciliation.read` and non-global users receive only assets returned by their own scoped-asset policy.
+- Kept the separate Superadmin/Auditor global-observer behavior for the dashboard attention center; this change does not widen attention-card visibility.
+- Added `test:observer-route-rbac` and registered it in CI to prevent the legacy gate from returning.
+
 # Pembaruan operasional — 21 November 2026 (Helpdesk assignment final verification)
 
 - **CI run #2829 / 44903031303 SUCCESS — 91/91 steps** pada code SHA `033b2a18ba243e9e64105b5cfa671e2a9a426cd2`. Termasuk typecheck, Dynamic RBAC foundation, production build, Docker runtime, PostgreSQL 17, P0 security, ticket comments API/UI, dan ticket assignment API/UI.
