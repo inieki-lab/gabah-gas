@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive } from './persistence';
-import { isSuperadminActor, isAuditorActor, hasRbacScope } from './rbac-policy';
+import { isSuperadminActor, isAuditorActor, hasRbacScope, hasRbacPermission } from './rbac-policy';
 import { GabahDomainService } from './services';
 import { extractClientIp } from './requestContext';
 
@@ -138,9 +138,18 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     }
   }
 
-  // Audit and reconciliation access is enforced by each route's dynamic
-  // permission plus record scope. Do not add a legacy role-name gate here:
-  // custom roles with explicit audit.read / reconciliation.read must work.
+  // Keep canonical-path protection for case and trailing-slash variants,
+  // while honoring explicit dynamic permissions for custom roles. The route
+  // handlers repeat these checks for defense in depth.
+  const hasObserverRoutePermission = (permission: string) => isPostgresPersistenceActive()
+    ? hasRbacPermission(String(actor.id), permission)
+    : isGlobalObserver(actor);
+  if (normalizedPath === '/api/audit-logs' && !hasObserverRoutePermission('audit.read')) {
+    return res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });
+  }
+  if (normalizedPath === '/api/reconciliation' && !hasObserverRoutePermission('reconciliation.read')) {
+    return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
+  }
 
   // Match the route case-insensitively, but preserve the original ID casing:
   // asset IDs are case-sensitive even though Express paths are not.
