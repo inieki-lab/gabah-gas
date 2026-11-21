@@ -1180,3 +1180,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Meeting Rooms entry point and master modal now expose only the tabs/actions the actor can manage, and only load each master list when its read permission is available.
 - Regression coverage expanded in `scripts/room-capability-ui-verify.mjs`.
 - Working branch: `audit/meeting-master-form-permissions-2026-11-21`; exact-head CI required before merge.
+
+
+## 2026-11-21 — PR #182 merged; meeting room status action permission parity
+
+- PR #182 merged to `main` at `db53c275b4692382912f5804be633c16a08eb7ad`.
+- Exact-head CI run #44924057745 on `daa68ad635c97d9cb3337219cf839a2fc6b6890e` completed SUCCESS (**92/92** steps), including meeting-room UI, reservation, PostgreSQL 17, Docker runtime, and P0 security.
+- Further room workflow review found the room status toggle used `meeting_facilities.manage`, while the backend route/domain guard requires `meeting_rooms.update`.
+- The status action now uses the exact `meeting_rooms.update` capability with GA legacy fallback; regression assertion added.
+- Working branch: `audit/meeting-room-status-permission-2026-11-21`; exact-head CI required before merge.
