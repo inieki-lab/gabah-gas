@@ -70,6 +70,14 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   onSuccess,
   onSubmit,
 }) => {
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const canCreateReservation = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('room_reservations.create')
+    : true));
+
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Dynamic Master Data
@@ -116,6 +124,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const isSekdir = currentUser.role === 'Sekretaris Direksi'
     || currentUser.role_keys?.includes('sekretaris_direksi') === true;
   const canOverride = useMemo(() => {
+    if (isAuditor) return false;
     if (Array.isArray(currentUser.permission_keys)) {
       return currentUser.is_superadmin === true
         || currentUser.permission_keys.includes('*')
@@ -123,7 +132,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
     }
     // File-store compatibility only; PostgreSQL uses explicit capability grants.
     return isSekdir || currentUser.role === 'GA' || currentUser.role === 'Admin GABAH';
-  }, [currentUser.permission_keys, currentUser.is_superadmin, currentUser.role, isSekdir]);
+  }, [currentUser.permission_keys, currentUser.is_superadmin, currentUser.role, isSekdir, isAuditor]);
 
   // Load master types and facilities
   useEffect(() => {
@@ -200,6 +209,11 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    if (!canCreateReservation) {
+      setErrorMessage('Akun ini tidak memiliki izin membuat reservasi ruang rapat.');
+      return;
+    }
 
     if (!roomId) {
       setErrorMessage('Silakan pilih Meeting Room (Ruang Rapat) terlebih dahulu.');
@@ -1038,7 +1052,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
 
               <button
                 type="submit"
-                disabled={isSubmitting || (!!activeConflict && !enableOverride) || isCapacityExceeded}
+                disabled={!canCreateReservation || isSubmitting || (!!activeConflict && !enableOverride) || isCapacityExceeded}
                 className={`px-5 py-2 text-xs font-bold text-white rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
                   enableOverride 
                     ? 'bg-amber-600 hover:bg-amber-700' 
