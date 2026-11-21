@@ -1,3 +1,15 @@
+# Pembaruan operasional — 21 November 2026 (Helpdesk assignment final verification)
+
+- **CI run #2829 / 44903031303 SUCCESS — 91/91 steps** pada code SHA `033b2a18ba243e9e64105b5cfa671e2a9a426cd2`. Termasuk typecheck, Dynamic RBAC foundation, production build, Docker runtime, PostgreSQL 17, P0 security, ticket comments API/UI, dan ticket assignment API/UI.
+- Manual assignment tiket kini memiliki endpoint `GET /api/tickets/:id/assignees` dan `PATCH /api/tickets/:id/assignment`. Kandidat dibatasi ke user aktif dengan `tickets.update` serta scope divisi/unit yang sesuai; Auditor dan Superadmin tidak menjadi petugas operasional.
+- Penugasan hanya dapat diganti saat tiket `open` atau `assigned`; setelah pekerjaan dimulai API mengembalikan 409. Setiap perubahan dicatat ke audit log dan petugas baru menerima notifikasi akun dengan tautan ke tiket.
+- Regression `test:ticket-assignment-api` memeriksa policy eligibility, route authorization, status lock, audit, persistence, notifikasi, API client, dan UI.
+- Komentar tiket tetap menggunakan tabel PostgreSQL `ticket_comments`; regresi API/UI komentar lulus pada run yang sama.
+- Batasan yang masih terbuka: lampiran tiket belum tersedia. Browser UAT per persona/lokasi, backup/restore DB + volume uploads, staging deploy/rollback, dan sign-off pemilik proses tetap wajib.
+- PR #177 tetap Draft/Open dan belum di-merge. Tidak ada perubahan langsung ke `main`.
+
+---
+
 # Pembaruan operasional — 21 November 2026 (PR #177)
 
 ## Helpdesk: diskusi tiket dan hasil verifikasi
