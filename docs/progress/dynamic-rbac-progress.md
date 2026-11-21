@@ -1,9 +1,9 @@
 ### Dynamic observer route permission alignment — 2026-11-21
 
-- Removed the stale global middleware role-name gate from `GET /api/audit-logs` and `GET /api/reconciliation`. It had denied custom roles even when Superadmin explicitly granted `audit.read` or `reconciliation.read`.
-- The route handlers remain authoritative: audit logs require `audit.read`; reconciliation requires `reconciliation.read` and non-global users receive only assets returned by their own scoped-asset policy.
-- Kept the separate Superadmin/Auditor global-observer behavior for the dashboard attention center; this change does not widen attention-card visibility.
-- Added `test:observer-route-rbac` and registered it in CI to prevent the legacy gate from returning.
+- Replaced the stale global middleware role-name gate on `GET /api/audit-logs` and `GET /api/reconciliation` with explicit dynamic permission checks (`audit.read` / `reconciliation.read`) when PostgreSQL RBAC is active. Custom roles with those grants are no longer blocked.
+- Preserved canonical-path protection for uppercase and trailing-slash variants; unauthorized users still receive 403 before Express route matching. The route handlers repeat the permission checks for defense in depth.
+- Reconciliation continues to return only assets from the caller's scoped-asset policy unless the caller is Superadmin/Auditor. Dashboard attention-card global-observer behavior is unchanged.
+- Added `test:observer-route-rbac` and registered it in CI. The first CI run caught that removing the middleware guard weakened canonical-path protection; the guard was restored with dynamic permission evaluation.
 
 # Pembaruan operasional — 21 November 2026 (Helpdesk assignment final verification)
 
