@@ -75,7 +75,8 @@
     "test:rbac-module-scope-fail-closed": "node scripts/rbac-module-scope-fail-closed-verify.mjs",
     "test:loan-status-contract": "node scripts/loan-status-contract-verify.mjs",
     "test:effective-permission-ui": "node scripts/effective-permission-ui-verify.mjs",
-    "test:asset-mutation-http-status": "node scripts/asset-mutation-http-status-verify.mjs"
+    "test:asset-mutation-http-status": "node scripts/asset-mutation-http-status-verify.mjs",
+    "test:ticket-reporter-transition": "node scripts/ticket-reporter-transition-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
