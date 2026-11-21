@@ -3245,6 +3245,8 @@ async function startServer() {
         );
         return result.rows[0];
       });
+      // The comment transaction is already committed; prevent the global JSON persistence gate from writing a second, unrelated snapshot.
+      (req as any).__gabahPersisted = true;
       return res.status(201).json({ success: true, data: { ...saved, user_name: actor.name } });
     } catch (error: any) {
       return res.status(503).json({ success: false, code: 'TICKET_COMMENT_SAVE_FAILED', message: 'Komentar belum dapat disimpan.' });
