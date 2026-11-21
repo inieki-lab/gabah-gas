@@ -3165,6 +3165,96 @@ async function startServer() {
     return res.json({ success: true, data });
   });
 
+  // Manual assignment is permission + object-scope driven. Job titles and
+  // display labels never qualify an operator for a ticket queue.
+  const canManageTicketAssignment = (ticket: any, actor: ServerUser): boolean => {
+    if (isAuditorActor(actor)) return false;
+    if (isSuperadminActor(actor)) return true;
+    if (isPostgresPersistenceActive()) {
+      return hasRbacPermission(String(actor.id), 'tickets.update')
+        && (hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
+          || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets')));
+    }
+    return actor.role === ticket.category || actor.role === 'Admin GABAH';
+  };
+
+  const getEligibleTicketAssignees = (ticket: any): ServerUser[] => db.users.filter(user => {
+    if (user.is_active === false || isAuditorActor(user) || isSuperadminActor(user)) return false;
+    if (!isPostgresPersistenceActive()) return user.role === ticket.category;
+    if (!hasRbacPermission(String(user.id), 'tickets.update')) return false;
+    if (ticket.assigned_unit_id) {
+      return hasRbacScope(String(user.id), 'unit', String(ticket.assigned_unit_id), 'tickets');
+    }
+    return hasRbacScope(String(user.id), 'division', String(ticket.category), 'tickets');
+  });
+
+  app.get('/api/tickets/:id/assignees', (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.update')) return;
+    const actor = getActor(req);
+    const ticket = db.tickets.find(item => item.id === req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+    if (!canManageTicketAssignment(ticket, actor)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Anda tidak memiliki kewenangan penugasan pada tiket ini.' });
+    }
+    const data = getEligibleTicketAssignees(ticket).map(user => ({
+      id: user.id,
+      name: user.name,
+      department: user.department,
+    }));
+    return res.json({ success: true, data });
+  });
+
+  app.patch('/api/tickets/:id/assignment', async (req, res) => {
+    try {
+      if (!requireRbacPermission(req, res, 'tickets.update')) return;
+      const actor = getActor(req);
+      if (isAuditorActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
+      }
+      const ticket = db.tickets.find(item => item.id === req.params.id);
+      if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+      if (!canManageTicketAssignment(ticket, actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: tiket di luar cakupan penugasan Anda.' });
+      }
+      if (!['open', 'assigned'].includes(String(ticket.status))) {
+        return res.status(409).json({ success: false, message: 'Penugasan hanya dapat diubah sebelum pekerjaan dimulai.' });
+      }
+      const assigneeId = req.body?.assigned_agent_id;
+      if (assigneeId !== null && (typeof assigneeId !== 'string' || !assigneeId.trim())) {
+        return res.status(400).json({ success: false, message: 'ID petugas tidak valid.' });
+      }
+      if (assigneeId === null) {
+        ticket.assigned_agent_id = undefined;
+        ticket.assigned_agent_name = undefined;
+        ticket.status = 'open';
+      } else {
+        const eligible = getEligibleTicketAssignees(ticket);
+        const assignee = eligible.find(user => user.id === assigneeId.trim());
+        if (!assignee) {
+          return res.status(400).json({ success: false, message: 'Petugas tidak aktif atau tidak memiliki permission dan cakupan antrean tiket ini.' });
+        }
+        ticket.assigned_agent_id = assignee.id;
+        ticket.assigned_agent_name = assignee.name;
+        ticket.status = 'assigned';
+      }
+      ticket.updated_at = new Date().toISOString();
+      GabahDomainService.recordAudit(
+        'TICKET_ASSIGNMENT_UPDATED',
+        'Tickets',
+        ticket.assigned_agent_id
+          ? `Menugaskan tiket ${ticket.ticket_number} kepada ${ticket.assigned_agent_name}.`
+          : `Melepas penugasan tiket ${ticket.ticket_number}.`,
+        actor,
+        ticket.id,
+      );
+      if (!(await persistBeforeSuccess(req, res))) return;
+      return res.json({ success: true, data: ticket });
+    } catch (error: any) {
+      return res.status(typeof error?.statusCode === 'number' ? error.statusCode : 400)
+        .json({ success: false, message: error?.message || 'Penugasan tiket gagal diperbarui.' });
+    }
+  });
+
   // Ticket discussion is stored in the normalized PostgreSQL ticket_comments table.
   // Access follows the same per-ticket reporter / assignee / owner-division / unit boundary
   // as the ticket queue. No client-supplied user identity is trusted.
