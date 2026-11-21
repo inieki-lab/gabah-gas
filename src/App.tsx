@@ -533,6 +533,14 @@ export default function App() {
     }
   };
 
+  const handleUpdateTicketAssignment = async (ticketId: string, assignedAgentId: string | null) => {
+    const updated = await gabahApi.updateTicketAssignment(ticketId, assignedAgentId);
+    showToast(assignedAgentId
+      ? `Tiket ${updated.ticket_number} berhasil ditugaskan kepada ${updated.assigned_agent_name}.`
+      : `Penugasan tiket ${updated.ticket_number} dilepas.`);
+    await refreshData();
+  };
+
   // 10b. Contract Management (separate domain)
   const handleCreateContract = async (payload: any) => {
     const created = await gabahApi.createContract(payload);
@@ -943,6 +951,7 @@ export default function App() {
               currentUser={currentUser}
               onOpenNewTicketModal={handleOpenNewTicketModal}
               onUpdateTicketStatus={handleUpdateTicketStatus}
+              onUpdateTicketAssignment={handleUpdateTicketAssignment}
             />
           )}
 
