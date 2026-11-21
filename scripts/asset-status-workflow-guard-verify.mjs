@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const server = fs.readFileSync('server.ts', 'utf8');
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+const editModal = fs.readFileSync('src/components/modals/EditAssetModal.tsx', 'utf8');
 const patchStart = server.indexOf("app.patch('/api/assets/:id'");
 const patchEnd = server.indexOf("app.post('/api/assets/:id/assign'", patchStart);
 assert.ok(patchStart >= 0 && patchEnd > patchStart, 'asset PATCH route must exist');
@@ -22,4 +24,17 @@ assert.ok(!bulk.includes("'notes', 'is_loanable', 'status', 'corporate_asset_num
 const lifecycleStart = server.indexOf("app.post('/api/assets/:id/lifecycle'");
 assert.ok(lifecycleStart >= 0 && server.slice(lifecycleStart, lifecycleStart + 400).includes("'assets.lifecycle'"));
 
-console.log('PASS: generic asset PATCH and bulk import cannot bypass lifecycle/loan status workflows.');
+const appHandlerStart = app.indexOf('const handleUpdateAsset = async');
+const appHandlerEnd = app.indexOf('// 3. Request Loan', appHandlerStart);
+assert.ok(appHandlerStart >= 0 && appHandlerEnd > appHandlerStart);
+const appHandler = app.slice(appHandlerStart, appHandlerEnd);
+assert.ok(!appHandler.includes('status: updatedAsset.status'), 'App must not send status through generic PATCH');
+const modalSubmitStart = editModal.indexOf('const handleSubmit = async');
+const modalSubmitEnd = editModal.indexOf('const targetAssignedUser', modalSubmitStart);
+assert.ok(modalSubmitStart >= 0 && modalSubmitEnd > modalSubmitStart);
+const modalSubmit = editModal.slice(modalSubmitStart, modalSubmitEnd);
+assert.ok(!modalSubmit.includes('status: selectedUserId ?'), 'edit modal must not send status through generic update');
+assert.ok(editModal.includes('Status tidak diubah melalui edit umum'), 'edit modal must explain the dedicated status workflow');
+assert.ok(!editModal.includes('<option value="retired">'), 'generic edit must not expose retired status mutation');
+
+console.log('PASS: API, bulk import, and asset edit UI preserve dedicated lifecycle/loan status workflows.');
