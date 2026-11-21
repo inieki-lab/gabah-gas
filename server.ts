@@ -3219,6 +3219,7 @@ async function startServer() {
       if (!['open', 'assigned'].includes(String(ticket.status))) {
         return res.status(409).json({ success: false, message: 'Penugasan hanya dapat diubah sebelum pekerjaan dimulai.' });
       }
+      const previousAssignedAgentId = ticket.assigned_agent_id;
       const assigneeId = req.body?.assigned_agent_id;
       if (assigneeId !== null && (typeof assigneeId !== 'string' || !assigneeId.trim())) {
         return res.status(400).json({ success: false, message: 'ID petugas tidak valid.' });
@@ -3247,6 +3248,17 @@ async function startServer() {
         actor,
         ticket.id,
       );
+      if (ticket.assigned_agent_id && ticket.assigned_agent_id !== previousAssignedAgentId) {
+        GabahDomainService.notify({
+          recipient_user_id: ticket.assigned_agent_id,
+          title: `Tiket Ditugaskan: ${ticket.ticket_number}`,
+          message: `Anda ditugaskan menangani tiket "${ticket.title}" dengan prioritas ${String(ticket.priority).toUpperCase()}.`,
+          severity: ticket.priority === 'urgent' ? 'critical' : ticket.priority === 'high' ? 'action_required' : 'info',
+          category: 'sla',
+          link_type: 'ticket',
+          link_id: ticket.id,
+        });
+      }
       if (!(await persistBeforeSuccess(req, res))) return;
       return res.json({ success: true, data: ticket });
     } catch (error: any) {
