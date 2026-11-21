@@ -1143,3 +1143,14 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Working branch: `audit/form-permission-parity-2026-11-21`. Exact-head CI is required before merge; no merge has been performed for this batch.
 
 - Additional My Assets review found the borrower self-return button was visible to Auditor accounts even though backend policy intentionally denies Auditor return actions. The UI now hides that control for Auditor; regression assertion added to asset-scope verification.
+
+
+## 2026-11-21 — PR #179 merged; remaining ticket UI permission parity
+
+- PR #179 merged to `main` at `a1ee87bb7b7e00fea50539e9acc7e3e143e65575`.
+- Exact-head CI run #44921951687 on `85d310a350bb4c105b23d4e047c8708548cb3e26` completed SUCCESS (**92/92** steps). Typecheck, asset-scope, navigation/dashboard, production build, Docker runtime, PostgreSQL 17, P0 security, and ME queue regression all passed.
+- A further ticket discussion review found the comment composer checked `permission_keys.includes('tickets.update')` directly, which missed effective wildcard grants. It now uses `GabahService.hasEffectivePermission(currentUser, 'tickets.update')`, while retaining reporter self-comment access and Auditor deny-write.
+- Regression assertion added to asset-scope policy verification.
+- Follow-up branch: `audit/remaining-ui-permission-parity-2026-11-21`; exact-head CI required before merge.
+
+- Global Search review found its asset/loan/ticket visibility and result-selection guards called `isNavTabAllowedForRole` without the user's effective permission keys. Updated all Global Search checks to pass `currentUser.permission_keys`, matching Sidebar and the central navigation guard; added a regression assertion.

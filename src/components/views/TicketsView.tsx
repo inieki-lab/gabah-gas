@@ -204,6 +204,10 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   });
 
   const canManage = GabahService.canManageTickets(currentUser);
+  const canCommentOnTicket = (ticket: Ticket) => !isAuditor && (
+    ticket.reporter_id === currentUser.id
+    || GabahService.hasEffectivePermission(currentUser, 'tickets.update')
+  );
   const canPerformTicketAction = (ticket: Ticket, action: 'start' | 'wait_vendor' | 'resolve' | 'close' | 'reopen') =>
     ticket.allowed_actions
       ? ticket.allowed_actions[action] === true
@@ -665,7 +669,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                         </div>
                       )}
                       {commentError && <p role="alert" className="text-xs text-rose-700">{commentError}</p>}
-                      {!isAuditor && (ticket.reporter_id === currentUser.id || isSuperAdmin || currentUser.permission_keys?.includes('tickets.update')) && (
+                      {canCommentOnTicket(ticket) && (
                         <div className="space-y-2">
                           <textarea
                             rows={2}
