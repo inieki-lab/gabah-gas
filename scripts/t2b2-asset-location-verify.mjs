@@ -21,6 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 
 const R = [];
 const rec = (n, e, a, p) => R.push({ n, e, a, p: !!p });
@@ -53,6 +54,21 @@ async function boot(sp, port, env) {
 }
 const kill = (c) => { try { c.kill('SIGKILL') } catch { } };
 
+async function getAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      if (!address || typeof address === 'string') {
+        probe.close(() => reject(new Error('Unable to allocate a local TCP port')));
+        return;
+      }
+      probe.close(error => error ? reject(error) : resolve(address.port));
+    });
+  });
+}
+
 async function main() {
   const sp = path.resolve('dist/server.cjs');
   if (!fs.existsSync(sp)) { console.error('run npm run build first'); process.exit(1); }
@@ -84,7 +100,7 @@ async function main() {
   let s1 = null, s2 = null;
   try {
     // ================= PHASE 1 (fresh seed) =================
-    s1 = await boot(sp, 39200 + Math.floor(Math.random() * 500), env);
+    s1 = await boot(sp, await getAvailablePort(), env);
     const login = async (b, e, pw) => {
       const r = await req(b, 'POST', '/api/auth/login', { body: { email: e, password: pw } });
       return r.json?.data?.token || '';
@@ -213,7 +229,7 @@ async function main() {
     await new Promise(r => setTimeout(r, 400));
 
     // ================= PHASE 2 (restart — JSON fallback roundtrip) =================
-    s2 = await boot(sp, 39700 + Math.floor(Math.random() * 200), env);
+    s2 = await boot(sp, await getAvailablePort(), env);
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const assets2 = (await req(s2.base, 'GET', '/api/assets', { token: admin2 })).json?.data || [];
     const masters2 = (await req(s2.base, 'GET', '/api/master/asset-locations', { token: admin2 })).json?.data || [];
