@@ -31,6 +31,7 @@ assert.doesNotMatch(rooms, /&& !isAuditor &&/);
 assert.match(form, /const isSekdir = currentUser\.role === 'Sekretaris Direksi'[\s\S]*role_keys\?\.includes\('sekretaris_direksi'\)/);
 assert.match(form, /const isAuditor = GabahService\.isAuditor\(currentUser\)/);
 assert.match(form, /const canCreateReservation = !isAuditor && \(isSuperAdmin \|\| \(hasPermissionMetadata/);
+assert.match(form, /if \(isAuditor\) return false;/);
 assert.match(form, /currentUser\.permission_keys!\.includes\('room_reservations\.create'\)/);
 assert.match(form, /if \(!canCreateReservation\) \{/);
 assert.match(form, /disabled=\{!canCreateReservation \|\| isSubmitting/);
