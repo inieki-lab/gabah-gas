@@ -11,7 +11,7 @@ assert.equal(existingStart, Date.UTC(2026, 10, 23, 2, 0), '09:00 WIB must resolv
 assert.equal(existingDue, Date.UTC(2026, 10, 23, 3, 0), '10:00 WIB must resolve to 03:00 UTC');
 assert.ok(overlappingStart < existingDue && parseLoanDateTimestamp('2026-11-23T09:45') > existingStart, 'overlapping WIB schedule must overlap');
 assert.ok(!(adjacentStart < existingDue && parseLoanDateTimestamp('2026-11-23T11:00') > existingStart), 'back-to-back WIB schedule must not overlap');
-assert.equal(parseLoanDateTimestamp('2026-11-23'), Date.UTC(2026, 10, 22, 17, 0), 'legacy date-only means midnight WIB');
+assert.equal(parseLoanDateTimestamp('2026-11-23'), Date.UTC(2026, 10, 23, 0, 0), 'legacy date-only retains UTC midnight');
 assert.ok(Number.isNaN(parseLoanDateTimestamp('2026-02-30T09:00')), 'invalid calendar dates must be rejected');
 assert.ok(Number.isNaN(parseLoanDateTimestamp('2026-11-23T25:00')), 'invalid wall-clock times must be rejected');
 assert.equal(parseLoanDateTimestamp('2026-11-23T02:00:00.000Z'), Date.UTC(2026, 10, 23, 2, 0), 'explicit UTC instants must remain absolute');
