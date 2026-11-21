@@ -884,6 +884,11 @@ async function startServer() {
         const department = String(row.department || '').trim() || 'Operasional';
         const phone = String(row.phone || '').trim();
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
+        if (name.length > 160) { errors.push(`Baris ${rowNo}: Nama maksimal 160 karakter.`); continue; }
+        if (email.length > 254) { errors.push(`Baris ${rowNo}: Email maksimal 254 karakter.`); continue; }
+        if (division.length > 120) { errors.push(`Baris ${rowNo}: Divisi maksimal 120 karakter.`); continue; }
+        if (department.length > 120) { errors.push(`Baris ${rowNo}: Departemen maksimal 120 karakter.`); continue; }
+        if (phone.length > 40) { errors.push(`Baris ${rowNo}: Telepon maksimal 40 karakter.`); continue; }
         // Unit is an organizational attribute; SC/RPC and PIBC are office locations.
         const unitId = String(row.unit_id || '').trim().toUpperCase();
         const requestedOfficeLocation = String(row.office_location_id || '').trim().toUpperCase();
