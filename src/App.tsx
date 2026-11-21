@@ -303,9 +303,9 @@ export default function App() {
 
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
-  const isModuleAvailable = (tab: NavTab) => isCoreNavigationTab(tab) || activeModuleKeys === undefined || activeModuleKeys.includes(tab);
+  const isModuleAvailable = (tab: NavTab) => activeModuleKeys === undefined || activeModuleKeys.includes(tab);
   const fallbackRoleTab = currentUser
-    ? getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys)
+    ? getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys, activeModuleKeys)
     : null;
   const activeTab: NavTab | null = currentUser
     ? (isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys) && isModuleAvailable(currentTab)
