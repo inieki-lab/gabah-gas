@@ -975,3 +975,7 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added `test:asset-status-workflow-guard` and wired it into CI.
 - No asset records, lifecycle states, or permissions were changed by this code update.
 - Exact-head CI and browser UAT remain required.
+
+
+- Follow-up UI alignment: the asset edit modal no longer offers direct operational-status changes, and the App update handler no longer sends `status` through generic PATCH. Assignment/unassignment continues through the dedicated assignment endpoint; lifecycle states remain handled by the Lifecycle workflow.
+- Extended the same regression script to cover both UI payload paths and the read-only status explanation.
