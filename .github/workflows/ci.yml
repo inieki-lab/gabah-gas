@@ -184,6 +184,9 @@ jobs:
       - name: Ticket reporter transition authorization regression
         run: npm run test:ticket-reporter-transition
 
+      - name: Ticket lifecycle cannot skip operational stages
+        run: npm run test:ticket-lifecycle-no-skip
+
       - name: PIBC ME ticket queue and unit-scope regression
         run: npm run test:pibc-me-ticket-queue
 
