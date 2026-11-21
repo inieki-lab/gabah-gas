@@ -1007,3 +1007,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Ticket route audit confirms list visibility and status mutation use `tickets.read` / `tickets.update` plus reporter, assignee, owner-division, and unit boundaries. Reporter transitions are restricted to confirming `resolved → closed` and reopening `closed → open`.
 - Follow-up gap: normalized schema defines `ticket_comments`, but current server route inventory exposes ticket list/create/status only; comment persistence/API is not yet surfaced. Keep this as a tracked functional gap; do not claim ticket discussion is PostgreSQL-persistent until a dedicated authorized endpoint and UI flow are implemented.
 - Exact-head CI run #2776 is in progress on commit `3b5a91f7b8596ad1ea5ce789a203396d089c9939`; PR #177 remains draft/open and unmerged.
+
+
+### Ticket lifecycle transition hardening — 2026-11-21
+
+- Found a mismatch between the documented ticket state machine and the actual transition map: operators could move `open`/`assigned` directly to `resolved` or `closed`, and `in_progress` directly to `closed`.
+- Tightened the server-authoritative transitions: `open → in_progress`, `assigned → in_progress`, `in_progress → resolved` (or reopen to `open`), `resolved → closed` (or reopen), and `closed → open` only.
+- Added `test:ticket-lifecycle-no-skip` and registered it in CI. This is a workflow integrity fix; existing reporter restrictions remain in place.
+- The prior CI run for the RBAC assertion correction is still being monitored separately; the current ticket change requires its own exact-head CI before it is considered validated.
