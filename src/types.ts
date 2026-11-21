@@ -151,7 +151,7 @@ export interface Loan {
 }
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
-export type TicketStatus = 'open' | 'in_progress' | 'pending_vendor' | 'resolved' | 'closed';
+export type TicketStatus = 'open' | 'assigned' | 'in_progress' | 'pending_vendor' | 'resolved' | 'closed';
 /**
  * Helpdesk Ticket Category — strictly divisional.
  * Contract Management is a separate domain and is NOT a ticket category.
