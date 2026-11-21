@@ -22,4 +22,12 @@ assert.ok(route.includes("Humas/Sekretariat adalah role fungsi; RPC/SC dan PIBC 
 assert.ok(route.includes('crypto.randomBytes(12)'), 'initial password must remain server-generated');
 assert.ok(!route.includes('password: generatedTempPassword'), 'never return plaintext generated password');
 
-console.log('PASS: user creation enforces Superadmin authority, typed/length-limited profile fields, normalized values, and server-generated credentials.');
+const bulkStart = server.indexOf("app.post('/api/users/bulk-import'");
+const bulkEnd = server.indexOf("app.patch('/api/users/:id'", bulkStart);
+assert.ok(bulkStart >= 0 && bulkEnd > bulkStart, 'user bulk-import route must exist');
+const bulk = server.slice(bulkStart, bulkEnd);
+for (const [field, limit] of [['name', 160], ['email', 254], ['division', 120], ['department', 120], ['phone', 40]]) {
+  assert.ok(bulk.includes(`${field}.length > ${limit}`), `bulk import must bound ${field} to ${limit} characters`);
+}
+
+console.log('PASS: user creation and bulk import enforce profile field bounds, normalized values, and server-generated credentials.');
