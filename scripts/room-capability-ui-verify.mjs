@@ -3,11 +3,27 @@ import assert from 'node:assert/strict';
 
 const rooms = fs.readFileSync('src/components/views/MeetingRoomsView.tsx', 'utf8');
 const form = fs.readFileSync('src/components/modals/CreateRoomReservationModal.tsx', 'utf8');
+const master = fs.readFileSync('src/components/modals/MeetingMasterSettingsModal.tsx', 'utf8');
+const services = fs.readFileSync('server/services.ts', 'utf8');
 const header = fs.readFileSync('src/components/HeaderNavbar.tsx', 'utf8');
 assert.match(rooms, /const hasPermissionMetadata = Array\.isArray\(currentUser\.permission_keys\)/);
 assert.match(rooms, /'room_reservations\.documentation\.read'/);
 assert.match(rooms, /'room_reservations\.override_priority'/);
 assert.match(rooms, /'meeting_facilities\.manage'/);
+assert.match(rooms, /const canManageMeetingTypes = hasPermission\(/);
+assert.match(rooms, /const canManageMeetingMasterData = canManageMeetingTypes \|\| canManageMeetingFacilities/);
+assert.match(rooms, /\{canManageMeetingMasterData && \(/);
+
+assert.match(master, /const canManageTypes = hasPermission\('meeting_types\.manage'/);
+assert.match(master, /const canManageFacilities = hasPermission\('meeting_facilities\.manage'/);
+assert.match(master, /canReadTypes \? gabahApi\.getMeetingTypes\(\) : Promise\.resolve\(\[\]\)/);
+assert.match(master, /canReadFacilities \? gabahApi\.getMeetingFacilities\(\) : Promise\.resolve\(\[\]\)/);
+assert.match(master, /if \(!canManageTypes\) \{/);
+assert.match(master, /if \(!canManageFacilities\) \{/);
+assert.match(master, /\{canManageTypes && \(/);
+assert.match(master, /\{canManageFacilities && \(/);
+const meetingTypesBlock = services.slice(services.indexOf('// Meeting Types CRUD'), services.indexOf('// Meeting Facilities CRUD'));
+assert.equal((meetingTypesBlock.match(/hasRoomPermission\(actor, 'meeting_types\.manage', \['GA'\]\)/g) || []).length, 3);
 assert.match(rooms, /'room_reservations\.approve'/);
 assert.match(rooms, /'room_reservations\.reject'/);
 assert.match(rooms, /'room_reservations\.checkin'/);

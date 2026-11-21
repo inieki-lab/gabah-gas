@@ -1169,3 +1169,14 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Vendor create/edit form now revalidates `vendors.create` versus `vendors.update` at submit and disables Save when the relevant permission is absent, covering permission changes while the form is open.
 - Added regression assertions to room-capability and asset-scope verification.
 - The room-reservation modal also denies Auditor additional-role members the priority-override control, not just the final submit action; regression coverage protects this read-only boundary.
+
+
+## 2026-11-21 — PR #181 merged; meeting master capability parity
+
+- PR #181 merged to `main` at `70e82d87475d3492cb23fd4b44accf969e6c9ede`.
+- Exact-head CI run #44923337165 on `06665cf17a7b4a476e183fe510e67bec246c12fa` completed SUCCESS (**92/92** steps), including loanable pool, contract, room reservation, vendor, Docker runtime, PostgreSQL 17, and P0 security checks.
+- New review found the meeting master modal exposed both type and facility CRUD to anyone who could open it, although meeting-type write API is governed by `meeting_types.manage` and facility CRUD by `meeting_facilities.manage`.
+- The database migration already grants `meeting_types.manage` to GA, but the domain service incorrectly restricted meeting-type create/update/delete to Superadmin. Service guards now honor the explicit capability with GA legacy fallback.
+- Meeting Rooms entry point and master modal now expose only the tabs/actions the actor can manage, and only load each master list when its read permission is available.
+- Regression coverage expanded in `scripts/room-capability-ui-verify.mjs`.
+- Working branch: `audit/meeting-master-form-permissions-2026-11-21`; exact-head CI required before merge.

@@ -115,6 +115,11 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
     'meeting_facilities.manage',
     currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
   );
+  const canManageMeetingTypes = hasPermission(
+    'meeting_types.manage',
+    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+  );
+  const canManageMeetingMasterData = canManageMeetingTypes || canManageMeetingFacilities;
   const canApproveReservations = hasPermission(
     'room_reservations.approve',
     currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
@@ -312,7 +317,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          {canManageMeetingFacilities && (
+          {canManageMeetingMasterData && (
             <button
               onClick={() => setIsMasterSettingsModalOpen(true)}
               className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition-all flex items-center gap-2"

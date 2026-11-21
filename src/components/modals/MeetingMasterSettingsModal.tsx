@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { MeetingTypeItem, MeetingFacilityItem, MeetingPriority, UserProfile } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
+import { GabahService } from '../../services/gabahService';
 
 interface MeetingMasterSettingsModalProps {
   isOpen: boolean;
@@ -31,7 +32,23 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
   currentUser,
   onMasterUpdated,
 }) => {
-  const [activeTab, setActiveTab] = useState<'types' | 'facilities'>('types');
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true
+    || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const hasPermission = (permission: string, legacyRoles: string[] = []) => !isAuditor && (
+    isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
+      : legacyRoles.includes(currentUser.role))
+  );
+  const canManageTypes = hasPermission('meeting_types.manage', ['GA']);
+  const canManageFacilities = hasPermission('meeting_facilities.manage', ['GA', 'IT']);
+  const canReadTypes = hasPermission('meeting_types.read', ['GA', 'IT']);
+  const canReadFacilities = hasPermission('meeting_facilities.read', ['GA', 'IT']);
+
+  const [activeTab, setActiveTab] = useState<'types' | 'facilities'>(() => canManageTypes ? 'types' : 'facilities');
   const [types, setTypes] = useState<MeetingTypeItem[]>([]);
   const [facilities, setFacilities] = useState<MeetingFacilityItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,8 +77,8 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
     setErrorMessage(null);
     try {
       const [fetchedTypes, fetchedFacs] = await Promise.all([
-        gabahApi.getMeetingTypes(),
-        gabahApi.getMeetingFacilities(),
+        canReadTypes ? gabahApi.getMeetingTypes() : Promise.resolve([]),
+        canReadFacilities ? gabahApi.getMeetingFacilities() : Promise.resolve([]),
       ]);
       setTypes(fetchedTypes || []);
       setFacilities(fetchedFacs || []);
@@ -76,7 +93,13 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
     if (isOpen) {
       loadData();
     }
-  }, [isOpen]);
+  }, [isOpen, canReadTypes, canReadFacilities]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (canManageTypes && !canManageFacilities) setActiveTab('types');
+    else if (!canManageTypes && canManageFacilities) setActiveTab('facilities');
+  }, [isOpen, canManageTypes, canManageFacilities]);
 
   const showNotification = (msg: string) => {
     setSuccessMessage(msg);
@@ -85,6 +108,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
 
   // Type Handlers
   const handleStartCreateType = () => {
+    if (!canManageTypes) return;
     setEditingType(null);
     setIsCreatingType(true);
     setTypeName('');
@@ -95,6 +119,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
   };
 
   const handleStartEditType = (item: MeetingTypeItem) => {
+    if (!canManageTypes) return;
     setIsCreatingType(false);
     setEditingType(item);
     setTypeName(item.name);
@@ -106,6 +131,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
 
   const handleSaveType = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageTypes) { setErrorMessage('Permission meeting_types.manage tidak tersedia.'); return; }
     setErrorMessage(null);
     if (!typeName.trim()) {
       setErrorMessage('Nama tipe rapat wajib diisi.');
@@ -142,6 +168,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
   };
 
   const handleDeleteType = async (id: string, name: string) => {
+    if (!canManageTypes) return;
     if (!window.confirm(`Yakin ingin menghapus tipe rapat "${name}"?`)) return;
     try {
       await gabahApi.deleteMeetingType(id);
@@ -155,6 +182,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
 
   // Facility Handlers
   const handleStartCreateFacility = () => {
+    if (!canManageFacilities) return;
     setEditingFacility(null);
     setIsCreatingFacility(true);
     setFacName('');
@@ -164,6 +192,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
   };
 
   const handleStartEditFacility = (item: MeetingFacilityItem) => {
+    if (!canManageFacilities) return;
     setIsCreatingFacility(false);
     setEditingFacility(item);
     setFacName(item.name);
@@ -174,6 +203,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
 
   const handleSaveFacility = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageFacilities) { setErrorMessage('Permission meeting_facilities.manage tidak tersedia.'); return; }
     setErrorMessage(null);
     if (!facName.trim()) {
       setErrorMessage('Nama fasilitas rapat wajib diisi.');
@@ -208,6 +238,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
   };
 
   const handleDeleteFacility = async (id: string, name: string) => {
+    if (!canManageFacilities) return;
     if (!window.confirm(`Yakin ingin menghapus fasilitas "${name}"?`)) return;
     try {
       await gabahApi.deleteMeetingFacility(id);
@@ -219,7 +250,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || (!canManageTypes && !canManageFacilities)) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
@@ -252,6 +283,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
         {/* Tab Selection */}
         <div className="border-b border-slate-200 bg-slate-50/80 px-6 pt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {canManageTypes && (
             <button
               onClick={() => setActiveTab('types')}
               className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
@@ -265,6 +297,8 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                 <span>1. Tipe Pertemuan ({types.length})</span>
               </div>
             </button>
+            )}
+            {canManageFacilities && (
             <button
               onClick={() => setActiveTab('facilities')}
               className={`px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all border-b-2 ${
@@ -278,10 +312,11 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
                 <span>2. Fasilitas GA & IT ({facilities.length})</span>
               </div>
             </button>
+            )}
           </div>
 
           <div className="pb-2">
-            {activeTab === 'types' ? (
+            {activeTab === 'types' && canManageTypes ? (
               <button
                 onClick={handleStartCreateType}
                 className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg flex items-center gap-1.5 shadow-xs"
@@ -322,7 +357,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
           )}
 
           {/* TAB 1: MEETING TYPES */}
-          {activeTab === 'types' && (
+          {activeTab === 'types' && canManageTypes && (
             <div className="space-y-4">
               
               {/* Add / Edit Form Drawer */}
@@ -500,7 +535,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
           )}
 
           {/* TAB 2: FACILITIES */}
-          {activeTab === 'facilities' && (
+          {activeTab === 'facilities' && canManageFacilities && (
             <div className="space-y-4">
               
               {/* Add / Edit Form Drawer for Facilities */}
