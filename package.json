@@ -81,6 +81,7 @@
     "test:ticket-reporter-transition": "node scripts/ticket-reporter-transition-verify.mjs",
     "test:ticket-lifecycle-no-skip": "node scripts/ticket-lifecycle-no-skip-verify.mjs",
     "test:ticket-allowed-actions": "node scripts/ticket-allowed-actions-verify.mjs",
+    "test:ticket-comments-api": "node scripts/ticket-comments-api-verify.mjs",
     "test:loan-borrower-return": "node scripts/loan-borrower-return-verify.mjs"
   },
   "dependencies": {
