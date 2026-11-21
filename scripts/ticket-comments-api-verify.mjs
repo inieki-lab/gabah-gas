@@ -18,6 +18,7 @@ assert.match(commentRoutes, /body\.trim\(\)\.length > 4000/);
 assert.match(commentRoutes, /FROM ticket_comments c[\s\S]*INNER JOIN users u ON u\.id = c\.user_id/);
 assert.match(commentRoutes, /INSERT INTO ticket_comments \(ticket_id, user_id, body\)/);
 assert.match(commentRoutes, /withRbacTransaction/);
+assert.match(commentRoutes, /__gabahPersisted\s*=\s*true/);
 assert.match(commentRoutes, /TICKET_COMMENTS_REQUIRE_POSTGRES/);
 console.log('PASS: ticket comments require ticket visibility, reporter/handler write authority, Auditor read-only, bounded input, and transactional PostgreSQL persistence.');
 
