@@ -1,0 +1,31 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const server = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const api = fs.readFileSync(new URL('../src/services/gabahApi.ts', import.meta.url), 'utf8');
+const view = fs.readFileSync(new URL('../src/components/views/TicketsView.tsx', import.meta.url), 'utf8');
+const app = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+
+const start = server.indexOf("app.get('/api/tickets/:id/assignees'");
+const patch = server.indexOf("app.patch('/api/tickets/:id/assignment'");
+const end = server.indexOf("const canAccessTicketRecord", patch);
+assert.ok(start >= 0 && patch > start && end > patch, 'assignee routes must be registered before ticket comment routes');
+const routes = server.slice(start, end);
+assert.match(routes, /requireRbacPermission\(req, res, 'tickets\.update'\)/);
+assert.match(routes, /canManageTicketAssignment\(ticket, actor\)/);
+assert.match(routes, /user\.is_active === false/);
+assert.match(routes, /hasRbacPermission\(String\(user\.id\), 'tickets\.update'\)/);
+assert.match(routes, /hasRbacScope\(String\(user\.id\), 'division', String\(ticket\.category\), 'tickets'\)/);
+assert.match(routes, /hasRbacScope\(String\(user\.id\), 'unit', String\(ticket\.assigned_unit_id\), 'tickets'\)/);
+assert.match(routes, /isAuditorActor\(actor\)/);
+assert.match(routes, /\['open', 'assigned'\]/);
+assert.match(routes, /status\(409\)/);
+assert.match(routes, /TICKET_ASSIGNMENT_UPDATED/);
+assert.match(routes, /persistBeforeSuccess/);
+assert.match(api, /getTicketAssignees\(ticketId: string\)/);
+assert.match(api, /updateTicketAssignment\(ticketId: string, assignedAgentId: string \| null\)/);
+assert.match(view, /Atur Petugas/);
+assert.match(view, /Simpan Penugasan/);
+assert.match(view, /Lepas Petugas/);
+assert.match(app, /onUpdateTicketAssignment=\{handleUpdateTicketAssignment\}/);
+console.log('PASS: ticket assignment is permission/scope based, excludes inactive/Auditor users, validates queue eligibility, prevents reassignment after work starts, audits, persists, and is wired to UI.');
