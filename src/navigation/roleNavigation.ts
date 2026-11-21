@@ -101,11 +101,15 @@ const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
 export function getDefaultNavTabForRole(
   role: UserRole | null | undefined,
   permissionKeys?: readonly string[],
+  activeModuleKeys?: readonly string[],
 ): AppNavTab | null {
-  const allowedTab = DEFAULT_NAV_TAB_ORDER.find(tab => isNavTabAllowedForRole(role, tab, permissionKeys));
-  // In PostgreSQL mode, an empty effective permission set must not silently
-  // fall back to an unauthorized Dashboard. Legacy mode keeps its old default.
-  return allowedTab || (permissionKeys === undefined ? 'dashboard' : null);
+  const allowedTab = DEFAULT_NAV_TAB_ORDER.find(tab =>
+    isNavTabAllowedForRole(role, tab, permissionKeys)
+      && (activeModuleKeys === undefined || activeModuleKeys.includes(tab)),
+  );
+  // In PostgreSQL mode, an empty effective permission set or a disabled
+  // module set must not silently fall back to an unavailable Dashboard.
+  return allowedTab || (permissionKeys === undefined && activeModuleKeys === undefined ? 'dashboard' : null);
 }
 
 /**

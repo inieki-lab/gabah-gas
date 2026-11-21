@@ -24,7 +24,7 @@ import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
-import { getDefaultNavTabForRole, isCoreNavigationTab, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from './navigation/roleNavigation';
+import { getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from './navigation/roleNavigation';
 // API collections are already scoped by the authoritative backend policy.
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
@@ -303,9 +303,9 @@ export default function App() {
 
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
-  const isModuleAvailable = (tab: NavTab) => isCoreNavigationTab(tab) || activeModuleKeys === undefined || activeModuleKeys.includes(tab);
+  const isModuleAvailable = (tab: NavTab) => activeModuleKeys === undefined || activeModuleKeys.includes(tab);
   const fallbackRoleTab = currentUser
-    ? getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys)
+    ? getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys, activeModuleKeys)
     : null;
   const activeTab: NavTab | null = currentUser
     ? (isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys) && isModuleAvailable(currentTab)

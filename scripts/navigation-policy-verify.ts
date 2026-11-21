@@ -79,6 +79,13 @@ assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loa
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), 'dashboard');
 
+// Global module lifecycle overrides even the always-available employee workspace.
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'tickets.read'], ['tickets']), 'tickets');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'tickets.read'], ['dashboard']), 'dashboard');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'tickets.read'], []), null);
+assert.equal(getDefaultNavTabForRole('Karyawan', undefined, ['tickets']), 'tickets');
+
+
 // Core employee workspace stays visible even when a role has no optional module grants.
 assert.deepEqual([...CORE_NAVIGATION_TABS], ['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge']);
 for (const role of [...expectedRoles, 'Custom Role']) {
