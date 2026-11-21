@@ -2575,7 +2575,7 @@ async function startServer() {
       const VALID_ASSET_STATUSES = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive', 'in_use', 'loaned', 'maintenance'];
       const VALID_DIVISIONS = (db.divisions || []).map(d => String(d.code).trim().toUpperCase());
       // CR-06: allowlist identik dengan PATCH /api/assets/:id
-      const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
+      const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
 
       let created = 0;
       let updated = 0;
@@ -2640,6 +2640,12 @@ async function startServer() {
         if (existing) {
           if (!allowUpdate) {
             errors.push(`Baris ${rowNo}: ${serial ? `Serial "${serial}"` : `Nomor Accurate "${corp}"`} sudah terdaftar pada aset ${existing.asset_number} (${existing.name}). Aktifkan opsi perbarui bila ingin memperbarui.`);
+            continue;
+          }
+          // Generic import edits must never bypass the dedicated lifecycle workflow.
+          // Status changes belong to /api/assets/:id/lifecycle or the loan workflow.
+          if (requestedStatus !== undefined && requestedStatus !== existing.status) {
+            errors.push(`Baris ${rowNo}: ${existing.asset_number} tidak dapat mengubah status melalui impor massal. Gunakan alur lifecycle atau peminjaman.`);
             continue;
           }
           // Bulk UPDATE uses the same owner-domain authorization as PATCH.
@@ -2800,6 +2806,16 @@ async function startServer() {
       return res.status(409).json({ success: false, message: 'Kategori infrastruktur/server dan lisensi tidak boleh dikonfigurasikan sebagai aset pinjaman.' });
     }
 
+    // Asset status is controlled by dedicated lifecycle and loan workflows.
+    // Generic PATCH/import must not jump directly to disposed, auctioned, lost,
+    // in_repair, or other states without lifecycle authorization and audit rules.
+    if (req.body.status !== undefined && String(req.body.status) !== asset.status) {
+      return res.status(409).json({
+        success: false,
+        message: 'Status aset tidak dapat diubah melalui edit umum. Gunakan menu Lifecycle atau alur peminjaman/pengembalian.',
+      });
+    }
+
     // Loan workflow owns status and loanability while a reservation is approved
     // or a unit is physically borrowed. Manual edits here could desynchronize
     // the asset and its active loan, so require the loan workflow to finish first.
@@ -2842,7 +2858,7 @@ async function startServer() {
     }
 
     // Update mutable fields (not asset_number or owner_division)
-    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
+    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         (asset as any)[key] = req.body[key];
