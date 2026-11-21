@@ -1225,3 +1225,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - An uppercase path such as `/API/...` could therefore reach a state-changing Express route while skipping the global pre-response persistence gate.
 - The gate now normalizes the request path to lowercase before deciding whether a mutation must wait for persistence. Added a regression assertion to the PostgreSQL runtime-persistence contract.
 - Working branch: `fix/persistence-gate-case-insensitive-api-2026-11-22`; exact-head CI required before merge.
+
+
+### 2026-11-22 — Audit waktu bentrok pinjaman (Asia/Jakarta)
+
+- Audit menemukan ketidaksamaan interpretasi waktu: form browser mengirim `datetime-local` (waktu dinding lokal), sementara backend mengubah jam/menit dengan `Date.UTC`. Pemeriksaan bentrok di UI memakai `new Date(datetime-local)`, sehingga pada WIB hasil UI dan server berbeda tujuh jam.
+- Dampak: jadwal yang berdekatan dengan batas waktu dapat dinilai bentrok di satu sisi tetapi tidak di sisi lain; pemeriksaan ulang saat approval juga harus memakai interpretasi waktu yang sama.
+- Perbaikan pada PR #190: parser bersama `shared/loan-datetime.ts` dipakai oleh validasi request, collision check pengajuan, collision recheck approval, dan UI pre-check. Input datetime-local tanpa zona ditafsirkan sebagai Asia/Jakarta (UTC+07:00); ISO bertanda zona dipertahankan sebagai instant absolut; tanggal legacy tanpa jam tetap mempertahankan semantik UTC-midnight lama agar kompatibel.
+- Regression baru menguji konversi WIB, overlap, jadwal berurutan, tanggal legacy, ISO eksplisit, serta tanggal/jam tidak valid. Didaftarkan pada CI.
+- PR #190 head terakhir `0b513d45c1563584908620f5f984ac6f69ca04ab`; CI exact-head belum terkonfirmasi pada saat catatan ini ditulis. Belum ada klaim UAT browser.
