@@ -9,7 +9,7 @@
 - UI daftar tiket menampilkan diskusi, penulis, waktu, dan input komentar; Auditor tidak diberi kontrol kirim.
 - Regression `test:ticket-comments-api` mencakup tabel, route guard, object-level scope, Auditor read-only, validasi panjang, transaksi, API client, dan UI.
 - **CI run #2815 / 44902087918 SUCCESS — 90/90 steps pada code SHA `0d53a814e307622031492f545dade3c19c99d11f`.** Typecheck, production build, Docker runtime smoke, PostgreSQL 17 fresh-database/persistence, P0 security, dan ticket-comments regression lulus. Setelah verifikasi ini, hanya dokumentasi progres yang diperbarui; tidak ada perubahan kode fungsional pada catatan ini.
-- Batasan yang masih terbuka: belum ada endpoint/UI penugasan ulang manual petugas tiket; routing IT tetap otomatis hanya bila tepat satu petugas aktif memenuhi permission + scope. Lampiran tiket belum tersedia (upload yang ada hanya untuk dokumen kontrak).
+- Penugasan ulang manual petugas kini tersedia melalui `GET /api/tickets/:id/assignees` dan `PATCH /api/tickets/:id/assignment`; kandidat harus aktif serta memiliki `tickets.update` dan scope antrean yang cocok. Auditor tidak dapat mengubah penugasan, perubahan setelah pekerjaan dimulai ditolak, semua perubahan diaudit, dan petugas baru menerima notifikasi langsung pada akun beserta tautan tiket. Regression `test:ticket-assignment-api` mencakup authorization, scope, status, persistence, notifikasi, API client, dan UI.\n- Batasan yang masih terbuka: lampiran tiket belum tersedia (upload yang ada hanya untuk dokumen kontrak).
 - Status kesiapan: **belum GO produksi**. Browser UAT tiap persona/lokasi, uji backup/restore DB + volume uploads, staging deployment/rollback, dan sign-off pemilik proses tetap wajib.
 
 ---
