@@ -20,7 +20,11 @@ assert.match(routes, /hasRbacScope\(String\(user\.id\), 'unit', String\(ticket\.
 assert.match(routes, /isAuditorActor\(actor\)/);
 assert.match(routes, /\['open', 'assigned'\]/);
 assert.match(routes, /status\(409\)/);
-assert.match(routes, /TICKET_ASSIGNMENT_UPDATED/);\nassert.match(routes, /previousAssignedAgentId/);\nassert.match(routes, /GabahDomainService\\.notify\\(\\{/);\nassert.match(routes, /recipient_user_id: ticket\\.assigned_agent_id/);\nassert.match(routes, /link_type: 'ticket'/);
+assert.match(routes, /TICKET_ASSIGNMENT_UPDATED/);
+assert.match(routes, /previousAssignedAgentId/);
+assert.match(routes, /GabahDomainService\.notify\(\{/);
+assert.match(routes, /recipient_user_id: ticket\.assigned_agent_id/);
+assert.match(routes, /link_type: 'ticket'/);
 assert.match(routes, /persistBeforeSuccess/);
 assert.match(api, /getTicketAssignees\(ticketId: string\)/);
 assert.match(api, /updateTicketAssignment\(ticketId: string, assignedAgentId: string \| null\)/);
