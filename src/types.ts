@@ -188,6 +188,7 @@ export interface Ticket {
   related_asset_number?: string;
   assigned_agent_id?: string;
   assigned_agent_name?: string;
+  assigned_unit_id?: string;
   sla_hours: number; // e.g. Urgent: 4h, High: 8h, Medium: 24h, Low: 48h
   sla_response_deadline?: string;
   sla_resolution_deadline?: string;
