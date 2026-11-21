@@ -55,7 +55,7 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
       : legacyRoles.includes(currentUser.role))
   );
   const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
-  const canCreateAnyTicket = canCreateTicket || hasEffectivePermission('tickets.create.me');
+  const canCreateAnyTicket = canCreateTicket || hasEffectivePermission('tickets.create.me', []);
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
 
   // Find assets assigned to this user
