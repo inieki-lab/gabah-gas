@@ -566,7 +566,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   )}
                 </div>
 
-                {(isSuperAdmin || currentUser.permission_keys?.includes('tickets.update')) && (
+                {GabahService.canAssignTickets(currentUser) && (
                   <div className="pt-1">
                     <button
                       type="button"
