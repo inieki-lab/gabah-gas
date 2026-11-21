@@ -370,7 +370,6 @@ export default function App() {
         // T2B-2: relasi lokasi fisik aset ikut diperbarui bila ada.
         asset_location_id: updatedAsset.asset_location_id,
         condition: updatedAsset.condition,
-        status: updatedAsset.status,
         is_loanable: updatedAsset.is_loanable,
         notes: updatedAsset.notes,
       });
@@ -532,6 +531,14 @@ export default function App() {
     } catch (err: any) {
       showToast(err.message || 'Gagal memperbarui status tiket', 'warning');
     }
+  };
+
+  const handleUpdateTicketAssignment = async (ticketId: string, assignedAgentId: string | null) => {
+    const updated = await gabahApi.updateTicketAssignment(ticketId, assignedAgentId);
+    showToast(assignedAgentId
+      ? `Tiket ${updated.ticket_number} berhasil ditugaskan kepada ${updated.assigned_agent_name}.`
+      : `Penugasan tiket ${updated.ticket_number} dilepas.`);
+    await refreshData();
   };
 
   // 10b. Contract Management (separate domain)
@@ -944,6 +951,7 @@ export default function App() {
               currentUser={currentUser}
               onOpenNewTicketModal={handleOpenNewTicketModal}
               onUpdateTicketStatus={handleUpdateTicketStatus}
+              onUpdateTicketAssignment={handleUpdateTicketAssignment}
             />
           )}
 

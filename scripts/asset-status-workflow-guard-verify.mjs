@@ -1,0 +1,40 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const server = fs.readFileSync('server.ts', 'utf8');
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+const editModal = fs.readFileSync('src/components/modals/EditAssetModal.tsx', 'utf8');
+const patchStart = server.indexOf("app.patch('/api/assets/:id'");
+const patchEnd = server.indexOf("app.post('/api/assets/:id/assign'", patchStart);
+assert.ok(patchStart >= 0 && patchEnd > patchStart, 'asset PATCH route must exist');
+const patch = server.slice(patchStart, patchEnd);
+assert.ok(patch.includes("req.body.status !== undefined && String(req.body.status) !== asset.status"));
+assert.ok(patch.includes("res.status(409)"), 'generic PATCH status changes must conflict');
+assert.ok(patch.includes('Gunakan menu Lifecycle atau alur peminjaman/pengembalian'));
+assert.ok(!patch.includes("'is_loanable', 'status', 'corporate_asset_number'"), 'status must not be in generic PATCH allowlist');
+
+const bulkStart = server.indexOf("app.post('/api/assets/bulk-import'");
+const bulkEnd = server.indexOf("app.get('/api/assets/:id'", bulkStart);
+assert.ok(bulkStart >= 0 && bulkEnd > bulkStart, 'bulk-import route must exist');
+const bulk = server.slice(bulkStart, bulkEnd);
+assert.ok(bulk.includes('requestedStatus !== undefined && requestedStatus !== existing.status'));
+assert.ok(bulk.includes('tidak dapat mengubah status melalui impor massal'));
+assert.ok(!bulk.includes("'notes', 'is_loanable', 'status', 'corporate_asset_number'"), 'bulk update allowlist must exclude status');
+
+const lifecycleStart = server.indexOf("app.post('/api/assets/:id/lifecycle'");
+assert.ok(lifecycleStart >= 0 && server.slice(lifecycleStart, lifecycleStart + 400).includes("'assets.lifecycle'"));
+
+const appHandlerStart = app.indexOf('const handleUpdateAsset = async');
+const appHandlerEnd = app.indexOf('// 3. Request Loan', appHandlerStart);
+assert.ok(appHandlerStart >= 0 && appHandlerEnd > appHandlerStart);
+const appHandler = app.slice(appHandlerStart, appHandlerEnd);
+assert.ok(!appHandler.includes('status: updatedAsset.status'), 'App must not send status through generic PATCH');
+const modalSubmitStart = editModal.indexOf('const handleSubmit = async');
+const modalSubmitEnd = editModal.indexOf('const targetAssignedUser', modalSubmitStart);
+assert.ok(modalSubmitStart >= 0 && modalSubmitEnd > modalSubmitStart);
+const modalSubmit = editModal.slice(modalSubmitStart, modalSubmitEnd);
+assert.ok(!modalSubmit.includes('status: selectedUserId ?'), 'edit modal must not send status through generic update');
+assert.ok(editModal.includes('Status tidak diubah melalui edit umum'), 'edit modal must explain the dedicated status workflow');
+assert.ok(!editModal.includes('<option value="retired">'), 'generic edit must not expose retired status mutation');
+
+console.log('PASS: API, bulk import, and asset edit UI preserve dedicated lifecycle/loan status workflows.');

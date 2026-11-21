@@ -1,4 +1,4 @@
-import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract, MaintenanceSchedule, Vendor, KnowledgeArticle } from '../types';
+import { Asset, Loan, Ticket, TicketComment, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract, MaintenanceSchedule, Vendor, KnowledgeArticle } from '../types';
 
 export interface AssetNumberingRule {
   id: string;
@@ -556,6 +556,28 @@ class GabahApiClient {
     return this.request<Ticket>('/api/tickets', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  }
+
+  async getTicketAssignees(ticketId: string): Promise<Array<{ id: string; name: string; department: string }>> {
+    return this.request<Array<{ id: string; name: string; department: string }>>(`/api/tickets/${encodeURIComponent(ticketId)}/assignees`);
+  }
+
+  async updateTicketAssignment(ticketId: string, assignedAgentId: string | null): Promise<Ticket> {
+    return this.request<Ticket>(`/api/tickets/${encodeURIComponent(ticketId)}/assignment`, {
+      method: 'PATCH',
+      body: JSON.stringify({ assigned_agent_id: assignedAgentId }),
+    });
+  }
+
+  async getTicketComments(ticketId: string): Promise<TicketComment[]> {
+    return this.request<TicketComment[]>(`/api/tickets/${encodeURIComponent(ticketId)}/comments`);
+  }
+
+  async addTicketComment(ticketId: string, body: string): Promise<TicketComment> {
+    return this.request<TicketComment>(`/api/tickets/${encodeURIComponent(ticketId)}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
     });
   }
 

@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 
 const results = [];
 function record(test, expected, actual, pass) {
@@ -61,6 +62,21 @@ function isoDatePlus(days) {
   return d.toISOString().slice(0, 10);
 }
 
+async function getAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      if (!address || typeof address === 'string') {
+        probe.close(() => reject(new Error('Unable to allocate a local TCP port')));
+        return;
+      }
+      probe.close(error => error ? reject(error) : resolve(address.port));
+    });
+  });
+}
+
 async function main() {
   const serverPath = path.resolve(process.cwd(), 'dist/server.cjs');
   if (!fs.existsSync(serverPath)) {
@@ -77,7 +93,7 @@ async function main() {
     fs.rmSync(stateFile);
   }
 
-  const PORT = 39000 + Math.floor(Math.random() * 2000);
+  const PORT = await getAvailablePort();
   const base = `http://127.0.0.1:${PORT}`;
   const adminPass = crypto.randomBytes(12).toString('base64url');
   const userPass = crypto.randomBytes(12).toString('base64url');
@@ -213,7 +229,20 @@ async function main() {
       : { status: 0 };
     record('Infrastructure loan request is rejected even after direct asset creation', '409',
       `HTTP ${infrastructureLoanAttempt.status}`, infrastructureLoanAttempt.status === 409);
-    const setAssetStatus = (assetId, status) => patchAsset(assetId, { status });
+    // Test fixtures must use the dedicated workflow that owns each status transition.
+    const setAssetStatus = (assetId, status) => {
+      if (status === 'damaged') {
+        return req(base, 'POST', `/api/assets/${assetId}/lifecycle`, {
+          token: admin.token, body: { action: 'damaged', notes: 'Loan authorization regression fixture' },
+        });
+      }
+      if (status === 'available') {
+        return req(base, 'POST', `/api/assets/${assetId}/assign`, {
+          token: admin.token, body: { targetUserId: '', reason: 'Kembali ke pool untuk fixture pengujian' },
+        });
+      }
+      return patchAsset(assetId, { status });
+    };
     const invalidAssetStatus = await setAssetStatus(itAsset5.id, 'not-a-real-status');
     record('Asset update rejects unknown status values', '400', `HTTP ${invalidAssetStatus.status}`, invalidAssetStatus.status === 400);
     const invalidLoanableType = await patchAsset(itAsset5.id, { is_loanable: 'false' });
@@ -243,7 +272,7 @@ async function main() {
       ? await req(base, 'POST', `/api/loans/${approvalLoanId}/approve`, { token: it.token, body: {} })
       : { status: 0 };
     record('Approval succeeds after asset is restored to available', '200', `HTTP ${approvalAfterRestore.status}`, approvalAfterRestore.status === 200);
-    const statusEditApproved = await setAssetStatus(itAsset6.id, 'damaged');
+    const statusEditApproved = await patchAsset(itAsset6.id, { status: 'damaged' });
     record('Manual status change is blocked while loan is approved', '409', `HTTP ${statusEditApproved.status}`, statusEditApproved.status === 409);
     const handoverRechecked = approvalLoanId
       ? await req(base, 'POST', `/api/loans/${approvalLoanId}/handover`, { token: it.token, body: { handoverNotes: 'Unit diserahkan setelah approval' } })
@@ -251,7 +280,7 @@ async function main() {
     record('Handover succeeds only after valid approval and reserved asset', '200 + borrowed',
       `HTTP ${handoverRechecked.status} + ${handoverRechecked.json?.data?.status}`,
       handoverRechecked.status === 200 && handoverRechecked.json?.data?.status === 'borrowed');
-    const statusEditBorrowed = await setAssetStatus(itAsset6.id, 'damaged');
+    const statusEditBorrowed = await patchAsset(itAsset6.id, { status: 'damaged' });
     record('Manual status change is blocked while loan is borrowed', '409', `HTTP ${statusEditBorrowed.status}`, statusEditBorrowed.status === 409);
     const returnRechecked = approvalLoanId
       ? await req(base, 'POST', `/api/loans/${approvalLoanId}/return`, { token: karyawan.token, body: { condition: 'good', returnNotes: 'Returned after lifecycle test' } })
@@ -402,7 +431,7 @@ async function main() {
         && assetAfterBlockedMutations?.status === assetBeforeBlockedMutations?.status
         && assetAfterBlockedMutations?.assigned_to?.id === assetBeforeBlockedMutations?.assigned_to?.id
         && loanAfterBlockedMutations === 'borrowed');
-    const statusEditBorrowedL2 = await setAssetStatus(itAsset2.id, 'damaged');
+    const statusEditBorrowedL2 = await patchAsset(itAsset2.id, { status: 'damaged' });
     const loanAfterStatusEditL2 = await loanStatus(L2.id);
     record('Manual asset status edit is blocked during borrowed loan L2', '409 + borrowed',
       `HTTP ${statusEditBorrowedL2.status} + ${loanAfterStatusEditL2}`,

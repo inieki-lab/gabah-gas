@@ -1,3 +1,38 @@
+### Dynamic observer route permission alignment — 2026-11-21
+
+- Replaced the stale global middleware role-name gate on `GET /api/audit-logs` and `GET /api/reconciliation` with explicit dynamic permission checks (`audit.read` / `reconciliation.read`) when PostgreSQL RBAC is active. Custom roles with those grants are no longer blocked.
+- Preserved canonical-path protection for uppercase and trailing-slash variants; unauthorized users still receive 403 before Express route matching. The route handlers repeat the permission checks for defense in depth.
+- Reconciliation continues to return only assets from the caller's scoped-asset policy unless the caller is Superadmin/Auditor. Dashboard attention-card global-observer behavior is unchanged.
+- Added `test:observer-route-rbac` and registered it in CI. The first CI run caught that removing the middleware guard weakened canonical-path protection; the guard was restored with dynamic permission evaluation.
+
+# Pembaruan operasional — 21 November 2026 (Helpdesk assignment final verification)
+
+- **CI run #2829 / 44903031303 SUCCESS — 91/91 steps** pada code SHA `033b2a18ba243e9e64105b5cfa671e2a9a426cd2`. Termasuk typecheck, Dynamic RBAC foundation, production build, Docker runtime, PostgreSQL 17, P0 security, ticket comments API/UI, dan ticket assignment API/UI.
+- Manual assignment tiket kini memiliki endpoint `GET /api/tickets/:id/assignees` dan `PATCH /api/tickets/:id/assignment`. Kandidat dibatasi ke user aktif dengan `tickets.update` serta scope divisi/unit yang sesuai; Auditor dan Superadmin tidak menjadi petugas operasional.
+- Penugasan hanya dapat diganti saat tiket `open` atau `assigned`; setelah pekerjaan dimulai API mengembalikan 409. Setiap perubahan dicatat ke audit log dan petugas baru menerima notifikasi akun dengan tautan ke tiket.
+- Regression `test:ticket-assignment-api` memeriksa policy eligibility, route authorization, status lock, audit, persistence, notifikasi, API client, dan UI.
+- Komentar tiket tetap menggunakan tabel PostgreSQL `ticket_comments`; regresi API/UI komentar lulus pada run yang sama.
+- Batasan yang masih terbuka: lampiran tiket belum tersedia. Browser UAT per persona/lokasi, backup/restore DB + volume uploads, staging deploy/rollback, dan sign-off pemilik proses tetap wajib.
+- PR #177 tetap Draft/Open dan belum di-merge. Tidak ada perubahan langsung ke `main`.
+
+---
+
+# Pembaruan operasional — 21 November 2026 (PR #177)
+
+## Helpdesk: diskusi tiket dan hasil verifikasi
+
+- Branch kerja: `fix/rbac-superadmin-admin-entry-2026-11-20`; PR #177 tetap Draft/Open, belum di-merge.
+- API `GET /api/tickets/:id/comments` dan `POST /api/tickets/:id/comments` menggunakan tabel PostgreSQL `ticket_comments` yang sudah ada pada migration 001.
+- Hak baca komentar mengikuti cakupan objek tiket (pelapor, petugas, scope divisi/unit, Superadmin; Auditor read-only). Penulisan dibatasi pada pelapor atau petugas yang memiliki `tickets.update` dan scope yang sesuai. Identitas penulis diambil dari sesi terautentikasi, bukan body request.
+- Komentar dibatasi 4.000 karakter dan disimpan melalui transaksi PostgreSQL. Response menandai transaksi telah committed agar persistence middleware tidak melakukan snapshot kedua yang tidak diperlukan.
+- UI daftar tiket menampilkan diskusi, penulis, waktu, dan input komentar; Auditor tidak diberi kontrol kirim.
+- Regression `test:ticket-comments-api` mencakup tabel, route guard, object-level scope, Auditor read-only, validasi panjang, transaksi, API client, dan UI.
+- **CI run #2815 / 44902087918 SUCCESS — 90/90 steps pada code SHA `0d53a814e307622031492f545dade3c19c99d11f`.** Typecheck, production build, Docker runtime smoke, PostgreSQL 17 fresh-database/persistence, P0 security, dan ticket-comments regression lulus. Setelah verifikasi ini, hanya dokumentasi progres yang diperbarui; tidak ada perubahan kode fungsional pada catatan ini.
+- Penugasan ulang manual petugas kini tersedia melalui `GET /api/tickets/:id/assignees` dan `PATCH /api/tickets/:id/assignment`; kandidat harus aktif serta memiliki `tickets.update` dan scope antrean yang cocok. Auditor tidak dapat mengubah penugasan, perubahan setelah pekerjaan dimulai ditolak, semua perubahan diaudit, dan petugas baru menerima notifikasi langsung pada akun beserta tautan tiket. Regression `test:ticket-assignment-api` mencakup authorization, scope, status, persistence, notifikasi, API client, dan UI.\n- Batasan yang masih terbuka: lampiran tiket belum tersedia (upload yang ada hanya untuk dokumen kontrak).
+- Status kesiapan: **belum GO produksi**. Browser UAT tiap persona/lokasi, uji backup/restore DB + volume uploads, staging deployment/rollback, dan sign-off pemilik proses tetap wajib.
+
+---
+
 # Pembaruan operasional — 20 November 2026 (setelah PR #172)
 
 ## Verifikasi terbaru di main
@@ -895,3 +930,157 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Loan request service rechecks the authoritative category policy before accepting a request.
 - Added HTTP regression coverage for infrastructure creation, PATCH override, and loan request rejection.
 - Exact-head CI run #44689553042 passed 78/78 checks.
+
+
+## 2026-11-20 — Superadmin Administration entry guard
+
+- Replaced the Administration modal's active-role-only Superadmin check with authoritative identity checks: `is_superadmin` and stable `role_keys=superadmin`.
+- Legacy `Admin GABAH` label fallback is retained only when permission metadata is absent, preventing a dashboard persona/active-role label from granting or hiding administrative access in dynamic-RBAC sessions.
+- Added `test:superadmin-administration-entry` and wired it into CI.
+- Work is isolated on `fix/rbac-superadmin-admin-entry-2026-11-20`, created from current `main`; no changes were made to `main` or the divergent 544-commit PR #36 branch.
+- Exact-head CI and browser UAT are pending; this is a focused regression guard, not a production-readiness claim.
+
+
+### Dynamic RBAC module-scope fail-closed hardening — 2026-11-20
+
+- Hardened `hasRbacScope()`: when a caller omits the module argument, module-specific grants no longer match. Only unscoped and explicit wildcard (`*`) grants remain applicable.
+- Explicit module checks retain exact matching; e.g. a `tickets` scope does not grant `loans` access.
+- Added a CI regression contract for omitted-module, exact-module, cross-module, global, and wildcard cases.
+- This is authorization hardening only; it does not alter existing role assignments, scope rows, or business records.
+
+
+### Loan state/UI contract repair — 2026-11-20
+
+- UI normalizes persisted API states: `pending_approval` maps to pending and `borrowed` maps to active. Filters, counts, badges, and action buttons use the same helper.
+- Frontend LoanStatus includes authoritative server states and legacy aliases.
+- Server approval now accepts only `pending_approval`. Completed, rejected, approved, and borrowed loans cannot be re-approved after the asset later becomes available.
+- Added CI regression coverage for UI/API state mapping and the approval transition guard.
+
+- Superadmin approval button now honors global Superadmin identity even when dynamic permission metadata is present; server remains authoritative for the owner-scope check.
+
+
+### Effective permission UI consistency — 2026-11-20
+
+- Centralized frontend checks for Superadmin identity and effective permission keys (`*` or exact key).
+- Asset edit, loan approval, and ticket management helpers now consistently honor Superadmin metadata and wildcard permission while preserving Auditor deny-write precedence.
+- Legacy fallback is limited to legacy role sessions; dynamic sessions no longer infer Admin GABAH authority from a persona label.
+- Added CI regression contract for Superadmin identity, wildcard permissions, and all affected helper methods.
+
+- Loans API now computes per-record server-authoritative action flags. The UI separately gates approve, reject, handover, and return buttons from those flags; borrower visibility no longer implies owner-division approval authority.
+
+
+### Superadmin dashboard persona correction — 2026-11-20
+
+- Fixed dashboard persona precedence: Superadmin remains the global administration persona even though its wildcard permissions include Humas and Sekretaris Direksi capabilities.
+- Humas/Sekdir-only dashboard panels and labels are suppressed for Superadmin; the global Admin GABAH dashboard description is shown. Auditor read-only precedence remains higher.
+- Extended the dashboard scope regression script to prevent this persona regression.
+
+
+### Loan rejection authorization hardening — 2026-11-20
+
+- Rejection now verifies the actor's loans.reject permission and matching owner scope before returning workflow-state details, avoiding state disclosure to callers who know a loan ID.
+- Unauthorized rejection attempts are written to the audit trail.
+- Rejection accepts an optional reason only when it is a string of at most 1,000 characters; stored text is trimmed and empty input uses the standard fallback.
+- Invalid state transitions return HTTP 409; invalid reason input returns HTTP 400.
+- Extended the loan contract regression to assert authorization ordering, denied-attempt audit, state conflict, and reason-length validation.
+- No loan records, user assignments, role grants, or owner scopes were changed.
+
+
+### Asset mutation authorization response semantics — 2026-11-20\n\n- Asset assignment and physical movement already required both the operation permission and matching owner-domain scope in the domain service. However, authorization failures were thrown as generic errors, and the move route flattened every failure to HTTP 400.\n- Changed denied assign/move operations to carry HTTP 403 and made the move route preserve domain status codes (including future 409 conflicts), matching the existing assign route behavior.\n- Added `test:asset-mutation-http-status` and wired it into CI. This changes response semantics only; it does not modify asset ownership, location, assignment, or movement records.\n- Exact-head CI is required before treating this batch as verified.\n
+
+### Ticket reporter workflow authorization — 2026-11-21
+
+- Ticket status API previously allowed the ticket reporter to use every operational transition, including marking work resolved or moving tickets into staff progress states.
+- Restricted non-operational reporters to confirming closure after staff resolution (`resolved → closed`) or reopening a closed ticket (`closed → open`). Superadmin, assigned agent, and users with matching ticket owner/unit scope retain the operational transition workflow.
+- Added a regression contract and CI step. No ticket data was changed.
+
+
+### Loan borrower self-return authorization — 2026-11-21
+
+- Fixed a mismatch between loan domain rules and the API: the domain service allowed a borrower to return their own borrowed asset, but the route-level `loans.return` permission gate blocked borrowers without custodian permissions; the UI also hid the return action.
+- The borrower can now return only their own loan. Returns on other borrowers' loans still require the custodian's `loans.return` permission and matching owner scope through the domain service. Auditor remains read-only.
+- Added a regression contract and CI step. No loan records or permissions were modified.
+
+
+### Asset lifecycle status workflow guard — 2026-11-21
+
+- Found a privilege-boundary gap: generic asset PATCH and bulk-import update paths accepted direct status changes even though lifecycle transitions have a dedicated `assets.lifecycle` permission and disposal approval rules.
+- Generic PATCH now rejects actual status changes with HTTP 409 and directs users to the Lifecycle or loan workflow. Status is removed from the generic mutable-field allowlist.
+- Bulk-import updates now reject status changes and no longer include status in their update allowlist. New asset creation remains server-authoritative; lifecycle and loan endpoints continue to own state transitions.
+- Added `test:asset-status-workflow-guard` and wired it into CI.
+- No asset records, lifecycle states, or permissions were changed by this code update.
+- Exact-head CI and browser UAT remain required.
+
+
+- Follow-up UI alignment: the asset edit modal no longer offers direct operational-status changes, and the App update handler no longer sends `status` through generic PATCH. Assignment/unassignment continues through the dedicated assignment endpoint; lifecycle states remain handled by the Lifecycle workflow.
+- Extended the same regression script to cover both UI payload paths and the read-only status explanation.
+
+
+- Updated the loan authorization integration fixture so damaged/available setup uses the dedicated Lifecycle and assignment endpoints. Assertions for generic PATCH rejection remain direct PATCH calls; this preserves the security contract instead of weakening it to satisfy old test setup.
+
+
+### User creation profile validation — 2026-11-21
+
+- Hardened `POST /api/users`: optional division, department, and phone values must be strings within the same length limits used by the update endpoint (120/120/40 characters).
+- Values are trimmed and normalized before creating the profile; missing/blank division and department use the existing defaults.
+- Primary role validation and independent job/unit/office-location validation remain unchanged. Humas/Sekretariat remain function capabilities; RPC/SC and PIBC remain office locations, not primary roles.
+- Added `test:user-create-profile-validation` and wired it into CI.
+
+- Extended the same field limits to bulk employee import: name 160, email 254, division 120, department 120, and phone 40 characters. Invalid rows are reported individually and skipped rather than persisted with oversized values. Regression coverage now checks both account creation and bulk import.
+
+
+### Last active Superadmin assignment guard — 2026-11-21
+
+- Found a count mismatch in the per-user role assignment endpoint: its "remaining Superadmin" SQL count included inactive accounts, unlike the user deactivation/deletion guards.
+- The assignment check now counts only users whose account is active, and only applies the last-active-Superadmin restriction when the target account itself is active.
+- Added a regression assertion to the Dynamic RBAC foundation test. No role assignments were modified.
+
+
+### CI assertion correction and ticket API audit — 2026-11-21
+
+- Latest-head CI exposed one stale static assertion (139/140 checks passed): the per-user role assignment query now selects `is_active` as part of the last-active-Superadmin safeguard. Updated the contract test to assert the actual normalized-user lookup plus active-state check; implementation authorization was not loosened.
+- Ticket route audit confirms list visibility and status mutation use `tickets.read` / `tickets.update` plus reporter, assignee, owner-division, and unit boundaries. Reporter transitions are restricted to confirming `resolved → closed` and reopening `closed → open`.
+- Follow-up gap: normalized schema defines `ticket_comments`, but current server route inventory exposes ticket list/create/status only; comment persistence/API is not yet surfaced. Keep this as a tracked functional gap; do not claim ticket discussion is PostgreSQL-persistent until a dedicated authorized endpoint and UI flow are implemented.
+- Exact-head CI run #2776 is in progress on commit `3b5a91f7b8596ad1ea5ce789a203396d089c9939`; PR #177 remains draft/open and unmerged.
+
+
+### Ticket lifecycle transition hardening — 2026-11-21
+
+- Found a mismatch between the documented ticket state machine and the actual transition map: operators could move `open`/`assigned` directly to `resolved` or `closed`, and `in_progress` directly to `closed`.
+- Tightened the server-authoritative transitions: `open → in_progress`, `assigned → in_progress`, `in_progress → resolved` (or reopen to `open`), `resolved → closed` (or reopen), and `closed → open` only.
+- Added `test:ticket-lifecycle-no-skip` and registered it in CI. This is a workflow integrity fix; existing reporter restrictions remain in place.
+- The prior CI run for the RBAC assertion correction is still being monitored separately; the current ticket change requires its own exact-head CI before it is considered validated.
+
+
+### Ticket state coverage and per-ticket action authorization — 2026-11-21
+
+- Aligned the ticket lifecycle contract with the existing `pending_vendor` status: operators can move `in_progress → pending_vendor`, then resume `pending_vendor → in_progress`. The Kanban board now has visible `assigned` and `pending_vendor` lanes and exposes matching actions in list and Kanban views.
+- Added `assigned` to the client `TicketStatus` union so legacy assigned tickets remain type-safe.
+- Fixed a UI/API authorization mismatch: the ticket UI previously inferred mutation controls from broad permission keys and could show actions that object-level scope checks would reject. `GET /api/tickets` now includes server-computed `allowed_actions` per record, based on Superadmin, assigned-agent, owner-division, unit scope, reporter identity, and Auditor read-only status.
+- The UI now prefers these server-computed action flags. Reporters can see the permitted confirmation (`resolved → closed`) and reopen (`closed → open`) actions; they cannot start or resolve their own ticket merely because they have a broad update permission.
+- Added `test:ticket-allowed-actions` to CI, and expanded lifecycle regression coverage to include legacy and vendor-waiting states.
+- Validation pending: latest exact-head CI will determine whether typecheck, build, runtime and regression checks pass. No merge to `main`.
+
+
+### PostgreSQL CI runtime-test port collision hardening — 2026-11-21
+
+- An intermediate CI run failed in `cr04-cr05-verify.mjs` after all migrations completed and the production server booted, because its randomly selected test port collided with another server process (`EADDRINUSE`). This was test-harness flakiness, not a PostgreSQL migration or application startup defect.
+- Replaced the narrow random-port selection with OS-assigned ephemeral localhost ports and tracked all spawned server children for cleanup, including the restart and fail-fast processes. This also prevents orphaned test servers on early exit.
+- Re-run exact-head CI to confirm the harness fix and the ticket authorization batch together.
+
+
+### Reporter self-service ticket confirmation permission — 2026-11-21
+
+- Further authorization review found the status endpoint's blanket `tickets.update` gate contradicted the reporter-only transition policy: an employee with ticket read access but no operator grant could be shown a `close`/`reopen` action and still receive 403.
+- Changed the endpoint to require `tickets.read` for the ticket context. Operational transitions still require `tickets.update` plus the matching assigned-agent/owner-division/unit boundary. A ticket's own reporter may only perform the two explicitly allowed self-service transitions (`resolved → closed`, `closed → open`) without the operator grant.
+- Server-generated `allowed_actions` now mirrors this distinction: operator actions require `tickets.update`; reporter confirmation/reopen is separately allowed; Auditor remains read-only.
+- Regression checks updated to protect both authorization paths.
+
+
+### Live-test port allocation cleanup — 2026-11-21
+
+- CI exposed the same ephemeral-port collision pattern in multiple live HTTP verification scripts (`bulk-import`, `asset-import`, `org-model`, `P1 features`, `maintenance authz`, `menu connectivity`, `loan authz`, and `meeting-room stage 3`). A random port in a narrow fixed range is not collision-safe when a prior test process or another listener still owns it.
+- Replaced random-range port selection with OS-assigned ephemeral localhost ports across those scripts, matching the CR-04/CR-05 harness fix. This addresses flaky `EADDRINUSE` failures without changing application behavior or weakening assertions.
+- Latest full CI is queued/running after these test-harness changes; exact-head result remains pending.
+
+- Extended OS-assigned ephemeral port allocation to the two multi-phase T2B2/T2B3 live verification suites as well; their phase-2 restart servers now receive distinct free ports instead of drawing from overlapping fixed ranges.

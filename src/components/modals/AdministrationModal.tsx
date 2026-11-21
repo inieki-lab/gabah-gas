@@ -243,7 +243,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   onModulesChanged
 }) => {
   // Hak akses administrasi dibatasi HANYA untuk Super Admin ('Admin GABAH')
-  const isCurrentUserAdmin = (activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH');
+  const hasPermissionMetadata = Array.isArray(currentUser?.permission_keys);
+  const isCurrentUserAdmin = currentUser?.is_superadmin === true
+    || currentUser?.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && ((activeRole === 'Admin GABAH') || (currentUser?.role === 'Admin GABAH')));
   const currentRoleName = activeRole || currentUser?.role || 'Admin GABAH';
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
 

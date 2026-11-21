@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const source = fs.readFileSync('src/services/gabahService.ts', 'utf8');
+assert.ok(source.includes('static isSuperAdmin(user?: UserProfile): boolean'));
+assert.ok(source.includes("user.is_superadmin === true"));
+assert.ok(source.includes("user.role_keys?.includes('superadmin') === true"));
+assert.ok(source.includes("user.permission_keys.includes('*') || user.permission_keys.includes(permission)"));
+assert.ok(source.includes("this.hasEffectivePermission(user, 'assets.update')"));
+assert.ok(source.includes("this.hasEffectivePermission(user, 'loans.approve')"));
+assert.ok(source.includes("this.hasEffectivePermission(user, key)"));
+const auditor = source.indexOf('static canApproveLoan(');
+assert.ok(source.slice(auditor, auditor + 220).includes('this.isAuditor(user)'), 'Auditor remains deny-write');
+console.log('PASS: Superadmin and wildcard permissions are consistent in frontend action helpers.');

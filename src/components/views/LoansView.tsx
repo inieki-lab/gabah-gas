@@ -20,6 +20,13 @@ import {
 import { Loan, Asset, UserProfile, LoanStatus } from '../../types';
 import { GabahService, formatDateTime, exportLoansToCsv } from '../../services/gabahService';
 
+/** Normalize persisted API states to the stable UI vocabulary. */
+export function normalizeLoanStatus(status: Loan['status']): 'pending' | 'approved' | 'rejected' | 'active' | 'returned' | 'overdue' {
+  if (status === 'pending_approval') return 'pending';
+  if (status === 'borrowed') return 'active';
+  return status;
+}
+
 interface LoansViewProps {
   loans?: Loan[];
   assets?: Asset[];
@@ -76,14 +83,20 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
   const filteredLoans = baseLoans.filter((loan) => {
     if (statusFilter === 'ALL') return true;
-    if (statusFilter === 'pending') return loan.status === 'pending';
-    if (statusFilter === 'active') return loan.status === 'active' || loan.status === 'overdue';
-    return loan.status === statusFilter;
+    const status = normalizeLoanStatus(loan.status);
+    if (statusFilter === 'pending') return status === 'pending';
+    if (statusFilter === 'active') return status === 'active' || status === 'overdue';
+    return status === statusFilter;
   });
 
-  const canApprove = (loan: Loan) => {
-    return GabahService.canApproveLoan(currentUser, loan);
-  };
+  const canApprove = (loan: Loan) => loan.allowed_actions?.approve
+    ?? hasEffectivePermission('loans.approve', ['Admin GABAH', 'IT', 'GA']);
+  const canReject = (loan: Loan) => loan.allowed_actions?.reject
+    ?? hasEffectivePermission('loans.reject', ['Admin GABAH', 'IT', 'GA']);
+  const canHandover = (loan: Loan) => loan.allowed_actions?.handover
+    ?? hasEffectivePermission('loans.handover', ['Admin GABAH', 'IT', 'GA']);
+  const canReturn = (loan: Loan) => loan.allowed_actions?.return
+    ?? (!isAuditor && (hasEffectivePermission('loans.return', ['Admin GABAH', 'IT', 'GA']) || loan.borrower_id === currentUser.id));
 
   return (
     <div className="space-y-6">
@@ -151,9 +164,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
             }`}
           >
             {status === 'ALL' ? 'Semua Peminjaman' :
-             status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => l.status === 'pending').length})` :
-             status === 'approved' ? `Disetujui (${baseLoans.filter(l => l.status === 'approved').length})` :
-             status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => l.status === 'active' || l.status === 'overdue').length})` :
+             status === 'pending' ? `Menunggu Approval (${baseLoans.filter(l => normalizeLoanStatus(l.status) === 'pending').length})` :
+             status === 'approved' ? `Disetujui (${baseLoans.filter(l => normalizeLoanStatus(l.status) === 'approved').length})` :
+             status === 'active' ? `Sedang Dipinjam (${baseLoans.filter(l => ['active', 'overdue'].includes(normalizeLoanStatus(l.status))).length})` :
              'Selesai Dikembalikan'}
           </button>
         ))}
@@ -162,8 +175,12 @@ export const LoansView: React.FC<LoansViewProps> = ({
       {/* Loans Grid / Cards */}
       <div className="space-y-4">
         {filteredLoans.map((loan) => {
+          const loanStatus = normalizeLoanStatus(loan.status);
           const isIT = loan.category_type === 'IT' || loan.owner_division === 'IT';
           const userCanApprove = canApprove(loan);
+          const userCanReject = canReject(loan);
+          const userCanHandover = canHandover(loan);
+          const userCanReturn = canReturn(loan);
 
           return (
             <div 
@@ -196,20 +213,20 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 {/* Status Badge */}
                 <div>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                    loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                    (loan.status === 'pending') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                    (loan.status === 'active' || loan.status === 'overdue') ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
-                    loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
+                    loanStatus === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                    (loanStatus === 'pending') ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                    (loanStatus === 'active' || loanStatus === 'overdue') ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' :
+                    loanStatus === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                     'bg-rose-100 text-rose-800 border border-rose-300'
                   }`}>
-                    {loan.status === 'approved' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    {(loan.status === 'pending') && <Clock className="w-3.5 h-3.5" />}
-                    {(loan.status === 'active' || loan.status === 'overdue') && <UserCheck className="w-3.5 h-3.5" />}
-                    {loan.status === 'returned' && <CheckSquare className="w-3.5 h-3.5" />}
-                    {loan.status === 'approved' ? 'Disetujui' :
-                     (loan.status === 'pending') ? 'Menunggu Approval' :
-                     (loan.status === 'active' || loan.status === 'overdue') ? 'Sedang Dipinjam' :
-                     loan.status === 'returned' ? 'Dikembalikan' :
+                    {loanStatus === 'approved' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    {(loanStatus === 'pending') && <Clock className="w-3.5 h-3.5" />}
+                    {(loanStatus === 'active' || loanStatus === 'overdue') && <UserCheck className="w-3.5 h-3.5" />}
+                    {loanStatus === 'returned' && <CheckSquare className="w-3.5 h-3.5" />}
+                    {loanStatus === 'approved' ? 'Disetujui' :
+                     (loanStatus === 'pending') ? 'Menunggu Approval' :
+                     (loanStatus === 'active' || loanStatus === 'overdue') ? 'Sedang Dipinjam' :
+                     loanStatus === 'returned' ? 'Dikembalikan' :
                      loan.status}
                   </span>
                 </div>
@@ -268,27 +285,31 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 <div className="flex items-center gap-2">
                   
                   {/* Status: Pending -> Approve or Reject */}
-                  {(loan.status === 'pending') && userCanApprove && (
+                  {(loanStatus === 'pending') && (userCanApprove || userCanReject) && (
                     <>
-                      <button
-                        onClick={() => onApproveLoan(loan.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Setujui Reservasi
-                      </button>
-                      <button
-                        onClick={() => setRejectingLoanId(loan.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        Tolak
-                      </button>
+                      {userCanApprove && (
+                        <button
+                          onClick={() => onApproveLoan(loan.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Setujui Reservasi
+                        </button>
+                      )}
+                      {userCanReject && (
+                        <button
+                          onClick={() => setRejectingLoanId(loan.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          Tolak
+                        </button>
+                      )}
                     </>
                   )}
 
                   {/* Status: Approved -> Handover to user */}
-                  {loan.status === 'approved' && userCanApprove && (
+                  {loanStatus === 'approved' && userCanHandover && (
                     <button
                       onClick={() => onHandoverLoan(loan.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
@@ -299,8 +320,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Status: Active -> Return inspection */}
-                  {!isAuditor && (loan.status === 'active' || loan.status === 'overdue') &&
-                    (userCanApprove || loan.borrower_id === currentUser.id) && (
+                  {(loanStatus === 'active' || loanStatus === 'overdue') && userCanReturn && (
                     <button
                       onClick={() => setReturningLoan(loan)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
@@ -311,7 +331,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Cetak Berita Acara Serah Terima (BAST) untuk approved, active, returned */}
-                  {loan.status !== 'rejected' && (
+                  {loanStatus !== 'rejected' && (
                     <button
                       onClick={() => handleOpenBastDoc(loan)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-300 text-xs font-semibold transition-all shadow-xs"

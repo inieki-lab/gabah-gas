@@ -27,6 +27,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import pg from 'pg';
+import net from 'node:net';
 
 // Admin connection to the PostgreSQL TEST instance. No credentials are
 // embedded here — pass a full URL via GABAH_TEST_PG_ADMIN_URL (e.g. a local
@@ -117,6 +118,23 @@ function isoInDays(days) {
   return new Date(Date.now() + days * 24 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
+const activeChildren = new Set();
+
+async function getAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      if (!address || typeof address === 'string') {
+        probe.close(() => reject(new Error('Unable to allocate a local TCP port')));
+        return;
+      }
+      probe.close(error => error ? reject(error) : resolve(address.port));
+    });
+  });
+}
+
 function spawnServer({ port, databaseUrl, nodeEnv }) {
   const child = spawn(process.execPath, [path.resolve(process.cwd(), 'dist/server.cjs')], {
     env: {
@@ -132,6 +150,8 @@ function spawnServer({ port, databaseUrl, nodeEnv }) {
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  activeChildren.add(child);
+  child.once('exit', () => activeChildren.delete(child));
   let log = '';
   child.stdout.on('data', d => { log += d.toString(); });
   child.stderr.on('data', d => { log += d.toString(); });
@@ -179,7 +199,7 @@ async function main() {
     fs.rmSync(stateFile);
   }
 
-  const PORT = 39000 + Math.floor(Math.random() * 2000);
+  const PORT = await getAvailablePort();
   const base = `http://127.0.0.1:${PORT}`;
   const child = spawnServer({ port: PORT, databaseUrl: TEST_DB_URL, nodeEnv: 'production' });
   let exited = null;
@@ -187,7 +207,9 @@ async function main() {
 
   const uploadDir = path.resolve(process.cwd(), 'server/data/cr-verify-uploads');
   const cleanup = () => {
-    try { child.kill('SIGKILL'); } catch { /* already dead */ }
+    for (const process of activeChildren) {
+      try { process.kill('SIGKILL'); } catch { /* already dead */ }
+    }
     if (backupState !== null) fs.writeFileSync(stateFile, backupState);
     try { fs.rmSync(uploadDir, { recursive: true, force: true }); } catch { /* best effort */ }
   };
@@ -755,7 +777,7 @@ async function main() {
     await new Promise(r => setTimeout(r, 500));
 
     // ---------- 7. Production fail-fast with dead DATABASE_URL ----------
-    const PORT3 = 39000 + Math.floor(Math.random() * 2000);
+    const PORT3 = await getAvailablePort();
     const base3 = `http://127.0.0.1:${PORT3}`;
     const child3 = spawnServer({ port: PORT3, databaseUrl: `postgresql://postgres:wrongpw@127.0.0.1:5432/${TEST_DB}`, nodeEnv: 'production' });
     let exit3 = null;

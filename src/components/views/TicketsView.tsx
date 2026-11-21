@@ -20,7 +20,8 @@ import {
   Sparkles,
   Check
 } from 'lucide-react';
-import { Asset, Ticket, AssetCategoryType, TicketPriority, TicketStatus, UserProfile } from '../../types';
+import { Asset, Ticket, TicketComment, AssetCategoryType, TicketPriority, TicketStatus, UserProfile } from '../../types';
+import { gabahApi } from '../../services/gabahApi';
 import { formatDateTime, GabahService, exportTicketsToCsv } from '../../services/gabahService';
 import { SlaTimer } from '../common/SlaTimer';
 
@@ -31,6 +32,7 @@ interface TicketsViewProps {
   onOpenCreateModal?: () => void;
   onOpenNewTicketModal?: () => void;
   onUpdateTicketStatus: (ticketId: string, status: TicketStatus, notes?: string) => void;
+  onUpdateTicketAssignment?: (ticketId: string, assignedAgentId: string | null) => Promise<void>;
 }
 
 export const TicketsView: React.FC<TicketsViewProps> = ({
@@ -40,6 +42,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   onOpenCreateModal,
   onOpenNewTicketModal,
   onUpdateTicketStatus,
+  onUpdateTicketAssignment,
 }) => {
   const handleOpenCreate = onOpenCreateModal || onOpenNewTicketModal || (() => {});
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -49,6 +52,88 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
   const [resolvingTicketId, setResolvingTicketId] = useState<string | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState<string>('');
+  const [expandedCommentsTicketId, setExpandedCommentsTicketId] = useState<string | null>(null);
+  const [ticketComments, setTicketComments] = useState<Record<string, TicketComment[]>>({});
+  const [commentDraft, setCommentDraft] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentSaving, setCommentSaving] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [assigningTicketId, setAssigningTicketId] = useState<string | null>(null);
+  const [ticketAssignees, setTicketAssignees] = useState<Record<string, Array<{ id: string; name: string; department: string }>>>({});
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+
+  const toggleTicketAssignment = async (ticketId: string) => {
+    if (assigningTicketId === ticketId) {
+      setAssigningTicketId(null);
+      setAssignmentError(null);
+      return;
+    }
+    setAssigningTicketId(ticketId);
+    setSelectedAssigneeId('');
+    setAssignmentError(null);
+    setAssignmentLoading(true);
+    try {
+      const candidates = await gabahApi.getTicketAssignees(ticketId);
+      setTicketAssignees(previous => ({ ...previous, [ticketId]: candidates }));
+    } catch (error: any) {
+      setAssignmentError(error?.message || 'Daftar petugas tidak dapat dimuat.');
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
+  const submitTicketAssignment = async (ticketId: string, assignedAgentId: string | null) => {
+    if (!onUpdateTicketAssignment || assignmentSaving) return;
+    setAssignmentSaving(true);
+    setAssignmentError(null);
+    try {
+      await onUpdateTicketAssignment(ticketId, assignedAgentId);
+      setAssigningTicketId(null);
+    } catch (error: any) {
+      setAssignmentError(error?.message || 'Penugasan tiket gagal diperbarui.');
+    } finally {
+      setAssignmentSaving(false);
+    }
+  };
+
+  const toggleTicketComments = async (ticketId: string) => {
+    if (expandedCommentsTicketId === ticketId) {
+      setExpandedCommentsTicketId(null);
+      setCommentError(null);
+      return;
+    }
+    setExpandedCommentsTicketId(ticketId);
+    setCommentDraft('');
+    setCommentError(null);
+    setCommentLoading(true);
+    try {
+      const comments = await gabahApi.getTicketComments(ticketId);
+      setTicketComments(previous => ({ ...previous, [ticketId]: comments }));
+    } catch (error: any) {
+      setCommentError(error?.message || 'Komentar tiket belum dapat dimuat.');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  const submitTicketComment = async (ticketId: string) => {
+    const body = commentDraft.trim();
+    if (!body || body.length > 4000 || commentSaving) return;
+    setCommentSaving(true);
+    setCommentError(null);
+    try {
+      const saved = await gabahApi.addTicketComment(ticketId, body);
+      setTicketComments(previous => ({ ...previous, [ticketId]: [...(previous[ticketId] || []), saved] }));
+      setCommentDraft('');
+    } catch (error: any) {
+      setCommentError(error?.message || 'Komentar tiket gagal disimpan.');
+    } finally {
+      setCommentSaving(false);
+    }
+  };
 
   // Freshservice Canned Responses
   const cannedSolutions = [
@@ -114,6 +199,10 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   });
 
   const canManage = GabahService.canManageTickets(currentUser);
+  const canPerformTicketAction = (ticket: Ticket, action: 'start' | 'wait_vendor' | 'resolve' | 'close' | 'reopen') =>
+    ticket.allowed_actions
+      ? ticket.allowed_actions[action] === true
+      : GabahService.canManageTicket(ticket, currentUser);
 
   // SLA logic moved to reusable <SlaTimer /> component (live countdown, 30s refresh)
 
@@ -277,7 +366,9 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             { id: 'open', title: 'Tiket Masuk (Open)', badgeBg: 'bg-amber-100 text-amber-800 border-amber-300' },
+            { id: 'assigned', title: 'Sudah Ditugaskan', badgeBg: 'bg-sky-100 text-sky-800 border-sky-300' },
             { id: 'in_progress', title: 'Dalam Penanganan (In Progress)', badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+            { id: 'pending_vendor', title: 'Menunggu Vendor', badgeBg: 'bg-orange-100 text-orange-800 border-orange-300' },
             { id: 'resolved', title: 'Selesai & Solusi (Resolved)', badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300' }
           ].map(col => {
             const colTickets = filteredTickets.filter(t => t.status === col.id);
@@ -314,17 +405,25 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
                         <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-100">
                           <span>{ticket.reporter_name} ({ticket.category})</span>
-                          {GabahService.canManageTicket(ticket, currentUser) && (
+                          {(ticket.allowed_actions ? Object.values(ticket.allowed_actions).some(Boolean) : GabahService.canManageTicket(ticket, currentUser)) && (
                             <div>
-                              {ticket.status === 'open' && (
+                              {canPerformTicketAction(ticket, 'start') && (
                                 <button
                                   onClick={() => onUpdateTicketStatus(ticket.id, 'in_progress')}
                                   className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-[10px] transition-all"
                                 >
-                                  Kerjakan
+                                  {ticket.status === 'pending_vendor' ? 'Lanjutkan' : 'Kerjakan'}
                                 </button>
                               )}
-                              {ticket.status === 'in_progress' && (
+                              {canPerformTicketAction(ticket, 'wait_vendor') && (
+                                <button
+                                  onClick={() => onUpdateTicketStatus(ticket.id, 'pending_vendor')}
+                                  className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded font-bold text-[10px] transition-all"
+                                >
+                                  Tunggu Vendor
+                                </button>
+                              )}
+                              {canPerformTicketAction(ticket, 'resolve') && (
                                 <button
                                   onClick={() => setResolvingTicketId(ticket.id)}
                                   className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-bold text-[10px] flex items-center gap-1 transition-all"
@@ -333,6 +432,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                                   Selesai
                                 </button>
                               )}
+                              {canPerformTicketAction(ticket, 'close') && <button onClick={() => onUpdateTicketStatus(ticket.id, 'closed')} className="px-2 py-1 bg-slate-700 hover:bg-slate-800 text-white rounded font-bold text-[10px]">Tutup</button>}
+                              {canPerformTicketAction(ticket, 'reopen') && <button onClick={() => onUpdateTicketStatus(ticket.id, 'open')} className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold text-[10px]">Buka Kembali</button>}
                             </div>
                           )}
                         </div>
@@ -426,18 +527,27 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   </div>
 
                   {/* Status action buttons */}
-                  {GabahService.canManageTicket(ticket, currentUser) && (
+                  {(ticket.allowed_actions ? Object.values(ticket.allowed_actions).some(Boolean) : GabahService.canManageTicket(ticket, currentUser)) && (
                     <div className="flex items-center gap-2">
-                      {ticket.status === 'open' && (
+                      {canPerformTicketAction(ticket, 'start') && (
                         <button
                           onClick={() => onUpdateTicketStatus(ticket.id, 'in_progress')}
                           className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-xs shadow-xs"
                         >
-                          Mulai Kerjakan
+                          {ticket.status === 'pending_vendor' ? 'Lanjutkan Penanganan' : 'Mulai Kerjakan'}
                         </button>
                       )}
 
-                      {ticket.status === 'in_progress' && (
+                      {canPerformTicketAction(ticket, 'wait_vendor') && (
+                        <button
+                          onClick={() => onUpdateTicketStatus(ticket.id, 'pending_vendor')}
+                          className="px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold transition-all text-xs shadow-xs"
+                        >
+                          Tunggu Vendor
+                        </button>
+                      )}
+
+                      {canPerformTicketAction(ticket, 'resolve') && (
                         <button
                           onClick={() => setResolvingTicketId(ticket.id)}
                           className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold transition-all text-xs flex items-center gap-1.5 shadow-xs"
@@ -446,9 +556,72 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                           Selesaikan Tiket
                         </button>
                       )}
+                      {canPerformTicketAction(ticket, 'close') && (
+                        <button onClick={() => onUpdateTicketStatus(ticket.id, 'closed')} className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold transition-all text-xs">Konfirmasi Selesai</button>
+                      )}
+                      {canPerformTicketAction(ticket, 'reopen') && (
+                        <button onClick={() => onUpdateTicketStatus(ticket.id, 'open')} className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold transition-all text-xs">Buka Kembali</button>
+                      )}
                     </div>
                   )}
                 </div>
+
+                {(isSuperAdmin || currentUser.permission_keys?.includes('tickets.update')) && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => void toggleTicketAssignment(ticket.id)}
+                      className="text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+                    >
+                      {assigningTicketId === ticket.id ? 'Tutup Pengaturan Petugas' : 'Atur Petugas'}
+                    </button>
+                    {assigningTicketId === ticket.id && (
+                      <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                        {assignmentLoading ? (
+                          <p className="text-xs text-slate-500">Memuat petugas yang memenuhi cakupan tiket...</p>
+                        ) : (
+                          <>
+                            <label className="block text-[11px] font-semibold text-slate-600">Petugas aktif sesuai permission dan scope</label>
+                            <select
+                              value={selectedAssigneeId}
+                              onChange={event => setSelectedAssigneeId(event.target.value)}
+                              className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800"
+                            >
+                              <option value="">Pilih petugas...</option>
+                              {(ticketAssignees[ticket.id] || []).map(user => (
+                                <option key={user.id} value={user.id}>{user.name} — {user.department}</option>
+                              ))}
+                            </select>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                disabled={!selectedAssigneeId || assignmentSaving}
+                                onClick={() => void submitTicketAssignment(ticket.id, selectedAssigneeId)}
+                                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40"
+                              >
+                                {assignmentSaving ? 'Menyimpan...' : 'Simpan Penugasan'}
+                              </button>
+                              {ticket.assigned_agent_id && (
+                                <button
+                                  type="button"
+                                  disabled={assignmentSaving}
+                                  onClick={() => void submitTicketAssignment(ticket.id, null)}
+                                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40"
+                                >
+                                  Lepas Petugas
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                        {assignmentError && <p role="alert" className="text-xs text-rose-700">{assignmentError}</p>}
+                        {!assignmentLoading && (ticketAssignees[ticket.id] || []).length === 0 && !assignmentError && (
+                          <p className="text-xs text-slate-500">Belum ada petugas aktif yang memenuhi permission dan scope antrean ini.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Resolution Notes preview if resolved */}
                 {ticket.resolution_notes && (
@@ -456,6 +629,63 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                     <strong className="font-bold">Solusi Penanganan:</strong> {ticket.resolution_notes}
                   </div>
                 )}
+
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => void toggleTicketComments(ticket.id)}
+                    className="inline-flex items-center gap-2 text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    {expandedCommentsTicketId === ticket.id ? 'Tutup Diskusi' : 'Lihat Diskusi / Komentar'}
+                  </button>
+                  {expandedCommentsTicketId === ticket.id && (
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                      {commentLoading ? (
+                        <p className="text-xs text-slate-500">Memuat komentar...</p>
+                      ) : (
+                        <div className="space-y-2 max-h-56 overflow-y-auto">
+                          {(ticketComments[ticket.id] || []).map(comment => (
+                            <div key={comment.id} className="rounded-lg bg-white border border-slate-200 p-2.5">
+                              <div className="flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                                <strong className="text-slate-800">{comment.user_name}</strong>
+                                <span>{formatDateTime(comment.created_at)}</span>
+                              </div>
+                              <p className="mt-1 text-xs text-slate-700 whitespace-pre-wrap break-words">{comment.body}</p>
+                            </div>
+                          ))}
+                          {(ticketComments[ticket.id] || []).length === 0 && (
+                            <p className="text-xs text-slate-500">Belum ada komentar pada tiket ini.</p>
+                          )}
+                        </div>
+                      )}
+                      {commentError && <p role="alert" className="text-xs text-rose-700">{commentError}</p>}
+                      {!isAuditor && (ticket.reporter_id === currentUser.id || isSuperAdmin || currentUser.permission_keys?.includes('tickets.update')) && (
+                        <div className="space-y-2">
+                          <textarea
+                            rows={2}
+                            maxLength={4000}
+                            value={commentDraft}
+                            onChange={event => setCommentDraft(event.target.value)}
+                            placeholder="Tulis perkembangan atau tanggapan (maks. 4.000 karakter)..."
+                            className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
+                          />
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] text-slate-400">{commentDraft.length}/4000</span>
+                            <button
+                              type="button"
+                              disabled={!commentDraft.trim() || commentSaving || commentLoading}
+                              onClick={() => void submitTicketComment(ticket.id)}
+                              className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-40"
+                            >
+                              {commentSaving ? 'Mengirim...' : 'Kirim Komentar'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
               </div>
             );
