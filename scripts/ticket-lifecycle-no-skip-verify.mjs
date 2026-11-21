@@ -9,7 +9,8 @@ const map = source.slice(start, end);
 const expected = [
   "open: ['in_progress']",
   "assigned: ['in_progress']",
-  "in_progress: ['resolved', 'open']",
+  "in_progress: ['pending_vendor', 'resolved', 'open']",
+  "pending_vendor: ['in_progress']",
   "resolved: ['closed', 'open']",
   "closed: ['open']",
 ];
@@ -23,4 +24,4 @@ for (const forbidden of [
 ]) {
   assert.ok(!map.includes(forbidden), `skipped lifecycle transition must stay forbidden: ${forbidden}`);
 }
-console.log('PASS: ticket lifecycle rejects direct resolve/close skips and preserves explicit reopen transitions.');
+console.log('PASS: ticket lifecycle supports vendor waiting, rejects skipped stages, and preserves explicit reopen transitions.');
