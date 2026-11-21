@@ -21,7 +21,7 @@ const checks = [
   ['Primary Administration modal refreshes module status', /onModulesChanged=\{refreshModuleStatuses\}/.test(app)],
   ['App refreshes menu after module changes', /onModulesChanged=\{refreshModuleStatuses\}/.test(app)],
   ['Sidebar hides inactive navigation modules', /Array\.isArray\(activeModuleKeys\) && activeModuleKeys\.includes\(item\.id\)/.test(sidebar)],
-  ['Sidebar does not exempt core employee modules from global deactivation', !/isCoreNavigationTab\(item\.id\)/.test(sidebar) && /activeModuleKeys === undefined \|\| activeModuleKeys\.includes\(item\.id\)/.test(sidebar)],
+  ['Sidebar does not exempt core employee modules from global deactivation', !/isCoreNavigationTab\(item\.id\)/.test(sidebar) && /Array\.isArray\(activeModuleKeys\) && activeModuleKeys\.includes\(item\.id\)/.test(sidebar)],
   ['Sidebar recognizes Humas and Sekdir through effective capabilities with file-store fallback', /hasPermission\('room_reservations\.documentation\.read', \['Humas'\]\)/.test(sidebar) && /hasPermission\('room_reservations\.override_priority', \['Sekretaris Direksi'\]\)/.test(sidebar) && /hasPermissionMetadata/.test(sidebar)],
   ['Administration exposes a module lifecycle section', /id: 'modules' as AdminSection/.test(admin) && /activeSection === 'modules'/.test(admin)],
   ['Module panel requires a reason and updates status', /reason\.trim\(\)\.length < 5/.test(panel) && /gabahApi\.updateModuleStatus/.test(panel)],
