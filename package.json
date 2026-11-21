@@ -79,6 +79,7 @@
     "test:asset-status-workflow-guard": "node scripts/asset-status-workflow-guard-verify.mjs",
     "test:user-create-profile-validation": "node scripts/user-create-profile-validation-verify.mjs",
     "test:ticket-reporter-transition": "node scripts/ticket-reporter-transition-verify.mjs",
+    "test:ticket-lifecycle-no-skip": "node scripts/ticket-lifecycle-no-skip-verify.mjs",
     "test:loan-borrower-return": "node scripts/loan-borrower-return-verify.mjs"
   },
   "dependencies": {
