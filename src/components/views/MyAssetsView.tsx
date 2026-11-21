@@ -20,7 +20,7 @@ import {
   Info
 } from 'lucide-react';
 import { Asset, Loan, UserProfile } from '../../types';
-import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
+import { formatRupiah, formatDateTime, formatDate, GabahService } from '../../services/gabahService';
 
 interface MyAssetsViewProps {
   assets: Asset[];
@@ -44,6 +44,18 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
   onReturnLoan,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'assigned' | 'loaned'>('all');
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const hasEffectivePermission = (permission: string, legacyRoles: string[]): boolean => !isAuditor && (
+    isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
+      : legacyRoles.includes(currentUser.role))
+  );
+  const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
 
   // Find assets assigned to this user
   const assignedAssets = assets.filter((asset) => {
@@ -105,20 +117,24 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={onOpenNewTicketModal}
+            {canCreateTicket && onOpenNewTicketModal && (
+              <button
+                onClick={onOpenNewTicketModal}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold transition-all shadow-xs"
             >
               <LifeBuoy className="w-4 h-4 text-rose-600" />
               Lapor Kendala Baru
-            </button>
-            <button
-              onClick={onOpenNewLoanModal}
+              </button>
+            )}
+            {canCreateLoan && onOpenNewLoanModal && (
+              <button
+                onClick={onOpenNewLoanModal}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#4ABDAC] hover:bg-[#3ba393] text-white text-xs font-bold transition-all shadow-xs"
             >
               <CalendarClock className="w-4 h-4" />
               Pinjam Aset Lain
-            </button>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -245,13 +261,15 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
                   Jika Anda membutuhkan laptop atau komputer kerja baru, silakan ajukan tiket permohonan inventaris ke Divisi IT atau GA.
                 </p>
-                <button
-                  onClick={onOpenNewTicketModal}
+                {canCreateTicket && onOpenNewTicketModal && (
+                  <button
+                    onClick={onOpenNewTicketModal}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors mt-2"
                 >
                   <LifeBuoy className="w-3.5 h-3.5 text-rose-600" />
                   Ajukan Permohonan Perangkat
-                </button>
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -333,13 +351,15 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                         Detail Spesifikasi
                       </button>
 
-                      <button
-                        onClick={() => onReportAsset && onReportAsset(asset)}
+                      {canCreateTicket && onReportAsset && (
+                        <button
+                          onClick={() => onReportAsset(asset)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors shadow-2xs"
                       >
                         <LifeBuoy className="w-3.5 h-3.5" />
                         Lapor Kendala
-                      </button>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -368,12 +388,14 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                 <p className="text-[11px] text-slate-500">
                   Anda tidak sedang memegang barang pinjaman sementara (mobil dinas / laptop cadangan).
                 </p>
-                <button
-                  onClick={onOpenNewLoanModal}
+                {canCreateLoan && onOpenNewLoanModal && (
+                  <button
+                    onClick={onOpenNewLoanModal}
                   className="mt-2 text-xs font-bold text-[#206f65] hover:underline inline-block"
                 >
                   + Ajukan Peminjaman Baru
-                </button>
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -424,9 +446,10 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                       </span>
 
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            const matchedAsset = assets.find(a => a.id === loan.asset_id);
+                        {canCreateTicket && (
+                          <button
+                            onClick={() => {
+                              const matchedAsset = assets.find(a => a.id === loan.asset_id);
                             if (matchedAsset && onReportAsset) {
                               onReportAsset(matchedAsset);
                             } else if (onOpenNewTicketModal) {
@@ -437,7 +460,8 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                         >
                           <LifeBuoy className="w-3.5 h-3.5" />
                           Lapor Kendala
-                        </button>
+                          </button>
+                        )}
 
                         {(loan.status === 'borrowed' || loan.status === 'active') && (
                           <button
