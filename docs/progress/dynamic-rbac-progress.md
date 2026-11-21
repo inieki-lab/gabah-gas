@@ -1032,3 +1032,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - An intermediate CI run failed in `cr04-cr05-verify.mjs` after all migrations completed and the production server booted, because its randomly selected test port collided with another server process (`EADDRINUSE`). This was test-harness flakiness, not a PostgreSQL migration or application startup defect.
 - Replaced the narrow random-port selection with OS-assigned ephemeral localhost ports and tracked all spawned server children for cleanup, including the restart and fail-fast processes. This also prevents orphaned test servers on early exit.
 - Re-run exact-head CI to confirm the harness fix and the ticket authorization batch together.
+
+
+### Reporter self-service ticket confirmation permission — 2026-11-21
+
+- Further authorization review found the status endpoint's blanket `tickets.update` gate contradicted the reporter-only transition policy: an employee with ticket read access but no operator grant could be shown a `close`/`reopen` action and still receive 403.
+- Changed the endpoint to require `tickets.read` for the ticket context. Operational transitions still require `tickets.update` plus the matching assigned-agent/owner-division/unit boundary. A ticket's own reporter may only perform the two explicitly allowed self-service transitions (`resolved → closed`, `closed → open`) without the operator grant.
+- Server-generated `allowed_actions` now mirrors this distinction: operator actions require `tickets.update`; reporter confirmation/reopen is separately allowed; Auditor remains read-only.
+- Regression checks updated to protect both authorization paths.
