@@ -168,7 +168,7 @@ async function startServer() {
     if (matchesApiPrefix(path, '/api/vendors')) return 'vendors';
     if (matchesApiPrefix(path, '/api/knowledge')) return 'knowledge';
     if (matchesApiPrefix(path, '/api/contracts')) return 'contracts';
-    if (matchesApiPrefix(path, '/api/meeting-rooms') || matchesApiPrefix(path, '/api/room-reservations')) return 'meeting_rooms';
+    if (matchesApiPrefix(path, '/api/meeting-rooms') || matchesApiPrefix(path, '/api/room-reservations') || matchesApiPrefix(path, '/api/meeting-types') || matchesApiPrefix(path, '/api/meeting-facilities')) return 'meeting_rooms';
     return null;
   };
 
@@ -180,6 +180,7 @@ async function startServer() {
       '/api/master/asset-locations', '/api/dashboard', '/api/loans',
       '/api/tickets', '/api/maintenances', '/api/vendors', '/api/knowledge',
       '/api/contracts', '/api/meeting-rooms', '/api/room-reservations',
+      '/api/meeting-types', '/api/meeting-facilities',
     ].some(prefix => matchesApiPrefix(path, prefix));
   };
 
