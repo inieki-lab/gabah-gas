@@ -71,6 +71,9 @@ jobs:
       - name: Asset mutation authorization HTTP status regression
         run: npm run test:asset-mutation-http-status
 
+      - name: Asset lifecycle status cannot be bypassed by generic edits
+        run: npm run test:asset-status-workflow-guard
+
       - name: Asset owner filter never infers ownership from asset-number prefixes
         run: npm run test:asset-owner-filter
 
