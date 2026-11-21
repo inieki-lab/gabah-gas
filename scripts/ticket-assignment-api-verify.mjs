@@ -6,10 +6,11 @@ const api = fs.readFileSync(new URL('../src/services/gabahApi.ts', import.meta.u
 const view = fs.readFileSync(new URL('../src/components/views/TicketsView.tsx', import.meta.url), 'utf8');
 const app = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 
-const start = server.indexOf("app.get('/api/tickets/:id/assignees'");
-const patch = server.indexOf("app.patch('/api/tickets/:id/assignment'");
-const end = server.indexOf("const canAccessTicketRecord", patch);
-assert.ok(start >= 0 && patch > start && end > patch, 'assignee routes must be registered before ticket comment routes');
+const start = server.indexOf('const canManageTicketAssignment');
+const routeStart = server.indexOf("app.get('/api/tickets/:id/assignees'", start);
+const patch = server.indexOf("app.patch('/api/tickets/:id/assignment'", routeStart);
+const end = server.indexOf('const canAccessTicketRecord', patch);
+assert.ok(start >= 0 && routeStart > start && patch > routeStart && end > patch, 'assignee policy and routes must be registered before ticket comment routes');
 const routes = server.slice(start, end);
 assert.match(routes, /requireRbacPermission\(req, res, 'tickets\.update'\)/);
 assert.match(routes, /canManageTicketAssignment\(ticket, actor\)/);
