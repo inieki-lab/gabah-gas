@@ -138,12 +138,9 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     }
   }
 
-  if (normalizedPath === '/api/audit-logs' && !isGlobalObserver(actor)) {
-    return res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });
-  }
-  if (normalizedPath === '/api/reconciliation' && !isGlobalObserver(actor)) {
-    return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
-  }
+  // Audit and reconciliation access is enforced by each route's dynamic
+  // permission plus record scope. Do not add a legacy role-name gate here:
+  // custom roles with explicit audit.read / reconciliation.read must work.
 
   // Match the route case-insensitively, but preserve the original ID casing:
   // asset IDs are case-sensitive even though Express paths are not.
