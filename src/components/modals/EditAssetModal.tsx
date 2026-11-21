@@ -119,6 +119,13 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
   // effective operation permission and never infers authority from role labels.
   const isITAsset = asset.owner_division === 'IT' || asset.category_type === 'IT';
   const canEditThisAsset = GabahService.canEditAsset(currentUser, asset);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const canAssignThisAsset = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('assets.assign')
+    : ['IT', 'GA'].includes(currentUser.role)));
   const authorityWarning = 'Hak edit untuk aset ini tidak diberikan pada akun Anda. Hubungi Superadmin bila akses perlu disesuaikan.';
 
   const handleAutoGenerateFst = () => {
@@ -130,6 +137,11 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
     e.preventDefault();
     if (!canEditThisAsset) {
       setErrorMsg('Anda tidak memiliki wewenang mengedit aset ini.');
+      return;
+    }
+    const assignmentChanged = selectedUserId !== (asset.assigned_to?.id || '');
+    if (assignmentChanged && !canAssignThisAsset) {
+      setErrorMsg('Akun ini tidak memiliki permission assets.assign untuk mengubah PIC aset.');
       return;
     }
 
@@ -242,7 +254,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     Penugasan Pengguna (PIC Karyawan)
                   </h4>
                 </div>
-                {onOpenBastModal && (asset.assigned_to || selectedUserId) && (
+                {onOpenBastModal && canAssignThisAsset && (asset.assigned_to || selectedUserId) && (
                   <button
                     type="button"
                     onClick={() => onOpenBastModal(asset, targetAssignedUser)}
@@ -260,7 +272,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     Pilih Karyawan Penerima Aset
                   </label>
                   <select
-                    disabled={!canEditThisAsset || isSubmitting}
+                    disabled={!canEditThisAsset || !canAssignThisAsset || isSubmitting}
                     value={selectedUserId}
                     onChange={(e) => {
                       setSelectedUserId(e.target.value);
@@ -290,7 +302,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    disabled={!canEditThisAsset || isSubmitting}
+                    disabled={!canEditThisAsset || !canAssignThisAsset || isSubmitting}
                     value={assignmentReason}
                     onChange={(e) => setAssignmentReason(e.target.value)}
                     placeholder="Contoh: Laptop kerja dinas staf akuntansi baru"
@@ -299,6 +311,9 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                   <p className="text-[10px] text-slate-500 mt-1">
                     Akan dicatat di riwayat mutasi (Asset Movement Log).
                   </p>
+                  {!canAssignThisAsset && (
+                    <p className="text-[10px] text-amber-700 mt-1">Akun ini tidak memiliki permission assets.assign; penugasan PIC bersifat read-only.</p>
+                  )}
                 </div>
               </div>
 
