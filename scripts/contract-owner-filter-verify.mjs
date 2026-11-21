@@ -41,8 +41,8 @@ const checks = [
 
 let failed = 0;
 for (const [name, passed] of checks) {
-  console.log(\`\${passed ? 'PASS' : 'FAIL'} | \${name}\`);
+  console.log((passed ? 'PASS' : 'FAIL') + ' | ' + name);
   if (!passed) failed += 1;
 }
-console.log(\`TOTAL: \${checks.length} | PASS: \${checks.length - failed} | FAIL: \${failed}\`);
+console.log('TOTAL: ' + checks.length + ' | PASS: ' + (checks.length - failed) + ' | FAIL: ' + failed);
 process.exit(failed === 0 ? 0 : 1);
