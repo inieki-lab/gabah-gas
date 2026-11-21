@@ -8,8 +8,9 @@ const ci = fs.readFileSync('.github/workflows/ci.yml', 'utf8');
 
 // Runtime middleware must not override explicit dynamic permissions with a
 // hard-coded Superadmin/Auditor role-name check for these two read endpoints.
-assert.doesNotMatch(runtime, /normalizedPath === '\/api\/audit-logs' && !isGlobalObserver\(actor\)/);
-assert.doesNotMatch(runtime, /normalizedPath === '\/api\/reconciliation' && !isGlobalObserver\(actor\)/);
+assert.match(runtime, /normalizedPath === '\/api\/audit-logs' && !hasObserverRoutePermission\('audit\.read'\)/);
+assert.match(runtime, /normalizedPath === '\/api\/reconciliation' && !hasObserverRoutePermission\('reconciliation\.read'\)/);
+assert.match(runtime, /isPostgresPersistenceActive\(\)[\s\S]{0,100}hasRbacPermission\(String\(actor\.id\), permission\)/);
 
 // The route handlers remain the authorization source of truth. Reconciliation
 // further limits non-global readers to their visible asset scope.
