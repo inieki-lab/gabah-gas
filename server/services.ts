@@ -1937,14 +1937,14 @@ export class GabahDomainService {
     return room;
   }
 
-  // Meeting Types CRUD (Admin GABAH)
+  // Meeting Types CRUD follows the explicit meeting_types.manage capability (GA and Superadmin by default).
   static getMeetingTypes(): ServerMeetingType[] {
     return db.meetingTypes || [];
   }
 
   static createMeetingType(payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
-    if (!isSuperadminActor(actor)) {
-      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menambah tipe rapat.');
+    if (!hasRoomPermission(actor, 'meeting_types.manage', ['GA'])) {
+      throw Object.assign(new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.'), { statusCode: 403 });
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama tipe rapat wajib diisi.');
     const newItem: ServerMeetingType = {
@@ -1964,8 +1964,8 @@ export class GabahDomainService {
   }
 
   static updateMeetingType(id: string, payload: Partial<ServerMeetingType>, actor: ServerUser): ServerMeetingType {
-    if (!isSuperadminActor(actor)) {
-      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang mengubah tipe rapat.');
+    if (!hasRoomPermission(actor, 'meeting_types.manage', ['GA'])) {
+      throw Object.assign(new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.'), { statusCode: 403 });
     }
     const item = (db.meetingTypes || []).find(m => m.id === id);
     if (!item) throw new Error('Tipe rapat tidak ditemukan.');
@@ -1980,8 +1980,8 @@ export class GabahDomainService {
   }
 
   static deleteMeetingType(id: string, actor: ServerUser): { success: boolean } {
-    if (!isSuperadminActor(actor)) {
-      throw new Error('Akses ditolak: Hanya Admin GABAH yang berwenang menghapus tipe rapat.');
+    if (!hasRoomPermission(actor, 'meeting_types.manage', ['GA'])) {
+      throw Object.assign(new Error('Akses ditolak: permission meeting_types.manage tidak diberikan.'), { statusCode: 403 });
     }
     const idx = (db.meetingTypes || []).findIndex(m => m.id === id);
     if (idx === -1) throw new Error('Tipe rapat tidak ditemukan.');
