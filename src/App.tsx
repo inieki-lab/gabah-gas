@@ -78,7 +78,8 @@ export default function App() {
   // No default authenticated user: signed-out visitors get null until login
   // succeeds (prevents ghost sessions appearing after logout).
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [activeModuleKeys, setActiveModuleKeys] = useState<string[] | undefined>(undefined);
+  const [activeModuleKeys, setActiveModuleKeys] = useState<string[] | null>(null);
+  const [moduleStatusLoadFailed, setModuleStatusLoadFailed] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [meetingCategoryFilter, setMeetingCategoryFilter] = useState<'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities' | 'high_priority'>('all');
@@ -283,19 +284,21 @@ export default function App() {
   };
 
   const refreshModuleStatuses = useCallback(async () => {
+    setModuleStatusLoadFailed(false);
     try {
       const modules = await gabahApi.getModules();
       setActiveModuleKeys(modules.filter(module => module.is_active).map(module => module.module_key));
     } catch {
-      // Preserve navigation during a transient registry outage; API enforcement
-      // remains authoritative and fails closed for managed business endpoints.
-      setActiveModuleKeys(undefined);
+      // Do not expose navigation when the global module registry cannot be
+      // verified. Backend enforcement is authoritative and also fails closed.
+      setActiveModuleKeys(null);
+      setModuleStatusLoadFailed(true);
     }
   }, []);
 
   useEffect(() => {
     if (!currentUser) {
-      setActiveModuleKeys(undefined);
+      setActiveModuleKeys(null);
       return;
     }
     void refreshModuleStatuses();
@@ -303,9 +306,9 @@ export default function App() {
 
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
-  const isModuleAvailable = (tab: NavTab) => activeModuleKeys === undefined || activeModuleKeys.includes(tab);
+  const isModuleAvailable = (tab: NavTab) => activeModuleKeys !== null && activeModuleKeys.includes(tab);
   const fallbackRoleTab = currentUser
-    ? getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys, activeModuleKeys)
+    ? getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys, activeModuleKeys ?? [])
     : null;
   const activeTab: NavTab | null = currentUser
     ? (isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys) && isModuleAvailable(currentTab)
@@ -824,8 +827,13 @@ export default function App() {
         <main className="gabah-main-content flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto bg-[#f4f8f5]">
           {activeTab === null && (
             <section role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-              <h2 className="font-bold">Belum ada akses modul</h2>
-              <p className="mt-2">Akun ini belum memiliki permission baca untuk modul mana pun. Hubungi Superadmin untuk memeriksa assignment role dan hak akses.</p>
+              <h2 className="font-bold">{moduleStatusLoadFailed ? 'Status modul tidak dapat diverifikasi' : activeModuleKeys === null ? 'Memuat status modul…' : 'Belum ada akses modul aktif'}</h2>
+              <p className="mt-2">{moduleStatusLoadFailed
+                ? 'Menu disembunyikan sementara karena status modul belum dapat dipastikan. Periksa koneksi server/database, lalu coba muat ulang status modul.'
+                : activeModuleKeys === null
+                  ? 'GABAH sedang memeriksa modul yang aktif untuk akun ini.'
+                  : 'Akun ini belum memiliki permission baca pada modul yang aktif. Hubungi Superadmin untuk memeriksa assignment role dan hak akses.'}</p>
+              {moduleStatusLoadFailed && <button type="button" onClick={() => void refreshModuleStatuses()} className="mt-4 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold hover:bg-amber-100">Coba lagi</button>}
             </section>
           )}
           {isLoading && (

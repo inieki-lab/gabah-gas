@@ -41,7 +41,7 @@ interface SidebarProps {
   currentUserRoleKeys?: string[];
   currentUserPermissions?: string[];
   currentUserIsSuperAdmin?: boolean;
-  activeModuleKeys?: string[];
+  activeModuleKeys?: string[] | null;
   onModulesChanged?: () => Promise<void> | void;
   pendingLoansCount?: number;
   openTicketsCount?: number;
@@ -228,7 +228,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ...section,
       items: section.items.filter(item => activeRole
         ? isNavTabAllowedForRole(activeRole, item.id, currentUserPermissions)
-          && (activeModuleKeys === undefined || activeModuleKeys.includes(item.id))
+          && (Array.isArray(activeModuleKeys) && activeModuleKeys.includes(item.id))
         : false),
     }))
     .filter(section => section.items.length > 0);
