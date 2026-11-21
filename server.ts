@@ -3149,11 +3149,11 @@ async function startServer() {
         : actor.role === ticket.category;
       const canReadTicketUnit = Boolean(ticket.assigned_unit_id && isPostgresPersistenceActive()
         && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'));
-      const canUpdateTicket = isSuperadminActor(actor)
-        || isReporter
+      const isOperationalTicketHandler = isSuperadminActor(actor)
         || ticket.assigned_agent_id === actor.id
         || canReadTicketOwner
         || canReadTicketUnit;
+      const canUpdateTicket = isOperationalTicketHandler || isReporter;
       if (!canUpdateTicket) {
         return res.status(403).json({
           success: false,
@@ -3176,6 +3176,23 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Status tujuan wajib diisi.' });
       }
       const allowed = TICKET_TRANSITIONS[currentStatus] || [];
+      if (!isOperationalTicketHandler) {
+        // Pelapor boleh mengonfirmasi penyelesaian atau membuka kembali tiket
+        // yang sudah ditutup, tetapi tidak boleh mengubah tiket menjadi selesai
+        // atau mengelola progres operasional petugas.
+        const reporterTransitions: Record<string, string[]> = {
+          resolved: ['closed'],
+          closed: ['open'],
+        };
+        const reporterAllowed = reporterTransitions[currentStatus] || [];
+        if (!reporterAllowed.includes(nextStatus)) {
+          return res.status(403).json({
+            success: false,
+            message: 'Pelapor hanya dapat menutup tiket yang sudah selesai atau membuka kembali tiket yang telah ditutup.',
+          });
+        }
+      }
+
       if (!allowed.includes(nextStatus)) {
         return res.status(400).json({
           success: false,
