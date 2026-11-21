@@ -1129,3 +1129,15 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - A further Dashboard review found employee empty-state loan/ticket creation buttons and an operator-dashboard ticket shortcut could appear based on page persona rather than effective create permissions.
 - Dashboard quick actions now require `loans.create` or `tickets.create` consistently. Regression assertions were added to `scripts/dashboard-scope-verify.ts`.
 - Follow-up work is on `fix/dashboard-role-action-permission-audit-2026-11-21`; this new batch still requires its own exact-head CI before merge.
+
+
+## 2026-11-21 — Form and asset-action permission parity audit
+
+- Follow-up review found additional create controls that used `!isAuditor` or no permission check instead of the capability required by the backend.
+- Asset list and asset detail actions now require `tickets.create` before opening an asset-linked issue, and `loans.create` before opening a loan request.
+- My Assets page now gates generic ticket entry, asset-linked reporting, and loan-request shortcuts by their respective effective create permissions.
+- Tickets page header and empty-state create actions now require the effective ticket-create capability; non-Auditor status alone is not sufficient.
+- Knowledge Base helpful-vote control now requires `knowledge.vote`, matching the API permission guard.
+- ME requester workflow was checked separately: users with only `tickets.create.me` can still reach the generic ticket form, default to ME, and cannot select/submit IT or GA categories without `tickets.create`. Standard category choices require `tickets.create`.
+- Regression coverage was expanded in asset-scope, dashboard-scope, and PIBC ME ticket queue verification scripts.
+- Working branch: `audit/form-permission-parity-2026-11-21`. Exact-head CI is required before merge; no merge has been performed for this batch.
