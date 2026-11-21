@@ -3165,9 +3165,11 @@ async function startServer() {
   // open → in_progress → resolved → closed; open/reopened work may be
   // assigned. Arbitrary status strings and skipped transitions are rejected.
   const TICKET_TRANSITIONS: Record<string, string[]> = {
-    open: ['in_progress', 'resolved', 'closed'],
-    assigned: ['in_progress', 'resolved', 'closed'],
-    in_progress: ['resolved', 'closed', 'open'],
+    // Work must enter the active queue before an operator can resolve it;
+    // closing is reserved for an already-resolved ticket (reporter or handler).
+    open: ['in_progress'],
+    assigned: ['in_progress'],
+    in_progress: ['resolved', 'open'],
     resolved: ['closed', 'open'],
     closed: ['open'],
   };
