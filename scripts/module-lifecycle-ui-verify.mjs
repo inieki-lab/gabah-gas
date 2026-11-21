@@ -8,6 +8,9 @@ const admin = fs.readFileSync('src/components/modals/AdministrationModal.tsx', '
 const panel = fs.readFileSync('src/components/modals/ModuleLifecyclePanel.tsx', 'utf8');
 
 const checks = [
+  ['App fails closed when module registry status cannot be verified', /activeModuleKeys !== null && activeModuleKeys\.includes\(tab\)/.test(app) && /setActiveModuleKeys\(null\);\s*setModuleStatusLoadFailed\(true\)/.test(app)],
+  ['App offers retry and distinguishes registry failure from no active permission', /Status modul tidak dapat diverifikasi/.test(app) && /refreshModuleStatuses\(\)/.test(app)],
+  ['Sidebar hides every module until a verified active-module list exists', /Array\.isArray\(activeModuleKeys\) && activeModuleKeys\.includes\(item\.id\)/.test(sidebar)],
   ['Typed module list API exists', /getModules\(\): Promise<ModuleLifecycleRecord\[\]>/.test(api)],
   ['Typed module update API exists', /updateModuleStatus\(moduleKey: string/.test(api)],
   ['Typed module audit API exists', /getModuleAudit\(moduleKey: string/.test(api)],
