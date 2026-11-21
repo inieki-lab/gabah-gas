@@ -108,3 +108,5 @@ console.log('Superadmin dashboard persona: PASS (global dashboard is not overrid
 assert.match(dashboardSource, /\{canCreateLoan && \([\s\S]*?Ajukan Peminjaman Sekarang[\s\S]*?\)\}/);
 assert.match(dashboardSource, /\{canCreateTicket && \([\s\S]*?Lapor Kendala Baru[\s\S]*?\)\}/);
 console.log('Dashboard quick-action permissions: PASS (loan and ticket creation CTAs follow effective capabilities)');
+assert.doesNotMatch(dashboardSource, /\{!isAuditor && \([\s\S]*?onOpenNewTicketModal/);
+console.log('Dashboard operator shortcut permissions: PASS (ticket creation is not inferred from non-Auditor status)');

@@ -804,7 +804,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {isAuditor ? 'Pemantauan Tiket Helpdesk' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
-                  {!isAuditor && (
+                  {canCreateTicket && (
                     <button
                       onClick={onOpenNewTicketModal}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
