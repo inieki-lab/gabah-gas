@@ -2953,7 +2953,6 @@ async function startServer() {
           && GabahDomainService.canOperateLoan(loan, actor, 'loans.handover'),
         return: loan.status === 'borrowed'
           && !isAuditorActor(actor)
-          && hasRbacPermission(String(actor.id), 'loans.return')
           && (loan.borrower_id === actor.id
             || GabahDomainService.canOperateLoan(loan, actor, 'loans.return')),
       },
@@ -3061,9 +3060,16 @@ async function startServer() {
 
   app.post('/api/loans/:id/return', async (req, res) => {
     try {
-      
-    if (!requireRbacPermission(req, res, 'loans.return')) return;
-    const actor = getActor(req);
+      const actor = getActor(req);
+      if (isAuditorActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+      }
+      const requestedLoan = db.loans.find(loan => loan.id === req.params.id);
+      if (!requestedLoan) return res.status(404).json({ success: false, message: 'Data pinjaman tidak ditemukan.' });
+      // Borrowers may return their own borrowed asset without a custodian
+      // permission. Other borrowers' loans remain permission+scope controlled.
+      const isBorrowerReturningOwnLoan = requestedLoan.borrower_id === actor.id;
+      if (!isBorrowerReturningOwnLoan && !requireRbacPermission(req, res, 'loans.return')) return;
       const { condition, returnNotes } = req.body;
       const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
       await persistDataStore();
