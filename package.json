@@ -76,7 +76,8 @@
     "test:loan-status-contract": "node scripts/loan-status-contract-verify.mjs",
     "test:effective-permission-ui": "node scripts/effective-permission-ui-verify.mjs",
     "test:asset-mutation-http-status": "node scripts/asset-mutation-http-status-verify.mjs",
-    "test:ticket-reporter-transition": "node scripts/ticket-reporter-transition-verify.mjs"
+    "test:ticket-reporter-transition": "node scripts/ticket-reporter-transition-verify.mjs",
+    "test:loan-borrower-return": "node scripts/loan-borrower-return-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
