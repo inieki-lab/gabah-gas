@@ -1103,3 +1103,6 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added `GabahService.canAssignTickets` and changed the “Atur Petugas” UI gate to the dedicated permission so the UI no longer advertises assignment to update-only users.
 - Updated `scripts/ticket-assignment-api-verify.mjs` to cover the dedicated actor permission, the separate operator permission for candidates, and the UI capability gate.
 - CI verification for the new commits is pending; do not treat this batch as validated until the exact branch head completes CI.
+
+- Follow-up migration `047_me_ticket_assignment_permission.sql` grants `tickets.assign` to the existing `admin_tiket_me` role template. This closes the operational gap created by separating assignment from ticket update; existing ME admins keep their `tickets.update` permission.
+- Extended the PIBC ME queue verification script to assert the new additive/idempotent grant.
