@@ -1189,3 +1189,5 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Further room workflow review found the room status toggle used `meeting_facilities.manage`, while the backend route/domain guard requires `meeting_rooms.update`.
 - The status action now uses the exact `meeting_rooms.update` capability with GA legacy fallback; regression assertion added.
 - Working branch: `audit/meeting-room-status-permission-2026-11-21`; exact-head CI required before merge.
+
+- PR #183 has been marked ready for review; exact-head CI will be checked before merge.
