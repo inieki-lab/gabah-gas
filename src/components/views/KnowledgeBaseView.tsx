@@ -60,7 +60,9 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
       : ['IT', 'GA'].includes(currentUser.role)));
   const canCreate = hasKnowledgePermission('knowledge.create');
-  const canVote = hasKnowledgePermission('knowledge.vote');
+  const canVote = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('knowledge.vote')
+    : true));
   const canUpdate = hasKnowledgePermission('knowledge.update');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
