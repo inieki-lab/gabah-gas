@@ -1,4 +1,4 @@
-import { Asset, Loan, Ticket, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract, MaintenanceSchedule, Vendor, KnowledgeArticle } from '../types';
+import { Asset, Loan, Ticket, TicketComment, UserProfile, AssetMovement, AttentionItem, AuditLog, OwnerDivision, MeetingRoom, RoomReservation, MeetingTypeItem, MeetingFacilityItem, Contract, MaintenanceSchedule, Vendor, KnowledgeArticle } from '../types';
 
 export interface AssetNumberingRule {
   id: string;
@@ -556,6 +556,17 @@ class GabahApiClient {
     return this.request<Ticket>('/api/tickets', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  }
+
+  async getTicketComments(ticketId: string): Promise<TicketComment[]> {
+    return this.request<TicketComment[]>(`/api/tickets/${encodeURIComponent(ticketId)}/comments`);
+  }
+
+  async addTicketComment(ticketId: string, body: string): Promise<TicketComment> {
+    return this.request<TicketComment>(`/api/tickets/${encodeURIComponent(ticketId)}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
     });
   }
 
