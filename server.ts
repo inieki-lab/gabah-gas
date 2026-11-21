@@ -3131,10 +3131,14 @@ async function startServer() {
       Boolean(unitId && isPostgresPersistenceActive()
         && hasRbacScope(String(actor.id), 'unit', unitId, 'tickets'));
     const withAllowedActions = (ticket: any) => {
-      const isOperationalHandler = isSuperadminActor(actor)
+      const hasTicketUpdatePermission = !isPostgresPersistenceActive()
+        || hasRbacPermission(String(actor.id), 'tickets.update');
+      const isOperationalHandler = hasTicketUpdatePermission && (
+        isSuperadminActor(actor)
         || ticket.assigned_agent_id === actor.id
         || canReadTicketOwner(String(ticket.category))
-        || canReadTicketUnit(ticket.assigned_unit_id);
+        || canReadTicketUnit(ticket.assigned_unit_id)
+      );
       const isReporterOfTicket = isReporter(ticket);
       const canMutate = !isAuditorActor(actor);
       return {
@@ -3195,7 +3199,7 @@ async function startServer() {
   app.patch('/api/tickets/:id/status', async (req, res) => {
     try {
       
-    if (!requireRbacPermission(req, res, 'tickets.update')) return;
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
       if (isAuditorActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
@@ -3211,10 +3215,14 @@ async function startServer() {
         : actor.role === ticket.category;
       const canReadTicketUnit = Boolean(ticket.assigned_unit_id && isPostgresPersistenceActive()
         && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'));
-      const isOperationalTicketHandler = isSuperadminActor(actor)
+      const hasTicketUpdatePermission = !isPostgresPersistenceActive()
+        || hasRbacPermission(String(actor.id), 'tickets.update');
+      const isOperationalTicketHandler = hasTicketUpdatePermission && (
+        isSuperadminActor(actor)
         || ticket.assigned_agent_id === actor.id
         || canReadTicketOwner
-        || canReadTicketUnit;
+        || canReadTicketUnit
+      );
       const canUpdateTicket = isOperationalTicketHandler || isReporter;
       if (!canUpdateTicket) {
         return res.status(403).json({
