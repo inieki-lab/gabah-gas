@@ -1015,3 +1015,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Tightened the server-authoritative transitions: `open → in_progress`, `assigned → in_progress`, `in_progress → resolved` (or reopen to `open`), `resolved → closed` (or reopen), and `closed → open` only.
 - Added `test:ticket-lifecycle-no-skip` and registered it in CI. This is a workflow integrity fix; existing reporter restrictions remain in place.
 - The prior CI run for the RBAC assertion correction is still being monitored separately; the current ticket change requires its own exact-head CI before it is considered validated.
+
+
+### Ticket state coverage and per-ticket action authorization — 2026-11-21
+
+- Aligned the ticket lifecycle contract with the existing `pending_vendor` status: operators can move `in_progress → pending_vendor`, then resume `pending_vendor → in_progress`. The Kanban board now has visible `assigned` and `pending_vendor` lanes and exposes matching actions in list and Kanban views.
+- Added `assigned` to the client `TicketStatus` union so legacy assigned tickets remain type-safe.
+- Fixed a UI/API authorization mismatch: the ticket UI previously inferred mutation controls from broad permission keys and could show actions that object-level scope checks would reject. `GET /api/tickets` now includes server-computed `allowed_actions` per record, based on Superadmin, assigned-agent, owner-division, unit scope, reporter identity, and Auditor read-only status.
+- The UI now prefers these server-computed action flags. Reporters can see the permitted confirmation (`resolved → closed`) and reopen (`closed → open`) actions; they cannot start or resolve their own ticket merely because they have a broad update permission.
+- Added `test:ticket-allowed-actions` to CI, and expanded lifecycle regression coverage to include legacy and vendor-waiting states.
+- Validation pending: latest exact-head CI will determine whether typecheck, build, runtime and regression checks pass. No merge to `main`.
