@@ -1117,3 +1117,5 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Extended `scripts/contract-owner-filter-verify.mjs` with a regression check that linked-ticket creation no longer depends on the renewal-decision permission.
 - Reviewed loan API/UI action parity and contract read/download/upload/renewal routes. No additional mismatch was confirmed in this pass.
 - The prior ticket-assignment batch CI completed successfully on commit `5f15dab`. The contract permission alignment commits are newer and require their own exact-head CI run before validation can be claimed.
+
+- CI for the first contract regression-test draft failed at the TypeScript lint/parser stage because the source-inspection regex literals were not accepted by the configured parser. Replaced those assertions with straightforward source-string checks and positional checks; this changes only the verification harness, not application behavior. The corrected exact-head run is pending.
