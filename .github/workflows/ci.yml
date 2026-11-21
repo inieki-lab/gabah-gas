@@ -187,6 +187,9 @@ jobs:
       - name: Ticket lifecycle cannot skip operational stages
         run: npm run test:ticket-lifecycle-no-skip
 
+      - name: Server-authoritative per-ticket action regression
+        run: npm run test:ticket-allowed-actions
+
       - name: PIBC ME ticket queue and unit-scope regression
         run: npm run test:pibc-me-ticket-queue
 
