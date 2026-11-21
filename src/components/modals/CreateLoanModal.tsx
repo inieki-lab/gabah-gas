@@ -55,6 +55,12 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   }, [loanableAssets, assets]);
 
   const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
+  const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const canCreateLoan = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('loans.create')
+    : ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser.role)));
 
   // Selected asset IDs (supports multiple selections, e.g. 1 Laptop IT + 1 Mobil GA)
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(() => {
@@ -143,7 +149,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     e.preventDefault();
     const selectionIsValid = selectedAssetIds.length > 0
       && selectedAssetIds.every(id => availablePool.some(asset => asset.id === id));
-    if (isAuditor || hasAnyConflict || !selectionIsValid) return;
+    if (!canCreateLoan || hasAnyConflict || !selectionIsValid) return;
     if (!purpose.trim()) return;
 
     onRequestLoan({
@@ -420,9 +426,9 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isAuditor || hasAnyConflict || selectedAssetIds.length === 0 || selectedAssetIds.some(id => !availablePool.some(asset => asset.id === id))}
+              disabled={!canCreateLoan || hasAnyConflict || selectedAssetIds.length === 0 || selectedAssetIds.some(id => !availablePool.some(asset => asset.id === id))}
               className={`px-5 py-2 rounded-xl font-bold transition-all ${
-                hasAnyConflict || selectedAssetIds.length === 0
+                !canCreateLoan || hasAnyConflict || selectedAssetIds.length === 0
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
                   : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs'
               }`}
