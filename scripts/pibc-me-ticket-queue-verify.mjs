@@ -6,9 +6,11 @@ const db = fs.readFileSync('server/db.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const migration = fs.readFileSync('server/migrations/044_pibc_me_helpdesk_queue.sql', 'utf8');
 const meQueueCapabilityMigration = fs.readFileSync('server/migrations/046_dynamic_me_queue_capability.sql', 'utf8');
+const meAssignmentPermissionMigration = fs.readFileSync('server/migrations/047_me_ticket_assignment_permission.sql', 'utf8');
 const form = fs.readFileSync('src/components/modals/CreateTicketModal.tsx', 'utf8');
 const ticketView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
 const checks = [
+  ['ME queue administrator receives tickets.assign separately from tickets.update', /role_key = 'admin_tiket_me'/.test(meAssignmentPermissionMigration) && /'tickets\.assign'/.test(meAssignmentPermissionMigration) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/.test(meAssignmentPermissionMigration)],
   ['ME has a dedicated unit and least-privilege requester/admin role templates', /UNIT-PIBC-ME/.test(migration) && /admin_tiket_me/.test(migration) && /pemohon_tiket_me/.test(migration) && /tickets\.create\.me/.test(migration)],
   ['New ticket categories are IT, GA, and ME; legacy SC/PIBC are not accepted for new submissions', /VALID_TICKET_CATEGORIES = \['IT', 'GA', 'ME'\]/.test(service)],
   ['ME tickets are routed to the maintenance unit, not a location/division owner', /assigned_unit_id: payload\.category === 'ME' \? 'UNIT-PIBC-ME'/.test(service) && /recipient_unit_id: payload\.category === 'ME' \? 'UNIT-PIBC-ME'/.test(service)],
