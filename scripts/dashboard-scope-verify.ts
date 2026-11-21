@@ -103,3 +103,8 @@ assert.match(dashboardSource, /const isHumas = !isSuperAdmin && hasEffectivePerm
 assert.match(dashboardSource, /const isSekdir = !isSuperAdmin && hasEffectivePermission/);
 assert.match(dashboardSource, /: isSuperAdmin\s*\? roleDescriptions\['Admin GABAH'\]/);
 console.log('Superadmin dashboard persona: PASS (global dashboard is not overridden by Humas/Sekdir wildcard permissions)');
+
+// Employee dashboard empty states must not expose create actions without effective permissions.
+assert.match(dashboardSource, /\{canCreateLoan && \([\s\S]*?Ajukan Peminjaman Sekarang[\s\S]*?\)\}/);
+assert.match(dashboardSource, /\{canCreateTicket && \([\s\S]*?Lapor Kendala Baru[\s\S]*?\)\}/);
+console.log('Dashboard quick-action permissions: PASS (loan and ticket creation CTAs follow effective capabilities)');
