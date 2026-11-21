@@ -3120,14 +3120,9 @@ async function startServer() {
 
   // Helpdesk Tickets
   app.get('/api/tickets', (req, res) => {
-    
     if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
     const isReporter = (ticket: any) => ticket.reporter_id === actor.id;
-
-    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
-      return res.json({ success: true, data: db.tickets });
-    }
     const canReadTicketOwner = (owner: string) =>
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, 'tickets')
@@ -3135,12 +3130,34 @@ async function startServer() {
     const canReadTicketUnit = (unitId?: string) =>
       Boolean(unitId && isPostgresPersistenceActive()
         && hasRbacScope(String(actor.id), 'unit', unitId, 'tickets'));
+    const withAllowedActions = (ticket: any) => {
+      const isOperationalHandler = isSuperadminActor(actor)
+        || ticket.assigned_agent_id === actor.id
+        || canReadTicketOwner(String(ticket.category))
+        || canReadTicketUnit(ticket.assigned_unit_id);
+      const isReporterOfTicket = isReporter(ticket);
+      const canMutate = !isAuditorActor(actor);
+      return {
+        ...ticket,
+        allowed_actions: {
+          start: canMutate && isOperationalHandler && ['open', 'assigned', 'pending_vendor'].includes(String(ticket.status)),
+          wait_vendor: canMutate && isOperationalHandler && ticket.status === 'in_progress',
+          resolve: canMutate && isOperationalHandler && ticket.status === 'in_progress',
+          close: canMutate && (isOperationalHandler || isReporterOfTicket) && ticket.status === 'resolved',
+          reopen: canMutate && (isOperationalHandler || isReporterOfTicket) && ticket.status === 'closed',
+        },
+      };
+    };
+
+    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
+      return res.json({ success: true, data: db.tickets.map(withAllowedActions) });
+    }
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
       || ticket.assigned_agent_id === actor.id
-      || canReadTicketOwner(ticket.category)
+      || canReadTicketOwner(String(ticket.category))
       || canReadTicketUnit(ticket.assigned_unit_id)
-    );
+    ).map(withAllowedActions);
     return res.json({ success: true, data });
   });
 
