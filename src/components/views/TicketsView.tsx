@@ -160,7 +160,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     : hasAssignedRole('admin_tiket_me');
   const isAuditor = GabahService.isAuditor(currentUser);
   const canCreateTicket = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
-    ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('tickets.create')
+    ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('tickets.create') || currentUser.permission_keys!.includes('tickets.create.me')
     : ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser.role)));
   // Self-service roles see their own submissions; operating divisions see the
   // tickets already authorized for their division by GabahService.
