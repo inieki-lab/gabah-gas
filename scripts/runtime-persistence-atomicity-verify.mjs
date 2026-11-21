@@ -39,6 +39,7 @@ assert.equal((server.match(/persistBeforeSuccess\(req, res\)/g) || []).length, 1
 // Every successful mutating API response must be sent only after persistence.
 // The send gate covers mutation routes without route-local persistDataStore calls.
 assert.match(server, /const originalSend = res\.send\.bind\(res\)/);
+assert.match(server, /!req\.path\.toLowerCase\(\)\.startsWith\('\/api\/'\)/, 'Persistence response gate must match Express case-insensitive API routes');
 assert.match(server, /void persistDataStore\(\)\.then\(\(\) =>/);
 assert.match(server, /originalSend\(body\)/);
 assert.match(server, /PERSISTENCE_UNAVAILABLE/);

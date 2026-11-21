@@ -65,7 +65,7 @@ async function startServer() {
   // Express res.json() delegates to res.send(), so this also covers JSON APIs
   // whose handlers do not explicitly call persistDataStore().
   app.use((req, res, next) => {
-    if (req.method === 'GET' || !req.path.startsWith('/api/')) return next();
+    if (req.method === 'GET' || !req.path.toLowerCase().startsWith('/api/')) return next();
     const originalSend = res.send.bind(res);
     res.send = ((body?: any) => {
       if (res.statusCode < 200 || res.statusCode >= 400 || (req as any).__gabahPersisted) {
