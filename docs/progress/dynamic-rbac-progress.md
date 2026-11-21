@@ -1106,3 +1106,5 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 - Follow-up migration `047_me_ticket_assignment_permission.sql` grants `tickets.assign` to the existing `admin_tiket_me` role template. This closes the operational gap created by separating assignment from ticket update; existing ME admins keep their `tickets.update` permission.
 - Extended the PIBC ME queue verification script to assert the new additive/idempotent grant.
+
+- CI caught a malformed line break in the updated ticket-assignment verification script during TypeScript lint (the test file contained literal `\\n` text). Corrected the test source into separate statements; application code was not implicated. The corrected exact-head CI run is pending.
