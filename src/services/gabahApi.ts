@@ -559,6 +559,17 @@ class GabahApiClient {
     });
   }
 
+  async getTicketAssignees(ticketId: string): Promise<Array<{ id: string; name: string; department: string }>> {
+    return this.request<Array<{ id: string; name: string; department: string }>>(`/api/tickets/${encodeURIComponent(ticketId)}/assignees`);
+  }
+
+  async updateTicketAssignment(ticketId: string, assignedAgentId: string | null): Promise<Ticket> {
+    return this.request<Ticket>(`/api/tickets/${encodeURIComponent(ticketId)}/assignment`, {
+      method: 'PATCH',
+      body: JSON.stringify({ assigned_agent_id: assignedAgentId }),
+    });
+  }
+
   async getTicketComments(ticketId: string): Promise<TicketComment[]> {
     return this.request<TicketComment[]>(`/api/tickets/${encodeURIComponent(ticketId)}/comments`);
   }
