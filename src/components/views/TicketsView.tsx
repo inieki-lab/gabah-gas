@@ -278,6 +278,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
           {[
             { id: 'open', title: 'Tiket Masuk (Open)', badgeBg: 'bg-amber-100 text-amber-800 border-amber-300' },
             { id: 'in_progress', title: 'Dalam Penanganan (In Progress)', badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+            { id: 'pending_vendor', title: 'Menunggu Vendor', badgeBg: 'bg-orange-100 text-orange-800 border-orange-300' },
             { id: 'resolved', title: 'Selesai & Solusi (Resolved)', badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300' }
           ].map(col => {
             const colTickets = filteredTickets.filter(t => t.status === col.id);
