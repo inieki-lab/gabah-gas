@@ -32,6 +32,7 @@ interface TicketsViewProps {
   onOpenCreateModal?: () => void;
   onOpenNewTicketModal?: () => void;
   onUpdateTicketStatus: (ticketId: string, status: TicketStatus, notes?: string) => void;
+  onUpdateTicketAssignment?: (ticketId: string, assignedAgentId: string | null) => Promise<void>;
 }
 
 export const TicketsView: React.FC<TicketsViewProps> = ({
@@ -41,6 +42,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   onOpenCreateModal,
   onOpenNewTicketModal,
   onUpdateTicketStatus,
+  onUpdateTicketAssignment,
 }) => {
   const handleOpenCreate = onOpenCreateModal || onOpenNewTicketModal || (() => {});
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -56,6 +58,46 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentSaving, setCommentSaving] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [assigningTicketId, setAssigningTicketId] = useState<string | null>(null);
+  const [ticketAssignees, setTicketAssignees] = useState<Record<string, Array<{ id: string; name: string; department: string }>>>({});
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+
+  const toggleTicketAssignment = async (ticketId: string) => {
+    if (assigningTicketId === ticketId) {
+      setAssigningTicketId(null);
+      setAssignmentError(null);
+      return;
+    }
+    setAssigningTicketId(ticketId);
+    setSelectedAssigneeId('');
+    setAssignmentError(null);
+    setAssignmentLoading(true);
+    try {
+      const candidates = await gabahApi.getTicketAssignees(ticketId);
+      setTicketAssignees(previous => ({ ...previous, [ticketId]: candidates }));
+    } catch (error: any) {
+      setAssignmentError(error?.message || 'Daftar petugas tidak dapat dimuat.');
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
+  const submitTicketAssignment = async (ticketId: string, assignedAgentId: string | null) => {
+    if (!onUpdateTicketAssignment || assignmentSaving) return;
+    setAssignmentSaving(true);
+    setAssignmentError(null);
+    try {
+      await onUpdateTicketAssignment(ticketId, assignedAgentId);
+      setAssigningTicketId(null);
+    } catch (error: any) {
+      setAssignmentError(error?.message || 'Penugasan tiket gagal diperbarui.');
+    } finally {
+      setAssignmentSaving(false);
+    }
+  };
 
   const toggleTicketComments = async (ticketId: string) => {
     if (expandedCommentsTicketId === ticketId) {
@@ -523,6 +565,63 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                     </div>
                   )}
                 </div>
+
+                {(isSuperAdmin || currentUser.permission_keys?.includes('tickets.update')) && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => void toggleTicketAssignment(ticket.id)}
+                      className="text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+                    >
+                      {assigningTicketId === ticket.id ? 'Tutup Pengaturan Petugas' : 'Atur Petugas'}
+                    </button>
+                    {assigningTicketId === ticket.id && (
+                      <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                        {assignmentLoading ? (
+                          <p className="text-xs text-slate-500">Memuat petugas yang memenuhi cakupan tiket...</p>
+                        ) : (
+                          <>
+                            <label className="block text-[11px] font-semibold text-slate-600">Petugas aktif sesuai permission dan scope</label>
+                            <select
+                              value={selectedAssigneeId}
+                              onChange={event => setSelectedAssigneeId(event.target.value)}
+                              className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-800"
+                            >
+                              <option value="">Pilih petugas...</option>
+                              {(ticketAssignees[ticket.id] || []).map(user => (
+                                <option key={user.id} value={user.id}>{user.name} — {user.department}</option>
+                              ))}
+                            </select>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                disabled={!selectedAssigneeId || assignmentSaving}
+                                onClick={() => void submitTicketAssignment(ticket.id, selectedAssigneeId)}
+                                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40"
+                              >
+                                {assignmentSaving ? 'Menyimpan...' : 'Simpan Penugasan'}
+                              </button>
+                              {ticket.assigned_agent_id && (
+                                <button
+                                  type="button"
+                                  disabled={assignmentSaving}
+                                  onClick={() => void submitTicketAssignment(ticket.id, null)}
+                                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-40"
+                                >
+                                  Lepas Petugas
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                        {assignmentError && <p role="alert" className="text-xs text-rose-700">{assignmentError}</p>}
+                        {!assignmentLoading && (ticketAssignees[ticket.id] || []).length === 0 && !assignmentError && (
+                          <p className="text-xs text-slate-500">Belum ada petugas aktif yang memenuhi permission dan scope antrean ini.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Resolution Notes preview if resolved */}
                 {ticket.resolution_notes && (
