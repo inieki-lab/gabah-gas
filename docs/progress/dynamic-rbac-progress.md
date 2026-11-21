@@ -1141,3 +1141,5 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - ME requester workflow was checked separately: users with only `tickets.create.me` can still reach the generic ticket form, default to ME, and cannot select/submit IT or GA categories without `tickets.create`. Standard category choices require `tickets.create`.
 - Regression coverage was expanded in asset-scope, dashboard-scope, and PIBC ME ticket queue verification scripts.
 - Working branch: `audit/form-permission-parity-2026-11-21`. Exact-head CI is required before merge; no merge has been performed for this batch.
+
+- Additional My Assets review found the borrower self-return button was visible to Auditor accounts even though backend policy intentionally denies Auditor return actions. The UI now hides that control for Auditor; regression assertion added to asset-scope verification.
