@@ -124,6 +124,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const isSekdir = currentUser.role === 'Sekretaris Direksi'
     || currentUser.role_keys?.includes('sekretaris_direksi') === true;
   const canOverride = useMemo(() => {
+    if (isAuditor) return false;
     if (Array.isArray(currentUser.permission_keys)) {
       return currentUser.is_superadmin === true
         || currentUser.permission_keys.includes('*')
@@ -131,7 +132,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
     }
     // File-store compatibility only; PostgreSQL uses explicit capability grants.
     return isSekdir || currentUser.role === 'GA' || currentUser.role === 'Admin GABAH';
-  }, [currentUser.permission_keys, currentUser.is_superadmin, currentUser.role, isSekdir]);
+  }, [currentUser.permission_keys, currentUser.is_superadmin, currentUser.role, isSekdir, isAuditor]);
 
   // Load master types and facilities
   useEffect(() => {
