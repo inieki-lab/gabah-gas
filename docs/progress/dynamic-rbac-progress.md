@@ -990,3 +990,5 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Values are trimmed and normalized before creating the profile; missing/blank division and department use the existing defaults.
 - Primary role validation and independent job/unit/office-location validation remain unchanged. Humas/Sekretariat remain function capabilities; RPC/SC and PIBC remain office locations, not primary roles.
 - Added `test:user-create-profile-validation` and wired it into CI.
+
+- Extended the same field limits to bulk employee import: name 160, email 254, division 120, department 120, and phone 40 characters. Invalid rows are reported individually and skipped rather than persisted with oversized values. Regression coverage now checks both account creation and bulk import.
