@@ -370,7 +370,6 @@ export default function App() {
         // T2B-2: relasi lokasi fisik aset ikut diperbarui bila ada.
         asset_location_id: updatedAsset.asset_location_id,
         condition: updatedAsset.condition,
-        status: updatedAsset.status,
         is_loanable: updatedAsset.is_loanable,
         notes: updatedAsset.notes,
       });
