@@ -1025,3 +1025,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The UI now prefers these server-computed action flags. Reporters can see the permitted confirmation (`resolved → closed`) and reopen (`closed → open`) actions; they cannot start or resolve their own ticket merely because they have a broad update permission.
 - Added `test:ticket-allowed-actions` to CI, and expanded lifecycle regression coverage to include legacy and vendor-waiting states.
 - Validation pending: latest exact-head CI will determine whether typecheck, build, runtime and regression checks pass. No merge to `main`.
+
+
+### PostgreSQL CI runtime-test port collision hardening — 2026-11-21
+
+- An intermediate CI run failed in `cr04-cr05-verify.mjs` after all migrations completed and the production server booted, because its randomly selected test port collided with another server process (`EADDRINUSE`). This was test-harness flakiness, not a PostgreSQL migration or application startup defect.
+- Replaced the narrow random-port selection with OS-assigned ephemeral localhost ports and tracked all spawned server children for cleanup, including the restart and fail-fast processes. This also prevents orphaned test servers on early exit.
+- Re-run exact-head CI to confirm the harness fix and the ticket authorization batch together.
