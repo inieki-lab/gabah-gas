@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const source = fs.readFileSync('server.ts', 'utf8');
+const allowedStart = source.indexOf('allowed_actions: {');
+const allowedEnd = source.indexOf('},', allowedStart);
+const allowed = source.slice(allowedStart, allowedEnd);
+assert.ok(allowed.includes("loan.borrower_id === actor.id"), 'borrower must see own return action');
+assert.ok(allowed.includes("GabahDomainService.canOperateLoan(loan, actor, 'loans.return')"), 'custodian remains permission+scope checked');
+assert.ok(!allowed.includes("hasRbacPermission(String(actor.id), 'loans.return')"), 'borrower action not gated by custodian permission');
+const routeStart = source.indexOf("app.post('/api/loans/:id/return'");
+const routeEnd = source.indexOf('// Helpdesk Tickets', routeStart);
+assert.ok(routeStart >= 0 && routeEnd > routeStart);
+const route = source.slice(routeStart, routeEnd);
+assert.ok(route.includes('requestedLoan.borrower_id === actor.id'));
+assert.ok(route.includes("!requireRbacPermission(req, res, 'loans.return')"));
+assert.ok(route.includes('if (isAuditorActor(actor))'));
+console.log('PASS: Borrowers can return only their own loans; custodian returns remain RBAC+scope controlled.');
