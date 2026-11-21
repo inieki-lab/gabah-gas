@@ -12,7 +12,7 @@ const patch = server.indexOf("app.patch('/api/tickets/:id/assignment'", routeSta
 const end = server.indexOf('const canAccessTicketRecord', patch);
 assert.ok(start >= 0 && routeStart > start && patch > routeStart && end > patch, 'assignee policy and routes must be registered before ticket comment routes');
 const routes = server.slice(start, end);
-assert.match(routes, /requireRbacPermission\(req, res, 'tickets\.update'\)/);
+assert.match(routes, /requireRbacPermission\(req, res, 'tickets\.assign'\)/);\nassert.match(routes, /hasRbacPermission\(String\(actor\.id\), 'tickets\.assign'\)/);\nassert.match(routes, /hasRbacPermission\(String\(user\.id\), 'tickets\.update'\)/);
 assert.match(routes, /canManageTicketAssignment\(ticket, actor\)/);
 assert.match(routes, /user\.is_active === false/);
 assert.match(routes, /hasRbacPermission\(String\(user\.id\), 'tickets\.update'\)/);
