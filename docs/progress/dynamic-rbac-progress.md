@@ -1191,3 +1191,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Working branch: `audit/meeting-room-status-permission-2026-11-21`; exact-head CI required before merge.
 
 - PR #183 has been marked ready for review; exact-head CI will be checked before merge.
+
+
+## 2026-11-22 — Module lifecycle navigation consistency
+
+- Audit found that the global module registry could deactivate core modules (loans, tickets, knowledge, etc.), and the API middleware would reject them, but App.tsx and Sidebar.tsx exempted every core tab from module availability checks. This left dead menu entries and could keep an inactive page selected.
+- Navigation now applies global module status to every tab, including core employee workspace modules. RBAC permission checks remain separate and authoritative.
+- Landing-page fallback now selects the first tab that is both authorized for the user's effective permissions and globally active; it returns null if no such module exists rather than routing to a disabled Dashboard.
+- Regression coverage added for deactivating the Dashboard, selecting an active Tickets fallback, and no active modules; module lifecycle UI verification now asserts that Sidebar does not exempt core modules.
+- Working branch: fix/module-lifecycle-core-navigation-2026-11-22; exact-head CI required before merge.
