@@ -3916,13 +3916,10 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'notifications.read')) return;
     const actor = getActor(req);
-    const filtered = db.notifications.filter(n => {
-      const isPhotoNotification = n.recipient_role === 'Humas' ||
-        (n.title && (n.title.toLowerCase().includes('foto') || n.title.toLowerCase().includes('dokumentasi humas') || n.title.toLowerCase().includes('liputan foto'))) ||
-        (n.message && (n.message.toLowerCase().includes('peliputan foto') || n.message.toLowerCase().includes('dokumentasi foto')));
-      if (isPhotoNotification && !hasApplicationRole(actor, 'humas') && !isSuperadminActor(actor)) return false;
-      return isNotificationRecipient(actor, n);
-    });
+    // Recipient metadata is authoritative. Do not infer Humas-only access from
+    // title/message keywords: an explicit user or division recipient must remain
+    // visible even when the notification text mentions photo documentation.
+    const filtered = db.notifications.filter(n => isNotificationRecipient(actor, n));
     res.json({ success: true, data: filtered });
   });
 
