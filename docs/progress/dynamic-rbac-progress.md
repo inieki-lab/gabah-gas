@@ -1200,3 +1200,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Landing-page fallback now selects the first tab that is both authorized for the user's effective permissions and globally active; it returns null if no such module exists rather than routing to a disabled Dashboard.
 - Regression coverage added for deactivating the Dashboard, selecting an active Tickets fallback, and no active modules; module lifecycle UI verification now asserts that Sidebar does not exempt core modules.
 - Working branch: fix/module-lifecycle-core-navigation-2026-11-22; exact-head CI required before merge.
+
+
+## 2026-11-22 — Meeting master API lifecycle coverage
+
+- Route inventory review found that `/api/meeting-types` and `/api/meeting-facilities` were protected by their own RBAC permissions but were absent from the global `meeting_rooms` lifecycle route map.
+- Added both route families to the module resolver and managed-path guard so disabling Meeting Rooms blocks master-data APIs as well as room/reservation operations.
+- Added a regression assertion for both route families. Exact-head CI is pending; this is tracked separately from PR #185.
+- Working branch: `fix/module-lifecycle-meeting-master-routes-2026-11-22`.
