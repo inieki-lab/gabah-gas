@@ -1168,3 +1168,4 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Continued form audit found the room-reservation modal relied on the parent page for `room_reservations.create`; the modal now independently denies Auditor and requires the explicit PostgreSQL capability (retaining the existing non-Auditor file-store fallback).
 - Vendor create/edit form now revalidates `vendors.create` versus `vendors.update` at submit and disables Save when the relevant permission is absent, covering permission changes while the form is open.
 - Added regression assertions to room-capability and asset-scope verification.
+- The room-reservation modal also denies Auditor additional-role members the priority-override control, not just the final submit action; regression coverage protects this read-only boundary.
