@@ -160,6 +160,9 @@ jobs:
       - name: Notification recipient multi-role RBAC verification
         run: npm run test:notification-recipient-rbac
 
+      - name: Dynamic audit and reconciliation observer route RBAC verification
+        run: npm run test:observer-route-rbac
+
       - name: Organization master strict active regression
         run: npm run test:org-master-active
 
