@@ -12,6 +12,8 @@ for (const key of ['start', 'wait_vendor', 'resolve', 'close', 'reopen']) {
   assert.ok(route.includes(`${key}:`), `API must provide ${key} action`);
 }
 assert.ok(route.includes('isOperationalHandler'), 'actions must use object-level operational authorization');
+assert.ok(route.includes("hasRbacPermission(String(actor.id), 'tickets.update')"), 'operator actions must require tickets.update');
+assert.ok(route.includes('close: canMutate && (isOperationalHandler || isReporterOfTicket)'), 'reporter confirmation must not require operator permission');
 assert.ok(route.includes('isReporterOfTicket'), 'reporter-only close/reopen actions must be represented');
 assert.ok(route.includes('canMutate = !isAuditorActor(actor)'), 'Auditor must receive no mutation actions');
 assert.ok(route.includes('data: db.tickets.map(withAllowedActions)'), 'Superadmin/Auditor response must include action metadata');
