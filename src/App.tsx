@@ -24,7 +24,7 @@ import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
-import { getDefaultNavTabForRole, isCoreNavigationTab, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from './navigation/roleNavigation';
+import { getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from './navigation/roleNavigation';
 // API collections are already scoped by the authoritative backend policy.
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
