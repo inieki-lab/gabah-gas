@@ -25,6 +25,12 @@ const checks = [
   ],
 ];
 
+  [
+    'Creating a linked helpdesk ticket is gated by tickets.create, not contract renewal decision',
+    /const canCreateLinkedTicket = !isAuditor && hasPermission\('tickets\.create'/.test(source)
+      && /\{canCreateLinkedTicket && \([\s\S]*?onCreateLinkedTicket\(contract\)/.test(source)
+      && !/\{canDecide && \([\s\S]*?onCreateLinkedTicket\(contract\)/.test(source),
+  ],
 let failed = 0;
 for (const [name, passed] of checks) {
   console.log(`${passed ? 'PASS' : 'FAIL'} | ${name}`);
