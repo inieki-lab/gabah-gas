@@ -27,6 +27,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 
 const R = [];
 const rec = (n, e, a, p) => R.push({ n, e, a, p: !!p });
@@ -60,6 +61,21 @@ async function boot(sp, port, env) {
 const kill = (c) => { try { c.kill('SIGKILL') } catch { } };
 
 const MAIN_TYPES = ['TNH', 'BGN', 'MSN', 'KDR', 'INV-F', 'INV-P', 'IT-H', 'IT-S', 'LNY'];
+
+async function getAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      if (!address || typeof address === 'string') {
+        probe.close(() => reject(new Error('Unable to allocate a local TCP port')));
+        return;
+      }
+      probe.close(error => error ? reject(error) : resolve(address.port));
+    });
+  });
+}
 
 async function main() {
   const sp = path.resolve('dist/server.cjs');
@@ -107,7 +123,7 @@ async function main() {
   let s1 = null, s2 = null;
   try {
     // ================= PHASE 1 (fresh seed) =================
-    s1 = await boot(sp, 39300 + Math.floor(Math.random() * 400), env);
+    s1 = await boot(sp, await getAvailablePort(), env);
     const login = async (b, e, pw) => {
       const r = await req(b, 'POST', '/api/auth/login', { body: { email: e, password: pw } });
       return r.json?.data?.token || '';
@@ -275,7 +291,7 @@ async function main() {
     await new Promise(r => setTimeout(r, 400));
 
     // ================= PHASE 2 (restart — JSON fallback roundtrip) =================
-    s2 = await boot(sp, 39800 + Math.floor(Math.random() * 150), env);
+    s2 = await boot(sp, await getAvailablePort(), env);
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const master2 = ((await req(s2.base, 'GET', '/api/taxonomy/categories', { token: admin2 })).json?.data || [])
       .map(c => `${c.code}|${c.name}|${c.main_type}|${c.owner_division}|${c.category_type}|${c.is_loanable_by_default}|${c.is_active}`)
