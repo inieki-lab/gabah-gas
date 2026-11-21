@@ -965,3 +965,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Fixed a mismatch between loan domain rules and the API: the domain service allowed a borrower to return their own borrowed asset, but the route-level `loans.return` permission gate blocked borrowers without custodian permissions; the UI also hid the return action.
 - The borrower can now return only their own loan. Returns on other borrowers' loans still require the custodian's `loans.return` permission and matching owner scope through the domain service. Auditor remains read-only.
 - Added a regression contract and CI step. No loan records or permissions were modified.
+
+
+### Asset lifecycle status workflow guard — 2026-11-21
+
+- Found a privilege-boundary gap: generic asset PATCH and bulk-import update paths accepted direct status changes even though lifecycle transitions have a dedicated `assets.lifecycle` permission and disposal approval rules.
+- Generic PATCH now rejects actual status changes with HTTP 409 and directs users to the Lifecycle or loan workflow. Status is removed from the generic mutable-field allowlist.
+- Bulk-import updates now reject status changes and no longer include status in their update allowlist. New asset creation remains server-authoritative; lifecycle and loan endpoints continue to own state transitions.
+- Added `test:asset-status-workflow-guard` and wired it into CI.
+- No asset records, lifecycle states, or permissions were changed by this code update.
+- Exact-head CI and browser UAT remain required.
