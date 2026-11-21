@@ -1047,3 +1047,5 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - CI exposed the same ephemeral-port collision pattern in multiple live HTTP verification scripts (`bulk-import`, `asset-import`, `org-model`, `P1 features`, `maintenance authz`, `menu connectivity`, `loan authz`, and `meeting-room stage 3`). A random port in a narrow fixed range is not collision-safe when a prior test process or another listener still owns it.
 - Replaced random-range port selection with OS-assigned ephemeral localhost ports across those scripts, matching the CR-04/CR-05 harness fix. This addresses flaky `EADDRINUSE` failures without changing application behavior or weakening assertions.
 - Latest full CI is queued/running after these test-harness changes; exact-head result remains pending.
+
+- Extended OS-assigned ephemeral port allocation to the two multi-phase T2B2/T2B3 live verification suites as well; their phase-2 restart servers now receive distinct free ports instead of drawing from overlapping fixed ranges.
