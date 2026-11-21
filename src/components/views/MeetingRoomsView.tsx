@@ -115,6 +115,10 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
     'meeting_facilities.manage',
     currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
   );
+  const canUpdateMeetingRooms = hasPermission(
+    'meeting_rooms.update',
+    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+  );
   const canManageMeetingTypes = hasPermission(
     'meeting_types.manage',
     currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
@@ -762,7 +766,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
                 {/* Footer Actions */}
                 <div className="p-5 pt-0 flex items-center justify-between gap-2 border-t border-slate-100 mt-4">
-                  {canManageMeetingFacilities && onUpdateRoomStatus && (
+                  {canUpdateMeetingRooms && onUpdateRoomStatus && (
                     <button
                       onClick={() => onUpdateRoomStatus(room.id, isMnt ? 'available' : 'maintenance')}
                       className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${
