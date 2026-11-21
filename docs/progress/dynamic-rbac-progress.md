@@ -1084,3 +1084,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Latest full CI is queued/running after these test-harness changes; exact-head result remains pending.
 
 - Extended OS-assigned ephemeral port allocation to the two multi-phase T2B2/T2B3 live verification suites as well; their phase-2 restart servers now receive distinct free ports instead of drawing from overlapping fixed ranges.
+
+## 2026-11-21 — Notification self-service permission correction
+
+- CI run #2839 on commit `c73d5b8274a9d6dc1f3f118d1afa8d78a35d938c` passed.
+- Found a permission mismatch in `PATCH /api/notifications/:id/read`: it required `notifications.read_all` even though the endpoint changes only the authenticated recipient's own notification.
+- Changed the single-notification endpoint to require `notifications.read`; recipient ownership remains enforced by `isNotificationRecipient` and non-recipient IDs continue to return 404.
+- Kept `POST /api/notifications/read-all` behind `notifications.read_all`.
+- Extended `scripts/notification-recipient-rbac-verify.mjs` to assert the separation between individual and bulk read permissions.
+- CI for commit `139b5f54ac946ea501de667c935919bfb1711c83` is queued; do not treat this correction as CI-verified until that run completes.
