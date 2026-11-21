@@ -55,6 +55,7 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
       : legacyRoles.includes(currentUser.role))
   );
   const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canCreateAnyTicket = canCreateTicket || hasEffectivePermission('tickets.create.me');
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
 
   // Find assets assigned to this user
@@ -117,7 +118,7 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {canCreateTicket && onOpenNewTicketModal && (
+            {canCreateAnyTicket && onOpenNewTicketModal && (
               <button
                 onClick={onOpenNewTicketModal}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold transition-all shadow-xs"
@@ -261,7 +262,7 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
                   Jika Anda membutuhkan laptop atau komputer kerja baru, silakan ajukan tiket permohonan inventaris ke Divisi IT atau GA.
                 </p>
-                {canCreateTicket && onOpenNewTicketModal && (
+                {canCreateAnyTicket && onOpenNewTicketModal && (
                   <button
                     onClick={onOpenNewTicketModal}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors mt-2"
