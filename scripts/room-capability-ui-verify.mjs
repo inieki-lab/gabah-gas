@@ -10,6 +10,10 @@ assert.match(rooms, /const hasPermissionMetadata = Array\.isArray\(currentUser\.
 assert.match(rooms, /'room_reservations\.documentation\.read'/);
 assert.match(rooms, /'room_reservations\.override_priority'/);
 assert.match(rooms, /'meeting_facilities\.manage'/);
+assert.match(rooms, /const canUpdateMeetingRooms = hasPermission\(/);
+assert.match(rooms, /'meeting_rooms\.update'/);
+assert.match(rooms, /\{canUpdateMeetingRooms && onUpdateRoomStatus && \(/);
+assert.doesNotMatch(rooms, /\{canManageMeetingFacilities && onUpdateRoomStatus && \(/);
 assert.match(rooms, /const canManageMeetingTypes = hasPermission\(/);
 assert.match(rooms, /const canManageMeetingMasterData = canManageMeetingTypes \|\| canManageMeetingFacilities/);
 assert.match(rooms, /\{canManageMeetingMasterData && \(/);
