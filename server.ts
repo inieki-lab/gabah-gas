@@ -3175,7 +3175,7 @@ async function startServer() {
         && (hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
           || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets')));
     }
-    return actor.role === ticket.category || actor.role === 'Admin GABAH';
+    return actor.role === ticket.category;
   };
 
   const getEligibleTicketAssignees = (ticket: any): ServerUser[] => db.users.filter(user => {
