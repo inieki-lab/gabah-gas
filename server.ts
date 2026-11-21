@@ -633,7 +633,7 @@ async function startServer() {
     }
     try {
       const result = await withRbacTransaction(async client => {
-        const target = await client.query('SELECT id, name, email, role FROM users WHERE id = $1', [userId]);
+        const target = await client.query('SELECT id, name, email, role, is_active FROM users WHERE id = $1', [userId]);
         const user = target.rows[0];
         if (!user) throw new Error('RBAC_USER_NOT_FOUND');
         const uniqueIds = [...new Set((roleIds as number[]).map(Number))];
@@ -650,9 +650,11 @@ async function startServer() {
         // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
         // target must keep a superadmin-capable role if it is the only holder.
         const current = await client.query('SELECT ur.role_id FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE ur.user_id = $1 AND r.is_superadmin = TRUE', [userId]);
-        if (current.rowCount > 0 && !valid.rows.some(row => row.is_superadmin)) {
+        if (user.is_active === true && current.rowCount > 0 && !valid.rows.some(row => row.is_superadmin)) {
           const remaining = await client.query(
-            'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE r.is_superadmin = TRUE AND ur.user_id <> $1 ' +
+            'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id ' +
+            'JOIN users active_user ON active_user.id::text = ur.user_id AND active_user.is_active = TRUE ' +
+            'WHERE r.is_superadmin = TRUE AND ur.user_id <> $1 ' +
             'AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id WHERE aur.user_id = ur.user_id AND ar.role_key = \'auditor\')',
             [userId],
           );
