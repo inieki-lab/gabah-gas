@@ -1119,3 +1119,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The prior ticket-assignment batch CI completed successfully on commit `5f15dab`. The contract permission alignment commits are newer and require their own exact-head CI run before validation can be claimed.
 
 - CI for the first contract regression-test draft failed at the TypeScript lint/parser stage because the source-inspection regex literals were not accepted by the configured parser. Replaced those assertions with straightforward source-string checks and positional checks; this changes only the verification harness, not application behavior. The corrected exact-head run is pending.
+
+
+## 2026-11-21 — PR #177 merged; Dashboard quick-action permission audit
+
+- PR #177 was merged to `main` at merge commit `c9ed5c9dd0058f237aceb15842ab955f586f45b4`.
+- Exact-head CI run #44920285642 on `898d864eada256cd30b848704eac33c9497a2de1` completed SUCCESS. It covered TypeScript lint, navigation policy, dashboard scope, production build, Docker image/runtime, PostgreSQL 17 fresh-database/persistence, P0 security, and the remaining regression suites.
+- Before that green run, CI exposed escaped template-literal characters in `scripts/contract-owner-filter-verify.mjs`; corrected the verification script and confirmed the final exact-head run is green.
+- A further Dashboard review found employee empty-state loan/ticket creation buttons and an operator-dashboard ticket shortcut could appear based on page persona rather than effective create permissions.
+- Dashboard quick actions now require `loans.create` or `tickets.create` consistently. Regression assertions were added to `scripts/dashboard-scope-verify.ts`.
+- Follow-up work is on `fix/dashboard-role-action-permission-audit-2026-11-21`; this new batch still requires its own exact-head CI before merge.
