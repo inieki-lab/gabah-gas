@@ -1510,3 +1510,11 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - 2026-11-19: Gate successful state-changing API responses on durable persistence; return HTTP 503 on write failure; remove swallowed persistence errors and preserve persistence status codes.
 
 - 2026-11-19: Exact-head CI passed for the durable mutation-response persistence gate (59383ef2541a20d1aeea9ce858bc64f28492a841). Dependency audit lockfile fix remains local and must be integrated before merge.
+
+
+## 2026-11-21 — Dynamic RBAC user assignment regression
+
+- Fixed a stale static contract assertion in `scripts/dynamic-rbac-foundation-verify.mjs`: the Superadmin user-role assignment query now intentionally selects `is_active` in addition to normalized user fields so last-active-Superadmin protection can be evaluated correctly.
+- The assertion now verifies both normalized `users` lookup and active-state handling; implementation behavior was not weakened to satisfy the test.
+- Exact-head CI for commit `92ae0c669d7676af028eac9841bc814a8de83faa` is running; do not treat this batch as validated until the workflow completes.
+- Branch: `fix/rbac-superadmin-admin-entry-2026-11-20`; PR #177 remains draft and unmerged.

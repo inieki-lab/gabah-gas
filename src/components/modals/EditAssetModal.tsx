@@ -150,7 +150,6 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
         is_loanable: formData.is_loanable,
         specifications: formData.specifications.trim(),
         notes: formData.notes.trim(),
-        status: selectedUserId ? 'assigned' : formData.status,
       };
 
       if (onSaveAsset) {
@@ -355,24 +354,16 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                 </p>
               </div>
 
-              {/* Status Operasional */}
+              {/* Status is read-only here; lifecycle and assignment APIs own transitions. */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
                   Status Operasional
                 </label>
-                <select
-                  disabled={!canEditThisAsset || isSubmitting || Boolean(selectedUserId)}
-                  value={formData.status}
-                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as AssetStatus }))}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                >
-                  <option value="available">Tersedia / Idle (Siap Digunakan)</option>
-                  <option value="assigned">Digunakan Pegawai (Assigned)</option>
-                  <option value="maintenance">Dalam Pemeliharaan / Servis (Maintenance)</option>
-                  <option value="retired">Afkir / Hapus Buku (Retired)</option>
-                </select>
+                <div className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
+                  {selectedUserId ? 'Assigned — ditentukan oleh proses penugasan' : String(asset.status || 'available').replaceAll('_', ' ')}
+                </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  {selectedUserId ? 'Otomatis diatur ke Assigned karena ada PIC.' : 'Pilih status ketersediaan barang di gudang.'}
+                  Status tidak diubah melalui edit umum. Gunakan Penugasan atau menu Lifecycle agar riwayat dan otorisasi tercatat.
                 </p>
               </div>
 

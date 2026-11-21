@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import type { Asset, Loan, Ticket, UserProfile } from '../src/types';
 import { filterDashboardAssets, filterDashboardLoans, filterDashboardTickets, filterPersonalAssets, filterPersonalLoans, filterMaintenanceForRole, filterContractsForRole } from '../src/dashboard/roleDashboardScope';
@@ -95,3 +96,15 @@ assert.deepEqual(filterContractsForRole(contracts, user).map(x => x.id), ['pic-c
 assert.equal(filterContractsForRole(contracts, { ...user, role: 'Auditor' } as UserProfile).length, contracts.length);
 
 console.log('Role dashboard scope: PASS (division, personal, maintenance, contract, and exact identity scopes)');
+
+// A Superadmin's wildcard permissions must not turn the dashboard into a Humas/Sekdir persona.
+const dashboardSource = readFileSync('src/components/views/DashboardView.tsx', 'utf8');
+assert.match(dashboardSource, /const isHumas = !isSuperAdmin && hasEffectivePermission/);
+assert.match(dashboardSource, /const isSekdir = !isSuperAdmin && hasEffectivePermission/);
+assert.match(dashboardSource, /: isSuperAdmin\s*\? roleDescriptions\['Admin GABAH'\]/);
+console.log('Superadmin dashboard persona: PASS (global dashboard is not overridden by Humas/Sekdir wildcard permissions)');
+
+// Employee dashboard empty states must not expose create actions without effective permissions.
+assert.match(dashboardSource, /\{canCreateLoan && \([\s\S]*?Ajukan Peminjaman Sekarang[\s\S]*?\)\}/);
+assert.match(dashboardSource, /\{canCreateTicket && \([\s\S]*?Lapor Kendala Baru[\s\S]*?\)\}/);
+console.log('Dashboard quick-action permissions: PASS (loan and ticket creation CTAs follow effective capabilities)');

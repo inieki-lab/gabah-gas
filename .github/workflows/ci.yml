@@ -47,11 +47,17 @@ jobs:
       - name: Typecheck (lint)
         run: npm run lint
 
+      - name: Superadmin Administration entry authorization regression
+        run: npm run test:superadmin-administration-entry
+
       - name: PostgreSQL runtime failure latch and atomic snapshot regression
         run: npm run test:runtime-persistence-atomicity
 
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
+
+      - name: Dynamic RBAC module scope fail-closed regression
+        run: npm run test:rbac-module-scope-fail-closed
 
       - name: Employee profile capability normalization regression
         run: npm run test:employee-role-normalization
@@ -61,6 +67,15 @@ jobs:
 
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
+
+      - name: Asset mutation authorization HTTP status regression
+        run: npm run test:asset-mutation-http-status
+
+      - name: Asset lifecycle status cannot be bypassed by generic edits
+        run: npm run test:asset-status-workflow-guard
+
+      - name: User creation profile validation regression
+        run: npm run test:user-create-profile-validation
 
       - name: Asset owner filter never infers ownership from asset-number prefixes
         run: npm run test:asset-owner-filter
@@ -145,6 +160,9 @@ jobs:
       - name: Notification recipient multi-role RBAC verification
         run: npm run test:notification-recipient-rbac
 
+      - name: Dynamic audit and reconciliation observer route RBAC verification
+        run: npm run test:observer-route-rbac
+
       - name: Organization master strict active regression
         run: npm run test:org-master-active
 
@@ -166,6 +184,21 @@ jobs:
       - name: Ticket reporter ownership regression
         run: npm run test:ticket-reporter-ownership
 
+      - name: Ticket reporter transition authorization regression
+        run: npm run test:ticket-reporter-transition
+
+      - name: Ticket lifecycle cannot skip operational stages
+        run: npm run test:ticket-lifecycle-no-skip
+
+      - name: Server-authoritative per-ticket action regression
+        run: npm run test:ticket-allowed-actions
+
+      - name: Ticket comments API authorization and persistence contract
+        run: npm run test:ticket-comments-api
+
+      - name: Dynamic ticket assignment authorization and UI contract
+        run: npm run test:ticket-assignment-api
+
       - name: PIBC ME ticket queue and unit-scope regression
         run: npm run test:pibc-me-ticket-queue
 
@@ -174,6 +207,15 @@ jobs:
 
       - name: Ticket related-asset visibility regression
         run: npm run test:ticket-related-asset-scope
+
+      - name: Loan API/UI status contract regression
+        run: npm run test:loan-status-contract
+
+      - name: Loan borrower self-return authorization regression
+        run: npm run test:loan-borrower-return
+
+      - name: Effective permission UI regression (Superadmin + wildcard)
+        run: npm run test:effective-permission-ui
 
       - name: Loan authorization and state transitions
         run: npm run test:loan-authz

@@ -114,7 +114,7 @@ export interface Asset {
   updated_at: string;
 }
 
-export type LoanStatus = 'pending' | 'approved' | 'rejected' | 'active' | 'returned' | 'overdue';
+export type LoanStatus = 'pending' | 'pending_approval' | 'approved' | 'rejected' | 'active' | 'borrowed' | 'returned' | 'overdue';
 
 export interface Loan {
   id: string;
@@ -134,6 +134,7 @@ export interface Loan {
   start_date: string; // YYYY-MM-DDTHH:mm
   due_date: string;   // YYYY-MM-DDTHH:mm (Official due date)
   status: LoanStatus;
+  allowed_actions?: { approve: boolean; reject: boolean; handover: boolean; return: boolean };
   approver_name?: string;
   approved_by?: string;
   approved_at?: string;
@@ -150,7 +151,7 @@ export interface Loan {
 }
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
-export type TicketStatus = 'open' | 'in_progress' | 'pending_vendor' | 'resolved' | 'closed';
+export type TicketStatus = 'open' | 'assigned' | 'in_progress' | 'pending_vendor' | 'resolved' | 'closed';
 /**
  * Helpdesk Ticket Category — strictly divisional.
  * Contract Management is a separate domain and is NOT a ticket category.
@@ -158,6 +159,15 @@ export type TicketStatus = 'open' | 'in_progress' | 'pending_vendor' | 'resolved
  */
 // SC/PIBC remain readable for legacy ticket history; new requests use IT/GA/ME.
 export type TicketCategory = 'IT' | 'GA' | 'ME' | 'SC' | 'PIBC';
+
+export interface TicketComment {
+  id: number;
+  ticket_id: string;
+  user_id: string;
+  user_name: string;
+  body: string;
+  created_at: string;
+}
 
 export interface Ticket {
   id: string;
@@ -178,6 +188,7 @@ export interface Ticket {
   related_asset_number?: string;
   assigned_agent_id?: string;
   assigned_agent_name?: string;
+  assigned_unit_id?: string;
   sla_hours: number; // e.g. Urgent: 4h, High: 8h, Medium: 24h, Low: 48h
   sla_response_deadline?: string;
   sla_resolution_deadline?: string;
@@ -188,6 +199,14 @@ export interface Ticket {
   approved_at?: string;
   resolved_at?: string;
   resolution_notes?: string;
+  /** Server-authoritative object-level actions for the current actor. */
+  allowed_actions?: {
+    start?: boolean;
+    wait_vendor?: boolean;
+    resolve?: boolean;
+    close?: boolean;
+    reopen?: boolean;
+  };
   rating?: number; // 1-5
   created_at: string;
   updated_at: string;

@@ -1,34 +1,48 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync(new URL('../src/components/views/ContractsView.tsx', import.meta.url), 'utf8');
+const linkedTicketButton = source.indexOf('{canCreateLinkedTicket && (');
+const linkedTicketAction = source.indexOf('onCreateLinkedTicket(contract)', linkedTicketButton);
+const renewalDecisionButton = source.indexOf('{canDecide && (');
 
 const checks = [
   [
     'Contract owner filter options come from persisted owner_division values',
-    /const ownerDomains = useMemo\(\(\) => Array\.from\(new Set\([\s\S]*contract\.owner_division/.test(source)
-      && /options: \['ALL', \.\.\.ownerDomains\], label: 'Owner'/.test(source),
+    source.includes('const ownerDomains = useMemo')
+      && source.includes('contract.owner_division')
+      && source.includes("options: ['ALL', ...ownerDomains], label: 'Owner'"),
   ],
   [
-    'Legacy file-store create permission does not grant Supply Chain or PIBC by role label',
-    /hasPermission\('contracts\.create', \['IT', 'GA'\]\)/.test(source)
-      && !/hasPermission\('contracts\.create', \[[^\]]*(?:Supply Chain|PIBC)/.test(source),
+    'Legacy file-store create permission is limited to IT and GA',
+    source.includes("hasPermission('contracts.create', ['IT', 'GA'])")
+      && !source.includes("hasPermission('contracts.create', ['IT', 'GA', 'Supply Chain")
+      && !source.includes("hasPermission('contracts.create', ['IT', 'GA', 'PIBC"),
   ],
   [
-    'Legacy file-store document upload permission does not grant Supply Chain or PIBC by role label',
-    /hasPermission\('contracts\.documents\.upload', \['IT', 'GA'\]\)/.test(source)
-      && !/hasPermission\('contracts\.documents\.upload', \[[^\]]*(?:Supply Chain|PIBC)/.test(source),
+    'Legacy file-store document upload permission is limited to IT and GA',
+    source.includes("hasPermission('contracts.documents.upload', ['IT', 'GA'])")
+      && !source.includes("hasPermission('contracts.documents.upload', ['IT', 'GA', 'Supply Chain")
+      && !source.includes("hasPermission('contracts.documents.upload', ['IT', 'GA', 'PIBC"),
   ],
   [
-    'Legacy file-store renewal decision permission does not grant Supply Chain or PIBC by role label',
-    /hasPermission\('contracts\.renewal\.decide', \['IT', 'GA'\]\)/.test(source)
-      && !/hasPermission\('contracts\.renewal\.decide', \[[^\]]*(?:Supply Chain|PIBC)/.test(source),
+    'Legacy file-store renewal decision permission is limited to IT and GA',
+    source.includes("hasPermission('contracts.renewal.decide', ['IT', 'GA'])")
+      && !source.includes("hasPermission('contracts.renewal.decide', ['IT', 'GA', 'Supply Chain")
+      && !source.includes("hasPermission('contracts.renewal.decide', ['IT', 'GA', 'PIBC"),
+  ],
+  [
+    'Creating a linked helpdesk ticket is gated by tickets.create, not contract renewal decision',
+    source.includes("const canCreateLinkedTicket = !isAuditor && hasPermission('tickets.create'")
+      && linkedTicketButton >= 0
+      && linkedTicketAction > linkedTicketButton
+      && (renewalDecisionButton < 0 || linkedTicketButton < renewalDecisionButton),
   ],
 ];
 
 let failed = 0;
 for (const [name, passed] of checks) {
-  console.log(`${passed ? 'PASS' : 'FAIL'} | ${name}`);
+  console.log((passed ? 'PASS' : 'FAIL') + ' | ' + name);
   if (!passed) failed += 1;
 }
-console.log(`TOTAL: ${checks.length} | PASS: ${checks.length - failed} | FAIL: ${failed}`);
+console.log('TOTAL: ' + checks.length + ' | PASS: ' + (checks.length - failed) + ' | FAIL: ' + failed);
 process.exit(failed === 0 ? 0 : 1);

@@ -633,7 +633,7 @@ async function startServer() {
     }
     try {
       const result = await withRbacTransaction(async client => {
-        const target = await client.query('SELECT id, name, email, role FROM users WHERE id = $1', [userId]);
+        const target = await client.query('SELECT id, name, email, role, is_active FROM users WHERE id = $1', [userId]);
         const user = target.rows[0];
         if (!user) throw new Error('RBAC_USER_NOT_FOUND');
         const uniqueIds = [...new Set((roleIds as number[]).map(Number))];
@@ -650,9 +650,11 @@ async function startServer() {
         // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
         // target must keep a superadmin-capable role if it is the only holder.
         const current = await client.query('SELECT ur.role_id FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE ur.user_id = $1 AND r.is_superadmin = TRUE', [userId]);
-        if (current.rowCount > 0 && !valid.rows.some(row => row.is_superadmin)) {
+        if (user.is_active === true && current.rowCount > 0 && !valid.rows.some(row => row.is_superadmin)) {
           const remaining = await client.query(
-            'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id WHERE r.is_superadmin = TRUE AND ur.user_id <> $1 ' +
+            'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id ' +
+            'JOIN users active_user ON active_user.id::text = ur.user_id AND active_user.is_active = TRUE ' +
+            'WHERE r.is_superadmin = TRUE AND ur.user_id <> $1 ' +
             'AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id WHERE aur.user_id = ur.user_id AND ar.role_key = \'auditor\')',
             [userId],
           );
@@ -724,6 +726,16 @@ async function startServer() {
       }
       const { name, email, role, division, department, password, phone } = req.body || {};
       const validPrimaryRoles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor'];
+      const profileTextFields: Array<[string, unknown, number]> = [
+        ['division', division, 120],
+        ['department', department, 120],
+        ['phone', phone, 40],
+      ];
+      for (const [field, value, maxLength] of profileTextFields) {
+        if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+          return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
+        }
+      }
       const requestedPrimaryRole = role === 'Superadmin' ? 'Admin GABAH' : (role || 'Karyawan');
       if (typeof requestedPrimaryRole !== 'string' || !validPrimaryRoles.includes(requestedPrimaryRole)) {
         return res.status(400).json({ success: false, message: 'Role primer tidak valid. Humas/Sekretariat adalah role fungsi; RPC/SC dan PIBC adalah lokasi kerja.' });
@@ -732,6 +744,9 @@ async function startServer() {
         || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
+      const normalizedDivision = (typeof division === 'string' && division.trim() ? division.trim() : 'Umum') as ServerUser['division'];
+      const normalizedDepartment = typeof department === 'string' && department.trim() ? department.trim() : 'Operasional';
+      const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
       const primaryRole = requestedPrimaryRole as ServerUser['role'];
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
@@ -788,12 +803,12 @@ async function startServer() {
         email: email.trim().toLowerCase(),
         role: primaryRole,
         role_label: roleLabels[primaryRole] || 'Pegawai Operasional',
-        division: division || 'Umum',
-        department: department || 'Operasional',
+        division: normalizedDivision,
+        department: normalizedDepartment,
         job_level_code: newJobLevel,
         unit_id: newUnitId || null,
         office_location_id: newOfficeId || null,
-        phone: phone || '',
+        phone: normalizedPhone,
         avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
         is_active: true,
         password_hash: hash,
@@ -871,6 +886,11 @@ async function startServer() {
         const department = String(row.department || '').trim() || 'Operasional';
         const phone = String(row.phone || '').trim();
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
+        if (name.length > 160) { errors.push(`Baris ${rowNo}: Nama maksimal 160 karakter.`); continue; }
+        if (email.length > 254) { errors.push(`Baris ${rowNo}: Email maksimal 254 karakter.`); continue; }
+        if (division.length > 120) { errors.push(`Baris ${rowNo}: Divisi maksimal 120 karakter.`); continue; }
+        if (department.length > 120) { errors.push(`Baris ${rowNo}: Departemen maksimal 120 karakter.`); continue; }
+        if (phone.length > 40) { errors.push(`Baris ${rowNo}: Telepon maksimal 40 karakter.`); continue; }
         // Unit is an organizational attribute; SC/RPC and PIBC are office locations.
         const unitId = String(row.unit_id || '').trim().toUpperCase();
         const requestedOfficeLocation = String(row.office_location_id || '').trim().toUpperCase();
@@ -2575,7 +2595,7 @@ async function startServer() {
       const VALID_ASSET_STATUSES = ['active', 'assigned', 'available', 'reserved', 'in_repair', 'damaged', 'cannibalized', 'pending_disposal', 'pending_auction', 'auctioned', 'disposed', 'lost', 'inactive', 'in_use', 'loaned', 'maintenance'];
       const VALID_DIVISIONS = (db.divisions || []).map(d => String(d.code).trim().toUpperCase());
       // CR-06: allowlist identik dengan PATCH /api/assets/:id
-      const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
+      const UPDATE_FIELDS = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
 
       let created = 0;
       let updated = 0;
@@ -2640,6 +2660,12 @@ async function startServer() {
         if (existing) {
           if (!allowUpdate) {
             errors.push(`Baris ${rowNo}: ${serial ? `Serial "${serial}"` : `Nomor Accurate "${corp}"`} sudah terdaftar pada aset ${existing.asset_number} (${existing.name}). Aktifkan opsi perbarui bila ingin memperbarui.`);
+            continue;
+          }
+          // Generic import edits must never bypass the dedicated lifecycle workflow.
+          // Status changes belong to /api/assets/:id/lifecycle or the loan workflow.
+          if (requestedStatus !== undefined && requestedStatus !== existing.status) {
+            errors.push(`Baris ${rowNo}: ${existing.asset_number} tidak dapat mengubah status melalui impor massal. Gunakan alur lifecycle atau peminjaman.`);
             continue;
           }
           // Bulk UPDATE uses the same owner-domain authorization as PATCH.
@@ -2800,6 +2826,16 @@ async function startServer() {
       return res.status(409).json({ success: false, message: 'Kategori infrastruktur/server dan lisensi tidak boleh dikonfigurasikan sebagai aset pinjaman.' });
     }
 
+    // Asset status is controlled by dedicated lifecycle and loan workflows.
+    // Generic PATCH/import must not jump directly to disposed, auctioned, lost,
+    // in_repair, or other states without lifecycle authorization and audit rules.
+    if (req.body.status !== undefined && String(req.body.status) !== asset.status) {
+      return res.status(409).json({
+        success: false,
+        message: 'Status aset tidak dapat diubah melalui edit umum. Gunakan menu Lifecycle atau alur peminjaman/pengembalian.',
+      });
+    }
+
     // Loan workflow owns status and loanability while a reservation is approved
     // or a unit is physically borrowed. Manual edits here could desynchronize
     // the asset and its active loan, so require the loan workflow to finish first.
@@ -2842,7 +2878,7 @@ async function startServer() {
     }
 
     // Update mutable fields (not asset_number or owner_division)
-    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
+    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         (asset as any)[key] = req.body[key];
@@ -2876,7 +2912,7 @@ async function startServer() {
       const updated = GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
       res.json({ success: true, data: updated });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
 
@@ -2929,20 +2965,34 @@ async function startServer() {
 
   // Loans
   app.get('/api/loans', (req, res) => {
-    
     if (!requireRbacPermission(req, res, 'loans.read')) return;
     const actor = getActor(req);
-    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
-      return res.json({ success: true, data: db.loans });
-    }
-    // Loan visibility follows borrower ownership or an explicit owner scope
-    // for this module. Employee work location never grants owner-domain access.
-    const data = db.loans.filter(loan =>
-      loan.borrower_id === actor.id
-      || (isPostgresPersistenceActive()
-        ? hasRbacScope(String(actor.id), 'division', loan.owner_division, 'loans')
-        : actor.role === loan.owner_division)
-    );
+    const visibleLoans = (isSuperadminActor(actor) || isAuditorActor(actor))
+      ? db.loans
+      : db.loans.filter(loan =>
+          loan.borrower_id === actor.id
+          || (isPostgresPersistenceActive()
+            ? hasRbacScope(String(actor.id), 'division', loan.owner_division, 'loans')
+            : actor.role === loan.owner_division)
+        );
+
+    // Return server-authoritative action capabilities with each visible loan.
+    // The UI must not infer owner custody from a role label or borrower visibility.
+    const data = visibleLoans.map(loan => ({
+      ...loan,
+      allowed_actions: {
+        approve: loan.status === 'pending_approval'
+          && GabahDomainService.canOperateLoan(loan, actor, 'loans.approve'),
+        reject: loan.status === 'pending_approval'
+          && GabahDomainService.canOperateLoan(loan, actor, 'loans.reject'),
+        handover: loan.status === 'approved'
+          && GabahDomainService.canOperateLoan(loan, actor, 'loans.handover'),
+        return: loan.status === 'borrowed'
+          && !isAuditorActor(actor)
+          && (loan.borrower_id === actor.id
+            || GabahDomainService.canOperateLoan(loan, actor, 'loans.return')),
+      },
+    }));
     return res.json({ success: true, data });
   });
 
@@ -3046,9 +3096,16 @@ async function startServer() {
 
   app.post('/api/loans/:id/return', async (req, res) => {
     try {
-      
-    if (!requireRbacPermission(req, res, 'loans.return')) return;
-    const actor = getActor(req);
+      const actor = getActor(req);
+      if (isAuditorActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+      }
+      const requestedLoan = db.loans.find(loan => loan.id === req.params.id);
+      if (!requestedLoan) return res.status(404).json({ success: false, message: 'Data pinjaman tidak ditemukan.' });
+      // Borrowers may return their own borrowed asset without a custodian
+      // permission. Other borrowers' loans remain permission+scope controlled.
+      const isBorrowerReturningOwnLoan = requestedLoan.borrower_id === actor.id;
+      if (!isBorrowerReturningOwnLoan && !requireRbacPermission(req, res, 'loans.return')) return;
       const { condition, returnNotes } = req.body;
       const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
       await persistDataStore();
@@ -3063,14 +3120,9 @@ async function startServer() {
 
   // Helpdesk Tickets
   app.get('/api/tickets', (req, res) => {
-    
     if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
     const isReporter = (ticket: any) => ticket.reporter_id === actor.id;
-
-    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
-      return res.json({ success: true, data: db.tickets });
-    }
     const canReadTicketOwner = (owner: string) =>
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, 'tickets')
@@ -3078,13 +3130,229 @@ async function startServer() {
     const canReadTicketUnit = (unitId?: string) =>
       Boolean(unitId && isPostgresPersistenceActive()
         && hasRbacScope(String(actor.id), 'unit', unitId, 'tickets'));
+    const withAllowedActions = (ticket: any) => {
+      const hasTicketUpdatePermission = !isPostgresPersistenceActive()
+        || hasRbacPermission(String(actor.id), 'tickets.update');
+      const isOperationalHandler = hasTicketUpdatePermission && (
+        isSuperadminActor(actor)
+        || ticket.assigned_agent_id === actor.id
+        || canReadTicketOwner(String(ticket.category))
+        || canReadTicketUnit(ticket.assigned_unit_id)
+      );
+      const isReporterOfTicket = isReporter(ticket);
+      const canMutate = !isAuditorActor(actor);
+      return {
+        ...ticket,
+        allowed_actions: {
+          start: canMutate && isOperationalHandler && ['open', 'assigned', 'pending_vendor'].includes(String(ticket.status)),
+          wait_vendor: canMutate && isOperationalHandler && ticket.status === 'in_progress',
+          resolve: canMutate && isOperationalHandler && ticket.status === 'in_progress',
+          close: canMutate && (isOperationalHandler || isReporterOfTicket) && ticket.status === 'resolved',
+          reopen: canMutate && (isOperationalHandler || isReporterOfTicket) && ticket.status === 'closed',
+        },
+      };
+    };
+
+    if (isSuperadminActor(actor) || isAuditorActor(actor)) {
+      return res.json({ success: true, data: db.tickets.map(withAllowedActions) });
+    }
     const data = db.tickets.filter(ticket =>
       isReporter(ticket)
       || ticket.assigned_agent_id === actor.id
-      || canReadTicketOwner(ticket.category)
+      || canReadTicketOwner(String(ticket.category))
       || canReadTicketUnit(ticket.assigned_unit_id)
-    );
+    ).map(withAllowedActions);
     return res.json({ success: true, data });
+  });
+
+  // Manual assignment is permission + object-scope driven. Job titles and
+  // display labels never qualify an operator for a ticket queue.
+  const canManageTicketAssignment = (ticket: any, actor: ServerUser): boolean => {
+    if (isAuditorActor(actor)) return false;
+    if (isSuperadminActor(actor)) return true;
+    if (isPostgresPersistenceActive()) {
+      return hasRbacPermission(String(actor.id), 'tickets.assign')
+        && (hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
+          || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets')));
+    }
+    return actor.role === ticket.category;
+  };
+
+  const getEligibleTicketAssignees = (ticket: any): ServerUser[] => db.users.filter(user => {
+    if (user.is_active === false || isAuditorActor(user) || isSuperadminActor(user)) return false;
+    if (!isPostgresPersistenceActive()) return user.role === ticket.category;
+    if (!hasRbacPermission(String(user.id), 'tickets.update')) return false;
+    if (ticket.assigned_unit_id) {
+      return hasRbacScope(String(user.id), 'unit', String(ticket.assigned_unit_id), 'tickets');
+    }
+    return hasRbacScope(String(user.id), 'division', String(ticket.category), 'tickets');
+  });
+
+  app.get('/api/tickets/:id/assignees', (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.assign')) return;
+    const actor = getActor(req);
+    const ticket = db.tickets.find(item => item.id === req.params.id);
+    if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+    if (!canManageTicketAssignment(ticket, actor)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: Anda tidak memiliki kewenangan penugasan pada tiket ini.' });
+    }
+    const data = getEligibleTicketAssignees(ticket).map(user => ({
+      id: user.id,
+      name: user.name,
+      department: user.department,
+    }));
+    return res.json({ success: true, data });
+  });
+
+  app.patch('/api/tickets/:id/assignment', async (req, res) => {
+    try {
+      if (!requireRbacPermission(req, res, 'tickets.assign')) return;
+      const actor = getActor(req);
+      if (isAuditorActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
+      }
+      const ticket = db.tickets.find(item => item.id === req.params.id);
+      if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+      if (!canManageTicketAssignment(ticket, actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: tiket di luar cakupan penugasan Anda.' });
+      }
+      if (!['open', 'assigned'].includes(String(ticket.status))) {
+        return res.status(409).json({ success: false, message: 'Penugasan hanya dapat diubah sebelum pekerjaan dimulai.' });
+      }
+      const previousAssignedAgentId = ticket.assigned_agent_id;
+      const assigneeId = req.body?.assigned_agent_id;
+      if (assigneeId !== null && (typeof assigneeId !== 'string' || !assigneeId.trim())) {
+        return res.status(400).json({ success: false, message: 'ID petugas tidak valid.' });
+      }
+      if (assigneeId === null) {
+        ticket.assigned_agent_id = undefined;
+        ticket.assigned_agent_name = undefined;
+        ticket.status = 'open';
+      } else {
+        const eligible = getEligibleTicketAssignees(ticket);
+        const assignee = eligible.find(user => user.id === assigneeId.trim());
+        if (!assignee) {
+          return res.status(400).json({ success: false, message: 'Petugas tidak aktif atau tidak memiliki permission dan cakupan antrean tiket ini.' });
+        }
+        ticket.assigned_agent_id = assignee.id;
+        ticket.assigned_agent_name = assignee.name;
+        ticket.status = 'assigned';
+      }
+      ticket.updated_at = new Date().toISOString();
+      GabahDomainService.recordAudit(
+        'TICKET_ASSIGNMENT_UPDATED',
+        'Tickets',
+        ticket.assigned_agent_id
+          ? `Menugaskan tiket ${ticket.ticket_number} kepada ${ticket.assigned_agent_name}.`
+          : `Melepas penugasan tiket ${ticket.ticket_number}.`,
+        actor,
+        ticket.id,
+      );
+      if (ticket.assigned_agent_id && ticket.assigned_agent_id !== previousAssignedAgentId) {
+        GabahDomainService.notify({
+          recipient_user_id: ticket.assigned_agent_id,
+          title: `Tiket Ditugaskan: ${ticket.ticket_number}`,
+          message: `Anda ditugaskan menangani tiket "${ticket.title}" dengan prioritas ${String(ticket.priority).toUpperCase()}.`,
+          severity: ticket.priority === 'urgent' ? 'critical' : ticket.priority === 'high' ? 'action_required' : 'info',
+          category: 'sla',
+          link_type: 'ticket',
+          link_id: ticket.id,
+        });
+      }
+      if (!(await persistBeforeSuccess(req, res))) return;
+      return res.json({ success: true, data: ticket });
+    } catch (error: any) {
+      return res.status(typeof error?.statusCode === 'number' ? error.statusCode : 400)
+        .json({ success: false, message: error?.message || 'Penugasan tiket gagal diperbarui.' });
+    }
+  });
+
+  // Ticket discussion is stored in the normalized PostgreSQL ticket_comments table.
+  // Access follows the same per-ticket reporter / assignee / owner-division / unit boundary
+  // as the ticket queue. No client-supplied user identity is trusted.
+  const canAccessTicketRecord = (ticket: any, actor: ServerUser): boolean => {
+    if (isSuperadminActor(actor) || isAuditorActor(actor)) return true;
+    if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
+    if (isPostgresPersistenceActive()) {
+      return hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
+        || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets'));
+    }
+    return actor.role === ticket.category;
+  };
+
+  app.get('/api/tickets/:id/comments', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
+    try {
+      const actor = getActor(req);
+      const ticket = db.tickets.find(item => item.id === req.params.id);
+      if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+      if (!canAccessTicketRecord(ticket, actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: tiket di luar cakupan Anda.' });
+      }
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'TICKET_COMMENTS_REQUIRE_POSTGRES', message: 'Diskusi tiket memerlukan penyimpanan PostgreSQL aktif.' });
+      }
+      const result = await queryRbac(
+        `SELECT c.id, c.ticket_id, c.user_id, u.name AS user_name, c.body, c.created_at
+         FROM ticket_comments c
+         INNER JOIN users u ON u.id = c.user_id
+         WHERE c.ticket_id = $1
+         ORDER BY c.created_at ASC, c.id ASC`,
+        [ticket.id],
+      );
+      return res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, code: 'TICKET_COMMENTS_UNAVAILABLE', message: 'Komentar tiket belum dapat dibaca.' });
+    }
+  });
+
+  app.post('/api/tickets/:id/comments', async (req, res) => {
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
+    try {
+      const actor = getActor(req);
+      if (isAuditorActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
+      }
+      const ticket = db.tickets.find(item => item.id === req.params.id);
+      if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
+      if (!canAccessTicketRecord(ticket, actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: tiket di luar cakupan Anda.' });
+      }
+      const isReporter = ticket.reporter_id === actor.id;
+      const hasUpdate = !isPostgresPersistenceActive() || hasRbacPermission(String(actor.id), 'tickets.update');
+      const canCommentAsHandler = hasUpdate && (
+        isSuperadminActor(actor)
+        || ticket.assigned_agent_id === actor.id
+        || (isPostgresPersistenceActive()
+          && (hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
+            || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets'))))
+        || (!isPostgresPersistenceActive() && actor.role === ticket.category)
+      );
+      if (!isReporter && !canCommentAsHandler) {
+        return res.status(403).json({ success: false, message: 'Hanya pelapor atau petugas berwenang yang dapat menambahkan komentar.' });
+      }
+      const body = req.body?.body;
+      if (typeof body !== 'string' || !body.trim() || body.trim().length > 4000) {
+        return res.status(400).json({ success: false, message: 'Komentar wajib diisi dan maksimal 4.000 karakter.' });
+      }
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'TICKET_COMMENTS_REQUIRE_POSTGRES', message: 'Diskusi tiket memerlukan penyimpanan PostgreSQL aktif.' });
+      }
+      const saved = await withRbacTransaction(async client => {
+        const result = await client.query(
+          `INSERT INTO ticket_comments (ticket_id, user_id, body)
+           VALUES ($1, $2, $3)
+           RETURNING id, ticket_id, user_id, body, created_at`,
+          [ticket.id, actor.id, body.trim()],
+        );
+        return result.rows[0];
+      });
+      // The comment transaction is already committed; prevent the global JSON persistence gate from writing a second, unrelated snapshot.
+      (req as any).__gabahPersisted = true;
+      return res.status(201).json({ success: true, data: { ...saved, user_name: actor.name } });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, code: 'TICKET_COMMENT_SAVE_FAILED', message: 'Komentar belum dapat disimpan.' });
+    }
   });
 
   app.post('/api/tickets', async (req, res) => {
@@ -3108,9 +3376,12 @@ async function startServer() {
   // open → in_progress → resolved → closed; open/reopened work may be
   // assigned. Arbitrary status strings and skipped transitions are rejected.
   const TICKET_TRANSITIONS: Record<string, string[]> = {
-    open: ['in_progress', 'resolved', 'closed'],
-    assigned: ['in_progress', 'resolved', 'closed'],
-    in_progress: ['resolved', 'closed', 'open'],
+    // Work must enter the active queue before an operator can resolve it;
+    // closing is reserved for an already-resolved ticket (reporter or handler).
+    open: ['in_progress'],
+    assigned: ['in_progress'],
+    in_progress: ['pending_vendor', 'resolved', 'open'],
+    pending_vendor: ['in_progress'],
     resolved: ['closed', 'open'],
     closed: ['open'],
   };
@@ -3118,7 +3389,7 @@ async function startServer() {
   app.patch('/api/tickets/:id/status', async (req, res) => {
     try {
       
-    if (!requireRbacPermission(req, res, 'tickets.update')) return;
+    if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
       if (isAuditorActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
@@ -3134,11 +3405,15 @@ async function startServer() {
         : actor.role === ticket.category;
       const canReadTicketUnit = Boolean(ticket.assigned_unit_id && isPostgresPersistenceActive()
         && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'));
-      const canUpdateTicket = isSuperadminActor(actor)
-        || isReporter
+      const hasTicketUpdatePermission = !isPostgresPersistenceActive()
+        || hasRbacPermission(String(actor.id), 'tickets.update');
+      const isOperationalTicketHandler = hasTicketUpdatePermission && (
+        isSuperadminActor(actor)
         || ticket.assigned_agent_id === actor.id
         || canReadTicketOwner
-        || canReadTicketUnit;
+        || canReadTicketUnit
+      );
+      const canUpdateTicket = isOperationalTicketHandler || isReporter;
       if (!canUpdateTicket) {
         return res.status(403).json({
           success: false,
@@ -3161,6 +3436,23 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Status tujuan wajib diisi.' });
       }
       const allowed = TICKET_TRANSITIONS[currentStatus] || [];
+      if (!isOperationalTicketHandler) {
+        // Pelapor boleh mengonfirmasi penyelesaian atau membuka kembali tiket
+        // yang sudah ditutup, tetapi tidak boleh mengubah tiket menjadi selesai
+        // atau mengelola progres operasional petugas.
+        const reporterTransitions: Record<string, string[]> = {
+          resolved: ['closed'],
+          closed: ['open'],
+        };
+        const reporterAllowed = reporterTransitions[currentStatus] || [];
+        if (!reporterAllowed.includes(nextStatus)) {
+          return res.status(403).json({
+            success: false,
+            message: 'Pelapor hanya dapat menutup tiket yang sudah selesai atau membuka kembali tiket yang telah ditutup.',
+          });
+        }
+      }
+
       if (!allowed.includes(nextStatus)) {
         return res.status(400).json({
           success: false,
@@ -3624,18 +3916,17 @@ async function startServer() {
     
     if (!requireRbacPermission(req, res, 'notifications.read')) return;
     const actor = getActor(req);
-    const filtered = db.notifications.filter(n => {
-      const isPhotoNotification = n.recipient_role === 'Humas' ||
-        (n.title && (n.title.toLowerCase().includes('foto') || n.title.toLowerCase().includes('dokumentasi humas') || n.title.toLowerCase().includes('liputan foto'))) ||
-        (n.message && (n.message.toLowerCase().includes('peliputan foto') || n.message.toLowerCase().includes('dokumentasi foto')));
-      if (isPhotoNotification && !hasApplicationRole(actor, 'humas') && !isSuperadminActor(actor)) return false;
-      return isNotificationRecipient(actor, n);
-    });
+    // Recipient metadata is authoritative. Do not infer Humas-only access from
+    // title/message keywords: an explicit user or division recipient must remain
+    // visible even when the notification text mentions photo documentation.
+    const filtered = db.notifications.filter(n => isNotificationRecipient(actor, n));
     res.json({ success: true, data: filtered });
   });
 
   app.patch('/api/notifications/:id/read', (req, res) => {
-    if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
+    // Marking one notification read is a recipient self-service action;
+    // read_all is reserved for the bulk endpoint below.
+    if (!requireRbacPermission(req, res, 'notifications.read')) return;
     
     const actor = getActor(req);
     const notif = db.notifications.find(n => n.id === req.params.id);

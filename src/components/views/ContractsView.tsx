@@ -88,6 +88,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   // Legacy file-store compatibility is restricted to actual IT/GA roles.
   // Supply Chain and PIBC are office/location labels, not application roles.
   const canManage = !isAuditor && hasPermission('contracts.create', ['IT', 'GA']);
+  const canCreateLinkedTicket = !isAuditor && hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const canUploadDocuments = !isAuditor && hasPermission('contracts.documents.upload', ['IT', 'GA']);
 
   const vendors = useMemo(() => Array.from(new Set(contracts.map(c => c.vendor_name))).sort(), [contracts]);
@@ -332,7 +333,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
                   >
                     <History className="w-3.5 h-3.5" /> Log Notifikasi ({contract.id in notifLogs ? notifLogs[contract.id].length : '…'})
                   </button>
-                  {canDecide && (
+                  {canCreateLinkedTicket && (
                     <button
                       onClick={() => onCreateLinkedTicket(contract)}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-[11px] font-semibold text-slate-700"
