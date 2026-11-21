@@ -979,3 +979,6 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 - Follow-up UI alignment: the asset edit modal no longer offers direct operational-status changes, and the App update handler no longer sends `status` through generic PATCH. Assignment/unassignment continues through the dedicated assignment endpoint; lifecycle states remain handled by the Lifecycle workflow.
 - Extended the same regression script to cover both UI payload paths and the read-only status explanation.
+
+
+- Updated the loan authorization integration fixture so damaged/available setup uses the dedicated Lifecycle and assignment endpoints. Assertions for generic PATCH rejection remain direct PATCH calls; this preserves the security contract instead of weakening it to satisfy old test setup.
