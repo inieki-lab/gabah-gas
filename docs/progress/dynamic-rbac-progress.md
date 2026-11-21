@@ -1217,3 +1217,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Route inventory review found that `/api/meeting-types` and `/api/meeting-facilities` were protected by their own RBAC permissions but absent from the global `meeting_rooms` lifecycle route map.
 - Added both route families to the module resolver and managed-path guard so disabling Meeting Rooms blocks master-data APIs as well as room/reservation operations.
 - Added a regression assertion for both route families. Exact-head CI is pending; no merge until all checks pass.
+
+
+## 2026-11-22 — Case-insensitive persistence response gate
+
+- Security review found Express route matching and the authentication middleware are case-insensitive, but the global persistence response gate checked `req.path.startsWith('/api/')` case-sensitively.
+- An uppercase path such as `/API/...` could therefore reach a state-changing Express route while skipping the global pre-response persistence gate.
+- The gate now normalizes the request path to lowercase before deciding whether a mutation must wait for persistence. Added a regression assertion to the PostgreSQL runtime-persistence contract.
+- Working branch: `fix/persistence-gate-case-insensitive-api-2026-11-22`; exact-head CI required before merge.
