@@ -176,8 +176,8 @@ Content-Type: application/json
 | Endpoint | Method | Autentikasi | Hak Akses | Deskripsi |
 |:---|:---:|:---:|:---:|:---|
 | `/api/notifications` | `GET` | Bearer Token | Terfilter Scope | Mengambil notifikasi yang dialokasikan untuk user/peran aktif |
-| `/api/notifications/:id/read` | `PATCH` | Bearer Token | Semua (termasuk Auditor) | Menandai satu notifikasi telah dibaca (`is_read: true`) |
-| `/api/notifications/read-all` | `POST` | Bearer Token | Semua (termasuk Auditor) | Menandai seluruh notifikasi relevan telah dibaca |
+| `/api/notifications/:id/read` | `PATCH` | Bearer Token + `notifications.read` | Penerima notifikasi | Menandai satu notifikasi milik penerima; ID milik orang lain menghasilkan 404 |
+| `/api/notifications/read-all` | `POST` | Bearer Token + `notifications.read_all` | Scope penerima | Menandai seluruh notifikasi relevan yang ditujukan kepada aktor |
 
 ---
 
