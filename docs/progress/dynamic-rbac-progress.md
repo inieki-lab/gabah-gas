@@ -999,3 +999,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Found a count mismatch in the per-user role assignment endpoint: its "remaining Superadmin" SQL count included inactive accounts, unlike the user deactivation/deletion guards.
 - The assignment check now counts only users whose account is active, and only applies the last-active-Superadmin restriction when the target account itself is active.
 - Added a regression assertion to the Dynamic RBAC foundation test. No role assignments were modified.
+
+
+### CI assertion correction and ticket API audit — 2026-11-21
+
+- Latest-head CI exposed one stale static assertion (139/140 checks passed): the per-user role assignment query now selects `is_active` as part of the last-active-Superadmin safeguard. Updated the contract test to assert the actual normalized-user lookup plus active-state check; implementation authorization was not loosened.
+- Ticket route audit confirms list visibility and status mutation use `tickets.read` / `tickets.update` plus reporter, assignee, owner-division, and unit boundaries. Reporter transitions are restricted to confirming `resolved → closed` and reopening `closed → open`.
+- Follow-up gap: normalized schema defines `ticket_comments`, but current server route inventory exposes ticket list/create/status only; comment persistence/API is not yet surfaced. Keep this as a tracked functional gap; do not claim ticket discussion is PostgreSQL-persistent until a dedicated authorized endpoint and UI flow are implemented.
+- Exact-head CI run #2776 is in progress on commit `3b5a91f7b8596ad1ea5ce789a203396d089c9939`; PR #177 remains draft/open and unmerged.
