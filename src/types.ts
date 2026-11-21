@@ -160,6 +160,15 @@ export type TicketStatus = 'open' | 'assigned' | 'in_progress' | 'pending_vendor
 // SC/PIBC remain readable for legacy ticket history; new requests use IT/GA/ME.
 export type TicketCategory = 'IT' | 'GA' | 'ME' | 'SC' | 'PIBC';
 
+export interface TicketComment {
+  id: number;
+  ticket_id: string;
+  user_id: string;
+  user_name: string;
+  body: string;
+  created_at: string;
+}
+
 export interface Ticket {
   id: string;
   ticket_number: string; // e.g. TKT-2026-0001
