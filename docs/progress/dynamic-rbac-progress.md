@@ -952,3 +952,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 
 ### Asset mutation authorization response semantics — 2026-11-20\n\n- Asset assignment and physical movement already required both the operation permission and matching owner-domain scope in the domain service. However, authorization failures were thrown as generic errors, and the move route flattened every failure to HTTP 400.\n- Changed denied assign/move operations to carry HTTP 403 and made the move route preserve domain status codes (including future 409 conflicts), matching the existing assign route behavior.\n- Added `test:asset-mutation-http-status` and wired it into CI. This changes response semantics only; it does not modify asset ownership, location, assignment, or movement records.\n- Exact-head CI is required before treating this batch as verified.\n
+
+### Ticket reporter workflow authorization — 2026-11-21
+
+- Ticket status API previously allowed the ticket reporter to use every operational transition, including marking work resolved or moving tickets into staff progress states.
+- Restricted non-operational reporters to confirming closure after staff resolution (`resolved → closed`) or reopening a closed ticket (`closed → open`). Superadmin, assigned agent, and users with matching ticket owner/unit scope retain the operational transition workflow.
+- Added a regression contract and CI step. No ticket data was changed.
