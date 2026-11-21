@@ -1093,3 +1093,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Kept `POST /api/notifications/read-all` behind `notifications.read_all`.
 - Extended `scripts/notification-recipient-rbac-verify.mjs` to assert the separation between individual and bulk read permissions.
 - CI for commit `139b5f54ac946ea501de667c935919bfb1711c83` is queued; do not treat this correction as CI-verified until that run completes.
+
+
+## 2026-11-21 — Dedicated ticket-assignment capability
+
+- Authorization review found that the permission catalogue already defined `tickets.assign`, but the assignee lookup and assignment mutation endpoints still required the broader `tickets.update` capability.
+- Separated assignment authority from ticket operation authority: listing eligible assignees and changing an assignment now require `tickets.assign` plus the matching ticket division/unit scope.
+- Eligible assignee accounts still require `tickets.update` and the matching scope because they must be able to operate the ticket after assignment; inactive accounts, Auditor, and Superadmin remain excluded as assignees.
+- Added `GabahService.canAssignTickets` and changed the “Atur Petugas” UI gate to the dedicated permission so the UI no longer advertises assignment to update-only users.
+- Updated `scripts/ticket-assignment-api-verify.mjs` to cover the dedicated actor permission, the separate operator permission for candidates, and the UI capability gate.
+- CI verification for the new commits is pending; do not treat this batch as validated until the exact branch head completes CI.
