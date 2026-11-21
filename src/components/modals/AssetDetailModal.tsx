@@ -100,6 +100,19 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const isGA = ownerDivision === 'GA' || (!isSC && !isPIBC && !isIT);
   const isLicense = asset.category_type === 'License' || asset.category_code === 'SLIC' || asset.asset_number?.includes('-SLIC-');
   const canEdit = currentUser ? GabahService.canEditAsset(currentUser, asset) : false;
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const hasPermissionMetadata = Array.isArray(currentUser?.permission_keys);
+  const isSuperAdmin = currentUser?.is_superadmin === true
+    || currentUser?.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser?.role === 'Admin GABAH');
+  const hasEffectivePermission = (permission: string, legacyRoles: string[]): boolean => !isAuditor && (
+    isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUser?.permission_keys?.includes('*') === true || currentUser?.permission_keys?.includes(permission) === true
+      : !!currentUser && legacyRoles.includes(currentUser.role))
+  );
+  const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
 
   let ownershipRuleText = '';
   if (asset.category_code === 'INV-F' || asset.asset_number?.includes('-INV-F-')) {
@@ -732,7 +745,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              {!GabahService.isAuditor(currentUser) && (
+              {canCreateTicket && (
                 <button
                   onClick={() => {
                     onClose();
@@ -745,7 +758,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 </button>
               )}
 
-              {asset.is_loanable && !GabahService.isAuditor(currentUser) && (
+              {asset.is_loanable && canCreateLoan && (
                 <button
                   onClick={() => {
                     onClose();
