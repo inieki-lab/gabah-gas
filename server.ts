@@ -3171,7 +3171,7 @@ async function startServer() {
     if (isAuditorActor(actor)) return false;
     if (isSuperadminActor(actor)) return true;
     if (isPostgresPersistenceActive()) {
-      return hasRbacPermission(String(actor.id), 'tickets.update')
+      return hasRbacPermission(String(actor.id), 'tickets.assign')
         && (hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
           || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets')));
     }
@@ -3189,7 +3189,7 @@ async function startServer() {
   });
 
   app.get('/api/tickets/:id/assignees', (req, res) => {
-    if (!requireRbacPermission(req, res, 'tickets.update')) return;
+    if (!requireRbacPermission(req, res, 'tickets.assign')) return;
     const actor = getActor(req);
     const ticket = db.tickets.find(item => item.id === req.params.id);
     if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
@@ -3206,7 +3206,7 @@ async function startServer() {
 
   app.patch('/api/tickets/:id/assignment', async (req, res) => {
     try {
-      if (!requireRbacPermission(req, res, 'tickets.update')) return;
+      if (!requireRbacPermission(req, res, 'tickets.assign')) return;
       const actor = getActor(req);
       if (isAuditorActor(actor)) {
         return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
