@@ -1,3 +1,19 @@
+# Pembaruan operasional — 21 November 2026 (PR #177)
+
+## Helpdesk: diskusi tiket dan hasil verifikasi
+
+- Branch kerja: `fix/rbac-superadmin-admin-entry-2026-11-20`; PR #177 tetap Draft/Open, belum di-merge.
+- API `GET /api/tickets/:id/comments` dan `POST /api/tickets/:id/comments` menggunakan tabel PostgreSQL `ticket_comments` yang sudah ada pada migration 001.
+- Hak baca komentar mengikuti cakupan objek tiket (pelapor, petugas, scope divisi/unit, Superadmin; Auditor read-only). Penulisan dibatasi pada pelapor atau petugas yang memiliki `tickets.update` dan scope yang sesuai. Identitas penulis diambil dari sesi terautentikasi, bukan body request.
+- Komentar dibatasi 4.000 karakter dan disimpan melalui transaksi PostgreSQL. Response menandai transaksi telah committed agar persistence middleware tidak melakukan snapshot kedua yang tidak diperlukan.
+- UI daftar tiket menampilkan diskusi, penulis, waktu, dan input komentar; Auditor tidak diberi kontrol kirim.
+- Regression `test:ticket-comments-api` mencakup tabel, route guard, object-level scope, Auditor read-only, validasi panjang, transaksi, API client, dan UI.
+- **CI run #2815 / 44902087918 SUCCESS — 90/90 steps pada code SHA `0d53a814e307622031492f545dade3c19c99d11f`.** Typecheck, production build, Docker runtime smoke, PostgreSQL 17 fresh-database/persistence, P0 security, dan ticket-comments regression lulus. Setelah verifikasi ini, hanya dokumentasi progres yang diperbarui; tidak ada perubahan kode fungsional pada catatan ini.
+- Batasan yang masih terbuka: belum ada endpoint/UI penugasan ulang manual petugas tiket; routing IT tetap otomatis hanya bila tepat satu petugas aktif memenuhi permission + scope. Lampiran tiket belum tersedia (upload yang ada hanya untuk dokumen kontrak).
+- Status kesiapan: **belum GO produksi**. Browser UAT tiap persona/lokasi, uji backup/restore DB + volume uploads, staging deployment/rollback, dan sign-off pemilik proses tetap wajib.
+
+---
+
 # Pembaruan operasional — 20 November 2026 (setelah PR #172)
 
 ## Verifikasi terbaru di main
