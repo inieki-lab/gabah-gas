@@ -114,6 +114,10 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   });
 
   const canManage = GabahService.canManageTickets(currentUser);
+  const canPerformTicketAction = (ticket: Ticket, action: 'start' | 'wait_vendor' | 'resolve' | 'close' | 'reopen') =>
+    ticket.allowed_actions
+      ? ticket.allowed_actions[action] === true
+      : GabahService.canManageTicket(ticket, currentUser);
 
   // SLA logic moved to reusable <SlaTimer /> component (live countdown, 30s refresh)
 
@@ -316,9 +320,9 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
                         <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-100">
                           <span>{ticket.reporter_name} ({ticket.category})</span>
-                          {GabahService.canManageTicket(ticket, currentUser) && (
+                          {(ticket.allowed_actions ? Object.values(ticket.allowed_actions).some(Boolean) : GabahService.canManageTicket(ticket, currentUser)) && (
                             <div>
-                              {(ticket.status === 'open' || ticket.status === 'assigned' || ticket.status === 'pending_vendor') && (
+                              {canPerformTicketAction(ticket, 'start') && (
                                 <button
                                   onClick={() => onUpdateTicketStatus(ticket.id, 'in_progress')}
                                   className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-[10px] transition-all"
@@ -326,7 +330,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                                   {ticket.status === 'pending_vendor' ? 'Lanjutkan' : 'Kerjakan'}
                                 </button>
                               )}
-                              {ticket.status === 'in_progress' && (
+                              {canPerformTicketAction(ticket, 'wait_vendor') && (
                                 <button
                                   onClick={() => onUpdateTicketStatus(ticket.id, 'pending_vendor')}
                                   className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded font-bold text-[10px] transition-all"
@@ -334,7 +338,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                                   Tunggu Vendor
                                 </button>
                               )}
-                              {ticket.status === 'in_progress' && (
+                              {canPerformTicketAction(ticket, 'resolve') && (
                                 <button
                                   onClick={() => setResolvingTicketId(ticket.id)}
                                   className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-bold text-[10px] flex items-center gap-1 transition-all"
@@ -343,6 +347,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                                   Selesai
                                 </button>
                               )}
+                              {canPerformTicketAction(ticket, 'close') && <button onClick={() => onUpdateTicketStatus(ticket.id, 'closed')} className="px-2 py-1 bg-slate-700 hover:bg-slate-800 text-white rounded font-bold text-[10px]">Tutup</button>}
+                              {canPerformTicketAction(ticket, 'reopen') && <button onClick={() => onUpdateTicketStatus(ticket.id, 'open')} className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold text-[10px]">Buka Kembali</button>}
                             </div>
                           )}
                         </div>
@@ -436,9 +442,9 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   </div>
 
                   {/* Status action buttons */}
-                  {GabahService.canManageTicket(ticket, currentUser) && (
+                  {(ticket.allowed_actions ? Object.values(ticket.allowed_actions).some(Boolean) : GabahService.canManageTicket(ticket, currentUser)) && (
                     <div className="flex items-center gap-2">
-                      {(ticket.status === 'open' || ticket.status === 'assigned' || ticket.status === 'pending_vendor') && (
+                      {canPerformTicketAction(ticket, 'start') && (
                         <button
                           onClick={() => onUpdateTicketStatus(ticket.id, 'in_progress')}
                           className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-xs shadow-xs"
@@ -447,7 +453,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                         </button>
                       )}
 
-                      {ticket.status === 'in_progress' && (
+                      {canPerformTicketAction(ticket, 'wait_vendor') && (
                         <button
                           onClick={() => onUpdateTicketStatus(ticket.id, 'pending_vendor')}
                           className="px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold transition-all text-xs shadow-xs"
@@ -456,7 +462,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                         </button>
                       )}
 
-                      {ticket.status === 'in_progress' && (
+                      {canPerformTicketAction(ticket, 'resolve') && (
                         <button
                           onClick={() => setResolvingTicketId(ticket.id)}
                           className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold transition-all text-xs flex items-center gap-1.5 shadow-xs"
@@ -464,6 +470,12 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           Selesaikan Tiket
                         </button>
+                      )}
+                      {canPerformTicketAction(ticket, 'close') && (
+                        <button onClick={() => onUpdateTicketStatus(ticket.id, 'closed')} className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white font-bold transition-all text-xs">Konfirmasi Selesai</button>
+                      )}
+                      {canPerformTicketAction(ticket, 'reopen') && (
+                        <button onClick={() => onUpdateTicketStatus(ticket.id, 'open')} className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold transition-all text-xs">Buka Kembali</button>
                       )}
                     </div>
                   )}
