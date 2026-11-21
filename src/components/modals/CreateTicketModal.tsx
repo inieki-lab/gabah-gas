@@ -184,6 +184,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   React.useEffect(() => {
     if (isOpen) {
+      setCategory(initialCategory);
       if (preselectedAssetId) {
         handleAssetSelect(preselectedAssetId);
       } else {
@@ -200,7 +201,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         }
       }
     }
-  }, [isOpen, preselectedAssetId, linkedContract]);
+  }, [isOpen, preselectedAssetId, linkedContract, initialCategory]);
 
   if (!isOpen) return null;
 
