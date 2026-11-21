@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const source = fs.readFileSync('server.ts', 'utf8');
+const start = source.indexOf("app.patch('/api/tickets/:id/status'");
+const end = source.indexOf('const validateMaintenanceInput', start);
+assert.ok(start >= 0 && end > start, 'ticket status route must exist');
+const route = source.slice(start, end);
+assert.ok(route.includes('const isOperationalTicketHandler = isSuperadminActor(actor)'));
+assert.ok(route.includes('const canUpdateTicket = isOperationalTicketHandler || isReporter'));
+assert.ok(route.includes("resolved: ['closed']"));
+assert.ok(route.includes("closed: ['open']"));
+assert.ok(route.includes('if (!reporterAllowed.includes(nextStatus))'));
+assert.ok(route.includes("res.status(403).json({"));
+assert.ok(route.includes('const allowed = TICKET_TRANSITIONS[currentStatus]'));
+console.log('PASS: Ticket reporters can confirm resolved tickets or reopen closed tickets, not operate staff workflow.');
