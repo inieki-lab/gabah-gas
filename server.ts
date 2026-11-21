@@ -724,6 +724,16 @@ async function startServer() {
       }
       const { name, email, role, division, department, password, phone } = req.body || {};
       const validPrimaryRoles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor'];
+      const profileTextFields: Array<[string, unknown, number]> = [
+        ['division', division, 120],
+        ['department', department, 120],
+        ['phone', phone, 40],
+      ];
+      for (const [field, value, maxLength] of profileTextFields) {
+        if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+          return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
+        }
+      }
       const requestedPrimaryRole = role === 'Superadmin' ? 'Admin GABAH' : (role || 'Karyawan');
       if (typeof requestedPrimaryRole !== 'string' || !validPrimaryRoles.includes(requestedPrimaryRole)) {
         return res.status(400).json({ success: false, message: 'Role primer tidak valid. Humas/Sekretariat adalah role fungsi; RPC/SC dan PIBC adalah lokasi kerja.' });
@@ -732,6 +742,9 @@ async function startServer() {
         || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
+      const normalizedDivision = typeof division === 'string' && division.trim() ? division.trim() : 'Umum';
+      const normalizedDepartment = typeof department === 'string' && department.trim() ? department.trim() : 'Operasional';
+      const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
       const primaryRole = requestedPrimaryRole as ServerUser['role'];
       // ORG-MODEL: jabatan/unit/lokasi opsional saat pembuatan user — atribut
       // independen dari role. Divalidasi terhadap master masing-masing.
@@ -788,12 +801,12 @@ async function startServer() {
         email: email.trim().toLowerCase(),
         role: primaryRole,
         role_label: roleLabels[primaryRole] || 'Pegawai Operasional',
-        division: division || 'Umum',
-        department: department || 'Operasional',
+        division: normalizedDivision,
+        department: normalizedDepartment,
         job_level_code: newJobLevel,
         unit_id: newUnitId || null,
         office_location_id: newOfficeId || null,
-        phone: phone || '',
+        phone: normalizedPhone,
         avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
         is_active: true,
         password_hash: hash,
