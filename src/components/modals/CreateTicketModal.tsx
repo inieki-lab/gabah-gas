@@ -286,6 +286,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               <button
                 type="button"
+                disabled={!canCreateStandard}
                 onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'IT'
@@ -297,6 +298,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
+                disabled={!canCreateStandard}
                 onClick={() => { setCategory('GA'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'GA' 
@@ -308,6 +310,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </button>
               <button
                 type="button"
+                disabled={!canCreateStandard}
                 onClick={() => { setCategory('IT'); setRelatedAssetId(''); }}
                 className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${
                   category === 'IT' && title.toLowerCase().includes('lisensi')
