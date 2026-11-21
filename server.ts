@@ -742,7 +742,7 @@ async function startServer() {
         || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
-      const normalizedDivision = typeof division === 'string' && division.trim() ? division.trim() : 'Umum';
+      const normalizedDivision = (typeof division === 'string' && division.trim() ? division.trim() : 'Umum') as ServerUser['division'];
       const normalizedDepartment = typeof department === 'string' && department.trim() ? department.trim() : 'Operasional';
       const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
       const primaryRole = requestedPrimaryRole as ServerUser['role'];
