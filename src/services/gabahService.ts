@@ -1,4 +1,5 @@
 import { Asset, AssetStatus, AssetCondition, Loan, Ticket, UserProfile, UserRole, RoomReservation, MeetingFacilityItem } from '../types';
+import { parseLoanDateTimestamp } from '../../shared/loan-datetime';
 
 /**
  * Currency Formatter (IDR)
@@ -594,8 +595,8 @@ export class GabahService {
     existingLoans: Loan[],
     excludeLoanId?: string
   ): { hasConflict: boolean; conflictingLoan?: Loan; message?: string } {
-    const newStart = new Date(startDateIso).getTime();
-    const newDue = new Date(dueDateIso).getTime();
+    const newStart = parseLoanDateTimestamp(startDateIso);
+    const newDue = parseLoanDateTimestamp(dueDateIso);
 
     if (isNaN(newStart) || isNaN(newDue)) {
       return { hasConflict: true, message: 'Format tanggal tidak valid.' };
@@ -611,8 +612,8 @@ export class GabahService {
     });
 
     for (const loan of activeReservations) {
-      const existingStart = new Date(loan.start_date).getTime();
-      const existingDue = new Date(loan.due_date).getTime();
+      const existingStart = parseLoanDateTimestamp(loan.start_date);
+      const existingDue = parseLoanDateTimestamp(loan.due_date);
 
       if (newStart < existingDue && newDue > existingStart) {
         return {
