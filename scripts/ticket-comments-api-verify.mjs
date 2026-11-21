@@ -20,3 +20,13 @@ assert.match(commentRoutes, /INSERT INTO ticket_comments \(ticket_id, user_id, b
 assert.match(commentRoutes, /withRbacTransaction/);
 assert.match(commentRoutes, /TICKET_COMMENTS_REQUIRE_POSTGRES/);
 console.log('PASS: ticket comments require ticket visibility, reporter/handler write authority, Auditor read-only, bounded input, and transactional PostgreSQL persistence.');
+
+const apiClient = fs.readFileSync(new URL('../src/services/gabahApi.ts', import.meta.url), 'utf8');
+const ticketView = fs.readFileSync(new URL('../src/components/views/TicketsView.tsx', import.meta.url), 'utf8');
+assert.match(apiClient, /getTicketComments\(ticketId: string\)/);
+assert.match(apiClient, /addTicketComment\(ticketId: string, body: string\)/);
+assert.match(ticketView, /Lihat Diskusi \/ Komentar/);
+assert.match(ticketView, /submitTicketComment/);
+assert.match(ticketView, /!isAuditor/);
+assert.match(ticketView, /maxLength=\{4000\}/);
+console.log('PASS: ticket discussion is reachable from the list UI and Auditor cannot submit comments.');
