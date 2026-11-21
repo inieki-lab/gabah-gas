@@ -60,6 +60,9 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
       : ['IT', 'GA'].includes(currentUser.role)));
   const canCreate = hasKnowledgePermission('knowledge.create');
+  const canVote = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('knowledge.vote')
+    : true));
   const canUpdate = hasKnowledgePermission('knowledge.update');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -295,7 +298,7 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
               <span className="flex items-center gap-1">
                 <Eye className="w-4 h-4 text-slate-500" /> {selectedArticle.view_count} kali dibaca
               </span>
-              {!isAuditor && (
+              {canVote && (
                 <button
                   onClick={() => handleVote(selectedArticle.id, selectedArticle.helpful_votes)}
                   disabled={votedArticles[selectedArticle.id] !== undefined}

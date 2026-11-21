@@ -110,3 +110,5 @@ assert.match(dashboardSource, /\{canCreateTicket && \([\s\S]*?Lapor Kendala Baru
 console.log('Dashboard quick-action permissions: PASS (loan and ticket creation CTAs follow effective capabilities)');
 assert.doesNotMatch(dashboardSource, /\{!isAuditor && \([\s\S]*?onOpenNewTicketModal/);
 console.log('Dashboard operator shortcut permissions: PASS (ticket creation is not inferred from non-Auditor status)');
+assert.match(dashboardSource, /hasEffectivePermission\('tickets\.create\.me'\)/);
+console.log('Dashboard ME requester entry: PASS (generic ticket action supports tickets.create.me)');

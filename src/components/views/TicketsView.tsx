@@ -144,7 +144,9 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     'Dokumen BAST serah terima perangkat pengganti telah diterbitkan secara resmi melalui GABAH.',
   ];
 
-  const isSuperAdmin = currentUser?.is_superadmin === true || currentUser?.role_keys?.includes('superadmin') === true;
+  const hasPermissionMetadata = Array.isArray(currentUser?.permission_keys);
+  const isSuperAdmin = currentUser?.is_superadmin === true || currentUser?.role_keys?.includes('superadmin') === true
+    || (!hasPermissionMetadata && currentUser?.role === 'Admin GABAH');
   const hasAssignedRole = (key: string) => currentUser?.role_keys?.includes(key) === true;
   const isIT = hasAssignedRole('it') || (!Array.isArray(currentUser?.permission_keys) && currentUser?.role === 'IT');
   const isGA = hasAssignedRole('ga') || (!Array.isArray(currentUser?.permission_keys) && currentUser?.role === 'GA');
@@ -157,6 +159,9 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     ? currentUser.permission_keys.includes('tickets.queue.me')
     : hasAssignedRole('admin_tiket_me');
   const isAuditor = GabahService.isAuditor(currentUser);
+  const canCreateTicket = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('tickets.create') || currentUser.permission_keys!.includes('tickets.create.me')
+    : ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser.role)));
   // Self-service roles see their own submissions; operating divisions see the
   // tickets already authorized for their division by GabahService.
   const safeTickets = Array.isArray(tickets) ? tickets : [];
@@ -255,7 +260,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateTicket && (
             <button
               id="btn-create-ticket"
               onClick={handleOpenCreate}
@@ -708,7 +713,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   ? 'Tidak ada tiket kendala fasilitas GA yang menunggu penanganan.'
                   : 'Tidak ada tiket yang cocok dengan pencarian atau filter status yang dipilih.'}
               </p>
-              {isSelfTicketsOnly && (
+              {isSelfTicketsOnly && canCreateTicket && (
                 <button
                   onClick={handleOpenCreate}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs"

@@ -66,7 +66,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isHumas = !isSuperAdmin && hasEffectivePermission('room_reservations.documentation.read', ['Humas']);
   const isSekdir = !isSuperAdmin && hasEffectivePermission('room_reservations.override_priority', ['Sekretaris Direksi']);
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
-  const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']) || hasEffectivePermission('tickets.create.me');
   const canCreateAsset = hasEffectivePermission('assets.create', ['Admin GABAH', 'IT', 'GA']);
   const operationalManagementPermissions = [
     'assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign',

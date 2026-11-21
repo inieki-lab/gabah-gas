@@ -126,6 +126,10 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
       : ['IT', 'GA'].includes(currentUser.role)));
   const canCreateAsset = hasAssetPermission('assets.create');
   const canImportAssets = hasAssetPermission('assets.bulk_import');
+  const canCreateTicket = !isAuditor && (isSuperAdmin
+    || (hasPermissionMetadata
+      ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('tickets.create')
+      : ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser.role)));
 
   return (
     <div className="space-y-6">
@@ -454,7 +458,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
-                        {onReportAsset && !isAuditor && (
+                        {onReportAsset && canCreateTicket && (
                           <button
                             onClick={() => onReportAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
