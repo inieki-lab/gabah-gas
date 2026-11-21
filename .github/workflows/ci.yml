@@ -229,6 +229,9 @@ jobs:
       - name: Meeting room reservation regression
         run: npm run test:meeting-room
 
+      - name: Room and facility durable persistence regression
+        run: npm run test:room-domain-persistence
+
       - name: Meeting room additional-role UI regression
         run: npm run test:room-capability-ui
 

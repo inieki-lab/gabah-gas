@@ -1217,3 +1217,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Route inventory review found that `/api/meeting-types` and `/api/meeting-facilities` were protected by their own RBAC permissions but absent from the global `meeting_rooms` lifecycle route map.
 - Added both route families to the module resolver and managed-path guard so disabling Meeting Rooms blocks master-data APIs as well as room/reservation operations.
 - Added a regression assertion for both route families. Exact-head CI is pending; no merge until all checks pass.
+
+
+## 2026-11-22 — Durable persistence for room and facility mutations
+
+- Audit found 13 room/reservation/type/facility mutation services called `persistDataStore()` without awaiting it, then returned success immediately. A database write failure could therefore be reported after the API had already claimed success.
+- Updated all 13 service operations to await persistence and propagate failures as HTTP 503; route handlers now await the services and preserve the failure status instead of converting it to a generic 400.
+- Added a CI regression contract covering all 13 service methods and their 13 mutation routes.
+- The change deliberately preserves the current GA/IT permission checks from `main`; it does not import stale authorization changes from the old Draft PR #176.
+- **Remaining limitation:** this batch does not yet provide per-operation in-memory rollback if persistence fails. PostgreSQL remains fail-closed after a runtime write failure, but process-memory rollback needs a separate transaction/compensation design and must be tested before production readiness.
+- Working branch: `fix/room-domain-durable-persistence-2026-11-22`; exact-head CI required before merge.

@@ -84,7 +84,8 @@
     "test:ticket-comments-api": "node scripts/ticket-comments-api-verify.mjs",
     "test:ticket-assignment-api": "node scripts/ticket-assignment-api-verify.mjs",
     "test:loan-borrower-return": "node scripts/loan-borrower-return-verify.mjs",
-    "test:observer-route-rbac": "node scripts/observer-route-rbac-verify.mjs"
+    "test:observer-route-rbac": "node scripts/observer-route-rbac-verify.mjs",
+    "test:room-domain-persistence": "node scripts/room-domain-persistence-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

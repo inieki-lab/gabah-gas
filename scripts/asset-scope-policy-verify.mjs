@@ -129,7 +129,7 @@ const checks = [
   ['Meeting facility create/update/delete honor meeting_facilities.manage for custom roles in PostgreSQL', (() => {
     const methods = ['createMeetingFacility', 'updateMeetingFacility', 'deleteMeetingFacility'];
     return methods.every((name) => {
-      const start = services.indexOf(`static ${name}(`);
+      const start = services.indexOf(`static async ${name}(`) >= 0 ? services.indexOf(`static async ${name}(`) : services.indexOf(`static ${name}(`);
       const next = services.indexOf('static ', start + 8);
       const body = services.slice(start, next < 0 ? services.length : next);
       return start >= 0 && body.includes("hasRoomPermission(actor, 'meeting_facilities.manage', ['GA', 'IT'])");
