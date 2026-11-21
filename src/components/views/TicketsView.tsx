@@ -20,7 +20,8 @@ import {
   Sparkles,
   Check
 } from 'lucide-react';
-import { Asset, Ticket, AssetCategoryType, TicketPriority, TicketStatus, UserProfile } from '../../types';
+import { Asset, Ticket, TicketComment, AssetCategoryType, TicketPriority, TicketStatus, UserProfile } from '../../types';
+import { gabahApi } from '../../services/gabahApi';
 import { formatDateTime, GabahService, exportTicketsToCsv } from '../../services/gabahService';
 import { SlaTimer } from '../common/SlaTimer';
 
@@ -49,6 +50,48 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
   const [resolvingTicketId, setResolvingTicketId] = useState<string | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState<string>('');
+  const [expandedCommentsTicketId, setExpandedCommentsTicketId] = useState<string | null>(null);
+  const [ticketComments, setTicketComments] = useState<Record<string, TicketComment[]>>({});
+  const [commentDraft, setCommentDraft] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentSaving, setCommentSaving] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+
+  const toggleTicketComments = async (ticketId: string) => {
+    if (expandedCommentsTicketId === ticketId) {
+      setExpandedCommentsTicketId(null);
+      setCommentError(null);
+      return;
+    }
+    setExpandedCommentsTicketId(ticketId);
+    setCommentDraft('');
+    setCommentError(null);
+    setCommentLoading(true);
+    try {
+      const comments = await gabahApi.getTicketComments(ticketId);
+      setTicketComments(previous => ({ ...previous, [ticketId]: comments }));
+    } catch (error: any) {
+      setCommentError(error?.message || 'Komentar tiket belum dapat dimuat.');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  const submitTicketComment = async (ticketId: string) => {
+    const body = commentDraft.trim();
+    if (!body || body.length > 4000 || commentSaving) return;
+    setCommentSaving(true);
+    setCommentError(null);
+    try {
+      const saved = await gabahApi.addTicketComment(ticketId, body);
+      setTicketComments(previous => ({ ...previous, [ticketId]: [...(previous[ticketId] || []), saved] }));
+      setCommentDraft('');
+    } catch (error: any) {
+      setCommentError(error?.message || 'Komentar tiket gagal disimpan.');
+    } finally {
+      setCommentSaving(false);
+    }
+  };
 
   // Freshservice Canned Responses
   const cannedSolutions = [
@@ -487,6 +530,63 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                     <strong className="font-bold">Solusi Penanganan:</strong> {ticket.resolution_notes}
                   </div>
                 )}
+
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => void toggleTicketComments(ticket.id)}
+                    className="inline-flex items-center gap-2 text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    {expandedCommentsTicketId === ticket.id ? 'Tutup Diskusi' : 'Lihat Diskusi / Komentar'}
+                  </button>
+                  {expandedCommentsTicketId === ticket.id && (
+                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                      {commentLoading ? (
+                        <p className="text-xs text-slate-500">Memuat komentar...</p>
+                      ) : (
+                        <div className="space-y-2 max-h-56 overflow-y-auto">
+                          {(ticketComments[ticket.id] || []).map(comment => (
+                            <div key={comment.id} className="rounded-lg bg-white border border-slate-200 p-2.5">
+                              <div className="flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                                <strong className="text-slate-800">{comment.user_name}</strong>
+                                <span>{formatDateTime(comment.created_at)}</span>
+                              </div>
+                              <p className="mt-1 text-xs text-slate-700 whitespace-pre-wrap break-words">{comment.body}</p>
+                            </div>
+                          ))}
+                          {(ticketComments[ticket.id] || []).length === 0 && (
+                            <p className="text-xs text-slate-500">Belum ada komentar pada tiket ini.</p>
+                          )}
+                        </div>
+                      )}
+                      {commentError && <p role="alert" className="text-xs text-rose-700">{commentError}</p>}
+                      {!isAuditor && (ticket.reporter_id === currentUser.id || isSuperAdmin || currentUser.permission_keys?.includes('tickets.update')) && (
+                        <div className="space-y-2">
+                          <textarea
+                            rows={2}
+                            maxLength={4000}
+                            value={commentDraft}
+                            onChange={event => setCommentDraft(event.target.value)}
+                            placeholder="Tulis perkembangan atau tanggapan (maks. 4.000 karakter)..."
+                            className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-400"
+                          />
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] text-slate-400">{commentDraft.length}/4000</span>
+                            <button
+                              type="button"
+                              disabled={!commentDraft.trim() || commentSaving || commentLoading}
+                              onClick={() => void submitTicketComment(ticket.id)}
+                              className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-40"
+                            >
+                              {commentSaving ? 'Mengirim...' : 'Kirim Komentar'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
               </div>
             );
