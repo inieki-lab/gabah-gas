@@ -3924,7 +3924,9 @@ async function startServer() {
   });
 
   app.patch('/api/notifications/:id/read', (req, res) => {
-    if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
+    // Marking one notification read is a recipient self-service action;
+    // read_all is reserved for the bulk endpoint below.
+    if (!requireRbacPermission(req, res, 'notifications.read')) return;
     
     const actor = getActor(req);
     const notif = db.notifications.find(n => n.id === req.params.id);
