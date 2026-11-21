@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, FileText, ShieldAlert } from 'lucide-react';
 import { UserProfile } from '../../types';
+import { GabahService } from '../../services/gabahService';
 
 interface CreateContractModalProps {
   isOpen: boolean;
@@ -35,6 +36,10 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const isAuditor = GabahService.isAuditor(currentUser);
+  const canCreateContract = !isAuditor && (isAdmin || (hasPermissionMetadata
+    ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('contracts.create')
+    : ['IT', 'GA'].includes(currentUser.role)));
   const ownDivision = (currentUser.division || 'GA').toUpperCase();
 
   const [contractType, setContractType] = useState('Umum');
@@ -63,6 +68,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!canCreateContract) return;
     if (!title.trim() || !vendorName.trim() || !endDate) {
       setError('Judul, vendor, dan tanggal berakhir wajib diisi.');
       return;
@@ -254,7 +260,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
 
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
             <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-50">Batal</button>
-            <button type="submit" disabled={saving}
+            <button type="submit" disabled={saving || !canCreateContract}
               className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold disabled:opacity-50">
               {saving ? 'Menyimpan…' : 'Simpan Kontrak'}
             </button>
