@@ -1108,3 +1108,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Extended the PIBC ME queue verification script to assert the new additive/idempotent grant.
 
 - CI caught a malformed line break in the updated ticket-assignment verification script during TypeScript lint (the test file contained literal `\\n` text). Corrected the test source into separate statements; application code was not implicated. The corrected exact-head CI run is pending.
+
+
+## 2026-11-21 — Contract-linked ticket action permission alignment
+
+- Contract review found the “Buat Tiket Terkait” action was incorrectly gated by `contracts.renewal.decide`, even though the action creates a Helpdesk ticket and the API requires `tickets.create`.
+- Updated the Contracts UI to gate this action by `tickets.create` (and keep Auditor read-only). Renewal decision controls remain independently gated by `contracts.renewal.decide`.
+- Extended `scripts/contract-owner-filter-verify.mjs` with a regression check that linked-ticket creation no longer depends on the renewal-decision permission.
+- Reviewed loan API/UI action parity and contract read/download/upload/renewal routes. No additional mismatch was confirmed in this pass.
+- The prior ticket-assignment batch CI completed successfully on commit `5f15dab`. The contract permission alignment commits are newer and require their own exact-head CI run before validation can be claimed.
