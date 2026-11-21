@@ -40,19 +40,23 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   linkedContract,
   onCreateTicket,
 }) => {
-  const [category, setCategory] = useState<TicketCategory>('IT');
-  const [priority, setPriority] = useState<TicketPriority>('high');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
-
   const isAuditor = GabahService.isAuditor(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
+  const canCreateStandard = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    ? currentUser.permission_keys!.includes('tickets.create') || currentUser.permission_keys!.includes('*')
+    : ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser.role)));
   const canRequestMe = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('tickets.create.me') || currentUser.permission_keys!.includes('*')
     : false));
+  const initialCategory: TicketCategory = canCreateStandard ? 'IT' : canRequestMe ? 'ME' : 'IT';
+
+  const [category, setCategory] = useState<TicketCategory>(initialCategory);
+  const [priority, setPriority] = useState<TicketPriority>('high');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
 
   // Freshservice-inspired Quick Service Catalog Templates
   const serviceCatalogTemplates = [
@@ -204,7 +208,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor || !title.trim() || !description.trim()) return;
+    const canCreateSelectedCategory = category === 'ME' ? canRequestMe : canCreateStandard;
+    if (!canCreateSelectedCategory || !title.trim() || !description.trim()) return;
 
     onCreateTicket({
       title,
@@ -261,7 +266,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               <span className="text-[10px] text-slate-500 font-normal">Klik untuk auto-fill standar ITSM</span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              {serviceCatalogTemplates.filter(tpl => tpl.category !== 'ME' || canRequestMe).map(tpl => (
+              {serviceCatalogTemplates.filter(tpl => tpl.category === 'ME' ? canRequestMe : canCreateStandard).map(tpl => (
                 <button
                   key={tpl.id}
                   type="button"
@@ -436,9 +441,9 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isAuditor}
+              disabled={category === 'ME' ? !canRequestMe : !canCreateStandard}
               className={`px-5 py-2 rounded-xl font-bold transition-all shadow-xs ${
-                isAuditor 
+                (category === 'ME' ? !canRequestMe : !canCreateStandard)
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
                   : 'bg-rose-600 hover:bg-rose-700 text-white'
               }`}
