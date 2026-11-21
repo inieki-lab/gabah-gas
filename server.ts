@@ -3169,7 +3169,8 @@ async function startServer() {
     // closing is reserved for an already-resolved ticket (reporter or handler).
     open: ['in_progress'],
     assigned: ['in_progress'],
-    in_progress: ['resolved', 'open'],
+    in_progress: ['pending_vendor', 'resolved', 'open'],
+    pending_vendor: ['in_progress'],
     resolved: ['closed', 'open'],
     closed: ['open'],
   };
