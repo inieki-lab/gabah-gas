@@ -836,7 +836,7 @@ async function startServer() {
         data: sanitizeUser(newUser, { includeTelegramChatId: true }),
       });
     } catch (err: any) {
-      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
+      res.status(400).json({ success: false, message: err.message });
     }
   });
 
@@ -1013,11 +1013,7 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
-    }
-  });
-
-  app.patch('/api/users/:id', async (req, res) => {
+      res.status(typeof err?.statusCode === 'number' ? err.stres.status(400).json({ success: false, message: err.message }); res) => {
     try {
       const actor = getActor(req);
       if (!isSuperadminActor(actor)) {
@@ -1186,13 +1182,7 @@ async function startServer() {
 
       res.json({ success: true, data: sanitizeUser(targetUser, { includeTelegramChatId: true }) });
     } catch (err: any) {
-      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
-    }
-  });
-
-  app.delete('/api/users/:id', async (req, res) => {
-    try {
-      const actor = getActor(req);
+      res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.mesres.status(400).json({ success: false, message: err.message });;
       if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menghapus pengguna.' });
       }
@@ -1267,8 +1257,7 @@ async function startServer() {
     }
   });
 
-  // P1#2 (admin UX honesty): REAL password reset endpoint. The server issues a
-  // CSPRNG temporary password, stores ONLY its PBKDF2 hash, revokes the user's
+  // P1#2 (admin UX honesty): REAres.status(400).json({ success: false, message: err.message });e user's
   // sessions (CR-03), and returns the plaintext exactly once so the admin can
   // deliver it out-of-band. No fake "reset link sent" claims — email delivery
   // for resets is a separate, explicitly-configured feature.
@@ -1563,10 +1552,7 @@ async function startServer() {
 
   // Secure Authentication Endpoints
   app.post('/api/auth/login', (req, res) => {
-    try {
-      const ip = extractClientIp(req) || 'unknown';
-      const { email, password } = req.body || {};
-      if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+    tres.status(400).json({ success: false, message: err.message });ypeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
         return res.status(400).json({ success: false, message: 'Email dan password wajib diisi.' });
       }
 
@@ -1847,9 +1833,7 @@ async function startServer() {
 
   // Master Taxonomy
   // T2B-3: master kategori & aset tetap — respons selalu dinormalkan (kode
-  // uppercase, main_type pada domain kanonikal, is_active default true) sehingga
-  // data lama tanpa field baru tetap terbaca konsisten oleh UI.
-  app.get('/api/taxonomy/categories', (req, res) => {
+  // uppercase, main_type pada domain kanonikares.status(400).json({ success: false, message: err.message });axonomy/categories', (req, res) => {
     const source = (db.categories && db.categories.length > 0) ? db.categories : CANONICAL_TAXONOMY;
     res.json({ success: true, data: normalizeCategoryMaster(source) });
   });
@@ -2275,9 +2259,7 @@ async function startServer() {
     try {
       const actor = getActor(req);
       if (!isSuperadminActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH yang berwenang mengelola master jabatan.' });
-      }
-      if (!db.jobLevels) db.jobLevels = [];
+        return res.status(403).json({ success: fres.status(400).json({ success: false, message: err.message });obLevels) db.jobLevels = [];
       const level = db.jobLevels.find(j => j.code === req.params.code.trim().toUpperCase());
       if (!level) return res.status(404).json({ success: false, message: 'Jabatan tidak ditemukan.' });
       if (req.body?.is_active !== undefined && typeof req.body.is_active !== 'boolean') {
