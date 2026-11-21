@@ -30,6 +30,8 @@ assert.match(routes, /persistBeforeSuccess/);
 assert.match(api, /getTicketAssignees\(ticketId: string\)/);
 assert.match(api, /updateTicketAssignment\(ticketId: string, assignedAgentId: string \| null\)/);
 assert.match(view, /Atur Petugas/);
+assert.match(view, /GabahService\.canAssignTickets\(currentUser\)/);
+assert.match(fs.readFileSync(new URL('../src/services/gabahService.ts', import.meta.url), 'utf8'), /static canAssignTickets\(user\?: UserProfile\)/);
 assert.match(view, /Simpan Penugasan/);
 assert.match(view, /Lepas Petugas/);
 assert.match(app, /onUpdateTicketAssignment=\{handleUpdateTicketAssignment\}/);
