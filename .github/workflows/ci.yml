@@ -175,6 +175,9 @@ jobs:
       - name: Ticket reporter ownership regression
         run: npm run test:ticket-reporter-ownership
 
+      - name: Ticket reporter transition authorization regression
+        run: npm run test:ticket-reporter-transition
+
       - name: PIBC ME ticket queue and unit-scope regression
         run: npm run test:pibc-me-ticket-queue
 
