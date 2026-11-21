@@ -193,6 +193,9 @@ jobs:
       - name: Ticket comments API authorization and persistence contract
         run: npm run test:ticket-comments-api
 
+      - name: Dynamic ticket assignment authorization and UI contract
+        run: npm run test:ticket-assignment-api
+
       - name: PIBC ME ticket queue and unit-scope regression
         run: npm run test:pibc-me-ticket-queue
 
