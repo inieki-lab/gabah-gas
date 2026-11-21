@@ -464,7 +464,7 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                           </button>
                         )}
 
-                        {(loan.status === 'borrowed' || loan.status === 'active') && (
+                        {!isAuditor && (loan.status === 'borrowed' || loan.status === 'active') && (
                           <button
                             onClick={() => {
                               if (onReturnLoan) {
