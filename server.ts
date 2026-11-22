@@ -13,7 +13,7 @@ import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocatio
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
-import { initializePersistence, persistDataStore, isPostgresPersistenceActive, queryRbac, withRbacTransaction } from './server/persistence';
+import { initializePersistence, persistDataStore, isPostgresPersistenceActive, isPostgresFailureLatched, queryRbac, withRbacTransaction } from './server/persistence';
 import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor, isAuditorReadPermissionKey } from './server/rbac-policy';
 import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
@@ -698,12 +698,16 @@ async function startServer() {
 
   // Health check
   app.get('/api/health', (req, res) => {
-    res.json({
-      status: 'ok',
+    const persistenceDegraded = isPostgresFailureLatched();
+    res.status(persistenceDegraded ? 503 : 200).json({
+      status: persistenceDegraded ? 'degraded' : 'ok',
+      ready: !persistenceDegraded,
       app: 'GABAH (General Asset & Business Administration Hub)',
       version: '2026.1.0-enterprise',
       organization: 'PT Food Station Tjipinang Jaya (BUMD DKI Jakarta)',
-      persistence: isPostgresPersistenceActive() ? 'postgresql' : 'file-store (development fallback)',
+      persistence: persistenceDegraded
+        ? 'postgresql-unavailable-restart-required'
+        : isPostgresPersistenceActive() ? 'postgresql' : 'file-store (development fallback)',
       scheduler: getSchedulerStatus(),
     });
   });
