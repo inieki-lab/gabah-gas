@@ -20,7 +20,6 @@ import {
   ChevronRight,
   Database,
   Search,
-  KeyRound,
   FileCheck
 } from 'lucide-react';
 
@@ -158,23 +157,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
                   </div>
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>100% Aktif</span>
+                    <span>Portal Operasional</span>
                   </div>
                 </div>
 
-                {/* Key Operational Highlights (Replaces the random quote card) */}
+                {/* Ringkasan modul — tanpa angka operasional yang belum terhubung ke data aktual */}
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   <div className="p-2.5 rounded-xl bg-[#f8f7fa] border border-[#DFDCE3] text-center">
-                    <div className="text-base font-black text-[#4ABDAC]">4.280+</div>
-                    <div className="text-[10px] text-slate-500 font-medium">Aset Terdata</div>
+                    <div className="text-base font-black text-[#4ABDAC]">Aset</div>
+                    <div className="text-[10px] text-slate-500 font-medium">Inventaris &amp; lifecycle</div>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#f8f7fa] border border-[#DFDCE3] text-center">
-                    <div className="text-base font-black text-[#FC4A1A]">99.8%</div>
-                    <div className="text-[10px] text-slate-500 font-medium">Armada Siap</div>
+                    <div className="text-base font-black text-[#FC4A1A]">Layanan</div>
+                    <div className="text-[10px] text-slate-500 font-medium">Peminjaman &amp; helpdesk</div>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#f8f7fa] border border-[#DFDCE3] text-center">
-                    <div className="text-base font-black text-[#F7B733]">&lt; 2 Jam</div>
-                    <div className="text-[10px] text-slate-500 font-medium">SLA Respon</div>
+                    <div className="text-base font-black text-[#F7B733]">Audit</div>
+                    <div className="text-[10px] text-slate-500 font-medium">Riwayat aktivitas</div>
                   </div>
                 </div>
 

@@ -12,7 +12,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { UserProfile } from '../../types';
-import { INITIAL_USERS } from '../../data/mockData';
 import { gabahApi } from '../../services/gabahApi';
 
 // SECURITY (CR-02): hardcoded role passwords, defaultPasswordForRole, and the
@@ -23,20 +22,17 @@ import { gabahApi } from '../../services/gabahApi';
 interface LoginPageProps {
   onLoginSuccess: (user: UserProfile) => void;
   onBackToLanding: () => void;
-  availableUsers?: UserProfile[];
   initialEmail?: string;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
   onLoginSuccess,
   onBackToLanding,
-  availableUsers = INITIAL_USERS,
   initialEmail = '',
 }) => {
   const [emailInput, setEmailInput] = useState<string>(initialEmail);
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -70,7 +66,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
           <ShieldCheck className="w-4 h-4 text-[#4ABDAC]" />
-          <span>Autentikasi Aman SSL / TLS 256-Bit</span>
+          <span>Autentikasi akun melalui server GABAH</span>
         </div>
       </header>
 
@@ -149,19 +145,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-slate-300 text-[#4ABDAC] focus:ring-[#4ABDAC] h-4 w-4"
-                  />
-                  <span className="text-xs text-slate-600 font-medium">Ingat perangkat ini</span>
-                </label>
-                <span className="text-xs text-[#FC4A1A] hover:underline cursor-pointer font-semibold">
-                  Bantuan Sandi?
-                </span>
+              <div className="pt-1 text-right text-xs text-slate-500">
+                Lupa kata sandi? Hubungi IT Service Desk (ext. 108).
               </div>
 
               <button
