@@ -1315,3 +1315,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Perbaikan: semua generator di atas kini memakai `randomUUID()` Node crypto, dengan prefix domain dipertahankan. Generator nomor bisnis (nomor aset/tiket/pinjaman/reservasi) tidak diubah.
 - Regression ditambahkan pada service workflow guard yang sudah berjalan di CI.
 - Menunggu CI exact-head; belum diklaim sebagai UAT.
+
+
+### 2026-11-22 — Serialisasi double-booking ruang rapat lintas transaksi
+
+- Audit ulang migration `015_room_reservations.sql` menemukan trigger `prevent_double_booking()` memakai `IF EXISTS` tanpa lock. Dua transaksi PostgreSQL independen dapat sama-sama membaca slot kosong lalu commit reservasi aktif yang bertabrakan.
+- Migration baru `099_room_reservation_collision_lock.sql` memperoleh transaction-scoped advisory lock berdasarkan `room_id` sebelum query collision. Lock dilepas otomatis saat transaksi commit/rollback.
+- Integrasi CR-04/CR-05 diperluas dengan dua koneksi PostgreSQL independen: transaksi kedua harus menunggu lock, lalu ditolak dengan SQLSTATE `P0001`; hasil akhir satu reservasi `pending` dan satu tetap `cancelled`.
+- Pengujian memakai fixture CI acak dan menghapus seluruh record setelah test. Menunggu CI exact-head dan belum diklaim sebagai UAT browser.
