@@ -1384,3 +1384,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Login remains available through the normal credential form; public role/account prefill was removed.
 - Added `test:public-landing-privacy` to assert no employee directory props, mock-account imports, login emails, or department fields are rendered or passed into the public page. The test is registered as a required CI step.
 - This is a client-side public-page exposure fix; it does not replace server-side directory authorization or production browser UAT.
+
+
+### Public-facing claims and login controls corrected — 2026-11-22
+
+- Follow-up review found the public landing page still claimed `100% Aktif`, `4.280+` assets, `99.8%` fleet readiness, and response SLA under two hours without any live data source. These are now neutral descriptions of system modules rather than invented operational metrics.
+- Login header no longer asserts SSL/TLS 256-bit protection; the app cannot establish transport encryption from client UI. It now describes the server-backed authentication flow without claiming a cipher or TLS configuration.
+- Removed the "Ingat perangkat ini" checkbox because login always stores the session token in localStorage regardless of the checkbox state. Replaced the inert password-help text with clear Service Desk contact guidance.
+- Removed the unused `availableUsers` prop and mock-user import from LoginPage; employee directory state is no longer passed into either public landing or login screens.
+- Expanded `test:public-landing-privacy` to assert these public-facing claims and controls remain truthful.
