@@ -52,6 +52,7 @@ function intervalMs(): number {
 
 async function acquireLeaderLock(): Promise<boolean> {
   let client: any = null;
+  let acquisitionError: any = null;
   try {
     const pool = getDbPool();
     if (!pool) return true; // dev/file-store mode: proceed (idempotency protects)
@@ -63,11 +64,12 @@ async function acquireLeaderLock(): Promise<boolean> {
       return true;
     }
     return false;
-  } catch {
+  } catch (error) {
+    acquisitionError = error;
     return true; // DB hiccup: run anyway; idempotency keys prevent duplicates
   } finally {
-    // A failed lock query must not leak a checked-out pool client.
-    if (client) client.release();
+    // A failed lock query must not leak or recycle a broken pool client.
+    if (client) client.release(acquisitionError || undefined);
   }
 }
 
@@ -79,13 +81,14 @@ async function releaseLeaderLock(): Promise<void> {
   // Advisory locks are session-scoped. Await unlock before returning the
   // connection to the pool; releasing it while the query is in flight can
   // expose a still-locked session to another request/instance.
+  let unlockError: any = null;
   try {
     await client.query('SELECT pg_advisory_unlock($1)', [LEADER_LOCK_KEY]);
-  } catch {
-    // A broken connection is discarded by pg-pool on release(error).
+  } catch (error) {
+    unlockError = error;
   }
   try {
-    client.release();
+    client.release(unlockError || undefined);
   } catch {
     // Connection may already have been removed from the pool.
   }
