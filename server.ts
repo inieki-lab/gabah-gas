@@ -3502,9 +3502,9 @@ async function startServer() {
       if (body[field] !== undefined && (typeof body[field] !== 'number' || !Number.isFinite(body[field]) || body[field] < 0)) return 'Biaya maintenance harus berupa angka non-negatif.';
     }
     for (const [field, max] of [['title', 180], ['technician_name', 180], ['notes', 4000]] as const) {
-      if (body[field] !== undefined && (typeof body[field] !== 'string' || body[field].length > max)) return `Field ${field} harus berupa teks maksimal ${max} karakter.`;
+      if (body[field] !== undefined && (typeof body[field] !== 'string' || body[field].includes('\u0000') || Array.from(body[field]).length > max)) return `Field ${field} harus berupa teks maksimal ${max} karakter.`;
     }
-    if (body.checklist !== undefined && (!Array.isArray(body.checklist) || body.checklist.length > 100 || body.checklist.some((item: unknown) => typeof item !== 'string' || item.length > 300))) return 'Checklist harus berupa daftar teks (maksimal 100 item, 300 karakter per item).';
+    if (body.checklist !== undefined && (!Array.isArray(body.checklist) || body.checklist.length > 100 || body.checklist.some((item: unknown) => typeof item !== 'string' || item.includes('\u0000') || Array.from(item).length > 300))) return 'Checklist harus berupa daftar teks (maksimal 100 item, 300 karakter per item).';
     return null;
   };
 
