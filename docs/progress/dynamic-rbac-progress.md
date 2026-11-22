@@ -1,3 +1,11 @@
+### Notification rule persistence and enforcement — 2026-11-23 (PR #240; CI pending)
+
+- Added migration `102_notification_rule_settings.sql` for four code-owned notification rules. Defaults are inserted idempotently; existing operator choices are preserved on subsequent migrations.
+- Added authenticated read and Superadmin-only update endpoints. Updates accept strict booleans, lock the current row, and write immutable audit history in the same PostgreSQL transaction; no-op updates do not create audit events.
+- Administration now loads actual rule states from PostgreSQL. It shows no assumed Active defaults when the server configuration is unavailable and disables controls during load, errors, and saves. UI state changes only after API success.
+- Dashboard attention now applies persisted warranty, loan, and SLA switches. The BAST switch is read before handover, and resulting borrower/owner notifications are created inside the atomic loan mutation.
+- Added `test:notification-rule-persistence` and registered it in CI. Exact-head workflow is running; this change is not yet eligible for merge.
+
 ### Dynamic observer route permission alignment — 2026-11-21
 
 - Replaced the stale global middleware role-name gate on `GET /api/audit-logs` and `GET /api/reconciliation` with explicit dynamic permission checks (`audit.read` / `reconciliation.read`) when PostgreSQL RBAC is active. Custom roles with those grants are no longer blocked.
