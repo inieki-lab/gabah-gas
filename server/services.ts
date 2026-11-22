@@ -1111,14 +1111,14 @@ export class GabahDomainService {
       throw Object.assign(new Error('Judul tiket wajib berupa teks.'), { statusCode: 400 });
     }
     const normalizedTitle = payload.title.trim();
-    if (!normalizedTitle || Array.from(normalizedTitle).length > 255) {
+    if (!normalizedTitle || normalizedTitle.includes('\u0000') || Array.from(normalizedTitle).length > 255) {
       throw Object.assign(new Error('Judul tiket wajib diisi dan maksimal 255 karakter.'), { statusCode: 400 });
     }
     if (typeof payload.description !== 'string') {
       throw Object.assign(new Error('Deskripsi tiket wajib berupa teks.'), { statusCode: 400 });
     }
     const normalizedDescription = payload.description.trim();
-    if (!normalizedDescription || Array.from(normalizedDescription).length > 20000) {
+    if (!normalizedDescription || normalizedDescription.includes('\u0000') || Array.from(normalizedDescription).length > 20000) {
       throw Object.assign(new Error('Deskripsi tiket wajib diisi dan maksimal 20.000 karakter.'), { statusCode: 400 });
     }
     // Strict divisional categories per PRD §3.5: a ticket must target an
