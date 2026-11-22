@@ -66,6 +66,8 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
       'referrer-policy': res.headers.get('referrer-policy'),
       'x-permitted-cross-domain-policies': res.headers.get('x-permitted-cross-domain-policies'),
       'permissions-policy': res.headers.get('permissions-policy'),
+      'content-security-policy-report-only': res.headers.get('content-security-policy-report-only'),
+      'content-security-policy': res.headers.get('content-security-policy'),
       'cache-control': res.headers.get('cache-control'),
       'pragma': res.headers.get('pragma'),
     },
