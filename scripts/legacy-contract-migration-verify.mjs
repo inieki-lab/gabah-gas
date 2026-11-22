@@ -102,7 +102,7 @@ try {
 } finally {
   try { await client?.end(); } catch {}
   try {
-    if (!admin._connected) await admin.connect();
+    // The admin connection remains open until this cleanup block.
     await admin.query(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`);
   } catch (error) {
     console.error('[WARN] could not drop isolated migration test database:', error.message);
