@@ -1349,3 +1349,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Perbaikan: semua client dilepas melalui `finally`; unlock ditunggu sebelum client dilepas; koneksi yang mengalami error dilepas dengan error agar pg-pool membuangnya; stop scheduler menunggu pelepasan lock.
 - Tambah regression CI untuk urutan unlock/release, cleanup saat acquisition gagal, dan semua lifecycle path scheduler.
 - Menunggu CI exact-head; belum diklaim sebagai UAT multi-instance produksi.
+
+
+### 2026-11-22 — Scheduler reminder fail-closed saat leader lock tidak tersedia
+
+- Audit lanjutan menemukan `acquireLeaderLock()` masih fail-open: jika koneksi/query PostgreSQL gagal, fungsi mengembalikan `true` dan sweep tetap berjalan.
+- Pada deployment multi-instance, dua server dapat mengirim email/Telegram bersamaan sebelum baris idempotency tersimpan. Unique key mencegah duplikasi log, tetapi tidak dapat menarik kembali pesan eksternal yang sudah terkirim.
+- Perbaikan: jika PostgreSQL pool tersedia tetapi advisory lock tidak dapat diverifikasi, scheduler mencatat warning dan melewatkan sweep. File-store development tanpa pool tetap berjalan seperti sebelumnya.
+- Regression scheduler mewajibkan catch error PostgreSQL mengembalikan false, membersihkan koneksi, dan tidak mengeksekusi sweep tanpa leader lock.
+- Menunggu CI exact-head; belum diklaim sebagai uji multi-instance produksi.
