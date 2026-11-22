@@ -1076,12 +1076,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     setPermissions(updated);
     setIsEditRoleOpen(false);
     setRoleToEdit(null);
-    showToast(`Matriks hak akses untuk peran "${editRoleRow.role}" berhasil diperbarui!`, 'success');
+    showToast('Matriks ini hanya pratinjau legacy; izin aktif tetap mengikuti Dynamic RBAC di server.', 'warning');
   };
 
   const handleResetRolePermissions = () => {
     setPermissions(DEFAULT_PERMISSIONS);
-    showToast('Matriks hak akses dikembalikan ke konfigurasi standar BUMD Food Station.', 'info');
+    showToast('Pratinjau matriks legacy dikembalikan ke default; kebijakan Dynamic RBAC server tidak berubah.', 'warning');
   };
 
   // Organization Handlers
@@ -1285,7 +1285,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   const handleResetDivisions = () => {
     setDivisions(DEFAULT_DIVISIONS);
-    showToast('Struktur divisi dikembalikan ke standar organisasi BUMD.', 'info');
+    showToast('Pratinjau struktur divisi dikembalikan ke default; data divisi di server tidak berubah.', 'warning');
   };
 
   // Numbering Config Handlers
@@ -1295,7 +1295,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     // Update live simulated number
     const seqPadded = String(5).padStart(tempNumberingConfig.paddingDigits, '0');
     setSimulatedNumber(`${testDiv}${tempNumberingConfig.separator}${testCode}${tempNumberingConfig.separator}2026${tempNumberingConfig.separator}${seqPadded}`);
-    showToast('Format dan parameter sequence penomoran aset berhasil disimpan!', 'success');
+    showToast('Format penomoran hanya diperbarui untuk pratinjau sesi ini; aturan aktif tetap dikelola di server.', 'warning');
   };
 
   // Notification Rules Handlers
@@ -1308,14 +1308,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       return r;
     });
     setNotificationRules(updated);
-    try {
-    } catch (error) {
-      console.error('[GABAH Administration] Failed to persist notification rules locally:', error);
-      showToast('Perubahan hanya berlaku sementara di browser ini; penyimpanan lokal tidak tersedia.', 'warning');
-      return;
-    }
     const target = updated.find(r => r.id === id);
-    showToast(`Aturan "${target?.title}" diubah menjadi: ${target?.status}`, 'info');
+    showToast(`Pratinjau aturan "${target?.title}" diubah menjadi: ${target?.status}; perubahan belum disimpan di server.`, 'warning');
   };
 
   // System Settings Handlers
