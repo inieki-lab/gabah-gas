@@ -1251,3 +1251,6 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Perbaikan: validasi tipe, teks tidak kosong, judul maksimal 255 Unicode code points, deskripsi maksimal 20.000 Unicode code points sebelum nomor tiket dibuat atau state dimutasi. Hanya nilai yang telah dinormalisasi yang disimpan.
 - Regression memperiksa batas 255, 256, deskripsi di atas batas, dan judul Unicode tepat pada batas. Script `test:ticket-related-asset-scope` sudah menjadi bagian CI.
 - Menunggu CI exact-head; belum diklaim sebagai browser UAT.
+
+
+- Audit tambahan pada reservasi ruang rapat menemukan field `meeting_type` yang dapat mencapai kolom `VARCHAR(50)` tanpa batas panjang, serta NUL byte yang dapat masuk ke kolom `TEXT`/array fasilitas. Guard sekarang membatasi kode meeting type ke 50 code points dan menolak NUL pada field teks dan fasilitas sebelum state dimutasi. Regression ditambahkan ke `room-capability-ui-verify` yang sudah berjalan di CI.
