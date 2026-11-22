@@ -1,3 +1,11 @@
+## [2026-11-22] — Make shared test credentials usable only in explicit UAT mode
+
+- Keep `GABAH_APP_MODE=production` as the default even though Docker uses a production Node runtime for development/UAT parity.
+- Pass `GABAH_APP_MODE` and `GABAH_TEST_PASSWORD` into the app container; a shared test password is consumed only in explicit `development`, `test`, or `uat` mode.
+- Document the local UAT setup and add a required CI regression to prevent test credentials from being enabled by default.
+
+---
+
 ## [2026-11-22] — Remove unsupported public metrics and misleading login controls
 
 - Replace unverified public dashboard claims (asset count, fleet readiness, response SLA, and 100% active status) with neutral module descriptions that do not imply live operational telemetry.

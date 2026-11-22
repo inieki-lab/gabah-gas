@@ -25,12 +25,13 @@ export function provisionCanonicalUserPasswords(): void {
   const userPass = process.env.GABAH_INITIAL_USER_PASSWORD;
   const devFallback = !adminPass && !userPass && process.env.NODE_ENV !== 'production';
 
-  // UAT convenience (explicit operator request, dev/test only): when
-  // GABAH_TEST_PASSWORD is set OUTSIDE production, EVERY canonical account is
-  // (re)provisioned with that one short shared password so QA can test all 9
-  // roles without managing credentials. Sessions are not revoked here; users
-  // simply re-login with the test password.
-  const testPassword = process.env.NODE_ENV === 'production' ? undefined : process.env.GABAH_TEST_PASSWORD;
+  // UAT convenience: Docker keeps NODE_ENV=production for production-like
+  // builds, so test credentials are gated by an explicit app mode instead.
+  // The mode defaults to production; only development/test/uat may consume
+  // GABAH_TEST_PASSWORD. Never enable GABAH_APP_MODE=uat on a live deployment.
+  const appMode = String(process.env.GABAH_APP_MODE || 'production').trim().toLowerCase();
+  const testCredentialsAllowed = ['development', 'test', 'uat'].includes(appMode);
+  const testPassword = testCredentialsAllowed ? process.env.GABAH_TEST_PASSWORD : undefined;
 
   let devNote: string[] | null = devFallback ? [] : null;
   let devFile: string | null = devFallback ? path.join(DATA_DIR, 'initial_credentials_dev.txt') : null;
