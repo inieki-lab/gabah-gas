@@ -56,44 +56,113 @@ JOIN pg_roles member ON member.oid = membership.member
 WHERE member.rolname = :'app_user'
 \gexec
 
--- Only migrate ownership when this dedicated database is still owned by the
--- bootstrap administrator. This keeps repeat starts idempotent and refuses
--- unrelated databases owned by a third role.
+-- This must be a dedicated GABAH database owned by either the bootstrap
+-- administrator (first provisioning) or the application role (repeat starts).
 SELECT 1 / CASE WHEN datdba IN (
   (SELECT oid FROM pg_roles WHERE rolname = :'admin_user'),
   (SELECT oid FROM pg_roles WHERE rolname = :'app_user')
 ) THEN 1 ELSE 0 END
 FROM pg_database WHERE datname = current_database();
 
-SELECT format('REASSIGN OWNED BY %I TO %I', :'admin_user', :'app_user')
-WHERE (SELECT datdba FROM pg_database WHERE datname = current_database())
-    = (SELECT oid FROM pg_roles WHERE rolname = :'admin_user')
-\gexec
-
--- REASSIGN OWNED also transfers shared database/tablespace ownership. Keep
--- unrelated databases and tablespaces with the bootstrap administrator.
-SELECT format('ALTER DATABASE %I OWNER TO %I', datname, :'admin_user')
-FROM pg_database
-WHERE datname <> current_database()
-  AND datdba = (SELECT oid FROM pg_roles WHERE rolname = :'app_user')
-\gexec
-
-SELECT format('ALTER TABLESPACE %I OWNER TO %I', spcname, :'admin_user')
-FROM pg_tablespace
-WHERE spcowner = (SELECT oid FROM pg_roles WHERE rolname = :'app_user')
-\gexec
-
 SELECT format('ALTER DATABASE %I OWNER TO %I', current_database(), :'app_user')
 WHERE (SELECT datdba FROM pg_database WHERE datname = current_database())
    <> (SELECT oid FROM pg_roles WHERE rolname = :'app_user')
 \gexec
 
+-- Change only GABAH-owned objects in this database. REASSIGN OWNED is avoided
+-- because PostgreSQL also reassigns shared/system objects such as template DBs
+-- and tablespaces, which must remain owned by the bootstrap administrator.
 ALTER SCHEMA public OWNER TO :"app_user";
+
+SELECT format('ALTER SCHEMA %I OWNER TO %I', n.nspname, :'app_user')
+FROM pg_namespace n
+WHERE n.nspowner = (SELECT oid FROM pg_roles WHERE rolname = :'admin_user')
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'public')
+\gexec
+
+SELECT format(
+  CASE WHEN c.relkind = 'S'
+       THEN 'ALTER SEQUENCE %I.%I OWNER TO %I'
+       ELSE 'ALTER TABLE %I.%I OWNER TO %I' END,
+  n.nspname, c.relname, :'app_user'
+)
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relowner = (SELECT oid FROM pg_roles WHERE rolname = :'admin_user')
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_depend d
+    WHERE d.classid = 'pg_class'::regclass
+      AND d.objid = c.oid
+      AND d.refclassid = 'pg_extension'::regclass
+      AND d.deptype = 'e'
+  )
+ORDER BY CASE WHEN c.relkind = 'S' THEN 2 ELSE 1 END, n.nspname, c.relname
+\gexec
+
+SELECT format(
+  'ALTER ROUTINE %I.%I(%s) OWNER TO %I',
+  n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), :'app_user'
+)
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE p.proowner = (SELECT oid FROM pg_roles WHERE rolname = :'admin_user')
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_depend d
+    WHERE d.classid = 'pg_proc'::regclass
+      AND d.objid = p.oid
+      AND d.refclassid = 'pg_extension'::regclass
+      AND d.deptype = 'e'
+  )
+\gexec
+
+SELECT format(
+  CASE WHEN t.typtype = 'd'
+       THEN 'ALTER DOMAIN %I.%I OWNER TO %I'
+       ELSE 'ALTER TYPE %I.%I OWNER TO %I' END,
+  n.nspname, t.typname, :'app_user'
+)
+FROM pg_type t
+JOIN pg_namespace n ON n.oid = t.typnamespace
+WHERE t.typowner = (SELECT oid FROM pg_roles WHERE rolname = :'admin_user')
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND t.typrelid = 0
+  AND t.typelem = 0
+  AND t.typtype IN ('b', 'd', 'e', 'r', 'm')
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_depend d
+    WHERE d.classid = 'pg_type'::regclass
+      AND d.objid = t.oid
+      AND d.refclassid = 'pg_extension'::regclass
+      AND d.deptype = 'e'
+  )
+\gexec
+
 GRANT CONNECT, TEMPORARY ON DATABASE :"db_name" TO :"app_user";
 GRANT USAGE, CREATE ON SCHEMA public TO :"app_user";
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO :"app_user";
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO :"app_user";
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO :"app_user";
+
+-- Fail closed if a GABAH table/sequence/function outside an extension remains
+-- owned by the bootstrap role after the ownership migration.
+SELECT 1 / CASE WHEN NOT EXISTS (
+  SELECT 1
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relowner = (SELECT oid FROM pg_roles WHERE rolname = :'admin_user')
+    AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+    AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+    AND NOT EXISTS (
+      SELECT 1 FROM pg_depend d
+      WHERE d.classid = 'pg_class'::regclass
+        AND d.objid = c.oid
+        AND d.refclassid = 'pg_extension'::regclass
+        AND d.deptype = 'e'
+    )
+) THEN 1 ELSE 0 END;
 
 -- Verify that the runtime login has no cluster-administration capabilities.
 SELECT 1 / CASE WHEN NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
