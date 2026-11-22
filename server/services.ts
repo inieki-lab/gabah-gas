@@ -879,6 +879,17 @@ export class GabahDomainService {
       throw Object.assign(new Error('Hanya pengajuan berstatus menunggu persetujuan yang dapat disetujui (status saat ini: ' + loan.status + ').'), { statusCode: 409 });
     }
 
+    // A stale asset snapshot must never allow a second approval while the
+    // same physical unit is still out with another borrower.
+    const outstandingBorrowedLoan = db.loans.find(existing =>
+      existing.id !== loan.id
+      && existing.asset_id === loan.asset_id
+      && ['borrowed', 'overdue'].includes(String(existing.status))
+    );
+    if (outstandingBorrowedLoan) {
+      throw Object.assign(new Error('Aset masih dipinjam dan belum dikembalikan melalui pinjaman ' + outstandingBorrowedLoan.loan_number + '.'), { statusCode: 409 });
+    }
+
     // Revalidate the authoritative asset relation at approval time.
     const asset = db.assets.find(a => a.id === loan.asset_id);
     if (!asset || !asset.is_loanable || asset.status !== 'available') {
