@@ -2572,9 +2572,14 @@ async function startServer() {
       const actor = getActor(req);
       // Effective permission and explicit owner-domain scope are enforced by
       // createAsset() for every user, regardless of job title or work location.
-      const newAsset = GabahDomainService.createAsset(req.body, actor);
-      await persistDataStore();
-      (req as any).__gabahPersisted = true;
+      const auditIdsBefore = new Set(db.auditLogs.map(item => item.id));
+      const newAsset = GabahDomainService.createAsset(req.body, actor, false);
+      const createdAuditIds = new Set(db.auditLogs.filter(item => !auditIdsBefore.has(item.id)).map(item => item.id));
+      if (!(await persistBeforeSuccess(req, res))) {
+        db.assets.splice(0, db.assets.length, ...db.assets.filter(item => item.id !== newAsset.id));
+        db.auditLogs.splice(0, db.auditLogs.length, ...db.auditLogs.filter(item => !createdAuditIds.has(item.id)));
+        return;
+      }
       res.status(201).json({ success: true, data: newAsset });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
