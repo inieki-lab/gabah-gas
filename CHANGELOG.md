@@ -1,3 +1,12 @@
+## [2026-11-22] — Enforce read permissions on core navigation
+
+- Remove the unconditional navigation bypass for Dashboard, My Assets, Loans, Tickets, and Knowledge Base when PostgreSQL permission metadata is present.
+- Require each page's effective read permission before showing the menu or selecting it as the landing page; custom roles now land on the first granted page or receive no page when no read grant exists.
+- Preserve the legacy role matrix only when permission metadata is absent (file-store compatibility), and keep global module activation as a separate gate.
+- Expand the navigation policy regression to cover all core tabs, missing grants, valid grants, custom-role landing selection, and Auditor behavior.
+
+---
+
 ## [2026-11-22] — Lock manual contract reminder sweeps across instances
 
 - Route manual admin-triggered reminder runs through the same PostgreSQL advisory leader lock used by the interval scheduler.
