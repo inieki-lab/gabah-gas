@@ -47,6 +47,9 @@ jobs:
       - name: Typecheck (lint)
         run: npm run lint
 
+      - name: UAT shared credential mode safety regression
+        run: npm run test:uat-credential-mode
+
       - name: Superadmin Administration entry authorization regression
         run: npm run test:superadmin-administration-entry
 
