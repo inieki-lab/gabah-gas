@@ -1,3 +1,11 @@
+## [2026-11-22] — Fix contract reminder scheduler advisory-lock lifecycle
+
+- Await PostgreSQL advisory unlock before returning the leader connection to the pool; the previous fire-and-forget unlock could recycle a still-locked session.
+- Release checked-out clients on failed lock acquisition and discard broken connections instead of returning them to the pool.
+- Make scheduler stop await lock release and add a required CI regression for acquisition cleanup and unlock/release ordering.
+
+---
+
 ## [2026-11-22] — Make PostgreSQL audit logs append-only
 
 - Add migration `100_audit_log_immutability.sql` with database-level guards against UPDATE, DELETE, and TRUNCATE of audit history.
