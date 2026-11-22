@@ -626,6 +626,18 @@ export class GabahDomainService {
       throw Object.assign(new Error('Akses ditolak: Anda tidak memiliki permission move pada domain pemilik aset ini.'), { statusCode: 403 });
     }
 
+    // Keep physical location aligned with custody: an approved reservation or
+    // active loan cannot be relocated through the generic asset movement path.
+    const activeLoan = (db.loans || []).find(loan =>
+      loan.asset_id === asset.id && ['approved', 'borrowed'].includes(loan.status)
+    );
+    if (activeLoan) {
+      throw Object.assign(
+        new Error(`Aset terikat pinjaman ${activeLoan.loan_number} (${activeLoan.status}); relokasi fisik ditolak sampai proses pinjaman selesai.`),
+        { statusCode: 409 },
+      );
+    }
+
     const normalizedLocation = typeof newLocation === 'string' ? newLocation.trim() : '';
     if (!normalizedLocation || normalizedLocation.length > 300) {
       throw Object.assign(new Error('Lokasi baru wajib diisi dan maksimal 300 karakter.'), { statusCode: 400 });

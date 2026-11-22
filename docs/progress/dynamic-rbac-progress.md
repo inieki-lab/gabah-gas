@@ -1234,3 +1234,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Mitigasi pada branch ini: ekspor status failure latch; middleware keamanan mengarantina seluruh API selain `/api/health` dengan HTTP 503 setelah latch aktif; health melaporkan `status=degraded`, `ready=false`, dan restart-required, bukan menyebutnya file-store fallback.
 - Restart diperlukan untuk memulihkan state otoritatif dari database. Tidak ada fallback diam-diam ke file store setelah PostgreSQL pernah aktif.
 - Validasi kontrak ditambahkan ke regression runtime persistence dan akan dijalankan pada CI exact-head. Belum diklaim sebagai hasil browser UAT.
+
+
+### 2026-11-22 — Relokasi aset saat pinjaman aktif
+
+- Audit membandingkan guard `assignAsset`, `mutateLifecycle`, dan `moveAsset`. Assign dan lifecycle sudah menolak aset dengan loan `approved`/`borrowed`; `moveAsset` sebelumnya hanya memeriksa permission dan dapat mengubah lokasi fisik saat aset masih berada dalam custody/pemesanan pinjaman.
+- Perbaikan: `moveAsset` kini menolak relokasi untuk loan `approved` atau `borrowed` dengan HTTP 409. Pemeriksaan berada di domain service, bukan hanya UI/route.
+- Pinjaman `pending_approval` tidak diblokir, konsisten dengan guard assign/lifecycle saat ini; approval tetap memvalidasi status aset.
+- Regression ditambahkan pada asset status workflow guard yang sudah menjadi bagian CI. Menunggu CI exact-head.

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const server = fs.readFileSync('server.ts', 'utf8');
+const services = fs.readFileSync('server/services.ts', 'utf8');
 const app = fs.readFileSync('src/App.tsx', 'utf8');
 const editModal = fs.readFileSync('src/components/modals/EditAssetModal.tsx', 'utf8');
 const patchStart = server.indexOf("app.patch('/api/assets/:id'");
@@ -38,3 +39,16 @@ assert.ok(editModal.includes('Status tidak diubah melalui edit umum'), 'edit mod
 assert.ok(!editModal.includes('<option value="retired">'), 'generic edit must not expose retired status mutation');
 
 console.log('PASS: API, bulk import, and asset edit UI preserve dedicated lifecycle/loan status workflows.');
+
+
+// Physical relocation must not change the recorded site while a confirmed
+// reservation or active custody loan is in progress. Enforce this in the
+// domain service so direct API callers cannot bypass the rule.
+const moveStart = services.indexOf('static moveAsset(');
+const moveEnd = services.indexOf('static mutateLifecycle(', moveStart);
+assert.ok(moveStart >= 0 && moveEnd > moveStart, 'moveAsset domain service must exist');
+const moveService = services.slice(moveStart, moveEnd);
+assert.match(moveService, /const activeLoan = \(db\.loans \|\| \[\]\)\.find/);
+assert.match(moveService, /\['approved', 'borrowed'\]\.includes\(loan\.status\)/);
+assert.match(moveService, /statusCode: 409/);
+assert.match(moveService, /relokasi fisik ditolak sampai proses pinjaman selesai/);
