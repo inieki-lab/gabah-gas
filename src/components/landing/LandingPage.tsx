@@ -23,25 +23,12 @@ import {
   KeyRound,
   FileCheck
 } from 'lucide-react';
-import { UserProfile } from '../../types';
-import { INITIAL_USERS } from '../../data/mockData';
 
 interface LandingPageProps {
   onOpenLogin: () => void;
-  onQuickLogin: (user: UserProfile) => void;
-  demoUsers?: UserProfile[];
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({
-  onOpenLogin,
-  onQuickLogin,
-  demoUsers = INITIAL_USERS,
-}) => {
-  const usersList = (demoUsers && demoUsers.length > 0) ? demoUsers : INITIAL_USERS;
-  const superAdminUser = usersList.find(u => u.role === 'Admin GABAH') || usersList[0] || INITIAL_USERS[0];
-  const gaAdminUser = usersList.find(u => u.role === 'GA') || usersList[2] || INITIAL_USERS[2];
-  const itAdminUser = usersList.find(u => u.role === 'IT') || usersList[1] || INITIAL_USERS[1];
-  const employeeUser = usersList.find(u => u.role === 'Karyawan') || usersList[4] || INITIAL_USERS[4];
+export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin }) => {
 
   return (
     <div className="min-h-screen bg-[#f8f7fa] text-slate-900 flex flex-col font-sans selection:bg-[#FC4A1A] selection:text-white">
@@ -72,7 +59,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold text-slate-600">
             <a href="#fitur" className="hover:text-[#4ABDAC] transition-colors">Modul Sistem</a>
             <a href="#operasional" className="hover:text-[#4ABDAC] transition-colors">Status Operasional</a>
-            <a href="#akun-demo" className="hover:text-[#4ABDAC] transition-colors">Daftar Akun</a>
+            <button type="button" onClick={onOpenLogin} className="hover:text-[#4ABDAC] transition-colors">Login Pegawai</button>
           </nav>
 
           {/* Login CTA Button (Vermillion #FC4A1A) */}
@@ -126,13 +113,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
-                <a
-                  href="#akun-demo"
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
                   className="flex items-center gap-2 px-5 py-3.5 rounded-xl bg-[#F7B733] hover:bg-[#e5a828] text-slate-900 font-bold text-sm sm:text-base transition-all shadow-md shadow-[#F7B733]/25 active:scale-95"
                 >
-                  <KeyRound className="w-4 h-4 text-slate-900" />
-                  <span>Daftar Akun &amp; Sandi</span>
-                </a>
+                  <LogIn className="w-4 h-4 text-slate-900" />
+                  <span>Login Pegawai</span>
+                </button>
               </div>
 
               {/* Trust & Operational Badges */}
@@ -190,124 +178,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 </div>
 
-                {/* Quick Role Direct Access */}
-                <div className="text-[11px] font-bold text-slate-700 mb-2 flex items-center justify-between">
-                  <span>Akses Cepat Peran:</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Pilih Peran</span>
-                </div>
-
-                <div className="space-y-2">
-                  {/* 1. Super Admin */}
-                  {superAdminUser && (
-                    <div className="p-2 rounded-xl border border-slate-200 bg-[#f8f7fa] hover:bg-[#4ABDAC]/10 hover:border-[#4ABDAC] transition-all flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <img 
-                          src={superAdminUser.avatar} 
-                          alt={superAdminUser.name} 
-                          className="w-8 h-8 rounded-full object-cover border-2 border-[#4ABDAC] shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-900 truncate">{superAdminUser.name}</span>
-                            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[#4ABDAC]/15 text-[#2d7f74] border border-[#4ABDAC]/30">
-                              Super Admin
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 truncate">Akses Penuh &amp; Audit Log</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => onQuickLogin(superAdminUser)}
-                        className="px-3 py-1 rounded-lg bg-[#4ABDAC] hover:bg-[#3ea395] text-white font-bold text-[11px] whitespace-nowrap transition-colors shadow-xs shrink-0"
-                      >
-                        Masuk
-                      </button>
-                    </div>
-                  )}
-
-                  {/* 2. Admin (General Affairs) */}
-                  {gaAdminUser && (
-                    <div className="p-2 rounded-xl border border-slate-200 bg-[#f8f7fa] hover:bg-[#F7B733]/15 hover:border-[#F7B733] transition-all flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <img 
-                          src={gaAdminUser.avatar} 
-                          alt={gaAdminUser.name} 
-                          className="w-8 h-8 rounded-full object-cover border-2 border-[#F7B733] shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-900 truncate">{gaAdminUser.name}</span>
-                            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[#F7B733]/20 text-amber-900 border border-[#F7B733]/40">
-                              Admin GA
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 truncate">Armada &amp; Fasilitas Gedung</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => onQuickLogin(gaAdminUser)}
-                        className="px-3 py-1 rounded-lg bg-[#F7B733] hover:bg-[#e5a828] text-slate-900 font-bold text-[11px] whitespace-nowrap transition-colors shadow-xs shrink-0"
-                      >
-                        Masuk
-                      </button>
-                    </div>
-                  )}
-
-                  {/* 3. IT Admin */}
-                  {itAdminUser && (
-                    <div className="p-2 rounded-xl border border-slate-200 bg-[#f8f7fa] hover:bg-[#4ABDAC]/10 hover:border-[#4ABDAC] transition-all flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <img 
-                          src={itAdminUser.avatar} 
-                          alt={itAdminUser.name} 
-                          className="w-8 h-8 rounded-full object-cover border-2 border-[#4ABDAC] shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-900 truncate">{itAdminUser.name}</span>
-                            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[#4ABDAC]/15 text-[#2d7f74] border border-[#4ABDAC]/30">
-                              IT Admin
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 truncate">Perangkat Kerja &amp; Jaringan</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => onQuickLogin(itAdminUser)}
-                        className="px-3 py-1 rounded-lg bg-[#4ABDAC] hover:bg-[#3ea395] text-white font-bold text-[11px] whitespace-nowrap transition-colors shadow-xs shrink-0"
-                      >
-                        Masuk
-                      </button>
-                    </div>
-                  )}
-
-                  {/* 4. Pegawai */}
-                  {employeeUser && (
-                    <div className="p-2 rounded-xl border border-slate-200 bg-[#f8f7fa] hover:bg-slate-100 hover:border-slate-300 transition-all flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <img 
-                          src={employeeUser.avatar} 
-                          alt={employeeUser.name} 
-                          className="w-8 h-8 rounded-full object-cover border-2 border-slate-400 shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-900 truncate">{employeeUser.name}</span>
-                            <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[#DFDCE3] text-slate-800 border border-slate-300">
-                              Pegawai
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 truncate">Layanan Mandiri Pinjam &amp; Tiket</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => onQuickLogin(employeeUser)}
-                        className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] whitespace-nowrap transition-colors shadow-xs shrink-0"
-                      >
-                        Masuk
-                      </button>
-                    </div>
-                  )}
+                <div className="rounded-xl border border-slate-200 bg-[#f8f7fa] p-4">
+                  <div className="text-xs font-bold text-slate-800">Akses berbasis akun pegawai</div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                    Gunakan email dan kata sandi resmi perusahaan. Data akun dan daftar pegawai tidak ditampilkan pada halaman publik.
+                  </p>
                 </div>
 
                 {/* Footer note */}
@@ -395,94 +270,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 4. AKUN DEMO & PASSWORD SEMENTARA SECTION */}
-      <section id="akun-demo" className="py-16 bg-[#f8f7fa] border-b border-[#DFDCE3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-[#2d7f74] bg-[#4ABDAC]/15 border border-[#4ABDAC]/30 px-3 py-1 rounded-full">
-                Akses Pegawai &amp; Kredensial
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2">
-                Daftar Akun Pengguna
-              </h2>
-              <p className="text-slate-600 text-xs sm:text-sm mt-1">
-                Kredensial akun tidak ditampilkan di halaman publik. Gunakan kredensial resmi yang Anda terima dari Administrator melalui proses provisioning.
-              </p>
-            </div>
-
-            <button
-              onClick={onOpenLogin}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FC4A1A] hover:bg-[#e03f14] text-white font-bold text-xs sm:text-sm transition-all shrink-0 self-start md:self-auto shadow-md shadow-[#FC4A1A]/20"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Buka Form Login Manual</span>
-            </button>
-          </div>
-
-          {/* Cards of Demo Users */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {demoUsers.map((user) => (
-              <div 
-                key={user.id}
-                className="bg-white rounded-2xl border border-[#DFDCE3] p-5 shadow-xs hover:shadow-md hover:border-[#4ABDAC] transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-3">
-                    <img 
-                      src={user.avatar} 
-                      alt={user.name} 
-                      className="w-11 h-11 rounded-full object-cover border-2 border-[#4ABDAC]/50"
-                    />
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-900">{user.name}</h4>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#DFDCE3]/60 text-slate-700 border border-[#DFDCE3] inline-block mt-0.5">
-                        {user.role_label}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 space-y-2 text-xs">
-                    <div>
-                      <div className="text-[10px] text-slate-400 font-semibold uppercase">Unit Kerja</div>
-                      <div className="font-medium text-slate-700">{user.department}</div>
-                    </div>
-
-                    <div>
-                      <div className="text-[10px] text-slate-400 font-semibold uppercase">Email Login</div>
-                      <div className="font-mono text-slate-800 font-medium">{user.email}</div>
-                    </div>
-
-                    <div>
-                      <div className="text-[10px] text-slate-600 font-semibold uppercase flex items-center gap-1">
-                        <KeyRound className="w-3 h-3 text-[#FC4A1A]" />
-                        <span>Password Sementara</span>
-                      </div>
-                      <div className="font-mono font-bold text-amber-900 bg-[#F7B733]/15 px-2 py-1 rounded border border-[#F7B733]/30 mt-0.5">
-                        ********
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-5 pt-3 border-t border-slate-100">
-                  <button
-                    onClick={() => onQuickLogin(user)}
-                    className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-[#4ABDAC] hover:bg-[#3ea395] text-white font-bold text-xs transition-colors shadow-xs"
-                  >
-                    <LogIn className="w-3.5 h-3.5" />
-                    <span>Gunakan Akun Ini</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      </section>
-
-      {/* 5. FOOTER RESMI (PIBC Food Station BUMD Pangan DKI) */}
+            {/* 4. FOOTER RESMI (PIBC Food Station BUMD Pangan DKI) */}
       <footer className="bg-white border-t border-[#DFDCE3] text-slate-600 text-xs py-10 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-8 border-b border-[#DFDCE3]">
