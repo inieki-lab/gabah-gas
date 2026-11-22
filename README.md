@@ -41,7 +41,7 @@ Development, UAT, dan deployment menggunakan arsitektur yang sama: app + Postgre
 
 ```bash
 cp .env.example .env
-# Isi PGPASSWORD dan kredensial bootstrap di .env. Untuk UAT lokal saja, set GABAH_APP_MODE=uat dan GABAH_TEST_PASSWORD yang sama untuk semua akun kanonik; jangan gunakan mode/password UAT pada deployment live.
+# Isi PGADMIN_PASSWORD (akun admin DB), PGPASSWORD (akun aplikasi DB), dan kredensial bootstrap aplikasi. Keduanya harus berbeda. Untuk UAT lokal saja, set GABAH_APP_MODE=uat dan GABAH_TEST_PASSWORD yang sama untuk semua akun kanonik; jangan gunakan mode/password UAT pada deployment live.
 docker compose config
 docker compose up -d --build
 docker compose ps
@@ -52,7 +52,9 @@ Buka `http://localhost` (host port default 80).
 
 Kontrak koneksi internal:
 - Browser → host port `GABAH_WEB_PORT` (default 80) → app container port 3000.
-- App → PostgreSQL melalui hostname service `database:5432` di jaringan Compose.
+- App → PostgreSQL melalui hostname service `database:5432` memakai role aplikasi non-superuser (`PGUSER`).
+- Akun bootstrap PostgreSQL (`PGADMIN_USER`) hanya dipakai service database, backup/administrasi, dan one-shot `database-provisioner`; password admin tidak diteruskan ke container aplikasi.
+- Untuk volume lama, set `PGADMIN_USER` dan `PGADMIN_PASSWORD` sesuai akun bootstrap yang sudah ada; `PGUSER`/`PGPASSWORD` menjadi login aplikasi baru. Provisioner memindahkan ownership objek database sebelum app dinyalakan.
 - PostgreSQL host port `127.0.0.1:GABAH_DB_PORT` (default 5432) hanya untuk administrasi; app tidak menggunakannya.
 - App menunggu healthcheck PostgreSQL dan berjalan fail-fast jika database/migrasi gagal. Tidak ada file-store fallback pada runtime Compose.
 - Jika port host bentrok, ubah `GABAH_WEB_PORT` atau `GABAH_DB_PORT`; jangan ubah `PGHOST=database` / `PGPORT=5432` internal.
