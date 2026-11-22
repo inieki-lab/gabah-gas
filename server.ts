@@ -731,6 +731,64 @@ async function startServer() {
     } catch (error: any) { return rbacFailure(res, error); }
   });
 
+  // Notification rule switches are server-authoritative. Rule definitions remain code-owned.
+  const NOTIFICATION_RULE_IDS = new Set(['rule-warranty', 'rule-loan', 'rule-sla', 'rule-bast']);
+  app.get('/api/admin/notification-rules', async (req, res) => {
+    try {
+      getActor(req);
+      if (!isPostgresPersistenceActive()) {
+        return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi memerlukan PostgreSQL aktif.' });
+      }
+      const result = await queryRbac<any>(
+        'SELECT rule_id, is_active, updated_at, updated_by_user_id FROM gabah_notification_rule_settings ORDER BY rule_id',
+      );
+      if (result.rows.length !== NOTIFICATION_RULE_IDS.size) {
+        return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi belum lengkap di database.' });
+      }
+      return res.json({ success: true, data: result.rows });
+    } catch (error: any) { return rbacFailure(res, error); }
+  });
+
+  app.patch('/api/admin/notification-rules/:ruleId', async (req, res) => {
+    const actor = requireRbacSuperadmin(req, res);
+    if (!actor) return;
+    const ruleId = String(req.params.ruleId || '');
+    if (!NOTIFICATION_RULE_IDS.has(ruleId) || typeof req.body?.is_active !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'Aturan notifikasi atau status tidak valid.' });
+    }
+    try {
+      const updated = await withRbacTransaction(async client => {
+        const current = await client.query<{ is_active: boolean }>(
+          'SELECT is_active FROM gabah_notification_rule_settings WHERE rule_id = $1 FOR UPDATE',
+          [ruleId],
+        );
+        if (!current.rows.length) throw new Error('NOTIFICATION_RULE_NOT_FOUND');
+        const previous = current.rows[0].is_active === true;
+        const next = req.body.is_active as boolean;
+        if (previous === next) {
+          const unchanged = await client.query(
+            'SELECT rule_id, is_active, updated_at, updated_by_user_id FROM gabah_notification_rule_settings WHERE rule_id = $1',
+            [ruleId],
+          );
+          return unchanged.rows[0];
+        }
+        const result = await client.query(
+          'UPDATE gabah_notification_rule_settings SET is_active = $2, updated_at = NOW(), updated_by_user_id = $3 WHERE rule_id = $1 RETURNING rule_id, is_active, updated_at, updated_by_user_id',
+          [ruleId, next, String(actor.id)],
+        );
+        await client.query(
+          'INSERT INTO gabah_notification_rule_audit (rule_id, previous_is_active, new_is_active, changed_by_user_id) VALUES ($1, $2, $3, $4)',
+          [ruleId, previous, next, String(actor.id)],
+        );
+        return result.rows[0];
+      });
+      return res.json({ success: true, data: updated });
+    } catch (error: any) {
+      if (error?.message === 'NOTIFICATION_RULE_NOT_FOUND') return res.status(404).json({ success: false, message: 'Aturan notifikasi tidak ditemukan.' });
+      return rbacFailure(res, error);
+    }
+  });
+
   // ==========================================
   // API ROUTES (FIRST)
   // ==========================================
@@ -3242,16 +3300,48 @@ async function startServer() {
 
   app.post('/api/loans/:id/handover', async (req, res) => {
     try {
-      
-    if (!requireRbacPermission(req, res, 'loans.handover')) return;
-    const actor = getActor(req);
+      if (!requireRbacPermission(req, res, 'loans.handover')) return;
+      const actor = getActor(req);
+      let bastNotificationEnabled = true;
+      if (isPostgresPersistenceActive()) {
+        try {
+          const setting = await queryRbac<{ is_active: boolean }>(
+            "SELECT is_active FROM gabah_notification_rule_settings WHERE rule_id = 'rule-bast'",
+          );
+          if (setting.rows.length !== 1) {
+            return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi notifikasi BAST belum dapat diverifikasi.' });
+          }
+          bastNotificationEnabled = setting.rows[0].is_active === true;
+        } catch (error: any) {
+          console.error('[GABAH API] BAST notification rule unavailable:', error?.message || error);
+          return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi notifikasi BAST tidak dapat diverifikasi.' });
+        }
+      }
       const { handoverNotes } = req.body;
-      const handedOver = await GabahDomainService.persistLoanMutation(() => GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor));
+      const handedOver = await GabahDomainService.persistLoanMutation(() => {
+        const result = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
+        if (bastNotificationEnabled) {
+          const createdAt = new Date().toISOString();
+          const notification = {
+            title: `BAST Selesai: ${result.loan_number}`,
+            message: `Serah terima fisik ${result.asset_name} kepada ${result.borrower_name} telah dicatat oleh ${actor.name}.`,
+            severity: 'success' as const,
+            category: 'loan' as const,
+            link_type: 'loan' as const,
+            link_id: result.id,
+            is_read: false,
+            created_at: createdAt,
+          };
+          db.notifications.unshift(
+            { ...notification, id: `NOTIF-${crypto.randomUUID()}`, recipient_user_id: result.borrower_id },
+            { ...notification, id: `NOTIF-${crypto.randomUUID()}`, recipient_division: result.owner_division },
+          );
+        }
+        return result;
+      });
       (req as any).__gabahPersisted = true;
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
-      // SECURITY: 403 (authorization) / 409 (invalid state transition) are
-      // enforced by the domain service and surfaced verbatim to the client.
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
@@ -4226,10 +4316,30 @@ async function startServer() {
     });
   });
 
-  app.get('/api/dashboard/attention', (req, res) => {
+  app.get('/api/dashboard/attention', async (req, res) => {
     if (!requireRbacPermission(req, res, 'dashboard.read')) return;
     const actor = getActor(req);
-    const items = GabahDomainService.getAttentionCenter(actor);
+    let items = GabahDomainService.getAttentionCenter(actor);
+    if (isPostgresPersistenceActive()) {
+      try {
+        const settings = await queryRbac<{ rule_id: string; is_active: boolean }>(
+          "SELECT rule_id, is_active FROM gabah_notification_rule_settings WHERE rule_id IN ('rule-warranty', 'rule-loan', 'rule-sla')",
+        );
+        if (settings.rows.length !== 3) {
+          return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi belum lengkap; pusat perhatian tidak dapat diverifikasi.' });
+        }
+        const enabled = new Map(settings.rows.map(setting => [setting.rule_id, setting.is_active === true]));
+        items = items.filter(item => {
+          if (item.type === 'warranty_expiring') return enabled.get('rule-warranty') === true;
+          if (item.type === 'loan_pending' || item.type === 'loan_overdue') return enabled.get('rule-loan') === true;
+          if (item.type === 'sla_breach' || item.type === 'sla_warning') return enabled.get('rule-sla') === true;
+          return true;
+        });
+      } catch (error: any) {
+        console.error('[GABAH API] Notification rule settings unavailable:', error?.message || error);
+        return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi tidak dapat diverifikasi.' });
+      }
+    }
     const isGlobalReader = isSuperadminActor(actor) || isAuditorActor(actor);
     const visibleAssets = isGlobalReader ? db.assets : GabahDomainService.getScopedAssets(actor);
     const canReadOwnerScope = (module: 'loans' | 'tickets', owner: string) =>

@@ -31,10 +31,19 @@ const routeCalls = [
   'returnLoan(req.params.id, condition, returnNotes, actor)',
 ];
 for (const call of routeCalls) {
-  assert.ok(server.includes('persistLoanMutation(() => GabahDomainService.' + call), call + ' must use atomic persistence');
-  const routeAt = server.indexOf('persistLoanMutation(() => GabahDomainService.' + call);
+  const isHandover = call.startsWith('handoverLoan(');
+  const atomicCall = isHandover
+    ? 'persistLoanMutation(() => {'
+    : 'persistLoanMutation(() => GabahDomainService.' + call;
+  assert.ok(server.includes(atomicCall), call + ' must use atomic persistence');
+  const routeAt = server.indexOf(atomicCall);
   const routeEnd = server.indexOf('\n    } catch', routeAt);
-  assert.ok(routeEnd > routeAt && server.slice(routeAt, routeEnd).includes('__gabahPersisted = true'), call + ' must mark the durable write before responding');
-  assert.doesNotMatch(server.slice(routeAt, routeEnd), /await persistDataStore\(\)/, call + ' must not issue a duplicate persistence write');
+  const route = server.slice(routeAt, routeEnd);
+  assert.ok(routeEnd > routeAt && route.includes('__gabahPersisted = true'), call + ' must mark the durable write before responding');
+  assert.doesNotMatch(route, /await persistDataStore\(\)/, call + ' must not issue a duplicate persistence write');
+  if (isHandover) {
+    assert.ok(route.includes('GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor)'), 'handover must execute inside the atomic callback');
+    assert.ok(route.includes('db.notifications.unshift'), 'BAST notifications must share the atomic handover commit');
+  }
 }
 console.log('PASS: single and bulk loan workflows persist atomically with in-memory rollback');

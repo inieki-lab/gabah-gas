@@ -48,6 +48,9 @@ jobs:
       - name: Browser storage policy regression
         run: npm run test:browser-storage-policy
 
+      - name: PostgreSQL notification rule persistence and enforcement regression
+        run: npm run test:notification-rule-persistence
+
       - name: Typecheck (lint)
         run: npm run lint
 
