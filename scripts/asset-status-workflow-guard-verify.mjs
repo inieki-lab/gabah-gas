@@ -58,3 +58,10 @@ assert.equal(movementIds.length, 3, 'unassign, assign, and relocate must each cr
 assert.ok(movementIds.every(expression => expression === 'randomUUID()'), 'movement primary keys must use collision-resistant UUIDs, not millisecond timestamps');
 assert.ok(services.includes("import { randomUUID } from 'node:crypto';"), 'movement UUID generator must use Node crypto');
 assert.ok(!/id: `MOV-\$\{Date\.now\(\)\}`/.test(services), 'timestamp-only movement IDs must be removed');
+
+const generatedIdPrefixes = ['LOG', 'NOTIF', 'AST', 'LOAN', 'TKT', 'rsv', 'MT'];
+for (const prefix of generatedIdPrefixes) {
+  assert.ok(services.includes('id: `' + prefix + '-${randomUUID()}`'), prefix + ' records must use UUID primary keys');
+}
+assert.ok(services.includes("id: `FAC-${payload.category || 'GA'}-${randomUUID()}`"), 'meeting facilities must use UUID primary keys');
+assert.ok(!/id: `(?:LOG|NOTIF|AST|LOAN|TKT|rsv|MT)-\$\{Date\.now\(\)/.test(services), 'timestamp/random-short-suffix IDs must be removed from domain records');
