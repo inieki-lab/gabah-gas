@@ -35,16 +35,25 @@ FROM pg_roles WHERE rolname = current_user;
 
 -- Create or rotate the application login as a non-superuser.
 SELECT format(
-  'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS',
+  'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT',
   :'app_user', :'app_password'
 )
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user')
 \gexec
 
 SELECT format(
-  'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS',
+  'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT',
   :'app_user', :'app_password'
 )
+\gexec
+
+-- The application login is standalone: it must not inherit or SET ROLE into
+-- administrator/group roles that may have been assigned to a legacy login.
+SELECT format('REVOKE %I FROM %I', parent.rolname, member.rolname)
+FROM pg_auth_members membership
+JOIN pg_roles parent ON parent.oid = membership.roleid
+JOIN pg_roles member ON member.oid = membership.member
+WHERE member.rolname = :'app_user'
 \gexec
 
 -- Only migrate ownership when this dedicated database is still owned by the
