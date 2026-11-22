@@ -3,11 +3,15 @@ import fs from 'node:fs';
 
 const service = fs.readFileSync('server/services.ts', 'utf8');
 const modal = fs.readFileSync('src/components/modals/CreateLoanModal.tsx', 'utf8');
+const dateParser = fs.readFileSync('shared/loan-datetime.ts', 'utf8');
 const roomView = fs.readFileSync('src/components/views/MeetingRoomsView.tsx', 'utf8');
 
-assert.match(service, /datetime-local \(YYYY-MM-DDTHH:mm\)/, 'Backend documents and accepts datetime-local loan input');
-assert.ok(service.includes("const dateTime = /^(\\d{4})-(\\d{2})-(\\d{2})T"), 'Backend validates datetime-local hour/minute');
-assert.ok(service.includes("const dateOnly = /^(\\d{4})-(\\d{2})-(\\d{2})$"), 'Backend remains compatible with legacy date-only values');
+assert.match(service, /parseLoanDateTimestamp/, 'Backend uses the shared loan datetime parser');
+assert.match(service, /return \{ text, timestamp: parseLoanDateTimestamp\(text\) \}/, 'Backend delegates schedule parsing to the shared helper');
+assert.match(dateParser, /const dateTime = \/\^\\\\d\{4\}/, 'Shared parser validates datetime-local hour/minute');
+assert.match(dateParser, /const dateOnly = \/\^\\\\d\{4\}/, 'Shared parser preserves legacy date-only values');
+assert.match(service, /existingStart = parseLoanDateTimestamp\(l\.start_date\)/, 'Request collision check uses the shared timezone parser');
+assert.match(service, /start = parseLoanDateTimestamp\(loan\.start_date\)/, 'Approval collision check uses the shared timezone parser');
 assert.match(service, /start >= due/, 'Backend rejects non-increasing loan schedules');
 assert.match(service, /Tabrakan Jadwal![\s\S]*?statusCode: 409/, 'Overlapping approved/borrowed asset schedules are HTTP 409 conflicts');
 assert.match(service, /Tidak dapat disetujui: Tabrakan jadwal[\s\S]*?statusCode: 409/, 'Approval-time overlapping schedules are also HTTP 409 conflicts');
