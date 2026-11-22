@@ -222,9 +222,35 @@ export function filterMaintenanceSchedulesByDynamicScopes(schedules: ServerMaint
   });
 }
 
-async function persistDomainMutation(): Promise<void> {
+type RoomDomainSnapshot = {
+  rooms: ServerMeetingRoom[];
+  roomReservations: ServerRoomReservation[];
+  meetingTypes: ServerMeetingType[];
+  meetingFacilities: ServerMeetingFacility[];
+  notifications: ServerNotification[];
+  auditLogs: ServerAuditLog[];
+};
+
+function captureRoomDomainSnapshot(): RoomDomainSnapshot {
+  return {
+    rooms: structuredClone(db.rooms),
+    roomReservations: structuredClone(db.roomReservations),
+    meetingTypes: structuredClone(db.meetingTypes),
+    meetingFacilities: structuredClone(db.meetingFacilities),
+    notifications: structuredClone(db.notifications),
+    auditLogs: structuredClone(db.auditLogs),
+  };
+}
+
+async function persistDomainMutation(snapshot: RoomDomainSnapshot): Promise<void> {
   try { await persistDataStore(); }
   catch (error: any) {
+    db.rooms.splice(0, db.rooms.length, ...snapshot.rooms);
+    db.roomReservations.splice(0, db.roomReservations.length, ...snapshot.roomReservations);
+    db.meetingTypes.splice(0, db.meetingTypes.length, ...snapshot.meetingTypes);
+    db.meetingFacilities.splice(0, db.meetingFacilities.length, ...snapshot.meetingFacilities);
+    db.notifications.splice(0, db.notifications.length, ...snapshot.notifications);
+    db.auditLogs.splice(0, db.auditLogs.length, ...snapshot.auditLogs);
     throw Object.assign(new Error(error?.message || 'Gagal menyimpan perubahan.'), { statusCode: 503 });
   }
 }
@@ -1594,6 +1620,7 @@ export class GabahDomainService {
       throw Object.assign(new Error('Prioritas rapat dari master tidak valid.'), { statusCode: 400 });
     }
     const canInterrupt = canSetDirectorPriority && requestedPriority === 'high';
+    const persistenceSnapshot = captureRoomDomainSnapshot();
 
     if (conflicting) {
       if (conflicting.status === 'in_use') {
@@ -1655,7 +1682,8 @@ export class GabahDomainService {
           'MeetingRooms',
           `Interupsi jadwal ${conflicting.reservation_number} di ${originalRoomName} oleh ${actor.name} (${actor.role}) untuk Rapat Direksi: ${payload.title}. Status pemindahan: ${altRoom ? 'Dipindahkan ke ' + altRoom.name : 'Dibatalkan/Ruangan penuh'}`,
           actor,
-          conflicting.id
+          conflicting.id,
+          false
         );
       } else {
         const err: any = new Error(
@@ -1739,7 +1767,8 @@ export class GabahDomainService {
       'MeetingRooms',
       `Reservasi ${reservation.reservation_number} dibuat untuk ${room.name} (${payload.date} ${payload.start_time}-${payload.end_time}) [Prioritas: ${reservation.priority.toUpperCase()}] - Agenda: ${reservation.title}`,
       actor,
-      reservation.id
+      reservation.id,
+      false
     );
 
     // Notify GA about pending reservation if submitted by employees
@@ -1818,7 +1847,7 @@ export class GabahDomainService {
       });
     }
 
-    await persistDomainMutation();
+    await persistDomainMutation(persistenceSnapshot);
 
     return reservation;
   }
@@ -1847,6 +1876,7 @@ export class GabahDomainService {
       throw new Error(`Tidak dapat disetujui: Tabrakan jadwal dengan reservasi ${conflicting.reservation_number} (${conflicting.organizer_name}).`);
     }
 
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     reservation.status = 'approved';
     reservation.approver_id = actor.id;
     reservation.approver_name = actor.name;
@@ -1858,7 +1888,8 @@ export class GabahDomainService {
       'MeetingRooms',
       `Reservasi ${reservation.reservation_number} disetujui untuk ${reservation.room_name}`,
       actor,
-      reservation.id
+      reservation.id,
+      false
     );
 
     this.notify({
@@ -1900,7 +1931,7 @@ export class GabahDomainService {
       });
     }
 
-    await persistDomainMutation();
+    await persistDomainMutation(persistenceSnapshot);
 
     return reservation;
   }
@@ -1916,6 +1947,7 @@ export class GabahDomainService {
     if (reservation.status !== 'pending_approval') {
       throw Object.assign(new Error(`Reservasi hanya dapat ditolak dari status "pending_approval" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
     }
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     reservation.status = 'rejected';
     reservation.rejection_reason = reason || 'Kapasitas penuh / prioritas rapat direksi';
     reservation.approver_id = actor.id;
@@ -1927,10 +1959,11 @@ export class GabahDomainService {
       'MeetingRooms',
       `Reservasi ${reservation.reservation_number} ditolak: ${reservation.rejection_reason}`,
       actor,
-      reservation.id
+      reservation.id,
+      false
     );
 
-    await persistDomainMutation();
+    await persistDomainMutation(persistenceSnapshot);
 
     return reservation;
   }
@@ -1946,6 +1979,7 @@ export class GabahDomainService {
       throw Object.assign(new Error(`Check-in hanya dapat dilakukan pada status "approved" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
     }
 
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     reservation.status = 'in_use';
     reservation.checkin_at = new Date().toISOString();
     reservation.updated_at = new Date().toISOString();
@@ -1955,8 +1989,8 @@ export class GabahDomainService {
       room.status = 'in_use';
     }
 
-    this.recordAudit('ROOM_CHECKIN', 'MeetingRooms', `Check-in rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    await persistDomainMutation();
+    this.recordAudit('ROOM_CHECKIN', 'MeetingRooms', `Check-in rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return reservation;
   }
 
@@ -1971,6 +2005,7 @@ export class GabahDomainService {
       throw Object.assign(new Error(`Check-out hanya dapat dilakukan pada status "in_use" (status saat ini: "${reservation.status}").`), { statusCode: 409 });
     }
 
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     reservation.status = 'completed';
     reservation.checkout_at = new Date().toISOString();
     reservation.updated_at = new Date().toISOString();
@@ -1980,8 +2015,8 @@ export class GabahDomainService {
       room.status = 'available';
     }
 
-    this.recordAudit('ROOM_CHECKOUT', 'MeetingRooms', `Check-out selesai rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    await persistDomainMutation();
+    this.recordAudit('ROOM_CHECKOUT', 'MeetingRooms', `Check-out selesai rapat ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return reservation;
   }
 
@@ -1995,6 +2030,7 @@ export class GabahDomainService {
     if (!['pending_approval', 'approved'].includes(reservation.status)) {
       throw Object.assign(new Error(`Reservasi tidak dapat dibatalkan dari status "${reservation.status}".`), { statusCode: 409 });
     }
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     reservation.status = 'cancelled';
     reservation.updated_at = new Date().toISOString();
 
@@ -2003,8 +2039,8 @@ export class GabahDomainService {
       room.status = 'available';
     }
 
-    this.recordAudit('ROOM_RESERVATION_CANCELLED', 'MeetingRooms', `Pembatalan reservasi ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id);
-    await persistDomainMutation();
+    this.recordAudit('ROOM_RESERVATION_CANCELLED', 'MeetingRooms', `Pembatalan reservasi ${reservation.reservation_number} di ${reservation.room_name}`, actor, reservation.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return reservation;
   }
 
@@ -2022,13 +2058,14 @@ export class GabahDomainService {
     const allowedRoomFields: Array<keyof ServerMeetingRoom> = [
       'name', 'capacity', 'facilities', 'status', 'color', 'description', 'image_url',
     ];
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     for (const key of allowedRoomFields) {
       if (updates[key] !== undefined) {
         (room as any)[key] = updates[key];
       }
     }
-    this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id);
-    await persistDomainMutation();
+    this.recordAudit('ROOM_UPDATED', 'MeetingRooms', `Update fasilitas/status ruangan ${room.name}`, actor, room.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return room;
   }
 
@@ -2051,10 +2088,11 @@ export class GabahDomainService {
       color: payload.color || 'blue',
       is_system: false,
     };
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     if (!db.meetingTypes) db.meetingTypes = [];
     db.meetingTypes.push(newItem);
-    this.recordAudit('MEETING_TYPE_CREATED', 'MeetingRooms', `Menambah tipe rapat baru: ${newItem.name}`, actor, newItem.id);
-    await persistDomainMutation();
+    this.recordAudit('MEETING_TYPE_CREATED', 'MeetingRooms', `Menambah tipe rapat baru: ${newItem.name}`, actor, newItem.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return newItem;
   }
 
@@ -2064,13 +2102,14 @@ export class GabahDomainService {
     }
     const item = (db.meetingTypes || []).find(m => m.id === id);
     if (!item) throw new Error('Tipe rapat tidak ditemukan.');
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     if (payload.name) item.name = payload.name.trim();
     if (payload.code) item.code = payload.code.trim().toLowerCase();
     if (payload.description !== undefined) item.description = payload.description.trim();
     if (payload.priority_level) item.priority_level = payload.priority_level;
     if (payload.color) item.color = payload.color;
-    this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id);
-    await persistDomainMutation();
+    this.recordAudit('MEETING_TYPE_UPDATED', 'MeetingRooms', `Mengubah tipe rapat: ${item.name}`, actor, item.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return item;
   }
 
@@ -2081,9 +2120,10 @@ export class GabahDomainService {
     const idx = (db.meetingTypes || []).findIndex(m => m.id === id);
     if (idx === -1) throw new Error('Tipe rapat tidak ditemukan.');
     const removed = db.meetingTypes[idx];
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     db.meetingTypes.splice(idx, 1);
-    this.recordAudit('MEETING_TYPE_DELETED', 'MeetingRooms', `Menghapus tipe rapat: ${removed.name}`, actor, removed.id);
-    await persistDomainMutation();
+    this.recordAudit('MEETING_TYPE_DELETED', 'MeetingRooms', `Menghapus tipe rapat: ${removed.name}`, actor, removed.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return { success: true };
   }
 
@@ -2105,10 +2145,11 @@ export class GabahDomainService {
       is_active: payload.is_active !== undefined ? payload.is_active : true,
       is_system: false,
     };
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     if (!db.meetingFacilities) db.meetingFacilities = [];
     db.meetingFacilities.push(newFac);
-    this.recordAudit('MEETING_FACILITY_CREATED', 'MeetingRooms', `Menambah fasilitas rapat [${newFac.category}]: ${newFac.name}`, actor, newFac.id);
-    await persistDomainMutation();
+    this.recordAudit('MEETING_FACILITY_CREATED', 'MeetingRooms', `Menambah fasilitas rapat [${newFac.category}]: ${newFac.name}`, actor, newFac.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return newFac;
   }
 
@@ -2118,12 +2159,13 @@ export class GabahDomainService {
     }
     const item = (db.meetingFacilities || []).find(f => f.id === id);
     if (!item) throw new Error('Fasilitas tidak ditemukan.');
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     if (payload.name) item.name = payload.name.trim();
     if (payload.category) item.category = payload.category;
     if (payload.description !== undefined) item.description = payload.description.trim();
     if (payload.is_active !== undefined) item.is_active = payload.is_active;
-    this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id);
-    await persistDomainMutation();
+    this.recordAudit('MEETING_FACILITY_UPDATED', 'MeetingRooms', `Mengubah fasilitas rapat [${item.category}]: ${item.name}`, actor, item.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return item;
   }
 
@@ -2134,9 +2176,10 @@ export class GabahDomainService {
     const idx = (db.meetingFacilities || []).findIndex(f => f.id === id);
     if (idx === -1) throw new Error('Fasilitas tidak ditemukan.');
     const removed = db.meetingFacilities[idx];
+    const persistenceSnapshot = captureRoomDomainSnapshot();
     db.meetingFacilities.splice(idx, 1);
-    this.recordAudit('MEETING_FACILITY_DELETED', 'MeetingRooms', `Menghapus fasilitas rapat [${removed.category}]: ${removed.name}`, actor, removed.id);
-    await persistDomainMutation();
+    this.recordAudit('MEETING_FACILITY_DELETED', 'MeetingRooms', `Menghapus fasilitas rapat [${removed.category}]: ${removed.name}`, actor, removed.id, false);
+    await persistDomainMutation(persistenceSnapshot);
     return { success: true };
   }
 }
