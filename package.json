@@ -102,6 +102,7 @@
     "test:uat-credential-mode": "node scripts/uat-credential-mode-verify.mjs",
     "test:postgres-role-config": "node scripts/postgres-role-config-verify.mjs",
     "test:upload-security": "node --import tsx scripts/upload-security-verify.mjs",
+    "test:browser-storage-policy": "node scripts/browser-storage-policy-verify.mjs",
     "test:shared-rate-limits": "node --import tsx scripts/shared-rate-limit-verify.ts",
     "test:auth-rate-limit-memory": "node --import tsx scripts/auth-rate-limit-memory-verify.mjs"
   },
