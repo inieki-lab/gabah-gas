@@ -1254,3 +1254,6 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 
 - Audit tambahan pada reservasi ruang rapat menemukan field `meeting_type` yang dapat mencapai kolom `VARCHAR(50)` tanpa batas panjang, serta NUL byte yang dapat masuk ke kolom `TEXT`/array fasilitas. Guard sekarang membatasi kode meeting type ke 50 code points dan menolak NUL pada field teks dan fasilitas sebelum state dimutasi. Regression ditambahkan ke `room-capability-ui-verify` yang sudah berjalan di CI.
+
+
+- Audit kontrak juga menemukan `createContract()` dan `updateContract()` tidak membatasi `contract_type VARCHAR(100)`, `title VARCHAR(255)`, dan `vendor_name VARCHAR(255)`; NUL byte pada judul/vendor/catatan juga dapat menggagalkan insert/update. Validasi bersama sekarang diterapkan pada create dan update untuk field tersebut, dengan batas Unicode code points serta penolakan NUL sebelum mutasi.
