@@ -1323,3 +1323,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Migration baru `099_room_reservation_collision_lock.sql` memperoleh transaction-scoped advisory lock berdasarkan `room_id` sebelum query collision. Lock dilepas otomatis saat transaksi commit/rollback.
 - Integrasi CR-04/CR-05 diperluas dengan dua koneksi PostgreSQL independen: transaksi kedua harus menunggu lock, lalu ditolak dengan SQLSTATE `P0001`; hasil akhir satu reservasi `pending` dan satu tetap `cancelled`.
 - Pengujian memakai fixture CI acak dan menghapus seluruh record setelah test. Menunggu CI exact-head dan belum diklaim sebagai UAT browser.
+
+
+### 2026-11-22 — Audit log append-only di PostgreSQL
+
+- FR-10.2 mensyaratkan histori audit immutable, tetapi tabel `audit_logs` sebelumnya belum memiliki proteksi database terhadap UPDATE, DELETE, atau TRUNCATE.
+- Migration `100_audit_log_immutability.sql` menolak ketiga operasi tersebut dengan SQLSTATE `55000`. Penambahan log tetap berjalan melalui INSERT.
+- FK actor diubah menjadi `ON DELETE SET NULL`; trigger hanya mengizinkan perubahan nested dari aksi FK ini dan hanya pada kolom `user_id`. Snapshot `user_name`, `user_role`, action, details, dan timestamp tetap immutable.
+- CR-04/CR-05 fresh PostgreSQL integration menguji user deletion, penolakan UPDATE/DELETE/TRUNCATE, dan retensi baris audit di dalam transaksi yang di-rollback setelah verifikasi.
+- Menunggu CI exact-head; belum diklaim sebagai UAT.

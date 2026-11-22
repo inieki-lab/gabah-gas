@@ -1,3 +1,11 @@
+## [2026-11-22] — Make PostgreSQL audit logs append-only
+
+- Add migration `100_audit_log_immutability.sql` with database-level guards against UPDATE, DELETE, and TRUNCATE of audit history.
+- Preserve audit history when a user account is deleted: the actor FK becomes NULL while the recorded actor name, role, action, details, and timestamp remain unchanged.
+- Extend the fresh-PostgreSQL integration suite to verify FK detachment and that all direct mutation paths fail with SQLSTATE `55000`.
+
+---
+
 ## [2026-11-22] — Serialize concurrent meeting-room reservations
 
 - Audit found the existing room reservation trigger checked overlapping active reservations without acquiring a lock; two independent transactions could both observe no conflict and commit the same room/time.
