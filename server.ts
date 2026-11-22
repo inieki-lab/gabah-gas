@@ -1635,7 +1635,7 @@ async function startServer() {
       // cannot create separate lockout buckets for the same account. Unknown
       // emails remain isolated by their normalized input value.
       const loginIdentifier = `${ip}|${user?.id ?? inputEmail}`;
-      const lockCheck = isLoginLocked(loginIdentifier);
+      const lockCheck = await isLoginLocked(loginIdentifier);
       if (lockCheck.isLocked) {
         return res.status(429).json({
           success: false,
@@ -1644,7 +1644,7 @@ async function startServer() {
       }
 
       if (!user || !user.is_active) {
-        const lock = recordFailedLogin(loginIdentifier);
+        const lock = await recordFailedLogin(loginIdentifier);
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
@@ -1688,7 +1688,7 @@ async function startServer() {
       }
 
       // Reset lockout counter on success
-      clearFailedLogins(loginIdentifier);
+      await clearFailedLogins(loginIdentifier);
 
       // Create persistent session
       const session = createSession(user.id, req);
