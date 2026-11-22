@@ -1,3 +1,10 @@
+### CSP report-only rollout — 2026-11-23 (PR #243; CI pending)
+
+- Added a non-enforcing `Content-Security-Policy-Report-Only` header to API, HTML, and static asset responses.
+- Scripts are restricted to same-origin in the initial policy; no `unsafe-inline` or `unsafe-eval` script allowance is present. Inline styles and Google Fonts remain explicit temporary allowances pending browser compatibility inventory.
+- External HTTPS images/connections remain broad in report-only mode so current integrations can be observed before tightening.
+- Added a P0 HTTP header regression and a rollout note. No claim of enforced CSP or active TLS/HSTS; enforcing CSP remains gated on browser UAT and violation review.
+
 ### Dynamic RBAC live HTTP authorization coverage — 2026-11-23 (PR #242; CI pending)
 
 - Extended the fresh PostgreSQL integration to exercise all nine Dynamic RBAC administration endpoints as a Karyawan: permissions, roles, assignments, role create/update/delete, permission updates, scope updates, and user-role assignment.
