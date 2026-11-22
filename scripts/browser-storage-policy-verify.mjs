@@ -26,9 +26,9 @@ assert.deepEqual([...new Set(storageKeys)], ['gabah_auth_token'],
   'The API client may persist only the authentication token in browser localStorage');
 assert.match(api, /const TOKEN_STORAGE_KEY = 'gabah_auth_token';/,
   'The API client storage key must remain the canonical auth token');
-assert.equal((app.match(/localStorage\\./g) || []).length, 1,
+assert.equal((app.match(/localStorage\./g) || []).length, 1,
   'The application shell may only read the canonical auth token once');
-assert.match(app, /localStorage\\.getItem\\('gabah_auth_token'\\)/,
+assert.match(app, /localStorage\.getItem\('gabah_auth_token'\)/,
   'The application shell may only inspect gabah_auth_token');
 
 console.log('Browser storage policy verified: only gabah_auth_token is persisted by the API client.');
