@@ -74,6 +74,9 @@ jobs:
       - name: Asset lifecycle status cannot be bypassed by generic edits
         run: npm run test:asset-status-workflow-guard
 
+      - name: Asset PATCH validation and persistence rollback regression
+        run: npm run test:asset-patch-atomicity
+
       - name: User creation profile validation regression
         run: npm run test:user-create-profile-validation
 
