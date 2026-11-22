@@ -22,7 +22,7 @@ assert.equal(/(?:window\.)?localStorage\.(?:getItem|setItem|removeItem)/.test(ad
 
 const storageAccesses = [...api.matchAll(/localStorage\.(?:getItem|setItem|removeItem)\(([^)]+)\)/g)].map(match => match[1].trim());
 assert.ok(storageAccesses.length > 0, 'Auth token storage should remain wired');
-assert.ok(storageAccesses.every(key => key === 'TOKEN_STORAGE_KEY'),
+assert.ok(storageAccesses.every(key => key === 'TOKEN_STORAGE_KEY' || key.startsWith('TOKEN_STORAGE_KEY,')),
   'The API client may access browser storage only through its canonical token key constant');
 assert.match(api, /const TOKEN_STORAGE_KEY = 'gabah_auth_token';/,
   'The API client storage key must remain the canonical auth token');
