@@ -1,3 +1,12 @@
+## [2026-11-22] — Separate PostgreSQL bootstrap administrator from the application login
+
+- Add a one-shot Compose provisioner that creates/rotates a dedicated application login with `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOREPLICATION`, and `NOBYPASSRLS`.
+- Transfer existing database object ownership to the application role before app startup, while keeping the bootstrap administrator credential out of the application container.
+- Extend the production Docker smoke test to prove existing-object ownership transfer, PostgreSQL migrations under the non-superuser app role, and database-owner/role flags.
+- Update deployment preflight, `.env.example`, README, and the VM runbook for separate admin and app database credentials.
+
+---
+
 ## [2026-11-22] — Make shared test credentials usable only in explicit UAT mode
 
 - Keep `GABAH_APP_MODE=production` as the default even though Docker uses a production Node runtime for development/UAT parity.

@@ -18,7 +18,9 @@ command -v curl >/dev/null 2>&1 || fail "curl diperlukan untuk health check."
 
 [[ -f .env ]] || fail "File .env tidak ditemukan. Salin .env.example dan isi kredensial produksi terlebih dahulu."
 awk -F= '$1 == "PGPASSWORD" && length($2) > 0 { found=1 } END { exit(found ? 0 : 1) }' .env \
-  || fail "PGPASSWORD kosong/tidak ditemukan pada .env."
+  || fail "PGPASSWORD akun aplikasi kosong/tidak ditemukan pada .env."
+awk -F= '$1 == "PGADMIN_PASSWORD" && length($2) > 0 { found=1 } END { exit(found ? 0 : 1) }' .env \
+  || fail "PGADMIN_PASSWORD akun administrator database kosong/tidak ditemukan pada .env."
 docker compose config --quiet || fail "Konfigurasi Docker Compose tidak valid."
 
 printf '%s\n' "Preflight PASS. Membangun image aplikasi dari Dockerfile yang memakai lockfile."
@@ -37,6 +39,10 @@ for ((attempt=1; attempt<=30; attempt++)); do
   sleep 2
 done
 [[ "$DB_HEALTH" == "healthy" ]] || fail "PostgreSQL belum healthy; aplikasi tidak akan diganti."
+
+# Provision a separate non-superuser app login and transfer database object ownership.
+# The bootstrap administrator credential is used only by this one-shot container.
+docker compose run --rm database-provisioner || fail "Provisioning role aplikasi PostgreSQL gagal; app tidak akan diganti."
 
 # Replace only the app container. Database and both named volumes remain intact.
 docker compose up -d --no-deps --force-recreate app

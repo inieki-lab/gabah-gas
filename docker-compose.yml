@@ -5,8 +5,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${PGDATABASE:-gabah_db}
-      POSTGRES_USER: ${PGUSER:-gabah_user}
-      POSTGRES_PASSWORD: ${PGPASSWORD:?PGPASSWORD wajib diisi di .env sebelum menjalankan docker compose}
+      POSTGRES_USER: ${PGADMIN_USER:-gabah_admin}
+      POSTGRES_PASSWORD: ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD wajib diisi di .env sebelum menjalankan docker compose}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -14,11 +14,31 @@ services:
     ports:
       - "127.0.0.1:${GABAH_DB_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-gabah_user} -d ${PGDATABASE:-gabah_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${PGADMIN_USER:-gabah_admin} -d ${PGDATABASE:-gabah_db}"]
       interval: 5s
       timeout: 5s
       retries: 12
       start_period: 30s
+
+  database-provisioner:
+    image: postgres:17-alpine
+    entrypoint: ["/bin/sh", "/scripts/provision-postgres-app-role.sh"]
+    environment:
+      PGHOST: database
+      PGPORT: 5432
+      PGDATABASE: ${PGDATABASE:-gabah_db}
+      PGADMIN_USER: ${PGADMIN_USER:-gabah_admin}
+      PGADMIN_PASSWORD: ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD wajib diisi di .env sebelum menjalankan docker compose}
+      PGAPP_USER: ${PGUSER:-gabah_app}
+      PGAPP_PASSWORD: ${PGPASSWORD:?PGPASSWORD wajib diisi di .env sebelum menjalankan docker compose}
+    volumes:
+      - ./scripts/provision-postgres-app-role.sh:/scripts/provision-postgres-app-role.sh:ro
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - gabah_network
+    restart: "no"
 
   app:
     image: gabah-gas:${GABAH_IMAGE_TAG:-local}
@@ -36,7 +56,7 @@ services:
       PGHOST: database
       PGPORT: 5432
       PGDATABASE: ${PGDATABASE:-gabah_db}
-      PGUSER: ${PGUSER:-gabah_user}
+      PGUSER: ${PGUSER:-gabah_app}
       PGPASSWORD: ${PGPASSWORD:?PGPASSWORD wajib diisi di .env sebelum menjalankan docker compose}
       GABAH_INITIAL_ADMIN_PASSWORD: ${GABAH_INITIAL_ADMIN_PASSWORD:-}
       GABAH_INITIAL_USER_PASSWORD: ${GABAH_INITIAL_USER_PASSWORD:-}
@@ -48,6 +68,8 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      database-provisioner:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
