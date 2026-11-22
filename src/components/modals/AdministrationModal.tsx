@@ -1690,7 +1690,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('gabah_auth_token') || ''}`,
+          Authorization: `Bearer ${gabahApi.getToken() || ''}`,
         },
       });
       const body = await res.json().catch(() => ({}));
