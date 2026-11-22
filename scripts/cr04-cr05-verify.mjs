@@ -634,6 +634,68 @@ async function main() {
 
     if (!adminToken) throw new Error('cannot continue without admin token');
 
+    // ---------- PostgreSQL-backed notification rule administration ----------
+    const notificationSettings = await req(base, 'GET', '/api/admin/notification-rules', { token: adminToken });
+    const notificationRows = notificationSettings.json?.data || [];
+    record('Admin reads all four persisted notification rules', '200 + four settings',
+      `HTTP ${notificationSettings.status} rows=${notificationRows.length}`,
+      notificationSettings.status === 200 && notificationRows.length === 4
+        && notificationRows.every(row => typeof row.is_active === 'boolean'));
+
+    const employeeNotificationRead = await req(base, 'GET', '/api/admin/notification-rules', { token: karyawanToken });
+    record('Authenticated employee can read notification rule status', '200',
+      `HTTP ${employeeNotificationRead.status}`, employeeNotificationRead.status === 200);
+
+    const anonymousNotificationRead = await req(base, 'GET', '/api/admin/notification-rules');
+    record('Anonymous notification rule read is denied', '401',
+      `HTTP ${anonymousNotificationRead.status}`, anonymousNotificationRead.status === 401);
+
+    const employeeNotificationWrite = await req(base, 'PATCH', '/api/admin/notification-rules/rule-sla', {
+      token: karyawanToken, body: { is_active: false },
+    });
+    record('Karyawan cannot change notification rules', '403',
+      `HTTP ${employeeNotificationWrite.status}`, employeeNotificationWrite.status === 403);
+
+    const invalidNotificationBoolean = await req(base, 'PATCH', '/api/admin/notification-rules/rule-sla', {
+      token: adminToken, body: { is_active: 'false' },
+    });
+    record('Notification rule rejects string boolean', '400',
+      `HTTP ${invalidNotificationBoolean.status}`, invalidNotificationBoolean.status === 400);
+
+    const unknownNotificationRule = await req(base, 'PATCH', '/api/admin/notification-rules/not-a-rule', {
+      token: adminToken, body: { is_active: false },
+    });
+    record('Notification rule rejects unknown rule IDs', '400',
+      `HTTP ${unknownNotificationRule.status}`, unknownNotificationRule.status === 400);
+
+    const notificationAuditClient = new pg.Client({ connectionString: TEST_DB_URL });
+    await notificationAuditClient.connect();
+    const notificationAuditBefore = await notificationAuditClient.query(
+      "SELECT COUNT(*)::int AS count FROM gabah_notification_rule_audit WHERE rule_id = 'rule-sla'",
+    );
+    const notificationDisable = await req(base, 'PATCH', '/api/admin/notification-rules/rule-sla', {
+      token: adminToken, body: { is_active: false },
+    });
+    const notificationNoop = await req(base, 'PATCH', '/api/admin/notification-rules/rule-sla', {
+      token: adminToken, body: { is_active: false },
+    });
+    const notificationRestore = await req(base, 'PATCH', '/api/admin/notification-rules/rule-sla', {
+      token: adminToken, body: { is_active: true },
+    });
+    const notificationAuditAfter = await notificationAuditClient.query(
+      "SELECT COUNT(*)::int AS count FROM gabah_notification_rule_audit WHERE rule_id = 'rule-sla'",
+    );
+    await notificationAuditClient.end();
+    record('Superadmin can disable and restore an operational notification rule', '200 + false then true',
+      `disable=${notificationDisable.status} noop=${notificationNoop.status} restore=${notificationRestore.status}`,
+      notificationDisable.status === 200 && notificationDisable.json?.data?.is_active === false
+        && notificationNoop.status === 200 && notificationNoop.json?.data?.is_active === false
+        && notificationRestore.status === 200 && notificationRestore.json?.data?.is_active === true);
+    record('Notification setting audit records only actual state changes', 'exactly two new audit rows',
+      `before=${notificationAuditBefore.rows[0].count} after=${notificationAuditAfter.rows[0].count}`,
+      notificationAuditAfter.rows[0].count - notificationAuditBefore.rows[0].count === 2);
+
+
     // ---------- Module lifecycle API + live enforcement ----------
     const modulesRead = await req(base, 'GET', '/api/modules', { token: karyawanToken });
     const moduleRows = modulesRead.json?.data || [];
