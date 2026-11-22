@@ -1671,7 +1671,7 @@ async function startServer() {
       }
 
       if (!isValidPassword) {
-        const lock = recordFailedLogin(loginIdentifier);
+        const lock = await recordFailedLogin(loginIdentifier);
         GabahDomainService.recordAudit(
           'AUTH_LOGIN_FAILED',
           'Auth',
