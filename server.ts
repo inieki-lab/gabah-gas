@@ -18,7 +18,7 @@ import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSupera
 import { startReminderScheduler, runManualOnce as runReminderManualOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
-import { createUploadConcurrencyLimiter } from './server/upload-security';
+import { createUploadConcurrencyLimiter, normalizeContractUploadError } from './server/upload-security';
 import { filterDashboardAttentionItems } from './server/dashboard-attention-scope';
 import {
   createSession,
@@ -4346,7 +4346,7 @@ async function startServer() {
       };
       const ext = path.extname(file.originalname).toLowerCase();
       if (!mimeByExtension[ext] || mimeByExtension[ext] !== file.mimetype) {
-        return cb(new Error('Jenis file tidak diizinkan atau MIME tidak sesuai. Hanya PDF, JPG, PNG, DOC, DOCX.'));
+        return cb(Object.assign(new Error('Unsupported contract upload file type.'), { code: 'UNSUPPORTED_FILE_TYPE' }));
       }
       cb(null, true);
     },
@@ -4363,6 +4363,21 @@ async function startServer() {
     return false;
   };
 
+  // Multer runs before the route handler, so its errors need an explicit
+  // route-level adapter; otherwise Express may emit an HTML error page.
+  const parseContractUpload = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    upload.single('file')(req, res, (error: any) => {
+      if (!error) return next();
+      const normalized = normalizeContractUploadError(error);
+      if (!normalized) return next(error);
+      return res.status(normalized.statusCode).json({
+        success: false,
+        code: normalized.code,
+        message: normalized.message,
+      });
+    });
+  };
+
   const authorizeContractDocumentUpload = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!requireRbacPermission(req, res, 'contracts.documents.upload')) return;
     const actor = getActor(req);
@@ -4374,7 +4389,7 @@ async function startServer() {
     return next();
   };
 
-  app.post('/api/contracts/:id/documents/upload', authorizeContractDocumentUpload, limitContractUploadConcurrency, upload.single('file'), async (req, res) => {
+  app.post('/api/contracts/:id/documents/upload', authorizeContractDocumentUpload, limitContractUploadConcurrency, parseContractUpload, async (req, res) => {
     let savedFilePath: string | null = null;
     let savedContract: any = null;
     let savedDocumentId: string | null = null;
