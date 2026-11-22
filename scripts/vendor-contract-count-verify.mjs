@@ -14,3 +14,8 @@ assert.doesNotMatch(routes, /active_contracts_count: Number\(req\.body\.active_c
 assert.doesNotMatch(routes, /'address', 'active_contracts_count', 'rating'/);
 assert.match(routes, /vendor\.active_contracts_count = getActiveVendorContractCount\(vendor\.name\)/);
 console.log('Vendor contract count authority: 7 checks passed');
+
+assert.ok(routes.includes("name.includes('\\u0000')"), 'vendor create rejects NUL in name');
+assert.ok(routes.includes("requestedCategory.includes('\\u0000')"), 'vendor create/update reject NUL in category');
+assert.ok(routes.includes("value.includes('\\u0000')"), 'vendor create/update reject NUL in PIC and address text');
+assert.ok(routes.includes("Array.from(value).length > maxLength"), 'vendor text fields are bounded by storage limits');

@@ -737,7 +737,7 @@ async function startServer() {
         ['phone', phone, 40],
       ];
       for (const [field, value, maxLength] of profileTextFields) {
-        if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+        if (value !== undefined && (typeof value !== 'string' || value.includes('\u0000') || value.length > maxLength)) {
           return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
         }
       }
@@ -745,8 +745,8 @@ async function startServer() {
       if (typeof requestedPrimaryRole !== 'string' || !validPrimaryRoles.includes(requestedPrimaryRole)) {
         return res.status(400).json({ success: false, message: 'Role primer tidak valid. Humas/Sekretariat adalah role fungsi; RPC/SC dan PIBC adalah lokasi kerja.' });
       }
-      if (typeof name !== 'string' || !name.trim() || name.length > 160
-        || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
+      if (typeof name !== 'string' || !name.trim() || name.includes('\u0000') || name.length > 160
+        || typeof email !== 'string' || email.includes('\u0000') || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
       const normalizedDivision = (typeof division === 'string' && division.trim() ? division.trim() : 'Umum') as ServerUser['division'];
@@ -891,11 +891,11 @@ async function startServer() {
         const department = String(row.department || '').trim() || 'Operasional';
         const phone = String(row.phone || '').trim();
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
-        if (name.length > 160) { errors.push(`Baris ${rowNo}: Nama maksimal 160 karakter.`); continue; }
-        if (email.length > 254) { errors.push(`Baris ${rowNo}: Email maksimal 254 karakter.`); continue; }
-        if (division.length > 120) { errors.push(`Baris ${rowNo}: Divisi maksimal 120 karakter.`); continue; }
-        if (department.length > 120) { errors.push(`Baris ${rowNo}: Departemen maksimal 120 karakter.`); continue; }
-        if (phone.length > 40) { errors.push(`Baris ${rowNo}: Telepon maksimal 40 karakter.`); continue; }
+        if (name.includes('\u0000') || name.length > 160) { errors.push(`Baris ${rowNo}: Nama maksimal 160 karakter.`); continue; }
+        if (email.includes('\u0000') || email.length > 254) { errors.push(`Baris ${rowNo}: Email maksimal 254 karakter.`); continue; }
+        if (division.includes('\u0000') || division.length > 120) { errors.push(`Baris ${rowNo}: Divisi maksimal 120 karakter.`); continue; }
+        if (department.includes('\u0000') || department.length > 120) { errors.push(`Baris ${rowNo}: Departemen maksimal 120 karakter.`); continue; }
+        if (phone.includes('\u0000') || phone.length > 40) { errors.push(`Baris ${rowNo}: Telepon maksimal 40 karakter.`); continue; }
         // Unit is an organizational attribute; SC/RPC and PIBC are office locations.
         const unitId = String(row.unit_id || '').trim().toUpperCase();
         const requestedOfficeLocation = String(row.office_location_id || '').trim().toUpperCase();
@@ -1041,7 +1041,7 @@ async function startServer() {
         ['telegram_chat_id', telegram_chat_id, 128],
       ];
       for (const [field, value, maxLength] of stringFields) {
-        if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+        if (value !== undefined && (typeof value !== 'string' || value.includes('\u0000') || value.length > maxLength)) {
           return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
         }
       }
@@ -3502,9 +3502,9 @@ async function startServer() {
       if (body[field] !== undefined && (typeof body[field] !== 'number' || !Number.isFinite(body[field]) || body[field] < 0)) return 'Biaya maintenance harus berupa angka non-negatif.';
     }
     for (const [field, max] of [['title', 180], ['technician_name', 180], ['notes', 4000]] as const) {
-      if (body[field] !== undefined && (typeof body[field] !== 'string' || body[field].length > max)) return `Field ${field} harus berupa teks maksimal ${max} karakter.`;
+      if (body[field] !== undefined && (typeof body[field] !== 'string' || body[field].includes('\u0000') || Array.from(body[field]).length > max)) return `Field ${field} harus berupa teks maksimal ${max} karakter.`;
     }
-    if (body.checklist !== undefined && (!Array.isArray(body.checklist) || body.checklist.length > 100 || body.checklist.some((item: unknown) => typeof item !== 'string' || item.length > 300))) return 'Checklist harus berupa daftar teks (maksimal 100 item, 300 karakter per item).';
+    if (body.checklist !== undefined && (!Array.isArray(body.checklist) || body.checklist.length > 100 || body.checklist.some((item: unknown) => typeof item !== 'string' || item.includes('\u0000') || Array.from(item).length > 300))) return 'Checklist harus berupa daftar teks (maksimal 100 item, 300 karakter per item).';
     return null;
   };
 
@@ -3720,7 +3720,7 @@ async function startServer() {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
     }
     const requestedCategory = String(req.body?.category || '').trim();
-    if (!requestedCategory || requestedCategory.length > 80) {
+    if (!requestedCategory || requestedCategory.includes('\u0000') || Array.from(requestedCategory).length > 80) {
       return res.status(400).json({ success: false, message: 'Kategori vendor wajib diisi (maksimal 80 karakter).' });
     }
     const requestedOwnerInput = String(req.body?.owner_division || '').trim().toUpperCase();
@@ -3738,8 +3738,22 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor yang dipilih.' });
     }
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
-    if (!name || name.length > 180) {
+    if (!name || name.includes('\u0000') || Array.from(name).length > 180) {
       return res.status(400).json({ success: false, message: 'Nama vendor wajib diisi (maksimal 180 karakter).' });
+    }
+
+    const vendorTextFields: Array<[string, unknown, number]> = [
+      ['Nama PIC', req.body?.pic_name, 180],
+      ['Telepon PIC', req.body?.pic_phone, 40],
+      ['Email PIC', req.body?.pic_email, 254],
+      ['Alamat vendor', req.body?.address, 2000],
+      ['Catatan vendor', req.body?.notes, 4000],
+    ];
+    for (const [label, value, maxLength] of vendorTextFields) {
+      if (value !== undefined && value !== null
+        && (typeof value !== 'string' || value.includes('\u0000') || Array.from(value).length > maxLength)) {
+        return res.status(400).json({ success: false, message: `${label} tidak valid (maksimal ${maxLength} karakter dan tanpa NUL).` });
+      }
     }
     const rating = Number(req.body.rating ?? 4);
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
@@ -3786,6 +3800,23 @@ async function startServer() {
     const requestedName = req.body?.name === undefined
       ? String(existingVendor.name || '').trim()
       : String(req.body.name || '').trim();
+
+    const vendorTextFields: Array<[string, unknown, number]> = [
+      ['Nama PIC', req.body?.pic_name, 180],
+      ['Telepon PIC', req.body?.pic_phone, 40],
+      ['Email PIC', req.body?.pic_email, 254],
+      ['Alamat vendor', req.body?.address, 2000],
+      ['Catatan vendor', req.body?.notes, 4000],
+    ];
+    for (const [label, value, maxLength] of vendorTextFields) {
+      if (value !== undefined && value !== null
+        && (typeof value !== 'string' || value.includes('\u0000') || Array.from(value).length > maxLength)) {
+        return res.status(400).json({ success: false, message: `${label} tidak valid (maksimal ${maxLength} karakter dan tanpa NUL).` });
+      }
+    }
+    if (requestedName.includes('\u0000') || Array.from(requestedName).length > 180) {
+      return res.status(400).json({ success: false, message: 'Nama vendor tidak valid (maksimal 180 karakter dan tanpa NUL).' });
+    }
     const requestedRating = req.body?.rating === undefined ? Number(existingVendor.rating) : Number(req.body.rating);
     if (!existingOwner && !isSuperadminActor(actor)) {
       return res.status(403).json({ success: false, message: 'Vendor lama belum memiliki owner; klasifikasi hanya dapat dilakukan Super Admin.' });
@@ -3793,7 +3824,7 @@ async function startServer() {
     if (!requestedOwner) {
       return res.status(400).json({ success: false, message: 'Owner vendor wajib dipilih dari master fungsi pemilik yang aktif.' });
     }
-    if (!requestedCategory || requestedCategory.length > 80 || !requestedName || requestedName.length > 180) {
+    if (!requestedCategory || requestedCategory.includes('\u0000') || Array.from(requestedCategory).length > 80 || !requestedName || requestedName.includes('\u0000') || Array.from(requestedName).length > 180) {
       return res.status(400).json({ success: false, message: 'Nama dan kategori vendor wajib valid.' });
     }
     if (!Number.isFinite(requestedRating) || requestedRating < 1 || requestedRating > 5) {

@@ -1250,3 +1250,34 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Perbaikan pada PR #190: parser bersama `shared/loan-datetime.ts` dipakai oleh validasi request, collision check pengajuan, collision recheck approval, dan UI pre-check. Input datetime-local tanpa zona ditafsirkan sebagai Asia/Jakarta (UTC+07:00); ISO bertanda zona dipertahankan sebagai instant absolut; tanggal legacy tanpa jam tetap mempertahankan semantik UTC-midnight lama agar kompatibel.
 - Regression baru menguji konversi WIB, overlap, jadwal berurutan, tanggal legacy, ISO eksplisit, serta tanggal/jam tidak valid. Didaftarkan pada CI.
 - PR #190 head terbaru `a2f282a4e671dcaf61f492ce04c8c6d5d7dc7146`; CI exact-head run #2912 lulus 93/93 langkah. Perbaikan lanjutan juga menormalisasi jadwal ke ISO UTC eksplisit pada snapshot baru dan normalized PostgreSQL `TIMESTAMPTZ`; upsert menulis ulang jadwal lama melalui parser yang sama. CI setelah sinkronisasi commit PR #191 tetap diperlukan. Belum ada klaim UAT browser.
+
+### 2026-11-22 — Validasi input tiket sebelum persistensi PostgreSQL
+
+- Temuan terverifikasi: `createTicket()` melakukan `trim()` pada judul/deskripsi tetapi tidak membatasi panjang judul, sementara schema normalized PostgreSQL menetapkan `tickets.title VARCHAR(255)`.
+- Dampak: judul lebih dari 255 karakter lolos service, lalu gagal saat `persistPostgresState()` menulis tabel normalized. Kegagalan write mengaktifkan `postgresFailureLatched`; sebelum karantina, hal ini dapat membuat API layanan masuk degraded hingga restart. Ini merupakan jalur denial-of-service melalui input tiket yang memiliki permission sah.
+- Perbaikan: validasi tipe, teks tidak kosong, judul maksimal 255 Unicode code points, deskripsi maksimal 20.000 Unicode code points sebelum nomor tiket dibuat atau state dimutasi. Hanya nilai yang telah dinormalisasi yang disimpan.
+- Regression memperiksa batas 255, 256, deskripsi di atas batas, dan judul Unicode tepat pada batas. Script `test:ticket-related-asset-scope` sudah menjadi bagian CI.
+- Menunggu CI exact-head; belum diklaim sebagai browser UAT.
+
+
+- Audit tambahan pada reservasi ruang rapat menemukan field `meeting_type` yang dapat mencapai kolom `VARCHAR(50)` tanpa batas panjang, serta NUL byte yang dapat masuk ke kolom `TEXT`/array fasilitas. Guard sekarang membatasi kode meeting type ke 50 code points dan menolak NUL pada field teks dan fasilitas sebelum state dimutasi. Regression ditambahkan ke `room-capability-ui-verify` yang sudah berjalan di CI.
+
+
+- Audit kontrak juga menemukan `createContract()` dan `updateContract()` tidak membatasi `contract_type VARCHAR(100)`, `title VARCHAR(255)`, dan `vendor_name VARCHAR(255)`; NUL byte pada judul/vendor/catatan juga dapat menggagalkan insert/update. Validasi bersama sekarang diterapkan pada create dan update untuk field tersebut, dengan batas Unicode code points serta penolakan NUL sebelum mutasi.
+
+- Audit tambahan pada reservasi ruang rapat menemukan field `meeting_type` yang dapat mencapai kolom `VARCHAR(50)` tanpa batas panjang, serta NUL byte yang dapat masuk ke kolom `TEXT`/array fasilitas. Guard sekarang membatasi kode meeting type ke 50 code points dan menolak NUL pada field teks dan fasilitas sebelum state dimutasi. Regression ditambahkan ke `room-capability-ui-verify` yang sudah berjalan di CI.
+
+
+- Audit kontrak juga menemukan `createContract()` dan `updateContract()` tidak membatasi `contract_type VARCHAR(100)`, `title VARCHAR(255)`, dan `vendor_name VARCHAR(255)`; NUL byte pada judul/vendor/catatan juga dapat menggagalkan insert/update. Validasi bersama sekarang diterapkan pada create dan update untuk field tersebut, dengan batas Unicode code points serta penolakan NUL sebelum mutasi.
+
+- Audit kontrak juga menemukan `createContract()` dan `updateContract()` tidak membatasi `contract_type VARCHAR(100)`, `title VARCHAR(255)`, dan `vendor_name VARCHAR(255)`; NUL byte pada judul/vendor/catatan juga dapat menggagalkan insert/update. Validasi bersama sekarang diterapkan pada create dan update untuk field tersebut, dengan batas Unicode code points serta penolakan NUL sebelum mutasi.
+
+- Batas numerik kontrak juga diselaraskan dengan tipe SQL: `notice_period_days` dan seluruh reminder dibatasi ke rentang PostgreSQL `INTEGER` (0–2.147.483.647), sedangkan `contract_value` dibatasi ke nilai aman JS yang berada di bawah kapasitas `NUMERIC(18,2)`. Berlaku untuk create dan update; regression overflow ditambahkan.
+
+- Maintenance juga menolak NUL byte pada `title`, `technician_name`, `notes`, dan setiap item checklist. Sebelumnya batas panjang ada, tetapi karakter NUL masih dapat masuk ke JSONB snapshot dan menggagalkan commit. Regression `maintenance-input-validation` diperluas.
+
+- Pembuatan, bulk import, dan update profil pengguna juga menolak NUL byte pada nama, email, divisi, departemen, telepon, dan Telegram ID. Batas panjang sebelumnya sudah ada, tetapi karakter NUL masih dapat masuk ke teks/JSONB snapshot. Regression `user-create-profile-validation` diperluas untuk ketiga jalur.
+
+- Alur pinjaman menolak NUL byte pada `purpose`, `borrower_phone`, `rejection_reason`, `handover_notes`, dan catatan pengembalian yang masuk ke audit log; catatan serah-terima/pengembalian dibatasi 2.000 karakter. Regression loan timezone diperluas.
+
+- Direktori vendor menolak NUL dan membatasi panjang nama, kategori, PIC, telepon, email, alamat, serta catatan pada create/update sebelum menyentuh snapshot JSONB. Regression `vendor-contract-count` diperluas.

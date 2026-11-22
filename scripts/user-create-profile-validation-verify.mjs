@@ -11,7 +11,11 @@ assert.ok(route.includes('isSuperadminActor(actor)'), 'only Superadmin may creat
 assert.ok(route.includes("['division', division, 120]"));
 assert.ok(route.includes("['department', department, 120]"));
 assert.ok(route.includes("['phone', phone, 40]"));
-assert.ok(route.includes("typeof value !== 'string' || value.length > maxLength"), 'reject non-string and oversized profile fields');
+assert.ok(route.includes("typeof value !== 'string' || value.includes('\\u0000') || value.length > maxLength"), 'reject non-string and oversized profile fields');
+
+assert.ok(route.includes("value.includes('\\u0000')"), 'user create rejects NUL in profile text');
+assert.ok(route.includes("name.includes('\\u0000')") && route.includes("email.includes('\\u0000')"), 'user create rejects NUL in required identity fields');
+
 assert.ok(route.includes('const normalizedDivision ='), 'normalize division before persistence');
 assert.ok(route.includes('const normalizedDepartment ='), 'normalize department before persistence');
 assert.ok(route.includes('const normalizedPhone ='), 'normalize phone before persistence');
@@ -28,6 +32,12 @@ assert.ok(bulkStart >= 0 && bulkEnd > bulkStart, 'user bulk-import route must ex
 const bulk = server.slice(bulkStart, bulkEnd);
 for (const [field, limit] of [['name', 160], ['email', 254], ['division', 120], ['department', 120], ['phone', 40]]) {
   assert.ok(bulk.includes(`${field}.length > ${limit}`), `bulk import must bound ${field} to ${limit} characters`);
+  assert.ok(bulk.includes(`${field}.includes('\\u0000')`), `bulk import must reject NUL in ${field}`);
 }
 
 console.log('PASS: user creation and bulk import enforce profile field bounds, normalized values, and server-generated credentials.');
+
+const patchStart = server.indexOf("app.patch('/api/users/:id'");
+const patchEnd = server.indexOf("app.delete('/api/users/:id'", patchStart);
+const patchRoute = server.slice(patchStart, patchEnd);
+assert.ok(patchRoute.includes("value.includes('\\u0000')"), 'patch route rejects NUL in profile text');

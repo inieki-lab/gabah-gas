@@ -763,7 +763,7 @@ export class GabahDomainService {
       throw Object.assign(new Error('Pengguna peminjam tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
     }
     if (payload.borrower_phone !== undefined
-      && (typeof payload.borrower_phone !== 'string' || payload.borrower_phone.trim().length > 40)) {
+      && (typeof payload.borrower_phone !== 'string' || payload.borrower_phone.includes('\u0000') || payload.borrower_phone.trim().length > 40)) {
       throw Object.assign(new Error('Nomor telepon peminjam tidak valid (maksimal 40 karakter).'), { statusCode: 400 });
     }
     const borrowerPhone = typeof payload.borrower_phone === 'string' && payload.borrower_phone.trim()
@@ -781,7 +781,7 @@ export class GabahDomainService {
     if (asset.status !== 'available') {
       throw Object.assign(new Error(`Aset tidak tersedia untuk dipinjam (status saat ini: "${asset.status}").`), { statusCode: 409 });
     }
-    if (typeof payload.purpose !== 'string' || !payload.purpose.trim() || payload.purpose.length > 2000) {
+    if (typeof payload.purpose !== 'string' || payload.purpose.includes('\u0000') || !payload.purpose.trim() || payload.purpose.length > 2000) {
       throw Object.assign(new Error('Tujuan peminjaman wajib diisi (maksimal 2.000 karakter).'), { statusCode: 400 });
     }
 
@@ -935,7 +935,7 @@ export class GabahDomainService {
       throw Object.assign(new Error('Hanya pinjaman berstatus menunggu persetujuan yang dapat ditolak.'), { statusCode: 409 });
     }
 
-    if (reason !== undefined && (typeof reason !== 'string' || reason.trim().length > 1000)) {
+    if (reason !== undefined && (typeof reason !== 'string' || reason.includes('\u0000') || reason.trim().length > 1000)) {
       throw Object.assign(new Error('Alasan penolakan tidak valid (maksimal 1.000 karakter).'), { statusCode: 400 });
     }
 
@@ -989,6 +989,9 @@ export class GabahDomainService {
    * recorded in the existing audit trail.
    */
   static handoverLoan(loanId: string, handoverNotes: string, actor: ServerUser): ServerLoan {
+    if (handoverNotes !== undefined && (typeof handoverNotes !== 'string' || handoverNotes.includes('\u0000') || handoverNotes.length > 2000)) {
+      throw Object.assign(new Error('Catatan serah terima harus berupa teks tanpa NUL dan maksimal 2.000 karakter.'), { statusCode: 400 });
+    }
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
 
@@ -1032,6 +1035,9 @@ export class GabahDomainService {
    * Admin GABAH. Denied attempts are recorded in the existing audit trail.
    */
   static returnLoan(loanId: string, condition: 'good' | 'fair' | 'poor' | 'broken' | 'excellent' | 'damaged', returnNotes: string, actor: ServerUser): ServerLoan {
+    if (returnNotes !== undefined && (typeof returnNotes !== 'string' || returnNotes.includes('\u0000') || returnNotes.length > 2000)) {
+      throw Object.assign(new Error('Catatan pengembalian harus berupa teks tanpa NUL dan maksimal 2.000 karakter.'), { statusCode: 400 });
+    }
     if (isAuditorActor(actor)) {
       throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
     }
@@ -1093,6 +1099,30 @@ export class GabahDomainService {
     if (isAuditorActor(actor)) {
       throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
     }
+
+    // Match the normalized PostgreSQL schema before mutating in-memory state.
+    // An overlong title previously failed the VARCHAR(255) insert and latched
+    // the authoritative PostgreSQL store closed for the entire application.
+    if (typeof payload.title !== 'string') {
+      throw Object.assign(new Error('Judul tiket wajib berupa teks.'), { statusCode: 400 });
+    }
+    const normalizedTitle = payload.title.trim();
+    if (!normalizedTitle || normalizedTitle.includes('\u0000')) {
+      throw Object.assign(new Error('Judul tiket wajib diisi dan tidak boleh mengandung karakter NUL.'), { statusCode: 400 });
+    }
+    if (Array.from(normalizedTitle).length > 255) {
+      throw Object.assign(new Error('Judul tiket maksimal 255 karakter.'), { statusCode: 400 });
+    }
+    if (typeof payload.description !== 'string') {
+      throw Object.assign(new Error('Deskripsi tiket wajib berupa teks.'), { statusCode: 400 });
+    }
+    const normalizedDescription = payload.description.trim();
+    if (!normalizedDescription || normalizedDescription.includes('\u0000')) {
+      throw Object.assign(new Error('Deskripsi tiket wajib diisi dan tidak boleh mengandung karakter NUL.'), { statusCode: 400 });
+    }
+    if (Array.from(normalizedDescription).length > 20000) {
+      throw Object.assign(new Error('Deskripsi tiket maksimal 20.000 karakter.'), { statusCode: 400 });
+    }
     // Strict divisional categories per PRD §3.5: a ticket must target an
     // operational division that actually staffs a queue. Without this gate a
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
@@ -1149,8 +1179,8 @@ export class GabahDomainService {
       id: `TKT-${Date.now()}`,
       ticket_number: ticketNumber,
       ticket_code: ticketNumber,
-      title: payload.title.trim(),
-      description: payload.description.trim(),
+      title: normalizedTitle,
+      description: normalizedDescription,
       category: payload.category,
       priority: payload.priority,
       status: 'open',
@@ -1401,6 +1431,13 @@ export class GabahDomainService {
       throw new Error('Judul / Agenda rapat wajib diisi.');
     }
 
+    if (payload.meeting_type !== undefined
+      && (typeof payload.meeting_type !== 'string'
+        || payload.meeting_type.includes('\u0000')
+        || Array.from(payload.meeting_type.trim()).length > 50)) {
+      throw Object.assign(new Error('Jenis rapat tidak valid (maksimal 50 karakter dan tanpa karakter NUL).'), { statusCode: 400 });
+    }
+
     if (!payload.date || !payload.start_time || !payload.end_time) {
       throw new Error('Tanggal, jam mulai, dan jam selesai wajib diisi.');
     }
@@ -1446,7 +1483,7 @@ export class GabahDomainService {
     }
     const rawFacilities = payload.facilities_requested === undefined ? [] : payload.facilities_requested;
     if (!Array.isArray(rawFacilities) || rawFacilities.length > 30
-      || rawFacilities.some(item => typeof item !== 'string' || !item.trim() || item.trim().length > 120)) {
+      || rawFacilities.some(item => typeof item !== 'string' || !item.trim() || item.includes('\u0000') || Array.from(item.trim()).length > 120)) {
       throw Object.assign(new Error('Daftar fasilitas harus berupa array maksimal 30 item teks (1–120 karakter per item).'), { statusCode: 400 });
     }
     const requestedFacilities = rawFacilities.map(item => item.trim());
@@ -1475,7 +1512,7 @@ export class GabahDomainService {
       ['Catatan internal', payload.notes, 4000],
     ];
     for (const [label, value, maxLength] of boundedTextFields) {
-      if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+      if (value !== undefined && (typeof value !== 'string' || value.includes('\u0000') || Array.from(value).length > maxLength)) {
         throw Object.assign(new Error(`${label} harus berupa teks maksimal ${maxLength} karakter.`), { statusCode: 400 });
       }
     }
