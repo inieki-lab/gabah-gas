@@ -1,3 +1,11 @@
+## [2026-11-22] — Preserve loan return inspection after failed submissions
+
+- Return inspection modal now waits for the API result and remains open with entered notes/condition when the return is rejected.
+- The application distinguishes a failed return transaction from a successful return followed by a data-refresh failure, preventing duplicate return submissions after a committed operation.
+- Extend loan status contract regression to cover return modal recovery behavior.
+
+---
+
 ## [2026-11-22] — Overdue loan return and complete inspection choices
 
 - Allow the return workflow to process both `borrowed` and legacy/explicit `overdue` loans; pending, approved, rejected, and already returned states remain blocked.
