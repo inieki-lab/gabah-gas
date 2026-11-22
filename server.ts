@@ -1591,7 +1591,7 @@ async function startServer() {
   });
 
   // Secure Authentication Endpoints
-  app.post('/api/auth/login', (req, res) => {
+  app.post('/api/auth/login', async (req, res) => {
     try {
       const ip = extractClientIp(req) || 'unknown';
       const { email, password } = req.body || {};
@@ -1635,7 +1635,7 @@ async function startServer() {
       // cannot create separate lockout buckets for the same account. Unknown
       // emails remain isolated by their normalized input value.
       const loginIdentifier = `${ip}|${user?.id ?? inputEmail}`;
-      const lockCheck = isLoginLocked(loginIdentifier);
+      const lockCheck = await isLoginLocked(loginIdentifier);
       if (lockCheck.isLocked) {
         return res.status(429).json({
           success: false,
@@ -1644,7 +1644,7 @@ async function startServer() {
       }
 
       if (!user || !user.is_active) {
-        const lock = recordFailedLogin(loginIdentifier);
+        const lock = await recordFailedLogin(loginIdentifier);
         if (lock.isLocked) {
           return res.status(429).json({
             success: false,
@@ -1671,7 +1671,7 @@ async function startServer() {
       }
 
       if (!isValidPassword) {
-        const lock = recordFailedLogin(loginIdentifier);
+        const lock = await recordFailedLogin(loginIdentifier);
         GabahDomainService.recordAudit(
           'AUTH_LOGIN_FAILED',
           'Auth',
@@ -1688,7 +1688,7 @@ async function startServer() {
       }
 
       // Reset lockout counter on success
-      clearFailedLogins(loginIdentifier);
+      await clearFailedLogins(loginIdentifier);
 
       // Create persistent session
       const session = createSession(user.id, req);
@@ -1708,7 +1708,14 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      if (isPostgresFailureLatched()) {
+        return res.status(503).json({
+          success: false,
+          code: 'PERSISTENCE_DEGRADED',
+          message: 'Autentikasi sementara tidak tersedia. Silakan coba kembali.',
+        });
+      }
+      res.status(500).json({ success: false, message: 'Autentikasi gagal sementara.' });
     }
   });
 

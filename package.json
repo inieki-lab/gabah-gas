@@ -101,7 +101,9 @@
     "test:legacy-contract-migration": "node scripts/legacy-contract-migration-verify.mjs",
     "test:uat-credential-mode": "node scripts/uat-credential-mode-verify.mjs",
     "test:postgres-role-config": "node scripts/postgres-role-config-verify.mjs",
-    "test:upload-security": "node --import tsx scripts/upload-security-verify.mjs"
+    "test:upload-security": "node --import tsx scripts/upload-security-verify.mjs",
+    "test:shared-rate-limits": "node --import tsx scripts/shared-rate-limit-verify.ts",
+    "test:auth-rate-limit-memory": "node --import tsx scripts/auth-rate-limit-memory-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

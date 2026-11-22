@@ -163,13 +163,15 @@ async function main() {
 
     // Without a configured trusted proxy, caller-controlled XFF values must
     // not create separate rate-limit buckets for the same transport peer.
-    const spoof1 = await req(base, 'GET', '/api/health', { headers: { 'x-forwarded-for': '198.51.100.11' } });
-    const spoof2 = await req(base, 'GET', '/api/health', { headers: { 'x-forwarded-for': '203.0.113.22' } });
-    const spoof3 = await req(base, 'GET', '/api/health', { headers: { 'x-forwarded-for': '192.0.2.33' } });
+    const rateLimitProbe = { email: 'rate-limit-probe@invalid.example', password: 'invalid-probe-password' };
+    const spoof1 = await req(base, 'POST', '/api/auth/login', { body: rateLimitProbe, headers: { 'x-forwarded-for': '198.51.100.11' } });
+    const spoof2 = await req(base, 'POST', '/api/auth/login', { body: rateLimitProbe, headers: { 'x-forwarded-for': '203.0.113.22' } });
+    const spoof3 = await req(base, 'POST', '/api/auth/login', { body: rateLimitProbe, headers: { 'x-forwarded-for': '192.0.2.33' } });
     const remaining = [spoof1, spoof2, spoof3].map(r => Number(r.headers?.['x-ratelimit-remaining']));
-    record('Rate limit ignores spoofed X-Forwarded-For', 'same socket bucket decrements 1 per request',
+    record('Rate limit ignores spoofed X-Forwarded-For (health probes are exempt)',
+      'same socket bucket decrements 1 per login request',
       remaining.join(' → '),
-      spoof1.status === 200 && spoof2.status === 200 && spoof3.status === 200
+      spoof1.status === 401 && spoof2.status === 401 && spoof3.status === 401
         && remaining.every(Number.isFinite)
         && remaining[1] === remaining[0] - 1
         && remaining[2] === remaining[1] - 1);

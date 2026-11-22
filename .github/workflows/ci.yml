@@ -161,6 +161,15 @@ jobs:
           GABAH_TEST_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: node scripts/cr04-cr05-verify.mjs
 
+      - name: Shared PostgreSQL API and login rate-limit integration
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          NODE_ENV: production
+        run: npm run test:shared-rate-limits
+
+      - name: File-store auth rate-limit memory bound regression
+        run: npm run test:auth-rate-limit-memory
+
       - name: Legacy PostgreSQL contract migration preserves existing records
         env:
           GABAH_TEST_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
