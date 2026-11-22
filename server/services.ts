@@ -779,6 +779,14 @@ export class GabahDomainService {
       throw Object.assign(new Error('Perangkat infrastruktur/server dan lisensi tidak boleh diajukan melalui peminjaman umum.'), { statusCode: 409 });
     }
     if (!asset.is_loanable) throw Object.assign(new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).'), { statusCode: 409 });
+    // A borrowed/overdue loan is authoritative even if an inventory snapshot
+    // was stale and still reports the asset as available.
+    const outstandingBorrowedLoan = db.loans.find(loan =>
+      loan.asset_id === asset.id && ['borrowed', 'overdue'].includes(String(loan.status))
+    );
+    if (outstandingBorrowedLoan) {
+      throw Object.assign(new Error('Aset sedang dipinjam dan belum dikembalikan. Pilih barang lain.'), { statusCode: 409 });
+    }
     if (asset.status !== 'available') {
       throw Object.assign(new Error(`Aset tidak tersedia untuk dipinjam (status saat ini: "${asset.status}").`), { statusCode: 409 });
     }
