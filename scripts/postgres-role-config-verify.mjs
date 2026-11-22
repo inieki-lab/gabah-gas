@@ -30,10 +30,14 @@ assert.match(appBlock, /database-provisioner:[\s\S]*service_completed_successful
   'application must wait for successful role provisioning');
 assert.match(deploy, /docker compose run --rm database-provisioner[\s\S]*docker compose up -d --no-deps --force-recreate app/,
   'deployment must provision the app role before replacing the app');
-assert.match(provisioner, /NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS/,
+assert.match(provisioner, /NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT/,
   'app role must not receive cluster administration capabilities');
 assert.match(provisioner, /REASSIGN OWNED BY/,
   'existing database object ownership must be transferred safely');
+assert.match(provisioner, /REVOKE %I FROM %I/,
+  'the app role must not inherit legacy admin/group memberships');
+assert.match(provisioner, /ALTER TABLESPACE %I OWNER TO %I/,
+  'shared tablespace ownership must be restored to the database administrator');
 assert.match(envExample, /^PGADMIN_USER=gabah_admin$/m, 'example admin role must be distinct');
 assert.match(envExample, /^PGUSER=gabah_app$/m, 'example app role must be distinct');
 
