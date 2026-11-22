@@ -83,6 +83,9 @@ jobs:
       - name: Physical asset movement rollback regression
         run: npm run test:asset-move-atomicity
 
+      - name: Asset creation rollback regression
+        run: npm run test:asset-create-atomicity
+
       - name: User creation profile validation regression
         run: npm run test:user-create-profile-validation
 
