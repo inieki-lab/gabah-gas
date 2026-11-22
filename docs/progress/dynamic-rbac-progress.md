@@ -1332,3 +1332,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - FK actor diubah menjadi `ON DELETE SET NULL`; trigger hanya mengizinkan perubahan nested dari aksi FK ini dan hanya pada kolom `user_id`. Snapshot `user_name`, `user_role`, action, details, dan timestamp tetap immutable.
 - CR-04/CR-05 fresh PostgreSQL integration menguji user deletion, penolakan UPDATE/DELETE/TRUNCATE, dan retensi baris audit di dalam transaksi yang di-rollback setelah verifikasi.
 - Menunggu CI exact-head; belum diklaim sebagai UAT.
+
+
+### 2026-11-22 — UUID untuk ID audit kontrak
+
+- Audit generator ID menemukan pengecualian yang tertinggal di `server/contracts.ts` dan `server/notifications/notificationService.ts`: audit reminder memakai timestamp + 32-bit random suffix, sementara notifikasi in-app memakai 64-bit random suffix.
+- Ganti ID audit kontrak, audit reminder, dan notifikasi reminder in-app menjadi UUID dari `node:crypto`; prefix domain dipertahankan.
+- Regression `contract-creation-relations-verify.mjs` memastikan seluruh generator tersebut memakai UUID.
+- Menunggu CI exact-head; belum diklaim sebagai UAT.

@@ -10,11 +10,15 @@ assert.ok(actor, 'IT actor fixture exists');
 
 // Permission regression: update-only RBAC grants must never imply create authority.
 const contractSource = readFileSync(new URL('../server/contracts.ts', import.meta.url), 'utf8');
+const notificationSource = readFileSync(new URL('../server/notifications/notificationService.ts', import.meta.url), 'utf8');
 const createStart = contractSource.indexOf('export function canCreateContract(');
 const createEnd = contractSource.indexOf('// SEC-08:', createStart);
 const createGuard = contractSource.slice(createStart, createEnd);
 assert.ok(createGuard.includes("'contracts.create'"), 'Create permission must be checked explicitly');
 assert.ok(!createGuard.includes("'contracts.update'"), 'Update permission must not imply create authority');
+assert.ok(contractSource.includes("id: `LOG-CTR-${randomUUID()}`"), 'Contract audit records must use UUID identifiers');
+assert.ok(notificationSource.includes("id: `AUD-CTR-${crypto.randomUUID()}`"), 'Contract reminder audit records must use UUID identifiers');
+assert.ok(notificationSource.includes("id: `NTF-${crypto.randomUUID()}`"), 'In-app contract reminder notification IDs must use UUID identifiers');
 
 
 const base = {
@@ -76,6 +80,10 @@ assert.equal(created.escalation_user_id, 'USR-01');
 assert.deepEqual(created.documents, [], 'Client-supplied document metadata must not be trusted on creation');
 assert.deepEqual(created.milestones, [], 'Client-supplied milestone state must not be trusted on creation');
 assert.equal(db.contracts.length, 6, 'Only the valid fixture contract should be added');
+const contractAudit = db.auditLogs.find(log => log.entity_id === created.id && log.action === 'CONTRACT_CREATED');
+assert.ok(contractAudit, 'Contract creation must append an audit record');
+assert.match(contractAudit.id, /^LOG-CTR-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  'Contract audit ID must use a cryptographically generated UUID');
 
 const protectedUpdate = ContractDomainService.updateContract(created.id, {
   owner_division: 'SC',
@@ -152,6 +160,8 @@ const milestone = ContractDomainService.addMilestone(created.id, {
 assert.notEqual(milestone.id, 'FORGED-ID');
 assert.equal(milestone.status, 'pending');
 
+console.log('PASS | contract creation audit ID uses UUID v4');
+console.log('PASS | contract reminder audit and in-app notification IDs use UUID');
 console.log('PASS | update-only permission does not imply contract creation');
 console.log('PASS | invalid/missing/inactive PIC rejected');
 console.log('PASS | unknown escalation user rejected; supported cross-division escalation retained');
@@ -162,4 +172,4 @@ console.log('PASS | update allowlist ignores protected fields and validates edit
 console.log('PASS | document metadata validated and uploader identity is server-derived');
 console.log('PASS | milestone type/date/amount validated and status/id are server-derived');
 console.log('PASS | auto-renewal/restricted flags and renewal notes are strictly validated');
-console.log('TOTAL: 10 | PASS: 10 | FAIL: 0');
+console.log('TOTAL: 12 | PASS: 12 | FAIL: 0');

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { db, ServerUser, ServerContract, ServerContractDocument, ServerContractMilestone, ServerContractNotificationLog, ContractStatus, RenewalOutcome, ContractReminderConfig } from './db';
 import { AssetNumberingEngine } from './numbering';
 import { queueNotification, summarize, SCHEDULER_ACTOR } from './notifications/notificationService';
@@ -133,7 +134,7 @@ function recordContractAudit(action: string, details: string, actor: ServerUser,
   // the PostgreSQL audit_logs table enforces entity/user_name/user_role NOT NULL,
   // and a deviating shape silently breaks the authoritative persistence sync.
   db.auditLogs.unshift({
-    id: `LOG-CTR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: `LOG-CTR-${randomUUID()}`,
     action,
     entity: 'Contracts',
     entity_id: contractId,
