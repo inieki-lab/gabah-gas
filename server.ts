@@ -3300,16 +3300,48 @@ async function startServer() {
 
   app.post('/api/loans/:id/handover', async (req, res) => {
     try {
-      
-    if (!requireRbacPermission(req, res, 'loans.handover')) return;
-    const actor = getActor(req);
+      if (!requireRbacPermission(req, res, 'loans.handover')) return;
+      const actor = getActor(req);
+      let bastNotificationEnabled = true;
+      if (isPostgresPersistenceActive()) {
+        try {
+          const setting = await queryRbac<{ is_active: boolean }>(
+            "SELECT is_active FROM gabah_notification_rule_settings WHERE rule_id = 'rule-bast'",
+          );
+          if (setting.rows.length !== 1) {
+            return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi notifikasi BAST belum dapat diverifikasi.' });
+          }
+          bastNotificationEnabled = setting.rows[0].is_active === true;
+        } catch (error: any) {
+          console.error('[GABAH API] BAST notification rule unavailable:', error?.message || error);
+          return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi notifikasi BAST tidak dapat diverifikasi.' });
+        }
+      }
       const { handoverNotes } = req.body;
-      const handedOver = await GabahDomainService.persistLoanMutation(() => GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor));
+      const handedOver = await GabahDomainService.persistLoanMutation(() => {
+        const result = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
+        if (bastNotificationEnabled) {
+          const createdAt = new Date().toISOString();
+          const notification = {
+            title: `BAST Selesai: ${result.loan_number}`,
+            message: `Serah terima fisik ${result.asset_name} kepada ${result.borrower_name} telah dicatat oleh ${actor.name}.`,
+            severity: 'success' as const,
+            category: 'loan' as const,
+            link_type: 'loan' as const,
+            link_id: result.id,
+            is_read: false,
+            created_at: createdAt,
+          };
+          db.notifications.unshift(
+            { ...notification, id: `NOTIF-${crypto.randomUUID()}`, recipient_user_id: result.borrower_id },
+            { ...notification, id: `NOTIF-${crypto.randomUUID()}`, recipient_division: result.owner_division },
+          );
+        }
+        return result;
+      });
       (req as any).__gabahPersisted = true;
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
-      // SECURITY: 403 (authorization) / 409 (invalid state transition) are
-      // enforced by the domain service and surfaced verbatim to the client.
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
   });
