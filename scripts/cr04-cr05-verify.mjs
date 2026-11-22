@@ -424,6 +424,77 @@ async function main() {
         [[roomReservationAId, roomReservationBId]]);
     }
 
+    // ---------- Audit log append-only enforcement ----------
+    // Verify the actor FK can detach on user deletion without mutating the
+    // immutable actor snapshot, then reject UPDATE/DELETE/TRUNCATE.
+    const auditSuffix = crypto.randomBytes(6).toString('hex');
+    const auditUserId = `CR-AUDIT-USER-${auditSuffix}`;
+    const auditLogId = `CR-AUDIT-LOG-${auditSuffix}`;
+    let auditTransactionOpen = false;
+    try {
+      await mig.query('BEGIN');
+      auditTransactionOpen = true;
+      await mig.query(
+        `INSERT INTO users (id, name, email, role, is_active)
+         VALUES ($1, 'CI Audit Fixture', $2, 'Karyawan', TRUE)`,
+        [auditUserId, `cr-audit-${auditSuffix}@example.test`],
+      );
+      await mig.query(
+        `INSERT INTO audit_logs (id, action, entity, entity_id, user_id, user_name, user_role, details, timestamp)
+         VALUES ($1, 'CI_AUDIT_IMMUTABILITY', 'CI', $2, $3, 'CI Audit Fixture', 'Karyawan', 'Immutable fixture', NOW())`,
+        [auditLogId, auditUserId, auditUserId],
+      );
+      await mig.query('DELETE FROM users WHERE id = $1', [auditUserId]);
+      const detachedAudit = await mig.query(
+        'SELECT user_id, user_name, user_role, details FROM audit_logs WHERE id = $1',
+        [auditLogId],
+      );
+      const detached = detachedAudit.rows[0];
+      record(
+        'Deleting a user preserves audit history and clears only the actor FK',
+        'user_id NULL; actor name/role/details retained',
+        JSON.stringify(detached),
+        Boolean(detached && detached.user_id === null
+          && detached.user_name === 'CI Audit Fixture'
+          && detached.user_role === 'Karyawan'
+          && detached.details === 'Immutable fixture'),
+      );
+
+      const assertAuditMutationBlocked = async (label, sql) => {
+        await mig.query('SAVEPOINT audit_mutation');
+        try {
+          await mig.query(sql);
+          await mig.query('ROLLBACK TO SAVEPOINT audit_mutation');
+          record(label, 'PostgreSQL error code 55000', 'mutation unexpectedly succeeded', false);
+        } catch (error) {
+          await mig.query('ROLLBACK TO SAVEPOINT audit_mutation');
+          record(label, 'PostgreSQL error code 55000', error.code || error.message, error.code === '55000');
+        }
+      };
+      await assertAuditMutationBlocked(
+        'Audit log rejects UPDATE at database level',
+        `UPDATE audit_logs SET details = 'tampered' WHERE id = '${auditLogId}'`,
+      );
+      await assertAuditMutationBlocked(
+        'Audit log rejects DELETE at database level',
+        `DELETE FROM audit_logs WHERE id = '${auditLogId}'`,
+      );
+      await assertAuditMutationBlocked(
+        'Audit log rejects TRUNCATE at database level',
+        'TRUNCATE TABLE audit_logs',
+      );
+      const preservedAudit = await mig.query(
+        'SELECT COUNT(*)::int AS count FROM audit_logs WHERE id = $1 AND details = $2',
+        [auditLogId, 'Immutable fixture'],
+      );
+      record('Audit log survives all rejected mutation attempts', '1 intact row',
+        `count=${preservedAudit.rows[0].count}`, preservedAudit.rows[0].count === 1);
+    } catch (error) {
+      record('Audit log append-only PostgreSQL integration', 'FK detach + immutable row', `error: ${error.message}`, false);
+    } finally {
+      if (auditTransactionOpen) await mig.query('ROLLBACK').catch(() => undefined);
+    }
+
     // Legacy function profiles must become Karyawan primary plus a secondary
     // capability assignment, and the authoritative JSON state must agree.
     const capabilityRows = await mig.query(
