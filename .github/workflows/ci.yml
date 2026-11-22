@@ -259,6 +259,9 @@ jobs:
       - name: Contract creation and update relation integrity
         run: npm run test:contract-creation-relations
 
+      - name: Contract reminder scheduler advisory-lock lifecycle regression
+        run: npm run test:reminder-scheduler-lock
+
       - name: Vendor active-contract count server authority
         run: npm run test:vendor-contract-count
 
