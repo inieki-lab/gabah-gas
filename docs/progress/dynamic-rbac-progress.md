@@ -1242,3 +1242,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Perbaikan: `moveAsset` kini menolak relokasi untuk loan `approved` atau `borrowed` dengan HTTP 409. Pemeriksaan berada di domain service, bukan hanya UI/route.
 - Pinjaman `pending_approval` tidak diblokir, konsisten dengan guard assign/lifecycle saat ini; approval tetap memvalidasi status aset.
 - Regression ditambahkan pada asset status workflow guard yang sudah menjadi bagian CI. Menunggu CI exact-head.
+
+### 2026-11-22 — Audit waktu bentrok pinjaman (Asia/Jakarta)
+
+- Audit menemukan ketidaksamaan interpretasi waktu: form browser mengirim `datetime-local` (waktu dinding lokal), sementara backend mengubah jam/menit dengan `Date.UTC`. Pemeriksaan bentrok di UI memakai `new Date(datetime-local)`, sehingga pada WIB hasil UI dan server berbeda tujuh jam.
+- Dampak: jadwal yang berdekatan dengan batas waktu dapat dinilai bentrok di satu sisi tetapi tidak di sisi lain; pemeriksaan ulang saat approval juga harus memakai interpretasi waktu yang sama.
+- Perbaikan pada PR #190: parser bersama `shared/loan-datetime.ts` dipakai oleh validasi request, collision check pengajuan, collision recheck approval, dan UI pre-check. Input datetime-local tanpa zona ditafsirkan sebagai Asia/Jakarta (UTC+07:00); ISO bertanda zona dipertahankan sebagai instant absolut; tanggal legacy tanpa jam tetap mempertahankan semantik UTC-midnight lama agar kompatibel.
+- Regression baru menguji konversi WIB, overlap, jadwal berurutan, tanggal legacy, ISO eksplisit, serta tanggal/jam tidak valid. Didaftarkan pada CI.
+- PR #190 head terbaru `a2f282a4e671dcaf61f492ce04c8c6d5d7dc7146`; CI exact-head run #2912 lulus 93/93 langkah. Perbaikan lanjutan juga menormalisasi jadwal ke ISO UTC eksplisit pada snapshot baru dan normalized PostgreSQL `TIMESTAMPTZ`; upsert menulis ulang jadwal lama melalui parser yang sama. CI setelah sinkronisasi commit PR #191 tetap diperlukan. Belum ada klaim UAT browser.
