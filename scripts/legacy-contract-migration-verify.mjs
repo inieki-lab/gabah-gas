@@ -73,8 +73,8 @@ async function main() {
     ['owner division ID mapped to division code', row?.owner_division === 'IT'],
     ['contract number retained', row?.contract_number === 'LEGACY/IT/001'],
     ['vendor and title retained', row?.vendor_name === 'Vendor Lama' && row?.title === 'Kontrak pemeliharaan server'],
-    ['dates and status retained', row?.start_date?.toISOString?.().slice(0, 10) === '2025-01-01'
-      && row?.end_date?.toISOString?.().slice(0, 10) === '2027-01-01' && row?.status === 'active'],
+    ['dates and status retained', String(row?.start_date).slice(0, 10) === '2025-01-01'
+      && String(row?.end_date).slice(0, 10) === '2027-01-01' && row?.status === 'active'],
     ['legacy notes retained', row?.notes === 'Catatan lama harus tetap utuh'],
     ['new governance defaults applied', row?.contract_type === 'Umum'
       && row?.notice_period_days === 0 && row?.reminder1_days === 60],
