@@ -1177,7 +1177,7 @@ export class GabahDomainService {
     priority: 'low' | 'medium' | 'high' | 'urgent';
     related_asset_id?: string;
     contract_id?: string;
-  }, actor: ServerUser): ServerTicket {
+  }, actor: ServerUser, persistAudit = true): ServerTicket {
     if (isAuditorActor(actor)) {
       throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
     }
@@ -1304,7 +1304,7 @@ export class GabahDomainService {
     // Contract linkage was validated before ticket creation.
     if (linkedContractId) {
       const contract = db.contracts.find(item => item.id === linkedContractId)!;
-      this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id);
+      this.recordAudit('TICKET_LINKED_TO_CONTRACT', 'Tickets', `Tiket ${ticketNumber} ditautkan ke kontrak ${contract.contract_number}`, actor, newTicket.id, persistAudit);
     }
 
     // Notify respective division (IT covers software/license/SaaS)
@@ -1322,7 +1322,7 @@ export class GabahDomainService {
       link_id: newTicket.id,
     });
 
-    this.recordAudit('TICKET_CREATED', 'Tickets', `Membuat tiket helpdesk ${ticketNumber} (Prioritas: ${payload.priority}, SLA: ${slaHours}h)`, actor, newTicket.id);
+    this.recordAudit('TICKET_CREATED', 'Tickets', `Membuat tiket helpdesk ${ticketNumber} (Prioritas: ${payload.priority}, SLA: ${slaHours}h)`, actor, newTicket.id, persistAudit);
 
     return newTicket;
   }

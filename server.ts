@@ -3326,6 +3326,9 @@ async function startServer() {
       if (!['open', 'assigned'].includes(String(ticket.status))) {
         return res.status(409).json({ success: false, message: 'Penugasan hanya dapat diubah sebelum pekerjaan dimulai.' });
       }
+      const ticketBefore = structuredClone(ticket);
+      const notificationIdsBefore = new Set(db.notifications.map(item => item.id));
+      const auditIdsBefore = new Set(db.auditLogs.map(item => item.id));
       const previousAssignedAgentId = ticket.assigned_agent_id;
       const assigneeId = req.body?.assigned_agent_id;
       if (assigneeId !== null && (typeof assigneeId !== 'string' || !assigneeId.trim())) {
@@ -3354,6 +3357,7 @@ async function startServer() {
           : `Melepas penugasan tiket ${ticket.ticket_number}.`,
         actor,
         ticket.id,
+        false,
       );
       if (ticket.assigned_agent_id && ticket.assigned_agent_id !== previousAssignedAgentId) {
         GabahDomainService.notify({
@@ -3366,7 +3370,20 @@ async function startServer() {
           link_id: ticket.id,
         });
       }
-      if (!(await persistBeforeSuccess(req, res))) return;
+      const ticketAfter = structuredClone(ticket);
+      const createdNotificationIds = new Set(db.notifications.filter(item => !notificationIdsBefore.has(item.id)).map(item => item.id));
+      const createdAuditIds = new Set(db.auditLogs.filter(item => !auditIdsBefore.has(item.id)).map(item => item.id));
+      if (!(await persistBeforeSuccess(req, res))) {
+        if (JSON.stringify(ticket) === JSON.stringify(ticketAfter)) {
+          for (const key of Object.keys(ticket)) {
+            if (!Object.prototype.hasOwnProperty.call(ticketBefore, key)) delete (ticket as any)[key];
+          }
+          Object.assign(ticket, ticketBefore);
+        }
+        db.notifications.splice(0, db.notifications.length, ...db.notifications.filter(item => !createdNotificationIds.has(item.id)));
+        db.auditLogs.splice(0, db.auditLogs.length, ...db.auditLogs.filter(item => !createdAuditIds.has(item.id)));
+        return;
+      }
       return res.json({ success: true, data: ticket });
     } catch (error: any) {
       return res.status(typeof error?.statusCode === 'number' ? error.statusCode : 400)
@@ -3464,15 +3481,21 @@ async function startServer() {
 
   app.post('/api/tickets', async (req, res) => {
     try {
-      
-    const requestedCategory = String(req.body?.category || '').trim().toUpperCase();
-    const createPermission = requestedCategory === 'ME' ? 'tickets.create.me' : 'tickets.create';
-    if (!requireRbacPermission(req, res, createPermission)) return;
-    const actor = getActor(req);
-      const newTicket = GabahDomainService.createTicket(req.body, actor);
-      // Domain service validates optional asset/contract relations before creating the ticket.
-      await persistDataStore();
-      (req as any).__gabahPersisted = true;
+      const requestedCategory = String(req.body?.category || '').trim().toUpperCase();
+      const createPermission = requestedCategory === 'ME' ? 'tickets.create.me' : 'tickets.create';
+      if (!requireRbacPermission(req, res, createPermission)) return;
+      const actor = getActor(req);
+      const notificationIdsBefore = new Set(db.notifications.map(item => item.id));
+      const auditIdsBefore = new Set(db.auditLogs.map(item => item.id));
+      const newTicket = GabahDomainService.createTicket(req.body, actor, false);
+      const createdNotificationIds = new Set(db.notifications.filter(item => !notificationIdsBefore.has(item.id)).map(item => item.id));
+      const createdAuditIds = new Set(db.auditLogs.filter(item => !auditIdsBefore.has(item.id)).map(item => item.id));
+      if (!(await persistBeforeSuccess(req, res))) {
+        db.tickets.splice(0, db.tickets.length, ...db.tickets.filter(item => item.id !== newTicket.id));
+        db.notifications.splice(0, db.notifications.length, ...db.notifications.filter(item => !createdNotificationIds.has(item.id)));
+        db.auditLogs.splice(0, db.auditLogs.length, ...db.auditLogs.filter(item => !createdAuditIds.has(item.id)));
+        return;
+      }
       res.status(201).json({ success: true, data: newTicket });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
@@ -3567,6 +3590,9 @@ async function startServer() {
         });
       }
 
+      // Snapshot after authorization and transition validation, before mutation.
+      const ticketBefore = structuredClone(ticket);
+      const auditIdsBefore = new Set(db.auditLogs.map(item => item.id));
       // Object-level authorization already enforced by middleware for scoped
       // roles; Admin GABAH handles everything.
       ticket.status = nextStatus as any;
@@ -3580,8 +3606,19 @@ async function startServer() {
       }
       ticket.updated_at = new Date().toISOString();
 
-      GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id);
-      if (!(await persistBeforeSuccess(req, res))) return;
+      GabahDomainService.recordAudit('TICKET_STATUS_UPDATED', 'Tickets', `Mengubah status tiket ${ticket.ticket_number} dari ${currentStatus} menjadi ${nextStatus}`, actor, ticket.id, false);
+      const ticketAfter = structuredClone(ticket);
+      const createdAuditIds = new Set(db.auditLogs.filter(item => !auditIdsBefore.has(item.id)).map(item => item.id));
+      if (!(await persistBeforeSuccess(req, res))) {
+        if (JSON.stringify(ticket) === JSON.stringify(ticketAfter)) {
+          for (const key of Object.keys(ticket)) {
+            if (!Object.prototype.hasOwnProperty.call(ticketBefore, key)) delete (ticket as any)[key];
+          }
+          Object.assign(ticket, ticketBefore);
+        }
+        db.auditLogs.splice(0, db.auditLogs.length, ...db.auditLogs.filter(item => !createdAuditIds.has(item.id)));
+        return;
+      }
 
       res.json({ success: true, data: ticket });
     } catch (err: any) {

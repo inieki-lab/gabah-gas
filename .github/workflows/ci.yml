@@ -208,6 +208,9 @@ jobs:
       - name: Ticket lifecycle cannot skip operational stages
         run: npm run test:ticket-lifecycle-no-skip
 
+      - name: Ticket workflow durable persistence rollback regression
+        run: npm run test:ticket-mutation-atomicity
+
       - name: Server-authoritative per-ticket action regression
         run: npm run test:ticket-allowed-actions
 
