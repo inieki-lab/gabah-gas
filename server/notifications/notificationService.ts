@@ -131,7 +131,7 @@ export async function queueNotification(
     if (!logExists(inAppKey)) {
       if (recipient.kind === 'user') {
         db.notifications.unshift({
-          id: `NTF-${crypto.randomBytes(8).toString('hex')}`,
+          id: `NTF-${crypto.randomUUID()}`,
           recipient_user_id: recipient.id,
           title: `[Kontrak] ${notificationType}: ${contract.contract_number}`,
           message: `${contract.title} (${contract.vendor_name}) — ${level.label}`,
@@ -261,7 +261,7 @@ function recordAudit(logs: ServerContractNotificationLog[], contract: ServerCont
     return acc;
   }, {});
   db.auditLogs.unshift({
-    id: `AUD-CTR-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
+    id: `AUD-CTR-${crypto.randomUUID()}`,
     action: 'CONTRACT_REMINDER_QUEUED',
     module: 'Contracts',
     entity: 'Contract',
