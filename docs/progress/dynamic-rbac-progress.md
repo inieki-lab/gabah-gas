@@ -1332,3 +1332,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - FK actor diubah menjadi `ON DELETE SET NULL`; trigger hanya mengizinkan perubahan nested dari aksi FK ini dan hanya pada kolom `user_id`. Snapshot `user_name`, `user_role`, action, details, dan timestamp tetap immutable.
 - CR-04/CR-05 fresh PostgreSQL integration menguji user deletion, penolakan UPDATE/DELETE/TRUNCATE, dan retensi baris audit di dalam transaksi yang di-rollback setelah verifikasi.
 - Menunggu CI exact-head; belum diklaim sebagai UAT.
+
+
+### 2026-11-22 — Perbaikan lifecycle advisory lock scheduler reminder
+
+- Audit `reminderScheduler.ts` menemukan `releaseLeaderLock()` menjalankan query `pg_advisory_unlock` tanpa `await`, lalu langsung mengembalikan client ke pool. Karena advisory lock bersifat session-scoped, koneksi berpotensi dipakai ulang saat lock belum dilepas.
+- Jalur kegagalan `acquireLeaderLock()` juga dapat meninggalkan client yang sudah berhasil di-checkout ketika query gagal.
+- Perbaikan: semua client dilepas melalui `finally`; unlock ditunggu sebelum client dilepas; koneksi yang mengalami error dilepas dengan error agar pg-pool membuangnya; stop scheduler menunggu pelepasan lock.
+- Tambah regression CI untuk urutan unlock/release, cleanup saat acquisition gagal, dan semua lifecycle path scheduler.
+- Menunggu CI exact-head; belum diklaim sebagai UAT multi-instance produksi.
