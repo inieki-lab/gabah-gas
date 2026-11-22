@@ -13,6 +13,7 @@
     "test:loan-overdue-return": "node --import tsx scripts/loan-overdue-return-verify.mjs",
     "test:loanable-pool-ui": "node scripts/loanable-pool-ui-verify.mjs",
     "test:meeting-room": "node scripts/meeting-room-stage3-verify.mjs",
+    "test:room-domain-persistence": "node scripts/room-domain-persistence-verify.mjs",
     "test:room-capability-ui": "node scripts/room-capability-ui-verify.mjs",
     "test:report-kpi-integrity": "node scripts/report-kpi-integrity-verify.mjs",
     "test:org-model": "node scripts/org-model-verify.mjs",
