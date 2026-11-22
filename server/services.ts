@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { db, ServerAsset, ServerLoan, ServerTicket, ServerAssetMovement, ServerNotification, ServerAuditLog, ServerUser, ServerMeetingRoom, ServerRoomReservation, ServerMeetingType, ServerMeetingFacility, ServerMaintenance } from './db';
 import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByHumanName } from './taxonomy';
 import { AssetNumberingEngine } from './numbering';
@@ -562,7 +563,7 @@ export class GabahDomainService {
       asset.updated_at = new Date().toISOString();
 
       const movement: ServerAssetMovement = {
-        id: `MOV-${Date.now()}`,
+        id: `MOV-${randomUUID()}`,
         asset_id: asset.id,
         asset_number: asset.asset_number,
         from_user_name: previousUser,
@@ -597,7 +598,7 @@ export class GabahDomainService {
 
     // Record movement
     const movement: ServerAssetMovement = {
-      id: `MOV-${Date.now()}`,
+      id: `MOV-${randomUUID()}`,
       asset_id: asset.id,
       asset_number: asset.asset_number,
       from_user_name: previousUser,
@@ -655,7 +656,7 @@ export class GabahDomainService {
     asset.updated_at = new Date().toISOString();
 
     const movement: ServerAssetMovement = {
-      id: `MOV-${Date.now()}`,
+      id: `MOV-${randomUUID()}`,
       asset_id: asset.id,
       asset_number: asset.asset_number,
       from_location: oldLocation,

@@ -1297,3 +1297,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Perbaikan: penghapusan akun ditolak dengan HTTP 409 jika pengguna masih menjadi reporter atau assignee pada tiket yang statusnya belum `closed`. Pesan menyebut jumlah tiket dan langkah penyelesaian. Tiket closed tetap dipertahankan sebagai histori.
 - Regression ditambahkan pada `user-admin-validation-verify.mjs`, yang sudah dijalankan CI.
 - Menunggu CI exact-head; belum mengklaim UAT browser.
+
+
+### 2026-11-22 — Keunikan primary key histori perpindahan aset
+
+- Audit `assignAsset()`, `unassignAsset()`, dan `moveAsset()` menemukan ketiganya membuat ID movement dengan pola `MOV-${Date.now()}`. Kolom `asset_movements.id` adalah primary key. Dua perpindahan berbeda yang diproses dalam milidetik sama dapat menghasilkan primary key identik.
+- Dampak: salah satu persistensi movement gagal; karena PostgreSQL merupakan authoritative store dan kegagalan runtime dilatch, error tersebut berpotensi mengarantina API sampai proses restart.
+- Perbaikan: ketiga jalur menggunakan `randomUUID()` dari `node:crypto`, tetap memakai prefix `MOV-` dan tidak mengubah format nomor aset.
+- Regression ditambahkan ke asset lifecycle workflow guard yang sudah terdaftar di CI.
+- Menunggu CI exact-head; belum diklaim sebagai UAT.
