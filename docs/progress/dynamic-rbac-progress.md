@@ -1,3 +1,10 @@
+### Production dependency vulnerability gate — 2026-11-23 (PR #244; CI pending)
+
+- Added `npm audit --omit=dev --audit-level=high` immediately after dependency installation in CI.
+- High/Critical advisories in production dependencies now block the workflow. Development/build dependencies are intentionally excluded from this first gate and remain a separate review item.
+- Documented remediation policy: prefer compatible patched releases, avoid unreviewed `--force` upgrades, and require scoped/expiring exceptions rather than blanket suppressions.
+- Exact-head CI must demonstrate a clean production dependency audit before merge.
+
 ### CSP report-only rollout — 2026-11-23 (PR #243; CI pending)
 
 - Added a non-enforcing `Content-Security-Policy-Report-Only` header to API, HTML, and static asset responses.
