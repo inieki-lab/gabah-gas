@@ -56,7 +56,20 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json, headers: { 'x-ratelimit-remaining': res.headers.get('x-ratelimit-remaining') } };
+  return {
+    status: res.status,
+    json,
+    headers: {
+      'x-ratelimit-remaining': res.headers.get('x-ratelimit-remaining'),
+      'x-content-type-options': res.headers.get('x-content-type-options'),
+      'x-frame-options': res.headers.get('x-frame-options'),
+      'referrer-policy': res.headers.get('referrer-policy'),
+      'x-permitted-cross-domain-policies': res.headers.get('x-permitted-cross-domain-policies'),
+      'permissions-policy': res.headers.get('permissions-policy'),
+      'cache-control': res.headers.get('cache-control'),
+      'pragma': res.headers.get('pragma'),
+    },
+  };
 }
 
 async function waitForServer(base, tries = 60) {
@@ -129,6 +142,25 @@ async function main() {
     }
     record('Server boots on isolated port', 'health 200', 'health 200', true);
 
+    // Baseline browser headers and sensitive API response cache policy.
+    const headerCheck = await req(base, 'GET', '/api/health');
+    const h = headerCheck.headers || {};
+    const headerNames = [
+      'x-content-type-options', 'x-frame-options', 'referrer-policy',
+      'x-permitted-cross-domain-policies', 'permissions-policy',
+    ];
+    const missingHeaders = headerNames.filter(name => !h[name]);
+    record('SEC: baseline browser security headers on API responses',
+      'all baseline headers present',
+      missingHeaders.length ? 'missing: ' + missingHeaders.join(', ') : 'all present',
+      headerCheck.status === 200 && missingHeaders.length === 0
+        && h['x-content-type-options'] === 'nosniff'
+        && h['x-frame-options'] === 'DENY');
+    record('SEC: API responses are not cacheable',
+      'Cache-Control: no-store',
+      h['cache-control'] || '(missing)',
+      headerCheck.status === 200 && String(h['cache-control'] || '').toLowerCase().includes('no-store'));
+
     // Without a configured trusted proxy, caller-controlled XFF values must
     // not create separate rate-limit buckets for the same transport peer.
     const spoof1 = await req(base, 'GET', '/api/health', { headers: { 'x-forwarded-for': '198.51.100.11' } });
@@ -188,6 +220,24 @@ async function main() {
     }
 
     if (!adminToken) throw new Error('Cannot continue without admin session');
+
+    // Oversized attacker-controlled credentials must be rejected before PBKDF2 work.
+    const oversizedLogin = await req(base, 'POST', '/api/auth/login', {
+      body: { email: adminEmail, password: 'x'.repeat(257) },
+    });
+    record('SEC: oversized login password rejected before password hashing',
+      'HTTP 400', `HTTP ${oversizedLogin.status}`, oversizedLogin.status === 400);
+    const oversizedEmail = await req(base, 'POST', '/api/auth/login', {
+      body: { email: 'a'.repeat(250) + '@x.co', password: 'irrelevant' },
+    });
+    record('SEC: oversized login email rejected',
+      'HTTP 400', `HTTP ${oversizedEmail.status}`, oversizedEmail.status === 400);
+    const oversizedChange = await req(base, 'POST', '/api/auth/change-password', {
+      token: adminToken,
+      body: { currentPassword: 'x'.repeat(257), newPassword: 'ValidNewPassword-123' },
+    });
+    record('SEC: oversized self-service password input rejected before PBKDF2',
+      'HTTP 400', `HTTP ${oversizedChange.status}`, oversizedChange.status === 400);
 
     // Asset creation choices are server-calculated; a broad UI role label must not grant owner options.
     const adminAssetOptions = await req(base, 'GET', '/api/assets/create-options', { token: adminToken });

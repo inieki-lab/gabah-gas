@@ -50,6 +50,22 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
 
+  // Baseline browser security headers apply to API, HTML, and static assets.
+  // A restrictive CSP is intentionally deferred until the frontend's inline
+  // script/style and external integration inventory has been completed.
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    if (req.path.toLowerCase().startsWith('/api/')) {
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Pragma', 'no-cache');
+    }
+    next();
+  });
+
   app.use(express.json());
 
   // Per-request audit context: carry the client IP through the async chain so
@@ -1581,6 +1597,10 @@ async function startServer() {
       if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
         return res.status(400).json({ success: false, message: 'Email dan password wajib diisi.' });
       }
+      // Bound attacker-controlled strings before alias lookup and synchronous PBKDF2.
+      if (email.trim().length > 254 || password.length > 256) {
+        return res.status(400).json({ success: false, message: 'Email atau kata sandi melebihi batas panjang yang diizinkan.' });
+      }
 
       const inputEmail = email.trim().toLowerCase();
       const inPrefix = inputEmail.split('@')[0];
@@ -1712,6 +1732,10 @@ async function startServer() {
       const { currentPassword, newPassword } = req.body;
       if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || !currentPassword || !newPassword) {
         return res.status(400).json({ success: false, message: 'Kata sandi lama dan baru wajib diisi.' });
+      }
+      // Keep attacker-controlled KDF input bounded on self-service password changes.
+      if (currentPassword.length > 256 || newPassword.length > 256) {
+        return res.status(400).json({ success: false, message: 'Kata sandi maksimal 256 karakter.' });
       }
       if (newPassword.length < 8) {
         return res.status(400).json({ success: false, message: 'Kata sandi baru minimal 8 karakter.' });
