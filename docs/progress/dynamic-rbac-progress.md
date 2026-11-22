@@ -1,3 +1,10 @@
+### Dynamic RBAC live HTTP authorization coverage — 2026-11-23 (PR #242; CI pending)
+
+- Extended the fresh PostgreSQL integration to exercise all nine Dynamic RBAC administration endpoints as a Karyawan: permissions, roles, assignments, role create/update/delete, permission updates, scope updates, and user-role assignment.
+- Each non-Superadmin request must receive HTTP 403; anonymous role reads must receive HTTP 401.
+- The integration also compares role and target-user assignment counts before/after the denied requests to detect unauthorized mutation.
+- This complements PR #238's source-level route guard regression with live HTTP enforcement coverage. Exact-head CI is pending.
+
 ### Company profile settings persistence — 2026-11-23 (PR #241; CI pending)
 
 - Added migration `103_system_settings_company_profile.sql` for company name, accounting standard, base currency, and fiscal year. Defaults are seeded idempotently.
