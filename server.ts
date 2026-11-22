@@ -2952,12 +2952,31 @@ async function startServer() {
     }
   });
 
-  app.post('/api/assets/:id/move', (req, res) => {
+  app.post('/api/assets/:id/move', async (req, res) => {
     if (!requireRbacPermission(req, res, 'assets.move')) return;
     try {
       const actor = getActor(req);
       const { newLocation, reason } = req.body;
-      const updated = GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor);
+      const asset = db.assets.find(item => item.id === req.params.id);
+      if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan.' });
+      const assetBefore = structuredClone(asset);
+      const movementIdsBefore = new Set(db.movements.map(item => item.id));
+      const auditIdsBefore = new Set(db.auditLogs.map(item => item.id));
+      const updated = GabahDomainService.moveAsset(req.params.id, newLocation, reason, actor, false);
+      const assetAfter = structuredClone(updated);
+      const createdMovementIds = new Set(db.movements.filter(item => !movementIdsBefore.has(item.id)).map(item => item.id));
+      const createdAuditIds = new Set(db.auditLogs.filter(item => !auditIdsBefore.has(item.id)).map(item => item.id));
+      if (!(await persistBeforeSuccess(req, res))) {
+        if (JSON.stringify(asset) === JSON.stringify(assetAfter)) {
+          for (const key of Object.keys(asset)) {
+            if (!Object.prototype.hasOwnProperty.call(assetBefore, key)) delete (asset as any)[key];
+          }
+          Object.assign(asset, assetBefore);
+        }
+        db.movements.splice(0, db.movements.length, ...db.movements.filter(item => !createdMovementIds.has(item.id)));
+        db.auditLogs.splice(0, db.auditLogs.length, ...db.auditLogs.filter(item => !createdAuditIds.has(item.id)));
+        return;
+      }
       res.json({ success: true, data: updated });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
