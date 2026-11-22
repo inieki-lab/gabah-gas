@@ -58,7 +58,7 @@ mustReject({ restricted: 'false' }, /Flag restricted harus berupa boolean/);
 
 mustReject({ title: 'x'.repeat(256) }, /Judul kontrak wajib diisi dan maksimal 255 karakter/);
 mustReject({ vendor_name: 'x'.repeat(256) }, /Nama vendor wajib diisi dan maksimal 255 karakter/);
-mustReject({ contract_type: 'x'.repeat(101) }, /Jenis kontrak wajib diisi dan maksimal 100 karakter/);
+mustReject({ contract_type: 'x'.repeat(101) }, /Jenis kontrak maksimal 100 karakter/);
 mustReject({ title: 'NUL' + String.fromCharCode(0) + 'title' }, /Judul kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
 mustReject({ notes: 'NUL' + String.fromCharCode(0) + 'notes' }, /Catatan kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
 
