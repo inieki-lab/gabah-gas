@@ -655,7 +655,7 @@ export class GabahDomainService {
   /**
    * Asset Location Movement Mutation
    */
-  static moveAsset(assetId: string, newLocation: string, reason: string, actor: ServerUser): ServerAsset {
+  static moveAsset(assetId: string, newLocation: string, reason: string, actor: ServerUser, persistAudit = true): ServerAsset {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -703,7 +703,7 @@ export class GabahDomainService {
     };
     db.movements.unshift(movement);
 
-    this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id);
+    this.recordAudit('ASSET_MOVED', 'Assets', `Memindahkan lokasi aset ${asset.asset_number} dari "${oldLocation}" ke "${normalizedLocation}"`, actor, asset.id, persistAudit);
 
     return asset;
   }
