@@ -1,9 +1,9 @@
 ### Production dependency vulnerability gate — 2026-11-23 (PR #244; CI pending)
 
-- Added `npm audit --omit=dev --audit-level=high` immediately after dependency installation in CI.
-- High/Critical advisories in production dependencies now block the workflow. Development/build dependencies are intentionally excluded from this first gate and remain a separate review item.
+- Added `npm audit --omit=dev --audit-level=high` immediately after dependency installation in CI. The first run found three High and one Moderate advisory: body-parser 1.20.8, multer 2.4.0, qs 6.16.0, and Vite 6.4.3.
+- Updated the lockfile to body-parser 1.20.9, multer 2.5.0, and qs 6.16.2; moved Vite 6.4.6 plus Vite build plugins into devDependencies so they are not shipped as production runtime dependencies.
 - Documented remediation policy: prefer compatible patched releases, avoid unreviewed `--force` upgrades, and require scoped/expiring exceptions rather than blanket suppressions.
-- Exact-head CI must demonstrate a clean production dependency audit before merge.
+- Exact-head CI must verify the patched dependency graph and a clean production audit before merge.
 
 ### CSP report-only rollout — 2026-11-23 (PR #243; CI pending)
 
