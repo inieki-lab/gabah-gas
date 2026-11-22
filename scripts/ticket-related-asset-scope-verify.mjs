@@ -58,6 +58,8 @@ assert.throws(() => GabahDomainService.createTicket({ ...validTicket, title: 'x'
 assert.equal(db.tickets.length, initialCount, 'Overlong title must be rejected before ticket mutation');
 assert.throws(() => GabahDomainService.createTicket({ ...validTicket, title: 'Valid title', description: 'x'.repeat(20001) }, admin), /maksimal 20.000 karakter/);
 assert.equal(db.tickets.length, initialCount, 'Oversized description must be rejected before ticket mutation');
+assert.throws(() => GabahDomainService.createTicket({ ...validTicket, title: 'Invalid\\u0000title' }, admin), /maksimal 255 karakter/);
+assert.equal(db.tickets.length, initialCount, 'PostgreSQL-incompatible null bytes must be rejected before ticket mutation');
 const unicodeBoundaryTicket = GabahDomainService.createTicket({ ...validTicket, title: '😀'.repeat(255) }, admin);
 assert.equal(Array.from(unicodeBoundaryTicket.title).length, 255, '255 Unicode code points must fit PostgreSQL VARCHAR(255)');
 
@@ -72,4 +74,4 @@ assert.equal(linked.related_asset_name, visibleAsset.name);
 assert.equal(linked.related_asset_number, visibleAsset.asset_number);
 console.log('PASS | fixture rejects missing links without creating orphan tickets');
 console.log('PASS | fixture persists canonical asset ID and metadata');
-console.log('TOTAL: 10 source checks + 2 behavioral fixture groups | PASS');
+console.log('TOTAL: 10 source checks + 4 behavioral fixture groups | PASS');
