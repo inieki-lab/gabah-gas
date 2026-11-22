@@ -19,7 +19,7 @@ assert.ok(!createGuard.includes("'contracts.update'"), 'Update permission must n
 
 const base = {
   contract_type: 'Maintenance',
-  title: 'Automated relation test',
+  title: '😀'.repeat(255),
   vendor_name: 'Fixture Vendor',
   owner_division: 'IT',
   pic_user_id: 'USR-03',
@@ -51,6 +51,13 @@ mustReject({ reminder_config: { reminder1_days: 7, reminder2_days: 35, reminder3
 mustReject({ contract_value: -1 }, /Notice period dan nilai kontrak/);
 mustReject({ auto_renewal: 'false' }, /auto-renewal harus berupa boolean/);
 mustReject({ restricted: 'false' }, /Flag restricted harus berupa boolean/);
+
+mustReject({ title: 'x'.repeat(256) }, /Judul kontrak wajib diisi dan maksimal 255 karakter/);
+mustReject({ vendor_name: 'x'.repeat(256) }, /Nama vendor wajib diisi dan maksimal 255 karakter/);
+mustReject({ contract_type: 'x'.repeat(101) }, /Jenis kontrak wajib diisi dan maksimal 100 karakter/);
+mustReject({ title: 'NUL' + String.fromCharCode(0) + 'title' }, /Judul kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
+mustReject({ notes: 'NUL' + String.fromCharCode(0) + 'notes' }, /Catatan kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
+
 
 const created = ContractDomainService.createContract({
   ...base,
@@ -92,6 +99,10 @@ assert.throws(
 const updated = ContractDomainService.updateContract(created.id, { title: 'Updated fixture title', contract_value: 2000000 }, actor);
 assert.equal(updated.title, 'Updated fixture title');
 assert.equal(updated.contract_value, 2000000);
+assert.throws(() => ContractDomainService.updateContract(created.id, { title: 'x'.repeat(256) }, actor), /Judul kontrak wajib diisi dan maksimal 255 karakter/);
+assert.throws(() => ContractDomainService.updateContract(created.id, { contract_type: 'x'.repeat(101) }, actor), /Jenis kontrak wajib diisi dan maksimal 100 karakter/);
+assert.throws(() => ContractDomainService.updateContract(created.id, { notes: 'NUL' + String.fromCharCode(0) + 'notes' }, actor), /Catatan kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
+
 assert.throws(
   () => ContractDomainService.updateContract(created.id, { auto_renewal: 'false' }, actor),
   /auto-renewal harus berupa boolean/,
