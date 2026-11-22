@@ -72,7 +72,7 @@ const PUBLIC_API_PATHS = [
   '/api/auth/login',
 ];
 
-export function gabahSecurityMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function gabahSecurityMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   // Express routes are case-insensitive and accept a trailing slash by default.
   // Normalize paths before authorization comparisons so route variants cannot
   // bypass exact-path security checks.
@@ -82,14 +82,31 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
 
   // General API rate limiter across all endpoints (mitigates brute-force, scraping, and enumeration)
   const clientIp = extractClientIp(req) || 'unknown';
-  const rateLimit = checkApiRateLimit(clientIp);
+  // Keep orchestration health probes available even if the rate-limit store is
+  // degraded. All other API traffic fails closed when shared PostgreSQL state
+  // cannot be read or updated.
+  let rateLimit = { allowed: true, remaining: 200, resetSeconds: 60 };
+  if (normalizedPath !== '/api/health') {
+    try {
+      rateLimit = await checkApiRateLimit(clientIp);
+    } catch {
+      res.setHeader('Retry-After', '5');
+      res.setHeader('X-RateLimit-Limit', '200');
+      res.setHeader('X-RateLimit-Remaining', '0');
+      return void res.status(503).json({
+        success: false,
+        code: 'RATE_LIMIT_STORE_UNAVAILABLE',
+        message: 'Layanan pembatasan permintaan sementara tidak tersedia. Coba kembali.',
+      });
+    }
+  }
   res.setHeader('X-RateLimit-Limit', '200');
   res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
   res.setHeader('X-RateLimit-Reset', rateLimit.resetSeconds.toString());
 
   if (!rateLimit.allowed) {
     res.setHeader('Retry-After', rateLimit.resetSeconds.toString());
-    return res.status(429).json({
+    return void res.status(429).json({
       success: false,
       message: `Terlalu banyak permintaan API. Harap tunggu ${rateLimit.resetSeconds} detik sebelum mencoba kembali.`,
       retry_after_seconds: rateLimit.resetSeconds,
