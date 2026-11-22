@@ -241,6 +241,9 @@ jobs:
       - name: Room and facility durable persistence regression
         run: npm run test:room-domain-persistence
 
+      - name: Room and facility mutation rollback regression
+        run: npm run test:room-mutation-rollback
+
       - name: Meeting room additional-role UI regression
         run: npm run test:room-capability-ui
 

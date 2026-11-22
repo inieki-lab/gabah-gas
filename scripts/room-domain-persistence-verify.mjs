@@ -15,7 +15,7 @@ for (const method of methods) {
   assert.ok(start >= 0, method + ' must be asynchronous');
   const next = services.indexOf('\n  static ', start + 1);
   const body = services.slice(start, next < 0 ? services.length : next);
-  assert.match(body, /await persistDomainMutation\(\)/, method + ' must await durable persistence');
+  assert.match(body, /const persistenceSnapshot = captureRoomDomainSnapshot\(\)[\s\S]*await persistDomainMutation\(persistenceSnapshot\)/, method + ' must snapshot before mutation and await durable persistence with rollback');
   assert.doesNotMatch(body, /persistDataStore\(\)\.catch\(/, method + ' must not swallow persistence failures');
   assert.ok(server.includes('await GabahDomainService.' + method + '('), method + ' HTTP route must await its service');
 }
