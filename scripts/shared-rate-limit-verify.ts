@@ -9,7 +9,8 @@ const { checkApiRateLimit, recordFailedLogin, isLoginLocked, clearFailedLogins }
 const apiIp = 'shared-rate-limit-ci-' + crypto.randomUUID();
 const loginIdentifier = 'shared-login-lockout-ci-' + crypto.randomUUID();
 const parallelLoginIdentifier = 'shared-login-parallel-ci-' + crypto.randomUUID();
-const apiBucketKey = crypto.createHash('sha256').update('api').update(':').update(apiIp).digest('hex');
+const hmacSecret = process.env.GABAH_RATE_LIMIT_SECRET || process.env.PGPASSWORD || process.env.DATABASE_URL || 'gabah-local-development-rate-limit-key';
+const apiBucketKey = crypto.createHmac('sha256', hmacSecret).update('api').update(':').update(apiIp).digest('hex');
 
 try {
   await initializePersistence();
