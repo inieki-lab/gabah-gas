@@ -228,7 +228,7 @@ export class GabahDomainService {
    */
   static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string) {
     const log: ServerAuditLog = {
-      id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `LOG-${randomUUID()}`,
       action,
       entity,
       entity_id: entityId,
@@ -261,7 +261,7 @@ export class GabahDomainService {
     link_id?: string;
   }) {
     const notif: ServerNotification = {
-      id: `NOTIF-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `NOTIF-${randomUUID()}`,
       recipient_role: data.recipient_role,
       recipient_division: data.recipient_division,
       recipient_user_id: data.recipient_user_id,
@@ -495,7 +495,7 @@ export class GabahDomainService {
     }
 
     const newAsset: ServerAsset = {
-      id: `AST-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `AST-${randomUUID()}`,
       asset_number: assetNumber,
       corporate_asset_number: payload.corporate_asset_number || null,
       name: payload.name.trim(),
@@ -817,7 +817,7 @@ export class GabahDomainService {
 
     const loanNumber = AssetNumberingEngine.generateLoanNumber();
     const newLoan: ServerLoan = {
-      id: `LOAN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `LOAN-${randomUUID()}`,
       loan_number: loanNumber,
       asset_id: asset.id,
       asset_name: asset.name,
@@ -1177,7 +1177,7 @@ export class GabahDomainService {
     }
 
     const newTicket: ServerTicket = {
-      id: `TKT-${Date.now()}`,
+      id: `TKT-${randomUUID()}`,
       ticket_number: ticketNumber,
       ticket_code: ticketNumber,
       title: normalizedTitle,
@@ -1636,7 +1636,7 @@ export class GabahDomainService {
     const isAutoApproved = isSuperadminActor(actor) || canSetDirectorPriority;
 
     const reservation: ServerRoomReservation = {
-      id: `rsv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `rsv-${randomUUID()}`,
       reservation_number: reservationNumber,
       room_id: room.id,
       room_name: room.name,
@@ -1988,7 +1988,7 @@ export class GabahDomainService {
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama tipe rapat wajib diisi.');
     const newItem: ServerMeetingType = {
-      id: `MT-${Date.now()}`,
+      id: `MT-${randomUUID()}`,
       name: payload.name.trim(),
       code: payload.code ? payload.code.trim().toLowerCase() : payload.name.trim().toLowerCase().replace(/\s+/g, '_'),
       description: payload.description?.trim() || '',
@@ -2043,7 +2043,7 @@ export class GabahDomainService {
     }
     if (!payload.name || !payload.name.trim()) throw new Error('Nama fasilitas wajib diisi.');
     const newFac: ServerMeetingFacility = {
-      id: `FAC-${payload.category || 'GA'}-${Date.now()}`,
+      id: `FAC-${payload.category || 'GA'}-${randomUUID()}`,
       name: payload.name.trim(),
       category: payload.category === 'IT' ? 'IT' : 'GA',
       description: payload.description?.trim() || '',
