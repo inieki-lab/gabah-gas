@@ -731,6 +731,119 @@ async function main() {
       notificationAuditAfter.rows[0].count - notificationAuditBefore.rows[0].count === 2);
 
 
+    // ---------- PostgreSQL-backed company profile settings ----------
+    const companySettingsRead = await req(base, 'GET', '/api/admin/system-settings', { token: adminToken });
+    const companySettings = companySettingsRead.json?.data;
+    record('Admin reads PostgreSQL company profile settings', '200 + company profile fields',
+      `HTTP ${companySettingsRead.status}`,
+      companySettingsRead.status === 200 && typeof companySettings?.companyName === 'string'
+        && typeof companySettings?.accountingStandard === 'string'
+        && typeof companySettings?.baseCurrency === 'string'
+        && typeof companySettings?.fiscalYear === 'string');
+
+    const employeeCompanySettingsRead = await req(base, 'GET', '/api/admin/system-settings', { token: karyawanToken });
+    record('Authenticated employee can read company profile settings', '200',
+      `HTTP ${employeeCompanySettingsRead.status}`, employeeCompanySettingsRead.status === 200);
+
+    const anonymousCompanySettingsRead = await req(base, 'GET', '/api/admin/system-settings');
+    record('Anonymous company profile read is denied', '401',
+      `HTTP ${anonymousCompanySettingsRead.status}`, anonymousCompanySettingsRead.status === 401);
+
+    const employeeCompanySettingsWrite = await req(base, 'PATCH', '/api/admin/system-settings', {
+      token: karyawanToken,
+      body: { companyName: 'Unauthorized CI', accountingStandard: 'PSAK 16', baseCurrency: 'IDR', fiscalYear: '2026' },
+    });
+    record('Karyawan cannot update company profile settings', '403',
+      `HTTP ${employeeCompanySettingsWrite.status}`, employeeCompanySettingsWrite.status === 403);
+
+    const massAssignedCompanySettings = await req(base, 'PATCH', '/api/admin/system-settings', {
+      token: adminToken,
+      body: { companyName: 'CI Invalid', accountingStandard: 'PSAK 16', baseCurrency: 'IDR', fiscalYear: '2026', autoBackupDaily: false },
+    });
+    record('Company profile endpoint rejects unapproved fields', '400',
+      `HTTP ${massAssignedCompanySettings.status}`, massAssignedCompanySettings.status === 400);
+
+    const invalidCompanyFiscalYear = await req(base, 'PATCH', '/api/admin/system-settings', {
+      token: adminToken,
+      body: { companyName: 'CI Invalid', accountingStandard: 'PSAK 16', baseCurrency: 'IDR', fiscalYear: 'FY-2026' },
+    });
+    record('Company profile endpoint rejects invalid fiscal year', '400',
+      `HTTP ${invalidCompanyFiscalYear.status}`, invalidCompanyFiscalYear.status === 400);
+
+    if (companySettingsRead.status === 200 && companySettings) {
+      const systemSettingsAuditClient = new pg.Client({ connectionString: TEST_DB_URL });
+      await systemSettingsAuditClient.connect();
+      const systemAuditBefore = await systemSettingsAuditClient.query(
+        "SELECT COUNT(*)::int AS count FROM gabah_system_settings_audit WHERE settings_key = 'company_profile'",
+      );
+      const changedCompanySettings = {
+        companyName: companySettings.companyName + ' CI',
+        accountingStandard: companySettings.accountingStandard,
+        baseCurrency: companySettings.baseCurrency,
+        fiscalYear: companySettings.fiscalYear,
+      };
+      const companySettingsUpdate = await req(base, 'PATCH', '/api/admin/system-settings', { token: adminToken, body: changedCompanySettings });
+      const companySettingsNoop = await req(base, 'PATCH', '/api/admin/system-settings', { token: adminToken, body: changedCompanySettings });
+      const companySettingsRestore = await req(base, 'PATCH', '/api/admin/system-settings', {
+        token: adminToken,
+        body: {
+          companyName: companySettings.companyName,
+          accountingStandard: companySettings.accountingStandard,
+          baseCurrency: companySettings.baseCurrency,
+          fiscalYear: companySettings.fiscalYear,
+        },
+      });
+      const systemAuditAfter = await systemSettingsAuditClient.query(
+        "SELECT COUNT(*)::int AS count FROM gabah_system_settings_audit WHERE settings_key = 'company_profile'",
+      );
+      record('Superadmin can save and restore company profile settings', '200 + changed values then original values',
+        `update=${companySettingsUpdate.status} noop=${companySettingsNoop.status} restore=${companySettingsRestore.status}`,
+        companySettingsUpdate.status === 200 && companySettingsUpdate.json?.data?.companyName === changedCompanySettings.companyName
+          && companySettingsNoop.status === 200 && companySettingsNoop.json?.data?.companyName === changedCompanySettings.companyName
+          && companySettingsRestore.status === 200 && companySettingsRestore.json?.data?.companyName === companySettings.companyName);
+      record('Company profile audit records only actual changes', 'exactly two new audit rows',
+        `before=${systemAuditBefore.rows[0].count} after=${systemAuditAfter.rows[0].count}`,
+        systemAuditAfter.rows[0].count - systemAuditBefore.rows[0].count === 2);
+
+      await systemSettingsAuditClient.query('BEGIN');
+      await systemSettingsAuditClient.query(
+        "INSERT INTO gabah_system_settings_audit (settings_key, previous_settings, new_settings, changed_by_user_id) VALUES ('company_profile', $1::jsonb, $2::jsonb, $3)",
+        [JSON.stringify({ companyName: 'Before CI' }), JSON.stringify({ companyName: 'After CI' }), 'CI_SYSTEM_SETTINGS_AUDIT'],
+      );
+      const assertSystemSettingsAuditMutationBlocked = async (label, sql) => {
+        await systemSettingsAuditClient.query('SAVEPOINT system_settings_audit_mutation');
+        try {
+          await systemSettingsAuditClient.query(sql);
+          await systemSettingsAuditClient.query('ROLLBACK TO SAVEPOINT system_settings_audit_mutation');
+          record(label, 'PostgreSQL error code 55000', 'mutation unexpectedly succeeded', false);
+        } catch (error) {
+          await systemSettingsAuditClient.query('ROLLBACK TO SAVEPOINT system_settings_audit_mutation');
+          record(label, 'PostgreSQL error code 55000', error.code || error.message, error.code === '55000');
+        }
+      };
+      await assertSystemSettingsAuditMutationBlocked(
+        'Company profile audit rejects UPDATE at database level',
+        "UPDATE gabah_system_settings_audit SET new_settings = '{}'::jsonb WHERE changed_by_user_id = 'CI_SYSTEM_SETTINGS_AUDIT'",
+      );
+      await assertSystemSettingsAuditMutationBlocked(
+        'Company profile audit rejects DELETE at database level',
+        "DELETE FROM gabah_system_settings_audit WHERE changed_by_user_id = 'CI_SYSTEM_SETTINGS_AUDIT'",
+      );
+      await assertSystemSettingsAuditMutationBlocked(
+        'Company profile audit rejects TRUNCATE at database level',
+        'TRUNCATE TABLE gabah_system_settings_audit',
+      );
+      const systemAuditFixture = await systemSettingsAuditClient.query(
+        "SELECT COUNT(*)::int AS count FROM gabah_system_settings_audit WHERE changed_by_user_id = 'CI_SYSTEM_SETTINGS_AUDIT'",
+      );
+      record('Company profile audit survives rejected mutation attempts', '1 intact fixture row',
+        `count=${systemAuditFixture.rows[0].count}`, systemAuditFixture.rows[0].count === 1);
+      await systemSettingsAuditClient.query('ROLLBACK');
+      await systemSettingsAuditClient.end();
+    } else {
+      record('Company profile update/restore integration setup', 'company settings available', 'settings unavailable', false);
+    }
+
     // ---------- Module lifecycle API + live enforcement ----------
     const modulesRead = await req(base, 'GET', '/api/modules', { token: karyawanToken });
     const moduleRows = modulesRead.json?.data || [];
