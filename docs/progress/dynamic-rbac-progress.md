@@ -1242,3 +1242,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Perbaikan: `moveAsset` kini menolak relokasi untuk loan `approved` atau `borrowed` dengan HTTP 409. Pemeriksaan berada di domain service, bukan hanya UI/route.
 - Pinjaman `pending_approval` tidak diblokir, konsisten dengan guard assign/lifecycle saat ini; approval tetap memvalidasi status aset.
 - Regression ditambahkan pada asset status workflow guard yang sudah menjadi bagian CI. Menunggu CI exact-head.
+
+
+### 2026-11-22 — Validasi input tiket sebelum persistensi PostgreSQL
+
+- Temuan terverifikasi: `createTicket()` melakukan `trim()` pada judul/deskripsi tetapi tidak membatasi panjang judul, sementara schema normalized PostgreSQL menetapkan `tickets.title VARCHAR(255)`.
+- Dampak: judul lebih dari 255 karakter lolos service, lalu gagal saat `persistPostgresState()` menulis tabel normalized. Kegagalan write mengaktifkan `postgresFailureLatched`; sebelum karantina, hal ini dapat membuat API layanan masuk degraded hingga restart. Ini merupakan jalur denial-of-service melalui input tiket yang memiliki permission sah.
+- Perbaikan: validasi tipe, teks tidak kosong, judul maksimal 255 Unicode code points, deskripsi maksimal 20.000 Unicode code points sebelum nomor tiket dibuat atau state dimutasi. Hanya nilai yang telah dinormalisasi yang disimpan.
+- Regression memperiksa batas 255, 256, deskripsi di atas batas, dan judul Unicode tepat pada batas. Script `test:ticket-related-asset-scope` sudah menjadi bagian CI.
+- Menunggu CI exact-head; belum diklaim sebagai browser UAT.
