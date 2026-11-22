@@ -46,7 +46,7 @@ done
 
 # Simulate an existing database object still owned by the bootstrap account.
 docker exec "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$DB_ADMIN_USER" -d gabah_ci \
-  -c 'CREATE TABLE public.gabah_admin_owned_fixture (id integer PRIMARY KEY); INSERT INTO public.gabah_admin_owned_fixture (id) VALUES (1);' >/dev/null
+  -c 'CREATE TABLE public.gabah_admin_owned_fixture (id integer PRIMARY KEY); INSERT INTO public.gabah_admin_owned_fixture (id) VALUES (1); CREATE EXTENSION btree_gist;' >/dev/null
 
 # Provision the non-superuser app login and transfer existing database ownership.
 docker run --rm --network "$NETWORK" --entrypoint /bin/sh \
@@ -62,7 +62,7 @@ docker run --rm --network "$NETWORK" --entrypoint /bin/sh \
 
 # Existing objects must now be owned by the app role, so app migrations can evolve them.
 docker exec "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$DB_APP_USER" -d gabah_ci \
-  -c 'ALTER TABLE public.gabah_admin_owned_fixture ADD COLUMN migrated_by_app boolean NOT NULL DEFAULT true;' >/dev/null
+  -c 'ALTER TABLE public.gabah_admin_owned_fixture ADD COLUMN migrated_by_app boolean NOT NULL DEFAULT true; DROP EXTENSION btree_gist; CREATE EXTENSION btree_gist;' >/dev/null
 
 docker run -d \
   --name "$APP_CONTAINER" \
