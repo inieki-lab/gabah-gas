@@ -66,7 +66,11 @@ async function acquireLeaderLock(): Promise<boolean> {
     return false;
   } catch (error) {
     acquisitionError = error;
-    return true; // DB hiccup: run anyway; idempotency keys prevent duplicates
+    // In PostgreSQL mode, inability to verify the leader lock must fail
+    // closed. Running anyway could let multiple instances send duplicate
+    // external notifications before the idempotency row is committed.
+    console.warn('[GABAH Reminder] advisory leader lock unavailable; skipping sweep:', error instanceof Error ? error.message : String(error));
+    return false;
   } finally {
     // A failed lock query must not leak or recycle a broken pool client.
     if (client) client.release(acquisitionError || undefined);

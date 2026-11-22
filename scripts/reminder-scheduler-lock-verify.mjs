@@ -11,6 +11,10 @@ const acquire = source.slice(acquireStart, releaseStart);
 assert.ok(acquire.includes('let client: any = null;'), 'acquire must track the checked-out client');
 assert.ok(acquire.includes('finally {') && acquire.includes('client.release(acquisitionError || undefined)'), 'failed/negative lock acquisition must release its client and discard broken connections');
 assert.ok(acquire.includes('client = null; // ownership transferred'), 'successful acquisition must transfer client ownership to the lock holder');
+const catchStart = acquire.indexOf('} catch (error)');
+const finallyStart = acquire.indexOf('} finally', catchStart);
+const catchBlock = acquire.slice(catchStart, finallyStart);
+assert.ok(catchBlock.includes('return false;') && !catchBlock.includes('return true;'), 'PostgreSQL lock errors must fail closed and skip the sweep');
 
 const release = source.slice(releaseStart, releaseEnd);
 assert.ok(release.includes('async function releaseLeaderLock(): Promise<void>'), 'leader release must be asynchronous');
@@ -23,6 +27,7 @@ assert.ok(timerStart >= 0 && stopStart > timerStart, 'scheduler lifecycle method
 const lifecycle = source.slice(timerStart);
 assert.equal((lifecycle.match(/await releaseLeaderLock\(\)/g) || []).length, 3, 'both scheduler ticks and stop must await lock release');
 console.log('PASS | failed advisory-lock acquisition always releases checked-out client');
+console.log('PASS | PostgreSQL leader-lock errors fail closed to prevent duplicate external delivery');
 console.log('PASS | advisory unlock is awaited before returning client to pool');
 console.log('PASS | interval, boot catch-up, and stop await leader lock release');
-console.log('TOTAL: 3 | PASS: 3 | FAIL: 0');
+console.log('TOTAL: 4 | PASS: 4 | FAIL: 0');
