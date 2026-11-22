@@ -1375,3 +1375,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Removed the PostgreSQL-mode bypass. Every core page now requires its mapped read permission; landing selection picks the first permitted page and returns no page if none is granted. Legacy role navigation remains only when permission metadata is absent.
 - Regression coverage now verifies all five core tabs deny empty grants, allow their exact read grants, custom-role landing behavior, and Auditor restrictions. CI's existing `test:navigation-policy` step executes this suite.
 - This closes a UI/navigation authorization defect only; API enforcement and browser UAT remain separately required.
+
+
+### Public landing employee-directory exposure closed — 2026-11-22
+
+- Audit found the public landing page rendered the seeded employee directory and accepted `allUsers` from authenticated application state. The page exposed employee names, login emails, and department details; after an authenticated session loaded the directory, navigating back to the public landing page could retain and render those records.
+- Removed public account-role shortcuts and the employee directory section. The public landing page now accepts only the login callback and no longer imports mock users or receives the authenticated directory state.
+- Login remains available through the normal credential form; public role/account prefill was removed.
+- Added `test:public-landing-privacy` to assert no employee directory props, mock-account imports, login emails, or department fields are rendered or passed into the public page. The test is registered as a required CI step.
+- This is a client-side public-page exposure fix; it does not replace server-side directory authorization or production browser UAT.
