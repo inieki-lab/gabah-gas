@@ -1,3 +1,12 @@
+## [2026-11-22] — Serialize concurrent meeting-room reservations
+
+- Audit found the existing room reservation trigger checked overlapping active reservations without acquiring a lock; two independent transactions could both observe no conflict and commit the same room/time.
+- Add migration `099_room_reservation_collision_lock.sql` to serialize active reservation checks with a transaction-scoped PostgreSQL advisory lock keyed by room ID.
+- Extend the fresh-PostgreSQL integration suite to run two concurrent transactions against one room and assert that the second waits, then fails with SQLSTATE `P0001`; only one reservation remains active.
+- Keep room/time overlap checks and active status policy unchanged; unrelated rooms remain independently reservable except for harmless hash collisions.
+
+---
+
 ## [2026-11-22] — Overdue loan return and complete inspection choices
 
 - Allow the return workflow to process both `borrowed` and legacy/explicit `overdue` loans; pending, approved, rejected, and already returned states remain blocked.
