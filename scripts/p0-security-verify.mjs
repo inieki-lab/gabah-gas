@@ -222,6 +222,24 @@ async function main() {
 
     if (!adminToken) throw new Error('Cannot continue without admin session');
 
+    // Oversized attacker-controlled credentials must be rejected before PBKDF2 work.
+    const oversizedLogin = await req(base, 'POST', '/api/auth/login', {
+      body: { email: adminEmail, password: 'x'.repeat(257) },
+    });
+    record('SEC: oversized login password rejected before password hashing',
+      'HTTP 400', `HTTP ${oversizedLogin.status}`, oversizedLogin.status === 400);
+    const oversizedEmail = await req(base, 'POST', '/api/auth/login', {
+      body: { email: 'a'.repeat(250) + '@x.co', password: 'irrelevant' },
+    });
+    record('SEC: oversized login email rejected',
+      'HTTP 400', `HTTP ${oversizedEmail.status}`, oversizedEmail.status === 400);
+    const oversizedChange = await req(base, 'POST', '/api/auth/change-password', {
+      token: adminToken,
+      body: { currentPassword: 'x'.repeat(257), newPassword: 'ValidNewPassword-123' },
+    });
+    record('SEC: oversized self-service password input rejected before PBKDF2',
+      'HTTP 400', `HTTP ${oversizedChange.status}`, oversizedChange.status === 400);
+
     // Asset creation choices are server-calculated; a broad UI role label must not grant owner options.
     const adminAssetOptions = await req(base, 'GET', '/api/assets/create-options', { token: adminToken });
     const adminOwners = adminAssetOptions.json?.data?.owner_domains || [];
