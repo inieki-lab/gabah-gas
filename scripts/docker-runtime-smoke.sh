@@ -62,7 +62,7 @@ docker run --rm --network "$NETWORK" --entrypoint /bin/sh \
 
 # Existing objects must now be owned by the app role, so app migrations can evolve them.
 docker exec "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$DB_APP_USER" -d gabah_ci \
-  -c 'ALTER TABLE public.gabah_admin_owned_fixture ADD COLUMN migrated_by_app boolean NOT NULL DEFAULT true; DROP EXTENSION btree_gist; CREATE EXTENSION btree_gist;' >/dev/null
+  -c 'ALTER TABLE public.gabah_admin_owned_fixture ADD COLUMN migrated_by_app boolean NOT NULL DEFAULT true; CREATE EXTENSION IF NOT EXISTS btree_gist;' >/dev/null
 
 docker run -d \
   --name "$APP_CONTAINER" \
