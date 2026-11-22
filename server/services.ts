@@ -1435,6 +1435,13 @@ export class GabahDomainService {
       throw new Error('Judul / Agenda rapat wajib diisi.');
     }
 
+    if (payload.meeting_type !== undefined
+      && (typeof payload.meeting_type !== 'string'
+        || payload.meeting_type.includes('\u0000')
+        || Array.from(payload.meeting_type.trim()).length > 50)) {
+      throw Object.assign(new Error('Jenis rapat tidak valid (maksimal 50 karakter dan tanpa karakter NUL).'), { statusCode: 400 });
+    }
+
     if (!payload.date || !payload.start_time || !payload.end_time) {
       throw new Error('Tanggal, jam mulai, dan jam selesai wajib diisi.');
     }
@@ -1480,7 +1487,7 @@ export class GabahDomainService {
     }
     const rawFacilities = payload.facilities_requested === undefined ? [] : payload.facilities_requested;
     if (!Array.isArray(rawFacilities) || rawFacilities.length > 30
-      || rawFacilities.some(item => typeof item !== 'string' || !item.trim() || item.trim().length > 120)) {
+      || rawFacilities.some(item => typeof item !== 'string' || !item.trim() || item.includes('\u0000') || Array.from(item.trim()).length > 120)) {
       throw Object.assign(new Error('Daftar fasilitas harus berupa array maksimal 30 item teks (1–120 karakter per item).'), { statusCode: 400 });
     }
     const requestedFacilities = rawFacilities.map(item => item.trim());
@@ -1509,7 +1516,7 @@ export class GabahDomainService {
       ['Catatan internal', payload.notes, 4000],
     ];
     for (const [label, value, maxLength] of boundedTextFields) {
-      if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+      if (value !== undefined && (typeof value !== 'string' || value.includes('\u0000') || Array.from(value).length > maxLength)) {
         throw Object.assign(new Error(`${label} harus berupa teks maksimal ${maxLength} karakter.`), { statusCode: 400 });
       }
     }
