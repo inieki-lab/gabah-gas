@@ -737,7 +737,7 @@ async function startServer() {
         ['phone', phone, 40],
       ];
       for (const [field, value, maxLength] of profileTextFields) {
-        if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+        if (value !== undefined && (typeof value !== 'string' || value.includes('\u0000') || value.length > maxLength)) {
           return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
         }
       }
@@ -745,8 +745,8 @@ async function startServer() {
       if (typeof requestedPrimaryRole !== 'string' || !validPrimaryRoles.includes(requestedPrimaryRole)) {
         return res.status(400).json({ success: false, message: 'Role primer tidak valid. Humas/Sekretariat adalah role fungsi; RPC/SC dan PIBC adalah lokasi kerja.' });
       }
-      if (typeof name !== 'string' || !name.trim() || name.length > 160
-        || typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
+      if (typeof name !== 'string' || !name.trim() || name.includes('\u0000') || name.length > 160
+        || typeof email !== 'string' || email.includes('\u0000') || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) || email.length > 254) {
         return res.status(400).json({ success: false, message: 'Nama dan email wajib diisi dengan format yang valid.' });
       }
       const normalizedDivision = (typeof division === 'string' && division.trim() ? division.trim() : 'Umum') as ServerUser['division'];
@@ -891,11 +891,11 @@ async function startServer() {
         const department = String(row.department || '').trim() || 'Operasional';
         const phone = String(row.phone || '').trim();
         const jobLevelCode = String(row.job_level_code || '').trim().toUpperCase();
-        if (name.length > 160) { errors.push(`Baris ${rowNo}: Nama maksimal 160 karakter.`); continue; }
-        if (email.length > 254) { errors.push(`Baris ${rowNo}: Email maksimal 254 karakter.`); continue; }
-        if (division.length > 120) { errors.push(`Baris ${rowNo}: Divisi maksimal 120 karakter.`); continue; }
-        if (department.length > 120) { errors.push(`Baris ${rowNo}: Departemen maksimal 120 karakter.`); continue; }
-        if (phone.length > 40) { errors.push(`Baris ${rowNo}: Telepon maksimal 40 karakter.`); continue; }
+        if (name.includes('\u0000') || name.length > 160) { errors.push(`Baris ${rowNo}: Nama maksimal 160 karakter.`); continue; }
+        if (email.includes('\u0000') || email.length > 254) { errors.push(`Baris ${rowNo}: Email maksimal 254 karakter.`); continue; }
+        if (division.includes('\u0000') || division.length > 120) { errors.push(`Baris ${rowNo}: Divisi maksimal 120 karakter.`); continue; }
+        if (department.includes('\u0000') || department.length > 120) { errors.push(`Baris ${rowNo}: Departemen maksimal 120 karakter.`); continue; }
+        if (phone.includes('\u0000') || phone.length > 40) { errors.push(`Baris ${rowNo}: Telepon maksimal 40 karakter.`); continue; }
         // Unit is an organizational attribute; SC/RPC and PIBC are office locations.
         const unitId = String(row.unit_id || '').trim().toUpperCase();
         const requestedOfficeLocation = String(row.office_location_id || '').trim().toUpperCase();
