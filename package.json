@@ -41,8 +41,8 @@
     "test:dashboard-attention-middleware": "node scripts/dashboard-attention-middleware-verify.mjs",
     "test:movement-scope": "node scripts/movement-scope-verify.mjs",
     "test:login-lockout-scope": "node scripts/login-lockout-scope-verify.mjs",
-    "test:login-lockout-runtime": "tsx scripts/login-lockout-runtime-verify.ts",,
-    "test:auth-rate-limit-memory": "node --import tsx scripts/auth-rate-limit-memory-verify.mjs"
+    "test:login-lockout-runtime": "tsx scripts/login-lockout-runtime-verify.ts",
+    "test:auth-rate-limit-memory": "node --import tsx scripts/auth-rate-limit-memory-verify.mjs",
     "test:employee-role-normalization": "node scripts/employee-role-normalization-verify.mjs",
     "test:module-lifecycle-registry": "node scripts/module-lifecycle-registry-verify.mjs",
     "test:module-lifecycle-api": "node scripts/module-lifecycle-api-verify.mjs",
