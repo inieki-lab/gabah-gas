@@ -52,3 +52,9 @@ assert.match(moveService, /const activeLoan = \(db\.loans \|\| \[\]\)\.find/);
 assert.match(moveService, /\['approved', 'borrowed'\]\.includes\(loan\.status\)/);
 assert.match(moveService, /statusCode: 409/);
 assert.match(moveService, /relokasi fisik ditolak sampai proses pinjaman selesai/);
+
+const movementIds = [...services.matchAll(/id: `MOV-\$\{([^}]+)\}`/g)].map(match => match[1]);
+assert.equal(movementIds.length, 3, 'unassign, assign, and relocate must each create one movement ID');
+assert.ok(movementIds.every(expression => expression === 'randomUUID()'), 'movement primary keys must use collision-resistant UUIDs, not millisecond timestamps');
+assert.ok(services.includes("import { randomUUID } from 'node:crypto';"), 'movement UUID generator must use Node crypto');
+assert.ok(!/id: `MOV-\$\{Date\.now\(\)\}`/.test(services), 'timestamp-only movement IDs must be removed');
