@@ -62,6 +62,7 @@ services:
       GABAH_INITIAL_USER_PASSWORD: ${GABAH_INITIAL_USER_PASSWORD:-}
       GABAH_APP_MODE: ${GABAH_APP_MODE:-production}
       GABAH_TEST_PASSWORD: ${GABAH_TEST_PASSWORD:-}
+      GABAH_RATE_LIMIT_SECRET: ${GABAH_RATE_LIMIT_SECRET:-}
       GABAH_UPLOAD_DIR: /app/uploads
     volumes:
       - uploads_data:/app/uploads
