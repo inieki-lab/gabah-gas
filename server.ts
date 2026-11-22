@@ -3720,7 +3720,7 @@ async function startServer() {
       if (!requireRbacPermission(req, res, 'vendors.create')) return;
     }
     const requestedCategory = String(req.body?.category || '').trim();
-    if (!requestedCategory || requestedCategory.length > 80) {
+    if (!requestedCategory || requestedCategory.includes('\u0000') || Array.from(requestedCategory).length > 80) {
       return res.status(400).json({ success: false, message: 'Kategori vendor wajib diisi (maksimal 80 karakter).' });
     }
     const requestedOwnerInput = String(req.body?.owner_division || '').trim().toUpperCase();
@@ -3824,7 +3824,7 @@ async function startServer() {
     if (!requestedOwner) {
       return res.status(400).json({ success: false, message: 'Owner vendor wajib dipilih dari master fungsi pemilik yang aktif.' });
     }
-    if (!requestedCategory || requestedCategory.length > 80 || !requestedName || requestedName.length > 180) {
+    if (!requestedCategory || requestedCategory.includes('\u0000') || Array.from(requestedCategory).length > 80 || !requestedName || requestedName.includes('\u0000') || Array.from(requestedName).length > 180) {
       return res.status(400).json({ success: false, message: 'Nama dan kategori vendor wajib valid.' });
     }
     if (!Number.isFinite(requestedRating) || requestedRating < 1 || requestedRating > 5) {
