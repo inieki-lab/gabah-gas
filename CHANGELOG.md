@@ -1,3 +1,12 @@
+## [2026-11-22] — Bound contract upload memory and multipart resource use
+
+- Limit memory-backed contract uploads to two concurrent requests per app process; excess requests receive HTTP 503 with `Retry-After`.
+- Release upload slots exactly once on response finish/close or request abort, including parser-error paths.
+- Bound multipart files, fields, parts, field-name bytes, field bytes, and header pairs in addition to the existing 10 MiB file limit and content-signature checks.
+- Add required CI regression coverage for concurrency release behavior and parser limits.
+
+---
+
 ## [2026-11-22] — Harden the application container runtime
 
 - Enable a read-only root filesystem for the app container; retain writes only on the persistent uploads volume and a bounded `/tmp` tmpfs.
