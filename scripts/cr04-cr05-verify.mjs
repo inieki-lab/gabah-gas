@@ -325,6 +325,105 @@ async function main() {
       await mig.query('DELETE FROM assets WHERE id = $1', [concurrencyAssetId]);
     }
 
+    // ---------- Room anti-double-booking under concurrent reservations ----------
+    // Exercise the PostgreSQL trigger with independent transactions on one room.
+    const roomFixture = await mig.query(
+      'SELECT id FROM users WHERE is_active = TRUE ORDER BY id LIMIT 1',
+    );
+    const organizerId = roomFixture.rows[0]?.id;
+    const roomSuffix = crypto.randomBytes(6).toString('hex');
+    const roomReservationAId = `CR-ROOM-A-${roomSuffix}`;
+    const roomReservationBId = `CR-ROOM-B-${roomSuffix}`;
+    const roomReservationNumberA = `CR-ROOM-A-${roomSuffix}`;
+    const roomReservationNumberB = `CR-ROOM-B-${roomSuffix}`;
+    const roomId = `CR-ROOM-${roomSuffix}`;
+    const roomStart = new Date(Date.now() + 12 * 86400000);
+    roomStart.setUTCSeconds(0, 0);
+    const roomEnd = new Date(roomStart.getTime() + 60 * 60 * 1000);
+    const roomDate = roomStart.toISOString().slice(0, 10);
+    const roomStartTime = roomStart.toISOString().slice(11, 19);
+    const roomEndTime = roomEnd.toISOString().slice(11, 19);
+    const roomStartIso = roomStart.toISOString();
+    const roomEndIso = roomEnd.toISOString();
+    let roomClientA;
+    let roomClientB;
+    try {
+      if (!organizerId) throw new Error('test organizer fixture is unavailable');
+      for (const [id, number] of [
+        [roomReservationAId, roomReservationNumberA],
+        [roomReservationBId, roomReservationNumberB],
+      ]) {
+        await mig.query(
+          `INSERT INTO room_reservations
+            (id, reservation_number, room_id, room_name, title, organizer_id, organizer_name,
+             meeting_type, date, start_time, end_time, start_datetime, end_datetime, status)
+           VALUES ($1, $2, $3, 'CI concurrent room', 'CI room collision', $4, 'CI Organizer',
+                   'meeting', $5, $6, $7, $8, $9, 'cancelled')`,
+          [id, number, roomId, organizerId, roomDate, roomStartTime, roomEndTime, roomStartIso, roomEndIso],
+        );
+      }
+
+      roomClientA = new pg.Client({ connectionString: TEST_DB_URL });
+      roomClientB = new pg.Client({ connectionString: TEST_DB_URL });
+      roomClientA.on('error', e => console.error('[room concurrency A]', e.message));
+      roomClientB.on('error', e => console.error('[room concurrency B]', e.message));
+      await Promise.all([roomClientA.connect(), roomClientB.connect()]);
+      await roomClientA.query('BEGIN');
+      await roomClientA.query(`UPDATE room_reservations SET status = 'pending' WHERE id = $1`, [roomReservationAId]);
+
+      await roomClientB.query('BEGIN');
+      const roomBackendB = await roomClientB.query('SELECT pg_backend_pid() AS pid');
+      let roomSecondSettled = false;
+      let roomSecondError = null;
+      const secondReservation = roomClientB.query(
+        `UPDATE room_reservations SET status = 'pending' WHERE id = $1`,
+        [roomReservationBId],
+      ).then(() => { roomSecondSettled = true; }, error => { roomSecondSettled = true; roomSecondError = error; });
+
+      let waitedOnRoomLock = false;
+      for (let attempt = 0; attempt < 100 && !roomSecondSettled; attempt += 1) {
+        const wait = await mig.query(
+          `SELECT wait_event_type FROM pg_stat_activity
+           WHERE pid = $1 AND wait_event_type = 'Lock'`,
+          [roomBackendB.rows[0].pid],
+        );
+        if (wait.rowCount > 0) { waitedOnRoomLock = true; break; }
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+
+      await roomClientA.query('COMMIT');
+      await secondReservation;
+      if (roomSecondError) await roomClientB.query('ROLLBACK');
+      else await roomClientB.query('COMMIT');
+
+      const roomStatuses = await mig.query(
+        'SELECT id, status FROM room_reservations WHERE id = ANY($1::varchar[]) ORDER BY id',
+        [[roomReservationAId, roomReservationBId]],
+      );
+      const roomStatusById = Object.fromEntries(roomStatuses.rows.map(row => [row.id, row.status]));
+      const roomConcurrencyPass = waitedOnRoomLock
+        && Boolean(roomSecondError)
+        && roomSecondError.code === 'P0001'
+        && roomStatusById[roomReservationAId] === 'pending'
+        && roomStatusById[roomReservationBId] === 'cancelled';
+      record(
+        'Concurrent overlapping room reservations serialize and reject the second transaction',
+        'one pending + one cancelled; second transaction waits and receives P0001',
+        `waited=${waitedOnRoomLock}; error=${roomSecondError?.code || 'none'}; statuses=${JSON.stringify(roomStatusById)}`,
+        roomConcurrencyPass,
+      );
+    } catch (error) {
+      record('Concurrent room reservation anti-double-booking integration', 'second overlapping reservation rejected',
+        `error: ${error.message}`, false);
+      try { await roomClientA?.query('ROLLBACK'); } catch { /* best effort */ }
+      try { await roomClientB?.query('ROLLBACK'); } catch { /* best effort */ }
+    } finally {
+      try { await roomClientA?.end(); } catch { /* best effort */ }
+      try { await roomClientB?.end(); } catch { /* best effort */ }
+      await mig.query('DELETE FROM room_reservations WHERE id = ANY($1::varchar[])',
+        [[roomReservationAId, roomReservationBId]]);
+    }
+
     // Legacy function profiles must become Karyawan primary plus a secondary
     // capability assignment, and the authoritative JSON state must agree.
     const capabilityRows = await mig.query(
