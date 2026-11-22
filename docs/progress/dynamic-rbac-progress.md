@@ -1289,3 +1289,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Migration 098 memperbarui trigger agar mengunci baris aset `FOR UPDATE` sebelum membaca bentrok. Lock ditahan sampai transaksi selesai; persetujuan kedua untuk aset yang sama menunggu lalu melihat pinjaman pertama yang sudah committed.
 - CI CR-04/CR-05 diperluas dengan uji integrasi PostgreSQL nyata: dua koneksi independen, dua transaksi bersamaan, verifikasi transaksi kedua menunggu lock dan ditolak dengan SQLSTATE P0001; status akhir harus satu `approved` dan satu tetap `pending_approval`.
 - Uji ini hanya memakai database throwaway CI dan fixture yang dibersihkan setelah test. Menunggu CI exact-head; belum ada klaim UAT browser.
+
+
+### 2026-11-22 — Keunikan primary key histori perpindahan aset
+
+- Audit `assignAsset()`, `unassignAsset()`, dan `moveAsset()` menemukan ketiganya membuat ID movement dengan pola `MOV-${Date.now()}`. Dua perpindahan berbeda yang diproses dalam milidetik sama dapat menghasilkan primary key identik pada tabel `asset_movements`.
+- Dampak: salah satu persistensi movement gagal; karena PostgreSQL merupakan authoritative store dan kegagalan runtime dilatch, error tersebut berpotensi mengarantina API sampai proses restart.
+- Perbaikan: ketiga jalur menggunakan `randomUUID()` dari `node:crypto`, tetap memakai prefix `MOV-` dan tidak mengubah format nomor aset.
+- Regression ditambahkan ke asset lifecycle workflow guard yang sudah terdaftar di CI.
+- Menunggu CI exact-head; belum diklaim sebagai UAT.
