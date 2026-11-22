@@ -322,6 +322,33 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     }
   }, [users]);
 
+  useEffect(() => {
+    if (!isOpen || activeSection !== 'notifications') return;
+    let cancelled = false;
+    setNotificationRulesLoading(true);
+    setNotificationRulesError('');
+    gabahApi.getNotificationRuleSettings()
+      .then(settings => {
+        if (cancelled) return;
+        const byId = new Map(settings.map(item => [item.rule_id, item.is_active]));
+        if (DEFAULT_NOTIFICATION_RULES.some(rule => !byId.has(rule.id))) {
+          throw new Error('Konfigurasi aturan notifikasi belum lengkap di database.');
+        }
+        setNotificationRules(DEFAULT_NOTIFICATION_RULES.map(rule => ({
+          ...rule,
+          status: byId.get(rule.id) ? 'Aktif' : 'Nonaktif',
+        })));
+      })
+      .catch(error => {
+        if (cancelled) return;
+        setNotificationRules([]);
+        setNotificationRulesError(error?.message || 'Aturan notifikasi gagal dimuat dari server.');
+        showToast('Aturan notifikasi tidak dapat dimuat dari database. Perubahan dinonaktifkan.', 'warning');
+      })
+      .finally(() => { if (!cancelled) setNotificationRulesLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, activeSection]);
+
   // Master Data State
   const [categories, setCategories] = useState<any[]>([
     { code: 'IT-HLT', name: 'Hardware Laptop & PC', type: 'IT', loanable: true, total: 42, is_active: true },
@@ -801,9 +828,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [testCode, setTestCode] = useState('HLT');
   const [simulatedNumber, setSimulatedNumber] = useState('IT-HLT-2026-0005');
 
-  // Notification Rules State
-  // These are UI preview rules only; durable notification policy must be configured server-side.
-  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>(DEFAULT_NOTIFICATION_RULES);
+  // Notification rule definitions are code-owned; enabled status is loaded from PostgreSQL.
+  const [notificationRules, setNotificationRules] = useState<NotificationRule[]>([]);
+  const [notificationRulesLoading, setNotificationRulesLoading] = useState(false);
+  const [notificationRulesError, setNotificationRulesError] = useState('');
+  const [savingNotificationRuleId, setSavingNotificationRuleId] = useState<string | null>(null);
 
   // Audit Search & Filter State
   const [auditSearch, setAuditSearch] = useState('');
@@ -1298,18 +1327,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     showToast('Format penomoran hanya diperbarui untuk pratinjau sesi ini; aturan aktif tetap dikelola di server.', 'warning');
   };
 
-  // Notification Rules Handlers
-  const handleToggleNotificationRule = (id: string) => {
-    const updated = notificationRules.map(r => {
-      if (r.id === id) {
-        const nextStatus: 'Aktif' | 'Nonaktif' = r.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
-        return { ...r, status: nextStatus };
-      }
-      return r;
-    });
-    setNotificationRules(updated);
-    const target = updated.find(r => r.id === id);
-    showToast(`Pratinjau aturan "${target?.title}" diubah menjadi: ${target?.status}; perubahan belum disimpan di server.`, 'warning');
+  // Notification rule status is committed by the API before the UI is updated.
+  const handleToggleNotificationRule = async (id: string) => {
+    const target = notificationRules.find(rule => rule.id === id);
+    if (!target || notificationRulesLoading || notificationRulesError || savingNotificationRuleId) return;
+    const nextStatus: 'Aktif' | 'Nonaktif' = target.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
+    try {
+      setSavingNotificationRuleId(id);
+      await gabahApi.updateNotificationRuleSetting(id, nextStatus === 'Aktif');
+      setNotificationRules(previous => previous.map(rule => rule.id === id ? { ...rule, status: nextStatus } : rule));
+      showToast(`Aturan "${target.title}" berhasil diubah menjadi: ${nextStatus}`, 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Perubahan aturan notifikasi gagal disimpan.', 'warning');
+    } finally {
+      setSavingNotificationRuleId(null);
+    }
   };
 
   // System Settings Handlers
@@ -4677,6 +4709,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 )}
               </div>
 
+              {notificationRulesLoading && <div className="text-xs text-slate-500">Memuat konfigurasi dari database...</div>}
+              {notificationRulesError && <div role="alert" className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">{notificationRulesError}</div>}
               <div className="space-y-3">
                 {notificationRules.map((rule, idx) => (
                   <div key={rule.id || idx} className="p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-4 flex-wrap">
@@ -4701,7 +4735,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleToggleNotificationRule(rule.id)}
-                          title="Aktifkan/nonaktifkan aturan — tersimpan di panel administrasi ini"
+                          disabled={notificationRulesLoading || !!notificationRulesError || savingNotificationRuleId !== null}
+                          title="Aktifkan/nonaktifkan aturan — perubahan disimpan di PostgreSQL"
                           className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
                             rule.status === 'Aktif'
                               ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -4709,7 +4744,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           }`}
                         >
                           <span className={`w-2 h-2 rounded-full ${rule.status === 'Aktif' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                          <span>{rule.status === 'Aktif' ? 'Aktif' : 'Nonaktif'}</span>
+                          <span>{savingNotificationRuleId === rule.id ? 'Menyimpan...' : (rule.status === 'Aktif' ? 'Aktif' : 'Nonaktif')}</span>
                         </button>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 flex items-center gap-1">
