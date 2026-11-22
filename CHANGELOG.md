@@ -1,3 +1,11 @@
+## [2026-11-22] — Fail closed when reminder scheduler cannot acquire leader lock
+
+- In PostgreSQL mode, skip a reminder sweep when the scheduler cannot verify the advisory leader lock; do not fail open and risk duplicate email/Telegram delivery across instances.
+- Keep file-store development behavior unchanged when no PostgreSQL pool is configured.
+- Extend scheduler lock regression to require fail-closed behavior for lock acquisition errors.
+
+---
+
 ## [2026-11-22] — Fix contract reminder scheduler advisory-lock lifecycle
 
 - Await PostgreSQL advisory unlock before returning the leader connection to the pool; the previous fire-and-forget unlock could recycle a still-locked session.
