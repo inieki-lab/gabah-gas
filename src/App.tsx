@@ -707,7 +707,6 @@ export default function App() {
           </div>
         )}
         <LoginPage
-          availableUsers={allUsers}
           initialEmail={loginEmail}
           onLoginSuccess={(u) => {
             setCurrentUser(u);
