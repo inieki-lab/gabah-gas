@@ -4,7 +4,7 @@
 CREATE OR REPLACE FUNCTION check_loan_schedule_collision()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.status IN ('approved', 'borrowed') THEN
+  IF NEW.status IN ('approved', 'borrowed', 'active') THEN
     -- A row lock is held until the surrounding transaction commits. A second
     -- approval for the same asset waits, then evaluates the overlap query
     -- against the first transaction's committed loan (READ COMMITTED).
@@ -14,7 +14,7 @@ BEGIN
       SELECT 1 FROM loans
       WHERE asset_id = NEW.asset_id
         AND id <> NEW.id
-        AND status IN ('approved', 'borrowed')
+        AND status IN ('approved', 'borrowed', 'active')
         AND NEW.start_date < due_date
         AND NEW.due_date > start_date
     ) THEN

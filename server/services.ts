@@ -817,7 +817,7 @@ export class GabahDomainService {
     // A borrowed/overdue loan is authoritative even if an inventory snapshot
     // was stale and still reports the asset as available.
     const outstandingBorrowedLoan = db.loans.find(loan =>
-      loan.asset_id === asset.id && ['borrowed', 'overdue'].includes(String(loan.status))
+      loan.asset_id === asset.id && ['active', 'borrowed', 'overdue'].includes(String(loan.status))
     );
     if (outstandingBorrowedLoan) {
       throw Object.assign(new Error('Aset sedang dipinjam dan belum dikembalikan. Pilih barang lain.'), { statusCode: 409 });
@@ -919,7 +919,7 @@ export class GabahDomainService {
     const outstandingBorrowedLoan = db.loans.find(existing =>
       existing.id !== loan.id
       && existing.asset_id === loan.asset_id
-      && ['borrowed', 'overdue'].includes(String(existing.status))
+      && ['active', 'borrowed', 'overdue'].includes(String(existing.status))
     );
     if (outstandingBorrowedLoan) {
       throw Object.assign(new Error('Aset masih dipinjam dan belum dikembalikan melalui pinjaman ' + outstandingBorrowedLoan.loan_number + '.'), { statusCode: 409 });
