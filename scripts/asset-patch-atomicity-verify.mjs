@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const server = fs.readFileSync('server.ts', 'utf8');
+const start = server.indexOf("app.patch('/api/assets/:id'");
+const end = server.indexOf("app.post('/api/assets/:id/assign'", start);
+assert.ok(start >= 0 && end > start, 'asset PATCH route must exist');
+const route = server.slice(start, end);
+const validateUnit = route.indexOf('nextManagingUnitId = uid');
+const validateLocation = route.indexOf('nextAssetLocationId = validateAssetLocation');
+const firstMutation = route.indexOf('asset.managing_unit_id = nextManagingUnitId');
+const snapshot = route.indexOf('const assetSnapshot = structuredClone(asset)');
+assert.ok(validateUnit >= 0 && validateLocation > validateUnit, 'both relation updates must be validated before mutation');
+assert.ok(snapshot > validateLocation && firstMutation > snapshot, 'asset snapshot must precede all mutations');
+assert.ok(route.indexOf('asset.asset_location_id = nextAssetLocationId') > snapshot, 'location assignment must follow the snapshot');
+assert.match(route, /recordAudit\('ASSET_UPDATED'[\s\S]*?asset\.id, false\)/, 'audit must be committed with the asset write');
+const failure = route.slice(route.indexOf('if (!(await persistBeforeSuccess(req, res)))'), route.indexOf('res.json({ success: true, data: asset })'));
+assert.match(failure, /Object\.assign\(asset, assetSnapshot\)/);
+assert.match(failure, /db\.auditLogs\.splice\([\s\S]*auditSnapshot/);
+assert.match(failure, /return;/);
+console.log('PASS: asset PATCH validates all relations before mutation and rolls back asset/audit on persistence failure');
