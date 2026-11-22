@@ -86,6 +86,9 @@ jobs:
       - name: Asset creation rollback regression
         run: npm run test:asset-create-atomicity
 
+      - name: Bulk asset import rollback regression
+        run: npm run test:asset-bulk-import-atomicity
+
       - name: User creation profile validation regression
         run: npm run test:user-create-profile-validation
 
