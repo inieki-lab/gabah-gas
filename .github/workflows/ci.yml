@@ -220,6 +220,9 @@ jobs:
       - name: Loan authorization and state transitions
         run: npm run test:loan-authz
 
+      - name: Loan mutation durable persistence and rollback regression
+        run: npm run test:loan-mutation-atomicity
+
       - name: Overdue loan return runtime regression
         run: npm run test:loan-overdue-return
 

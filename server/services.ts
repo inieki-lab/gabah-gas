@@ -233,7 +233,7 @@ export class GabahDomainService {
   /**
    * Log action to immutable audit trail
    */
-  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string) {
+  static recordAudit(action: string, entity: string, details: string, user: { name: string; role: string }, entityId?: string, persistImmediately = true) {
     const log: ServerAuditLog = {
       id: `LOG-${randomUUID()}`,
       action,
@@ -248,7 +248,9 @@ export class GabahDomainService {
       timestamp: new Date().toISOString(),
     };
     db.auditLogs.unshift(log);
-    persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
+    if (persistImmediately) {
+      persistDataStore().catch(err => console.warn('[GABAH Audit] Persistence notice:', err.message));
+    }
     return log;
   }
 
@@ -864,7 +866,7 @@ export class GabahDomainService {
       link_id: newLoan.id,
     });
 
-    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id);
+    this.recordAudit('LOAN_REQUESTED', 'Loans', `Mengajukan pinjaman ${loanNumber} untuk aset ${asset.name} (${asset.asset_number}) [Approver: Divisi ${asset.owner_division}]`, actor, newLoan.id, false);
 
     return newLoan;
   }
@@ -930,7 +932,7 @@ export class GabahDomainService {
     // Mark the already-validated asset as reserved.
     asset.status = 'reserved';
 
-    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id);
+    this.recordAudit('LOAN_APPROVED', 'Loans', `Menyetujui pinjaman ${loan.loan_number} (${loan.asset_name}) oleh ${actor.name} (${actor.role})`, actor, loan.id, false);
 
     this.notify({
       recipient_user_id: loan.borrower_id,
@@ -972,7 +974,7 @@ export class GabahDomainService {
       : 'Ditolak oleh divisi pemilik aset';
     loan.updated_at = new Date().toISOString();
 
-    this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id);
+    this.recordAudit('LOAN_REJECTED', 'Loans', `Menolak pinjaman ${loan.loan_number} (${loan.asset_name}) — ${loan.rejection_reason}`, actor, loan.id, false);
 
     this.notify({
       recipient_user_id: loan.borrower_id,
@@ -985,6 +987,32 @@ export class GabahDomainService {
     });
 
     return loan;
+  }
+
+  /**
+   * Commit a loan workflow mutation as one in-memory + durable-store operation.
+   * Successful audit records are included in this same write (recordAudit's
+   * immediate persistence is disabled for those transitions). If PostgreSQL
+   * rejects the commit, restore every affected collection before returning 503.
+   */
+  static async persistLoanMutation<T>(mutation: () => T): Promise<T> {
+    const snapshots = {
+      loans: structuredClone(db.loans),
+      assets: structuredClone(db.assets),
+      notifications: structuredClone(db.notifications),
+      auditLogs: structuredClone(db.auditLogs),
+    };
+    const result = mutation();
+    try {
+      await persistDataStore();
+      return result;
+    } catch (error) {
+      db.loans.splice(0, db.loans.length, ...snapshots.loans);
+      db.assets.splice(0, db.assets.length, ...snapshots.assets);
+      db.notifications.splice(0, db.notifications.length, ...snapshots.notifications);
+      db.auditLogs.splice(0, db.auditLogs.length, ...snapshots.auditLogs);
+      throw error;
+    }
   }
 
   /**
@@ -1048,7 +1076,7 @@ export class GabahDomainService {
 
     asset.status = 'assigned';
 
-    this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id);
+    this.recordAudit('LOAN_HANDOVER', 'Loans', `Serah terima fisik pinjaman ${loan.loan_number} ke ${loan.borrower_name}`, actor, loan.id, false);
 
     return loan;
   }
@@ -1108,7 +1136,7 @@ export class GabahDomainService {
     // Preserve the recorded physical location. Returning a loan changes custody/status,
     // not the asset's site; a real relocation must use the asset-mutation workflow.
 
-    this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id);
+    this.recordAudit('LOAN_RETURNED', 'Loans', `Pengembalian pinjaman ${loan.loan_number}. Kondisi: ${condition}. Catatan: ${returnNotes}`, actor, loan.id, false);
 
     return loan;
   }

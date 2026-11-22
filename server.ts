@@ -3053,8 +3053,7 @@ async function startServer() {
         }
       }
 
-      const newLoan = GabahDomainService.requestLoan(req.body, actor);
-      await persistDataStore();
+      const newLoan = await GabahDomainService.persistLoanMutation(() => GabahDomainService.requestLoan(req.body, actor));
       (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: newLoan });
     } catch (err: any) {
@@ -3067,8 +3066,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.approve')) return;
     const actor = getActor(req);
-      const approved = GabahDomainService.approveLoan(req.params.id, actor);
-      await persistDataStore();
+      const approved = await GabahDomainService.persistLoanMutation(() => GabahDomainService.approveLoan(req.params.id, actor));
       (req as any).__gabahPersisted = true;
       res.json({ success: true, data: approved });
     } catch (err: any) {
@@ -3081,8 +3079,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'loans.reject')) return;
     const actor = getActor(req);
-      const rejected = GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor);
-      await persistDataStore();
+      const rejected = await GabahDomainService.persistLoanMutation(() => GabahDomainService.rejectLoan(req.params.id, req.body?.reason, actor));
       (req as any).__gabahPersisted = true;
       res.json({ success: true, data: rejected });
     } catch (err: any) {
@@ -3096,8 +3093,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'loans.handover')) return;
     const actor = getActor(req);
       const { handoverNotes } = req.body;
-      const handedOver = GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor);
-      await persistDataStore();
+      const handedOver = await GabahDomainService.persistLoanMutation(() => GabahDomainService.handoverLoan(req.params.id, handoverNotes, actor));
       (req as any).__gabahPersisted = true;
       res.json({ success: true, data: handedOver });
     } catch (err: any) {
@@ -3120,8 +3116,7 @@ async function startServer() {
       const isBorrowerReturningOwnLoan = requestedLoan.borrower_id === actor.id;
       if (!isBorrowerReturningOwnLoan && !requireRbacPermission(req, res, 'loans.return')) return;
       const { condition, returnNotes } = req.body;
-      const returned = GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor);
-      await persistDataStore();
+      const returned = await GabahDomainService.persistLoanMutation(() => GabahDomainService.returnLoan(req.params.id, condition, returnNotes, actor));
       (req as any).__gabahPersisted = true;
       res.json({ success: true, data: returned });
     } catch (err: any) {
