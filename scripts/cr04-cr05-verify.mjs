@@ -274,6 +274,7 @@ async function main() {
       await clientA.query(`UPDATE loans SET status = 'approved' WHERE id = $1`, [loanAId]);
 
       await clientB.query('BEGIN');
+      const backendB = await clientB.query('SELECT pg_backend_pid() AS pid');
       let secondSettled = false;
       let secondError = null;
       const secondApproval = clientB.query(
@@ -281,7 +282,6 @@ async function main() {
       ).then(() => { secondSettled = true; }, error => { secondSettled = true; secondError = error; });
 
       let waitedOnAssetLock = false;
-      const backendB = await clientB.query('SELECT pg_backend_pid() AS pid');
       for (let attempt = 0; attempt < 100 && !secondSettled; attempt += 1) {
         const wait = await mig.query(
           `SELECT wait_event_type FROM pg_stat_activity
