@@ -105,7 +105,7 @@ const checks = [
   ['Superadmin-only role CRUD endpoints exist', /app\.post\('\/api\/admin\/rbac\/roles'/i.test(server) && /app\.patch\('\/api\/admin\/rbac\/roles\/:id'/i.test(server) && /app\.delete\('\/api\/admin\/rbac\/roles\/:id'/i.test(server)],
   ['every Dynamic RBAC administration endpoint checks Superadmin before touching RBAC data', rbacAdminRoutePaths.every(route => {
     const start = server.indexOf(route);
-    return start >= 0 && /requireRbacSuperadmin\\(req, res\\)/.test(server.slice(start, start + 420));
+    return start >= 0 && /requireRbacSuperadmin\(req, res\)/.test(server.slice(start, start + 420));
   })],
   ['permission and scope configuration endpoints exist', /\/roles\/:id\/permissions/i.test(server) && /\/roles\/:id\/scopes/i.test(server)],
   ['role administration is guarded by stable Superadmin assignment', /requireRbacSuperadmin[\s\S]{0,400}isRbacSuperadmin\(actor\.id\)/i.test(server)],
