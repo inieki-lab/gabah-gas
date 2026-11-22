@@ -23,7 +23,7 @@ docker network create "$NETWORK" >/dev/null
 docker run -d \
   --name "$DB_CONTAINER" \
   --network "$NETWORK" \
-  --health-cmd "pg_isready -U "$DB_ADMIN_USER" -d gabah_ci" \
+  --health-cmd "pg_isready -U ${DB_ADMIN_USER} -d gabah_ci" \
   --health-interval 2s \
   --health-timeout 3s \
   --health-retries 30 \
