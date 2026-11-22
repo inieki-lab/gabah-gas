@@ -28,11 +28,12 @@ jobs:
 
       - name: Validate Docker Compose configuration
         env:
-          PGPASSWORD: ci-validation-only-not-a-secret
+          PGADMIN_PASSWORD: ci-admin-validation-only-not-a-secret
+          PGPASSWORD: ci-app-validation-only-not-a-secret
         run: docker compose config --quiet
 
-      - name: Validate deployment shell script
-        run: bash -n deploy.sh
+      - name: Validate deployment and PostgreSQL provisioning scripts
+        run: bash -n deploy.sh && bash -n scripts/docker-runtime-smoke.sh && sh -n scripts/provision-postgres-app-role.sh
 
 
       - name: Setup Node.js 22
