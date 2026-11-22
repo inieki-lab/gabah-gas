@@ -779,6 +779,14 @@ export class GabahDomainService {
       throw Object.assign(new Error('Perangkat infrastruktur/server dan lisensi tidak boleh diajukan melalui peminjaman umum.'), { statusCode: 409 });
     }
     if (!asset.is_loanable) throw Object.assign(new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).'), { statusCode: 409 });
+    // A borrowed/overdue loan is authoritative even if an inventory snapshot
+    // was stale and still reports the asset as available.
+    const outstandingBorrowedLoan = db.loans.find(loan =>
+      loan.asset_id === asset.id && ['borrowed', 'overdue'].includes(String(loan.status))
+    );
+    if (outstandingBorrowedLoan) {
+      throw Object.assign(new Error('Aset sedang dipinjam dan belum dikembalikan. Pilih barang lain.'), { statusCode: 409 });
+    }
     if (asset.status !== 'available') {
       throw Object.assign(new Error(`Aset tidak tersedia untuk dipinjam (status saat ini: "${asset.status}").`), { statusCode: 409 });
     }
@@ -869,6 +877,17 @@ export class GabahDomainService {
     // Prevent re-approving completed/rejected loans after an asset is returned.
     if (loan.status !== 'pending_approval') {
       throw Object.assign(new Error('Hanya pengajuan berstatus menunggu persetujuan yang dapat disetujui (status saat ini: ' + loan.status + ').'), { statusCode: 409 });
+    }
+
+    // A stale asset snapshot must never allow a second approval while the
+    // same physical unit is still out with another borrower.
+    const outstandingBorrowedLoan = db.loans.find(existing =>
+      existing.id !== loan.id
+      && existing.asset_id === loan.asset_id
+      && ['borrowed', 'overdue'].includes(String(existing.status))
+    );
+    if (outstandingBorrowedLoan) {
+      throw Object.assign(new Error('Aset masih dipinjam dan belum dikembalikan melalui pinjaman ' + outstandingBorrowedLoan.loan_number + '.'), { statusCode: 409 });
     }
 
     // Revalidate the authoritative asset relation at approval time.
