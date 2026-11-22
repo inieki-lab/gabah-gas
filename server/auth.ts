@@ -127,8 +127,8 @@ export async function checkApiRateLimit(
   if (needsCapacitySweep || ++apiRateLimitCleanupCounter >= 128) {
     apiRateLimitCleanupCounter = 0;
     if (needsCapacitySweep) apiRateLimitCapacitySweepAt = now;
-    for (const [entryKey, entry] of apiRateLimits) {
-      if (entry.resetAt <= now) apiRateLimits.delete(entryKey);
+    for (const [key, entry] of apiRateLimits) {
+      if (entry.resetAt <= now) apiRateLimits.delete(key);
     }
     bucket = apiRateLimits.get(key);
   }
