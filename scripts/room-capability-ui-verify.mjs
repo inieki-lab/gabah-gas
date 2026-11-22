@@ -93,5 +93,5 @@ const reservationEnd = services.indexOf('static approveRoomReservation(', reserv
 assert.ok(reservationStart >= 0 && reservationEnd > reservationStart, 'room reservation service must exist');
 const reservationService = services.slice(reservationStart, reservationEnd);
 assert.match(reservationService, /payload\.meeting_type[\s\S]*Array\.from\(payload\.meeting_type\.trim\(\)\)\.length > 50/);
-assert.match(reservationService, /rawFacilities\.some\(item =>[\s\S]*item\.includes\('\u0000'\)/);
-assert.match(reservationService, /value\.includes\('\u0000'\) \|\| Array\.from\(value\)\.length > maxLength/);
+assert.ok(reservationService.includes("rawFacilities.some(item => typeof item !== 'string' || !item.trim() || item.includes('\\u0000')"));
+assert.ok(reservationService.includes("value.includes('\\u0000') || Array.from(value).length > maxLength"));
