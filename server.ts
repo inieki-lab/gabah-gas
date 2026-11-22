@@ -52,14 +52,30 @@ async function startServer() {
   const PORT = Number(process.env.PORT || 3000);
 
   // Baseline browser security headers apply to API, HTML, and static assets.
-  // A restrictive CSP is intentionally deferred until the frontend's inline
-  // script/style and external integration inventory has been completed.
+  // CSP starts in report-only mode: script execution is same-origin only, while
+  // known inline styles and current external font/image integrations are inventoried.
+  const cspReportOnlyPolicy = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https: wss:",
+    "media-src 'self' blob: https:",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+  ].join('; ');
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader('Content-Security-Policy-Report-Only', cspReportOnlyPolicy);
     if (req.path.toLowerCase().startsWith('/api/')) {
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Pragma', 'no-cache');
