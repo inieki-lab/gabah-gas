@@ -9,13 +9,13 @@ assert.ok(acquireStart >= 0 && releaseStart > acquireStart && releaseEnd > relea
 
 const acquire = source.slice(acquireStart, releaseStart);
 assert.ok(acquire.includes('let client: any = null;'), 'acquire must track the checked-out client');
-assert.ok(acquire.includes('finally {') && acquire.includes('if (client) client.release();'), 'failed/negative lock acquisition must always release its client');
+assert.ok(acquire.includes('finally {') && acquire.includes('client.release(acquisitionError || undefined)'), 'failed/negative lock acquisition must release its client and discard broken connections');
 assert.ok(acquire.includes('client = null; // ownership transferred'), 'successful acquisition must transfer client ownership to the lock holder');
 
 const release = source.slice(releaseStart, releaseEnd);
 assert.ok(release.includes('async function releaseLeaderLock(): Promise<void>'), 'leader release must be asynchronous');
 assert.ok(release.indexOf('await client.query') >= 0, 'leader advisory unlock must be awaited');
-assert.ok(release.indexOf('await client.query') < release.indexOf('client.release()'), 'pool client must not be released before advisory unlock finishes');
+assert.ok(release.indexOf('await client.query') < release.indexOf('client.release(unlockError || undefined)'), 'pool client must not be released before advisory unlock finishes and broken connections must be discarded');
 
 const timerStart = source.indexOf('export function startReminderScheduler()');
 const stopStart = source.indexOf('export async function stopReminderScheduler()', timerStart);
