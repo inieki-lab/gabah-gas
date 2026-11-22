@@ -100,7 +100,7 @@ curl -fsS http://127.0.0.1/api/health
 docker compose logs --tail=100 app
 ```
 
-Pastikan health menunjukkan persistence PostgreSQL. Pastikan `PGUSER` adalah role non-superuser aplikasi dan `PGADMIN_USER` hanya dipakai untuk administrasi/backup. Jika health gagal, deployment dianggap gagal; jangan menyatakan rilis berhasil.
+Pastikan health menunjukkan persistence PostgreSQL. Pastikan `PGUSER` adalah role non-superuser aplikasi dan `PGADMIN_USER` hanya dipakai untuk administrasi/backup. Container app harus non-root, `ReadonlyRootfs=true`, `CapDrop` memuat `ALL`, `SecurityOpt` memuat `no-new-privileges:true`, dan PID limit 256. Jika health atau profil keamanan gagal, deployment dianggap gagal; jangan menyatakan rilis berhasil.
 
 ## 5. Akses dan firewall
 
