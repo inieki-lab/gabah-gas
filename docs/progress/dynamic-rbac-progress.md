@@ -1340,3 +1340,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Ganti ID audit kontrak, audit reminder, dan notifikasi reminder in-app menjadi UUID dari `node:crypto`; prefix domain dipertahankan.
 - Regression `contract-creation-relations-verify.mjs` memastikan seluruh generator tersebut memakai UUID.
 - Menunggu CI exact-head; belum diklaim sebagai UAT.
+
+
+### 2026-11-22 — Perbaikan lifecycle advisory lock scheduler reminder
+
+- Audit `reminderScheduler.ts` menemukan `releaseLeaderLock()` menjalankan query `pg_advisory_unlock` tanpa `await`, lalu langsung mengembalikan client ke pool. Karena advisory lock bersifat session-scoped, koneksi berpotensi dipakai ulang saat lock belum dilepas.
+- Jalur kegagalan `acquireLeaderLock()` juga dapat meninggalkan client yang sudah berhasil di-checkout ketika query gagal.
+- Perbaikan: semua client dilepas melalui `finally`; unlock ditunggu sebelum client dilepas; koneksi yang mengalami error dilepas dengan error agar pg-pool membuangnya; stop scheduler menunggu pelepasan lock.
+- Tambah regression CI untuk urutan unlock/release, cleanup saat acquisition gagal, dan semua lifecycle path scheduler.
+- Menunggu CI exact-head; belum diklaim sebagai UAT multi-instance produksi.
