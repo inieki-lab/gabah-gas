@@ -56,8 +56,9 @@ export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> =
   ],
 };
 
-// Core employee workspace is always present for every authenticated role.
-// This is navigation visibility only; backend endpoints still enforce data scope and actions.
+// Core employee workspace tabs are the baseline product surface. In PostgreSQL
+// mode they still require their explicit read permission; this list is not a grant.
+// Backend endpoints remain authoritative for data scope and actions.
 export const CORE_NAVIGATION_TABS: readonly AppNavTab[] = [
   'dashboard', 'my_assets', 'loans', 'tickets', 'knowledge',
 ];
@@ -123,7 +124,6 @@ export function isNavTabAllowedForRole(
   permissionKeys?: readonly string[],
 ): boolean {
   if (!role) return false;
-  if (isCoreNavigationTab(tab)) return true;
   if (permissionKeys !== undefined) {
     if (permissionKeys.includes('*')) return true;
     // The room workspace loads both the room catalogue and reservation queue.

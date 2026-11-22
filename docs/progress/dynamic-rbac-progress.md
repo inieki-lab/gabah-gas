@@ -1367,3 +1367,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Tambah `runManualOnce(actor)` yang mengambil advisory lock, memakai guard `running`, dan selalu melepas lock setelah selesai. Endpoint manual menggunakan fungsi ini; lock tidak tersedia → HTTP 409 dan tidak ada pengiriman.
 - Regression scheduler memeriksa jalur manual endpoint tidak lagi memanggil engine secara langsung.
 - Menunggu CI exact-head; belum diklaim sebagai UAT multi-instance produksi.
+
+
+### Core navigation permission bypass closed — 2026-11-22
+
+- Audit found `isNavTabAllowedForRole` returned true for Dashboard, My Assets, Loans, Tickets, and Knowledge Base before evaluating PostgreSQL `permission_keys`. Users whose effective RBAC set omitted a page's read permission still saw that menu and could be routed to it; backend APIs remained authoritative, but the UI policy violated default-deny and produced misleading empty/403 pages.
+- Removed the PostgreSQL-mode bypass. Every core page now requires its mapped read permission; landing selection picks the first permitted page and returns no page if none is granted. Legacy role navigation remains only when permission metadata is absent.
+- Regression coverage now verifies all five core tabs deny empty grants, allow their exact read grants, custom-role landing behavior, and Auditor restrictions. CI's existing `test:navigation-policy` step executes this suite.
+- This closes a UI/navigation authorization defect only; API enforcement and browser UAT remain separately required.

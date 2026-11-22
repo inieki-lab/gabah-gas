@@ -73,28 +73,41 @@ assert.equal(isNavTabAllowedForRole('GA', 'licenses', ['dashboard.read', 'assets
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'reports', ['reports.read']));
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
 
-// Every authenticated role lands on the always-available core Dashboard before optional modules.
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'dashboard');
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loans.read']), 'dashboard');
+// PostgreSQL navigation requires an explicit read permission for every page,
+// including the employee workspace. Landing chooses the first actually granted
+// page rather than silently routing to a forbidden Dashboard.
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'reports');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loans.read']), 'tickets');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), 'dashboard');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), null);
+assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', []), false);
+assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'my_assets', []), false);
+assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'loans', []), false);
+assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'tickets', []), false);
+assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'knowledge', []), false);
+assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['dashboard.read']));
+assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'my_assets', ['assets.read']));
+assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'loans', ['loans.read']));
+assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'tickets', ['tickets.read']));
+assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'knowledge', ['knowledge.read']));
 
-// Global module lifecycle overrides even the always-available employee workspace.
+// Global module lifecycle also filters the employee workspace.
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'tickets.read'], ['tickets']), 'tickets');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'tickets.read'], ['dashboard']), 'dashboard');
 assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'tickets.read'], []), null);
 assert.equal(getDefaultNavTabForRole('Karyawan', undefined, ['tickets']), 'tickets');
 
 
-// Core employee workspace stays visible even when a role has no optional module grants.
+// Core workspace classification does not bypass effective permission checks.
 assert.deepEqual([...CORE_NAVIGATION_TABS], ['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge']);
 for (const role of [...expectedRoles, 'Custom Role']) {
   for (const tab of CORE_NAVIGATION_TABS) {
-    assert.ok(isNavTabAllowedForRole(role as any, tab, []), `${role} must always see core menu ${tab}`);
+    assert.equal(isNavTabAllowedForRole(role as any, tab, []), false, `${role} must not see ungranted core menu ${tab}`);
   }
 }
-assert.ok(isNavTabAllowedForRole('Auditor', 'my_assets'));
-assert.ok(isNavTabAllowedForRole('Auditor', 'knowledge', []));
+assert.equal(isNavTabAllowedForRole('Auditor', 'my_assets'), false);
+assert.ok(isNavTabAllowedForRole('Auditor', 'knowledge', ['knowledge.read']));
+assert.equal(isNavTabAllowedForRole('Auditor', 'knowledge', []), false);
 
 // Administration visibility follows effective Superadmin capability, not a legacy label.
 assert.equal(isSuperadminNavigationAllowed('Admin GABAH', false, ['dashboard.read']), false);
