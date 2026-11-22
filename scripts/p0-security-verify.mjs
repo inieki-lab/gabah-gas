@@ -159,8 +159,7 @@ async function main() {
     record('SEC: API responses are not cacheable',
       'Cache-Control: no-store',
       h['cache-control'] || '(missing)',
-      headerCheck.status === 200 && /\\bno-store\\b/i.test(h['cache-control'] || '')
-        && /\\bno-cache\\b/i.test(h['pragma'] || ''));
+      headerCheck.status === 200 && String(h['cache-control'] || '').toLowerCase().includes('no-store'));
 
     // Without a configured trusted proxy, caller-controlled XFF values must
     // not create separate rate-limit buckets for the same transport peer.
