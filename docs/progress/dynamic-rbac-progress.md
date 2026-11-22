@@ -1332,3 +1332,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - FK actor diubah menjadi `ON DELETE SET NULL`; trigger hanya mengizinkan perubahan nested dari aksi FK ini dan hanya pada kolom `user_id`. Snapshot `user_name`, `user_role`, action, details, dan timestamp tetap immutable.
 - CR-04/CR-05 fresh PostgreSQL integration menguji user deletion, penolakan UPDATE/DELETE/TRUNCATE, dan retensi baris audit di dalam transaksi yang di-rollback setelah verifikasi.
 - Menunggu CI exact-head; belum diklaim sebagai UAT.
+
+
+### 2026-11-22 — UUID untuk ID audit kontrak
+
+- Audit generator ID menemukan satu pengecualian yang tertinggal di `server/contracts.ts`: `LOG-CTR-${Date.now()}-${Math.random() * 1000}`. Generator ini masih berpotensi bentrok saat operasi kontrak bersamaan dan tidak konsisten dengan generator UUID domain lain.
+- Ganti menjadi `LOG-CTR-${randomUUID()}` dari `node:crypto`; prefix domain dipertahankan.
+- Regression `contract-creation-relations-verify.mjs` memastikan event `CONTRACT_CREATED` menghasilkan ID UUID v4.
+- Menunggu CI exact-head; belum diklaim sebagai UAT.
