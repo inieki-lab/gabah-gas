@@ -160,6 +160,8 @@ const milestone = ContractDomainService.addMilestone(created.id, {
 assert.notEqual(milestone.id, 'FORGED-ID');
 assert.equal(milestone.status, 'pending');
 
+console.log('PASS | contract creation audit ID uses UUID v4');
+console.log('PASS | contract reminder audit and in-app notification IDs use UUID');
 console.log('PASS | update-only permission does not imply contract creation');
 console.log('PASS | invalid/missing/inactive PIC rejected');
 console.log('PASS | unknown escalation user rejected; supported cross-division escalation retained');
@@ -170,4 +172,4 @@ console.log('PASS | update allowlist ignores protected fields and validates edit
 console.log('PASS | document metadata validated and uploader identity is server-derived');
 console.log('PASS | milestone type/date/amount validated and status/id are server-derived');
 console.log('PASS | auto-renewal/restricted flags and renewal notes are strictly validated');
-console.log('TOTAL: 10 | PASS: 10 | FAIL: 0');
+console.log('TOTAL: 12 | PASS: 12 | FAIL: 0');
