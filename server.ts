@@ -2869,12 +2869,13 @@ async function startServer() {
     // T2B-1: managing unit operasional (relasi ke org_units.id) — divalidasi
     // terhadap master aktif; nullable untuk kasus ambigu. owner_division &
     // asset_number tetap server-owned (tidak berubah), RBAC tetap owner_division.
+    let nextManagingUnitId: string | null | undefined;
     if (req.body.managing_unit_id !== undefined) {
       const uid = req.body.managing_unit_id ? String(req.body.managing_unit_id).trim() : null;
       if (uid && !(db.orgUnits || []).some(x => x.id === uid && x.is_active)) {
         return res.status(400).json({ success: false, message: `Unit "${uid}" tidak terdaftar atau sedang nonaktif.` });
       }
-      asset.managing_unit_id = uid;
+      nextManagingUnitId = uid;
     }
 
     // T2B-2: lokasi fisik aset (relasi ke asset_locations.id) — divalidasi
@@ -2882,13 +2883,21 @@ async function startServer() {
     // nilai yang sudah melekat (data historis), tidak dapat dipilih sebagai
     // perubahan baru. owner_division, managing_unit_id, asset_number, dan
     // teks `location` legacy TIDAK berubah oleh field ini.
+    let nextAssetLocationId: string | null | undefined;
     if (req.body.asset_location_id !== undefined) {
       try {
-        asset.asset_location_id = validateAssetLocation(req.body.asset_location_id, undefined, asset.asset_location_id);
+        nextAssetLocationId = validateAssetLocation(req.body.asset_location_id, undefined, asset.asset_location_id);
       } catch (e: any) {
         return res.status(400).json({ success: false, message: e.message });
       }
     }
+
+    // Snapshot before the first mutation. A failed durable write restores both
+    // the asset and its audit trail so the rejected PATCH has no memory residue.
+    const assetSnapshot = structuredClone(asset);
+    const auditSnapshot = structuredClone(db.auditLogs);
+    if (nextManagingUnitId !== undefined) asset.managing_unit_id = nextManagingUnitId;
+    if (nextAssetLocationId !== undefined) asset.asset_location_id = nextAssetLocationId;
 
     // Update mutable fields (not asset_number or owner_division)
     const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
@@ -2899,8 +2908,15 @@ async function startServer() {
     }
     asset.updated_at = new Date().toISOString();
 
-    GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id);
-    if (!(await persistBeforeSuccess(req, res))) return;
+    GabahDomainService.recordAudit('ASSET_UPDATED', 'Assets', `Memperbarui informasi aset ${asset.asset_number}`, actor, asset.id, false);
+    if (!(await persistBeforeSuccess(req, res))) {
+      for (const key of Object.keys(asset)) {
+        if (!Object.prototype.hasOwnProperty.call(assetSnapshot, key)) delete (asset as any)[key];
+      }
+      Object.assign(asset, assetSnapshot);
+      db.auditLogs.splice(0, db.auditLogs.length, ...auditSnapshot);
+      return;
+    }
 
     res.json({ success: true, data: asset });
   });
