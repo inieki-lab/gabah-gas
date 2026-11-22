@@ -1,3 +1,11 @@
+## [2026-11-22] — Lock manual contract reminder sweeps across instances
+
+- Route manual admin-triggered reminder runs through the same PostgreSQL advisory leader lock used by the interval scheduler.
+- Return HTTP 409 when a leader cannot be established or another sweep is already running; preserve the existing successful response payload.
+- Extend scheduler regression to ensure the admin route cannot bypass the lock.
+
+---
+
 ## [2026-11-22] — Fail closed when reminder scheduler cannot acquire leader lock
 
 - In PostgreSQL mode, skip a reminder sweep when the scheduler cannot verify the advisory leader lock; do not fail open and risk duplicate email/Telegram delivery across instances.

@@ -15,7 +15,7 @@ import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, isPostgresFailureLatched, queryRbac, withRbacTransaction } from './server/persistence';
 import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor, isAuditorReadPermissionKey } from './server/rbac-policy';
-import { startReminderScheduler, runOnce as runReminderOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
+import { startReminderScheduler, runManualOnce as runReminderManualOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
 import { filterDashboardAttentionItems } from './server/dashboard-attention-scope';
@@ -4368,8 +4368,11 @@ async function startServer() {
       if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang dapat menjalankan reminder sweep manual.' });
       }
-      const result = await ContractDomainService.runReminderSweep(actor);
-      res.json({ success: true, data: result });
+      const result = await runReminderManualOnce(actor);
+      if (!result.ok || !result.data) {
+        return res.status(409).json({ success: false, message: result.summary });
+      }
+      res.json({ success: true, data: result.data });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }

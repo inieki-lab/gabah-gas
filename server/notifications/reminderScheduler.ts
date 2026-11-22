@@ -1,4 +1,5 @@
 import { ContractDomainService } from '../contracts';
+import { ServerUser } from '../db';
 import { getDbPool } from '../persistence';
 
 /**
@@ -114,6 +115,39 @@ export async function runOnce(trigger: 'scheduler' | 'manual' = 'scheduler'): Pr
     return { ok: false, summary: err.message || String(err) };
   } finally {
     running = false;
+  }
+}
+
+/**
+ * Manual reminder execution uses the same cross-instance leader lock as the
+ * interval scheduler. Without this wrapper, admin-triggered sweeps could race
+ * with another server and send duplicate external notifications.
+ */
+export async function runManualOnce(actor: ServerUser): Promise<{
+  ok: boolean;
+  summary: string;
+  data?: Awaited<ReturnType<typeof ContractDomainService.runReminderSweep>>;
+}> {
+  if (running) return { ok: false, summary: 'sweep already running in this instance' };
+  if (!(await acquireLeaderLock())) {
+    return { ok: false, summary: 'leader lock unavailable; manual sweep skipped to prevent duplicate delivery' };
+  }
+
+  running = true;
+  try {
+    const data = await ContractDomainService.runReminderSweep(actor);
+    const summary = `evaluated=${data.evaluated} queued=${data.queued} sent=${data.sent} failed=${data.failed} skipped=${data.skipped}`;
+    lastRun = { at: new Date().toISOString(), ok: true, summary };
+    console.log(`[GABAH Reminder] sweep (manual): ${summary}`);
+    return { ok: true, summary, data };
+  } catch (err: any) {
+    const summary = err.message || String(err);
+    lastRun = { at: new Date().toISOString(), ok: false, summary };
+    console.error('[GABAH Reminder] manual sweep error:', summary);
+    return { ok: false, summary };
+  } finally {
+    running = false;
+    await releaseLeaderLock();
   }
 }
 
