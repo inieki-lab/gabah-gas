@@ -1111,15 +1111,21 @@ export class GabahDomainService {
       throw Object.assign(new Error('Judul tiket wajib berupa teks.'), { statusCode: 400 });
     }
     const normalizedTitle = payload.title.trim();
-    if (!normalizedTitle || normalizedTitle.includes('\u0000') || Array.from(normalizedTitle).length > 255) {
-      throw Object.assign(new Error('Judul tiket wajib diisi dan maksimal 255 karakter.'), { statusCode: 400 });
+    if (!normalizedTitle || normalizedTitle.includes('\u0000')) {
+      throw Object.assign(new Error('Judul tiket wajib diisi dan tidak boleh mengandung karakter NUL.'), { statusCode: 400 });
+    }
+    if (Array.from(normalizedTitle).length > 255) {
+      throw Object.assign(new Error('Judul tiket maksimal 255 karakter.'), { statusCode: 400 });
     }
     if (typeof payload.description !== 'string') {
       throw Object.assign(new Error('Deskripsi tiket wajib berupa teks.'), { statusCode: 400 });
     }
     const normalizedDescription = payload.description.trim();
-    if (!normalizedDescription || normalizedDescription.includes('\u0000') || Array.from(normalizedDescription).length > 20000) {
-      throw Object.assign(new Error('Deskripsi tiket wajib diisi dan maksimal 20.000 karakter.'), { statusCode: 400 });
+    if (!normalizedDescription || normalizedDescription.includes('\u0000')) {
+      throw Object.assign(new Error('Deskripsi tiket wajib diisi dan tidak boleh mengandung karakter NUL.'), { statusCode: 400 });
+    }
+    if (Array.from(normalizedDescription).length > 20000) {
+      throw Object.assign(new Error('Deskripsi tiket maksimal 20.000 karakter.'), { statusCode: 400 });
     }
     // Strict divisional categories per PRD §3.5: a ticket must target an
     // operational division that actually staffs a queue. Without this gate a
