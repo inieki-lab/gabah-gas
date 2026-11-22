@@ -21,7 +21,7 @@ function validateContractText(label: string, value: unknown, maxLength: number, 
     throw Object.assign(new Error(`${label} harus berupa teks dan tidak boleh mengandung karakter NUL.`), { statusCode: 400 });
   }
   const normalized = value.trim();
-  if ((required && !normalized) || Array.from(normalized).length > maxLength) {
+  if ((required && !normalized) || Array.from(value).length > maxLength) {
     throw Object.assign(new Error(`${label} wajib diisi dan maksimal ${maxLength} karakter.`), { statusCode: 400 });
   }
 }
