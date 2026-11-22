@@ -76,6 +76,11 @@ assert.equal(created.escalation_user_id, 'USR-01');
 assert.deepEqual(created.documents, [], 'Client-supplied document metadata must not be trusted on creation');
 assert.deepEqual(created.milestones, [], 'Client-supplied milestone state must not be trusted on creation');
 assert.equal(db.contracts.length, 6, 'Only the valid fixture contract should be added');
+const contractAudit = db.auditLogs.find(log => log.entity_id === created.id && log.action === 'CONTRACT_CREATED');
+assert.ok(contractAudit, 'Contract creation must append an audit record');
+assert.match(contractAudit.id, /^LOG-CTR-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  'Contract audit ID must use a cryptographically generated UUID');
+assert.ok(!contractAudit.id.endsWith(String(Date.now())), 'Contract audit ID must not be timestamp-only');
 
 const protectedUpdate = ContractDomainService.updateContract(created.id, {
   owner_division: 'SC',
