@@ -104,7 +104,7 @@ const updated = ContractDomainService.updateContract(created.id, { title: 'Updat
 assert.equal(updated.title, 'Updated fixture title');
 assert.equal(updated.contract_value, 2000000);
 assert.throws(() => ContractDomainService.updateContract(created.id, { title: 'x'.repeat(256) }, actor), /Judul kontrak wajib diisi dan maksimal 255 karakter/);
-assert.throws(() => ContractDomainService.updateContract(created.id, { contract_type: 'x'.repeat(101) }, actor), /Jenis kontrak wajib diisi dan maksimal 100 karakter/);
+assert.throws(() => ContractDomainService.updateContract(created.id, { contract_type: 'x'.repeat(101) }, actor), /Jenis kontrak maksimal 100 karakter/);
 assert.throws(() => ContractDomainService.updateContract(created.id, { notice_period_days: 2147483648 }, actor), /Notice period harus berupa bilangan bulat non-negatif/);
 assert.throws(() => ContractDomainService.updateContract(created.id, { contract_value: Number.MAX_SAFE_INTEGER + 1 }, actor), /Nilai kontrak harus berupa angka non-negatif yang valid/);
 assert.throws(() => ContractDomainService.updateContract(created.id, { reminder_config: { reminder1_days: 2147483648, reminder2_days: 35, reminder3_days: 7 } }, actor), /Konfigurasi reminder/);
