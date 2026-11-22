@@ -634,6 +634,47 @@ async function main() {
 
     if (!adminToken) throw new Error('cannot continue without admin token');
 
+    // ---------- Live HTTP authorization for every Dynamic RBAC administration route ----------
+    const rbacGuardClient = new pg.Client({ connectionString: TEST_DB_URL });
+    await rbacGuardClient.connect();
+    const rbacGuardUser = await rbacGuardClient.query('SELECT id FROM users WHERE email = $1', [KARYAWAN_EMAIL]);
+    const rbacGuardUserId = String(rbacGuardUser.rows[0]?.id || '');
+    const rbacCountsBefore = await rbacGuardClient.query(
+      'SELECT (SELECT COUNT(*)::int FROM gabah_roles) AS roles, (SELECT COUNT(*)::int FROM gabah_user_roles WHERE user_id = $1) AS assignments',
+      [rbacGuardUserId],
+    );
+    const rbacAdminRequests = [
+      { label: 'GET permissions', method: 'GET', path: '/api/admin/rbac/permissions' },
+      { label: 'GET roles', method: 'GET', path: '/api/admin/rbac/roles' },
+      { label: 'GET user assignments', method: 'GET', path: '/api/admin/rbac/user-assignments' },
+      { label: 'POST role', method: 'POST', path: '/api/admin/rbac/roles', body: { name: 'CI Unauthorized Role', role_key: 'ci_unauthorized_role', permission_keys: ['assets.read'] } },
+      { label: 'PATCH role', method: 'PATCH', path: '/api/admin/rbac/roles/999999', body: { description: 'Unauthorized mutation' } },
+      { label: 'DELETE role', method: 'DELETE', path: '/api/admin/rbac/roles/999999' },
+      { label: 'PUT role permissions', method: 'PUT', path: '/api/admin/rbac/roles/999999/permissions', body: { permission_keys: [] } },
+      { label: 'PUT role scopes', method: 'PUT', path: '/api/admin/rbac/roles/999999/scopes', body: { scopes: [] } },
+      { label: 'PUT user roles', method: 'PUT', path: `/api/admin/rbac/users/${rbacGuardUserId}/roles`, body: { role_ids: [] } },
+    ];
+    const rbacAdminDenials = [];
+    for (const item of rbacAdminRequests) {
+      const response = await req(base, item.method, item.path, { token: karyawanToken, body: item.body });
+      rbacAdminDenials.push(response.status === 403);
+      record('Karyawan denied Dynamic RBAC ' + item.label, '403', `HTTP ${response.status}`, response.status === 403);
+    }
+    const anonymousRbacRead = await req(base, 'GET', '/api/admin/rbac/roles');
+    record('Anonymous Dynamic RBAC administration read is denied', '401',
+      `HTTP ${anonymousRbacRead.status}`, anonymousRbacRead.status === 401);
+    const rbacCountsAfter = await rbacGuardClient.query(
+      'SELECT (SELECT COUNT(*)::int FROM gabah_roles) AS roles, (SELECT COUNT(*)::int FROM gabah_user_roles WHERE user_id = $1) AS assignments',
+      [rbacGuardUserId],
+    );
+    await rbacGuardClient.end();
+    record('Denied Dynamic RBAC requests leave roles and user assignments unchanged', 'same role and assignment counts',
+      `roles ${rbacCountsBefore.rows[0].roles}->${rbacCountsAfter.rows[0].roles}; assignments ${rbacCountsBefore.rows[0].assignments}->${rbacCountsAfter.rows[0].assignments}`,
+      rbacAdminDenials.every(Boolean)
+        && rbacCountsBefore.rows[0].roles === rbacCountsAfter.rows[0].roles
+        && rbacCountsBefore.rows[0].assignments === rbacCountsAfter.rows[0].assignments);
+
+
     // ---------- PostgreSQL-backed notification rule administration ----------
     const notificationSettings = await req(base, 'GET', '/api/admin/notification-rules', { token: adminToken });
     const notificationRows = notificationSettings.json?.data || [];
