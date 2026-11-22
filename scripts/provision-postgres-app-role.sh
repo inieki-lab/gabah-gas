@@ -17,6 +17,12 @@ if [ "$PGAPP_USER" = "postgres" ]; then
   echo "ERROR: akun aplikasi tidak boleh memakai role bawaan postgres." >&2
   exit 1
 fi
+case "$PGDATABASE" in
+  postgres|template0|template1)
+    echo "ERROR: GABAH harus memakai database khusus, bukan database sistem PostgreSQL." >&2
+    exit 1
+    ;;
+esac
 
 export PGPASSWORD="$PGADMIN_PASSWORD"
 psql --no-psqlrc --set=ON_ERROR_STOP=1 \
@@ -53,6 +59,19 @@ FROM pg_database WHERE datname = current_database();
 SELECT format('REASSIGN OWNED BY %I TO %I', :'admin_user', :'app_user')
 WHERE (SELECT datdba FROM pg_database WHERE datname = current_database())
     = (SELECT oid FROM pg_roles WHERE rolname = :'admin_user')
+\gexec
+
+-- REASSIGN OWNED also transfers shared database/tablespace ownership. Keep
+-- unrelated databases and tablespaces with the bootstrap administrator.
+SELECT format('ALTER DATABASE %I OWNER TO %I', datname, :'admin_user')
+FROM pg_database
+WHERE datname <> current_database()
+  AND datdba = (SELECT oid FROM pg_roles WHERE rolname = :'app_user')
+\gexec
+
+SELECT format('ALTER TABLESPACE %I OWNER TO %I', spcname, :'admin_user')
+FROM pg_tablespace
+WHERE spcowner = (SELECT oid FROM pg_roles WHERE rolname = :'app_user')
 \gexec
 
 SELECT format('ALTER DATABASE %I OWNER TO %I', current_database(), :'app_user')
