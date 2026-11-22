@@ -23,7 +23,7 @@ for (const [path, service, movement] of [
   assert.ok(route.includes('JSON.stringify(asset) === JSON.stringify(assetAfter)'), service + ' must avoid overwriting concurrent asset changes on rollback');
   assert.ok(route.includes('Object.assign(asset, assetBefore)'), service + ' must restore asset state on failed persistence');
   assert.ok(route.includes('createdAuditIds'), service + ' must remove only its own audit rows on rollback');
+  assert.ok(route.includes('GabahDomainService.' + service + '(') && route.includes('actor, false)'), service + ' must defer audit persistence to the route commit');
   if (movement) assert.ok(route.includes('createdMovementIds'), 'assignment must remove only its own movement rows on rollback');
-  assert.ok(route.includes('service') === false || true);
 }
 console.log('PASS: asset assignment and lifecycle mutations roll back only their own effects on failed persistence');
