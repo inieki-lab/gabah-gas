@@ -88,8 +88,8 @@ assert.doesNotMatch(sidebar, /activeRole === 'GA' \|\| activeRole === 'Admin GAB
 console.log('Sidebar dynamic queue capability contract: passed');
 
 
-const reservationStart = services.indexOf('static requestRoomReservation(');
-const reservationEnd = services.indexOf('static approveRoomReservation(', reservationStart);
+const reservationStart = services.indexOf('static async requestRoomReservation(');
+const reservationEnd = services.indexOf('static async approveRoomReservation(', reservationStart);
 assert.ok(reservationStart >= 0 && reservationEnd > reservationStart, 'room reservation service must exist');
 const reservationService = services.slice(reservationStart, reservationEnd);
 assert.match(reservationService, /payload\.meeting_type[\s\S]*Array\.from\(payload\.meeting_type\.trim\(\)\)\.length > 50/);
