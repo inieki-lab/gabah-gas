@@ -23,7 +23,7 @@ for (const action of ['approve', 'reject', 'handover', 'return']) assert.ok(loan
 assert.ok(ui.includes('loan.allowed_actions?.approve') && ui.includes('loan.allowed_actions?.handover') && ui.includes('loan.allowed_actions?.return'));
 const normalize = s => s === 'pending_approval' ? 'pending' : s === 'borrowed' ? 'active' : s;
 const returnStart = services.indexOf('static returnLoan(');
-const returnEnd = services.indexOf('\\n  /**', returnStart + 10);
+const returnEnd = services.indexOf('static createTicket(', returnStart + 10);
 assert.ok(returnStart >= 0 && returnEnd > returnStart, 'returnLoan must exist');
 const returnMethod = services.slice(returnStart, returnEnd);
 assert.ok(returnMethod.includes("['borrowed', 'overdue'].includes(loan.status)"), 'overdue loans must be returnable after handover');
