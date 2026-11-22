@@ -53,7 +53,7 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Edit .env secara lokal di VM. Isi PGPASSWORD dengan password PostgreSQL yang kuat dan unik. Untuk instalasi database baru, isi juga GABAH_INITIAL_ADMIN_PASSWORD dan GABAH_INITIAL_USER_PASSWORD dengan password unik yang kuat. Jangan menimpa .env lama saat update. Set GABAH_IMAGE_TAG ke tag release yang mencerminkan commit SHA yang telah di-merge (jangan memakai tag bergerak untuk rilis produksi). Docker Compose menggunakan tag tersebut untuk image hasil build lokal.
+Edit .env secara lokal di VM. Isi PGADMIN_USER/PGADMIN_PASSWORD untuk akun bootstrap administrator PostgreSQL dan PGUSER/PGPASSWORD untuk akun aplikasi PostgreSQL yang berbeda, masing-masing dengan password kuat dan unik. Untuk volume lama, PGADMIN_USER/PGADMIN_PASSWORD harus tetap cocok dengan POSTGRES_USER/POSTGRES_PASSWORD yang pertama kali membuat volume; PGUSER/PGPASSWORD diubah menjadi kredensial role aplikasi baru. Service database-provisioner akan membuat/memperbarui role aplikasi non-superuser dan memindahkan ownership objek database sebelum app berjalan. Untuk instalasi baru, gunakan nilai terpisah dari awal. Isi juga GABAH_INITIAL_ADMIN_PASSWORD dan GABAH_INITIAL_USER_PASSWORD dengan password unik untuk akun aplikasi. Jangan menimpa .env lama saat update. Set GABAH_IMAGE_TAG ke tag release yang mencerminkan commit SHA yang telah di-merge (jangan memakai tag bergerak untuk rilis produksi). Docker Compose menggunakan tag tersebut untuk image hasil build lokal.
 
 Validasi konfigurasi tanpa menampilkan secret:
 
@@ -100,7 +100,7 @@ curl -fsS http://127.0.0.1/api/health
 docker compose logs --tail=100 app
 ```
 
-Pastikan health menunjukkan persistence PostgreSQL. Jika health gagal, deployment dianggap gagal; jangan menyatakan rilis berhasil.
+Pastikan health menunjukkan persistence PostgreSQL. Pastikan `PGUSER` adalah role non-superuser aplikasi dan `PGADMIN_USER` hanya dipakai untuk administrasi/backup. Jika health gagal, deployment dianggap gagal; jangan menyatakan rilis berhasil.
 
 ## 5. Akses dan firewall
 
