@@ -54,6 +54,7 @@ Kontrak koneksi internal:
 - Browser → host port `GABAH_WEB_PORT` (default 80) → app container port 3000.
 - App → PostgreSQL melalui hostname service `database:5432` memakai role aplikasi non-superuser (`PGUSER`).
 - Akun bootstrap PostgreSQL (`PGADMIN_USER`) hanya dipakai service database, backup/administrasi, dan one-shot `database-provisioner`; password admin tidak diteruskan ke container aplikasi.
+- Rate limit API/login disimpan bersama di PostgreSQL; `GABAH_RATE_LIMIT_SECRET` sebaiknya diisi dengan secret acak yang sama pada seluruh replika agar hash bucket stabil dan tidak bisa ditebak dari dump database. Jika kosong, app memakai `PGPASSWORD`.
 - Untuk volume lama, set `PGADMIN_USER` dan `PGADMIN_PASSWORD` sesuai akun bootstrap yang sudah ada; `PGUSER`/`PGPASSWORD` menjadi login aplikasi baru. Provisioner memindahkan ownership objek database sebelum app dinyalakan.
 - PostgreSQL host port `127.0.0.1:GABAH_DB_PORT` (default 5432) hanya untuk administrasi; app tidak menggunakannya.
 - App menunggu healthcheck PostgreSQL dan berjalan fail-fast jika database/migrasi gagal. Tidak ada file-store fallback pada runtime Compose.
