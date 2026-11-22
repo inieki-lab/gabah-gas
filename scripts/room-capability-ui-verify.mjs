@@ -86,3 +86,12 @@ assert.match(sidebar, /isGA && \(gaRequestsCount > 0 \|\| pendingReservationsCou
 assert.doesNotMatch(sidebar, /activeRole === 'IT' && itFacilitiesCount/);
 assert.doesNotMatch(sidebar, /activeRole === 'GA' \|\| activeRole === 'Admin GABAH'/);
 console.log('Sidebar dynamic queue capability contract: passed');
+
+
+const reservationStart = services.indexOf('static requestRoomReservation(');
+const reservationEnd = services.indexOf('static approveRoomReservation(', reservationStart);
+assert.ok(reservationStart >= 0 && reservationEnd > reservationStart, 'room reservation service must exist');
+const reservationService = services.slice(reservationStart, reservationEnd);
+assert.match(reservationService, /payload\.meeting_type[\s\S]*Array\.from\(payload\.meeting_type\.trim\(\)\)\.length > 50/);
+assert.match(reservationService, /rawFacilities\.some\(item =>[\s\S]*item\.includes\('\u0000'\)/);
+assert.match(reservationService, /value\.includes\('\u0000'\) \|\| Array\.from\(value\)\.length > maxLength/);
