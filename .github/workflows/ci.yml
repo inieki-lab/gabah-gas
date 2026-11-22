@@ -54,6 +54,9 @@ jobs:
       - name: PostgreSQL least-privilege role configuration regression
         run: npm run test:postgres-role-config
 
+      - name: Contract upload resource exhaustion regression
+        run: npm run test:upload-security
+
       - name: Superadmin Administration entry authorization regression
         run: npm run test:superadmin-administration-entry
 
