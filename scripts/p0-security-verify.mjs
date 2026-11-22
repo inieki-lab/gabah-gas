@@ -56,7 +56,20 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json, headers: { 'x-ratelimit-remaining': res.headers.get('x-ratelimit-remaining') } };
+  return {
+    status: res.status,
+    json,
+    headers: {
+      'x-ratelimit-remaining': res.headers.get('x-ratelimit-remaining'),
+      'x-content-type-options': res.headers.get('x-content-type-options'),
+      'x-frame-options': res.headers.get('x-frame-options'),
+      'referrer-policy': res.headers.get('referrer-policy'),
+      'x-permitted-cross-domain-policies': res.headers.get('x-permitted-cross-domain-policies'),
+      'permissions-policy': res.headers.get('permissions-policy'),
+      'cache-control': res.headers.get('cache-control'),
+      'pragma': res.headers.get('pragma'),
+    },
+  };
 }
 
 async function waitForServer(base, tries = 60) {
@@ -128,6 +141,26 @@ async function main() {
       process.exit(1);
     }
     record('Server boots on isolated port', 'health 200', 'health 200', true);
+
+    // Baseline browser headers and sensitive API response cache policy.
+    const headerCheck = await req(base, 'GET', '/api/health');
+    const h = headerCheck.headers || {};
+    const headerNames = [
+      'x-content-type-options', 'x-frame-options', 'referrer-policy',
+      'x-permitted-cross-domain-policies', 'permissions-policy',
+    ];
+    const missingHeaders = headerNames.filter(name => !h[name]);
+    record('SEC: baseline browser security headers on API responses',
+      'all baseline headers present',
+      missingHeaders.length ? 'missing: ' + missingHeaders.join(', ') : 'all present',
+      headerCheck.status === 200 && missingHeaders.length === 0
+        && h['x-content-type-options'] === 'nosniff'
+        && h['x-frame-options'] === 'DENY');
+    record('SEC: API responses are not cacheable',
+      'Cache-Control: no-store',
+      h['cache-control'] || '(missing)',
+      headerCheck.status === 200 && /\\bno-store\\b/i.test(h['cache-control'] || '')
+        && /\\bno-cache\\b/i.test(h['pragma'] || ''));
 
     // Without a configured trusted proxy, caller-controlled XFF values must
     // not create separate rate-limit buckets for the same transport peer.
