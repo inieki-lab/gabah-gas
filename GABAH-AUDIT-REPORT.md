@@ -455,3 +455,48 @@ Gate akan dipertimbangkan naik ke **PASS WITH CONDITIONS** setelah: semua P0 sel
 
 ### Important limitation
 - The response gate prevents a false success response; it does not provide in-memory rollback for every legacy handler. After an authoritative write failure, the PostgreSQL failure latch rejects subsequent writes. Restart/recovery and a targeted runtime test remain necessary to prove operational recovery behavior.
+
+# 15. Follow-up — Status implementasi setelah audit historis (2026-11-22)
+
+> **Penting:** bagian 1–12 di atas adalah snapshot audit 30 September 2026 pada HEAD `610c899`, bukan gambaran kondisi source saat ini. Temuan historis tidak boleh diperlakukan sebagai bug aktif tanpa memeriksa status follow-up berikut. Status `MERGED + CI PASS` membuktikan regression suite pada commit terkait; bukan pengganti UAT browser, rotasi kredensial, atau verifikasi konfigurasi produksi.
+
+## 15.1 Revalidasi temuan kritis
+
+| Temuan historis | Status source saat ini | Bukti / batas yang masih berlaku |
+|---|---|---|
+| CR-01 — switch-role publik/fallback Admin | **FIXED** | `/api/auth/switch-role` tidak ada di `PUBLIC_API_PATHS`; handler tanpa sesi mengembalikan 401 dan hanya Superadmin yang dapat melakukan impersonasi; dicakup P0 security verification. |
+| CR-02 — password role hardcoded/1-click login | **FIXED di source** | P0 verification menyatakan `VALID_ROLE_PASSWORDS`, `defaultPasswordForRole`, dan auto-login dihapus. **Rotasi kredensial operasional dan pemeriksaan seluruh riwayat Git tetap wajib** sebelum production. |
+| CR-03 — snapshot state/sesi ter-commit | **FIXED pada HEAD aktif; history cleanup belum diklaim** | `server/data/gabah_state.json` tidak lagi tracked dan sesi snapshot tidak di-hydrate sebagai sesi aktif. File legacy lokal/riwayat Git tetap harus dianggap sensitif sampai rotasi dan kebijakan history cleanup selesai. |
+| CR-04 — PostgreSQL mati karena skema kontrak lama | **FIXED untuk skema fresh PostgreSQL 17** | CI menjalankan migrasi fresh database, persistence integration CR-04/CR-05, production image smoke, dan P0 security. Upgrade database produksi yang sudah berisi data tetap memerlukan backup + UAT terkontrol. |
+| CR-05 — reminder kontrak manual/tidak ada delivery | **IMPLEMENTED; konfigurasi delivery perlu UAT** | Scheduler interval, SMTP/Telegram provider, status sent/failed/skipped, leader lock, fail-closed, dan lock untuk manual sweep telah diterapkan. Pengiriman nyata tetap bergantung pada secret SMTP/Telegram dan harus dibuktikan di environment perusahaan. |
+| CR-06 — mass assignment, status arbitrer, notification IDOR, plaintext password | **FIXED pada regression yang tercakup** | Allowlist field, state machine tiket, recipient ownership, sanitasi user, dan P0 HTTP assertions sudah ada. Full API/persona UAT tetap menjadi release gate. |
+| SEC-07 — race double-booking ruang rapat | **FIXED** | Migration 099 memakai transaction-scoped advisory lock per room; CR-04/CR-05 integration menguji dua transaksi PostgreSQL independen dan penolakan transaksi kedua. |
+| SEC-08 — dokumen kontrak hanya metadata | **IMPLEMENTED** | Endpoint upload menyimpan file fisik, membatasi ukuran/ekstensi/MIME/signature, memisahkan direktori per kontrak, dan memeriksa izin saat download. Persistent volume, backup, restore, dan UAT dokumen produksi tetap wajib. |
+
+## 15.2 Perbaikan workflow dan integritas yang telah merge
+
+| PR | Perbaikan | Status |
+|---|---|---|
+| #202 | Barang dengan pinjaman outstanding tidak tampil di form; backend menolak pengajuan/approval ganda | MERGED — CI #2954 PASS |
+| #203 | Pengembalian pinjaman overdue dan inspeksi kondisi fisik lengkap | MERGED — CI #2959 PASS |
+| #204 | Modal pengembalian tetap terbuka saat transaksi gagal; tidak mengulang transaksi yang sudah commit | MERGED — CI #2961 PASS |
+| #205 | Serialisasi transaksi reservasi ruang untuk mencegah double-booking | MERGED — CI #2964 PASS |
+| #206 | Audit log PostgreSQL append-only; UPDATE/DELETE/TRUNCATE ditolak | MERGED — CI #2966 PASS |
+| #207 | UUID untuk audit kontrak, audit reminder, dan notifikasi in-app | MERGED — CI #2971 PASS |
+| #209 | Advisory unlock scheduler di-await sebelum koneksi dikembalikan ke pool; koneksi rusak dibuang | MERGED — CI #2974 PASS |
+| #210 | Scheduler fail-closed ketika PostgreSQL leader lock tidak dapat diverifikasi | MERGED — CI #2977 PASS |
+| #211 | Manual reminder sweep wajib memakai leader lock yang sama dengan scheduler | MERGED — CI #2980 PASS |
+
+## 15.3 Release gate yang masih terbuka
+
+Status keseluruhan **tetap NOT READY untuk production** sampai item berikut dibuktikan di environment perusahaan:
+
+1. Rotasi password dan secret yang pernah tercantum dalam source/history; audit history Git dan revoke semua token lama.
+2. UAT browser dengan akun nyata per role/capability (Superadmin, IT, GA, Karyawan, Sekdir, Humas, Auditor, dan role custom), termasuk menu, landing page, form, approval, serta akses API langsung.
+3. UAT PostgreSQL existing-data migration dengan backup, restore, rollback plan, dan validasi data historis.
+4. Uji SMTP dan Telegram menggunakan secret produksi; buktikan sent/failed/skipped sesuai hasil provider, bukan sekadar status scheduler.
+5. Uji upload dokumen kontrak pada persistent volume produksi: restart container, backup, restore, otorisasi download, dan retensi dokumen.
+6. UAT alur end-to-end peminjaman: pengajuan → approval → serah terima → pengembalian → stok tersedia/damaged, termasuk dua pengguna bersamaan.
+7. Verifikasi monitoring, alerting, log retention, backup PostgreSQL, dan pemulihan insiden.
+
+---

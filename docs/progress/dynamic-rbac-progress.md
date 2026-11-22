@@ -382,7 +382,7 @@ Memberi Superadmin kemampuan menetapkan/mengubah assignment role (termasuk role 
 | # | Lokasi | Perilaku sekarang | Dampak role custom | Rekomendasi |
 |---|---|---|---|---|
 | 26 | `persistence.ts backfillDynamicRbacUserRoles` | Bridge: reconcile 9 mapping legacy dari `users.role` → `gabah_user_roles` | Role custom tidak pernah disentuh (by design, terdokumentasi Stage 12) | **Dipertahankan** | 
-| 27 | `server.ts:590-594 (PATCH /api/users/:id)` | Last-superadmin guard berbasis string legacy `'Admin GABAH'` demi proteksi akun USR-01 | Custom superadmin-capable TIDAK dihitung di guard ini, meski terproteksi via endpoint Stage 12 (`RBAC_LAST_SUPERADMIN`) | Selaraskan kedua guard: hitung dari `gabah_roles.is_superadmin` |
+| 27 | `server.ts (PATCH /api/users/:id)` | **FIXED** — target Superadmin ditentukan oleh `isRbacSuperadmin(user.id)` dan jumlah akun aktif dihitung dengan `countRbacSuperadmins(...)` | Role custom dengan `gabah_roles.is_superadmin = TRUE` ikut dihitung; demote/deactivate akun terakhir ditolak HTTP 409 | **Terverifikasi di source + CI RBAC regression; tetap perlu UAT multi-role** |
 | 28 | `server.ts:468-470 (POST /api/users)` | `validRoles` 9 legacy untuk atribut `users.role` | User baru tak bisa dibuat dengan nama role custom di kolom legacy (by design — role custom lewat assignment Stage 12) | Dipertahankan sampai `users.role` migrasi penuh |
 | 29 | `server.ts:907 (POST /api/auth/login)` | Alias-prefix login untuk 9 akun kanonikal | Identitas akun, bukan authorization | Dipertahankan |
 
@@ -1367,3 +1367,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Tambah `runManualOnce(actor)` yang mengambil advisory lock, memakai guard `running`, dan selalu melepas lock setelah selesai. Endpoint manual menggunakan fungsi ini; lock tidak tersedia → HTTP 409 dan tidak ada pengiriman.
 - Regression scheduler memeriksa jalur manual endpoint tidak lagi memanggil engine secara langsung.
 - Menunggu CI exact-head; belum diklaim sebagai UAT multi-instance produksi.
+
+
+### 2026-11-22 — Sinkronisasi audit historis dengan source terbaru
+
+- Memperbarui baris audit RBAC #27: guard PATCH user sudah memakai `isRbacSuperadmin` + `countRbacSuperadmins`, bukan lagi string legacy. Role custom superadmin-capable ikut dihitung.
+- Menambahkan follow-up pada `GABAH-AUDIT-REPORT.md` yang membedakan snapshot historis 30 September dari status source/CI 22 November.
+- Status production sengaja tetap **NOT READY**: CI green bukan bukti UAT browser, rotasi kredensial/history, SMTP/Telegram produksi, migrasi existing-data, atau backup/restore.
+- Merangkum PR #202–#211 yang sudah merge dengan run CI masing-masing agar temuan yang sudah ditangani tidak terus dibaca sebagai bug aktif.
