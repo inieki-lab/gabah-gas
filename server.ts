@@ -3738,8 +3738,22 @@ async function startServer() {
       return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor yang dipilih.' });
     }
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
-    if (!name || name.length > 180) {
+    if (!name || name.includes('\u0000') || Array.from(name).length > 180) {
       return res.status(400).json({ success: false, message: 'Nama vendor wajib diisi (maksimal 180 karakter).' });
+    }
+
+    const vendorTextFields: Array<[string, unknown, number]> = [
+      ['Nama PIC', req.body?.pic_name, 180],
+      ['Telepon PIC', req.body?.pic_phone, 40],
+      ['Email PIC', req.body?.pic_email, 254],
+      ['Alamat vendor', req.body?.address, 2000],
+      ['Catatan vendor', req.body?.notes, 4000],
+    ];
+    for (const [label, value, maxLength] of vendorTextFields) {
+      if (value !== undefined && value !== null
+        && (typeof value !== 'string' || value.includes('\u0000') || Array.from(value).length > maxLength)) {
+        return res.status(400).json({ success: false, message: `${label} tidak valid (maksimal ${maxLength} karakter dan tanpa NUL).` });
+      }
     }
     const rating = Number(req.body.rating ?? 4);
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
@@ -3786,6 +3800,23 @@ async function startServer() {
     const requestedName = req.body?.name === undefined
       ? String(existingVendor.name || '').trim()
       : String(req.body.name || '').trim();
+
+    const vendorTextFields: Array<[string, unknown, number]> = [
+      ['Nama PIC', req.body?.pic_name, 180],
+      ['Telepon PIC', req.body?.pic_phone, 40],
+      ['Email PIC', req.body?.pic_email, 254],
+      ['Alamat vendor', req.body?.address, 2000],
+      ['Catatan vendor', req.body?.notes, 4000],
+    ];
+    for (const [label, value, maxLength] of vendorTextFields) {
+      if (value !== undefined && value !== null
+        && (typeof value !== 'string' || value.includes('\u0000') || Array.from(value).length > maxLength)) {
+        return res.status(400).json({ success: false, message: `${label} tidak valid (maksimal ${maxLength} karakter dan tanpa NUL).` });
+      }
+    }
+    if (requestedName.includes('\u0000') || Array.from(requestedName).length > 180) {
+      return res.status(400).json({ success: false, message: 'Nama vendor tidak valid (maksimal 180 karakter dan tanpa NUL).' });
+    }
     const requestedRating = req.body?.rating === undefined ? Number(existingVendor.rating) : Number(req.body.rating);
     if (!existingOwner && !isSuperadminActor(actor)) {
       return res.status(403).json({ success: false, message: 'Vendor lama belum memiliki owner; klasifikasi hanya dapat dilakukan Super Admin.' });
