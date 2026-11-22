@@ -48,11 +48,25 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   // be requested. "available" alone describes inventory status, not loanability.
   // Revalidate both data sources because props may be stale or broadly scoped.
   const availablePool = useMemo(() => {
-    const source = loanableAssets && Array.isArray(loanableAssets) && loanableAssets.length > 0
+    // An explicitly supplied empty loanableAssets list is authoritative; do
+    // not fall back to a potentially stale, broader asset catalogue.
+    const source = Array.isArray(loanableAssets)
       ? loanableAssets
       : (Array.isArray(assets) ? assets : []);
-    return source.filter(a => a.is_loanable === true && a.status === 'available');
-  }, [loanableAssets, assets]);
+    // Asset status is the primary availability signal. Also exclude assets
+    // with an outstanding handed-over loan, protecting the form if props
+    // contain stale "available" inventory snapshots.
+    const outstandingBorrowedAssetIds = new Set(
+      (existingLoans || [])
+        .filter(loan => ['active', 'borrowed', 'overdue'].includes(String(loan.status)))
+        .map(loan => String(loan.asset_id))
+    );
+    return source.filter(a =>
+      a.is_loanable === true
+      && a.status === 'available'
+      && !outstandingBorrowedAssetIds.has(String(a.id))
+    );
+  }, [loanableAssets, assets, existingLoans]);
 
   const isAuditor = GabahService.isAuditor(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
