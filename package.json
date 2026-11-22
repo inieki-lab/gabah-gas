@@ -82,6 +82,7 @@
     "test:effective-permission-ui": "node scripts/effective-permission-ui-verify.mjs",
     "test:asset-mutation-http-status": "node scripts/asset-mutation-http-status-verify.mjs",
     "test:asset-status-workflow-guard": "node scripts/asset-status-workflow-guard-verify.mjs",
+    "test:asset-patch-atomicity": "node scripts/asset-patch-atomicity-verify.mjs",
     "test:user-create-profile-validation": "node scripts/user-create-profile-validation-verify.mjs",
     "test:ticket-reporter-transition": "node scripts/ticket-reporter-transition-verify.mjs",
     "test:ticket-lifecycle-no-skip": "node scripts/ticket-lifecycle-no-skip-verify.mjs",
