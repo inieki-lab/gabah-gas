@@ -9,6 +9,7 @@ import { AssetNumberingEngine } from './numbering';
 import { normalizeAssetManagingUnits } from './managing-unit';
 import { normalizeAssetAssetLocations } from './asset-location';
 import { normalizeCategoryMaster } from './taxonomy';
+import { parseLoanDateTimestamp } from '../shared/loan-datetime';
 
 /**
  * SECURITY (CR-02): initial canonical-account passwords are provisioned from
@@ -524,14 +525,19 @@ async function backfillNormalizedTables(existingClient?: PoolClient): Promise<vo
       [m.id,m.asset_id,m.from_user_id || null,m.to_user_id || null,m.from_location || null,m.to_location || null,m.reason || '',m.document_ref || null,m.performed_by_id || null,m.created_at],
     );
     for (const l of db.loans) {
+      const startTimestamp = parseLoanDateTimestamp(l.start_date);
+      const dueTimestamp = parseLoanDateTimestamp(l.due_date);
+      if (!Number.isFinite(startTimestamp) || !Number.isFinite(dueTimestamp) || startTimestamp >= dueTimestamp) {
+        throw new Error(`Loan ${l.id} has an invalid schedule; refusing to persist inconsistent TIMESTAMPTZ values.`);
+      }
       const borrowerExists = db.users.some(u => u.id === l.borrower_id);
       if (!borrowerExists) continue;
       const approverId = (l.approver_id && db.users.some(u => u.id === l.approver_id)) ? l.approver_id : null;
       const handoverId = (l.handover_by_id && db.users.some(u => u.id === l.handover_by_id)) ? l.handover_by_id : null;
       const returnInspectorId = (l.return_inspected_by_id && db.users.some(u => u.id === l.return_inspected_by_id)) ? l.return_inspected_by_id : null;
       await client.query(
-        `INSERT INTO loans (id,loan_number,asset_id,borrower_id,purpose,start_date,due_date,status,approver_id,approved_at,handover_by_id,handover_at,handover_notes,actual_returned_at,return_condition,return_inspected_by_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status,approver_id=EXCLUDED.approver_id,approved_at=EXCLUDED.approved_at,handover_by_id=EXCLUDED.handover_by_id,handover_at=EXCLUDED.handover_at,handover_notes=EXCLUDED.handover_notes,actual_returned_at=EXCLUDED.actual_returned_at,return_condition=EXCLUDED.return_condition,return_inspected_by_id=EXCLUDED.return_inspected_by_id,updated_at=EXCLUDED.updated_at`,
-        [l.id,l.loan_number,l.asset_id,l.borrower_id,l.purpose,l.start_date,l.due_date,l.status,approverId,l.approved_at || null,handoverId,l.handover_at || null,l.handover_notes || null,l.actual_returned_at || null,l.return_condition || null,returnInspectorId,l.created_at,l.updated_at],
+        `INSERT INTO loans (id,loan_number,asset_id,borrower_id,purpose,start_date,due_date,status,approver_id,approved_at,handover_by_id,handover_at,handover_notes,actual_returned_at,return_condition,return_inspected_by_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) ON CONFLICT (id) DO UPDATE SET start_date=EXCLUDED.start_date,due_date=EXCLUDED.due_date,status=EXCLUDED.status,approver_id=EXCLUDED.approver_id,approved_at=EXCLUDED.approved_at,handover_by_id=EXCLUDED.handover_by_id,handover_at=EXCLUDED.handover_at,handover_notes=EXCLUDED.handover_notes,actual_returned_at=EXCLUDED.actual_returned_at,return_condition=EXCLUDED.return_condition,return_inspected_by_id=EXCLUDED.return_inspected_by_id,updated_at=EXCLUDED.updated_at`,
+        [l.id,l.loan_number,l.asset_id,l.borrower_id,l.purpose,new Date(startTimestamp).toISOString(),new Date(dueTimestamp).toISOString(),l.status,approverId,l.approved_at || null,handoverId,l.handover_at || null,l.handover_notes || null,l.actual_returned_at || null,l.return_condition || null,returnInspectorId,l.created_at,l.updated_at],
       );
     }
     for (const t of db.tickets) {
