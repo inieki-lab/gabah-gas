@@ -685,6 +685,42 @@ async function main() {
     const notificationAuditAfter = await notificationAuditClient.query(
       "SELECT COUNT(*)::int AS count FROM gabah_notification_rule_audit WHERE rule_id = 'rule-sla'",
     );
+
+    const notificationAuditFixtureId = 'CI-NOTIFICATION-AUDIT-' + crypto.randomBytes(6).toString('hex');
+    await notificationAuditClient.query('BEGIN');
+    await notificationAuditClient.query(
+      'INSERT INTO gabah_notification_rule_audit (rule_id, previous_is_active, new_is_active, changed_by_user_id) VALUES ($1, TRUE, FALSE, $2)',
+      ['rule-sla', 'CI_NOTIFICATION_AUDIT'],
+    );
+    const assertNotificationAuditMutationBlocked = async (label, sql) => {
+      await notificationAuditClient.query('SAVEPOINT notification_audit_mutation');
+      try {
+        await notificationAuditClient.query(sql);
+        await notificationAuditClient.query('ROLLBACK TO SAVEPOINT notification_audit_mutation');
+        record(label, 'PostgreSQL error code 55000', 'mutation unexpectedly succeeded', false);
+      } catch (error) {
+        await notificationAuditClient.query('ROLLBACK TO SAVEPOINT notification_audit_mutation');
+        record(label, 'PostgreSQL error code 55000', error.code || error.message, error.code === '55000');
+      }
+    };
+    await assertNotificationAuditMutationBlocked(
+      'Notification rule audit rejects UPDATE at database level',
+      "UPDATE gabah_notification_rule_audit SET new_is_active = TRUE WHERE changed_by_user_id = 'CI_NOTIFICATION_AUDIT'",
+    );
+    await assertNotificationAuditMutationBlocked(
+      'Notification rule audit rejects DELETE at database level',
+      "DELETE FROM gabah_notification_rule_audit WHERE changed_by_user_id = 'CI_NOTIFICATION_AUDIT'",
+    );
+    await assertNotificationAuditMutationBlocked(
+      'Notification rule audit rejects TRUNCATE at database level',
+      'TRUNCATE TABLE gabah_notification_rule_audit',
+    );
+    const notificationAuditFixture = await notificationAuditClient.query(
+      "SELECT COUNT(*)::int AS count FROM gabah_notification_rule_audit WHERE changed_by_user_id = 'CI_NOTIFICATION_AUDIT'",
+    );
+    record('Notification audit survives rejected mutation attempts', '1 intact fixture row',
+      `count=${notificationAuditFixture.rows[0].count}`, notificationAuditFixture.rows[0].count === 1);
+    await notificationAuditClient.query('ROLLBACK');
     await notificationAuditClient.end();
     record('Superadmin can disable and restore an operational notification rule', '200 + false then true',
       `disable=${notificationDisable.status} noop=${notificationNoop.status} restore=${notificationRestore.status}`,
