@@ -1,6 +1,6 @@
 ## [2026-11-22] — Move API and login rate limiting into shared PostgreSQL state
 
-- Store hashed API client keys and hashed per-account/IP login identifiers in a dedicated PostgreSQL bucket table; raw IP/email identifiers are not stored in the limiter table.
+- Store HMAC-SHA-256 API client keys and per-account/IP login identifiers in a dedicated PostgreSQL bucket table; raw IP/email identifiers and the HMAC secret are not stored in the limiter table.
 - Enforce the 200-request/minute API limit and five-failure/five-minute login lockout atomically across app replicas.
 - Keep health probes available during rate-limit-store failures; fail closed with HTTP 503 for other API traffic if shared limiter state cannot be read or updated.
 - Retain in-memory fallback only for isolated file-store development; never fall back after an authoritative PostgreSQL runtime failure.
