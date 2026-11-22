@@ -51,6 +51,9 @@ jobs:
       - name: PostgreSQL notification rule persistence and enforcement regression
         run: npm run test:notification-rule-persistence
 
+      - name: PostgreSQL company profile settings persistence regression
+        run: npm run test:system-settings-persistence
+
       - name: Typecheck (lint)
         run: npm run lint
 
