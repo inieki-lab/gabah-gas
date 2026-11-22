@@ -154,6 +154,17 @@ class GabahApiClient {
     return this.request<ModuleStatusAuditRecord[]>('/api/modules/' + encodeURIComponent(moduleKey) + '/audit');
   }
 
+  async getNotificationRuleSettings(): Promise<Array<{ rule_id: string; is_active: boolean; updated_at: string; updated_by_user_id: string | null }>> {
+    return this.request('/api/admin/notification-rules');
+  }
+
+  async updateNotificationRuleSetting(ruleId: string, isActive: boolean): Promise<{ rule_id: string; is_active: boolean; updated_at: string; updated_by_user_id: string | null }> {
+    return this.request('/api/admin/notification-rules/' + encodeURIComponent(ruleId), {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
+    });
+  }
+
   async createUser(payload: Partial<UserProfile>): Promise<UserProfile> {
     return this.request<UserProfile>('/api/users', {
       method: 'POST',
