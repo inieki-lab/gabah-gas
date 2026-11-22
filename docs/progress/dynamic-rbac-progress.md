@@ -1281,3 +1281,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Alur pinjaman menolak NUL byte pada `purpose`, `borrower_phone`, `rejection_reason`, `handover_notes`, dan catatan pengembalian yang masuk ke audit log; catatan serah-terima/pengembalian dibatasi 2.000 karakter. Regression loan timezone diperluas.
 
 - Direktori vendor menolak NUL dan membatasi panjang nama, kategori, PIC, telepon, email, alamat, serta catatan pada create/update sebelum menyentuh snapshot JSONB. Regression `vendor-contract-count` diperluas.
+
+
+### 2026-11-22 — Serialisasi persetujuan pinjaman bersamaan
+
+- Audit trigger `check_loan_schedule_collision()` menemukan pemeriksaan `IF EXISTS` tanpa penguncian aset. Dua transaksi PostgreSQL yang menyetujui dua baris pinjaman berbeda untuk aset yang sama dapat sama-sama membaca belum ada pinjaman aktif, lalu keduanya commit. Pemeriksaan service/in-memory tidak menutup race antar transaksi/proses.
+- Migration 098 memperbarui trigger agar mengunci baris aset `FOR UPDATE` sebelum membaca bentrok. Lock ditahan sampai transaksi selesai; persetujuan kedua untuk aset yang sama menunggu lalu melihat pinjaman pertama yang sudah committed.
+- CI CR-04/CR-05 diperluas dengan uji integrasi PostgreSQL nyata: dua koneksi independen, dua transaksi bersamaan, verifikasi transaksi kedua menunggu lock dan ditolak dengan SQLSTATE P0001; status akhir harus satu `approved` dan satu tetap `pending_approval`.
+- Uji ini hanya memakai database throwaway CI dan fixture yang dibersihkan setelah test. Menunggu CI exact-head; belum ada klaim UAT browser.
