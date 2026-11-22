@@ -160,6 +160,7 @@ async function main() {
     const headerNames = [
       'x-content-type-options', 'x-frame-options', 'referrer-policy',
       'x-permitted-cross-domain-policies', 'permissions-policy',
+      'content-security-policy-report-only',
     ];
     const missingHeaders = headerNames.filter(name => !h[name]);
     record('SEC: baseline browser security headers on API responses',
@@ -172,6 +173,19 @@ async function main() {
       'Cache-Control: no-store',
       h['cache-control'] || '(missing)',
       headerCheck.status === 200 && String(h['cache-control'] || '').toLowerCase().includes('no-store'));
+
+    const csp = String(h['content-security-policy-report-only'] || '');
+    const scriptDirective = csp.split(';').map(value => value.trim()).find(value => value.startsWith('script-src')) || '';
+    record('SEC: CSP is deployed in report-only mode with same-origin scripts',
+      "Content-Security-Policy-Report-Only + script-src 'self' and no unsafe script execution",
+      scriptDirective || '(missing)',
+      headerCheck.status === 200
+        && csp.includes("default-src 'self'")
+        && csp.includes("object-src 'none'")
+        && csp.includes("frame-ancestors 'none'")
+        && scriptDirective === "script-src 'self'"
+        && !h['content-security-policy']);
+
 
     // JSON parser must reject oversized/malformed bodies before any API route runs.
     const oversizedJson = JSON.stringify({ probe: 'x'.repeat(2 * 1024 * 1024 + 1) });
