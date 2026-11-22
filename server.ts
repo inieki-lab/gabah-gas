@@ -4316,10 +4316,30 @@ async function startServer() {
     });
   });
 
-  app.get('/api/dashboard/attention', (req, res) => {
+  app.get('/api/dashboard/attention', async (req, res) => {
     if (!requireRbacPermission(req, res, 'dashboard.read')) return;
     const actor = getActor(req);
-    const items = GabahDomainService.getAttentionCenter(actor);
+    let items = GabahDomainService.getAttentionCenter(actor);
+    if (isPostgresPersistenceActive()) {
+      try {
+        const settings = await queryRbac<{ rule_id: string; is_active: boolean }>(
+          "SELECT rule_id, is_active FROM gabah_notification_rule_settings WHERE rule_id IN ('rule-warranty', 'rule-loan', 'rule-sla')",
+        );
+        if (settings.rows.length !== 3) {
+          return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi belum lengkap; pusat perhatian tidak dapat diverifikasi.' });
+        }
+        const enabled = new Map(settings.rows.map(setting => [setting.rule_id, setting.is_active === true]));
+        items = items.filter(item => {
+          if (item.type === 'warranty_expiring') return enabled.get('rule-warranty') === true;
+          if (item.type === 'loan_pending' || item.type === 'loan_overdue') return enabled.get('rule-loan') === true;
+          if (item.type === 'sla_breach' || item.type === 'sla_warning') return enabled.get('rule-sla') === true;
+          return true;
+        });
+      } catch (error: any) {
+        console.error('[GABAH API] Notification rule settings unavailable:', error?.message || error);
+        return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi tidak dapat diverifikasi.' });
+      }
+    }
     const isGlobalReader = isSuperadminActor(actor) || isAuditorActor(actor);
     const visibleAssets = isGlobalReader ? db.assets : GabahDomainService.getScopedAssets(actor);
     const canReadOwnerScope = (module: 'loans' | 'tickets', owner: string) =>
