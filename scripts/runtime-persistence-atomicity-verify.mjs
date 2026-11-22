@@ -56,3 +56,14 @@ assert.doesNotMatch(server, /: \((?:400|500)\)\)\)\.json/, 'Persistence status m
 assert.doesNotMatch(server, /await persistDataStore\(\);(?!\s*\(req as any\).__gabahPersisted = true;)/, 'A route that explicitly awaited persistence must mark the response as already committed');
 
 assert.match(server, /if \(\(req as any\).__gabahPersisting\) return res/, 'Duplicate sends must not bypass the persistence gate while the first write is pending');
+
+
+// Runtime PostgreSQL failure must quarantine all API reads/writes instead of
+// exposing in-memory mutations that may not exist in the committed DB snapshot.
+const hardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
+assert.match(source, /export function isPostgresFailureLatched\(\): boolean/);
+assert.match(hardening, /import \{ isPostgresPersistenceActive, isPostgresFailureLatched \} from '\.\/persistence'/);
+assert.match(hardening, /if \(isPostgresFailureLatched\(\) && normalizedPath !== '\/api\/health'\)[\s\S]*status\(503\)[\s\S]*PERSISTENCE_DEGRADED/);
+assert.match(server, /const persistenceDegraded = isPostgresFailureLatched\(\)[\s\S]*status: persistenceDegraded \? 'degraded' : 'ok'[\s\S]*ready: !persistenceDegraded[\s\S]*postgresql-unavailable-restart-required/);
+assert.match(hardening, /Only health remains available/);
+console.log('PASS: Runtime PostgreSQL failure quarantines API and reports degraded health');
