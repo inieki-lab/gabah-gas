@@ -227,7 +227,7 @@ export const ContractDomainService = {
       reminder3_days: payload.reminder_config?.reminder3_days ?? DEFAULT_REMINDER_CONFIG.reminder3_days,
     };
     const reminderValues = [reminderConfig.reminder1_days, reminderConfig.reminder2_days, reminderConfig.reminder3_days];
-    if (reminderValues.some(value => !Number.isInteger(value) || value < 0)
+    if (reminderValues.some(value => !Number.isInteger(value) || value < 0 || value > 2147483647)
       || reminderConfig.reminder1_days < reminderConfig.reminder2_days
       || reminderConfig.reminder2_days < reminderConfig.reminder3_days) {
       throw new Error('Konfigurasi reminder harus berupa bilangan bulat non-negatif dengan urutan 1 ≥ 2 ≥ 3.');
@@ -235,8 +235,8 @@ export const ContractDomainService = {
 
     const noticePeriodDays = Number(payload.notice_period_days ?? 0);
     const contractValue = Number(payload.contract_value ?? 0);
-    if (!Number.isInteger(noticePeriodDays) || noticePeriodDays < 0
-      || !Number.isFinite(contractValue) || contractValue < 0) {
+    if (!Number.isInteger(noticePeriodDays) || noticePeriodDays < 0 || noticePeriodDays > 2147483647
+      || !Number.isFinite(contractValue) || contractValue < 0 || contractValue > Number.MAX_SAFE_INTEGER) {
       throw new Error('Notice period dan nilai kontrak harus berupa angka non-negatif yang valid.');
     }
 
@@ -315,11 +315,11 @@ export const ContractDomainService = {
     validateContractText('Catatan renewal', updates.renewal_notes, 2000);
     validateContractText('Catatan kontrak', updates.notes, 20000);
     if (updates.notice_period_days !== undefined
-      && (!Number.isInteger(updates.notice_period_days) || updates.notice_period_days < 0)) {
+      && (!Number.isInteger(updates.notice_period_days) || updates.notice_period_days < 0 || updates.notice_period_days > 2147483647)) {
       throw new Error('Notice period harus berupa bilangan bulat non-negatif.');
     }
     if (updates.contract_value !== undefined
-      && (!Number.isFinite(updates.contract_value) || updates.contract_value < 0)) {
+      && (!Number.isFinite(updates.contract_value) || updates.contract_value < 0 || updates.contract_value > Number.MAX_SAFE_INTEGER)) {
       throw new Error('Nilai kontrak harus berupa angka non-negatif yang valid.');
     }
     if (updates.auto_renewal !== undefined && typeof updates.auto_renewal !== 'boolean') {
@@ -328,7 +328,7 @@ export const ContractDomainService = {
     if (updates.reminder_config !== undefined) {
       const reminder = updates.reminder_config;
       const values = [reminder?.reminder1_days, reminder?.reminder2_days, reminder?.reminder3_days];
-      if (values.some(value => !Number.isInteger(value) || Number(value) < 0)
+      if (values.some(value => !Number.isInteger(value) || Number(value) < 0 || Number(value) > 2147483647)
         || reminder.reminder1_days < reminder.reminder2_days
         || reminder.reminder2_days < reminder.reminder3_days) {
         throw new Error('Konfigurasi reminder harus berupa bilangan bulat non-negatif dengan urutan 1 ≥ 2 ≥ 3.');
