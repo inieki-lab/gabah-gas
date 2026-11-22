@@ -36,7 +36,13 @@ function isLoginLockoutDisabled(): boolean {
 }
 
 function hashRateLimitKey(kind: 'api' | 'login', identifier: string): string {
-  return crypto.createHash('sha256').update(kind).update(':').update(identifier).digest('hex');
+  // Prefer an independent stable secret shared by all replicas. The app DB
+  // password is a safe fallback for deployments that have not set one yet.
+  const secret = process.env.GABAH_RATE_LIMIT_SECRET
+    || process.env.PGPASSWORD
+    || process.env.DATABASE_URL
+    || 'gabah-local-development-rate-limit-key';
+  return crypto.createHmac('sha256', secret).update(kind).update(':').update(identifier).digest('hex');
 }
 
 async function prunePersistentRateLimitBuckets(): Promise<void> {
