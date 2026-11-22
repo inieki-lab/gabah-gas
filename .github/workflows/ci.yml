@@ -223,6 +223,9 @@ jobs:
       - name: Loan datetime-local API contract regression
         run: npm run test:loan-datetime-contract
 
+      - name: Loan Jakarta timezone consistency regression
+        run: npm run test:loan-timezone
+
       - name: Loanable asset pool UI eligibility regression
         run: npm run test:loanable-pool-ui
 
