@@ -45,6 +45,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Browser storage policy regression
+        run: npm run test:browser-storage-policy
+
       - name: Typecheck (lint)
         run: npm run lint
 
