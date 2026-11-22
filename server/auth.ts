@@ -46,8 +46,8 @@ export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaini
   const forceSweep = apiRateLimits.size >= API_RATE_LIMIT_KEY_LIMIT;
   if (forceSweep || ++apiRateLimitCleanupCounter >= 128) {
     apiRateLimitCleanupCounter = 0;
-    for (const [entryKey, entry] of apiRateLimits) {
-      if (entry.resetAt <= now) apiRateLimits.delete(entryKey);
+    for (const [key, entry] of apiRateLimits) {
+      if (entry.resetAt <= now) apiRateLimits.delete(key);
     }
   }
   let bucket = apiRateLimits.get(key);
