@@ -1,3 +1,10 @@
+## [2026-11-22] — Collision-resistant contract audit identifiers
+
+- Replace the remaining contract audit ID generator based on `Date.now()` plus a small `Math.random()` suffix with Node.js `crypto.randomUUID()`.
+- Add a contract creation regression that verifies the generated `CONTRACT_CREATED` audit record uses a UUID-based identifier.
+
+---
+
 ## [2026-11-22] — Make PostgreSQL audit logs append-only
 
 - Add migration `100_audit_log_immutability.sql` with database-level guards against UPDATE, DELETE, and TRUNCATE of audit history.
