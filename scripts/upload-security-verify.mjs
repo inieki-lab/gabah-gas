@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
-import { createUploadConcurrencyLimiter } from '../server/upload-security.ts';
+import { createUploadConcurrencyLimiter, normalizeContractUploadError } from '../server/upload-security.ts';
 
 const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const limiter = createUploadConcurrencyLimiter(2, 7);
@@ -63,7 +63,21 @@ assert.match(source, /parts: 11/);
 assert.match(source, /fieldNameSize: 100/);
 assert.match(source, /fieldSize: 64 \* 1024/);
 assert.match(source, /headerPairs: 100/);
-assert.match(source, /authorizeContractDocumentUpload, limitContractUploadConcurrency, upload\.single\('file'\)/);
+assert.match(source, /authorizeContractDocumentUpload, limitContractUploadConcurrency, parseContractUpload/);
+assert.match(source, /UNSUPPORTED_FILE_TYPE/);
+
+const tooLarge = normalizeContractUploadError({ code: 'LIMIT_FILE_SIZE' });
+assert.deepEqual(tooLarge, { statusCode: 413, code: 'UPLOAD_FILE_TOO_LARGE', message: 'Ukuran file melebihi batas 10 MB.' });
+const tooManyFiles = normalizeContractUploadError({ code: 'LIMIT_FILE_COUNT' });
+assert.equal(tooManyFiles?.statusCode, 400);
+assert.equal(tooManyFiles?.code, 'INVALID_UPLOAD_REQUEST');
+const unsupported = normalizeContractUploadError({ code: 'UNSUPPORTED_FILE_TYPE' });
+assert.equal(unsupported?.statusCode, 415);
+assert.equal(unsupported?.code, 'UPLOAD_FILE_TYPE_NOT_ALLOWED');
+const unexpected = normalizeContractUploadError(new Error('internal path must not leak'));
+assert.equal(unexpected?.statusCode, 500);
+assert.equal(unexpected?.message.includes('internal path'), false);
+assert.equal(normalizeContractUploadError(null), null);
 
 console.log('PASS | concurrent memory-backed contract uploads are capped at two');
 console.log('PASS | finish, close, and aborted paths release capacity exactly once');
