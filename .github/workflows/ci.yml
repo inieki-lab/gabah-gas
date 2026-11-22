@@ -151,6 +151,11 @@ jobs:
           GABAH_TEST_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: node scripts/cr04-cr05-verify.mjs
 
+      - name: Legacy PostgreSQL contract migration preserves existing records
+        env:
+          GABAH_TEST_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: npm run test:legacy-contract-migration
+
       - name: P0 security verification (live HTTP assertions)
         run: node scripts/p0-security-verify.mjs
 

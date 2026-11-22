@@ -97,7 +97,8 @@
     "test:ticket-assignment-api": "node scripts/ticket-assignment-api-verify.mjs",
     "test:loan-borrower-return": "node scripts/loan-borrower-return-verify.mjs",
     "test:observer-route-rbac": "node scripts/observer-route-rbac-verify.mjs",
-    "test:loan-timezone": "node --import tsx scripts/loan-timezone-verify.mjs"
+    "test:loan-timezone": "node --import tsx scripts/loan-timezone-verify.mjs",
+    "test:legacy-contract-migration": "node scripts/legacy-contract-migration-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
