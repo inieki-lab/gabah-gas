@@ -1306,3 +1306,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Perbaikan: ketiga jalur menggunakan `randomUUID()` dari `node:crypto`, tetap memakai prefix `MOV-` dan tidak mengubah format nomor aset.
 - Regression ditambahkan ke asset lifecycle workflow guard yang sudah terdaftar di CI.
 - Menunggu CI exact-head; belum diklaim sebagai UAT.
+
+
+### 2026-11-22 — UUID untuk seluruh ID record domain
+
+- Audit lanjutan setelah perbaikan movement menemukan generator ID lain masih memakai timestamp dan/atau suffix `Math.random() * 1000`: audit log, notifikasi, aset, pinjaman, tiket, reservasi ruang, meeting type, dan meeting facility.
+- Semua kolom ID tersebut merupakan identitas record yang harus unik. Timestamp saja bisa bentrok pada operasi serentak; suffix 1.000 kemungkinan juga bukan jaminan keunikan.
+- Perbaikan: semua generator di atas kini memakai `randomUUID()` Node crypto, dengan prefix domain dipertahankan. Generator nomor bisnis (nomor aset/tiket/pinjaman/reservasi) tidak diubah.
+- Regression ditambahkan pada service workflow guard yang sudah berjalan di CI.
+- Menunggu CI exact-head; belum diklaim sebagai UAT.
