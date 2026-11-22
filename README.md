@@ -41,7 +41,7 @@ Development, UAT, dan deployment menggunakan arsitektur yang sama: app + Postgre
 
 ```bash
 cp .env.example .env
-# Isi PGPASSWORD, GABAH_INITIAL_ADMIN_PASSWORD, dan GABAH_INITIAL_USER_PASSWORD di .env
+# Isi PGPASSWORD dan kredensial bootstrap di .env. Untuk UAT lokal saja, set GABAH_APP_MODE=uat dan GABAH_TEST_PASSWORD yang sama untuk semua akun kanonik; jangan gunakan mode/password UAT pada deployment live.
 docker compose config
 docker compose up -d --build
 docker compose ps
