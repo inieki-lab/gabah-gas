@@ -2621,6 +2621,9 @@ async function startServer() {
       const warnings: string[] = [];
       const importedAssets: ServerAsset[] = [];
       const seenKeys = new Set<string>();
+      const originalAssets = new Map<string, ServerAsset>();
+      const createdAssetIds = new Set<string>();
+      const auditIdsBefore = new Set(db.auditLogs.map(item => item.id));
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i] || {};
@@ -2711,6 +2714,7 @@ async function startServer() {
             errors.push(`Baris ${rowNo}: ${existing.asset_number} termasuk kategori infrastruktur/lisensi dan tidak dapat dijadikan aset pinjaman.`);
             continue;
           }
+          if (!originalAssets.has(existing.id)) originalAssets.set(existing.id, structuredClone(existing));
           for (const key of UPDATE_FIELDS) {
             if (key === 'condition') {
               if (condition) (existing as any).condition = condition;
@@ -2726,7 +2730,7 @@ async function startServer() {
             }
           }
           existing.updated_at = new Date().toISOString();
-          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id);
+          GabahDomainService.recordAudit('ASSET_BULK_UPDATED', 'Assets', `Impor massal: data aset ${existing.asset_number} (${existing.name}) diperbarui.`, actor, existing.id, false);
           importedAssets.push(existing);
           updated++;
           continue;
@@ -2751,8 +2755,9 @@ async function startServer() {
             is_loanable: isLoanable,
             condition: (condition || undefined) as any,
             notes: String(row.notes || '').trim() || undefined,
-          }, actor);
-          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id);
+          }, actor, false);
+          createdAssetIds.add(asset.id);
+          GabahDomainService.recordAudit('ASSET_BULK_CREATED', 'Assets', `Impor massal: aset baru ${asset.asset_number} (${asset.name}) didaftarkan.`, actor, asset.id, false);
           importedAssets.push(asset);
           created++;
         } catch (rowErr: any) {
@@ -2761,8 +2766,27 @@ async function startServer() {
       }
 
       if (created > 0 || updated > 0) {
-        await persistDataStore();
-      (req as any).__gabahPersisted = true;
+        const updatedAssetsAfter = new Map<string, ServerAsset>();
+        for (const id of originalAssets.keys()) {
+          const current = db.assets.find(item => item.id === id);
+          if (current) updatedAssetsAfter.set(id, structuredClone(current));
+        }
+        const createdAuditIds = new Set(db.auditLogs.filter(item => !auditIdsBefore.has(item.id)).map(item => item.id));
+        if (!(await persistBeforeSuccess(req, res))) {
+          for (const [id, before] of originalAssets) {
+            const current = db.assets.find(item => item.id === id);
+            const after = updatedAssetsAfter.get(id);
+            if (current && after && JSON.stringify(current) === JSON.stringify(after)) {
+              for (const key of Object.keys(current)) {
+                if (!Object.prototype.hasOwnProperty.call(before, key)) delete (current as any)[key];
+              }
+              Object.assign(current, before);
+            }
+          }
+          db.assets.splice(0, db.assets.length, ...db.assets.filter(item => !createdAssetIds.has(item.id)));
+          db.auditLogs.splice(0, db.auditLogs.length, ...db.auditLogs.filter(item => !createdAuditIds.has(item.id)));
+          return;
+        }
       }
 
       res.json({
