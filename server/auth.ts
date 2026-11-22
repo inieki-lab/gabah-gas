@@ -16,6 +16,7 @@ interface LoginAttemptRecord {
 
 const loginAttempts = new Map<string, LoginAttemptRecord>();
 let loginAttemptCleanupCounter = 0;
+export const LOGIN_ATTEMPT_KEY_LIMIT = 10_000;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -32,22 +33,33 @@ interface ApiRateLimitRecord {
 const apiRateLimits = new Map<string, ApiRateLimitRecord>();
 let apiRateLimitCleanupCounter = 0;
 const API_WINDOW_MS = 60 * 1000; // 1 minute
+export const API_RATE_LIMIT_KEY_LIMIT = 20_000;
 const MAX_API_REQUESTS_PER_MINUTE = 200; // 200 requests/minute per client IP
 
 export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaining: number; resetSeconds: number } {
   const now = Date.now();
-  // Reclaim expired buckets incrementally to bound process memory.
-  if (++apiRateLimitCleanupCounter >= 128) {
+  // Normalize and bound the key so malformed middleware callers cannot create
+  // arbitrarily large Map keys. Real client addresses are far shorter.
+  const key = String(clientIp || 'unknown').slice(0, 128);
+  // Reclaim expired buckets incrementally, and perform a full sweep before
+  // refusing a new key at capacity. Existing buckets continue to work.
+  const forceSweep = apiRateLimits.size >= API_RATE_LIMIT_KEY_LIMIT;
+  if (forceSweep || ++apiRateLimitCleanupCounter >= 128) {
     apiRateLimitCleanupCounter = 0;
-    for (const [key, entry] of apiRateLimits) {
-      if (entry.resetAt <= now) apiRateLimits.delete(key);
+    for (const [entryKey, entry] of apiRateLimits) {
+      if (entry.resetAt <= now) apiRateLimits.delete(entryKey);
     }
   }
-  let bucket = apiRateLimits.get(clientIp);
+  let bucket = apiRateLimits.get(key);
 
   if (!bucket || bucket.resetAt <= now) {
+    if (!bucket && apiRateLimits.size >= API_RATE_LIMIT_KEY_LIMIT) {
+      // Fail closed for new client buckets instead of growing process memory
+      // without bound during distributed-IP or spoofed-proxy floods.
+      return { allowed: false, remaining: 0, resetSeconds: 60 };
+    }
     bucket = { count: 1, resetAt: now + API_WINDOW_MS };
-    apiRateLimits.set(clientIp, bucket);
+    apiRateLimits.set(key, bucket);
     return { allowed: true, remaining: MAX_API_REQUESTS_PER_MINUTE - 1, resetSeconds: 60 };
   }
 
@@ -64,8 +76,8 @@ export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaini
 // Session duration: 7 days
 export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
-function pruneExpiredLoginAttempts(now: number): void {
-  if (++loginAttemptCleanupCounter < 128) return;
+function pruneExpiredLoginAttempts(now: number, force = false): void {
+  if (!force && ++loginAttemptCleanupCounter < 128) return;
   loginAttemptCleanupCounter = 0;
   for (const [key, entry] of loginAttempts) {
     if (entry.lockedUntil <= now && now - entry.lastAttempt > LOCKOUT_MS) {
@@ -84,6 +96,14 @@ export function recordFailedLogin(identifier: string): { isLocked: boolean; rema
   let record = loginAttempts.get(identifier);
 
   if (!record) {
+    if (loginAttempts.size >= LOGIN_ATTEMPT_KEY_LIMIT) {
+      // Sweep expired identifiers once at capacity. If still full, reject new
+      // identifiers for one lockout window rather than allowing unbounded RAM.
+      pruneExpiredLoginAttempts(now, true);
+      if (loginAttempts.size >= LOGIN_ATTEMPT_KEY_LIMIT) {
+        return { isLocked: true, remainingLockoutSeconds: Math.ceil(LOCKOUT_MS / 1000) };
+      }
+    }
     record = { attempts: 1, lastAttempt: now, lockedUntil: 0 };
     loginAttempts.set(identifier, record);
     return { isLocked: false };
