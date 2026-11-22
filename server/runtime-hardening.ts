@@ -86,10 +86,12 @@ export async function gabahSecurityMiddleware(req: Request, res: Response, next:
   // degraded. All other API traffic fails closed when shared PostgreSQL state
   // cannot be read or updated.
   let rateLimit = { allowed: true, remaining: 200, resetSeconds: 60 };
-  if (normalizedPath !== '/api/health') {
-    try {
-      rateLimit = await checkApiRateLimit(clientIp);
-    } catch {
+  try {
+    rateLimit = await checkApiRateLimit(clientIp);
+  } catch {
+    // Health probes remain available if the limiter store is unavailable, but
+    // they are still rate-limited whenever PostgreSQL is healthy.
+    if (normalizedPath !== '/api/health') {
       res.setHeader('Retry-After', '5');
       res.setHeader('X-RateLimit-Limit', '200');
       res.setHeader('X-RateLimit-Remaining', '0');
