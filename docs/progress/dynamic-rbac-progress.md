@@ -1358,3 +1358,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Perbaikan: jika PostgreSQL pool tersedia tetapi advisory lock tidak dapat diverifikasi, scheduler mencatat warning dan melewatkan sweep. File-store development tanpa pool tetap berjalan seperti sebelumnya.
 - Regression scheduler mewajibkan catch error PostgreSQL mengembalikan false, membersihkan koneksi, dan tidak mengeksekusi sweep tanpa leader lock.
 - Menunggu CI exact-head; belum diklaim sebagai uji multi-instance produksi.
+
+
+### 2026-11-22 — Manual reminder sweep wajib memakai leader lock
+
+- Audit menemukan endpoint `POST /api/contracts/reminders/run` memanggil `ContractDomainService.runReminderSweep(actor)` langsung, melewati advisory leader lock yang dipakai scheduler interval.
+- Dua Admin GABAH pada instance berbeda dapat menjalankan sweep bersamaan. Karena provider email/Telegram mengirim sebelum idempotency log tersimpan, unique log saja tidak menjamin pesan eksternal tidak ganda.
+- Tambah `runManualOnce(actor)` yang mengambil advisory lock, memakai guard `running`, dan selalu melepas lock setelah selesai. Endpoint manual menggunakan fungsi ini; lock tidak tersedia → HTTP 409 dan tidak ada pengiriman.
+- Regression scheduler memeriksa jalur manual endpoint tidak lagi memanggil engine secara langsung.
+- Menunggu CI exact-head; belum diklaim sebagai UAT multi-instance produksi.
