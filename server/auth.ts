@@ -27,6 +27,8 @@ interface ApiRateLimitRecord {
 }
 const apiRateLimits = new Map<string, ApiRateLimitRecord>();
 let apiRateLimitCleanupCounter = 0;
+let apiRateLimitCapacitySweepAt = 0;
+let loginAttemptCapacitySweepAt = 0;
 const API_WINDOW_MS = 60 * 1000;
 export const API_RATE_LIMIT_KEY_LIMIT = 20_000;
 const MAX_API_REQUESTS_PER_MINUTE = 200;
@@ -119,14 +121,17 @@ export async function checkApiRateLimit(
   // PostgreSQL runtime failure (guarded above).
   const now = Date.now();
   const key = String(clientIp || 'unknown').slice(0, 128);
-  const forceSweep = apiRateLimits.size >= API_RATE_LIMIT_KEY_LIMIT;
-  if (forceSweep || ++apiRateLimitCleanupCounter >= 128) {
-    apiRateLimitCleanupCounter = 0;
-    for (const [key, entry] of apiRateLimits) {
-      if (entry.resetAt <= now) apiRateLimits.delete(key);
-    }
-  }
   let bucket = apiRateLimits.get(key);
+  const needsCapacitySweep = !bucket && apiRateLimits.size >= API_RATE_LIMIT_KEY_LIMIT
+    && now - apiRateLimitCapacitySweepAt >= 1_000;
+  if (needsCapacitySweep || ++apiRateLimitCleanupCounter >= 128) {
+    apiRateLimitCleanupCounter = 0;
+    if (needsCapacitySweep) apiRateLimitCapacitySweepAt = now;
+    for (const [entryKey, entry] of apiRateLimits) {
+      if (entry.resetAt <= now) apiRateLimits.delete(entryKey);
+    }
+    bucket = apiRateLimits.get(key);
+  }
   if (!bucket || bucket.resetAt <= now) {
     if (!bucket && apiRateLimits.size >= API_RATE_LIMIT_KEY_LIMIT) {
       return { allowed: false, remaining: 0, resetSeconds: 60 };
@@ -203,7 +208,10 @@ export async function recordFailedLogin(
   let record = loginAttempts.get(identifier);
   if (!record) {
     if (loginAttempts.size >= LOGIN_ATTEMPT_KEY_LIMIT) {
-      pruneExpiredLoginAttempts(now, true);
+      if (now - loginAttemptCapacitySweepAt >= 1_000) {
+        loginAttemptCapacitySweepAt = now;
+        pruneExpiredLoginAttempts(now, true);
+      }
       if (loginAttempts.size >= LOGIN_ATTEMPT_KEY_LIMIT) {
         return { isLocked: true, remainingLockoutSeconds: Math.ceil(LOCKOUT_MS / 1000) };
       }
