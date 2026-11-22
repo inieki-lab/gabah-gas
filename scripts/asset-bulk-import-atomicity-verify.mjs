@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const server = fs.readFileSync('server.ts', 'utf8');
+const start = server.indexOf("app.post('/api/assets/bulk-import'");
+const end = server.indexOf('\n  app.', start + 10);
+assert.ok(start >= 0 && end > start, 'bulk import route must exist');
+const route = server.slice(start, end);
+assert.ok(route.includes('originalAssets = new Map<string, ServerAsset>()'));
+assert.ok(route.includes('createdAssetIds = new Set<string>()'));
+assert.ok(route.includes('auditIdsBefore'));
+assert.ok(route.includes('originalAssets.set(existing.id, structuredClone(existing))'));
+assert.ok(route.includes('createAsset({') && route.includes('}, actor, false)'));
+assert.match(route, /ASSET_BULK_UPDATED'[\s\S]*existing\.id, false\)/);
+assert.match(route, /ASSET_BULK_CREATED'[\s\S]*asset\.id, false\)/);
+assert.ok(route.includes('updatedAssetsAfter') && route.includes('persistBeforeSuccess(req, res)'));
+assert.ok(route.includes('JSON.stringify(current) === JSON.stringify(after)'));
+assert.ok(route.includes('!createdAssetIds.has(item.id)') && route.includes('!createdAuditIds.has(item.id)'));
+assert.doesNotMatch(route, /await persistDataStore\(\)/);
+console.log('PASS: bulk asset import commits once and rolls back only batch-created/updated state on failure');
