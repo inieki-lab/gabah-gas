@@ -63,8 +63,10 @@ async function main() {
   await client.query(migrationSql);
 
   const migrated = await client.query(`
-    SELECT id, contract_number, vendor_name, title, start_date, end_date, status,
-           owner_division, contract_type, notes, notice_period_days, reminder1_days
+    SELECT id, contract_number, vendor_name, title,
+           to_char(start_date, 'YYYY-MM-DD') AS start_date,
+           to_char(end_date, 'YYYY-MM-DD') AS end_date,
+           status, owner_division, contract_type, notes, notice_period_days, reminder1_days
       FROM contracts WHERE id = 'LEGACY-CONTRACT-1'
   `);
   const row = migrated.rows[0];
@@ -73,8 +75,8 @@ async function main() {
     ['owner division ID mapped to division code', row?.owner_division === 'IT'],
     ['contract number retained', row?.contract_number === 'LEGACY/IT/001'],
     ['vendor and title retained', row?.vendor_name === 'Vendor Lama' && row?.title === 'Kontrak pemeliharaan server'],
-    ['dates and status retained', String(row?.start_date).slice(0, 10) === '2025-01-01'
-      && String(row?.end_date).slice(0, 10) === '2027-01-01' && row?.status === 'active'],
+    ['dates and status retained', row?.start_date === '2025-01-01'
+      && row?.end_date === '2027-01-01' && row?.status === 'active'],
     ['legacy notes retained', row?.notes === 'Catatan lama harus tetap utuh'],
     ['new governance defaults applied', row?.contract_type === 'Umum'
       && row?.notice_period_days === 0 && row?.reminder1_days === 60],
