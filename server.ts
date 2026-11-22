@@ -1597,6 +1597,10 @@ async function startServer() {
       if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
         return res.status(400).json({ success: false, message: 'Email dan password wajib diisi.' });
       }
+      // Bound attacker-controlled strings before alias lookup and synchronous PBKDF2.
+      if (email.trim().length > 254 || password.length > 256) {
+        return res.status(400).json({ success: false, message: 'Email atau kata sandi melebihi batas panjang yang diizinkan.' });
+      }
 
       const inputEmail = email.trim().toLowerCase();
       const inPrefix = inputEmail.split('@')[0];
@@ -1728,6 +1732,10 @@ async function startServer() {
       const { currentPassword, newPassword } = req.body;
       if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || !currentPassword || !newPassword) {
         return res.status(400).json({ success: false, message: 'Kata sandi lama dan baru wajib diisi.' });
+      }
+      // Keep attacker-controlled KDF input bounded on self-service password changes.
+      if (currentPassword.length > 256 || newPassword.length > 256) {
+        return res.status(400).json({ success: false, message: 'Kata sandi maksimal 256 karakter.' });
       }
       if (newPassword.length < 8) {
         return res.status(400).json({ success: false, message: 'Kata sandi baru minimal 8 karakter.' });
