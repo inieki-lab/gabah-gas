@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const ui = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
+const app = fs.readFileSync('src/App.tsx', 'utf8');
 const types = fs.readFileSync('src/types.ts', 'utf8');
 const services = fs.readFileSync('server/services.ts', 'utf8');
 assert.ok(ui.includes("status === 'pending_approval'"));
@@ -29,6 +30,17 @@ const returnMethod = services.slice(returnStart, returnEnd);
 assert.ok(returnMethod.includes("['borrowed', 'overdue'].includes(loan.status)"), 'overdue loans must be returnable after handover');
 assert.ok(returnMethod.includes("asset.status !== 'assigned'"), 'return must still require assigned asset custody');
 assert.ok(ui.includes("'poor' | 'broken' | 'damaged'"), 'UI callback must carry all backend inspection conditions');
+const returnButtonStart = ui.indexOf('const succeeded = await onReturnLoan(returningLoan.id, returnCondition, returnNotes)');
+const returnButtonEnd = ui.indexOf('Simpan &amp; Selesaikan', returnButtonStart);
+assert.ok(returnButtonStart >= 0 && returnButtonEnd > returnButtonStart, 'return modal must await transaction result');
+const returnButton = ui.slice(returnButtonStart, returnButtonEnd);
+assert.ok(returnButton.indexOf('if (succeeded === false) return') < returnButton.indexOf('setReturningLoan(null)'), 'failed return must keep modal and entered notes open');
+const appReturnStart = app.indexOf('const handleReturnLoan = async');
+const appReturnEnd = app.indexOf('// Direct BAST Document Generation', appReturnStart);
+assert.ok(appReturnStart >= 0 && appReturnEnd > appReturnStart, 'App return handler must exist');
+const appReturn = app.slice(appReturnStart, appReturnEnd);
+assert.ok(appReturn.includes('return false;') && appReturn.includes('return true;'), 'App must distinguish failed API return from committed return');
+assert.ok(appReturn.indexOf('await gabahApi.returnLoan') < appReturn.indexOf('return false;'), 'API failure must be handled before reporting transaction success');
 for (const condition of ['excellent', 'good', 'fair', 'poor', 'damaged', 'broken']) {
   assert.ok(ui.includes(`value: '${condition}'`), 'return inspection UI must offer ' + condition);
 }

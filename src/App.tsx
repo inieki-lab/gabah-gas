@@ -460,14 +460,24 @@ export default function App() {
   };
 
   // 7. Return Loan (Status to Returned, Condition Verified, Asset Restored)
-  const handleReturnLoan = async (loanId: string, condition: string, notes: string) => {
+  const handleReturnLoan = async (loanId: string, condition: string, notes: string): Promise<boolean> => {
+    let returnedLoan;
     try {
-      const returnedLoan = await gabahApi.returnLoan(loanId, condition, notes);
-      showToast(`Aset peminjaman ${returnedLoan.loan_number} berhasil dikembalikan ke inventaris.`);
-      await refreshData();
+      returnedLoan = await gabahApi.returnLoan(loanId, condition, notes);
     } catch (err: any) {
       showToast(err.message || 'Gagal memproses pengembalian', 'warning');
+      return false;
     }
+
+    showToast(`Aset peminjaman ${returnedLoan.loan_number} berhasil dikembalikan ke inventaris.`);
+    // The physical return has succeeded. A refresh failure must not make the
+    // user repeat an already-committed return transaction.
+    try {
+      await refreshData();
+    } catch {
+      showToast('Pengembalian berhasil, tetapi daftar belum dapat diperbarui. Muat ulang data untuk melihat status terbaru.', 'warning');
+    }
+    return true;
   };
 
   // Direct BAST Document Generation for Any Asset

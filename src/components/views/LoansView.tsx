@@ -36,7 +36,7 @@ interface LoansViewProps {
   onApproveLoan: (loanId: string) => void;
   onRejectLoan: (loanId: string, reason: string) => void;
   onHandoverLoan: (loanId: string) => void;
-  onReturnLoan: (loanId: string, condition: 'excellent' | 'good' | 'fair' | 'poor' | 'broken' | 'damaged', notes: string) => void;
+  onReturnLoan: (loanId: string, condition: 'excellent' | 'good' | 'fair' | 'poor' | 'broken' | 'damaged', notes: string) => Promise<boolean> | boolean | void;
   onOpenBastModal?: (loan: Loan) => void;
   onOpenBast?: (loan: Loan) => void;
 }
@@ -461,8 +461,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
                 Batal
               </button>
               <button
-                onClick={() => {
-                  onReturnLoan(returningLoan.id, returnCondition, returnNotes);
+                onClick={async () => {
+                  const succeeded = await onReturnLoan(returningLoan.id, returnCondition, returnNotes);
+                  if (succeeded === false) return;
                   setReturningLoan(null);
                   setReturnNotes('');
                 }}
