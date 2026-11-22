@@ -67,7 +67,29 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json());
+  // Keep JSON API payloads explicitly bounded while allowing legitimate bulk imports.
+  // The 2 MiB cap is a server-side ceiling; multipart uploads have separate stricter limits below.
+  app.use(express.json({ limit: '2mb' }));
+
+  // Body-parser errors occur before route handlers. Return stable JSON errors rather
+  // than Express's default HTML response, and never continue to a mutation route.
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err?.type === 'entity.too.large') {
+      return res.status(413).json({
+        success: false,
+        code: 'REQUEST_BODY_TOO_LARGE',
+        message: 'Ukuran request melebihi batas 2 MB.',
+      });
+    }
+    if (err?.type === 'entity.parse.failed') {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_JSON',
+        message: 'Format JSON pada request tidak valid.',
+      });
+    }
+    return next(err);
+  });
 
   // Per-request audit context: carry the client IP through the async chain so
   // recordAudit writers can stamp ip_address (P2#9).

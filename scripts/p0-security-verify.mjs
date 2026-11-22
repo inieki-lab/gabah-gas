@@ -72,6 +72,18 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   };
 }
 
+async function rawReq(base, method, urlPath, { body, headers = {} } = {}) {
+  const res = await fetch(`${base}${urlPath}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body,
+  });
+  const text = await res.text();
+  let json = {};
+  try { json = JSON.parse(text); } catch { /* response must be JSON for parser errors */ }
+  return { status: res.status, json, contentType: res.headers.get('content-type') || '' };
+}
+
 async function waitForServer(base, tries = 60) {
   for (let i = 0; i < tries; i++) {
     try {
@@ -160,6 +172,22 @@ async function main() {
       'Cache-Control: no-store',
       h['cache-control'] || '(missing)',
       headerCheck.status === 200 && String(h['cache-control'] || '').toLowerCase().includes('no-store'));
+
+    // JSON parser must reject oversized/malformed bodies before any API route runs.
+    const oversizedJson = JSON.stringify({ probe: 'x'.repeat(2 * 1024 * 1024 + 1) });
+    const tooLarge = await rawReq(base, 'POST', '/api/auth/login', { body: oversizedJson });
+    record('SEC: oversized JSON request is rejected with stable 413 JSON response',
+      'HTTP 413 + REQUEST_BODY_TOO_LARGE',
+      `HTTP ${tooLarge.status} ${tooLarge.json?.code || '(no code)'} ${tooLarge.contentType}`,
+      tooLarge.status === 413 && tooLarge.json?.code === 'REQUEST_BODY_TOO_LARGE'
+        && tooLarge.contentType.toLowerCase().includes('application/json'));
+
+    const malformedJson = await rawReq(base, 'POST', '/api/auth/login', { body: '{"broken":' });
+    record('SEC: malformed JSON request is rejected with stable 400 JSON response',
+      'HTTP 400 + INVALID_JSON',
+      `HTTP ${malformedJson.status} ${malformedJson.json?.code || '(no code)'} ${malformedJson.contentType}`,
+      malformedJson.status === 400 && malformedJson.json?.code === 'INVALID_JSON'
+        && malformedJson.contentType.toLowerCase().includes('application/json'));
 
     // Without a configured trusted proxy, caller-controlled XFF values must
     // not create separate rate-limit buckets for the same transport peer.
