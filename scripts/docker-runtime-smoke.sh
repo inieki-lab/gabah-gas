@@ -108,6 +108,16 @@ DB_OWNER="$(docker exec "$DB_CONTAINER" psql -U "$DB_ADMIN_USER" -d gabah_ci -At
   echo "Expected app role to own the GABAH database, got: $DB_OWNER" >&2
   exit 1
 }
+OTHER_DB_OWNER="$(docker exec "$DB_CONTAINER" psql -U "$DB_ADMIN_USER" -d gabah_ci -Atc "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='postgres'")"
+[[ "$OTHER_DB_OWNER" == "$DB_ADMIN_USER" ]] || {
+  echo "Provisioning must not transfer the unrelated postgres database; got owner: $OTHER_DB_OWNER" >&2
+  exit 1
+}
+APP_OWNED_TABLESPACES="$(docker exec "$DB_CONTAINER" psql -U "$DB_ADMIN_USER" -d gabah_ci -Atc "SELECT count(*) FROM pg_tablespace WHERE spcowner=(SELECT oid FROM pg_roles WHERE rolname='$DB_APP_USER')")"
+[[ "$APP_OWNED_TABLESPACES" == "0" ]] || {
+  echo "App role must not become owner of cluster tablespaces." >&2
+  exit 1
+}
 EXTENSION="$(docker exec "$DB_CONTAINER" psql -U "$DB_ADMIN_USER" -d gabah_ci -Atc "SELECT count(*) FROM pg_extension WHERE extname='btree_gist'")"
 [[ "$EXTENSION" == "1" ]] || {
   echo "Expected btree_gist extension to be installed by the non-superuser app role." >&2
