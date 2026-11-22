@@ -9,6 +9,11 @@ const start = serviceSource.indexOf('static createTicket(');
 const end = serviceSource.indexOf('\n  /**', start + 1);
 assert.ok(start >= 0 && end > start, 'createTicket domain method must exist');
 const method = serviceSource.slice(start, end);
+
+assert.match(method, /Array\.from\(normalizedTitle\)\.length > 255/, 'Ticket title is bounded to the PostgreSQL VARCHAR(255) column');
+assert.match(method, /Array\.from\(normalizedDescription\)\.length > 20000/, 'Ticket description has an explicit operational size limit');
+assert.match(method, /title: normalizedTitle,[\s\S]*description: normalizedDescription/, 'Only validated normalized ticket text is persisted');
+
 const routeStart = serverSource.indexOf("app.post('/api/tickets'");
 const routeEnd = serverSource.indexOf('// SECURITY (CR-06)', routeStart);
 assert.ok(routeStart >= 0 && routeEnd > routeStart, 'POST /api/tickets route must exist');
@@ -45,6 +50,16 @@ assert.throws(() => GabahDomainService.createTicket({
   contract_id: 'CTR-NOT-FOUND',
 }, admin), /Kontrak terkait tidak ditemukan atau tidak dapat diakses/);
 assert.equal(db.tickets.length, initialCount, 'Unknown contract must not create a ticket');
+
+
+
+const validTicket = { description: 'Valid description', category: 'IT', priority: 'low' };
+assert.throws(() => GabahDomainService.createTicket({ ...validTicket, title: 'x'.repeat(256) }, admin), /maksimal 255 karakter/);
+assert.equal(db.tickets.length, initialCount, 'Overlong title must be rejected before ticket mutation');
+assert.throws(() => GabahDomainService.createTicket({ ...validTicket, title: 'Valid title', description: 'x'.repeat(20001) }, admin), /maksimal 20.000 karakter/);
+assert.equal(db.tickets.length, initialCount, 'Oversized description must be rejected before ticket mutation');
+const unicodeBoundaryTicket = GabahDomainService.createTicket({ ...validTicket, title: '😀'.repeat(255) }, admin);
+assert.equal(Array.from(unicodeBoundaryTicket.title).length, 255, '255 Unicode code points must fit PostgreSQL VARCHAR(255)');
 
 const visibleAsset = GabahDomainService.getScopedAssets(admin)[0];
 assert.ok(visibleAsset, 'Admin fixture must have at least one visible asset');
