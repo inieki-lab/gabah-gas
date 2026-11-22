@@ -568,7 +568,7 @@ export class GabahDomainService {
   /**
    * Asset Assignment Mutation
    */
-  static assignAsset(assetId: string, targetUserId: string, reason: string, actor: ServerUser): ServerAsset {
+  static assignAsset(assetId: string, targetUserId: string, reason: string, actor: ServerUser, persistAudit = true): ServerAsset {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -612,7 +612,7 @@ export class GabahDomainService {
         created_at: new Date().toISOString(),
       };
       db.movements.unshift(movement);
-      this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id);
+      this.recordAudit('ASSET_UNASSIGNED', 'Assets', `Melepaskan penugasan aset ${asset.asset_number} dari ${previousUser} kembali ke Pool Gudang`, actor, asset.id, persistAudit);
       return asset;
     }
 
@@ -648,7 +648,7 @@ export class GabahDomainService {
     };
     db.movements.unshift(movement);
 
-    this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id);
+    this.recordAudit('ASSET_ASSIGNED', 'Assets', `Menugaskan aset ${asset.asset_number} dari ${previousUser} ke ${targetUser.name}`, actor, asset.id, persistAudit);
     return asset;
   }
 
@@ -711,7 +711,7 @@ export class GabahDomainService {
   /**
    * Asset Lifecycle Mutation (Repair, Damaged, Cannibalize, Disposal, Auction)
    */
-  static mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser): ServerAsset {
+  static mutateLifecycle(assetId: string, action: 'repair' | 'damaged' | 'cannibalize' | 'propose_disposal' | 'approve_disposal' | 'auction', notes: string, actor: ServerUser, persistAudit = true): ServerAsset {
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) throw new Error('Aset tidak ditemukan');
 
@@ -763,7 +763,7 @@ export class GabahDomainService {
     }
 
     asset.updated_at = new Date().toISOString();
-    this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id);
+    this.recordAudit('LIFECYCLE_MUTATION', 'Assets', `Mutasi lifecycle aset ${asset.asset_number} -> ${asset.status}: ${notes}`, actor, asset.id, persistAudit);
 
     return asset;
   }
