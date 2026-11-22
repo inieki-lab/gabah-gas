@@ -24,6 +24,14 @@ assert.ok(!server.includes('new Date(l.start_date).getTime()'), 'server collisio
 assert.ok(!server.includes('new Date(loan.start_date).getTime()'), 'server approval collision check must use same timezone semantics');
 assert.ok(!client.includes('new Date(loan.start_date).getTime()'), 'client conflict check must use same timezone semantics');
 
+
+const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
+assert.equal(new Date(existingStart).toISOString(), '2026-11-23T02:00:00.000Z', 'WIB schedule is stored as canonical UTC instant');
+assert.ok(server.includes('start_date: new Date(start).toISOString()'), 'new loans store canonical UTC instants in the authoritative snapshot');
+assert.ok(persistence.includes('parseLoanDateTimestamp(l.start_date)'), 'normalized PostgreSQL loan rows use the shared timezone parser');
+assert.ok(persistence.includes('new Date(startTimestamp).toISOString()'), 'normalized PostgreSQL rows receive explicit UTC timestamps');
+assert.ok(persistence.includes('start_date=EXCLUDED.start_date,due_date=EXCLUDED.due_date'), 'legacy normalized rows are corrected on the next committed snapshot');
+
 console.log('PASS | Loan schedules use Asia/Jakarta wall-clock semantics consistently');
 console.log('PASS | WIB overlap and adjacent-boundary checks');
 console.log('PASS | Legacy date-only and explicit ISO compatibility');
