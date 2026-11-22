@@ -26,6 +26,7 @@ assert.ok(storageAccesses.every(key => key === 'TOKEN_STORAGE_KEY'),
   'The API client may access browser storage only through its canonical token key constant');
 assert.match(api, /const TOKEN_STORAGE_KEY = 'gabah_auth_token';/,
   'The API client storage key must remain the canonical auth token');
+assert.equal((app.match(/localStorage\\./g) || []).length, 1,
   'The application shell may only read the canonical auth token once');
 assert.match(app, /localStorage\.getItem\('gabah_auth_token'\)/,
   'The application shell may only inspect gabah_auth_token');
