@@ -99,7 +99,7 @@ if [[ -z "$APP_HEALTH" ]] || ! grep -q '"persistence":"postgresql"' <<<"$APP_HEA
 fi
 
 ROLE_FLAGS="$(docker exec "$DB_CONTAINER" psql -U "$DB_ADMIN_USER" -d gabah_ci -Atc "SELECT concat_ws(',', rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls) FROM pg_roles WHERE rolname='$DB_APP_USER'")"
-[[ "$ROLE_FLAGS" == "false,false,false,false,false" ]] || {
+[[ "$ROLE_FLAGS" == "f,f,f,f,f" ]] || {
   echo "Expected least-privilege app role, got: $ROLE_FLAGS" >&2
   exit 1
 }
