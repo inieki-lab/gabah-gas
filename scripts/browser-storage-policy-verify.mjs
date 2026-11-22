@@ -31,4 +31,18 @@ assert.equal((app.match(/localStorage\./g) || []).length, 1,
 assert.match(app, /localStorage\.getItem\('gabah_auth_token'\)/,
   'The application shell may only inspect gabah_auth_token');
 
+
+assert.match(admin, /await gabahApi\\.createLocation\\(/, 'Location creation must be persisted through the server API');
+assert.match(admin, /await gabahApi\\.createDivision\\(/, 'Division creation must be persisted through the server API');
+assert.match(admin, /await gabahApi\\.updateDivision\\(/, 'Division updates must be persisted through the server API');
+assert.match(admin, /await gabahApi\\.deleteDivision\\(/, 'Division deletion must be persisted through the server API');
+assert.match(admin, /pratinjau sesi saat ini; belum tersimpan sebagai konfigurasi server/i,
+  'System settings must disclose that the current form is preview-only');
+assert.match(admin, /pratinjau legacy; izin aktif tetap mengikuti Dynamic RBAC di server/i,
+  'Legacy permission matrix must not claim to update active RBAC policy');
+assert.match(admin, /hanya diperbarui untuk pratinjau sesi ini/i,
+  'Legacy numbering preview must not claim to save an active numbering rule');
+assert.match(admin, /perubahan belum disimpan di server/i,
+  'Notification toggles must disclose that changes are not persisted');
+
 console.log('Browser storage policy verified: only gabah_auth_token is persisted by the API client.');
