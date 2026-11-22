@@ -1289,3 +1289,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Migration 098 memperbarui trigger agar mengunci baris aset `FOR UPDATE` sebelum membaca bentrok. Lock ditahan sampai transaksi selesai; persetujuan kedua untuk aset yang sama menunggu lalu melihat pinjaman pertama yang sudah committed.
 - CI CR-04/CR-05 diperluas dengan uji integrasi PostgreSQL nyata: dua koneksi independen, dua transaksi bersamaan, verifikasi transaksi kedua menunggu lock dan ditolak dengan SQLSTATE P0001; status akhir harus satu `approved` dan satu tetap `pending_approval`.
 - Uji ini hanya memakai database throwaway CI dan fixture yang dibersihkan setelah test. Menunggu CI exact-head; belum ada klaim UAT browser.
+
+
+### 2026-11-22 — Proteksi kepemilikan tiket saat penghapusan akun
+
+- Audit lifecycle akun menemukan endpoint DELETE pengguna hanya melindungi pinjaman aktif dan aset yang masih ditugaskan. Akun operator yang masih menjadi assignee tiket non-closed dapat dihapus; tiket tetap menunjuk ID operator yang tidak lagi ada di roster autentikasi. Akun reporter juga dapat dihapus sebelum tiket selesai, sehingga jalur self-service close/reopen dan identitas pelapor aktif terputus.
+- Perbaikan: penghapusan akun ditolak dengan HTTP 409 jika pengguna masih menjadi reporter atau assignee pada tiket yang statusnya belum `closed`. Pesan menyebut jumlah tiket dan langkah penyelesaian. Tiket closed tetap dipertahankan sebagai histori.
+- Regression ditambahkan pada `user-admin-validation-verify.mjs`, yang sudah dijalankan CI.
+- Menunggu CI exact-head; belum mengklaim UAT browser.

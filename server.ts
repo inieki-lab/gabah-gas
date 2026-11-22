@@ -1225,10 +1225,18 @@ async function startServer() {
         && ['pending_approval', 'approved', 'borrowed', 'overdue'].includes(loan.status)
       );
       const assignedAssets = (db.assets || []).filter(asset => asset.assigned_to?.id === targetId);
-      if (activeBorrowerLoans.length > 0 || assignedAssets.length > 0) {
+      // Keep non-terminal ticket ownership resolvable. Deleting an assigned
+      // operator otherwise leaves an active queue item pointing at a user who
+      // can no longer authenticate; deleting a reporter removes their
+      // self-service close/reopen path and audit identity from the live roster.
+      const activeTickets = (db.tickets || []).filter(ticket =>
+        (ticket.reporter_id === targetId || ticket.assigned_agent_id === targetId)
+        && String(ticket.status).toLowerCase() !== 'closed'
+      );
+      if (activeBorrowerLoans.length > 0 || assignedAssets.length > 0 || activeTickets.length > 0) {
         return res.status(409).json({
           success: false,
-          message: `Akun tidak dapat dihapus: ${activeBorrowerLoans.length} pinjaman aktif dan ${assignedAssets.length} aset masih tercatat pada pengguna. Selesaikan pengembalian atau alih penanggung jawab terlebih dahulu.`,
+          message: `Akun tidak dapat dihapus: ${activeBorrowerLoans.length} pinjaman aktif, ${assignedAssets.length} aset masih tercatat, dan ${activeTickets.length} tiket belum ditutup terkait pengguna. Selesaikan pinjaman, alihkan aset, dan tutup atau alihkan tiket terlebih dahulu.`,
         });
       }
 
