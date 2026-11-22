@@ -1041,7 +1041,7 @@ async function startServer() {
         ['telegram_chat_id', telegram_chat_id, 128],
       ];
       for (const [field, value, maxLength] of stringFields) {
-        if (value !== undefined && (typeof value !== 'string' || value.length > maxLength)) {
+        if (value !== undefined && (typeof value !== 'string' || value.includes('\u0000') || value.length > maxLength)) {
           return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
         }
       }
