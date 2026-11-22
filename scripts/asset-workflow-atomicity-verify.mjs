@@ -5,7 +5,7 @@ const services = fs.readFileSync('server/services.ts', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 for (const [method, audit] of [['assignAsset', 'ASSET_ASSIGNED'], ['assignAsset', 'ASSET_UNASSIGNED'], ['mutateLifecycle', 'LIFECYCLE_MUTATION']]) {
   const start = services.indexOf('static ' + method + '(');
-  const end = services.indexOf('\\n  static ', start + 1);
+  const end = services.indexOf('\n  static ', start + 1);
   const body = services.slice(start, end < 0 ? services.length : end);
   assert.match(body, /persistAudit = true/);
   assert.ok(body.includes("recordAudit('" + audit + "'") && body.includes('asset.id, persistAudit)'), audit + ' audit must be deferred into the route commit');
@@ -15,7 +15,7 @@ for (const [path, service, movement] of [
   ["app.post('/api/assets/:id/lifecycle'", 'mutateLifecycle', false],
 ]) {
   const start = server.indexOf(path);
-  const end = server.indexOf('\\n  app.', start + 10);
+  const end = server.indexOf('\n  app.', start + 10);
   const route = server.slice(start, end < 0 ? server.length : end);
   assert.match(route, /async \(req, res\)/);
   assert.ok(route.includes('structuredClone(asset)'), service + ' must snapshot the asset');
