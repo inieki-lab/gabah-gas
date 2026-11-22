@@ -1,3 +1,13 @@
+## [2026-11-22] — Remove unsupported public metrics and misleading login controls
+
+- Replace unverified public dashboard claims (asset count, fleet readiness, response SLA, and 100% active status) with neutral module descriptions that do not imply live operational telemetry.
+- Remove the unsupported SSL/TLS 256-bit assurance claim from the login header; describe only the actual server-backed authentication flow.
+- Remove the inert "remember device" checkbox and nonfunctional password-help control; show the existing Service Desk contact guidance instead.
+- Stop passing the employee directory into LoginPage and remove its unused mock-user dependency.
+- Extend the public landing/login regression to prevent unsupported metrics, transport-security claims, and inert controls from returning.
+
+---
+
 ## [2026-11-22] — Remove employee directory data from public landing page
 
 - Remove public demo-role shortcuts and the public employee-account directory, including names, login email addresses, and department details.
