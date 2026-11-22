@@ -80,7 +80,6 @@ const contractAudit = db.auditLogs.find(log => log.entity_id === created.id && l
 assert.ok(contractAudit, 'Contract creation must append an audit record');
 assert.match(contractAudit.id, /^LOG-CTR-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
   'Contract audit ID must use a cryptographically generated UUID');
-assert.ok(!contractAudit.id.endsWith(String(Date.now())), 'Contract audit ID must not be timestamp-only');
 
 const protectedUpdate = ContractDomainService.updateContract(created.id, {
   owner_division: 'SC',
