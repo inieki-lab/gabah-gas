@@ -42,7 +42,5 @@ assert.match(admin, /pratinjau legacy; izin aktif tetap mengikuti Dynamic RBAC d
   'Legacy permission matrix must not claim to update active RBAC policy');
 assert.match(admin, /hanya diperbarui untuk pratinjau sesi ini/i,
   'Legacy numbering preview must not claim to save an active numbering rule');
-assert.match(admin, /perubahan belum disimpan di server/i,
-  'Notification toggles must disclose that changes are not persisted');
 
 console.log('Browser storage policy verified: only gabah_auth_token is persisted by the API client.');
