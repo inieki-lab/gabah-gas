@@ -49,6 +49,10 @@ mustReject({ parent_contract_id: 'CTR-SEED-002' }, /divisi pemilik yang sama/);
 mustReject({ start_date: '2027-02-01', end_date: '2027-01-01' }, /Periode kontrak tidak valid/);
 mustReject({ reminder_config: { reminder1_days: 7, reminder2_days: 35, reminder3_days: 60 } }, /Konfigurasi reminder/);
 mustReject({ contract_value: -1 }, /Notice period dan nilai kontrak/);
+mustReject({ contract_value: Number.MAX_SAFE_INTEGER + 1 }, /Notice period dan nilai kontrak/);
+mustReject({ notice_period_days: 2147483648 }, /Notice period dan nilai kontrak/);
+mustReject({ reminder_config: { reminder1_days: 2147483648, reminder2_days: 35, reminder3_days: 7 } }, /Konfigurasi reminder/);
+
 mustReject({ auto_renewal: 'false' }, /auto-renewal harus berupa boolean/);
 mustReject({ restricted: 'false' }, /Flag restricted harus berupa boolean/);
 
@@ -101,6 +105,10 @@ assert.equal(updated.title, 'Updated fixture title');
 assert.equal(updated.contract_value, 2000000);
 assert.throws(() => ContractDomainService.updateContract(created.id, { title: 'x'.repeat(256) }, actor), /Judul kontrak wajib diisi dan maksimal 255 karakter/);
 assert.throws(() => ContractDomainService.updateContract(created.id, { contract_type: 'x'.repeat(101) }, actor), /Jenis kontrak wajib diisi dan maksimal 100 karakter/);
+assert.throws(() => ContractDomainService.updateContract(created.id, { notice_period_days: 2147483648 }, actor), /Notice period harus berupa bilangan bulat non-negatif/);
+assert.throws(() => ContractDomainService.updateContract(created.id, { contract_value: Number.MAX_SAFE_INTEGER + 1 }, actor), /Nilai kontrak harus berupa angka non-negatif yang valid/);
+assert.throws(() => ContractDomainService.updateContract(created.id, { reminder_config: { reminder1_days: 2147483648, reminder2_days: 35, reminder3_days: 7 } }, actor), /Konfigurasi reminder/);
+
 assert.throws(() => ContractDomainService.updateContract(created.id, { notes: 'NUL' + String.fromCharCode(0) + 'notes' }, actor), /Catatan kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
 
 assert.throws(
