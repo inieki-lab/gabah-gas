@@ -232,6 +232,99 @@ async function main() {
     const mig = new pg.Client({ connectionString: TEST_DB_URL });
     mig.on('error', e => console.error('[pg ledger async error]', e.message));
     await mig.connect();
+
+    // ---------- Loan anti-collision under concurrent approvals ----------
+    // Exercise the real PostgreSQL trigger using two independent transactions.
+    const loanFixture = await mig.query(`
+      SELECT (SELECT id FROM users WHERE is_active = TRUE ORDER BY id LIMIT 1) AS borrower_id,
+             (SELECT id FROM divisions ORDER BY id LIMIT 1) AS division_id
+    `);
+    const borrowerId = loanFixture.rows[0]?.borrower_id;
+    const divisionId = loanFixture.rows[0]?.division_id;
+    const fixtureSuffix = crypto.randomBytes(6).toString('hex');
+    const concurrencyAssetId = `CR-LOAN-CONCURRENCY-${fixtureSuffix}`;
+    const loanAId = `CR-LOAN-A-${fixtureSuffix}`;
+    const loanBId = `CR-LOAN-B-${fixtureSuffix}`;
+    const scheduleStart = new Date(Date.now() + 10 * 86400000).toISOString();
+    const scheduleDue = new Date(Date.now() + 11 * 86400000).toISOString();
+    let loanConcurrencyPass = false;
+    let clientA;
+    let clientB;
+    try {
+      if (!borrowerId || !divisionId) throw new Error('test borrower/division fixture is unavailable');
+      await mig.query(
+        `INSERT INTO assets (id, asset_number, name, owner_division_id, status, condition, location, is_loanable)
+         VALUES ($1, $2, 'CI concurrent-loan fixture', $3, 'available', 'good', 'CI', TRUE)`,
+        [concurrencyAssetId, `CI-LOAN-${fixtureSuffix}`, divisionId],
+      );
+      for (const [id, number] of [[loanAId, `CI-LOAN-A-${fixtureSuffix}`], [loanBId, `CI-LOAN-B-${fixtureSuffix}`]]) {
+        await mig.query(
+          `INSERT INTO loans (id, loan_number, asset_id, borrower_id, purpose, start_date, due_date, status)
+           VALUES ($1, $2, $3, $4, 'CI concurrent approval', $5, $6, 'pending_approval')`,
+          [id, number, concurrencyAssetId, borrowerId, scheduleStart, scheduleDue],
+        );
+      }
+
+      clientA = new pg.Client({ connectionString: TEST_DB_URL });
+      clientB = new pg.Client({ connectionString: TEST_DB_URL });
+      clientA.on('error', e => console.error('[loan concurrency A]', e.message));
+      clientB.on('error', e => console.error('[loan concurrency B]', e.message));
+      await Promise.all([clientA.connect(), clientB.connect()]);
+      await clientA.query('BEGIN');
+      await clientA.query(`UPDATE loans SET status = 'approved' WHERE id = $1`, [loanAId]);
+
+      await clientB.query('BEGIN');
+      const backendB = await clientB.query('SELECT pg_backend_pid() AS pid');
+      let secondSettled = false;
+      let secondError = null;
+      const secondApproval = clientB.query(
+        `UPDATE loans SET status = 'approved' WHERE id = $1`, [loanBId],
+      ).then(() => { secondSettled = true; }, error => { secondSettled = true; secondError = error; });
+
+      let waitedOnAssetLock = false;
+      for (let attempt = 0; attempt < 100 && !secondSettled; attempt += 1) {
+        const wait = await mig.query(
+          `SELECT wait_event_type FROM pg_stat_activity
+           WHERE pid = $1 AND wait_event_type = 'Lock'`,
+          [backendB.rows[0].pid],
+        );
+        if (wait.rowCount > 0) { waitedOnAssetLock = true; break; }
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+
+      await clientA.query('COMMIT');
+      await secondApproval;
+      if (secondError) await clientB.query('ROLLBACK');
+      else await clientB.query('COMMIT');
+
+      const persistedStatuses = await mig.query(
+        'SELECT id, status FROM loans WHERE id = ANY($1::varchar[]) ORDER BY id',
+        [[loanAId, loanBId]],
+      );
+      const statusById = Object.fromEntries(persistedStatuses.rows.map(row => [row.id, row.status]));
+      loanConcurrencyPass = waitedOnAssetLock
+        && Boolean(secondError)
+        && secondError.code === 'P0001'
+        && statusById[loanAId] === 'approved'
+        && statusById[loanBId] === 'pending_approval';
+      record(
+        'Concurrent approvals for one asset serialize and reject the second overlap',
+        'one approved + one pending; second transaction waits and receives P0001',
+        `waited=${waitedOnAssetLock}; error=${secondError?.code || 'none'}; statuses=${JSON.stringify(statusById)}`,
+        loanConcurrencyPass,
+      );
+    } catch (error) {
+      record('Concurrent loan approval anti-collision integration', 'second overlapping approval rejected',
+        `error: ${error.message}`, false);
+      try { await clientA?.query('ROLLBACK'); } catch { /* best effort */ }
+      try { await clientB?.query('ROLLBACK'); } catch { /* best effort */ }
+    } finally {
+      try { await clientA?.end(); } catch { /* best effort */ }
+      try { await clientB?.end(); } catch { /* best effort */ }
+      await mig.query('DELETE FROM loans WHERE id = ANY($1::varchar[])', [[loanAId, loanBId]]);
+      await mig.query('DELETE FROM assets WHERE id = $1', [concurrencyAssetId]);
+    }
+
     // Legacy function profiles must become Karyawan primary plus a secondary
     // capability assignment, and the authoritative JSON state must agree.
     const capabilityRows = await mig.query(
