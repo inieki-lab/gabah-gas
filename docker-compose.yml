@@ -22,7 +22,6 @@ services:
 
   database-provisioner:
     image: postgres:17-alpine
-    container_name: gabah_db_provisioner
     entrypoint: ["/bin/sh", "/scripts/provision-postgres-app-role.sh"]
     environment:
       PGHOST: database
