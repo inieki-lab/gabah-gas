@@ -1708,7 +1708,14 @@ async function startServer() {
         },
       });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err.message });
+      if (isPostgresFailureLatched()) {
+        return res.status(503).json({
+          success: false,
+          code: 'PERSISTENCE_DEGRADED',
+          message: 'Autentikasi sementara tidak tersedia. Silakan coba kembali.',
+        });
+      }
+      res.status(500).json({ success: false, message: 'Autentikasi gagal sementara.' });
     }
   });
 
