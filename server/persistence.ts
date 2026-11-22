@@ -903,6 +903,11 @@ export function isPostgresPersistenceActive(): boolean {
   return isPostgresAvailable;
 }
 
+/** True after an authoritative PostgreSQL runtime failure; restart is required. */
+export function isPostgresFailureLatched(): boolean {
+  return postgresFailureLatched;
+}
+
 
 
 /**
