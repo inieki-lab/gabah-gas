@@ -25,7 +25,7 @@
 
 ### SEC-FU-01 — Content Security Policy is not yet deployed (HIGH)
 
-**Evidence:** `server.ts` explicitly documents that a restrictive CSP is deferred until inline script/style and external integration inventory is complete. The current middleware does not set `Content-Security-Policy` or `Content-Security-Policy-Report-Only`.
+**Evidence (updated 2026-11-23):** PR #243 adds `Content-Security-Policy-Report-Only` with same-origin scripts and explicit temporary style/font/image/connect allowances. It is non-enforcing and currently reports through browser tooling only; no server-side report collector is enabled. Full enforcement remains deferred until role-based browser UAT and violation review pass.
 
 **Why it matters:** CSP is a browser-side containment layer for script injection and related XSS impact. Its absence is especially relevant because the current browser authentication model stores a bearer token in localStorage (SEC-FU-02).
 
