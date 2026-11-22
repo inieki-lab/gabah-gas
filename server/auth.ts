@@ -2,41 +2,114 @@ import crypto from 'node:crypto';
 import { Request } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { hashPassword, verifyPassword, generateToken } from './crypto';
-import { getSecurityEpoch } from './persistence';
+import { getSecurityEpoch, getDbPool, isPostgresPersistenceActive, isPostgresFailureLatched } from './persistence';
 import { extractClientIp } from './requestContext';
 
 export { hashPassword, verifyPassword, generateToken };
 
-// Rate limiting state for brute-force protection
+// Rate limiting state for isolated file-store development only. Production and
+// PostgreSQL-backed deployments use the shared database buckets below so
+// multiple app replicas enforce one common limit.
 interface LoginAttemptRecord {
   attempts: number;
   lastAttempt: number;
   lockedUntil: number;
 }
-
 const loginAttempts = new Map<string, LoginAttemptRecord>();
 let loginAttemptCleanupCounter = 0;
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
+const LOCKOUT_MS = 5 * 60 * 1000;
 
-function isLoginLockoutDisabled(): boolean {
-  return process.env.NODE_ENV !== 'production'
-    && process.env.GABAH_DISABLE_LOGIN_LOCKOUT === 'true';
-}
-
-// Rate limiting state for general API endpoints
 interface ApiRateLimitRecord {
   count: number;
   resetAt: number;
 }
 const apiRateLimits = new Map<string, ApiRateLimitRecord>();
 let apiRateLimitCleanupCounter = 0;
-const API_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_API_REQUESTS_PER_MINUTE = 200; // 200 requests/minute per client IP
+const API_WINDOW_MS = 60 * 1000;
+const MAX_API_REQUESTS_PER_MINUTE = 200;
+let persistentBucketCleanupCounter = 0;
 
-export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaining: number; resetSeconds: number } {
+function isLoginLockoutDisabled(): boolean {
+  return process.env.NODE_ENV !== 'production'
+    && process.env.GABAH_DISABLE_LOGIN_LOCKOUT === 'true';
+}
+
+function hashRateLimitKey(kind: 'api' | 'login', identifier: string): string {
+  return crypto.createHash('sha256').update(kind).update(':').update(identifier).digest('hex');
+}
+
+async function prunePersistentRateLimitBuckets(): Promise<void> {
+  if (++persistentBucketCleanupCounter < 128) return;
+  persistentBucketCleanupCounter = 0;
+  // Cleanup is best-effort; a cleanup failure must never disable the active
+  // limiter decision for the request that triggered it.
+  await getDbPool().query(
+    "DELETE FROM gabah_rate_limit_buckets WHERE updated_at < NOW() - INTERVAL '24 hours'",
+  ).catch(() => undefined);
+}
+
+function pruneExpiredLoginAttempts(now: number): void {
+  if (++loginAttemptCleanupCounter < 128) return;
+  loginAttemptCleanupCounter = 0;
+  for (const [key, entry] of loginAttempts) {
+    if (entry.lockedUntil <= now && now - entry.lastAttempt > LOCKOUT_MS) {
+      loginAttempts.delete(key);
+    }
+  }
+}
+
+/**
+ * Shared API rate limit: 200 requests/minute/IP across all app instances.
+ * If PostgreSQL became unavailable after startup, fail closed rather than
+ * silently resetting the protection in a per-process Map.
+ */
+export async function checkApiRateLimit(
+  clientIp: string,
+): Promise<{ allowed: boolean; remaining: number; resetSeconds: number }> {
+  if (isPostgresFailureLatched()) {
+    throw new Error('Shared API rate-limit storage is unavailable after a PostgreSQL failure.');
+  }
+
+  if (isPostgresPersistenceActive()) {
+    const bucketKey = hashRateLimitKey('api', clientIp || 'unknown');
+    const result = await getDbPool().query(
+      `INSERT INTO gabah_rate_limit_buckets
+         (bucket_type, bucket_key, window_started_at, request_count, last_attempt_at, updated_at)
+       VALUES ('api', $1, NOW(), 1, NOW(), NOW())
+       ON CONFLICT (bucket_type, bucket_key) DO UPDATE SET
+         request_count = CASE
+           WHEN gabah_rate_limit_buckets.window_started_at <= NOW() - INTERVAL '1 minute' THEN 1
+           ELSE LEAST(gabah_rate_limit_buckets.request_count + 1, $2)
+         END,
+         window_started_at = CASE
+           WHEN gabah_rate_limit_buckets.window_started_at <= NOW() - INTERVAL '1 minute' THEN NOW()
+           ELSE gabah_rate_limit_buckets.window_started_at
+         END,
+         last_attempt_at = NOW(),
+         updated_at = NOW()
+       RETURNING request_count,
+         GREATEST(1, CEIL(EXTRACT(EPOCH FROM (window_started_at + INTERVAL '1 minute' - NOW()))))::integer AS reset_seconds`,
+      [bucketKey, MAX_API_REQUESTS_PER_MINUTE + 1],
+    );
+    await prunePersistentRateLimitBuckets();
+    const row = result.rows[0] as { request_count: number; reset_seconds: number } | undefined;
+    if (!row) throw new Error('Shared API rate-limit storage returned no bucket.');
+    const count = Number(row.request_count);
+    const resetSeconds = Math.max(1, Number(row.reset_seconds) || 1);
+    if (count > MAX_API_REQUESTS_PER_MINUTE) {
+      return { allowed: false, remaining: 0, resetSeconds };
+    }
+    return {
+      allowed: true,
+      remaining: Math.max(0, MAX_API_REQUESTS_PER_MINUTE - count),
+      resetSeconds,
+    };
+  }
+
+  // Isolated local file-store fallback. Never used after an authoritative
+  // PostgreSQL runtime failure (guarded above).
   const now = Date.now();
-  // Reclaim expired buckets incrementally to bound process memory.
   if (++apiRateLimitCleanupCounter >= 128) {
     apiRateLimitCleanupCounter = 0;
     for (const [key, entry] of apiRateLimits) {
@@ -44,21 +117,142 @@ export function checkApiRateLimit(clientIp: string): { allowed: boolean; remaini
     }
   }
   let bucket = apiRateLimits.get(clientIp);
-
   if (!bucket || bucket.resetAt <= now) {
     bucket = { count: 1, resetAt: now + API_WINDOW_MS };
     apiRateLimits.set(clientIp, bucket);
     return { allowed: true, remaining: MAX_API_REQUESTS_PER_MINUTE - 1, resetSeconds: 60 };
   }
-
   bucket.count += 1;
   const resetSeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
-
   if (bucket.count > MAX_API_REQUESTS_PER_MINUTE) {
     return { allowed: false, remaining: 0, resetSeconds };
   }
-
   return { allowed: true, remaining: MAX_API_REQUESTS_PER_MINUTE - bucket.count, resetSeconds };
+}
+
+/**
+ * Atomically record a failed login. PostgreSQL's upsert row lock makes the
+ * five-attempt lockout consistent across app replicas and concurrent requests.
+ */
+export async function recordFailedLogin(
+  identifier: string,
+): Promise<{ isLocked: boolean; remainingLockoutSeconds?: number }> {
+  if (isLoginLockoutDisabled()) return { isLocked: false };
+  if (isPostgresFailureLatched()) {
+    throw new Error('Shared login lockout storage is unavailable after a PostgreSQL failure.');
+  }
+
+  if (isPostgresPersistenceActive()) {
+    const bucketKey = hashRateLimitKey('login', identifier);
+    const result = await getDbPool().query(
+      `INSERT INTO gabah_rate_limit_buckets
+         (bucket_type, bucket_key, window_started_at, request_count, last_attempt_at, locked_until, updated_at)
+       VALUES ('login', $1, NOW(), 1, NOW(), NULL, NOW())
+       ON CONFLICT (bucket_type, bucket_key) DO UPDATE SET
+         request_count = CASE
+           WHEN gabah_rate_limit_buckets.locked_until > NOW() THEN gabah_rate_limit_buckets.request_count
+           WHEN gabah_rate_limit_buckets.last_attempt_at <= NOW() - INTERVAL '5 minutes' THEN 1
+           ELSE LEAST(gabah_rate_limit_buckets.request_count + 1, $2)
+         END,
+         window_started_at = CASE
+           WHEN gabah_rate_limit_buckets.locked_until > NOW() THEN gabah_rate_limit_buckets.window_started_at
+           WHEN gabah_rate_limit_buckets.last_attempt_at <= NOW() - INTERVAL '5 minutes' THEN NOW()
+           ELSE gabah_rate_limit_buckets.window_started_at
+         END,
+         locked_until = CASE
+           WHEN gabah_rate_limit_buckets.locked_until > NOW() THEN gabah_rate_limit_buckets.locked_until
+           WHEN gabah_rate_limit_buckets.last_attempt_at <= NOW() - INTERVAL '5 minutes' THEN NULL
+           WHEN gabah_rate_limit_buckets.request_count + 1 >= $2 THEN NOW() + INTERVAL '5 minutes'
+           ELSE NULL
+         END,
+         last_attempt_at = CASE
+           WHEN gabah_rate_limit_buckets.locked_until > NOW() THEN gabah_rate_limit_buckets.last_attempt_at
+           ELSE NOW()
+         END,
+         updated_at = NOW()
+       RETURNING locked_until,
+         (locked_until > NOW()) AS is_locked,
+         CASE WHEN locked_until > NOW()
+           THEN GREATEST(1, CEIL(EXTRACT(EPOCH FROM (locked_until - NOW()))))::integer
+           ELSE NULL END AS remaining_lockout_seconds`,
+      [bucketKey, MAX_ATTEMPTS],
+    );
+    await prunePersistentRateLimitBuckets();
+    const row = result.rows[0] as { is_locked: boolean; remaining_lockout_seconds: number | null } | undefined;
+    if (!row) throw new Error('Shared login lockout storage returned no bucket.');
+    return row.is_locked
+      ? { isLocked: true, remainingLockoutSeconds: Math.max(1, Number(row.remaining_lockout_seconds) || 1) }
+      : { isLocked: false };
+  }
+
+  const now = Date.now();
+  pruneExpiredLoginAttempts(now);
+  let record = loginAttempts.get(identifier);
+  if (!record) {
+    record = { attempts: 1, lastAttempt: now, lockedUntil: 0 };
+    loginAttempts.set(identifier, record);
+    return { isLocked: false };
+  }
+  if (now - record.lastAttempt > LOCKOUT_MS && record.lockedUntil < now) {
+    record.attempts = 1;
+    record.lastAttempt = now;
+    record.lockedUntil = 0;
+    return { isLocked: false };
+  }
+  record.attempts += 1;
+  record.lastAttempt = now;
+  if (record.attempts >= MAX_ATTEMPTS) {
+    record.lockedUntil = now + LOCKOUT_MS;
+    return { isLocked: true, remainingLockoutSeconds: Math.ceil(LOCKOUT_MS / 1000) };
+  }
+  return { isLocked: false };
+}
+
+/** Check whether the shared login bucket is currently locked. */
+export async function isLoginLocked(
+  identifier: string,
+): Promise<{ isLocked: boolean; remainingLockoutSeconds?: number }> {
+  if (isLoginLockoutDisabled()) return { isLocked: false };
+  if (isPostgresFailureLatched()) {
+    throw new Error('Shared login lockout storage is unavailable after a PostgreSQL failure.');
+  }
+
+  if (isPostgresPersistenceActive()) {
+    const bucketKey = hashRateLimitKey('login', identifier);
+    const result = await getDbPool().query(
+      `SELECT GREATEST(1, CEIL(EXTRACT(EPOCH FROM (locked_until - NOW()))))::integer AS remaining_lockout_seconds
+       FROM gabah_rate_limit_buckets
+       WHERE bucket_type = 'login' AND bucket_key = $1 AND locked_until > NOW()`,
+      [bucketKey],
+    );
+    const row = result.rows[0] as { remaining_lockout_seconds: number } | undefined;
+    return row
+      ? { isLocked: true, remainingLockoutSeconds: Math.max(1, Number(row.remaining_lockout_seconds) || 1) }
+      : { isLocked: false };
+  }
+
+  pruneExpiredLoginAttempts(Date.now());
+  const record = loginAttempts.get(identifier);
+  if (!record || record.lockedUntil <= Date.now()) return { isLocked: false };
+  return {
+    isLocked: true,
+    remainingLockoutSeconds: Math.ceil((record.lockedUntil - Date.now()) / 1000),
+  };
+}
+
+/** Reset failed attempts for only the matching identifier after successful auth. */
+export async function clearFailedLogins(identifier: string): Promise<void> {
+  if (isPostgresFailureLatched()) {
+    throw new Error('Shared login lockout storage is unavailable after a PostgreSQL failure.');
+  }
+  if (isPostgresPersistenceActive()) {
+    await getDbPool().query(
+      "DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'login' AND bucket_key = $1",
+      [hashRateLimitKey('login', identifier)],
+    );
+    return;
+  }
+  loginAttempts.delete(identifier);
 }
 
 // Session duration: 7 days
