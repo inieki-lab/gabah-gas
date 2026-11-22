@@ -22,7 +22,7 @@ function validateContractText(label: string, value: unknown, maxLength: number, 
   }
   const normalized = value.trim();
   if ((required && !normalized) || Array.from(value).length > maxLength) {
-    throw Object.assign(new Error(`${label} wajib diisi dan maksimal ${maxLength} karakter.`), { statusCode: 400 });
+    throw Object.assign(new Error(required ? `${label} wajib diisi dan maksimal ${maxLength} karakter.` : `${label} maksimal ${maxLength} karakter.`), { statusCode: 400 });
   }
 }
 
