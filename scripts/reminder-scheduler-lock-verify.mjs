@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const source = fs.readFileSync('server/notifications/reminderScheduler.ts', 'utf8');
+const acquireStart = source.indexOf('async function acquireLeaderLock()');
+const releaseStart = source.indexOf('async function releaseLeaderLock()', acquireStart);
+const releaseEnd = source.indexOf('/** Execute one reminder sweep pass', releaseStart);
+assert.ok(acquireStart >= 0 && releaseStart > acquireStart && releaseEnd > releaseStart, 'scheduler lock helpers must exist');
+
+const acquire = source.slice(acquireStart, releaseStart);
+assert.ok(acquire.includes('let client: any = null;'), 'acquire must track the checked-out client');
+assert.ok(acquire.includes('finally {') && acquire.includes('if (client) client.release();'), 'failed/negative lock acquisition must always release its client');
+assert.ok(acquire.includes('client = null; // ownership transferred'), 'successful acquisition must transfer client ownership to the lock holder');
+
+const release = source.slice(releaseStart, releaseEnd);
+assert.ok(release.includes('async function releaseLeaderLock(): Promise<void>'), 'leader release must be asynchronous');
+assert.ok(release.indexOf('await client.query') >= 0, 'leader advisory unlock must be awaited');
+assert.ok(release.indexOf('await client.query') < release.indexOf('client.release()'), 'pool client must not be released before advisory unlock finishes');
+
+const timerStart = source.indexOf('export function startReminderScheduler()');
+const stopStart = source.indexOf('export async function stopReminderScheduler()', timerStart);
+assert.ok(timerStart >= 0 && stopStart > timerStart, 'scheduler lifecycle methods must exist');
+const lifecycle = source.slice(timerStart);
+assert.equal((lifecycle.match(/await releaseLeaderLock\(\)/g) || []).length, 3, 'both scheduler ticks and stop must await lock release');
+console.log('PASS | failed advisory-lock acquisition always releases checked-out client');
+console.log('PASS | advisory unlock is awaited before returning client to pool');
+console.log('PASS | interval, boot catch-up, and stop await leader lock release');
+console.log('TOTAL: 3 | PASS: 3 | FAIL: 0');
