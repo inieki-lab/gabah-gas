@@ -1334,6 +1334,14 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Menunggu CI exact-head; belum diklaim sebagai UAT.
 
 
+### 2026-11-22 — UUID untuk ID audit kontrak
+
+- Audit generator ID menemukan pengecualian yang tertinggal di `server/contracts.ts` dan `server/notifications/notificationService.ts`: audit reminder memakai timestamp + 32-bit random suffix, sementara notifikasi in-app memakai 64-bit random suffix.
+- Ganti ID audit kontrak, audit reminder, dan notifikasi reminder in-app menjadi UUID dari `node:crypto`; prefix domain dipertahankan.
+- Regression `contract-creation-relations-verify.mjs` memastikan seluruh generator tersebut memakai UUID.
+- Menunggu CI exact-head; belum diklaim sebagai UAT.
+
+
 ### 2026-11-22 — Perbaikan lifecycle advisory lock scheduler reminder
 
 - Audit `reminderScheduler.ts` menemukan `releaseLeaderLock()` menjalankan query `pg_advisory_unlock` tanpa `await`, lalu langsung mengembalikan client ke pool. Karena advisory lock bersifat session-scoped, koneksi berpotensi dipakai ulang saat lock belum dilepas.
