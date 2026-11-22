@@ -113,6 +113,9 @@ jobs:
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
 
+      - name: Public landing page employee-directory privacy regression
+        run: npm run test:public-landing-privacy
+
       - name: Role dashboard scope checks
         run: npm run test:dashboard-scope
 

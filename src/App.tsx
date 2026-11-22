@@ -684,16 +684,7 @@ export default function App() {
             </div>
           </div>
         )}
-        <LandingPage
-          onOpenLogin={() => setViewMode('login')}
-          onQuickLogin={(u) => {
-            // A demo-role button must never call the authenticated role-switch API
-            // before login. Prefill the selected account and require its password.
-            setLoginEmail(u.email || '');
-            setViewMode('login');
-          }}
-          demoUsers={allUsers}
-        />
+        <LandingPage onOpenLogin={() => setViewMode('login')} />
       </div>
     );
   }

@@ -1,3 +1,12 @@
+## [2026-11-22] — Remove employee directory data from public landing page
+
+- Remove public demo-role shortcuts and the public employee-account directory, including names, login email addresses, and department details.
+- Stop passing authenticated `allUsers` state into `LandingPage`. Returning to the public landing page after an authenticated session can no longer render the previously loaded employee directory.
+- Keep public login navigation, but require users to enter their own credentials through the normal server-authenticated login flow.
+- Add `test:public-landing-privacy` and make it a required CI step to guard against reintroducing account identity data on the public page.
+
+---
+
 ## [2026-11-22] — Enforce read permissions on core navigation
 
 - Remove the unconditional navigation bypass for Dashboard, My Assets, Loans, Tickets, and Knowledge Base when PostgreSQL permission metadata is present.
