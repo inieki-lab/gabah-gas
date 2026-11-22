@@ -32,6 +32,24 @@ assert.ok(persistence.includes('parseLoanDateTimestamp(l.start_date)'), 'normali
 assert.ok(persistence.includes('new Date(startTimestamp).toISOString()'), 'normalized PostgreSQL rows receive explicit UTC timestamps');
 assert.ok(persistence.includes('start_date=EXCLUDED.start_date,due_date=EXCLUDED.due_date'), 'legacy normalized rows are corrected on the next committed snapshot');
 
+
+const requestStart = server.indexOf('static requestLoan(');
+const approveStart = server.indexOf('static approveLoan(', requestStart);
+const requestService = server.slice(requestStart, approveStart);
+assert.ok(requestService.includes("payload.purpose.includes('\\u0000')"), 'loan purpose rejects NUL');
+assert.ok(requestService.includes("payload.borrower_phone.includes('\\u0000')"), 'borrower phone rejects NUL');
+const rejectStart = server.indexOf('static rejectLoan(');
+const operateStart = server.indexOf('static canOperateLoan(', rejectStart);
+const rejectService = server.slice(rejectStart, operateStart);
+assert.ok(rejectService.includes("reason.includes('\\u0000')"), 'loan rejection reason rejects NUL');
+const handoverStart = server.indexOf('static handoverLoan(');
+const returnStart = server.indexOf('static returnLoan(', handoverStart);
+const handoverService = server.slice(handoverStart, returnStart);
+assert.ok(handoverService.includes("handoverNotes.includes('\\u0000')") && handoverService.includes('handoverNotes.length > 2000'), 'handover notes are bounded and reject NUL');
+const ticketStart = server.indexOf('static createTicket(', returnStart);
+const returnService = server.slice(returnStart, ticketStart);
+assert.ok(returnService.includes("returnNotes.includes('\\u0000')") && returnService.includes('returnNotes.length > 2000'), 'return notes are bounded and reject NUL');
+
 console.log('PASS | Loan schedules use Asia/Jakarta wall-clock semantics consistently');
 console.log('PASS | WIB overlap and adjacent-boundary checks');
 console.log('PASS | Legacy date-only and explicit ISO compatibility');
