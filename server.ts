@@ -18,6 +18,7 @@ import { refreshRbacPolicy, isRbacSuperadmin, isSuperadminActor, countRbacSupera
 import { startReminderScheduler, runManualOnce as runReminderManualOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
+import { createUploadConcurrencyLimiter } from './server/upload-security';
 import { filterDashboardAttentionItems } from './server/dashboard-attention-scope';
 import {
   createSession,
@@ -4313,9 +4314,20 @@ async function startServer() {
   // SEC-08: Contract documents are stored as durable files, not metadata-only placeholders.
   // The configured upload directory must be backed by persistent storage in production.
   const uploadRoot = () => path.resolve(process.env.GABAH_UPLOAD_DIR || path.join(process.cwd(), 'uploads'));
+  // Memory storage is bounded to 2 concurrent uploads × 10 MiB per app process.
+  // Multipart metadata is also capped to prevent field/part-count exhaustion.
+  const limitContractUploadConcurrency = createUploadConcurrencyLimiter(2, 10);
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 },
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+      files: 1,
+      fields: 10,
+      parts: 11,
+      fieldNameSize: 100,
+      fieldSize: 64 * 1024,
+      headerPairs: 100,
+    },
     fileFilter: (req, file, cb) => {
       const mimeByExtension: Record<string, string> = {
         '.pdf': 'application/pdf',
@@ -4355,7 +4367,7 @@ async function startServer() {
     return next();
   };
 
-  app.post('/api/contracts/:id/documents/upload', authorizeContractDocumentUpload, upload.single('file'), async (req, res) => {
+  app.post('/api/contracts/:id/documents/upload', authorizeContractDocumentUpload, limitContractUploadConcurrency, upload.single('file'), async (req, res) => {
     let savedFilePath: string | null = null;
     let savedContract: any = null;
     let savedDocumentId: string | null = null;
