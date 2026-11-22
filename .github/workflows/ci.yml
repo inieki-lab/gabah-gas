@@ -77,6 +77,9 @@ jobs:
       - name: Asset PATCH validation and persistence rollback regression
         run: npm run test:asset-patch-atomicity
 
+      - name: Asset assignment and lifecycle rollback regression
+        run: npm run test:asset-workflow-atomicity
+
       - name: User creation profile validation regression
         run: npm run test:user-create-profile-validation
 
