@@ -129,6 +129,9 @@ jobs:
       - name: Per-account login lockout isolation (runtime)
         run: npm run test:login-lockout-runtime
 
+      - name: Auth rate-limit memory cardinality and fail-closed regression
+        run: npm run test:auth-rate-limit-memory
+
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
 
