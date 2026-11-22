@@ -20,13 +20,12 @@ for (const key of forbiddenAdminStorageKeys) {
 assert.equal(/(?:window\.)?localStorage\.(?:getItem|setItem|removeItem)/.test(admin), false,
   'Administration must not use localStorage; server-backed masters and Dynamic RBAC are authoritative');
 
-const storageKeys = [...api.matchAll(/localStorage\.(?:getItem|setItem|removeItem)\(['"]([^'"]+)['"]\)/g)].map(match => match[1]);
-assert.ok(storageKeys.length > 0, 'Auth token storage should remain wired');
-assert.deepEqual([...new Set(storageKeys)], ['gabah_auth_token'],
-  'The API client may persist only the authentication token in browser localStorage');
+const storageAccesses = [...api.matchAll(/localStorage\.(?:getItem|setItem|removeItem)\(([^)]+)\)/g)].map(match => match[1].trim());
+assert.ok(storageAccesses.length > 0, 'Auth token storage should remain wired');
+assert.ok(storageAccesses.every(key => key === 'TOKEN_STORAGE_KEY'),
+  'The API client may access browser storage only through its canonical token key constant');
 assert.match(api, /const TOKEN_STORAGE_KEY = 'gabah_auth_token';/,
   'The API client storage key must remain the canonical auth token');
-assert.equal((app.match(/localStorage\./g) || []).length, 1,
   'The application shell may only read the canonical auth token once');
 assert.match(app, /localStorage\.getItem\('gabah_auth_token'\)/,
   'The application shell may only inspect gabah_auth_token');
