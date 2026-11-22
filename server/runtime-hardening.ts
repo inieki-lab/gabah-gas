@@ -72,7 +72,7 @@ const PUBLIC_API_PATHS = [
   '/api/auth/login',
 ];
 
-export function gabahSecurityMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function gabahSecurityMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   // Express routes are case-insensitive and accept a trailing slash by default.
   // Normalize paths before authorization comparisons so route variants cannot
   // bypass exact-path security checks.
@@ -82,14 +82,31 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
 
   // General API rate limiter across all endpoints (mitigates brute-force, scraping, and enumeration)
   const clientIp = extractClientIp(req) || 'unknown';
-  const rateLimit = checkApiRateLimit(clientIp);
+  // Keep orchestration health probes available even if the rate-limit store is
+  // degraded. All other API traffic fails closed when shared PostgreSQL state
+  // cannot be read or updated.
+  let rateLimit = { allowed: true, remaining: 200, resetSeconds: 60 };
+  if (normalizedPath !== '/api/health') {
+    try {
+      rateLimit = await checkApiRateLimit(clientIp);
+    } catch {
+      res.setHeader('Retry-After', '5');
+      res.setHeader('X-RateLimit-Limit', '200');
+      res.setHeader('X-RateLimit-Remaining', '0');
+      return void res.status(503).json({
+        success: false,
+        code: 'RATE_LIMIT_STORE_UNAVAILABLE',
+        message: 'Layanan pembatasan permintaan sementara tidak tersedia. Coba kembali.',
+      });
+    }
+  }
   res.setHeader('X-RateLimit-Limit', '200');
   res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
   res.setHeader('X-RateLimit-Reset', rateLimit.resetSeconds.toString());
 
   if (!rateLimit.allowed) {
     res.setHeader('Retry-After', rateLimit.resetSeconds.toString());
-    return res.status(429).json({
+    return void res.status(429).json({
       success: false,
       message: `Terlalu banyak permintaan API. Harap tunggu ${rateLimit.resetSeconds} detik sebelum mencoba kembali.`,
       retry_after_seconds: rateLimit.resetSeconds,
@@ -102,7 +119,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   // Only health remains available so orchestration can detect degraded readiness.
   if (isPostgresFailureLatched() && normalizedPath !== '/api/health') {
     res.setHeader('Retry-After', '30');
-    return res.status(503).json({
+    return void res.status(503).json({
       success: false,
       code: 'PERSISTENCE_DEGRADED',
       message: 'PostgreSQL mengalami kegagalan setelah menjadi penyimpanan utama. API dikarantina sampai proses aplikasi direstart dan state dipulihkan dari database.',
@@ -117,7 +134,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
 
   // If a client attempted to forge identity via x-user-id header or without a valid token, immediately reject with 403
   if (authResult.spoofAttempt) {
-    return res.status(403).json({
+    return void res.status(403).json({
       success: false,
       message: authResult.error || 'Akses ditolak: Percobaan manipulasi identitas (ID spoofing) terdeteksi.',
     });
@@ -125,7 +142,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
 
   const actor = authResult.user;
   if (!actor) {
-    return res.status(401).json({
+    return void res.status(401).json({
       success: false,
       message: authResult.error || 'Sesi pengguna tidak valid atau telah kedaluwarsa. Silakan login kembali.',
     });
@@ -144,7 +161,7 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     const allowedAuditorActions = ['/api/auth/logout', '/api/notifications/read-all'];
     const isNotificationRead = normalizedPath.match(/^\/api\/notifications\/[^/]+\/read$/);
     if (!allowedAuditorActions.includes(normalizedPath) && !isNotificationRead) {
-      return res.status(403).json({
+      return void res.status(403).json({
         success: false,
         message: 'Akses ditolak: Peran Auditor memiliki hak akses Read-Only dan dilarang membuat atau mengubah data.',
       });
@@ -158,10 +175,10 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
     ? hasRbacPermission(String(actor.id), permission)
     : isGlobalObserver(actor);
   if (normalizedPath === '/api/audit-logs' && !hasObserverRoutePermission('audit.read')) {
-    return res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });
+    return void res.status(403).json({ success: false, message: 'Akses audit log tidak diizinkan.' });
   }
   if (normalizedPath === '/api/reconciliation' && !hasObserverRoutePermission('reconciliation.read')) {
-    return res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
+    return void res.status(403).json({ success: false, message: 'Akses rekonsiliasi tidak diizinkan.' });
   }
 
   // Match the route case-insensitively, but preserve the original ID casing:
@@ -170,12 +187,12 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
   const assetCollectionActions = new Set(['bulk-import', 'create-options']);
   const assetAction = assetMatch?.[1].toLowerCase();
   if (assetMatch && !assetCollectionActions.has(assetAction || '') && !canSeeAsset(actor, assetMatch[1])) {
-    return res.status(403).json({ success: false, message: 'Aset berada di luar scope pengguna.' });
+    return void res.status(403).json({ success: false, message: 'Aset berada di luar scope pengguna.' });
   }
 
   const ticketMatch = req.path.match(/^\/api\/tickets\/([^/]+)\/status\/?$/i);
   if (ticketMatch && !canManageTicket(actor, ticketMatch[1])) {
-    return res.status(403).json({ success: false, message: 'Pengguna tidak berwenang mengubah tiket ini.' });
+    return void res.status(403).json({ success: false, message: 'Pengguna tidak berwenang mengubah tiket ini.' });
   }
 
   if (normalizedPath === '/api/dashboard/attention') {
