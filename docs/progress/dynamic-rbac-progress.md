@@ -1,5 +1,13 @@
 ### Company profile settings persistence — 2026-11-23 (PR #241; CI pending)
 
+- Added migration `103_system_settings_company_profile.sql` for company name, accounting standard, base currency, and fiscal year. Defaults are seeded idempotently.
+- Added authenticated reads and Superadmin-only writes. The API rejects extra fields, non-string values, invalid lengths, and invalid fiscal years; updates lock the singleton row and append audit history in the same transaction.
+- Company profile audit history is protected from UPDATE, DELETE, and TRUNCATE. No-op saves do not create audit entries.
+- Administration now loads the company profile from PostgreSQL, saves through the API, and disables editing when loading fails. Operational SLA values remain read-only server policy and are excluded from this endpoint.
+- Added `test:system-settings-persistence` and PostgreSQL integration coverage for anonymous/staff/Superadmin access, validation, save/no-op/restore audit counts, and immutable audit history. Exact-head CI is pending.
+
+### Company profile settings persistence — 2026-11-23 (PR #241; CI pending)
+
 - Added migration `103_system_settings_company_profile.sql` for the company profile fields: company name, accounting standard, base currency, and fiscal year. Defaults are seeded idempotently.
 - Added authenticated reads and Superadmin-only writes. The API rejects extra fields, non-string values, invalid lengths, and invalid fiscal years; updates lock the singleton row and append audit history in the same transaction.
 - Company profile audit history is protected from UPDATE, DELETE, and TRUNCATE. No-op saves do not create audit entries.
