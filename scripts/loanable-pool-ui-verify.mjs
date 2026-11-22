@@ -7,7 +7,10 @@ const taxonomy = fs.readFileSync('server/taxonomy.ts', 'utf8');
 const database = fs.readFileSync('server/db.ts', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const checks = [
-  ['Both data sources pass through one eligibility filter', /const source = loanableAssets[\s\S]*?\? loanableAssets[\s\S]*?: \(Array\.isArray\(assets\) \? assets : \[\]\);[\s\S]*?return source\.filter\(a => a\.is_loanable === true && a\.status === 'available'\);/.test(source)],
+  ['An explicitly empty loanable asset list remains authoritative instead of falling back to stale assets', /const source = Array\.isArray\(loanableAssets\)[\s\S]*?\? loanableAssets/.test(source)],
+  ['Loan form hides borrowed, active, and overdue assets even when inventory props are stale', /outstandingBorrowedAssetIds[\s\S]*?\['active', 'borrowed', 'overdue'\][\s\S]*?!outstandingBorrowedAssetIds\.has\(String\(a\.id\)\)/.test(source)],
+  ['Loan form recalculates eligibility when existing loan data changes', /\}, \[loanableAssets, assets, existingLoans\]\)/.test(source)],
+  ['Both asset sources pass through the same loanability and available-status filter', /return source\.filter\(a =>[\s\S]*?a\.is_loanable === true[\s\S]*?a\.status === 'available'/.test(source)],
   ['Available inventory alone is not treated as loanable', !/a\.is_loanable \|\| a\.status === 'available'/.test(source)],
   ['IT loan catalog includes laptop, PC, monitor and portable presentation peripherals', ['HLT', 'HPC', 'HMON', 'HHDM', 'HPTR', 'HADP', 'HDCK', 'HKEY', 'HWEB', 'HAUD', 'HUSB', 'HEXT'].every(code => taxonomy.includes(`code: '${code}'`))],
   ['GA projector is a loanable GA asset while CCTV is GA-owned but not loanable by default', /code: 'GPRJ'[\s\S]{0,250}owner_division: 'GA'[\s\S]{0,250}is_loanable_by_default: true/.test(taxonomy) && /code: 'GCCTV'[\s\S]{0,250}owner_division: 'GA'[\s\S]{0,250}is_loanable_by_default: false/.test(taxonomy)],
@@ -15,6 +18,7 @@ const checks = [
   ['Backend resolves infrastructure policy from authoritative category metadata and protected labels', /export function isNonLoanableInfrastructureAsset/.test(services) && /mainType === 'IT-S'/.test(services) && /protectedCodes\.has\(code\)/.test(services) && /protectedDescription/.test(services)],
   ['Asset creation forces infrastructure and license categories non-loanable even when API submits true', /const effectiveLoanable = !isNonLoanableInfrastructureAsset\(policyAsset\)/.test(services) && /is_loanable: effectiveLoanable/.test(services)],
   ['Loan request rejects infrastructure based on authoritative category metadata', /if \(isNonLoanableInfrastructureAsset\(asset as any\)\)/.test(services)],
+  ['Backend rejects a stale available asset while an outstanding borrowed or overdue loan exists', /outstandingBorrowedLoan = db\.loans\.find\(loan =>[\s\S]*?loan\.asset_id === asset\.id && \['borrowed', 'overdue'\]/.test(services) && /Aset sedang dipinjam dan belum dikembalikan/.test(services)],
   ['Asset update API rejects attempts to enable loanability for infrastructure assets', /req\.body\.is_loanable === true && isNonLoanableInfrastructureAsset\(asset as any\)/.test(server)],
   ['Bulk asset update rejects infrastructure loanability overrides', /isLoanable === true && isNonLoanableInfrastructureAsset\(existing as any\)/.test(server)],
   ['Loan form explains IT peripherals and owner-based approval', /kabel HDMI, pointer, adaptor/.test(source) && /Persetujuan mengikuti pemilik aset/.test(source)],
