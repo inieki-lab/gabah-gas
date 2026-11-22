@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
-import { isPostgresPersistenceActive } from './persistence';
+import { isPostgresPersistenceActive, isPostgresFailureLatched } from './persistence';
 import { isSuperadminActor, isAuditorActor, hasRbacScope, hasRbacPermission } from './rbac-policy';
 import { GabahDomainService } from './services';
 import { extractClientIp } from './requestContext';
@@ -93,6 +93,19 @@ export function gabahSecurityMiddleware(req: Request, res: Response, next: NextF
       success: false,
       message: `Terlalu banyak permintaan API. Harap tunggu ${rateLimit.resetSeconds} detik sebelum mencoba kembali.`,
       retry_after_seconds: rateLimit.resetSeconds,
+    });
+  }
+
+  // A runtime failure after PostgreSQL became authoritative leaves the
+  // in-memory snapshot potentially newer than the last committed DB state.
+  // Do not serve operational reads or accept writes from that uncertain state.
+  // Only health remains available so orchestration can detect degraded readiness.
+  if (isPostgresFailureLatched() && normalizedPath !== '/api/health') {
+    res.setHeader('Retry-After', '30');
+    return res.status(503).json({
+      success: false,
+      code: 'PERSISTENCE_DEGRADED',
+      message: 'PostgreSQL mengalami kegagalan setelah menjadi penyimpanan utama. API dikarantina sampai proses aplikasi direstart dan state dipulihkan dari database.',
     });
   }
 
