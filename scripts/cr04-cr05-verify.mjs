@@ -686,7 +686,6 @@ async function main() {
       "SELECT COUNT(*)::int AS count FROM gabah_notification_rule_audit WHERE rule_id = 'rule-sla'",
     );
 
-    const notificationAuditFixtureId = 'CI-NOTIFICATION-AUDIT-' + crypto.randomBytes(6).toString('hex');
     await notificationAuditClient.query('BEGIN');
     await notificationAuditClient.query(
       'INSERT INTO gabah_notification_rule_audit (rule_id, previous_is_active, new_is_active, changed_by_user_id) VALUES ($1, TRUE, FALSE, $2)',
