@@ -22,6 +22,16 @@ const loanRoute = api.slice(loanRouteStart, loanRouteEnd);
 for (const action of ['approve', 'reject', 'handover', 'return']) assert.ok(loanRoute.includes(action + ':'), 'server must expose ' + action + ' action capability');
 assert.ok(ui.includes('loan.allowed_actions?.approve') && ui.includes('loan.allowed_actions?.handover') && ui.includes('loan.allowed_actions?.return'));
 const normalize = s => s === 'pending_approval' ? 'pending' : s === 'borrowed' ? 'active' : s;
+const returnStart = services.indexOf('static returnLoan(');
+const returnEnd = services.indexOf('static createTicket(', returnStart + 10);
+assert.ok(returnStart >= 0 && returnEnd > returnStart, 'returnLoan must exist');
+const returnMethod = services.slice(returnStart, returnEnd);
+assert.ok(returnMethod.includes("['borrowed', 'overdue'].includes(loan.status)"), 'overdue loans must be returnable after handover');
+assert.ok(returnMethod.includes("asset.status !== 'assigned'"), 'return must still require assigned asset custody');
+assert.ok(ui.includes("'poor' | 'broken' | 'damaged'"), 'UI callback must carry all backend inspection conditions');
+for (const condition of ['excellent', 'good', 'fair', 'poor', 'damaged', 'broken']) {
+  assert.ok(ui.includes(`value: '${condition}'`), 'return inspection UI must offer ' + condition);
+}
 for (const [a,b] of [['pending_approval','pending'],['pending','pending'],['borrowed','active'],['active','active'],['approved','approved'],['returned','returned'],['rejected','rejected']]) assert.equal(normalize(a),b);
 
 const rejectStart = services.indexOf('static rejectLoan(');

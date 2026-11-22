@@ -36,7 +36,7 @@ interface LoansViewProps {
   onApproveLoan: (loanId: string) => void;
   onRejectLoan: (loanId: string, reason: string) => void;
   onHandoverLoan: (loanId: string) => void;
-  onReturnLoan: (loanId: string, condition: 'excellent' | 'good' | 'fair' | 'damaged', notes: string) => void;
+  onReturnLoan: (loanId: string, condition: 'excellent' | 'good' | 'fair' | 'poor' | 'broken' | 'damaged', notes: string) => void;
   onOpenBastModal?: (loan: Loan) => void;
   onOpenBast?: (loan: Loan) => void;
 }
@@ -62,7 +62,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [rejectReason, setRejectReason] = useState<string>('');
 
   const [returningLoan, setReturningLoan] = useState<Loan | null>(null);
-  const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
+  const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'poor' | 'broken' | 'damaged'>('good');
   const [returnNotes, setReturnNotes] = useState<string>('');
 
   const isAuditor = GabahService.isAuditor(currentUser);
@@ -422,7 +422,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   { value: 'excellent', label: 'Sangat Baik (Mulus)' },
                   { value: 'good', label: 'Baik & Lengkap' },
                   { value: 'fair', label: 'Wajar (Baret Halus)' },
+                  { value: 'poor', label: 'Perlu Perbaikan' },
                   { value: 'damaged', label: 'Ada Kerusakan' },
+                  { value: 'broken', label: 'Rusak Berat / Tidak Berfungsi' },
                 ].map((item) => (
                   <button
                     key={item.value}

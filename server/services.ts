@@ -1072,11 +1072,12 @@ export class GabahDomainService {
       throw Object.assign(new Error('Akses ditolak: Hanya peminjam, penanggung jawab divisi pemilik aset, atau Admin GABAH yang berwenang mengembalikan pinjaman ini.'), { statusCode: 403 });
     }
 
-    // State transition: only a physically handed-over (borrowed) unit can be
-    // returned. Blocks return of approved/pending loans and double return.
-    if (loan.status !== 'borrowed') {
+    // State transition: a physically handed-over unit remains returnable
+    // after its due date. Legacy/explicit overdue records must follow the same
+    // inspection and custody-release path as borrowed records.
+    if (!['borrowed', 'overdue'].includes(loan.status)) {
       this.recordAudit('LOAN_RETURN_INVALID_STATE', 'Loans', `Ditolak: pengembalian pinjaman ${loan.loan_number} dari status "${loan.status}" bukan transisi valid`, actor, loan.id);
-      throw Object.assign(new Error(`Pengembalian hanya dapat dilakukan pada pinjaman berstatus "borrowed" (status saat ini: "${loan.status}"). Pinjaman yang sudah dikembalikan tidak dapat dikembalikan ulang.`), { statusCode: 409 });
+      throw Object.assign(new Error(`Pengembalian hanya dapat dilakukan pada pinjaman berstatus "borrowed" atau "overdue" (status saat ini: "${loan.status}"). Pinjaman yang sudah dikembalikan tidak dapat dikembalikan ulang.`), { statusCode: 409 });
     }
 
     const allowedConditions = ['good', 'fair', 'poor', 'broken', 'excellent', 'damaged'] as const;

@@ -10,6 +10,7 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test:loan-authz": "node scripts/loan-authz-verify.mjs",
+    "test:loan-overdue-return": "node --import tsx scripts/loan-overdue-return-verify.mjs",
     "test:loanable-pool-ui": "node scripts/loanable-pool-ui-verify.mjs",
     "test:meeting-room": "node scripts/meeting-room-stage3-verify.mjs",
     "test:room-capability-ui": "node scripts/room-capability-ui-verify.mjs",
