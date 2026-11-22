@@ -1275,3 +1275,5 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Batas numerik kontrak juga diselaraskan dengan tipe SQL: `notice_period_days` dan seluruh reminder dibatasi ke rentang PostgreSQL `INTEGER` (0–2.147.483.647), sedangkan `contract_value` dibatasi ke nilai aman JS yang berada di bawah kapasitas `NUMERIC(18,2)`. Berlaku untuk create dan update; regression overflow ditambahkan.
 
 - Maintenance juga menolak NUL byte pada `title`, `technician_name`, `notes`, dan setiap item checklist. Sebelumnya batas panjang ada, tetapi karakter NUL masih dapat masuk ke JSONB snapshot dan menggagalkan commit. Regression `maintenance-input-validation` diperluas.
+
+- Pembuatan, bulk import, dan update profil pengguna juga menolak NUL byte pada nama, email, divisi, departemen, telepon, dan Telegram ID. Batas panjang sebelumnya sudah ada, tetapi karakter NUL masih dapat masuk ke teks/JSONB snapshot. Regression `user-create-profile-validation` diperluas untuk ketiga jalur.
