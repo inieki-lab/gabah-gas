@@ -51,31 +51,43 @@ function intervalMs(): number {
 }
 
 async function acquireLeaderLock(): Promise<boolean> {
+  let client: any = null;
   try {
     const pool = getDbPool();
     if (!pool) return true; // dev/file-store mode: proceed (idempotency protects)
-    const client = await pool.connect();
+    client = await pool.connect();
     const res = await client.query('SELECT pg_try_advisory_lock($1) AS acquired', [LEADER_LOCK_KEY]);
     if (res.rows[0]?.acquired) {
-      leaderLockClient = client; // keep the client so the lock persists across ticks
+      leaderLockClient = client; // keep the client so the session lock persists
+      client = null; // ownership transferred to releaseLeaderLock()
       return true;
     }
-    client.release();
     return false;
   } catch {
     return true; // DB hiccup: run anyway; idempotency keys prevent duplicates
+  } finally {
+    // A failed lock query must not leak a checked-out pool client.
+    if (client) client.release();
   }
 }
 
-function releaseLeaderLock(): void {
+async function releaseLeaderLock(): Promise<void> {
+  const client = leaderLockClient;
+  leaderLockClient = null;
+  if (!client) return;
+
+  // Advisory locks are session-scoped. Await unlock before returning the
+  // connection to the pool; releasing it while the query is in flight can
+  // expose a still-locked session to another request/instance.
   try {
-    if (leaderLockClient) {
-      leaderLockClient.query('SELECT pg_advisory_unlock($1)', [LEADER_LOCK_KEY]).catch(() => undefined);
-      leaderLockClient.release();
-      leaderLockClient = null;
-    }
+    await client.query('SELECT pg_advisory_unlock($1)', [LEADER_LOCK_KEY]);
   } catch {
-    leaderLockClient = null;
+    // A broken connection is discarded by pg-pool on release(error).
+  }
+  try {
+    client.release();
+  } catch {
+    // Connection may already have been removed from the pool.
   }
 }
 
@@ -113,7 +125,7 @@ export function startReminderScheduler(): void {
       try {
         await runOnce('scheduler');
       } finally {
-        releaseLeaderLock();
+        await releaseLeaderLock();
       }
     })();
   }, interval);
@@ -130,17 +142,17 @@ export function startReminderScheduler(): void {
         try {
           await runOnce('scheduler');
         } finally {
-          releaseLeaderLock();
+          await releaseLeaderLock();
         }
       })();
     }, 15000).unref?.();
   }
 }
 
-export function stopReminderScheduler(): void {
+export async function stopReminderScheduler(): Promise<void> {
   if (timer) {
     clearInterval(timer);
     timer = null;
   }
-  releaseLeaderLock();
+  await releaseLeaderLock();
 }
