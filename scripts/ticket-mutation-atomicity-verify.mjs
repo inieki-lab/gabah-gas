@@ -11,9 +11,9 @@ assert.match(createService, /TICKET_LINKED_TO_CONTRACT'[\s\S]*newTicket\.id, per
 assert.match(createService, /TICKET_CREATED'[\s\S]*newTicket\.id, persistAudit\)/);
 
 const cases = [
-  ["app.post('/api/tickets'", 'createTicket', ['createdNotificationIds', 'createdAuditIds']),
-  ["app.patch('/api/tickets/:id/assignment'", 'assignment', ['ticketBefore', 'ticketAfter', 'createdNotificationIds', 'createdAuditIds']),
-  ["app.patch('/api/tickets/:id/status'", 'status', ['ticketBefore', 'ticketAfter', 'createdAuditIds']),
+  ["app.post('/api/tickets'", 'createTicket', ['createdNotificationIds', 'createdAuditIds']],
+  ["app.patch('/api/tickets/:id/assignment'", 'assignment', ['ticketBefore', 'ticketAfter', 'createdNotificationIds', 'createdAuditIds']],
+  ["app.patch('/api/tickets/:id/status'", 'status', ['ticketBefore', 'ticketAfter', 'createdAuditIds']],
 ];
 for (const [path, label, required] of cases) {
   const start = server.indexOf(path);
