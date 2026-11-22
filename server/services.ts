@@ -1103,6 +1103,24 @@ export class GabahDomainService {
     if (isAuditorActor(actor)) {
       throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
     }
+
+    // Match the normalized PostgreSQL schema before mutating in-memory state.
+    // An overlong title previously failed the VARCHAR(255) insert and latched
+    // the authoritative PostgreSQL store closed for the entire application.
+    if (typeof payload.title !== 'string') {
+      throw Object.assign(new Error('Judul tiket wajib berupa teks.'), { statusCode: 400 });
+    }
+    const normalizedTitle = payload.title.trim();
+    if (!normalizedTitle || Array.from(normalizedTitle).length > 255) {
+      throw Object.assign(new Error('Judul tiket wajib diisi dan maksimal 255 karakter.'), { statusCode: 400 });
+    }
+    if (typeof payload.description !== 'string') {
+      throw Object.assign(new Error('Deskripsi tiket wajib berupa teks.'), { statusCode: 400 });
+    }
+    const normalizedDescription = payload.description.trim();
+    if (!normalizedDescription || Array.from(normalizedDescription).length > 20000) {
+      throw Object.assign(new Error('Deskripsi tiket wajib diisi dan maksimal 20.000 karakter.'), { statusCode: 400 });
+    }
     // Strict divisional categories per PRD §3.5: a ticket must target an
     // operational division that actually staffs a queue. Without this gate a
     // client-supplied category (e.g. "KEUANGAN") silently creates an orphan
@@ -1159,8 +1177,8 @@ export class GabahDomainService {
       id: `TKT-${Date.now()}`,
       ticket_number: ticketNumber,
       ticket_code: ticketNumber,
-      title: payload.title.trim(),
-      description: payload.description.trim(),
+      title: normalizedTitle,
+      description: normalizedDescription,
       category: payload.category,
       priority: payload.priority,
       status: 'open',
