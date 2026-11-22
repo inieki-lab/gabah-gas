@@ -22,7 +22,7 @@ export PGPASSWORD="$PGADMIN_PASSWORD"
 psql --no-psqlrc --set=ON_ERROR_STOP=1 \
   --host="$PGHOST" --port="$PGPORT" --username="$PGADMIN_USER" --dbname="$PGDATABASE" \
   --set=admin_user="$PGADMIN_USER" --set=app_user="$PGAPP_USER" \
-  --set=app_password="$PGAPP_PASSWORD" <<'SQL'
+  --set=app_password="$PGAPP_PASSWORD" --set=db_name="$PGDATABASE" <<'SQL'
 -- The bootstrap account must be a superuser for this one-shot provisioning step.
 SELECT 1 / CASE WHEN rolsuper THEN 1 ELSE 0 END
 FROM pg_roles WHERE rolname = current_user;
