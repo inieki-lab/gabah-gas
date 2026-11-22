@@ -1,7 +1,8 @@
-## [2026-11-22] — Collision-resistant contract audit identifiers
+## [2026-11-22] — Collision-resistant contract and reminder identifiers
 
 - Replace the remaining contract audit ID generator based on `Date.now()` plus a small `Math.random()` suffix with Node.js `crypto.randomUUID()`.
-- Add a contract creation regression that verifies the generated `CONTRACT_CREATED` audit record uses a UUID-based identifier.
+- Use UUIDs for contract reminder audit entries and in-app notification IDs instead of timestamp/short-random identifiers.
+- Add contract creation regression assertions for UUID-based contract and reminder audit/notification identifiers.
 
 ---
 
