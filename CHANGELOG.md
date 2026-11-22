@@ -1,3 +1,12 @@
+## [2026-11-22] — Overdue loan return and complete inspection choices
+
+- Allow the return workflow to process both `borrowed` and legacy/explicit `overdue` loans; pending, approved, rejected, and already returned states remain blocked.
+- Preserve the custody invariant: return still requires the asset to be in `assigned` state, and physical inspection determines whether it returns to `available` or `damaged`.
+- Expose all six supported inspection conditions in the return UI: excellent, good, fair, poor, damaged, and broken.
+- Extend the loan status contract regression to guard overdue return eligibility and all inspection choices.
+
+---
+
 ## [2026-11-19] — Latch PostgreSQL runtime failures and make state synchronization atomic
 
 - Once PostgreSQL has become the authoritative runtime store, a pool or write failure now latches subsequent mutations closed; development no longer silently reports success by switching subsequent writes to the JSON fallback.
