@@ -32,10 +32,10 @@ assert.match(app, /localStorage\.getItem\('gabah_auth_token'\)/,
   'The application shell may only inspect gabah_auth_token');
 
 
-assert.match(admin, /await gabahApi\\.createLocation\\(/, 'Location creation must be persisted through the server API');
-assert.match(admin, /await gabahApi\\.createDivision\\(/, 'Division creation must be persisted through the server API');
-assert.match(admin, /await gabahApi\\.updateDivision\\(/, 'Division updates must be persisted through the server API');
-assert.match(admin, /await gabahApi\\.deleteDivision\\(/, 'Division deletion must be persisted through the server API');
+assert.match(admin, /await gabahApi\.createLocation\(/, 'Location creation must be persisted through the server API');
+assert.match(admin, /await gabahApi\.createDivision\(/, 'Division creation must be persisted through the server API');
+assert.match(admin, /await gabahApi\.updateDivision\(/, 'Division updates must be persisted through the server API');
+assert.match(admin, /await gabahApi\.deleteDivision\(/, 'Division deletion must be persisted through the server API');
 assert.match(admin, /pratinjau sesi saat ini; belum tersimpan sebagai konfigurasi server/i,
   'System settings must disclose that the current form is preview-only');
 assert.match(admin, /pratinjau legacy; izin aktif tetap mengikuti Dynamic RBAC di server/i,
