@@ -57,6 +57,7 @@ Kontrak koneksi internal:
 - Untuk volume lama, set `PGADMIN_USER` dan `PGADMIN_PASSWORD` sesuai akun bootstrap yang sudah ada; `PGUSER`/`PGPASSWORD` menjadi login aplikasi baru. Provisioner memindahkan ownership objek database sebelum app dinyalakan.
 - PostgreSQL host port `127.0.0.1:GABAH_DB_PORT` (default 5432) hanya untuk administrasi; app tidak menggunakannya.
 - App menunggu healthcheck PostgreSQL dan berjalan fail-fast jika database/migrasi gagal. Tidak ada file-store fallback pada runtime Compose.
+- Container aplikasi berjalan sebagai user non-root, root filesystem read-only, seluruh Linux capabilities dibuang, `no-new-privileges` aktif, PID dibatasi, dan hanya `/tmp` serta volume upload yang writable.
 - Jika port host bentrok, ubah `GABAH_WEB_PORT` atau `GABAH_DB_PORT`; jangan ubah `PGHOST=database` / `PGPORT=5432` internal.
 
 ### 3. Operasional Harian

@@ -67,6 +67,12 @@ docker exec "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$DB_APP_USER" -d gabah_c
 docker run -d \
   --name "$APP_CONTAINER" \
   --network "$NETWORK" \
+  --init \
+  --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+  --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  --pids-limit 256 \
   -p "127.0.0.1:${APP_PORT}:3000" \
   -e NODE_ENV=production \
   -e PGHOST="$DB_CONTAINER" \
@@ -130,6 +136,21 @@ NODE_VERSION="$(docker exec "$APP_CONTAINER" node -p 'process.versions.node')"
   exit 1
 }
 
+RUNTIME_PROFILE="$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}|{{json .HostConfig.CapDrop}}|{{json .HostConfig.SecurityOpt}}|{{.HostConfig.PidsLimit}}|{{.HostConfig.Init}}' "$APP_CONTAINER")"
+[[ "$RUNTIME_PROFILE" == 'true|["ALL"]|["no-new-privileges:true"]|256|true' ]] || {
+  echo "Expected hardened container profile (including init), got: $RUNTIME_PROFILE" >&2
+  exit 1
+}
+APP_UID="$(docker exec "$APP_CONTAINER" node -p 'process.getuid()')"
+[[ "$APP_UID" != "0" ]] || {
+  echo "Application container must not run as root." >&2
+  exit 1
+}
+if docker exec "$APP_CONTAINER" sh -c 'touch /app/.rootfs-write-test' >/dev/null 2>&1; then
+  echo "Application root filesystem unexpectedly allows writes." >&2
+  exit 1
+fi
+docker exec "$APP_CONTAINER" sh -c 'touch /tmp/.runtime-tmp-test && rm /tmp/.runtime-tmp-test'
 docker exec "$APP_CONTAINER" sh -c 'touch /app/uploads/.runtime-write-test && rm /app/uploads/.runtime-write-test'
-echo "PASS — production image booted on Node $NODE_VERSION with PostgreSQL, non-superuser app role, existing-object ownership transfer, and writable persistent uploads."
+echo "PASS — production image runs non-root with read-only rootfs, no Linux capabilities, no-new-privileges, PID limit, writable tmpfs/uploads, and restricted PostgreSQL app role."
 rm -f "/tmp/gabah-docker-health-$$.json"

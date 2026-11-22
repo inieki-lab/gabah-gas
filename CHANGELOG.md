@@ -1,3 +1,11 @@
+## [2026-11-22] — Harden the application container runtime
+
+- Enable a read-only root filesystem for the app container; retain writes only on the persistent uploads volume and a bounded `/tmp` tmpfs.
+- Drop all Linux capabilities, retain `no-new-privileges`, enable the init process, and cap the app process tree at 256 PIDs.
+- Extend production Docker smoke tests to verify the app runs non-root, cannot write to its root filesystem, can write only to expected writable mounts, and has the intended Docker security profile.
+
+---
+
 ## [2026-11-22] — Separate PostgreSQL bootstrap administrator from the application login
 
 - Add a one-shot Compose provisioner that creates/rotates a dedicated application login with `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOREPLICATION`, and `NOBYPASSRLS`.
