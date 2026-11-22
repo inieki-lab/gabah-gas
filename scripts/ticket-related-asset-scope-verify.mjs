@@ -58,7 +58,7 @@ assert.throws(() => GabahDomainService.createTicket({ ...validTicket, title: 'x'
 assert.equal(db.tickets.length, initialCount, 'Overlong title must be rejected before ticket mutation');
 assert.throws(() => GabahDomainService.createTicket({ ...validTicket, title: 'Valid title', description: 'x'.repeat(20001) }, admin), /maksimal 20.000 karakter/);
 assert.equal(db.tickets.length, initialCount, 'Oversized description must be rejected before ticket mutation');
-assert.throws(() => GabahDomainService.createTicket({ ...validTicket, title: 'Invalid\\u0000title' }, admin), /maksimal 255 karakter/);
+assert.throws(() => GabahDomainService.createTicket({ ...validTicket, title: 'Invalid' + String.fromCharCode(0) + 'title' }, admin), /karakter NUL/);
 assert.equal(db.tickets.length, initialCount, 'PostgreSQL-incompatible null bytes must be rejected before ticket mutation');
 const unicodeBoundaryTicket = GabahDomainService.createTicket({ ...validTicket, title: '😀'.repeat(255) }, admin);
 assert.equal(Array.from(unicodeBoundaryTicket.title).length, 255, '255 Unicode code points must fit PostgreSQL VARCHAR(255)');
