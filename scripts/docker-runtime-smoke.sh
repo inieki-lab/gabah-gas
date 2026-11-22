@@ -136,9 +136,9 @@ NODE_VERSION="$(docker exec "$APP_CONTAINER" node -p 'process.versions.node')"
   exit 1
 }
 
-RUNTIME_PROFILE="$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}|{{join .HostConfig.CapDrop ","}}|{{join .HostConfig.SecurityOpt ","}}|{{.HostConfig.PidsLimit}}' "$APP_CONTAINER")"
-[[ "$RUNTIME_PROFILE" == "true|ALL|no-new-privileges:true|256" ]] || {
-  echo "Expected hardened container profile, got: $RUNTIME_PROFILE" >&2
+RUNTIME_PROFILE="$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}|{{json .HostConfig.CapDrop}}|{{json .HostConfig.SecurityOpt}}|{{.HostConfig.PidsLimit}}|{{.HostConfig.Init}}' "$APP_CONTAINER")"
+[[ "$RUNTIME_PROFILE" == 'true|["ALL"]|["no-new-privileges:true"]|256|true' ]] || {
+  echo "Expected hardened container profile (including init), got: $RUNTIME_PROFILE" >&2
   exit 1
 }
 APP_UID="$(docker exec "$APP_CONTAINER" node -p 'process.getuid()')"
