@@ -395,7 +395,7 @@ export class GabahDomainService {
     assigned_to_user_id?: string;
     license_detail?: any;
     notes?: string;
-  }, actor: ServerUser): ServerAsset {
+  }, actor: ServerUser, persistAudit = true): ServerAsset {
     // Initial custody is a relational assignment, not a best-effort label.
     // Validate it before numbering or mutating any asset data.
     const assignedToId = payload.assigned_to_user_id == null ? '' : String(payload.assigned_to_user_id).trim();
@@ -560,7 +560,7 @@ export class GabahDomainService {
     db.assets.unshift(newAsset);
 
     // Record audit
-    this.recordAudit('ASSET_CREATED', 'Assets', `Mendaftarkan aset baru ${newAsset.asset_number} (${newAsset.name}) [Owner: ${newAsset.owner_division}]`, actor, newAsset.id);
+    this.recordAudit('ASSET_CREATED', 'Assets', `Mendaftarkan aset baru ${newAsset.asset_number} (${newAsset.name}) [Owner: ${newAsset.owner_division}]`, actor, newAsset.id, persistAudit);
 
     return newAsset;
   }

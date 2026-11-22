@@ -86,6 +86,8 @@
     "test:asset-patch-atomicity": "node scripts/asset-patch-atomicity-verify.mjs",
     "test:asset-workflow-atomicity": "node scripts/asset-workflow-atomicity-verify.mjs",
     "test:asset-move-atomicity": "node scripts/asset-move-atomicity-verify.mjs",
+    "test:asset-create-atomicity": "node scripts/asset-create-atomicity-verify.mjs",
+    "test:asset-bulk-import-atomicity": "node scripts/asset-bulk-import-atomicity-verify.mjs",
     "test:user-create-profile-validation": "node scripts/user-create-profile-validation-verify.mjs",
     "test:ticket-reporter-transition": "node scripts/ticket-reporter-transition-verify.mjs",
     "test:ticket-lifecycle-no-skip": "node scripts/ticket-lifecycle-no-skip-verify.mjs",
