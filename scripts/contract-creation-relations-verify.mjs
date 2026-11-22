@@ -10,11 +10,15 @@ assert.ok(actor, 'IT actor fixture exists');
 
 // Permission regression: update-only RBAC grants must never imply create authority.
 const contractSource = readFileSync(new URL('../server/contracts.ts', import.meta.url), 'utf8');
+const notificationSource = readFileSync(new URL('../server/notifications/notificationService.ts', import.meta.url), 'utf8');
 const createStart = contractSource.indexOf('export function canCreateContract(');
 const createEnd = contractSource.indexOf('// SEC-08:', createStart);
 const createGuard = contractSource.slice(createStart, createEnd);
 assert.ok(createGuard.includes("'contracts.create'"), 'Create permission must be checked explicitly');
 assert.ok(!createGuard.includes("'contracts.update'"), 'Update permission must not imply create authority');
+assert.ok(contractSource.includes("id: `LOG-CTR-${randomUUID()}`"), 'Contract audit records must use UUID identifiers');
+assert.ok(notificationSource.includes("id: `AUD-CTR-${crypto.randomUUID()}`"), 'Contract reminder audit records must use UUID identifiers');
+assert.ok(notificationSource.includes("id: `NTF-${crypto.randomUUID()}`"), 'In-app contract reminder notification IDs must use UUID identifiers');
 
 
 const base = {
