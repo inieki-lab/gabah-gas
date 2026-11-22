@@ -8,8 +8,8 @@ const roomView = fs.readFileSync('src/components/views/MeetingRoomsView.tsx', 'u
 
 assert.match(service, /parseLoanDateTimestamp/, 'Backend uses the shared loan datetime parser');
 assert.match(service, /return \{ text, timestamp: parseLoanDateTimestamp\(text\) \}/, 'Backend delegates schedule parsing to the shared helper');
-assert.match(dateParser, /const dateTime = \/\^\\\\d\{4\}/, 'Shared parser validates datetime-local hour/minute');
-assert.match(dateParser, /const dateOnly = \/\^\\\\d\{4\}/, 'Shared parser preserves legacy date-only values');
+assert.ok(dateParser.includes("const dateTime = /^(\\d{4})"), 'Shared parser validates datetime-local hour/minute');
+assert.ok(dateParser.includes("const dateOnly = /^(\\d{4})"), 'Shared parser preserves legacy date-only values');
 assert.match(service, /existingStart = parseLoanDateTimestamp\(l\.start_date\)/, 'Request collision check uses the shared timezone parser');
 assert.match(service, /start = parseLoanDateTimestamp\(loan\.start_date\)/, 'Approval collision check uses the shared timezone parser');
 assert.match(service, /start >= due/, 'Backend rejects non-increasing loan schedules');
