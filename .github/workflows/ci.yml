@@ -51,6 +51,9 @@ jobs:
       - name: UAT shared credential mode safety regression
         run: npm run test:uat-credential-mode
 
+      - name: PostgreSQL least-privilege role configuration regression
+        run: npm run test:postgres-role-config
+
       - name: Superadmin Administration entry authorization regression
         run: npm run test:superadmin-administration-entry
 
