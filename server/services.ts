@@ -8,6 +8,7 @@ import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { isPostgresPersistenceActive } from './persistence';
+import { parseLoanDateTimestamp } from '../shared/loan-datetime';
 
 /**
  * Infrastructure/software categories are never eligible for general loans.
@@ -786,19 +787,8 @@ export class GabahDomainService {
 
     const parseLoanDate = (value: unknown): { text: string; timestamp: number } => {
       const text = typeof value === 'string' ? value.trim() : '';
-      // The browser loan form submits datetime-local (YYYY-MM-DDTHH:mm).
-      // Accept legacy date-only records/clients as well, but validate both strictly.
-      const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
-      const dateTime = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d)$/.exec(text);
-      const match = dateTime || dateOnly;
-      if (!match) return { text, timestamp: Number.NaN };
-      const [, year, month, day, hour = '00', minute = '00'] = match;
-      const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)));
-      const validDate = parsed.getUTCFullYear() === Number(year)
-        && parsed.getUTCMonth() === Number(month) - 1
-        && parsed.getUTCDate() === Number(day);
-      if (!validDate) return { text, timestamp: Number.NaN };
-      return { text, timestamp: parsed.getTime() };
+      // datetime-local and legacy date-only values are company-local Asia/Jakarta.
+      return { text, timestamp: parseLoanDateTimestamp(text) };
     };
     const startDate = parseLoanDate(payload.start_date);
     const dueDate = parseLoanDate(payload.due_date);
@@ -814,8 +804,8 @@ export class GabahDomainService {
       if (l.asset_id !== asset.id) return false;
       if (!['approved', 'borrowed'].includes(l.status)) return false;
 
-      const existingStart = new Date(l.start_date).getTime();
-      const existingDue = new Date(l.due_date).getTime();
+      const existingStart = parseLoanDateTimestamp(l.start_date);
+      const existingDue = parseLoanDateTimestamp(l.due_date);
 
       return start < existingDue && due > existingStart;
     });
@@ -837,8 +827,8 @@ export class GabahDomainService {
       borrower_department: borrower.department,
       borrower_phone: borrowerPhone,
       purpose: payload.purpose.trim(),
-      start_date: startDate.text,
-      due_date: dueDate.text,
+      start_date: new Date(start).toISOString(),
+      due_date: new Date(due).toISOString(),
       status: 'pending_approval',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -887,15 +877,15 @@ export class GabahDomainService {
     }
 
     // Re-verify no collision with other ALREADY APPROVED / BORROWED loans for THIS specific asset
-    const start = new Date(loan.start_date).getTime();
-    const due = new Date(loan.due_date).getTime();
+    const start = parseLoanDateTimestamp(loan.start_date);
+    const due = parseLoanDateTimestamp(loan.due_date);
     const conflicting = db.loans.find(l => {
       if (l.id === loan.id) return false;
       if (l.asset_id !== loan.asset_id) return false;
       if (!['approved', 'borrowed'].includes(l.status)) return false;
 
-      const existingStart = new Date(l.start_date).getTime();
-      const existingDue = new Date(l.due_date).getTime();
+      const existingStart = parseLoanDateTimestamp(l.start_date);
+      const existingDue = parseLoanDateTimestamp(l.due_date);
 
       return start < existingDue && due > existingStart;
     });
