@@ -1,3 +1,13 @@
+## [2026-11-22] — Move API and login rate limiting into shared PostgreSQL state
+
+- Store hashed API client keys and hashed per-account/IP login identifiers in a dedicated PostgreSQL bucket table; raw IP/email identifiers are not stored in the limiter table.
+- Enforce the 200-request/minute API limit and five-failure/five-minute login lockout atomically across app replicas.
+- Keep health probes available during rate-limit-store failures; fail closed with HTTP 503 for other API traffic if shared limiter state cannot be read or updated.
+- Retain in-memory fallback only for isolated file-store development; never fall back after an authoritative PostgreSQL runtime failure.
+- Add PostgreSQL integration tests for concurrent API traffic, concurrent login failures, per-identifier isolation, and successful-login reset behavior.
+
+---
+
 ## [2026-11-22] — Bound contract upload memory and multipart resource use
 
 - Limit memory-backed contract uploads to two concurrent requests per app process; excess requests receive HTTP 503 with `Retry-After`.
