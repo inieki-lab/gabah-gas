@@ -1225,3 +1225,12 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - An uppercase path such as `/API/...` could therefore reach a state-changing Express route while skipping the global pre-response persistence gate.
 - The gate now normalizes the request path to lowercase before deciding whether a mutation must wait for persistence. Added a regression assertion to the PostgreSQL runtime-persistence contract.
 - Working branch: `fix/persistence-gate-case-insensitive-api-2026-11-22`; exact-head CI required before merge.
+
+
+### 2026-11-22 — Karantina API setelah kegagalan PostgreSQL runtime
+
+- Temuan terverifikasi: `persistDataStore()` melatch PostgreSQL authoritative store setelah pool/write gagal dan menolak mutasi berikutnya, tetapi proses masih dapat melayani GET dari objek `db` yang mungkin sudah berubah sebelum commit gagal. Response gate mencegah respons sukses palsu, namun tidak membatalkan mutasi in-memory.
+- Dampak: sesudah respons 503, GET berikutnya pada proses yang sama berpotensi memperlihatkan state sementara yang belum committed; state itu akan hilang saat restart dan hydration ulang dari PostgreSQL.
+- Mitigasi pada branch ini: ekspor status failure latch; middleware keamanan mengarantina seluruh API selain `/api/health` dengan HTTP 503 setelah latch aktif; health melaporkan `status=degraded`, `ready=false`, dan restart-required, bukan menyebutnya file-store fallback.
+- Restart diperlukan untuk memulihkan state otoritatif dari database. Tidak ada fallback diam-diam ke file store setelah PostgreSQL pernah aktif.
+- Validasi kontrak ditambahkan ke regression runtime persistence dan akan dijalankan pada CI exact-head. Belum diklaim sebagai hasil browser UAT.
