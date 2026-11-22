@@ -25,6 +25,17 @@ const branchLocationMigration = fs.readFileSync('server/migrations/026_map_branc
 const server = fs.readFileSync('server.ts', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
 const assignUserRolesRoute = server.slice(server.indexOf("app.put('/api/admin/rbac/users/:id/roles'"), server.indexOf('// ==========================================\n  // API ROUTES (FIRST)', server.indexOf("app.put('/api/admin/rbac/users/:id/roles'")));
+const rbacAdminRoutePaths = [
+  "app.get('/api/admin/rbac/permissions'",
+  "app.get('/api/admin/rbac/roles'",
+  "app.get('/api/admin/rbac/user-assignments'",
+  "app.post('/api/admin/rbac/roles'",
+  "app.patch('/api/admin/rbac/roles/:id'",
+  "app.delete('/api/admin/rbac/roles/:id'",
+  "app.put('/api/admin/rbac/roles/:id/permissions'",
+  "app.put('/api/admin/rbac/roles/:id/scopes'",
+  "app.put('/api/admin/rbac/users/:id/roles'",
+];
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
 const policy = fs.readFileSync('server/rbac-policy.ts', 'utf8');
 const domainServices = fs.readFileSync('server/services.ts', 'utf8');
@@ -92,6 +103,10 @@ const checks = [
   ['asset write grants cover exactly the division authority roles', /role_key IN \('superadmin',\s*'it',\s*'ga',\s*'supply_chain',\s*'pibc'\)/i.test(assetWritePermissionSeed)],
   ['asset write grants expose no implicit access to denied legacy roles', !/karyawan|auditor|humas|sekretaris/i.test((assetWritePermissionSeed.match(/INSERT INTO[\s\S]*?ON CONFLICT \(role_id, permission_key\) DO NOTHING/) || [''])[0])],
   ['Superadmin-only role CRUD endpoints exist', /app\.post\('\/api\/admin\/rbac\/roles'/i.test(server) && /app\.patch\('\/api\/admin\/rbac\/roles\/:id'/i.test(server) && /app\.delete\('\/api\/admin\/rbac\/roles\/:id'/i.test(server)],
+  ['every Dynamic RBAC administration endpoint checks Superadmin before touching RBAC data', rbacAdminRoutePaths.every(route => {
+    const start = server.indexOf(route);
+    return start >= 0 && /requireRbacSuperadmin\\(req, res\\)/.test(server.slice(start, start + 420));
+  })],
   ['permission and scope configuration endpoints exist', /\/roles\/:id\/permissions/i.test(server) && /\/roles\/:id\/scopes/i.test(server)],
   ['role administration is guarded by stable Superadmin assignment', /requireRbacSuperadmin[\s\S]{0,400}isRbacSuperadmin\(actor\.id\)/i.test(server)],
   ['Superadmin role cannot be deleted or have its permissions overwritten', /role\.is_superadmin \|\| role\.role_key === 'superadmin'/i.test(server)],
