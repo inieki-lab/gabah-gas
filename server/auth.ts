@@ -17,6 +17,7 @@ interface LoginAttemptRecord {
 }
 const loginAttempts = new Map<string, LoginAttemptRecord>();
 let loginAttemptCleanupCounter = 0;
+export const LOGIN_ATTEMPT_KEY_LIMIT = 10_000;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000;
 
@@ -27,6 +28,7 @@ interface ApiRateLimitRecord {
 const apiRateLimits = new Map<string, ApiRateLimitRecord>();
 let apiRateLimitCleanupCounter = 0;
 const API_WINDOW_MS = 60 * 1000;
+export const API_RATE_LIMIT_KEY_LIMIT = 20_000;
 const MAX_API_REQUESTS_PER_MINUTE = 200;
 let persistentBucketCleanupCounter = 0;
 
@@ -55,8 +57,8 @@ async function prunePersistentRateLimitBuckets(): Promise<void> {
   ).catch(() => undefined);
 }
 
-function pruneExpiredLoginAttempts(now: number): void {
-  if (++loginAttemptCleanupCounter < 128) return;
+function pruneExpiredLoginAttempts(now: number, force = false): void {
+  if (!force && ++loginAttemptCleanupCounter < 128) return;
   loginAttemptCleanupCounter = 0;
   for (const [key, entry] of loginAttempts) {
     if (entry.lockedUntil <= now && now - entry.lastAttempt > LOCKOUT_MS) {
@@ -116,16 +118,21 @@ export async function checkApiRateLimit(
   // Isolated local file-store fallback. Never used after an authoritative
   // PostgreSQL runtime failure (guarded above).
   const now = Date.now();
-  if (++apiRateLimitCleanupCounter >= 128) {
+  const key = String(clientIp || 'unknown').slice(0, 128);
+  const forceSweep = apiRateLimits.size >= API_RATE_LIMIT_KEY_LIMIT;
+  if (forceSweep || ++apiRateLimitCleanupCounter >= 128) {
     apiRateLimitCleanupCounter = 0;
     for (const [key, entry] of apiRateLimits) {
       if (entry.resetAt <= now) apiRateLimits.delete(key);
     }
   }
-  let bucket = apiRateLimits.get(clientIp);
+  let bucket = apiRateLimits.get(key);
   if (!bucket || bucket.resetAt <= now) {
+    if (!bucket && apiRateLimits.size >= API_RATE_LIMIT_KEY_LIMIT) {
+      return { allowed: false, remaining: 0, resetSeconds: 60 };
+    }
     bucket = { count: 1, resetAt: now + API_WINDOW_MS };
-    apiRateLimits.set(clientIp, bucket);
+    apiRateLimits.set(key, bucket);
     return { allowed: true, remaining: MAX_API_REQUESTS_PER_MINUTE - 1, resetSeconds: 60 };
   }
   bucket.count += 1;
@@ -195,6 +202,12 @@ export async function recordFailedLogin(
   pruneExpiredLoginAttempts(now);
   let record = loginAttempts.get(identifier);
   if (!record) {
+    if (loginAttempts.size >= LOGIN_ATTEMPT_KEY_LIMIT) {
+      pruneExpiredLoginAttempts(now, true);
+      if (loginAttempts.size >= LOGIN_ATTEMPT_KEY_LIMIT) {
+        return { isLocked: true, remainingLockoutSeconds: Math.ceil(LOCKOUT_MS / 1000) };
+      }
+    }
     record = { attempts: 1, lastAttempt: now, lockedUntil: 0 };
     loginAttempts.set(identifier, record);
     return { isLocked: false };
