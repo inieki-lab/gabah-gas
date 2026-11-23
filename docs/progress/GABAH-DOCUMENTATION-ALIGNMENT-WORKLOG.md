@@ -155,3 +155,17 @@ The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, curre
 - Source inspection baseline: main SHA `f39db6b8fd819d301f49815c7a33a04c80b2a6c0`.
 - No app code, migrations, or data were changed in this pass.
 - No tests were executed; all findings are source-inspection only, not TESTED/PASS.
+
+
+## Pass 6 — CI evidence and further business-rule alignment (23 November 2026)
+
+- Marked ADR-009 (the old nine-login-role decision) SUPERSEDED. ADR-010 now refers to a valid Sekretariat Direksi capability/permission, not a separate primary role.
+- Updated PRD: employee profile/primary role is distinct from Sekretariat Direksi and Humas capabilities; asset assign/move requirements require operation permission + owner scope; final disposal requires Superadmin authority; ticket routing describes direct IT Support assignment and the ME PIBC queue.
+- Updated Business Rules: Sekretariat VIP reservation is triggered by a capability/permission, not a primary role. Removed stale line-number-only implementation references where practical.
+- Updated Architecture and ADR review dates so a 2026-09 snapshot is not mistaken for a fresh review.
+
+### CI evidence (important exact-head boundary)
+- GitHub Actions CI run **#3187**, run ID `45120214155`, job `verify` / job ID `137512020298`, completed **success** for PR head `8e6b9dfa99eded295882af36df9c53338f5747f1` (merge checkout `2ac6053225957b656598ac53c58b42fa9b80ed22`).
+- The run executed `npm ci`, production dependency audit, production dependency/browser storage policy checks, lint, build, Docker image build, PostgreSQL 17 service-backed integration, P0 security verification, RBAC and data-scope suites, asset/loan/ticket/room/contract/maintenance regression suites, and Docker/HTTP smoke checks. The log includes passing 142/142 Dynamic RBAC checks, 96/96 asset scope checks, 132/132 primary asset mutation checks, 55/55 user/asset-related checks, and multiple PostgreSQL behavioral totals (including T2B-1 19/19, T2B-2 22/22, T2B-3 30/30, maintenance authz 33/33). No test failure was reported in the successful job.
+- **Do not attribute run #3187 to later commits.** Additional documentation commits were pushed after head `8e6b9d`; the current head has its own CI run #3193. At worklog update time, #3193 was still in progress. Wait for and inspect its exact-head result before claiming current PR CI is green.
+- CI success validates the code tree included in that run, not the prose accuracy of every Markdown document, browser UAT with business users, production backup/restore, staging deploy, or sign-off.
