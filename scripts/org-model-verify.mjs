@@ -115,7 +115,9 @@ async function main() {
 
     // Case 5: Jabatan tidak otomatis memberikan permission mutation
     // Buat user Karyawan dengan jabatan DIREKSI — tetap ditolak mutasi aset.
-    const kar = users.find(u => u.role === 'Karyawan');
+    // Select an ordinary employee with no IT/GA operational capability;
+    // job level alone must never grant asset mutation authority.
+    const kar = users.find(u => u.role === 'Karyawan' && !(u.role_keys || []).some(key => ['it', 'ga'].includes(String(key).toLowerCase())));
     await req(b, 'PATCH', `/api/users/${kar.id}`, { token: admin, body: { job_level_code: 'DIREKSI' } });
     const karLogin = await (async () => { const r = await req(b, 'POST', '/api/auth/login', { body: { email: kar.email, password: up } }); return r.json?.data?.token || '' })();
     const gaAsset = ((await req(b, 'GET', '/api/assets', { token: admin })).json?.data || []).find(a => a.owner_division === 'GA');
