@@ -181,3 +181,18 @@ The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, curre
 ### Current exact-head CI boundary
 - CI #3187 passed on older head `8e6b9dfa99eded295882af36df9c53338f5747f1`; it is not evidence for later commits.
 - Current head after this pass must be re-fetched. Its exact-head CI run is expected to be separate; no PASS claim until that run completes.
+
+
+## Pass 8 — Remaining AI guidance and legacy audit documents (23 November 2026)
+
+- Re-inventoried the current branch tree: **45 Markdown files** (the base-main inventory was 41 before four new documentation files were added).
+- `docs/AI-CHANGE-GUARDRAILS.md`: removed the obsolete PR #18 / `fix/role-based-navigation` hard-coded branch workflow. It now requires the shared project-context and implementation-truth documents and defers branch target to current `AGENTS.md` / collaboration policy.
+- `.agents/skills/gabah-maintainer/SKILL.md`: corrected the audit folder path (`docs/audits/`), made the shared context/truth register mandatory reading, and rewrote role examples so RPC/SC and PIBC are employee location/unit contexts, while Sekretariat Direksi and Humas are capabilities, not primary roles.
+- `docs/GABAH-FIXES-AND-RECOMMENDATIONS.md`: preserved as a dated 29 September historical audit and warned that old findings (including the former absence of loan rejection) and nine-role assumptions are not current.
+- `docs/progress/dynamic-rbac-progress.md`: labeled as a chronological log; its old PR/CI status and owner-code assumptions must not override current project context. A historical PR #167 statement that treated SC as a division owner is explicitly superseded by the current RPC/SC location model and new-asset guard.
+- Rechecked the current docs for stale PR #18 references. The active AI guardrails and maintainer skill no longer direct contributors to that obsolete integration branch.
+
+### Remaining documentation work
+- 45-file inventory now includes new shared context, documentation control, and implementation truth register. Not all 45 files have been individually reconciled in this pass; historical audit/log documents intentionally retain old facts with explicit historical warnings.
+- Full Markdown link validation remains NOT RUN. Several documents contain external links and historical file references that need a dedicated link checker.
+- Current exact-head CI is still required after the latest commits; no status from an older head may be reused.
