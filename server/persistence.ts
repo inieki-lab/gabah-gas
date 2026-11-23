@@ -193,9 +193,16 @@ function hydrateDbFromState(state: any): void {
       });
     } else {
       // Sync canonical role and label if needed
-      mergedUsers[foundIndex].role = cu.role;
-      mergedUsers[foundIndex].role_label = cu.role_label || mergedUsers[foundIndex].role_label;
-      if (typeof mergedUsers[foundIndex].authVersion !== 'number') mergedUsers[foundIndex].authVersion = 1;
+      const existingUser = mergedUsers[foundIndex];
+      existingUser.role = cu.role;
+      existingUser.role_label = cu.role_label || existingUser.role_label;
+      // Older persisted snapshots predate the role_keys mirror. Restore only
+      // the canonical seed grants when the field is absent/malformed; an
+      // explicit empty array remains an intentional revocation and is kept.
+      if (!Array.isArray(existingUser.role_keys) && Array.isArray(cu.role_keys)) {
+        existingUser.role_keys = [...cu.role_keys];
+      }
+      if (typeof existingUser.authVersion !== 'number') existingUser.authVersion = 1;
     }
   }
 
