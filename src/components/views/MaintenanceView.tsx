@@ -67,8 +67,8 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     || currentUser?.permission_keys?.includes('*') === true
     || (hasPermissionMetadata
       ? currentUser!.permission_keys!.some(key => ['maintenances.create', 'maintenances.update'].includes(key))
-      : currentUser?.role === 'Admin GABAH' || ['it', 'ga'].some(key => currentUser?.role_keys?.includes(key) === true));
-  const isRequestRole = currentUser?.role === 'Karyawan';
+      : currentUser?.role === 'Admin GABAH' || ['IT', 'GA'].includes(currentUser?.role || '') || ['it', 'ga'].some(key => currentUser?.role_keys?.includes(key) === true));
+  const isRequestRole = currentUser?.role === 'Karyawan' || ['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(currentUser?.role || '');
 
   // Filtered schedules
   const filteredSchedules = schedules.filter((sch) => {
