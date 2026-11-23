@@ -41,7 +41,7 @@ export const MeetingMasterSettingsModal: React.FC<MeetingMasterSettingsModalProp
     isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
-      : legacyRoles.includes(currentUser.role))
+      : legacyRoles.some(role => currentUser.role === role || GabahService.hasLegacyCapability(currentUser, role)))
   );
   const canManageTypes = hasPermission('meeting_types.manage', ['GA']);
   const canManageFacilities = hasPermission('meeting_facilities.manage', ['GA', 'IT']);
