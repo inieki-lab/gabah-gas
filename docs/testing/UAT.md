@@ -21,25 +21,26 @@
 
 ---
 
-## 2. Matriks Persona Pengujian (Role Aplikasi + Unit + Lokasi)
+## 2. Matriks Persona Pengujian (Role, Capability, Unit, Jabatan, dan Lokasi)
 
-> **SECURITY (CR-02):** Password tidak ditulis di dokumen ini. Gunakan kredensial
-> yang diterbitkan melalui proses provisioning resmi
-> (`<INITIAL_ADMIN_PASSWORD>` / `<INITIAL_USER_PASSWORD>` — placeholder, bukan
-> nilai nyata) atau yang direset oleh Admin GABAH. Tombol *1-Click Login* telah
-> dihapus dari halaman login.
+> **SECURITY:** Jangan menulis password, token, atau kredensial aktual di dokumen, log, screenshot, atau commit. Gunakan akun uji yang dibuat melalui provisioning/reset resmi pada database UAT. Email dan nama dari seed lama bukan daftar pegawai resmi dan tidak boleh dipakai sebagai dasar mapping HR atau assignment produksi.
 
-| Peran (Role) | Nama Persona | Email Login | Password | Peran Operasional |
-|:---|:---|:---|:---|:---|
-| **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | Super Administrator (Full Control) |
-| **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT Support & Aset Komputasi |
-| **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | General Affairs & Sarana Prasarana |
-| **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id`| `<INITIAL_USER_PASSWORD>`| Pegawai; fungsi sekretariat Direksi dan VIP Booking melalui role tambahan |
-| **Karyawan + capability Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai; fungsi dokumentasi dan publikasi melalui role tambahan |
-| **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
-| **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
-| **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Pegawai Biasa / Pemohon Layanan |
-| **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Satuan Pengawas Internal (Read-Only) |
+> **Penting:** Dynamic RBAC tidak memiliki daftar role bisnis tertutup. Baris di bawah adalah cakupan persona yang wajib diuji, bukan daftar role yang harus dikodekan permanen. Siapkan akun uji terpisah untuk setiap konteks dan catat ID/assignment aktual pada bukti UAT yang disanitasi.
+
+| Persona uji | Konfigurasi yang harus disiapkan | Fokus pengujian |
+|:---|:---|:---|
+| Superadmin | Akun aktif dengan grant administrasi global | Administration, user/role, permission, scope, master, konfigurasi, audit |
+| IT Support | Permission modul IT dan owner scope IT | Aset IT lintas lokasi, tiket IT, tugas/support, lifecycle yang diizinkan |
+| GA asset operator | Permission operasional GA dan owner scope GA | Aset GA, sarpras, peminjaman/approval sesuai kewenangan |
+| GA read-only workstation | Grant khusus `assets.read.it_workstations` tanpa permission mutasi IT | Hanya baca Laptop/PC owner IT; direct API mutation harus ditolak |
+| Karyawan HO | Fungsi dasar karyawan dan office location HO | Aset pribadi/pool, tiket sendiri, reservasi dan layanan mandiri |
+| Karyawan RPC | Fungsi dasar karyawan dan office location RPC/SC | Lokasi kerja tidak otomatis memberi role, owner scope, atau akses aset |
+| Karyawan PIBC | Fungsi dasar karyawan dan office location PIBC | Lokasi kerja tidak otomatis memberi role, owner scope, atau akses aset |
+| ME / Perawatan | Permission maintenance/tickets yang disetujui dan scope unit terkait | Routing dan penanganan tiket ME PIBC |
+| Humas capability | Akun karyawan dengan capability/permission Humas yang eksplisit | Antrean dokumentasi dan notifikasi yang memang ditugaskan |
+| Sekretariat Direksi capability | Akun karyawan dengan capability/permission sekretariat yang eksplisit | Reservasi VIP dan fungsi sekretariat sesuai grant |
+| Auditor | Grant baca audit yang eksplisit; tidak ada grant mutasi | Baca sesuai scope; semua operasi mutasi ditolak |
+| Custom role | Role buatan Superadmin dengan permission/scope minimal | Verifikasi granularitas, persistensi, revoke, dan default-deny |
 
 ---
 
@@ -64,7 +65,7 @@
   1. Login sebagai IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC/SC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
   2. Login sebagai GA. Pastikan aset owner GA terlihat lintas lokasi. Jika permission assets.read.it_workstations aktif, hanya Laptop/PC owner IT yang dapat dibaca; mutasi langsung via API harus ditolak.
   3. Login sebagai Karyawan di unit Supply Chain dan PIBC. Pastikan fungsi dasar karyawan tersedia; lokasi kerja tidak otomatis membuka katalog aset unit/lokasi.
-  4. Uji aset operasional owner RPC/SC yang ditempatkan di lokasi fisik berbeda. User dengan permission + scope RPC/SC yang disahkan dapat mengelolanya; GA tidak otomatis mendapat akses karena aset berada di gudang.
+  4. Uji aset historis dengan owner SC/PIBC secara read/review sesuai grant sementara yang disahkan. Jangan menganggap RPC/SC atau PIBC sebagai owner domain baru. Aset owner ambigu tetap menunggu klasifikasi per aset; lokasi fisik tidak memberi hak mutasi.
   5. Login sebagai Humas dan Sekretaris Direksi. Pastikan fungsi dasar karyawan tersedia serta kapabilitas tambahan muncul hanya bila role tambahan/permission diberikan.
   6. Login sebagai Auditor. Pastikan data yang diberi scope audit dapat dibaca dan seluruh operasi mutasi ditolak.
   7. Uji user tanpa role, role nonaktif, dan role tanpa scope: akses harus gagal tertutup.
@@ -114,7 +115,7 @@
 - **Langkah Pengujian**:
   1. Login sebagai `IT`. Buka modal *Tambah Aset Baru*.
   2. Pilih kategori "Laptop / Notebook", masukkan nama "Lenovo ThinkPad P14s", serial number `SN-TEST-001`.
-  3. Simpan aset. Verifikasi nomor yang terbentuk berformat `IT-HLT-2026-xxxx`.
+  3. Simpan aset. Verifikasi nomor mengikuti aturan generator aktif yang dikonfigurasi Superadmin. Jangan mengasumsikan format contoh IT-HLT-2026-xxxx sebagai standar korporat final.
   4. Coba daftarkan aset kedua dengan serial number yang sama (`SN-TEST-001`).
 - **Kriteria Lulus**: Aset pertama tersimpan, aset kedua ditolak dengan pesan error serial number duplikat.
 
