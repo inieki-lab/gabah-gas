@@ -1450,3 +1450,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added regression assertions to `test:employee-role-normalization` for missing-field restoration and explicit-empty preservation.
 - Fix branch: `fix/rbac-restore-canonical-secondary-roles-2026-11-23`. Code commit: `ae7db7906d1174f7072edecfff08317bc1a04c73`; test commit: `977a2b116e9e4766e61c76866ef044abd5f92f67`.
 - Exact-head CI and the previously failing meeting-room PostgreSQL test remain PENDING. Do not treat this as resolved until a fresh exact-head CI run passes.
+
+
+### Meeting Room secondary-role authorization fix — 2026-11-23 (PR #251; CI pending)
+
+- Exact CI run #3286 reproduced the same 7/34 failures. The diagnostic output showed canonical functional role keys (ga, sekretaris_direksi, humas) but no effective PostgreSQL permission metadata. The direct SQL probe did not run because the test parent process has no DATABASE_URL/PGHOST; therefore its absence must not be interpreted as proof of missing database assignments.
+- The actionable root cause is in server/services.ts: hasRoomPermission() used Dynamic RBAC permissions when PostgreSQL was active, but its file-store compatibility fallback compared only actor.role with legacy labels such as GA and Sekretaris Direksi. Employee-profile normalization intentionally sets these users' primary role to Karyawan, retaining their actual job functions in role_keys. Thus GA approval/check-in/check-out and Sekdir priority override were denied in file-store test/runtime mode.
+- Fix commit 7529a5e54044d0018e02bf070226d4b77e36efd3: file-store fallback now matches the requested legacy function against both the primary label and normalized secondary role_keys. Auditor denial and PostgreSQL authoritative permission checks remain unchanged; this does not grant roles by division or location.
+- CI run #3286 is still red on the meeting-room test; this new fix requires a fresh exact-head run. Do not claim resolved until all 34 assertions and the full workflow pass.
