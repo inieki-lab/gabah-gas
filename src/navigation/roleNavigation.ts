@@ -50,7 +50,7 @@ export function isSuperadminNavigationAllowed(
 ): boolean {
   if (permissionKeys !== undefined) return isSuperadmin === true || permissionKeys.includes('*');
   // Compatibility only for file-store development before RBAC metadata exists.
-  return isSuperadmin === true;
+  return isSuperadmin === true || _role === 'Admin GABAH';
 }
 
 const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
@@ -95,5 +95,5 @@ export function isNavTabAllowedForRole(
     }
     return required.some(key => permissionKeys.includes(key));
   }
-  return isCoreNavigationTab(tab);
+  return role === 'Admin GABAH' || isCoreNavigationTab(tab);
 }
