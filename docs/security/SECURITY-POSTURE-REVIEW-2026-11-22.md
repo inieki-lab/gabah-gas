@@ -75,6 +75,15 @@
 
 ### SEC-FU-05 — Production secret and proxy configuration validation (MEDIUM)
 
+**Implementation submitted for verification on branch `security/require-independent-rate-limit-secret-2026-11-23`:**
+- Production startup rejects a missing or shorter-than-32-byte `GABAH_RATE_LIMIT_SECRET`.
+- The production key is rejected if it is whitespace-padded or reused from `PGPASSWORD` / `DATABASE_URL`.
+- Production HMAC generation no longer falls back to database credentials. Development/UAT keeps the compatibility fallback.
+- CI adds direct policy tests; Docker and PostgreSQL runtime smoke tests receive isolated test-only secrets.
+
+This is a source-level hardening change pending exact-head CI. It does not configure TLS, a reverse proxy, trusted proxy hops, or production secret distribution.
+
+
 **Evidence:** `.env.example` documents `GABAH_RATE_LIMIT_SECRET` as optional with a fallback to `PGPASSWORD`; Compose requires separate PostgreSQL admin and app credentials. The current client-IP logic intentionally does not trust forwarded headers without proxy configuration.
 
 **Recommended action:** for production, require an independently generated high-entropy `GABAH_RATE_LIMIT_SECRET`; validate required secret lengths/presence at startup; document the exact trusted proxy hops only after the TLS topology is selected. Keep all secret values out of logs and diagnostics.
