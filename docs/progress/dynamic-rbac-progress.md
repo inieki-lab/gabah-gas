@@ -1580,3 +1580,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 - CI #3328 passed the maintenance authorization live HTTP matrix (19/19), dynamic-scope consistency, and vendor reference checks. It then failed the maintenance input-validation source test because it still expected the old primary-role allowlist on POST.
 - Updated `scripts/maintenance-input-validation-verify.mjs` in commit 7999ddabf7803edb40808d54a88ec061331daf15 to assert the new capability-aware Superadmin/IT/GA allowlist on both POST and PATCH while retaining the validation-before-mutation assertions.
+
+
+### Merge readiness and final target-base validation — 2026-11-23
+
+- Exact-head CI #3331 on commit `c2b1289db92f5c5ce1ead31800d248ab7650fe90` completed successfully: 116/116 steps green, including the full production, Docker, PostgreSQL, security, RBAC, organization, Meeting Room, ticket, loan, and Maintenance suites.
+- PR #251 was retargeted from the stacked PR #249 branch directly to `main`, its description was consolidated to cover the complete stack, and it was marked ready for review. PR #249 is now superseded but remains open until PR #251 merges successfully.
+- A new exact-head CI run against the final `main` base is mandatory. Merge only after that run is green, the PR remains mergeable, and no required check/review gate is outstanding.
