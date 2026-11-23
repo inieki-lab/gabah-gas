@@ -71,3 +71,15 @@ Locations are not roles/divisions. Job titles can be assigned at any location. S
 | Exact-head GitHub CI | NOT TESTED | Draft PR #248; check run not verified. |
 
 Release decision: NOT APPROVED until relevant tests run and P0/P1 findings close or are explicitly accepted.
+
+## Follow-up verification (2026-11-23)
+
+| Check | Status | Evidence |
+|---|---|---|
+| Clean dependency reinstall | PASS | Workspace clean reinstall operation completed successfully. Literal npm ci invocation NOT TESTED. |
+| TypeScript check | PASS | Current captured workspace; no errors. Not remote PR CI. |
+| Production build | PASS | Isolated snapshot; 1,034 kB JS chunk warning. Not remote PR CI. |
+| Regression/security/integration scripts | NOT TESTED | No execution interface available in this stage; no pass inferred. |
+| Exact-head PR CI after lockfile sync | FAIL | Run 45113180356, verify completed failure. Detailed job log unavailable. |
+
+Static auth transport review found no active browser Bearer or localStorage credential usage. Server still accepts legacy Bearer and x-auth-token for compatibility. Cookie/Origin/login/logout/restore/reset/upload and all API runtime scenarios remain NOT TESTED.
