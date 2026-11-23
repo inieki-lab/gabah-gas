@@ -169,3 +169,15 @@ The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, curre
 - The run executed `npm ci`, production dependency audit, production dependency/browser storage policy checks, lint, build, Docker image build, PostgreSQL 17 service-backed integration, P0 security verification, RBAC and data-scope suites, asset/loan/ticket/room/contract/maintenance regression suites, and Docker/HTTP smoke checks. The log includes passing 142/142 Dynamic RBAC checks, 96/96 asset scope checks, 132/132 primary asset mutation checks, 55/55 user/asset-related checks, and multiple PostgreSQL behavioral totals (including T2B-1 19/19, T2B-2 22/22, T2B-3 30/30, maintenance authz 33/33). No test failure was reported in the successful job.
 - **Do not attribute run #3187 to later commits.** Additional documentation commits were pushed after head `8e6b9d`; the current head has its own CI run #3193. At worklog update time, #3193 was still in progress. Wait for and inspect its exact-head result before claiming current PR CI is green.
 - CI success validates the code tree included in that run, not the prose accuracy of every Markdown document, browser UAT with business users, production backup/restore, staging deploy, or sign-off.
+
+
+## Pass 7 — Correct remaining stale ADR and persistence claims (23 November 2026)
+
+- ADR-007 no longer claims that the asset number generator is atomic. It is marked PARTIAL/POLICY PENDING: technical default format is implemented, corporate standard awaits confirmation, and the counter is in-memory/non-atomic across app processes.
+- ADR-008 no longer claims automatic production fallback to JSON. It is marked PARTIAL/ENVIRONMENT-SCOPED: file-store fallback is limited to non-production startup convenience; production fails fast when configured PostgreSQL is unavailable, and runtime PostgreSQL failure after authority is latched closed until recovery/restart.
+- PROJECT-RULES now states the same production-vs-development persistence boundary.
+- The PRD contract examples already distinguish owner functions from RPC/SC/PIBC locations; this pass rechecked that language and kept it as review-required owner mapping.
+
+### Current exact-head CI boundary
+- CI #3187 passed on older head `8e6b9dfa99eded295882af36df9c53338f5747f1`; it is not evidence for later commits.
+- Current head after this pass must be re-fetched. Its exact-head CI run is expected to be separate; no PASS claim until that run completes.
