@@ -1568,3 +1568,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 - CI #3324 passed Dynamic RBAC foundation checks after the Knowledge Base assertion update, then found one stale asset-scope source assertion for the file-store employee-directory allowlist. The implementation now uses Superadmin plus explicit IT/GA capabilities through `hasApplicationRole()`.
 - Updated the assertion in commit b05f75fafa39b75d45ea996490ca1e03278006bf to validate the capability-aware fallback while retaining the PostgreSQL `users.read` gate.
+
+
+### Maintenance dynamic-scope source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3327 passed the maintenance live HTTP authorization matrix (19/19), including IT/GA list filtering and matching-owner create/update. It then failed one source-contract check in `scripts/maintenance-dynamic-scope-verify.mjs`, which still expected the old primary-role GA filter.
+- Updated that assertion in commit 5a389ca939fcc56c972fd6be2e5525d19068cb9b to verify the new IT/GA secondary-capability owner filters, while retaining the PostgreSQL dynamic-scope and workstation-read-exclusion assertions.
