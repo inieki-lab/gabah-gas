@@ -1,3 +1,5 @@
+ > **Historical-progress note:** This file is a chronological log of work at the PR/commit stated in each entry. Older recommendations and role/owner assumptions may have been superseded. Do not use an old PASS or old status as current-head evidence. Current owner intent and source behavior are summarized in `docs/PROJECT-CONTEXT.md` and `docs/IMPLEMENTATION-TRUTH-REGISTER.md`.
+
 ### Production dependency vulnerability gate — 2026-11-23 (PR #244; CI pending)
 
 - Added `npm audit --omit=dev --audit-level=high` immediately after dependency installation in CI. The first run found three High and one Moderate advisory: body-parser 1.20.8, multer 2.4.0, qs 6.16.0, and Vite 6.4.3.
@@ -84,7 +86,7 @@
 
 - **Main HEAD:** `12c6d6830039e4effbd18125effead97b91983ef`.
 - **PR #165 — validasi relasi kontrak:** MERGED; CI exact-head lulus **76/76**.
-- **PR #167 — integritas seed maintenance:** MERGED; CI exact-head lulus **77/77**. Jadwal maintenance kini menunjuk master aset/vendor yang tepat; kode owner legacy `SC` dipertahankan sebagai domain divisi, sedangkan RPC tetap lokasi.
+- **PR #167 — integritas seed maintenance:** MERGED; CI exact-head lulus **77/77**. Jadwal maintenance kini menunjuk master aset/vendor yang tepat. Catatan lama tentang SC sebagai domain owner adalah snapshot saat itu dan tidak boleh digunakan untuk membuat owner baru; keputusan pemilik proyek saat ini memperlakukan RPC/SC sebagai lokasi/operasional context dan owner legacy SC/PIBC menunggu review per aset.
 - **PR #169 — kepemilikan data berbasis immutable user ID:** MERGED; CI exact-head lulus **78/78**. Kepemilikan tiket, pinjaman, dan aset pribadi tidak lagi diperoleh dari kecocokan nama/email.
 - **PR #170 — ID akun collision-resistant:** MERGED; CI exact-head lulus **78/78**. Create tunggal dan bulk import memakai `crypto.randomUUID()`; regression HTTP menguji dua create paralel.
 - **PR #172 — session revocation pada perubahan dynamic RBAC:** MERGED; CI exact-head lulus **78/78**. Setiap perubahan assignment role mencabut sesi target; integrasi PostgreSQL membuktikan token lama ditolak (401), kemudian user dapat login ulang dan hak baru diterapkan.
