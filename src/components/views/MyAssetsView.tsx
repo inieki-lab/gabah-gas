@@ -52,7 +52,7 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
     isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
-      : legacyRoles.includes(currentUser.role))
+      : legacyRoles.some(role => currentUser.role === role || GabahService.hasLegacyCapability(currentUser, role)))
   );
   const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const canCreateAnyTicket = canCreateTicket || hasEffectivePermission('tickets.create.me', []);
