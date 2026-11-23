@@ -31,21 +31,23 @@ Sebelum adanya GABAH, pencatatan aset inventaris, penjadwalan pemeliharaan armad
 
 ---
 
-## 2. Persona & Pengguna Sasaran (Role Existing — Model Transisi)
+## 2. Persona & Pengguna Sasaran (Identitas Pegawai + Dynamic RBAC)
 
-Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun dan data lama. Daftar ini bukan batas jumlah role dan bukan model organisasi target. Model target mengikuti keputusan pada Bagian 2.1–2.2; role legacy akan dipetakan bertahap tanpa menghapus akun atau histori:
+GABAH tidak memiliki katalog sembilan role primer. Profil utama hanya membedakan **Admin GABAH** (administrator sistem) dan **Karyawan** (identitas seluruh pegawai). Fungsi kerja diberikan melalui role/capability tambahan yang dapat dikelola pada Dynamic RBAC; jumlah dan nama role fungsi tidak dikunci oleh kode.
 
-| No | Peran (Role) | Persona Uji | Divisi Utama | Lingkup Tanggung Jawab & Hak Akses |
-|:---|:---|:---|:---|:---|
-| 1 | **Admin GABAH** | Budi Santoso | IT (MIS & TI) | Super Administrator. Kontrol penuh seluruh modul, Master Data, Manajemen Pengguna, Persetujuan Penghapusan Aset (*Disposal*), Override Reservasi, dan Akses Administration Control Panel. |
-| 2 | **IT** | Dani Setiawan | IT (MIS & TI) | Pengelola seluruh aset komputasi, hardware jaringan, server, lisensi software, penanganan tiket kategori IT/License, persetujuan pinjaman laptop/proyektor, serta penyiapan fasilitas IT ruang rapat. |
-| 3 | **GA** | Siti Rahmawati | General Affairs | Pengelola aset umum (furniture, peralatan kantor, kendaraan dinas, gedung), persetujuan pinjaman kendaraan kantor, pengelolaan tiket GA, persetujuan reservasi ruang rapat, dan koordinasi konsumsi pantry. |
-| 4 | **Sekretariat Direksi (capability legacy)** | Pegawai dengan capability Sekretariat Direksi | Unit/lokasi sesuai master pegawai | Kewenangan agenda/reservasi Direksi dan permintaan dukungan Humas melalui grant khusus; bukan primary role terpisah. |
-| 5 | **Humas (capability legacy)** | Pegawai dengan capability Humas | Unit/lokasi sesuai master pegawai | Antrean dan penanganan dokumentasi/peliputan melalui grant khusus; bukan primary role terpisah. |
-| 6 | **RPC (legacy account label)** | Agus Pratama | Lokasi RPC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
-| 7 | **PIBC (legacy)** | Bambang Hermawan | Lokasi PIBC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
-| 8 | **Karyawan** | Hendra Wijaya | Komersial / Operasional | Staf umum perusahaan. Melihat aset kerja yang ditugaskan (*Aset Saya*), mengajukan peminjaman barang dinas, membuat tiket bantuan IT/GA, dan mereservasi ruang rapat. |
-| 9 | **Auditor** | Maya Indriani, SE, Ak, CA | Audit (SPI) | Pengawas kepatuhan internal. Hak akses **Read-Only** ke seluruh modul katalog aset, log sirkulasi, log audit, rekonsiliasi Accurate, dan riwayat helpdesk. Dilarang melakukan mutasi data (403 Forbidden). |
+| Profil utama | Persona uji | Fungsi/assignment tambahan | Unit/lokasi |
+|:---|:---|:---|:---|
+| **Admin GABAH** | Budi Santoso | Superadmin; administrasi global | IT / HO |
+| **Karyawan** | Dani Setiawan | IT Support; owner scope IT dan tiket IT | IT / HO |
+| **Karyawan** | Siti Rahmawati | GA; owner scope GA dan operasional fasilitas | GA / HO |
+| **Karyawan** | Dewi Anggraini, S.Sos | Capability Sekretariat Direksi sesuai permission agenda/reservasi | Sekretariat Direksi / HO |
+| **Karyawan** | Rina Kartika, M.I.Kom | Capability Humas untuk dokumentasi/peliputan | Humas / HO |
+| **Karyawan** | Agus Pratama | Tidak ada role RPC; hak kerja ditentukan assignment yang disahkan | Lokasi RPC |
+| **Karyawan** | Bambang Hermawan | Tidak ada role PIBC; hak kerja ditentukan assignment yang disahkan | Lokasi PIBC |
+| **Karyawan** | Hendra Wijaya | Fungsi pegawai umum sesuai permission | Komersial |
+| **Karyawan** | Maya Indriani, SE, Ak, CA | Role/capability Auditor dengan kebijakan read-only | SPI / Audit |
+
+IT, GA, Auditor, Sekretariat Direksi, Humas, ME Admin, dan fungsi lain adalah role/capability dinamis—bukan daftar profil primer yang tertanam di frontend. RPC dan PIBC adalah konteks lokasi/unit, bukan role aplikasi. Data akun lama dipetakan melalui migration dan review assignment; jangan melakukan perubahan massal di luar migration yang ditinjau dan diuji.
 
 ---
 
@@ -110,7 +112,7 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 
 ### 2.3 Role Primer, Role Tambahan, dan Scope per Modul
 
-- Setiap pegawai memiliki satu profil/role primer sesuai model transisi (misalnya Karyawan, IT, GA, atau Auditor; Admin GABAH untuk administrator). Fungsi Sekretariat Direksi dan Humas diberikan sebagai capability/role tambahan pada pegawai, bukan primary role tersendiri.
+- Setiap pegawai memiliki satu dari dua profil utama: Karyawan atau Admin GABAH. IT, GA, Auditor, Sekretariat Direksi, Humas, ME Admin, dan fungsi lain diberikan sebagai role/capability tambahan melalui Dynamic RBAC; bukan nilai profil utama.
 - Super Admin dapat menetapkan role tambahan kepada pegawai untuk fungsi/jabatan tertentu. Role tambahan menambah permission dan scope tanpa mengganti identitas pegawai, jabatan, unit, atau lokasi kerja.
 - Penggantian role primer tidak boleh menghapus role tambahan yang masih sah; role primer lama harus dilepas agar permission lama tidak tertinggal.
 - Permission dan scope adalah dua hal berbeda. Permission menjawab tindakan apa yang boleh dilakukan; scope menjawab data mana yang boleh dijangkau.
@@ -140,7 +142,7 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 
 ### 2.5 Kontrak Data dan Otorisasi Target
 
-- users.role dipertahankan sebagai profil/role primer selama transisi; gabah_user_roles menyimpan role primer dan role tambahan yang aktif. Role tambahan tidak boleh hilang akibat siklus persistensi normal.
+- users.role hanya menyimpan dua profil utama (Karyawan atau Admin GABAH); gabah_user_roles menyimpan role fungsi dan role tambahan yang aktif. Role tambahan tidak boleh hilang akibat siklus persistensi normal.
 - Permission efektif berasal dari gabungan role dinamis yang ditetapkan secara eksplisit; scope diperiksa per modul dan objek. Tidak ada grant hanya karena jabatan atau lokasi kerja.
 - Master office location, organizational unit, job level, asset location, owner domain, dan custodian adalah entitas berbeda.
 - Semua endpoint list, detail-by-ID, create, update, delete, approve/reject, export, pencarian, dan agregasi harus menerapkan permission serta scope di backend. Menu frontend hanya cerminan hak efektif.
