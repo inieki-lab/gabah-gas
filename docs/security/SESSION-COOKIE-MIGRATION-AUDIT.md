@@ -1,6 +1,6 @@
 # Catatan Audit — Migrasi Sesi Cookie HttpOnly
 
-**Basis pemeriksaan:** commit [0m`19dab19b1f9160342c274b4aecc4bbbfc0b5ae0a` pada `main`  
+**Basis pemeriksaan:** commit `19dab19b1f9160342c274b4aecc4bbbfc0b5ae0a` pada `main`  
 **Cakupan:** source code dan dokumentasi repository (static review).  
 **Bukan:** penetration test, browser UAT, verifikasi konfigurasi produksi, atau persetujuan production-readiness.
 
