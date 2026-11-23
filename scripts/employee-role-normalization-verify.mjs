@@ -29,4 +29,4 @@ assert.ok(dashboard.includes('const roleDescription = isAuditor'));
 assert.ok(!dashboard.includes('roleDescriptions'));
 assert.ok(dynamic.includes('Legacy function roles are assigned after normalized user rows exist'));
 
-console.log('Employee role normalization: 16 checks passed');
+console.log('Employee role normalization: all source contracts passed');
