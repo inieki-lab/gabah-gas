@@ -11,7 +11,7 @@
 
 When sources disagree, do not silently choose one. Record the conflict and resolve it using this order:
 
-1. **Explicit, latest owner-approved business decisions** recorded in `docs/product/BUSINESS-RULES.md` or a dated decision in `docs/architecture/DECISIONS.md`.
+1. **Explicit, latest owner-approved business decisions** recorded in `docs/PROJECT-CONTEXT.md`, `docs/product/BUSINESS-RULES.md`, or a dated decision in `docs/architecture/DECISIONS.md`.
 2. **Current executable implementation**: server routes/domain services, authorization policies, frontend workflows, SQL migrations, configuration and tests. This describes what the application actually does, not necessarily what the business wants.
 3. **Verified test evidence** from exact commit CI, integration tests and browser UAT. Test evidence proves only the scenarios actually exercised.
 4. **Product intent and requirements** in `PRD.md` and `docs/product/REQUIREMENTS.md`. Requirements may be unimplemented.
@@ -24,7 +24,7 @@ If business intent and implementation differ, preserve both facts: label the bus
 
 Before any task:
 1. Read this guide and `README.md`.
-2. Read `PROJECT-RULES.md`.
+2. Read `PROJECT-RULES.md` and `docs/PROJECT-CONTEXT.md`.
 3. Read the relevant product/business rule and architecture documents.
 4. Inspect the relevant frontend, API route, domain service, authorization/scope policy, DB migration and tests.
 5. Check recent WORKLOG/UAT and open PRs to avoid repeating or overwriting work.
@@ -38,6 +38,7 @@ Never assume that a document is current because its title says “Authoritative�
 |---|---|---|
 | `README.md` | Entry point, current stack/runtime and links to authoritative docs | Proof that every feature works |
 | `PROJECT-RULES.md` | Mandatory engineering and AI-agent rules | Product requirements catalogue |
+| `docs/PROJECT-CONTEXT.md` | Owner-approved business context and non-negotiable product constraints | Proof that the implementation already conforms |
 | `PRD.md` | Product vision, scope, actors and business outcomes | Runtime implementation evidence |
 | `docs/product/REQUIREMENTS.md` | Traceable functional/non-functional requirements | Claim that requirements are implemented |
 | `docs/product/BUSINESS-RULES.md` | Owner-approved business rules and unresolved decisions | Guesswork inferred from old code |
@@ -68,7 +69,7 @@ Do not use “complete”, “production-ready”, “100% synchronized”, or �
 
 ## 5. GABAH business context that must not be accidentally reversed
 
-These are owner-provided project constraints; check the business-rules document for their recorded status before implementation:
+These are owner-provided project constraints, recorded in detail in `docs/PROJECT-CONTEXT.md`:
 - GABAH is an existing application to stabilize and complete, not a greenfield rebuild.
 - IT and GA are functional asset-owner domains. IT manages IT computing assets across locations; GA may have configured read-only visibility of IT laptops/PCs but must not manage IT assets.
 - HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan are operational locations. PIBC and RPC/SC are not automatically application roles or asset owners.
