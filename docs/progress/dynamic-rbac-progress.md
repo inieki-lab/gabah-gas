@@ -1543,3 +1543,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - CI #3316 passed the organization-model regression, including IT asset relocation (HTTP 200) and job-level non-escalation. It then exposed the same primary-role-only pattern in Maintenance schedules: IT/GA list filters returned empty, while create/update allowlists denied canonical Karyawan users carrying `it`/`ga` capabilities.
 - Fix commit 40c013be3273bd62514fdc85a599244988617c5e updates the file-store maintenance list to scope IT schedules to IT-owned assets and GA schedules to GA-owned assets, using `hasApplicationRole()` for secondary capabilities. Create/update allowlists now accept Admin GABAH or explicitly assigned IT/GA capability, while the existing `canMutateAssetOwner()` check still enforces matching owner domain. Ordinary Karyawan, SC/RPC, PIBC, and Auditor remain denied as before.
 - Exact-head CI must rerun the maintenance live HTTP matrix and full workflow before merge.
+
+
+### Cross-module file-store secondary-role fallback audit — 2026-11-23 (PR #251; CI pending)
+
+- A broader server route audit found additional primary-role-only checks that were not covered by the first UI/asset/maintenance tests: ticket owner queue visibility, vendor owner filtering, dashboard owner summaries/attention, movement-history filtering, employee-directory read allowlist, and Knowledge Base write allowlists.
+- Fix commit dc415da4e8682a42c618f80896e7bc508c0c82a2 replaces these file-store-only role-label comparisons with the existing `hasApplicationRole()` resolver, which honors both legacy primary labels and explicit secondary `role_keys`. PostgreSQL paths continue to require their explicit permission and module scope. SC/RPC and PIBC location identities do not gain IT/GA capabilities from location alone.
+- This is a consistency pass across remaining server routes; full CI must validate movement, ticket, dashboard, directory, vendor, maintenance, and Knowledge Base behavior before merge.
