@@ -95,3 +95,7 @@ const reservationService = services.slice(reservationStart, reservationEnd);
 assert.match(reservationService, /payload\.meeting_type[\s\S]*Array\.from\(payload\.meeting_type\.trim\(\)\)\.length > 50/);
 assert.ok(reservationService.includes("rawFacilities.some(item => typeof item !== 'string' || !item.trim() || item.includes('\\u0000')"));
 assert.ok(reservationService.includes("value.includes('\\u0000') || Array.from(value).length > maxLength"));
+
+
+const meetingRoomsUi = fs.readFileSync('src/components/views/MeetingRoomsView.tsx', 'utf8');
+assert.ok(meetingRoomsUi.includes("GabahService.hasLegacyCapability(currentUser, 'ga')"), 'GA room queue/actions must honor secondary GA capability in file-store mode');
