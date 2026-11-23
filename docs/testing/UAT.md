@@ -16,7 +16,7 @@
 - **URL browser default**: `http://localhost` (host port 80; dapat diubah melalui `GABAH_WEB_PORT`).
 - **Aplikasi**: container `gabah_app`, port internal 3000.
 - **Database**: container `gabah_database`; aplikasi selalu menggunakan `PGHOST=database` dan `PGPORT=5432` pada jaringan Compose.
-- **Token Format**: Bearer Token pada header `Authorization`.
+- **Session Transport**: HttpOnly cookie `gabah_session` (SameSite=Strict; Secure pada production); browser tidak menyimpan token sesi di localStorage.
 - **Metode Pengujian**: UI end-to-end melalui browser, API assertions, regression scripts, serta CI. Jangan menjalankan server Node/TSX host bersamaan dengan database Docker.
 - **Standar utama**: ikuti [MASTER-TEST-STRATEGY.md](./MASTER-TEST-STRATEGY.md). Jalankan `docker compose config --quiet`, `docker compose up -d --build`, periksa `docker compose ps` dan `docker compose logs --tail=200 app`, lalu akses `http://localhost`.
 - **Peringatan data**: jangan gunakan `docker compose down -v` pada environment yang datanya ingin dipertahankan.
@@ -54,10 +54,11 @@
 - **Tujuan**: Memastikan sesi diterbitkan dengan aman dan dibersihkan saat logout.
 - **Langkah Pengujian**:
   1. Buka halaman login. Masukkan email admin dan password kredensial resmi (lihat Seksi 2 — placeholder, bukan nilai nyata).
-  2. Periksa apakah sistem berhasil masuk ke dashboard dan menyimpan `gabah_auth_token` di `localStorage`.
-  3. Lakukan logout melalui menu avatar kanan atas.
-  4. Verifikasi bahwa token di `localStorage` terhapus dan pengguna diarahkan kembali ke landing page.
-- **Kriteria Lulus**: Status respon 200, sesi di server dihapus, akses endpoint privat tanpa token ditolak (401).
+  2. Periksa response login: cookie `gabah_session` harus memiliki atribut HttpOnly, SameSite=Strict, dan Secure pada production; response JSON tidak boleh memuat token sesi.
+  3. Pastikan browser tidak menyimpan token sesi di localStorage, lalu lakukan logout melalui menu avatar kanan atas.
+  4. Verifikasi cookie dihapus, sesi server dicabut, dan pengguna diarahkan kembali ke halaman login.
+  5. Uji request mutasi cookie tanpa Origin dan dengan Origin berbeda; keduanya harus ditolak (403).
+- **Kriteria Lulus**: Status login 200, cookie aman terbit, token tidak ada di JSON/localStorage, logout mencabut sesi, dan CSRF Origin negatif ditolak (403).
 
 ---
 
