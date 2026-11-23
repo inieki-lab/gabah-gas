@@ -3,10 +3,12 @@
 **Dokumen:** `docs/product/BUSINESS-RULES.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Authoritative Rules Matrix (100% Sesuai Source Code Aktual)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Register aturan bisnis dan keputusan pemilik proses. Setiap aturan harus memiliki status persetujuan; kesesuaian implementasi dicatat terpisah dan diverifikasi terhadap kode serta UAT.  
+**Terakhir Ditinjau untuk tata kelola dokumen:** 23 November 2026 (isi aturan historis masih memerlukan rekonsiliasi per aturan)  
 
 ---
+
+> **Penting:** Dokumen ini tidak otomatis membuktikan bahwa semua aturan di bawah masih disetujui atau sudah diterapkan. Aturan lama harus ditandai APPROVED, IMPLEMENTED, TESTED, DECISION REQUIRED, atau HISTORICAL sesuai bukti. Jangan gunakan matriks lama sebagai izin untuk mengubah perilaku tanpa verifikasi. Pisahkan owner aset, unit pengelola, lokasi fisik, jabatan, application role, permission, dan data scope.
 
 ## 1. Aturan Kepemilikan Aset & Batas Wewenang Divisi (BR-01)
 
