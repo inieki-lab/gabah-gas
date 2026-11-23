@@ -45,6 +45,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Production dependency vulnerability gate
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Production dependency boundary regression
+        run: npm run test:production-dependency-policy
+
       - name: Browser storage policy regression
         run: npm run test:browser-storage-policy
 

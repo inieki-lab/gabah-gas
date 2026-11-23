@@ -105,18 +105,16 @@
     "test:browser-storage-policy": "node scripts/browser-storage-policy-verify.mjs",
     "test:notification-rule-persistence": "node scripts/notification-rule-persistence-verify.mjs",
     "test:system-settings-persistence": "node scripts/system-settings-persistence-verify.mjs",
+    "test:production-dependency-policy": "node scripts/production-dependency-policy-verify.mjs",
     "test:shared-rate-limits": "node --import tsx scripts/shared-rate-limit-verify.ts",
     "test:auth-rate-limit-memory": "node --import tsx scripts/auth-rate-limit-memory-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
     "lucide-react": "^0.546.0",
-    "multer": "^2.4.0",
+    "multer": "^2.5.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3",
     "express": "^4.21.2",
     "dotenv": "^17.2.3",
     "motion": "^12.23.24",
@@ -131,6 +129,8 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.4.6",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4"
   }
 }
