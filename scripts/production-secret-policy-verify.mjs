@@ -39,9 +39,14 @@ assert.doesNotThrow(
   () => validateRateLimitSecretConfiguration({ ...production, GABAH_RATE_LIMIT_SECRET: independentSecret }),
   'production accepts a strong independent secret',
 );
-assert.doesNotThrow(
+assert.throws(
   () => validateRateLimitSecretConfiguration({ ...production, GABAH_APP_MODE: 'uat' }),
-  'UAT retains the local development fallback',
+  /32 bytes/,
+  'NODE_ENV=production remains authoritative even if GABAH_APP_MODE is mis-set to UAT',
+);
+assert.doesNotThrow(
+  () => validateRateLimitSecretConfiguration({ NODE_ENV: 'development', GABAH_APP_MODE: 'uat' }),
+  'UAT retains the local development fallback outside production Node mode',
 );
 assert.doesNotThrow(
   () => validateRateLimitSecretConfiguration({ NODE_ENV: 'development' }),
