@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Register keputusan arsitektur. Setiap ADR wajib menyebut status (PROPOSED/ACCEPTED/IMPLEMENTED/SUPERSEDED), tanggal, bukti implementasi, dan keputusan pengganti bila ada.  
-**Terakhir Diperbarui:** 28 September 2026 (riwayat ADR; audit status tiap ADR masih diperlukan)  
+**Terakhir Ditinjau:** 23 November 2026 (status ADR lama direkonsiliasi bertahap; ADR-009 telah ditandai SUPERSEDED)  
 
 ---
 
