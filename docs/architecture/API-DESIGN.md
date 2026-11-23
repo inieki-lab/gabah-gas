@@ -1,4 +1,4 @@
-# GABAH — Authoritative REST API Design Specification
+# GABAH — REST API Contract Baseline & Route Inventory
 
 **Dokumen:** `docs/architecture/API-DESIGN.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
