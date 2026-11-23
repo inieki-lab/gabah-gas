@@ -1529,3 +1529,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - CI #3307 caught one missed frontend fallback: `canManageTickets()` still used a primary-role array after the other IT/GA UI gates were migrated. Updated it in commit 551b525de9b6eb89422115daaf773a828a847273 to honor secondary IT/GA capabilities, matching `canAssignTickets()` and the server policy.
 - CI #3309/#3310 caught a duplicate local `licenseUi` declaration introduced while adding the license UI source assertion. Removed the duplicate in commit eff03348e7826826a79017ab3fd895187ac30d85; the assertion now reuses the existing source binding.
 - Both are validation/test maintenance fixes; fresh exact-head CI remains required.
+
+
+### Organization-model fixture correction after IT asset scope passed — 2026-11-23 (PR #251; CI pending)
+
+- Exact-head CI #3315 confirmed the IT relocation path now succeeds (case 6: HTTP 200 and unchanged asset number). The remaining organization-model failure was case 5: the test selected the first Karyawan account without excluding assigned IT/GA capabilities, then expected it to be denied asset mutation after changing only job level to DIREKSI. With the new role model that fixture could be an operational IT/GA employee, so HTTP 200 was correct for its assigned capability.
+- Updated `scripts/org-model-verify.mjs` in commit a39508206a0febc699c0a07420ffc24075384b52 to select a Karyawan with no IT/GA operational role keys. The test now isolates the intended invariant: job level alone must not grant asset mutation.
+- No production authorization was weakened. Fresh exact-head CI remains pending.
