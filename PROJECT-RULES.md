@@ -53,10 +53,12 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 
 ## 3. Keamanan, Autentikasi & RBAC
 
-1. **Bearer Token Authentication**:
-   - Autentikasi menggunakan header standar `Authorization: Bearer <token>`.
-   - Sesi ber-usia maksimum 7 hari (absolute) dan bersifat **memory-only** — tidak pernah disimpan ke tabel `user_sessions`, snapshot `gabah_state.json`, maupun blob PostgreSQL; setiap restart mengharuskan re-authentication. Penerbitan ulang password/role/privilege mencabut seluruh sesi user (authVersion).
-   - Browser `localStorage` **hanya** diizinkan menyimpan kunci `gabah_auth_token`. Tidak boleh ada data transaksi operasional yang disimpan permanen di localStorage sebagai database alternatif.
+1. **Browser Session Cookie & Authentication**:
+   - Browser memakai cookie sesi `gabah_session` dengan atribut `HttpOnly`, `SameSite=Strict`, `Path=/`, dan `Secure` pada mode production. Token sesi tidak dikirim dalam JSON login, password-change, atau switch-role.
+   - Semua request browser menggunakan cookie same-origin; mutasi yang terautentikasi melalui cookie wajib membawa `Origin` yang sama dengan origin aplikasi. Request lintas origin ditolak.
+   - Header `Authorization: Bearer <token>` tetap diterima sementara untuk integrasi non-browser yang dipercaya selama masa migrasi; browser tidak menyimpan atau membaca bearer token.
+   - Sesi berusia maksimum 7 hari (absolute) dan memory-only; setiap restart mengharuskan autentikasi ulang. Perubahan password/role/privilege mencabut sesi lama melalui `authVersion`.
+   - Browser `localStorage` tidak boleh menyimpan token sesi, password, atau data transaksi operasional.
 2. **Anti-Spoofing & Zero Fallback**:
    - Header manipulasi `x-user-id` yang tidak sesuai dengan token sesi aktif akan ditolak seketika dengan status `403 Forbidden` (`spoofAttempt: true`).
    - Request tanpa token yang valid tidak pernah di-fallback otomatis menjadi Super Admin.
