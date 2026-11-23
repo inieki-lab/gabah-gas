@@ -84,17 +84,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // A non-auditor without operational-management capabilities gets the self-service dashboard.
   // Do not infer staff status from legacy role labels: departments and job titles are configurable.
   const isEmployee = !isAuditor && !hasOperationalManagementAccess;
-  const roleDescriptions: Record<UserRole, string> = {
-    'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
-    IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
-    GA: 'Pantau fasilitas kantor, kendaraan dinas, ruang rapat, peminjaman, dan layanan umum.',
-    'Sekretaris Direksi': 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan fasilitas kegiatan Direksi.',
-    Humas: 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat sesuai penugasan.',
-    'Supply Chain': 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
-    PIBC: 'Akses layanan pegawai sesuai aset yang ditugaskan, peminjaman, tiket, dan reservasi.',
-    Karyawan: 'Akses layanan mandiri untuk aset yang ditugaskan, peminjaman, tiket bantuan, dan reservasi ruang.',
-    Auditor: 'Pemantauan read-only atas aset, peminjaman, tiket, laporan, dan jejak audit.',
-  };
+  const employeeDescription = 'Akses layanan dan data sesuai permission serta scope yang ditetapkan untuk akun ini.';
+  const adminDescription = 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.';
+  const auditorDescription = 'Pemantauan read-only atas aset, peminjaman, tiket, laporan, dan jejak audit.';
 
   // All collections arrive pre-scoped by backend permissions and module scope.
   // Do not re-filter them by a single legacy role name in the browser.
@@ -118,14 +110,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
   const isLicenseDashboard = isGlobalDashboard || hasEffectivePermission('licenses.read', ['IT']);
   const roleDescription = isAuditor
-    ? roleDescriptions.Auditor
+    ? auditorDescription
     : isSuperAdmin
-      ? roleDescriptions['Admin GABAH']
-    : isHumas
-      ? roleDescriptions.Humas
-    : isSekdir
-      ? roleDescriptions['Sekretaris Direksi']
-      : (roleDescriptions[currentUser.role] || roleDescriptions.Karyawan);
+      ? adminDescription
+      : isHumas
+        ? 'Pantau permintaan dokumentasi kegiatan dan agenda ruang rapat sesuai permission Humas.'
+        : isSekdir
+          ? 'Ajukan dan pantau reservasi ruang rapat serta kebutuhan agenda Direksi sesuai permission.'
+          : employeeDescription;
   const expiringLicenses = dashboardAssets.filter(asset => {
     const expiry = asset.license_detail?.expiration_date;
     if (!expiry) return false;
