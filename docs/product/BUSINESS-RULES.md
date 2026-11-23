@@ -10,6 +10,16 @@
 
 > **Penting:** Dokumen ini tidak otomatis membuktikan bahwa semua aturan di bawah masih disetujui atau sudah diterapkan. Aturan lama harus ditandai APPROVED, IMPLEMENTED, TESTED, DECISION REQUIRED, atau HISTORICAL sesuai bukti. Jangan gunakan matriks lama sebagai izin untuk mengubah perilaku tanpa verifikasi. Pisahkan owner aset, unit pengelola, lokasi fisik, jabatan, application role, permission, dan data scope.
 
+## 0. Model Identitas Pegawai dan Dynamic RBAC (BR-00)
+
+- **Profil utama** di `users.role` hanya `Admin GABAH` (administrator sistem) dan `Karyawan` (seluruh pegawai).
+- IT, GA, Auditor, Humas, Sekretariat Direksi, Admin ME, dan fungsi lain adalah role/capability tambahan yang ditetapkan melalui Dynamic RBAC, bukan profil utama yang ditanam di kode.
+- RPC/SC dan PIBC adalah lokasi/unit operasional, bukan role aplikasi dan bukan owner aset otomatis.
+- Permission menentukan tindakan; scope menentukan data yang dapat dijangkau. Jabatan, unit, divisi, dan lokasi tidak memberi izin secara implisit.
+- Akun dengan label role lama dinormalisasi melalui migration `048_dynamic_employee_profile_normalization.sql`. Assignment fungsi IT/GA/Auditor/Humas/Sekretariat Direksi dipertahankan sebagai role tambahan; assignment Supply Chain/PIBC dinonaktifkan sebagai role karena keduanya adalah lokasi/unit.
+
+---
+
 ## 1. Aturan Kepemilikan Aset & Batas Wewenang Divisi (BR-01)
 
 ### BR-01.1: Kepemilikan Barang IT (IT-H & IT-S)
