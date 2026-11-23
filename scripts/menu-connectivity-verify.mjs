@@ -27,13 +27,14 @@ async function req(base, method, urlPath, { token, body } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Origin: base,
+      ...(token ? { Cookie: token } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
+  return { status: res.status, json, setCookie: res.headers.get('set-cookie') || '' };
 }
 
 async function waitForServer(base, tries = 60) {
@@ -113,7 +114,7 @@ async function main() {
     const login = await req(base, 'POST', '/api/auth/login', {
       body: { email: 'admin@foodstation.co.id', password: adminPass },
     });
-    const token = login.json?.data?.token || '';
+    const token = login.setCookie?.split(';', 1)[0] || '';
     record('Admin login', '200 + token', `HTTP ${login.status}`, login.status === 200 && token.length > 0);
 
     // Every sidebar menu and its backing collection. Read-only GETs only.
