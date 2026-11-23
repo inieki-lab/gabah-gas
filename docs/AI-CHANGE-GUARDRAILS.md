@@ -1,5 +1,7 @@
 # GABAH AI Change Guardrails
 
+> **Mandatory context:** Before any task, read `AGENTS.md`, `docs/GABAH-DOCUMENTATION-CONTROL.md`, `docs/PROJECT-CONTEXT.md`, and `docs/IMPLEMENTATION-TRUTH-REGISTER.md`. These documents define current owner intent, source-observed behavior, and the correct way to report gaps. Historical audit/worklog documents do not override them.
+
 Status: Required for AI-assisted changes
 Reference: https://github.com/miqdadbadjuber/anti-slop (MIT; used as a source of review principles, not installed as an unconditional project dependency)
 
@@ -54,8 +56,8 @@ Before shipping UI/copy/code changes, review the relevant Anti Slop principles: 
 
 ## Branch ownership and AI collaboration
 
-- Use `fix/role-based-navigation` as the single integration branch while PR #18 is open.
-- Name other agent branches `ai/<agent-name>/<work-item>`; examples: `ai/codex/ticket-scope-audit`, `ai/gemini/room-reservation-uat`.
-- Branch from the integration branch while PR #18 is open; branch from `main` after it merges.
-- Each AI agent works only on its own branch and submits a PR to the integration branch. Never work in parallel on the same branch.
+- Read `AGENTS.md` and `docs/ops/BRANCH-AND-AI-COLLABORATION.md` for the current branch target and ownership rules; do not hard-code a PR number or historical integration branch in an agent prompt.
+- Create a dedicated branch from the agreed current base and record its exact base SHA.
+- Each AI agent works only on its own branch and submits a PR to the agreed target. Never work in parallel on the same branch.
+- Do not merge or deploy without explicit owner approval. A green check on an old head is not evidence for a newer commit.
 - Do not delete a branch until its unique commits are reviewed, preserved, and its PR is closed/merged. A closed PR does not itself delete its branch.
