@@ -183,6 +183,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
           NODE_ENV: production
+          GABAH_RATE_LIMIT_SECRET: ci-shared-rate-limit-independent-secret-2026-only
         run: npm run test:shared-rate-limits
 
       - name: File-store auth rate-limit memory bound regression
