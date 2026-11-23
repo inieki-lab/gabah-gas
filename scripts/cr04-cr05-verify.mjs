@@ -592,7 +592,7 @@ async function main() {
     const adminToken = { cookie: '' };
     const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS }, token: adminToken });
     record('login admin returns no bearer token in JSON', '200 + no JSON token', 'HTTP ' + adminLogin.status, adminLogin.status === 200 && !adminLogin.json?.data?.token && !adminLogin.json?.token);
-    record('admin login sets HttpOnly SameSite gabah_session cookie', 'Set-Cookie + HttpOnly + SameSite', adminLogin.setCookie || '(missing)', /gabah_session=/.test(adminLogin.setCookie) && /HttpOnly/i.test(adminLogin.setCookie) && /SameSite=/i.test(adminLogin.setCookie));
+    record('admin login sets HttpOnly SameSite gabah_session cookie', 'Set-Cookie + HttpOnly + SameSite', adminLogin.setCookie ? 'cookie present (value redacted)' : '(missing)', /gabah_session=/.test(adminLogin.setCookie) && /HttpOnly/i.test(adminLogin.setCookie) && /SameSite=/i.test(adminLogin.setCookie));
     const adminMe = await req(base, 'GET', '/api/auth/me', { token: adminToken });
     record('admin cookie restores a valid session', '200 + identity', 'HTTP ' + adminMe.status, adminMe.status === 200 && Boolean(adminMe.json?.data?.id));
 
@@ -621,6 +621,27 @@ async function main() {
     record('Auditor cookie resolves to correct identity', AUDITOR_EMAIL, auditorMe.json?.data?.email, auditorMe.status === 200 && auditorMe.json?.data?.email === AUDITOR_EMAIL);
 
     if (!adminToken.cookie) throw new Error('cannot continue without admin cookie session');
+
+    const expiredCookie = await req(base, 'GET', '/api/auth/me', { headers: { Cookie: 'gabah_session=invalid-expired-session' } });
+    record('Unknown/expired session cookie is rejected', '401', 'HTTP ' + expiredCookie.status, expiredCookie.status === 401);
+    const anonymousMe = await req(base, 'GET', '/api/auth/me');
+    record('Unauthenticated session restore is denied', '401', 'HTTP ' + anonymousMe.status, anonymousMe.status === 401);
+
+    const logoutToken = { cookie: '' };
+    const logoutLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS }, token: logoutToken });
+    record('Logout fixture login establishes cookie', '200 + cookie', 'HTTP ' + logoutLogin.status, logoutLogin.status === 200 && Boolean(logoutToken.cookie));
+    const invalidOriginLogout = await req(base, 'POST', '/api/auth/logout', { token: logoutToken, headers: { Origin: 'https://attacker.invalid' } });
+    record('Cookie mutation rejects invalid Origin', '403', 'HTTP ' + invalidOriginLogout.status, invalidOriginLogout.status === 403);
+    const validAfterInvalidOrigin = await req(base, 'GET', '/api/auth/me', { token: logoutToken });
+    record('Invalid-Origin logout does not destroy session', '200', 'HTTP ' + validAfterInvalidOrigin.status, validAfterInvalidOrigin.status === 200);
+    const missingOriginLogout = await req(base, 'POST', '/api/auth/logout', { token: logoutToken });
+    record('Cookie mutation rejects missing Origin', '403', 'HTTP ' + missingOriginLogout.status, missingOriginLogout.status === 403);
+    const validAfterMissingOrigin = await req(base, 'GET', '/api/auth/me', { token: logoutToken });
+    record('Missing-Origin logout does not destroy session', '200', 'HTTP ' + validAfterMissingOrigin.status, validAfterMissingOrigin.status === 200);
+    const logout = await req(base, 'POST', '/api/auth/logout', { token: logoutToken, headers: { Origin: base } });
+    record('Same-Origin logout clears cookie and returns 200', '200 + cleared cookie', 'HTTP ' + logout.status, logout.status === 200 && /gabah_session=;/.test(logout.setCookie) && /HttpOnly/i.test(logout.setCookie) && /SameSite=/i.test(logout.setCookie));
+    const afterLogout = await req(base, 'GET', '/api/auth/me', { token: logoutToken });
+    record('Logout revokes the session', '401', 'HTTP ' + afterLogout.status, afterLogout.status === 401);
 
     // ---------- Live HTTP authorization for every Dynamic RBAC administration route ----------
     const rbacGuardClient = new pg.Client({ connectionString: TEST_DB_URL });
