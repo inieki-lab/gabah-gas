@@ -50,6 +50,9 @@ jobs:
       - name: Production dependency boundary regression
         run: npm run test:production-dependency-policy
 
+      - name: Production independent rate-limit secret policy regression
+        run: npm run test:production-secret-policy
+
       - name: Browser storage policy regression
         run: npm run test:browser-storage-policy
 
@@ -179,6 +182,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
           NODE_ENV: production
+          GABAH_RATE_LIMIT_SECRET: ci-shared-rate-limit-independent-secret-2026-only
         run: npm run test:shared-rate-limits
 
       - name: File-store auth rate-limit memory bound regression

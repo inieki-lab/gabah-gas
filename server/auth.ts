@@ -39,13 +39,44 @@ function isLoginLockoutDisabled(): boolean {
     && process.env.GABAH_DISABLE_LOGIN_LOCKOUT === 'true';
 }
 
+function isProductionAppMode(env: NodeJS.ProcessEnv = process.env): boolean {
+  const configuredMode = String(env.GABAH_APP_MODE || '').trim().toLowerCase();
+  // NODE_ENV=production is authoritative; an accidental UAT override must
+  // never disable production secret validation.
+  return env.NODE_ENV === 'production' || configuredMode === 'production';
+}
+
+/**
+ * Production must use an independent HMAC key for shared rate-limit identifiers.
+ * Database credentials and connection URLs are not acceptable substitutes.
+ * Development/UAT retains the compatibility fallback for easy local setup.
+ */
+export function validateRateLimitSecretConfiguration(env: NodeJS.ProcessEnv = process.env): void {
+  if (!isProductionAppMode(env)) return;
+
+  const secret = String(env.GABAH_RATE_LIMIT_SECRET || '');
+  if (Buffer.byteLength(secret, 'utf8') < 32) {
+    throw new Error('Production requires GABAH_RATE_LIMIT_SECRET with at least 32 bytes of independently generated secret material.');
+  }
+  if (secret !== secret.trim()) {
+    throw new Error('GABAH_RATE_LIMIT_SECRET must not contain leading or trailing whitespace.');
+  }
+  if (secret === env.PGPASSWORD || secret === env.DATABASE_URL) {
+    throw new Error('GABAH_RATE_LIMIT_SECRET must be independent from PostgreSQL credentials.');
+  }
+}
+
 function hashRateLimitKey(kind: 'api' | 'login', identifier: string): string {
-  // Prefer an independent stable secret shared by all replicas. The app DB
-  // password is a safe fallback for deployments that have not set one yet.
-  const secret = process.env.GABAH_RATE_LIMIT_SECRET
-    || process.env.PGPASSWORD
-    || process.env.DATABASE_URL
-    || 'gabah-local-development-rate-limit-key';
+  const production = isProductionAppMode();
+  const secret = production
+    ? String(process.env.GABAH_RATE_LIMIT_SECRET || '')
+    : process.env.GABAH_RATE_LIMIT_SECRET
+      || process.env.PGPASSWORD
+      || process.env.DATABASE_URL
+      || 'gabah-local-development-rate-limit-key';
+  if (!secret) {
+    throw new Error('Production GABAH_RATE_LIMIT_SECRET is required before rate limiting can run.');
+  }
   return crypto.createHmac('sha256', secret).update(kind).update(':').update(identifier).digest('hex');
 }
 

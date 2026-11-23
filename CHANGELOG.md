@@ -1,3 +1,11 @@
+## [2026-11-23] — Require independent production rate-limit secret
+
+- Production startup rejects a missing, weak (<32-byte), whitespace-padded, or database-credential-reused `GABAH_RATE_LIMIT_SECRET`.
+- Production HMAC rate-limit keys no longer fall back to PostgreSQL passwords or connection URLs; development/UAT retains the documented local fallback.
+- Add direct configuration regression coverage and supply isolated test-only secrets to production Docker and PostgreSQL runtime smoke tests.
+
+---
+
 ## [2026-11-23] — Normalize employee profiles and retire the legacy nine-role model
 
 - Primary account profile is now only `Admin GABAH` or `Karyawan`; IT, GA, Auditor, Humas, Sekretariat Direksi, and other work functions are additional Dynamic RBAC assignments.
