@@ -7,7 +7,7 @@
 **Database:** PostgreSQL 17 via Docker Compose.  
 **Persistent files:** Docker named volume uploads_data mounted at /app/uploads.
 
- > **Release gate:** Jangan deploy PR draft atau branch kerja. Deployment hanya dilakukan dari commit/tag yang telah disetujui dan masuk ke branch rilis yang ditetapkan pemilik repo, dengan CI pada exact SHA lulus, UAT disetujui, backup/restore serta rollback siap, TLS/reverse proxy dan monitoring diverifikasi. Nomor PR/branch lama bukan instruksi deployment aktif.
+> **Release gate:** Jangan deploy PR draft atau branch kerja. Deployment hanya dilakukan dari commit/tag yang telah disetujui dan masuk ke branch rilis yang ditetapkan pemilik repo, dengan CI pada exact SHA lulus, UAT disetujui, backup/restore serta rollback siap, TLS/reverse proxy dan monitoring diverifikasi. Nomor PR/branch lama bukan instruksi deployment aktif.
 
 ## 0. Aturan keselamatan
 
