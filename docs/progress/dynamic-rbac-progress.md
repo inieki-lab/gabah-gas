@@ -1495,3 +1495,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - CI #3295 reached the Dynamic RBAC foundation checks and failed 1/142 source-contract assertions. Runtime behavior changes were not implicated: the static assertion still required the obsolete unreachable `user.role === 'IT'` branch in `getScopedAssets()`, which the new secondary-capability-first fallback intentionally replaces.
 - Updated `scripts/dynamic-rbac-foundation-verify.mjs` in commit 23ef8744fa267d3c54e4d5a35efa18ac8e9e7a3e to assert the new ordered IT/GA capability checks and the constrained owner-domain filters, while retaining the PostgreSQL dynamic scope and workstation-read assertions.
 - The exact-head full CI run must pass before merge. This updates the test contract to the intended model; it does not remove runtime coverage.
+
+
+### Frontend capability fallback consistency — 2026-11-23 (PR #251; CI pending)
+
+- Extended the secondary-role audit to the frontend compatibility layer. `src/services/gabahService.ts` still used primary-role labels for asset edit, loan approval, ticket visibility, and ticket actions whenever effective PostgreSQL permission metadata was absent. Canonical Karyawan users with IT/GA capabilities could therefore have correct backend access but missing UI actions in file-store mode.
+- Fix commit 0c3656f7a98ac7b1060f9859ac0906cb0ae6bce0 adds normalized capability matching for IT/GA and preserves Auditor deny-write precedence.
+- Added regression coverage in `scripts/auditor-additional-role-verify.ts` (commit 6c2b3d125827a26e7402fe7452d423ecd246bb35) for Karyawan+IT and Karyawan+GA fallback behavior, including GA's prohibition on editing IT assets.
+- CI must validate typecheck, UI capability tests, and all integration suites before merge.
