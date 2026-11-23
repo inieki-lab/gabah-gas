@@ -153,3 +153,7 @@ for (const [name, ok] of checks) {
 }
 console.log(`TOTAL: ${checks.length} | PASS: ${checks.length - failed} | FAIL: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);
+
+
+const licenseUi = fs.readFileSync('src/components/views/LicensesView.tsx', 'utf8');
+assert.ok(licenseUi.includes("GabahService.hasLegacyCapability(currentUser, 'it')"), 'IT license creation action must honor secondary IT capability in file-store mode');
