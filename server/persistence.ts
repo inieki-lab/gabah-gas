@@ -626,6 +626,7 @@ function normalizeLegacyEmployeeProfileRoles(): void {
   for (const user of db.users as any[]) {
     const legacyRole = String(user.role || '').trim();
     if (legacyRole === 'Admin GABAH' || legacyRole === 'Karyawan') continue;
+    if (!['Superadmin', 'IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'SC', 'PIBC'].includes(legacyRole)) continue;
 
     if (legacyRole === 'Superadmin') {
       user.role = 'Admin GABAH';
@@ -737,7 +738,7 @@ async function backfillDynamicRbacUserRoles(existingClient?: PoolClient): Promis
     "SELECT u.id::text, r.id, TRUE FROM users u " +
     "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
     "WHEN 'Admin GABAH' THEN 'superadmin' ELSE 'karyawan' END) " +
-    "WHERE u.id::text = ANY($1::text[]) " +
+    "WHERE u.id::text = ANY($1::text[]) AND u.role IN ('Admin GABAH', 'Karyawan') " +
     "ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE",
     [userIds],
   );
