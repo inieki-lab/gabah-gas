@@ -5,7 +5,7 @@
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Versi Arsitektur:** 2026.1.0-enterprise  
 **Status:** Baseline arsitektur; setiap komponen dan diagram wajib direkonsiliasi dengan source code pada commit yang dinyatakan.  
-**Terakhir Diperbarui:** 28 September 2026 (baseline historis; verifikasi ulang diperlukan)  
+**Terakhir Ditinjau:** 23 November 2026 (baseline historis; verifikasi diagram dan komponen masih berjalan)  
 
 ---
 
