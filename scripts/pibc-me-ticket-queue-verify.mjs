@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const service = fs.readFileSync('server/services.ts', 'utf8');
+const runtimeHardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const db = fs.readFileSync('server/db.ts', 'utf8');
 const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
@@ -12,6 +13,7 @@ const ticketView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8
 const checks = [
   ['File-store ME ticket operator capability resolves the canonical admin_tiket_me secondary role', /secondaryRoleAliases[\s\S]*me: \['admin_tiket_me'\]/.test(server) && /secondaryRoleAliases\[roleKey\]/.test(server)],
   ['File-store ME ticket creation requires the dedicated pemohon_tiket_me capability', /payload\.category === 'ME'[\s\S]*!isPostgresPersistenceActive\(\)[\s\S]*pemohon_tiket_me/.test(service)],
+  ['File-store attention scope recognizes Admin Tiket ME only for UNIT-PIBC-ME tickets', /ticket\.category === 'ME'[\s\S]*ticket\.assigned_unit_id === 'UNIT-PIBC-ME'[\s\S]*capabilities\.has\('admin_tiket_me'\)/.test(runtimeHardening)],
 
   ['ME queue administrator receives tickets.assign separately from tickets.update', /role_key = 'admin_tiket_me'/.test(meAssignmentPermissionMigration) && /'tickets\.assign'/.test(meAssignmentPermissionMigration) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/.test(meAssignmentPermissionMigration)],
   ['ME has a dedicated unit and least-privilege requester/admin role templates', /UNIT-PIBC-ME/.test(migration) && /admin_tiket_me/.test(migration) && /pemohon_tiket_me/.test(migration) && /tickets\.create\.me/.test(migration)],
