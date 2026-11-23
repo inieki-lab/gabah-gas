@@ -1481,3 +1481,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Root cause: `getScopedAssets()` file-store compatibility branch evaluated the generic employee baseline first. Because `isEmployeeBaseline` is true for all non-Superadmin/non-Auditor actors, the subsequent IT/GA branches were unreachable. Canonical IT employees (primary role Karyawan, secondary `it`) therefore could not see non-loanable IT assets at all locations, and GA's explicit read filter was also bypassed.
 - Fix commit d7cdcc6a0c3d5c40c1442ab0743b2bea6fc7d18b: evaluate explicit IT/GA secondary capabilities before the employee baseline. IT receives its IT owner domain plus personal/loan-pool assets; GA receives GA owner assets and IT HLT/HPC workstations only, plus personal/loan-pool assets; ordinary Karyawan retain assigned/pool-only visibility. PostgreSQL dynamic scope and permission logic is unchanged.
 - Exact-head CI must rerun the organization-model regression and the full workflow before this fix is considered complete.
+
+
+### Secondary-role consistency across tickets, loans, and room queues — 2026-11-23 (PR #251; CI pending)
+
+- The organization-model test exposed a second-stage access check: even after IT mutation capability was corrected, request middleware denied the asset because file-store `getScopedAssets()` returned the generic employee baseline before evaluating IT/GA secondary roles. Fix d7cdcc6a0c3d5c40c1442ab0743b2bea6fc7d18 resolves that ordering and preserves GA's workstation-only IT read exception.
+- Follow-up code audit found the same primary-role-only fallback pattern in scoped ticket/loan attention checks and Meeting Room operational queue visibility. Fix commits cb1b5ec7ae56e53da755425f074c211c42279672 and bb2088578692524400497731f7390d0a40d0e9aa now honor normalized IT/GA `role_keys` in file-store compatibility mode. PostgreSQL permission/scope checks remain authoritative.
+- Added regression guards to ticket transition and Meeting Room Stage 3 verification scripts to prevent these secondary-role fallbacks from regressing. Fresh full CI is required.
