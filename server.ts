@@ -53,6 +53,20 @@ async function startServer() {
 
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
+  const cookieSecure = process.env.NODE_ENV === 'production' || process.env.GABAH_APP_MODE === 'production';
+  const setSessionCookie = (res: express.Response, token: string) => res.cookie('gabah_session', token, {
+    httpOnly: true,
+    secure: cookieSecure,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  const clearSessionCookie = (res: express.Response) => res.clearCookie('gabah_session', {
+    httpOnly: true,
+    secure: cookieSecure,
+    sameSite: 'strict',
+    path: '/',
+  });
 
   // Baseline browser security headers apply to API, HTML, and static assets.
   // CSP starts in report-only mode: script execution is same-origin only, while
@@ -1883,11 +1897,11 @@ async function startServer() {
         user
       );
 
+      setSessionCookie(res, session.token);
       res.json({
         success: true,
         data: {
           user: serializeAuthenticatedUser(user),
-          token: session.token,
           expires_at: session.expires_at,
         },
       });
@@ -1909,6 +1923,7 @@ async function startServer() {
       if (token) {
         destroySession(token);
       }
+      clearSessionCookie(res);
       res.json({ success: true, message: 'Logout berhasil.' });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
@@ -1954,6 +1969,7 @@ async function startServer() {
       // re-issue one session for the calling device so it stays signed in.
       revokeUserSessions(user.id);
       const session = createSession(user.id, req);
+      setSessionCookie(res, session.token);
 
       GabahDomainService.recordAudit(
         'USER_PASSWORD_SELF_CHANGED',
@@ -1966,7 +1982,7 @@ async function startServer() {
 
       res.json({
         success: true,
-        data: { user: sanitizeUser(user), token: session.token, expires_at: session.expires_at },
+        data: { user: sanitizeUser(user), expires_at: session.expires_at },
       });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
@@ -2048,6 +2064,7 @@ async function startServer() {
       }
 
       const session = createSession(targetUser.id, req, undefined, originalAdminId);
+      setSessionCookie(res, session.token);
 
       GabahDomainService.recordAudit(
         'AUTH_SWITCH_ROLE',
@@ -2064,7 +2081,6 @@ async function startServer() {
         success: true,
         data: {
           user: serializeAuthenticatedUser(targetUser),
-          token: session.token,
           expires_at: session.expires_at,
         },
       });
