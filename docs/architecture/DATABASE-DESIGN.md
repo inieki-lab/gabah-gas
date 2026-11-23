@@ -21,8 +21,9 @@ Sistem juga mengimplementasikan mekanisme **Dual-Persistence Bridge** (`server/p
 
 ## 2. Struktur Tabel Relasional PostgreSQL
 
-### 2.1 Tabel `divisions` (Divisi Korporat)
-Menyimpan struktur divisi resmi BUMD PT Food Station Tjipinang Jaya.
+### 2.1 Tabel `divisions` (Master organisasi — baseline historis)
+Contoh kode/nama di bawah berasal dari skema/seed lama dan bukan daftar divisi, owner domain, atau lokasi yang disahkan saat ini. RPC/SC dan PIBC adalah lokasi/operasional context, bukan owner aset otomatis. Verifikasi master organisasi aktif dan migration terbaru sebelum membuat perubahan skema atau memetakan data.
+Menyimpan struktur organisasi sesuai model pada saat baseline ini ditulis.
 - `id` (BIGSERIAL, PRIMARY KEY)
 - `code` (VARCHAR(20), NOT NULL, UNIQUE) — Contoh: `'SC'`, `'PIBC'`, `'IT'`, `'GA'`
 - `name` (VARCHAR(100), NOT NULL) — Contoh: `'Supply Chain'`, `'Pasar'`, `'IT'`, `'General Affairs'`
@@ -43,7 +44,7 @@ Menyimpan identitas pegawai, peran RBAC, kredensial hash, dan divisi.
 - `id` (VARCHAR(64), PRIMARY KEY) — Contoh: `'USR-01'`, `'USR-SEKDIR'`
 - `name` (VARCHAR(200), NOT NULL)
 - `email` (VARCHAR(255), NOT NULL, UNIQUE)
-- `role` (VARCHAR(50), NOT NULL) — `'Admin GABAH'`, `'IT'`, `'GA'`, `'Sekretaris Direksi'`, `'Humas'`, `'Supply Chain'`, `'PIBC'`, `'Karyawan'`, `'Auditor'`
+- `role` (VARCHAR(50), NOT NULL) — nilai role primer/kompatibilitas yang tersimpan pada baseline ini. Contoh lama seperti `Supply Chain` dan `PIBC` bukan daftar role aktif atau allowlist Dynamic RBAC. Verifikasi user model, role assignments, dan migrations terbaru.
 - `division_id` (BIGINT, REFERENCES divisions(id))
 - `department_id` (BIGINT, REFERENCES departments(id))
 - `phone` (VARCHAR(50))
@@ -54,8 +55,8 @@ Menyimpan identitas pegawai, peran RBAC, kredensial hash, dan divisi.
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 - `updated_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 
-### 2.4 Tabel `user_sessions` (Sesi Token Otentikasi)
-Menyimpan sesi aktif pengguna untuk autentikasi Bearer token.
+### 2.4 Tabel `user_sessions` (Sesi Token Otentikasi — baseline historis)
+Menyimpan sesi autentikasi server-side. Kolom/transport di bawah adalah baseline Bearer yang harus diverifikasi terhadap migration dan auth middleware pada exact commit; PR cookie-auth yang belum merge tidak mengubah kondisi main.
 - `id` (VARCHAR(64), PRIMARY KEY)
 - `token` (VARCHAR(128), NOT NULL, UNIQUE)
 - `user_id` (VARCHAR(64), NOT NULL, REFERENCES users(id) ON DELETE CASCADE)
