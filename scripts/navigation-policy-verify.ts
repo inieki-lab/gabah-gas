@@ -1,118 +1,46 @@
 import assert from 'node:assert/strict';
-import { CORE_NAVIGATION_TABS, ROLE_NAVIGATION, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../src/navigation/roleNavigation';
+import { CORE_NAVIGATION_TABS, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../src/navigation/roleNavigation';
 
-const expectedRoles = [
-  'Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas',
-  'Supply Chain', 'PIBC', 'Karyawan', 'Auditor',
-];
-assert.deepEqual(Object.keys(ROLE_NAVIGATION).sort(), [...expectedRoles].sort());
-
-for (const role of expectedRoles) {
-  assert.ok(ROLE_NAVIGATION[role as keyof typeof ROLE_NAVIGATION].includes('dashboard'), `${role} must have a dashboard`);
+// The application has no fixed role-to-menu matrix. Any Dynamic RBAC role
+// receives exactly the pages authorized by its effective permission keys.
+const customRoles = ['IT', 'GA', 'Auditor', 'Humas', 'Sekretariat Direksi', 'ME Admin', 'RPC Operator', 'PIBC Staff', 'Custom Role'];
+for (const role of customRoles) {
+  assert.ok(isNavTabAllowedForRole(role, 'dashboard', ['dashboard.read']), `${role} receives dashboard only when granted`);
+  assert.equal(isNavTabAllowedForRole(role, 'dashboard', []), false, `${role} cannot bypass an empty permission set`);
+  assert.equal(isNavTabAllowedForRole(role, 'assets', ['assets.update']), false, `${role} cannot see assets from mutation-only permission`);
 }
-
-/**
- * Stage 2: lock the complete legacy navigation matrix. A partial assertion
- * (e.g. only checking hidden tabs) can miss accidental menu exposure after
- * adding or renaming a role. Keep the expected matrix explicit and reviewable.
- */
-const expectedVisibleTabs: Record<string, string[]> = {
-  'Admin GABAH': ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
-  IT: ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
-  GA: ['dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans', 'tickets', 'contracts', 'vendors', 'knowledge', 'reports'],
-  'Sekretaris Direksi': ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
-  Humas: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
-  'Supply Chain': ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
-  PIBC: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
-  Karyawan: ['dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge'],
-  Auditor: ['dashboard', 'assets', 'maintenance', 'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports'],
-};
-for (const [role, expected] of Object.entries(expectedVisibleTabs)) {
-  assert.deepEqual(
-    [...ROLE_NAVIGATION[role as keyof typeof ROLE_NAVIGATION]].sort(),
-    [...expected].sort(),
-    `Complete menu visibility matrix changed unexpectedly for ${role}`,
-  );
-}
-const mustNotSee: Record<string, string[]> = {
-  'Sekretaris Direksi': ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
-  Humas: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
-  Karyawan: ['assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'reports'],
-  Auditor: ['meeting_rooms'],
-};
-for (const [role, tabs] of Object.entries(mustNotSee)) {
-  for (const tab of tabs) assert.equal(isNavTabAllowedForRole(role as keyof typeof ROLE_NAVIGATION, tab as any), false);
-}
-assert.ok(isNavTabAllowedForRole('IT', 'licenses'));
-assert.ok(isNavTabAllowedForRole('GA', 'meeting_rooms'));
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'my_assets'));
-assert.ok(isNavTabAllowedForRole('PIBC', 'my_assets'));
-assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets'), false);
-assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance'), false);
-assert.ok(isNavTabAllowedForRole('Karyawan', 'tickets'));
-assert.ok(isNavTabAllowedForRole('Sekretaris Direksi', 'my_assets'));
-assert.ok(isNavTabAllowedForRole('Auditor', 'reports'));
 assert.equal(isNavTabAllowedForRole(undefined, 'dashboard'), false);
+assert.ok(isNavTabAllowedForRole('Karyawan', 'dashboard'));
+assert.ok(isNavTabAllowedForRole('Karyawan', 'my_assets'));
+assert.equal(isNavTabAllowedForRole('Karyawan', 'assets'), false);
+assert.ok(isNavTabAllowedForRole('Admin GABAH', 'reports'));
+assert.ok(isNavTabAllowedForRole('Admin GABAH', 'assets'));
+assert.equal(isNavTabAllowedForRole('Karyawan', 'assets', ['assets.update']), false);
 
-// PostgreSQL navigation must require read permission for every endpoint the page loads.
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'dashboard', ['dashboard.read']));
-assert.ok(isNavTabAllowedForRole('Supply Chain', 'my_assets', ['assets.read']));
-assert.equal(isNavTabAllowedForRole('Supply Chain', 'assets', ['assets.read']), false);
-assert.equal(isNavTabAllowedForRole('PIBC', 'maintenance', ['dashboard.read', 'assets.read']), false);
-assert.equal(isNavTabAllowedForRole('IT', 'assets', ['assets.update']), false);
-assert.equal(isNavTabAllowedForRole('GA', 'assets', ['assets.create']), false);
-assert.ok(isNavTabAllowedForRole('Auditor', 'assets', ['assets.read', 'assets.audit.read']));
-assert.equal(isNavTabAllowedForRole('Auditor', 'assets', ['assets.audit.read']), false);
-assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'assets', ['assets.catalog.read']), false);
-assert.ok(isNavTabAllowedForRole('IT', 'assets', ['assets.catalog.read', 'assets.read']));
-assert.ok(isNavTabAllowedForRole('GA', 'assets', ['assets.catalog.read', 'assets.read']));
-assert.equal(isNavTabAllowedForRole('IT', 'meeting_rooms', ['room_reservations.create']), false);
-assert.equal(isNavTabAllowedForRole('Humas', 'meeting_rooms', ['room_reservations.read']), false);
-assert.ok(isNavTabAllowedForRole('Humas', 'meeting_rooms', ['meeting_rooms.read', 'room_reservations.read']));
-assert.equal(isNavTabAllowedForRole('GA', 'licenses', ['dashboard.read', 'assets.update']), false);
-assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'reports', ['reports.read']));
-assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
+// A page is visible only when its read contract is satisfied.
+assert.ok(isNavTabAllowedForRole('Any Dynamic Role', 'meeting_rooms', ['meeting_rooms.read', 'room_reservations.read']));
+assert.equal(isNavTabAllowedForRole('Any Dynamic Role', 'meeting_rooms', ['room_reservations.read']), false);
+assert.ok(isNavTabAllowedForRole('Any Dynamic Role', 'assets', ['assets.read', 'assets.catalog.read']));
+assert.equal(isNavTabAllowedForRole('Any Dynamic Role', 'assets', ['assets.read']), false);
+assert.equal(isNavTabAllowedForRole('Any Dynamic Role', 'assets', ['assets.catalog.read']), false);
 
-// PostgreSQL navigation requires an explicit read permission for every page,
-// including the employee workspace. Landing chooses the first actually granted
-// page rather than silently routing to a forbidden Dashboard.
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['reports.read']), 'reports');
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read', 'loans.read']), 'tickets');
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), null);
-assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', []), false);
-assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'my_assets', []), false);
-assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'loans', []), false);
-assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'tickets', []), false);
-assert.equal(isNavTabAllowedForRole('Custom Role' as any, 'knowledge', []), false);
-assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['dashboard.read']));
-assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'my_assets', ['assets.read']));
-assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'loans', ['loans.read']));
-assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'tickets', ['tickets.read']));
-assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'knowledge', ['knowledge.read']));
-
-// Global module lifecycle also filters the employee workspace.
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'tickets.read'], ['tickets']), 'tickets');
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'tickets.read'], ['dashboard']), 'dashboard');
-assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'tickets.read'], []), null);
+// Landing page selection follows effective permissions and active module state.
+assert.equal(getDefaultNavTabForRole('Custom Role', ['reports.read']), 'reports');
+assert.equal(getDefaultNavTabForRole('Custom Role', ['tickets.read', 'loans.read']), 'tickets');
+assert.equal(getDefaultNavTabForRole('Custom Role', ['*']), 'dashboard');
+assert.equal(getDefaultNavTabForRole('Custom Role', []), null);
+assert.equal(getDefaultNavTabForRole('Custom Role', ['dashboard.read', 'tickets.read'], ['tickets']), 'tickets');
+assert.equal(getDefaultNavTabForRole('Custom Role', ['dashboard.read', 'tickets.read'], ['dashboard']), 'dashboard');
+assert.equal(getDefaultNavTabForRole('Custom Role', ['dashboard.read', 'tickets.read'], []), null);
 assert.equal(getDefaultNavTabForRole('Karyawan', undefined, ['tickets']), 'tickets');
 
-
-// Core workspace classification does not bypass effective permission checks.
 assert.deepEqual([...CORE_NAVIGATION_TABS], ['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge']);
-for (const role of [...expectedRoles, 'Custom Role']) {
-  for (const tab of CORE_NAVIGATION_TABS) {
-    assert.equal(isNavTabAllowedForRole(role as any, tab, []), false, `${role} must not see ungranted core menu ${tab}`);
-  }
+for (const tab of CORE_NAVIGATION_TABS) {
+  assert.equal(isNavTabAllowedForRole('Karyawan', tab, []), false, `Karyawan must not bypass empty PostgreSQL grants for ${tab}`);
 }
-assert.equal(isNavTabAllowedForRole('Auditor', 'my_assets'), false);
-assert.ok(isNavTabAllowedForRole('Auditor', 'knowledge', ['knowledge.read']));
-assert.equal(isNavTabAllowedForRole('Auditor', 'knowledge', []), false);
-
-// Administration visibility follows effective Superadmin capability, not a legacy label.
 assert.equal(isSuperadminNavigationAllowed('Admin GABAH', false, ['dashboard.read']), false);
 assert.ok(isSuperadminNavigationAllowed('Admin GABAH', true, ['dashboard.read']));
-assert.ok(isSuperadminNavigationAllowed('Custom Role' as any, false, ['*']));
+assert.ok(isSuperadminNavigationAllowed('Custom Role', false, ['*']));
 assert.ok(isSuperadminNavigationAllowed('Admin GABAH', false, undefined));
 
-console.log('Role navigation policy: PASS (9 roles, complete menu matrix, effective permissions and landing-page checks)');
+console.log('Dynamic navigation policy: PASS (no fixed role catalogue; permissions and landing-page checks)');
