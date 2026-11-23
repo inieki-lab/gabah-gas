@@ -34,7 +34,7 @@
 | Admin GABAH (Superadmin) | Profil utama Admin GABAH dengan grant administrasi global | Administration, user/role, permission, scope, master, konfigurasi, audit |
 | Karyawan + role tambahan IT Support | Permission modul IT dan owner scope IT | Aset IT lintas lokasi, tiket IT, tugas/support, lifecycle yang diizinkan |
 | Karyawan + role tambahan GA asset operator | Permission operasional GA dan owner scope GA | Aset GA, sarpras, peminjaman/approval sesuai kewenangan |
-| GA read-only workstation | Grant khusus `assets.read.it_workstations` tanpa permission mutasi IT | Hanya baca Laptop/PC owner IT; direct API mutation harus ditolak |
+| Karyawan + role tambahan GA (read-only workstation) | Grant khusus `assets.read.it_workstations` tanpa permission mutasi IT | Hanya baca Laptop/PC owner IT; direct API mutation harus ditolak |
 | Karyawan HO | Fungsi dasar karyawan dan office location HO | Aset pribadi/pool, tiket sendiri, reservasi dan layanan mandiri |
 | Karyawan RPC | Fungsi dasar karyawan dan office location RPC/SC | Lokasi kerja tidak otomatis memberi role, owner scope, atau akses aset |
 | Karyawan PIBC | Fungsi dasar karyawan dan office location PIBC | Lokasi kerja tidak otomatis memberi role, owner scope, atau akses aset |
@@ -66,10 +66,10 @@
 - **Langkah Pengujian**:
   1. Login sebagai Karyawan dengan role tambahan IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC/SC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
   2. Login sebagai Karyawan dengan role tambahan GA. Pastikan aset owner GA terlihat lintas lokasi. Jika permission assets.read.it_workstations aktif, hanya Laptop/PC owner IT yang dapat dibaca; mutasi langsung via API harus ditolak.
-  3. Login sebagai Karyawan di unit Supply Chain dan PIBC. Pastikan fungsi dasar karyawan tersedia; lokasi kerja tidak otomatis membuka katalog aset unit/lokasi.
+  3. Login sebagai Karyawan di lokasi RPC dan PIBC. Pastikan fungsi dasar karyawan tersedia; lokasi kerja tidak otomatis membuka katalog aset unit/lokasi.
   4. Uji aset historis dengan owner SC/PIBC secara read/review sesuai grant sementara yang disahkan. Jangan menganggap RPC/SC atau PIBC sebagai owner domain baru. Aset owner ambigu tetap menunggu klasifikasi per aset; lokasi fisik tidak memberi hak mutasi.
-  5. Login sebagai Humas dan Sekretaris Direksi. Pastikan fungsi dasar karyawan tersedia serta kapabilitas tambahan muncul hanya bila role tambahan/permission diberikan.
-  6. Login sebagai Auditor. Pastikan data yang diberi scope audit dapat dibaca dan seluruh operasi mutasi ditolak.
+  5. Login sebagai Karyawan dengan role tambahan Humas dan Sekretariat Direksi. Pastikan fungsi dasar karyawan tersedia serta kapabilitas tambahan muncul hanya bila role tambahan/permission diberikan.
+  6. Login sebagai Karyawan dengan role tambahan Auditor. Pastikan data yang diberi scope audit dapat dibaca dan seluruh operasi mutasi ditolak.
   7. Uji user tanpa role, role nonaktif, dan role tanpa scope: akses harus gagal tertutup.
 - **Kriteria Lulus**: API list dan detail-by-ID mengembalikan record sesuai permission + scope; endpoint mutasi menolak akses di luar scope. Verifikasi dilakukan langsung ke API, bukan hanya menu.
 
