@@ -55,40 +55,17 @@ function summary() {
 }
 
 async function req(base, method, urlPath, { body, token, headers } = {}) {
-  const res = await fetch(`${base}${urlPath}`, {
+  const res = await fetch(base + urlPath, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(headers || {}),
-    },
+    headers: { 'Content-Type': 'application/json', ...(token?.cookie ? { Cookie: token.cookie } : {}), ...(headers || {}) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(15000),
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
-}
-
-async function uploadContractDocument(base, contractId, token, content) {
-  const form = new FormData();
-  form.append('file', new Blob([Buffer.from(content)], { type: 'application/pdf' }), 'verify-contract.pdf');
-  const res = await fetch(`${base}/api/contracts/${contractId}/documents/upload`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: form,
-    signal: AbortSignal.timeout(15000),
-  });
-  let json = {};
-  try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
-}
-
-async function downloadContractDocument(base, contractId, documentId, token) {
-  return fetch(`${base}/api/contracts/${contractId}/documents/${documentId}/download`, {
-    headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(15000),
-  });
+  const setCookie = res.headers.get('set-cookie') || '';
+  if (token && setCookie) token.cookie = setCookie.split(';', 1)[0];
+  return { status: res.status, json, setCookie };
 }
 
 async function waitForServer(base, tries = 80) {
@@ -611,28 +588,39 @@ async function main() {
     }
     await mig.end();
 
-    // ---------- 2. Logins (PBKDF2 path, env-provisioned passwords) ----------
-    const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS } });
-    const adminToken = adminLogin.json?.data?.token || '';
-    record('login admin', '200 + token', `HTTP ${adminLogin.status}`, adminLogin.status === 200 && Boolean(adminToken));
+    // ---------- 2. Logins (PBKDF2 path, HttpOnly cookie sessions) ----------
+    const adminToken = { cookie: '' };
+    const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS }, token: adminToken });
+    record('login admin returns no bearer token in JSON', '200 + no JSON token', 'HTTP ' + adminLogin.status, adminLogin.status === 200 && !adminLogin.json?.data?.token && !adminLogin.json?.token);
+    record('admin login sets HttpOnly SameSite gabah_session cookie', 'Set-Cookie + HttpOnly + SameSite', adminLogin.setCookie || '(missing)', /gabah_session=/.test(adminLogin.setCookie) && /HttpOnly/i.test(adminLogin.setCookie) && /SameSite=/i.test(adminLogin.setCookie));
+    const adminMe = await req(base, 'GET', '/api/auth/me', { token: adminToken });
+    record('admin cookie restores a valid session', '200 + identity', 'HTTP ' + adminMe.status, adminMe.status === 200 && Boolean(adminMe.json?.data?.id));
 
-    const itLogin = await req(base, 'POST', '/api/auth/login', { body: { email: IT_EMAIL, password: USER_PASS } });
-    const itToken = itLogin.json?.data?.token || '';
-    record('login IT user', '200 + token', `HTTP ${itLogin.status}`, itLogin.status === 200 && Boolean(itToken));
+    const itToken = { cookie: '' };
+    const itLogin = await req(base, 'POST', '/api/auth/login', { body: { email: IT_EMAIL, password: USER_PASS }, token: itToken });
+    record('login IT uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + itLogin.status, itLogin.status === 200 && /gabah_session=/.test(itLogin.setCookie) && /HttpOnly/i.test(itLogin.setCookie) && /SameSite=/i.test(itLogin.setCookie) && !itLogin.json?.data?.token);
+    const itMe = await req(base, 'GET', '/api/auth/me', { token: itToken });
+    record('IT cookie resolves to correct identity', IT_EMAIL, itMe.json?.data?.email, itMe.status === 200 && itMe.json?.data?.email === IT_EMAIL);
 
-    const gaLogin = await req(base, 'POST', '/api/auth/login', { body: { email: GA_EMAIL, password: USER_PASS } });
-    const gaToken = gaLogin.json?.data?.token || '';
-    record('login GA user', '200 + token', `HTTP ${gaLogin.status}`, gaLogin.status === 200 && Boolean(gaToken));
+    const gaToken = { cookie: '' };
+    const gaLogin = await req(base, 'POST', '/api/auth/login', { body: { email: GA_EMAIL, password: USER_PASS }, token: gaToken });
+    record('login GA uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + gaLogin.status, gaLogin.status === 200 && /gabah_session=/.test(gaLogin.setCookie) && /HttpOnly/i.test(gaLogin.setCookie) && /SameSite=/i.test(gaLogin.setCookie) && !gaLogin.json?.data?.token);
+    const gaMe = await req(base, 'GET', '/api/auth/me', { token: gaToken });
+    record('GA cookie resolves to correct identity', GA_EMAIL, gaMe.json?.data?.email, gaMe.status === 200 && gaMe.json?.data?.email === GA_EMAIL);
 
-    const karyawanLogin = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
-    let karyawanToken = karyawanLogin.json?.data?.token || '';
-    record('login Karyawan', '200 + token', `HTTP ${karyawanLogin.status}`, karyawanLogin.status === 200 && Boolean(karyawanToken));
+    let karyawanToken = { cookie: '' };
+    const karyawanLogin = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS }, token: karyawanToken });
+    record('login Karyawan uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + karyawanLogin.status, karyawanLogin.status === 200 && /gabah_session=/.test(karyawanLogin.setCookie) && /HttpOnly/i.test(karyawanLogin.setCookie) && /SameSite=/i.test(karyawanLogin.setCookie) && !karyawanLogin.json?.data?.token);
+    const karyawanMe = await req(base, 'GET', '/api/auth/me', { token: karyawanToken });
+    record('Karyawan cookie resolves to correct identity', KARYAWAN_EMAIL, karyawanMe.json?.data?.email, karyawanMe.status === 200 && karyawanMe.json?.data?.email === KARYAWAN_EMAIL);
 
-    const auditorLogin = await req(base, 'POST', '/api/auth/login', { body: { email: AUDITOR_EMAIL, password: USER_PASS } });
-    const auditorToken = auditorLogin.json?.data?.token || '';
-    record('login Auditor', '200 + token', `HTTP ${auditorLogin.status}`, auditorLogin.status === 200 && Boolean(auditorToken));
+    const auditorToken = { cookie: '' };
+    const auditorLogin = await req(base, 'POST', '/api/auth/login', { body: { email: AUDITOR_EMAIL, password: USER_PASS }, token: auditorToken });
+    record('login Auditor uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + auditorLogin.status, auditorLogin.status === 200 && /gabah_session=/.test(auditorLogin.setCookie) && /HttpOnly/i.test(auditorLogin.setCookie) && /SameSite=/i.test(auditorLogin.setCookie) && !auditorLogin.json?.data?.token);
+    const auditorMe = await req(base, 'GET', '/api/auth/me', { token: auditorToken });
+    record('Auditor cookie resolves to correct identity', AUDITOR_EMAIL, auditorMe.json?.data?.email, auditorMe.status === 200 && auditorMe.json?.data?.email === AUDITOR_EMAIL);
 
-    if (!adminToken) throw new Error('cannot continue without admin token');
+    if (!adminToken.cookie) throw new Error('cannot continue without admin cookie session');
 
     // ---------- Live HTTP authorization for every Dynamic RBAC administration route ----------
     const rbacGuardClient = new pg.Client({ connectionString: TEST_DB_URL });
@@ -990,8 +978,8 @@ async function main() {
     record('Dynamic role assignment adds GA capability without replacing Karyawan primary role', '200 + GA role', `HTTP ${assignment.status}`, assignment.status === 200 && assignment.json?.data?.role_ids?.includes(Number(gaRole?.id)));
     const oldKaryawanSession = await req(base, 'GET', '/api/auth/me', { token: karyawanToken });
     record('Role assignment revokes the target user\'s existing session', '401', `HTTP ${oldKaryawanSession.status}`, oldKaryawanSession.status === 401);
-    const karyawanReloginAfterGa = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
-    karyawanToken = karyawanReloginAfterGa.json?.data?.token || '';
+    karyawanToken = { cookie: '' };
+    const karyawanReloginAfterGa = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS }, token: karyawanToken });
     record('Karyawan can sign in again after role assignment', '200 + new token', `HTTP ${karyawanReloginAfterGa.status}`, karyawanReloginAfterGa.status === 200 && Boolean(karyawanToken));
 
     const karyawanView = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
@@ -1105,8 +1093,8 @@ async function main() {
       body: { role_ids: [Number(gaRole?.id), vendorRoleId] },
     });
     record('Karyawan can receive a separate vendor owner capability without changing primary role', '200', `HTTP ${assignVendorRole.status}`, assignVendorRole.status === 200);
-    const karyawanReloginAfterVendorRole = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
-    karyawanToken = karyawanReloginAfterVendorRole.json?.data?.token || '';
+    karyawanToken = { cookie: '' };
+    const karyawanReloginAfterVendorRole = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS }, token: karyawanToken });
     record('Karyawan re-authenticates after vendor role assignment', '200 + new token', `HTTP ${karyawanReloginAfterVendorRole.status}`, karyawanReloginAfterVendorRole.status === 200 && Boolean(karyawanToken));
 
     const rpcscVendor = await req(base, 'POST', '/api/vendors', {
@@ -1135,8 +1123,8 @@ async function main() {
     });
     record('Auditor additional role can be assigned without replacing Karyawan primary', '200 + auditor capability',
       `HTTP ${addAuditorRole.status}`, addAuditorRole.status === 200 && addAuditorRole.json?.data?.role_ids?.includes(Number(auditorRole?.id)));
-    const karyawanReloginAfterAuditor = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS } });
-    karyawanToken = karyawanReloginAfterAuditor.json?.data?.token || '';
+    karyawanToken = { cookie: '' };
+    const karyawanReloginAfterAuditor = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS }, token: karyawanToken });
     record('Karyawan re-authenticates after Auditor capability assignment', '200 + new token', `HTTP ${karyawanReloginAfterAuditor.status}`, karyawanReloginAfterAuditor.status === 200 && Boolean(karyawanToken));
     const additionalAuditorWrite = await req(base, 'POST', '/api/tickets', {
       token: karyawanToken,
@@ -1211,8 +1199,8 @@ async function main() {
       process.exit(summary() || 1);
     }
 
-    const adminLogin2 = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS } });
-    const adminToken2 = adminLogin2.json?.data?.token || '';
+    const adminToken2 = { cookie: '' };
+    const adminLogin2 = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS }, token: adminToken2 });
 
     const afterRestart = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken2 });
     record('CR-04 contract persists across restart (PostgreSQL authoritative)', '200 + updated notes', `HTTP ${afterRestart.status} notes=${afterRestart.json?.data?.notes || '-'}`,
