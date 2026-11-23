@@ -25,6 +25,7 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
+      Origin: base,
       ...(token ? { Cookie: token } : {}),
       ...headers,
     },

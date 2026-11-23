@@ -27,6 +27,7 @@ async function req(base, method, urlPath, { token, body } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
+      Origin: base,
       ...(token ? { Cookie: token } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
