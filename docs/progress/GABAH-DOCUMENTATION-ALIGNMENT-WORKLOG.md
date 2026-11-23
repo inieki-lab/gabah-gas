@@ -120,3 +120,38 @@ The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, curre
 - API route authorization/validation/request-response details still require handler-by-handler review and test mapping; route inventory alone is not sufficient.
 - Database schema still requires actual table/column/constraint/index/trigger comparison after applying all 47 migrations to fresh and representative legacy databases.
 - Markdown relative-link validation was not completed. CI checks/workflow runs were absent on the previously checked documentation PR head; fetch latest PR head before final review.
+
+
+## Pass 5 — Implementation facts and role-model contradictions (23 November 2026)
+
+### Source findings recorded in `docs/IMPLEMENTATION-TRUTH-REGISTER.md`
+- Bearer session auth is the current main baseline; only health and login are public in `gabahSecurityMiddleware`.
+- PostgreSQL Dynamic RBAC loads assigned role/permission/scope policy into a process cache; source inspection is not cache-refresh integration evidence.
+- Auditor is dynamically resolved in PostgreSQL mode and receives a global non-GET deny gate with narrow notification/logout exceptions.
+- GA's optional IT visibility is restricted in `getScopedAssets()` to owner IT + HLT/HPC via `assets.read.it_workstations`.
+- `createAsset()` explicitly rejects SC, PIBC, and UNASSIGNED as new owners, requires an active owner master and `assets.create` plus matching owner scope. Legacy taxonomy entries remain for historical compatibility.
+- Loan operations require the operation-specific permission and matching owner scope in PostgreSQL mode.
+- Asset numbering is still allocated by an in-memory Map; the existing SQL sequence table is not used by `generateAssetNumber()` for atomic allocation.
+- Partial migration remains: `ServerUser.role` is a nine-label legacy TypeScript union, and employee baseline asset visibility still checks legacy employee role labels even when PostgreSQL is active.
+
+### Documentation corrections
+- Added `docs/IMPLEMENTATION-TRUTH-REGISTER.md` and made it mandatory reading in the AI documentation-control guide and README.
+- Corrected API and Database Design status/date claims; API now states current Bearer baseline and distinguishes route inventory from handler/UAT evidence.
+- Corrected Database Design's asset sequence description so table existence is not misrepresented as atomic generator use.
+- Corrected asset-numbering references to the actual in-memory generator and clarified legacy SC/PIBC categories are not permission for new-owner creation.
+- Corrected RBAC primary profile model: Sekretariat Direksi and Humas are additional capabilities, not primary employee roles; Supply Chain/SC and PIBC legacy labels are not new application roles.
+- Corrected PRD personas and primary-role language to align Sekretariat Direksi/Humas with additional capabilities.
+- Added historical-evidence warning to Production Readiness Gates; old CI counts and PASS claims remain tied to their original SHAs/runs.
+
+### Open code/documentation gaps
+1. Employee baseline visibility still derives from legacy `ServerUser.role` labels in PostgreSQL mode. Replace only after an approved capability/policy design and migration/UAT.
+2. Verify bulk import and all internal/alternate asset creation paths enforce the SC/PIBC/UNASSIGNED new-owner guard consistently.
+3. Test GA HLT/HPC read-only visibility against list, detail-by-ID, search, export, dashboard, and direct mutation APIs.
+4. Dynamic RBAC cache refresh and multi-process behavior require PostgreSQL integration tests.
+5. Asset numbering requires PostgreSQL-backed atomic allocation before multi-instance safety can be claimed.
+6. Existing docs still contain old fixture email/name and historical schema examples; they are not an HR roster. Further cleanup is needed across all Markdown files.
+
+### Evidence boundary
+- Source inspection baseline: main SHA `f39db6b8fd819d301f49815c7a33a04c80b2a6c0`.
+- No app code, migrations, or data were changed in this pass.
+- No tests were executed; all findings are source-inspection only, not TESTED/PASS.
