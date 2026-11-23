@@ -13,6 +13,8 @@
 
 ## 1. Konvensi Umum API
 
+> **Baseline contract, not a verified live endpoint catalogue.** Tabel endpoint dan hak akses di bawah masih harus dicocokkan route-by-route dengan server.ts, middleware, domain services, API client, dan integration tests. Dynamic RBAC permission/scope mengungguli label role statis pada tabel. Jangan gunakan daftar ini sebagai bukti bahwa endpoint aktif atau authorization-nya telah diuji.
+
 ### 1.1 Header Permintaan & Autentikasi
 Kecuali untuk endpoint publik (`PUBLIC_API_PATHS`), setiap request wajib menyertakan header otentikasi Bearer token:
 ```http
@@ -75,7 +77,7 @@ Content-Type: application/json
 | `/api/auth/login` | `POST` | Publik | Semua | Otentikasi email/alias & password. Mengembalikan user profile & Bearer token |
 | `/api/auth/logout` | `POST` | Bearer Token | Semua (termasuk Auditor) | Menghancurkan sesi aktif pada tabel `user_sessions` |
 | `/api/auth/me` | `GET` | Bearer Token | Semua | Mengembalikan data profil akun aktif berdasarkan token sesi |
-| `/api/auth/switch-role` | `POST` | Bearer Token / Publik (Dev) | Semua | Beralih persona/peran aktif untuk pengujian end-to-end multi-role |
+| `/api/auth/switch-role` | `POST` | Sesi Bearer terautentikasi | Admin GABAH saja (verifikasi ulang pada exact commit) | Alih identitas yang diotorisasi; sesi lama dirotasi dan aksi diaudit. Tidak boleh public atau menjadi bypass Auditor |
 
 ---
 
