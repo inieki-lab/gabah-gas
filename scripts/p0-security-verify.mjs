@@ -49,7 +49,8 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token ? { Cookie: token } : {}),
+      Origin: base,
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -59,6 +60,7 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   return {
     status: res.status,
     json,
+    setCookie: res.headers.get('set-cookie') || '',
     headers: {
       'x-ratelimit-remaining': res.headers.get('x-ratelimit-remaining'),
       'x-content-type-options': res.headers.get('x-content-type-options'),
@@ -258,14 +260,19 @@ async function main() {
     let adminToken = '';
     {
       const login = await req(base, 'POST', '/api/auth/login', { body: { email: adminEmail, password: adminPass } });
-      const ok = login.status === 200 && login.json?.data?.token;
-      record('CR-02 login with provisioned admin credential (PBKDF2 path)', '200 + token', ok ? '200 + token' : `HTTP ${login.status}`, ok);
-      if (ok) adminToken = login.json.data.token;
+      const adminCookie = login.setCookie?.split(';', 1)[0] || '';
+      const ok = login.status === 200 && Boolean(adminCookie) && !login.json?.data?.token;
+      record('CR-02 login with provisioned admin credential (PBKDF2 path)', '200 + HttpOnly cookie; no JSON token', ok ? '200 + cookie' : `HTTP ${login.status}`, ok);
+      if (ok) adminToken = adminCookie;
       const hasTemp = JSON.stringify(login.json).includes('temp_password');
       record('CR-02 login response contains no temp_password', 'absent', hasTemp ? 'FOUND' : 'absent', !hasTemp);
     }
 
     if (!adminToken) throw new Error('Cannot continue without admin session');
+
+    const bearerValue = adminToken.slice('gabah_session='.length);
+    const bearerCompatibility = await rawReq(base, 'GET', '/api/auth/me', { headers: { Authorization: 'Bearer ' + bearerValue } });
+    record('Legacy Bearer compatibility remains intentionally supported by server auth', '200', 'HTTP ' + bearerCompatibility.status, bearerCompatibility.status === 200);
 
     // Oversized attacker-controlled credentials must be rejected before PBKDF2 work.
     const oversizedLogin = await req(base, 'POST', '/api/auth/login', {
@@ -304,8 +311,8 @@ async function main() {
       const kLogin = await req(base, 'POST', '/api/auth/login', {
         body: { email: 'hendra.w@foodstation.co.id', password: process.env.GABAH_INITIAL_USER_PASSWORD || dev['hendra.w@foodstation.co.id'] || '' },
       });
-      if (kLogin.status === 200 && kLogin.json?.data?.token) {
-        karyawanToken = kLogin.json.data.token;
+      if (kLogin.status === 200 && kLogin.setCookie) {
+        karyawanToken = kLogin.setCookie.split(';', 1)[0];
         record('CR-01 ordinary user setup (login Karyawan)', '200', '200', true);
       } else {
         const dev2 = readDevCredentials();
@@ -497,7 +504,7 @@ async function main() {
       const asAdmin = await req(base, 'POST', '/api/auth/switch-role', { token: adminToken, body: { userId: 'USR-04' } });
       record('CR-01 authorized admin switch-role to real user', '200 (RBAC)', `HTTP ${asAdmin.status}`, asAdmin.status === 200);
       record('CR-01 switch-role rotates session (old admin token revoked)', '401 on /me', (await req(base, 'GET', '/api/auth/me', { token: adminToken })).status === 401 ? '401' : 'unexpected', (await req(base, 'GET', '/api/auth/me', { token: adminToken })).status === 401);
-      const rotatedToken = asAdmin.json?.data?.token;
+      const rotatedToken = asAdmin.setCookie?.split(';', 1)[0] || '';
       if (rotatedToken) {
         const me2 = await req(base, 'GET', '/api/auth/me', { token: rotatedToken });
         record('CR-01 rotated token resolves to target identity', '200 as USR-04', me2.status === 200 && me2.json?.data?.id === 'USR-04' ? '200 as USR-04' : `HTTP ${me2.status}`, me2.status === 200 && me2.json?.data?.id === 'USR-04');
@@ -511,14 +518,14 @@ async function main() {
     {
       // Login → logout → old token invalid.
       const l1 = await req(base, 'POST', '/api/auth/login', { body: { email: adminEmail, password: adminPass } });
-      const tokA = l1.json?.data?.token;
+      const tokA = l1.setCookie?.split(';', 1)[0] || '';
       await req(base, 'POST', '/api/auth/logout', { token: tokA });
       const afterLogout = await req(base, 'GET', '/api/auth/me', { token: tokA });
       record('CR-03 logout invalidates token', '401', `HTTP ${afterLogout.status}`, afterLogout.status === 401);
 
       // Login → password change → old sessions invalid.
       const l2 = await req(base, 'POST', '/api/auth/login', { body: { email: adminEmail, password: adminPass } });
-      const tokB = l2.json?.data?.token;
+      const tokB = l2.setCookie?.split(';', 1)[0] || '';
       const newPass = `P0!${crypto.randomBytes(9).toString('base64url')}`;
       const adminId = l2.json?.data?.user?.id;
       await req(base, 'PATCH', `/api/users/${adminId}`, { token: tokB, body: { password: newPass } });
@@ -527,8 +534,8 @@ async function main() {
 
       // Re-login with the new password (restores original for subsequent boots).
       const l3 = await req(base, 'POST', '/api/auth/login', { body: { email: adminEmail, password: newPass } });
-      record('CR-03 re-login with new password succeeds', '200', `HTTP ${l3.status}`, l3.status === 200 && Boolean(l3.json?.data?.token));
-      const tokC = l3.json?.data?.token;
+      record('CR-03 re-login with new password succeeds', '200', `HTTP ${l3.status}`, l3.status === 200 && Boolean(l3.setCookie?.split(';', 1)[0]) && !l3.json?.data?.token);
+      const tokC = l3.setCookie?.split(';', 1)[0] || '';
       if (tokC) {
         const me = await req(base, 'GET', '/api/auth/me', { token: tokC });
         record('CR-03 new token is active after rotation', '200', `HTTP ${me.status}`, me.status === 200);
@@ -582,7 +589,7 @@ function extractOldTokensFromGit() {
     const { execSync } = require('node:child_process');
     const out = execSync('git show HEAD:server/data/gabah_state.json 2>/dev/null', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     const parsed = JSON.parse(out);
-    return (parsed.sessions || []).slice(0, 1).map(s => s.token).filter(Boolean);
+    return (parsed.sessions || []).slice(0, 1).map(s => `gabah_session=${s.token}`).filter(Boolean);
   } catch {
     return [];
   }
