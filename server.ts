@@ -4332,7 +4332,8 @@ async function startServer() {
     if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
     if (notification.recipient_unit_id) {
       return isPostgresPersistenceActive()
-        && hasRbacScope(String(actor.id), 'unit', notification.recipient_unit_id, 'tickets');
+        ? hasRbacScope(String(actor.id), 'unit', notification.recipient_unit_id, 'tickets')
+        : notification.recipient_unit_id === 'UNIT-PIBC-ME' && hasApplicationRole(actor, 'me');
     }
     // A user may hold additional RBAC roles beyond the primary profile role.
     if (notification.recipient_role) {
