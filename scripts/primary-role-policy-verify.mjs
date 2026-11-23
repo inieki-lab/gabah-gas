@@ -64,10 +64,14 @@ assert.doesNotMatch(createForm, /PRIMARY_PROFILE_ROLES\.map/);
 assert.match(modal, /await refreshUserAssignments\(\);\s*setRoleAssignmentDraft\(\[\]\);\s*setRoleAssignmentTarget\(created\)/);
 assert.match(modal, /const checked = isPrimary \|\| roleAssignmentDraft\.includes\(roleId\)/);
 assert.match(modal, /PRIMARY_PROFILE_ROLES\.map/);
-assert.match(modal, /'Supply Chain', 'PIBC'/);
+assert.match(modal, /value: 'Admin GABAH'[\\s\\S]*value: 'Karyawan'/);
+assert.doesNotMatch(modal.slice(modal.indexOf('export const SYSTEM_ROLES'), modal.indexOf('// T2B-3')), /value: '(IT|GA|Auditor|Humas|Sekretaris Direksi|Supply Chain|PIBC)'/);
+const normalizationMigration = fs.readFileSync('server/migrations/048_dynamic_employee_profile_normalization.sql', 'utf8');
+assert.match(normalizationMigration, /role = 'Karyawan'/);
+assert.match(normalizationMigration, /role_key IN \\('supply_chain', 'pibc'\\)/);
 assert.match(modal, /job_level_code/);
 assert.match(modal, /unit_id/);
 assert.match(modal, /office_location_id/);
 assert.match(service, /'Kode Jabatan', 'ID Unit', 'ID Lokasi Kantor'/);
 
-console.log('Canonical primary-role policy: dynamic onboarding checks passed');
+console.log('Canonical employee profile policy: two primary profiles and Dynamic RBAC capabilities passed');
