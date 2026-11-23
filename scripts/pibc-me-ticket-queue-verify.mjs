@@ -10,6 +10,9 @@ const meAssignmentPermissionMigration = fs.readFileSync('server/migrations/047_m
 const form = fs.readFileSync('src/components/modals/CreateTicketModal.tsx', 'utf8');
 const ticketView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
 const checks = [
+  ['File-store ME ticket operator capability resolves the canonical admin_tiket_me secondary role', /secondaryRoleAliases[\\s\\S]*me: \\['admin_tiket_me'\\]/.test(server) && /secondaryRoleAliases\\[roleKey\\]/.test(server)],
+  ['File-store ME ticket creation requires the dedicated pemohon_tiket_me capability', /payload\\.category === 'ME'[\\s\\S]*!isPostgresPersistenceActive\\(\\)[\\s\\S]*pemohon_tiket_me/.test(service)],
+
   ['ME queue administrator receives tickets.assign separately from tickets.update', /role_key = 'admin_tiket_me'/.test(meAssignmentPermissionMigration) && /'tickets\.assign'/.test(meAssignmentPermissionMigration) && /ON CONFLICT \(role_id, permission_key\) DO NOTHING/.test(meAssignmentPermissionMigration)],
   ['ME has a dedicated unit and least-privilege requester/admin role templates', /UNIT-PIBC-ME/.test(migration) && /admin_tiket_me/.test(migration) && /pemohon_tiket_me/.test(migration) && /tickets\.create\.me/.test(migration)],
   ['New ticket categories are IT, GA, and ME; legacy SC/PIBC are not accepted for new submissions', /VALID_TICKET_CATEGORIES = \['IT', 'GA', 'ME'\]/.test(service)],
