@@ -695,7 +695,7 @@ export class GabahService {
     if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
       return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => this.hasEffectivePermission(user, key));
     }
-    return ['IT', 'GA'].includes(user.role);
+    return this.hasLegacyCapability(user, 'it') || this.hasLegacyCapability(user, 'ga');
   }
 
   /**
