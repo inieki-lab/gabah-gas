@@ -1,4 +1,4 @@
- > **Historical-progress note:** This file is a chronological log of work at the PR/commit stated in each entry. Older recommendations and role/owner assumptions may have been superseded. Do not use an old PASS or old status as current-head evidence. Current owner intent and source behavior are summarized in `docs/PROJECT-CONTEXT.md` and `docs/IMPLEMENTATION-TRUTH-REGISTER.md`.
+> **Historical-progress note:** This file is a chronological log of work at the PR/commit stated in each entry. Older recommendations and role/owner assumptions may have been superseded. Do not use an old PASS or old status as current-head evidence. Current owner intent and source behavior are summarized in `docs/PROJECT-CONTEXT.md` and `docs/IMPLEMENTATION-TRUTH-REGISTER.md`.
 
 ### Production dependency vulnerability gate — 2026-11-23 (PR #244; CI pending)
 
