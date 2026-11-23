@@ -44,7 +44,7 @@ GABAH tidak menggunakan sembilan label role lama sebagai daftar role permanen. R
 
 Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC/SC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
 
-Owner domain adalah master fleksibel (misalnya IT, GA, RPC/SC, dan domain lain yang disahkan), bukan enum tetap. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
+Owner domain adalah master fleksibel (misalnya IT, GA, dan domain fungsi lain yang secara eksplisit disahkan). RPC/SC dan PIBC adalah lokasi/operasional context, bukan owner domain otomatis. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
 
 ### 1.4 Legacy role labels
 
@@ -65,7 +65,7 @@ Contract Management tetap domain tersendiri; scope kontrak menggunakan owner dom
 | Sekretaris Direksi | Fungsi dasar karyawan + agenda/permintaan dukungan Direksi | Prioritas/override harus permission khusus dan audit |
 | Humas | Fungsi dasar karyawan + antrean pekerjaan dokumentasi yang ditugaskan | Detail agenda disamarkan untuk pihak tanpa kewenangan |
 | Auditor | Read-only sesuai grant audit | Tidak boleh create/update/delete/approve |
-| RPC/SC dan owner operasional lain | Kapabilitas sesuai owner domain dan scope yang diberikan | Nama unit/lokasi tidak otomatis menjadi role atau scope |
+| Unit/fungsi operasional lain | Kapabilitas sesuai owner domain dan scope yang disahkan | Nama unit/lokasi tidak otomatis menjadi role, owner, atau scope |
 
 Matriks di atas adalah baseline kebijakan. Permission dan scope aktual harus dibaca dari database RBAC, bukan dari nama role atau tabel statis di frontend.
 
