@@ -129,7 +129,7 @@ async function main() {
     // pindahkan aset IT ke lokasi teks "PIBC" (lokasi ≠ owner)
     const mv = await req(b, 'POST', `/api/assets/${itLaptop?.id}/move`, { token: it, body: { newLocation: 'PIBC - Los Kantor' } });
     const after = ((await req(b, 'GET', '/api/assets', { token: admin })).json?.data || []).find(a => a.id === itLaptop?.id);
-    rec('6: Lokasi tidak mengubah asset number', originalNumber, `${after?.asset_number}`, mv.status === 200 && after?.asset_number === originalNumber);
+    rec('6: Lokasi tidak mengubah asset number', originalNumber, `${after?.asset_number} (move HTTP ${mv.status}${mv.json?.message ? ': ' + mv.json.message : ''})`, mv.status === 200 && after?.asset_number === originalNumber);
     rec('7: Asset IT di PIBC tetap owner IT', 'IT', `${after?.owner_division}`, after?.owner_division === 'IT');
     const gaAsset2 = assets.find(a => a.owner_division === 'GA');
     await req(b, 'POST', `/api/assets/${gaAsset2?.id}/move`, { token: admin, body: { newLocation: 'PIBC - Blok A' } });
