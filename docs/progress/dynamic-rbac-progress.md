@@ -1595,3 +1595,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Fix commit 2dc420d1b5a6d00c5b0907aa23cbc5e23912fa36 changes only the file-store fallback to `hasApplicationRole()` using a normalized owner-division key. PostgreSQL continues to use the explicit Loans division scope; borrower visibility and server-authoritative allowed actions are unchanged.
 - Commit 277f8c801e653db9107fa1b7110e9d6316089e1e adds a regression guard to the existing loan authorization verification script.
 - Follow-up PR targets `main`; do not merge until the complete CI workflow is green.
+
+
+### Ticket and vendor owner-scope fallback audit — 2026-11-23 (PR #252; CI pending)
+
+- Broader primary-role-only scan on `main` found additional file-store checks that bypassed the already-normalized `role_keys`: ticket assignment eligibility, ticket record/comment/status scope, and vendor create/update owner checks.
+- Commit 94803bc9649e14028cc370f10b1022723469b484 updates ticket owner checks to honor `hasApplicationRole()` for the ticket category while preserving legacy primary-label matching; vendor create/update now also recognize normalized owner capabilities. PostgreSQL permission and division/unit scope checks are unchanged.
+- Commits 9958c3cab01f8a8c3a77db53176a263ff6366a44 and dc22706abb31e9b6956e3073c8261d00c1f74bb4 add regression guards for ticket assignment, ticket record/comment/status access, and the existing Dynamic RBAC vendor endpoint contract checks.
+- CI must pass at the final PR head before merge.
