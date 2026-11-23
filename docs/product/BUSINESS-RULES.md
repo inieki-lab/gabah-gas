@@ -28,7 +28,7 @@
   - Data aset lama dengan owner code SC/PIBC dipertahankan sebagai histori sampai ditinjau satu per satu oleh Superadmin dan pemilik fungsi terkait.
   - Aset baru harus memakai owner yang telah disahkan pada master owner; lokasi fisik RPC/PIBC tidak boleh menentukan owner.
   - Kendaraan dinas operasional kantor (KDR) yang ditetapkan sebagai aset umum dikelola GA.
-- **Enforcement Kode**: `server/services.ts` menolak owner SC/PIBC untuk aset baru; master lokasi dan owner dipisahkan.
+- **Enforcement yang ditemukan pada baseline**: `GabahDomainService.createAsset()` di `server/services.ts` menolak `SC`, `PIBC`, dan `UNASSIGNED` sebagai owner aset baru (409), memerlukan owner aktif pada master `db.divisions`, serta permission `assets.create` dan scope owner. Catatan: `server/taxonomy.ts` masih memuat entri kategori legacy SC/PIBC dan fallback resolver lama; guard `createAsset()` yang menolak owner tersebut adalah lapisan pencegah utama. Uji regresi diperlukan agar kategori legacy tidak dapat lolos melalui jalur lain/import.
 
 ---
 
@@ -60,10 +60,8 @@
 - **Enforcement Kode**: `server/services.ts` (baris 405-419), `server/migrations/003_loan_anti_collision_trigger.sql`.
 
 ### BR-03.3: Otoritas Persetujuan & Serah Terima Pinjaman
-- **Aturan**:
-  - Peminjaman aset IT wajib disetujui oleh personel `IT` atau `Admin GABAH`.
-  - Peminjaman aset GA (mobil dinas) wajib disetujui oleh personel `GA` atau `Admin GABAH`.
-  - Peminjaman aset dengan owner legacy SC/PIBC memerlukan review owner dan persetujuan petugas yang ditetapkan Superadmin; jangan menganggap role/lokasi RPC atau PIBC sebagai approver otomatis.
+- **Aturan**: Approval/rejection/handover/return ditentukan oleh permission operasi (`loans.approve`, `loans.reject`, dan seterusnya) ditambah scope owner aset pada modul Loans. Superadmin memiliki kewenangan global; role label IT/GA dan lokasi kantor bukan otorisasi dengan sendirinya. Data legacy SC/PIBC harus direview per record dan tidak boleh diasumsikan punya approver otomatis.
+- **Enforcement yang ditemukan pada baseline**: `GabahDomainService.canOperateLoan()` dan `approveLoan()`/`rejectLoan()` di `server/services.ts`; route API juga memerlukan permission. Uji per operasi, owner, dan status transisi.
 - **Transisi Status Aset**:
   1. Pinjaman disetujui (`approved`) $\to$ status aset menjadi `reserved`.
   2. Serah terima fisik (`handoverLoan`) $\to$ status aset menjadi `assigned` (borrowed).
@@ -134,7 +132,7 @@
 ### BR-07.1: Strict Read-Only Mode
 - **Aturan**: Akun dengan peran `Auditor` memiliki hak inspeksi penuh ke seluruh data sistem (katalog aset, tiket, log peminjaman, rekonsiliasi Accurate, log audit), tetapi **diblokir dari segala bentuk mutasi data**.
 - **Enforcement Kode**: `server/runtime-hardening.ts` (baris 108-118).
-- **Pengecualian**: Endpoint `/api/auth/logout`, `/api/auth/switch-role` (untuk dev), dan `/api/notifications/:id/read`. Percobaan `POST`, `PATCH`, `PUT`, `DELETE` lainnya menghasilkan status HTTP `403 Forbidden`.
+- **Pengecualian**: Middleware mengizinkan `/api/auth/logout`, `/api/notifications/read-all`, dan `/api/notifications/:id/read` untuk tindakan non-GET yang terbatas. `/api/auth/switch-role` bukan pengecualian Auditor. Verifikasi ulang `server/runtime-hardening.ts` setelah perubahan auth.
 
 ---
 
