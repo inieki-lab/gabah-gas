@@ -4,10 +4,12 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Database Engine:** PostgreSQL 17  
 **Driver:** `pg` (Node-Postgres)  
-**Status:** Authoritative Database Specification (100% Sesuai Skema Aktual)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Spesifikasi skema baseline; kecocokan wajib diverifikasi terhadap seluruh migration SQL dan database integration test pada commit yang disebutkan.  
+**Terakhir Diperbarui:** 28 September 2026 (baseline historis; verifikasi ulang diperlukan)  
 
 ---
+
+> Jangan menganggap daftar tabel, constraint, trigger, backfill, atau strategi persistensi di bawah sebagai kondisi terkini tanpa memeriksa `server/migrations/`, `server/persistence.ts`, migration upgrade tests, dan PostgreSQL integration tests. Bedakan skema fresh-install dari jalur upgrade database existing.
 
 ## 1. Ringkasan Desain Basis Data
 
