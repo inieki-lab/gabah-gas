@@ -1473,3 +1473,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Root cause in `canMutateAssetOwner()`: file-store fallback mapped ownership only from `actor.role` (legacy IT/GA primary labels). Canonical employees have primary role Karyawan and their operational function in `role_keys`, so the IT employee was denied relocation despite carrying `it` capability.
 - Fix commit e323a618c21e6b5f4104a7aecd07bc3dd1ff2a1f: file-store asset owner mutation now matches normalized IT/GA capability in either legacy primary role or secondary `role_keys`. PostgreSQL still requires both the explicit operation permission and owner-division scope; Superadmin and Auditor enforcement remain unchanged.
 - Updated `scripts/org-model-verify.mjs` to print move HTTP status and error message alongside the asset number, so future failures identify the failed condition rather than displaying two identical numbers. Fresh exact-head CI is required before declaring green.
+
+
+### Asset read-scope fallback ordering fix — 2026-11-23 (PR #251; CI pending)
+
+- Exact-head CI #3292 confirmed the prior mutation-capability fix was not sufficient: the organization-model case 6 still received HTTP 403 `Aset berada di luar scope pengguna.` before the move handler. The assertion now reports the move status and response message, exposing the true failing layer.
+- Root cause: `getScopedAssets()` file-store compatibility branch evaluated the generic employee baseline first. Because `isEmployeeBaseline` is true for all non-Superadmin/non-Auditor actors, the subsequent IT/GA branches were unreachable. Canonical IT employees (primary role Karyawan, secondary `it`) therefore could not see non-loanable IT assets at all locations, and GA's explicit read filter was also bypassed.
+- Fix commit d7cdcc6a0c3d5c40c1442ab0743b2bea6fc7d18b: evaluate explicit IT/GA secondary capabilities before the employee baseline. IT receives its IT owner domain plus personal/loan-pool assets; GA receives GA owner assets and IT HLT/HPC workstations only, plus personal/loan-pool assets; ordinary Karyawan retain assigned/pool-only visibility. PostgreSQL dynamic scope and permission logic is unchanged.
+- Exact-head CI must rerun the organization-model regression and the full workflow before this fix is considered complete.
