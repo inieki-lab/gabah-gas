@@ -5,16 +5,16 @@
 # GABAH — Production Readiness Gates
 
 **Owner:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Working integration branch:** fix/role-based-navigation (PR #18)  
-**Status:** NO-GO / stabilization in progress  
-**Last reviewed:** 8 November 2026
+**Historical snapshot:** last reviewed 8 November 2026; later CI/PR evidence must be re-fetched against the exact release SHA.  
+**Status at that snapshot:** NO-GO / stabilization in progress  
+**Current integration branch:** verify from GitHub; do not infer from this document.
 
 This checklist is the release control record. A green build is necessary but is not proof of production readiness. Every gate needs a timestamp, commit SHA, actual result, evidence, and reviewer.
 
 ## Release rules
 
 1. Freeze feature expansion. Close demonstrated defects and finish existing workflows before adding modules.
-2. One integration branch at a time. AI contributors use ai/agent-name/work-item branches and submit PRs to the integration branch.
+2. Use isolated contributor branches and submit PRs to the explicitly agreed current integration target; check AGENTS.md and docs/ops/BRANCH-AND-AI-COLLABORATION.md for the current workflow.
 3. Never merge a diverged branch wholesale. Port only reviewed, unique work.
 4. Do not run production data migrations until backup, dry-run, impact report, rollback plan, and explicit approval are complete.
 5. Do not deploy a draft PR. Production deploy must use a reviewed, merged commit/tag.
@@ -22,7 +22,7 @@ This checklist is the release control record. A green build is necessary but is 
 
 ## G0 — Repository and code health
 
-- [ ] Confirm the integration branch and exact HEAD SHA.
+- [ ] Confirm the intended integration/release branch and exact HEAD SHA. Historical PR #18/branch references are not current instructions.
 - [x] npm ci succeeds (CI #589).
 - [x] npm run lint succeeds (CI #589).
 - [x] npm run build succeeds (CI #589).
