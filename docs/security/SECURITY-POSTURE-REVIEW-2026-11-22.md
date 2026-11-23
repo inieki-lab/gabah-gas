@@ -78,6 +78,7 @@
 **Implementation submitted on branch `security/production-rate-limit-secret-mainline` (CI pending):**
 - Production startup rejects a missing or shorter-than-32-byte `GABAH_RATE_LIMIT_SECRET`.
 - The secret is rejected if it has leading/trailing whitespace or reuses `PGPASSWORD` / `DATABASE_URL`.
+- `NODE_ENV=production` remains authoritative even if `GABAH_APP_MODE` is accidentally set to `uat`; UAT fallback is available only outside production Node mode.
 - Production HMAC rate-limit identifiers no longer fall back to database credentials; development/UAT retains the local compatibility fallback.
 - CI includes direct policy assertions and isolated secrets in Docker/PostgreSQL runtime smoke.
 
