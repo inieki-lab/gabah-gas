@@ -18,7 +18,8 @@ The repository contains product, business, architecture, API, database, RBAC, as
 - Reclassified BUSINESS-RULES as a rule/decision register whose implementation status must be verified separately.
 - Reclassified ARCHITECTURE, DATABASE-DESIGN and API-DESIGN as baselines requiring reconciliation against current source/migrations/tests.
 - Clarified that DECISIONS is a dated ADR history and old decisions may be superseded.
-- Clarified that asset numbering examples are not final corporate policy pending confirmation of the company's official standard.
+- Clarified that asset numbering examples are not final corporate policy pending confirmation of the company's official standard; recast SC/PIBC asset categories as legacy records, not active owner divisions.
+- Aligned PRD asset-numbering language with the pending corporate-standard decision and removed examples that implied SC/PIBC are automatic contract owners.
 
 ## 3. Important limitations
 
