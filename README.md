@@ -120,9 +120,13 @@ Server Linux menggunakan Docker Compose yang sama. Jalankan `chmod +x deploy.sh 
 
 ---
 
-## 📚 Dokumentasi Utama (Single Source of Truth)
+## 📚 Dokumentasi Utama & Peta Acuan
 
-Seluruh dokumentasi telah disinkronkan secara presisi dengan source code aktual:
+Mulai dari [Documentation Authority & AI Handoff Guide](./docs/GABAH-DOCUMENTATION-CONTROL.md). Tidak ada satu file yang sendirian menjadi sumber kebenaran untuk seluruh aspek: keputusan bisnis, implementasi, dan bukti tes memiliki fungsi serta otoritas berbeda.
+
+
+
+Dokumentasi GABAH dikelola sebagai spesifikasi hidup. **Jangan menganggap semua dokumen otomatis sinkron**: lihat [Documentation Authority & AI Handoff Guide](./docs/GABAH-DOCUMENTATION-CONTROL.md) untuk urutan otoritas, label status, aturan sinkronisasi, dan tata cara handoff antar-AI. Status implementasi harus dibuktikan dari kode, migrasi, dan pengujian pada commit yang disebutkan.
 
 - **Produk & Kebutuhan**:
   - [PRD.md](./PRD.md) — Product Requirements Document lengkap
