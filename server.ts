@@ -3911,11 +3911,21 @@ async function startServer() {
       return res.json({ success: true, data: filtered });
     }
 
-    // File-store compatibility: preserve the established legacy behavior.
-    const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
+    // File-store compatibility must honor the secondary operational roles
+    // carried by canonical Karyawan profiles. IT and GA maintenance queues are
+    // restricted to their owner domains; ordinary employees see assigned assets only.
+    const canReadItMaintenance = hasApplicationRole(actor, 'it');
+    const canReadGaMaintenance = hasApplicationRole(actor, 'ga');
+    const hasOperationalMaintenanceRole = canReadItMaintenance || canReadGaMaintenance;
+    const employeeBaseline = !hasOperationalMaintenanceRole
+      && ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
     const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor)
-      .filter(asset => !employeeBaseline || asset.assigned_to?.id === actor.id)
-      .filter(asset => actor.role !== 'GA' || String(asset.owner_division).toUpperCase() === 'GA')
+      .filter(asset => {
+        const owner = String(asset.owner_division || '').trim().toUpperCase();
+        if (canReadItMaintenance && owner === 'IT') return true;
+        if (canReadGaMaintenance && owner === 'GA') return true;
+        return employeeBaseline && asset.assigned_to?.id === actor.id;
+      })
       .map(asset => asset.id));
     const filtered = db.maintenances.filter(item => visibleAssetIds.has(item.asset_id));
     return res.json({ success: true, data: filtered });
@@ -3952,7 +3962,7 @@ async function startServer() {
     // `maintenances.create` (Stage 13F, seed 020 mirror daftar yang sama).
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'maintenances.create')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+    } else if (!isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengelola jadwal servis.' });
     }
     const validationError = validateMaintenanceInput(req.body || {});
@@ -4011,7 +4021,7 @@ async function startServer() {
     // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'maintenances.update')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+    } else if (!isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengubah jadwal servis.' });
     }
     const schedule = db.maintenances.find(m => m.id === req.params.id);
