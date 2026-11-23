@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 const R=[];const rec=(n,e,a,p)=>R.push({n,e,a,p});
-const req=async(b,m,p,o={})=>{const r=await fetch(b+p,{method:m,headers:{'Content-Type':'application/json',...(o.token?{Authorization:`Bearer ${o.token}`}:{})},body:o.body===undefined?undefined:JSON.stringify(o.body)});let j={};try{j=await r.json()}catch{}return{status:r.status,json:j,setCookie:r.headers.get('set-cookie')||''}};
+const req=async(b,m,p,o={})=>{const r=await fetch(b+p,{method:m,headers:{'Content-Type':'application/json',...(o.token?{Cookie:o.token}:{}),Origin:b},body:o.body===undefined?undefined:JSON.stringify(o.body)});let j={};try{j=await r.json()}catch{}return{status:r.status,json:j,setCookie:r.headers.get('set-cookie')||''}};
 const day=()=>new Date(Date.now()+10*86400000).toISOString().slice(0,10);
 async function getAvailablePort() {
   return new Promise((resolve, reject) => {
@@ -30,7 +30,7 @@ async function main(){
  try{
   let ok=false;for(let i=0;i<60;i++){try{if((await fetch(b+'/api/health')).ok){ok=true;break}}catch{}await new Promise(r=>setTimeout(r,300))}
   rec('boot','200',ok?'200':'down',ok);if(!ok)throw Error(log.slice(-1500));
-  const login=async(e)=>{const r=await req(b,'POST','/api/auth/login',{body:{email:e,password:e.startsWith('admin@')?ap:up}});return r.json?.data?.token||''};
+  const login=async(e)=>{const r=await req(b,'POST','/api/auth/login',{body:{email:e,password:e.startsWith('admin@')?ap:up}});return r.setCookie?.split(';',1)[0]||''};
   const [admin,ga,sek,karyawan,humas]=await Promise.all(['admin@foodstation.co.id','ga@foodstation.co.id','sekretariat.direksi@foodstation.co.id','hendra.w@foodstation.co.id','humas@foodstation.co.id'].map(login));
   rec('logins','5 tokens',[admin,ga,sek,karyawan,humas].filter(Boolean).length+' tokens',[admin,ga,sek,karyawan,humas].every(Boolean));
   const rooms=(await req(b,'GET','/api/meeting-rooms',{token:admin})).json?.data||[],room=rooms.find(x=>x.id==='ROOM-01')||rooms[0],alt=rooms.find(x=>x.id!==room?.id&&x.status!=='maintenance');

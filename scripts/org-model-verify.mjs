@@ -14,7 +14,7 @@ import net from 'node:net';
 
 const R = []; const rec = (n, e, a, p) => R.push({ n, e, a, p });
 const req = async (b, m, p, o = {}) => {
-  const r = await fetch(b + p, { method: m, headers: { 'Content-Type': 'application/json', ...(o.token ? { Cookie: o.token } : {}), Origin: b, Origin: b }, body: o.body === undefined ? undefined : JSON.stringify(o.body) });
+  const r = await fetch(b + p, { method: m, headers: { 'Content-Type': 'application/json', ...(o.token ? { Cookie: o.token } : {}), Origin: b }, body: o.body === undefined ? undefined : JSON.stringify(o.body) });
   let j = {}; try { j = await r.json() } catch { }
   return { status: r.status, json: j, setCookie: r.headers.get('set-cookie') || '' };
 };

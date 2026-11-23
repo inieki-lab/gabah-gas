@@ -34,7 +34,7 @@ const rec = (n, e, a, p) => R.push({ n, e, a, p: !!p });
 const req = async (b, m, p, o = {}) => {
   const r = await fetch(b + p, {
     method: m,
-    headers: { 'Content-Type': 'application/json', ...(o.token ? { Cookie: o.token } : {}), Origin: b, Origin: b },
+    headers: { 'Content-Type': 'application/json', ...(o.token ? { Cookie: o.token } : {}), Origin: b },
     body: o.body === undefined ? undefined : JSON.stringify(o.body),
   });
   let j = {}; try { j = await r.json() } catch { }
