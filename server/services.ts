@@ -1050,7 +1050,11 @@ export class GabahDomainService {
       return hasRbacPermission(String(actor.id), permissionKey)
         && hasRbacScope(String(actor.id), 'division', owner, 'loans');
     }
-    return actor.role === owner;
+    // Fallback (file-store, PostgreSQL unavailable): role and role_keys both
+    // map to owner-division authority. Canonical accounts carry role_keys
+    // ('it', 'ga') that mirror the legacy operator badges; role alone is not
+    // the only authorization token in file-store mode.
+    return actor.role === owner || (actor.role_keys || []).some((k) => String(k).toUpperCase() === owner);
   }
 
   /**
