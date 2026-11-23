@@ -27,6 +27,7 @@ assert.equal(/localStorage\./.test(api + app), false, 'Authentication credential
 assert.match(api, /credentials: 'same-origin'/, 'API requests must send same-origin cookies');
 assert.match(server, /res\.cookie\('gabah_session',[\s\S]*httpOnly: true[\s\S]*sameSite: 'strict'/,
   'Session cookie must be HttpOnly and SameSite strict');
+assert.match(server, /secure: cookieSecure/, 'Production session cookie must set Secure');
 assert.match(server, /clearCookie\('gabah_session'/, 'Logout must clear the session cookie');
 assert.match(auth, /startsWith\('gabah_session='\)/, 'Authentication must accept the session cookie');
 assert.match(hardening, /Permintaan lintas origin ditolak/, 'Cookie-authenticated mutations must validate request origin');
