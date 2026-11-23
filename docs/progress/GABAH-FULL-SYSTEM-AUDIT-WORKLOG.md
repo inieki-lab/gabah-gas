@@ -66,3 +66,13 @@ Branch audit/full-system-hardening-2026-11-23; draft PR #248 targets main. No me
 - Cookie/session/Origin, password reset, upload authorization, and endpoint matrix have not received runtime integration tests. Module/security backlog remains open.
 
 - Latest exact-head CI after evidence docs commit: FAIL, run 45113547899 (verify, completed 04:44:53Z). Logs could not be retrieved with available interface; root cause remains unknown.
+
+
+## Follow-up: HttpOnly cookie integration coverage (2026-11-23)
+
+- Migrated the PostgreSQL 17 CR-04/CR-05 live HTTP helper to retain `Set-Cookie` and send the `gabah_session` cookie on subsequent requests. The test does not use or expect a JSON token. Login assertions cover HTTP 200, cookie presence, `HttpOnly`, `SameSite`, seven-day `Max-Age`, and `/api/auth/me` identity/session restore for Admin, IT, GA, Karyawan, and Auditor.
+- Added logout/revocation, same-origin `Origin`, invalid and missing `Origin`, anonymous restore, unknown cookie, and the expired-browser-cookie behavior (browser no longer sends cookie; `/api/auth/me` returns 401). The runtime suite does not wait seven days or manipulate the server clock; absolute server expiry is not independently time-advanced in this run.
+- Migrated identified HTTP browser-flow regression helpers/login parsing in `asset-import-verify.mjs`, `bulk-import-verify.mjs`, `loan-authz-verify.mjs`, `maintenance-authz-verify.mjs`, `meeting-room-stage3-verify.mjs`, `menu-connectivity-verify.mjs`, `org-model-verify.mjs`, `p0-security-verify.mjs`, `p1-features-verify.mjs`, `rbac-scoping-verify.mjs`, and `t2b1`–`t2b3` to cookie transport. No security assertions were removed. The P0 suite retains one explicit Bearer-compatibility check because server auth intentionally still accepts Bearer credentials; it is not used for browser-flow requests.
+- All cookie-authenticated mutation helpers send the same-origin `Origin`; CR-04/CR-05 includes negative invalid/missing-Origin cases. Cookie values are redacted from output.
+- Exact-head CI run **45118658142** (`verify`, started 05:34:51Z and completed 05:36:14Z) is **FAIL**. Detailed GitHub job logs were not available through the connected interface, so the failing step/root cause is **UNKNOWN / BLOCKED**. Earlier runs 45116828949 and 45117681777 also failed; the latest run includes the helper change that adds Origin. Do not mark the suite green or individual CI checks PASS without logs.
+- The test matrix is now present in CI, but runtime outcomes by persona/scenario cannot be certified from the available summary-only check status. Manual browser UAT remains NOT TESTED. No merge was performed.

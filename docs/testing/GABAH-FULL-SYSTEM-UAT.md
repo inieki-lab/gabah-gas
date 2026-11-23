@@ -85,3 +85,17 @@ Release decision: NOT APPROVED until relevant tests run and P0/P1 findings close
 Static auth transport review found no active browser Bearer or localStorage credential usage. Server still accepts legacy Bearer and x-auth-token for compatibility. Cookie/Origin/login/logout/restore/reset/upload and all API runtime scenarios remain NOT TESTED.
 
 Latest exact-head GitHub CI: FAIL — run 45113547899 (verify; completed 2026-11-23 04:44:53Z). Logs unavailable; no cause inferred.
+
+
+## Cookie-auth regression update (2026-11-23)
+
+The live HTTP regression scripts now exercise cookie-based browser authentication: they retain `Set-Cookie`, send `gabah_session`, assert login response does not expose a token, and send same-origin `Origin` on mutations. CR-04/CR-05 covers Admin, IT, GA, Karyawan, Auditor, session restore, logout, invalid/missing Origin, anonymous access, and browser behavior after cookie Max-Age expiry. The cookie's `Max-Age=604800` is checked; the suite does not wait seven days or advance the server clock, so server-side absolute expiry is not independently time-simulated. A deliberate Bearer compatibility assertion remains only in P0 because the server still supports that non-browser transport.
+
+| Verification | Status | Evidence |
+|---|---|---|
+| Cookie helper/login assertions and persona matrix present | PASS (code review only) | `scripts/cr04-cr05-verify.mjs`; JSON token is not expected. This is not a runtime PASS. |
+| PostgreSQL 17 fresh-database/persistence CI | FAIL | Exact-head run 45118658142 completed 2026-11-23 05:36:14Z with failure. Job logs were unavailable; failing step and per-scenario outcomes are unknown. |
+| Invalid/missing Origin and logout runtime outcome | NOT VERIFIED | Assertions are included, but CI overall failed and logs are unavailable. |
+| Browser UI manual UAT | NOT TESTED | No live browser session evidence. |
+
+Release/UAT status remains NOT APPROVED. Do not infer that the scenarios passed from the presence of assertions. Retrieve the failing job log, fix the actual failing step without weakening assertions, and rerun the exact-head CI before closing this update.
