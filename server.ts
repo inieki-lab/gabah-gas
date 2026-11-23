@@ -3520,12 +3520,12 @@ async function startServer() {
         && (hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
           || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets')));
     }
-    return actor.role === ticket.category;
+    return actor.role === ticket.category || hasApplicationRole(actor, String(ticket.category || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
   };
 
   const getEligibleTicketAssignees = (ticket: any): ServerUser[] => db.users.filter(user => {
     if (user.is_active === false || isAuditorActor(user) || isSuperadminActor(user)) return false;
-    if (!isPostgresPersistenceActive()) return user.role === ticket.category;
+    if (!isPostgresPersistenceActive()) return user.role === ticket.category || hasApplicationRole(user, String(ticket.category || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
     if (!hasRbacPermission(String(user.id), 'tickets.update')) return false;
     if (ticket.assigned_unit_id) {
       return hasRbacScope(String(user.id), 'unit', String(ticket.assigned_unit_id), 'tickets');
@@ -3639,7 +3639,7 @@ async function startServer() {
       return hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
         || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets'));
     }
-    return actor.role === ticket.category;
+    return actor.role === ticket.category || hasApplicationRole(actor, String(ticket.category || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
   };
 
   app.get('/api/tickets/:id/comments', async (req, res) => {
@@ -3688,7 +3688,7 @@ async function startServer() {
         || (isPostgresPersistenceActive()
           && (hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
             || Boolean(ticket.assigned_unit_id && hasRbacScope(String(actor.id), 'unit', String(ticket.assigned_unit_id), 'tickets'))))
-        || (!isPostgresPersistenceActive() && actor.role === ticket.category)
+        || (!isPostgresPersistenceActive() && (actor.role === ticket.category || hasApplicationRole(actor, String(ticket.category || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'))))
       );
       if (!isReporter && !canCommentAsHandler) {
         return res.status(403).json({ success: false, message: 'Hanya pelapor atau petugas berwenang yang dapat menambahkan komentar.' });
@@ -3770,7 +3770,7 @@ async function startServer() {
       const isReporter = ticket.reporter_id === actor.id;
       const canReadTicketOwner = isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', String(ticket.category), 'tickets')
-        : actor.role === ticket.category;
+        : (actor.role === ticket.category || hasApplicationRole(actor, String(ticket.category || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')));
       const canReadTicketUnit = Boolean(ticket.assigned_unit_id && isPostgresPersistenceActive()
         && hasRbacScope(String(actor.id), 'unit', ticket.assigned_unit_id, 'tickets'));
       const hasTicketUpdatePermission = !isPostgresPersistenceActive()
@@ -4120,7 +4120,7 @@ async function startServer() {
     const requestedOwner = String(ownerMaster.code).trim().toUpperCase();
     const canManageRequestedOwner = isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors')
-      : actor.role === requestedOwner);
+      : (actor.role === requestedOwner || hasApplicationRole(actor, requestedOwner.toLowerCase().replace(/[^a-z0-9]+/g, '_'))));
     if (!canManageRequestedOwner) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor yang dipilih.' });
     }
@@ -4219,7 +4219,7 @@ async function startServer() {
     }
     const canManageExisting = isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacScope(String(actor.id), 'division', existingOwner, 'vendors')
-      : actor.role === existingOwner);
+      : (actor.role === existingOwner || hasApplicationRole(actor, existingOwner.toLowerCase().replace(/[^a-z0-9]+/g, '_'))));
     const canManageRequested = isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors')
       : actor.role === requestedOwner);
