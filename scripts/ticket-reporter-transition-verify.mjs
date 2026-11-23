@@ -15,3 +15,8 @@ assert.ok(route.includes('if (!reporterAllowed.includes(nextStatus))'));
 assert.ok(route.includes("res.status(403).json({"));
 assert.ok(route.includes('const allowed = TICKET_TRANSITIONS[currentStatus]'));
 console.log('PASS: Ticket reporters can confirm resolved tickets or reopen closed tickets, not operate staff workflow.');
+
+
+const hardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
+assert.ok(hardening.includes('actor.role_keys || []'), 'file-store ticket/loan scopes must honor secondary functional roles');
+assert.ok(hardening.includes("capabilities.has('it')") && hardening.includes("capabilities.has('ga')"), 'IT/GA secondary capabilities must govern ticket queue scope');
