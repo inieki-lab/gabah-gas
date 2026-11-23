@@ -136,8 +136,10 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 
 1. **Owner-domain authority di domain service** (`server/services.ts`):
    `createAsset`, `assignAsset`, `moveAsset`, dan `mutateLifecycle` memakai
-   permission serta scope owner dinamis (termasuk pengecualian owner). Owner
-   tidak dibatasi enum IT/GA/SC/PIBC; scope eksplisit menentukan kewenangan.
+   permission serta scope owner dinamis (termasuk pengecualian owner). Master
+   owner dapat diperluas untuk fungsi yang disahkan; namun `createAsset()`
+   secara eksplisit menolak SC/PIBC/UNASSIGNED untuk aset baru. Scope eksplisit
+   menentukan kewenangan atas owner aktif yang valid.
    `approve_disposal` tetap memerlukan kapabilitas Super Admin yang sesuai.
 2. **Jalur UPDATE bulk-import** kini meniru authority divisi `PATCH /api/assets/:id`
    (perbaikan SEC-10) — impor massal tidak lagi melewati pembatasan
