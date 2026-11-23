@@ -3,10 +3,12 @@
 **Dokumen:** `docs/architecture/DECISIONS.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Authoritative Decision Log (Hanya Mencatat Keputusan yang Benar-Benar Diterapkan di Source Code)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Register keputusan arsitektur. Setiap ADR wajib menyebut status (PROPOSED/ACCEPTED/IMPLEMENTED/SUPERSEDED), tanggal, bukti implementasi, dan keputusan pengganti bila ada.  
+**Terakhir Diperbarui:** 28 September 2026 (riwayat ADR; audit status tiap ADR masih diperlukan)  
 
 ---
+
+> ADR yang pernah diterapkan tidak otomatis tetap menjadi keputusan aktif. Cocokkan setiap ADR dengan kode dan konfigurasi terkini; tambahkan ADR baru untuk keputusan baru dan tandai keputusan lama SUPERSEDED, jangan menghapus histori.
 
 ## ADR-001: Adopsi React 19 SPA + Vite 6 + Tailwind CSS v4
 - **Konteks**: Aplikasi membutuhkan antarmuka operasional yang responsif, modern, cepat dimuat, dan mudah dikembangkan secara modular untuk multi-divisi.
