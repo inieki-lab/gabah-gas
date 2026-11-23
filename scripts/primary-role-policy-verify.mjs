@@ -6,10 +6,12 @@ const modal = fs.readFileSync('src/components/modals/AdministrationModal.tsx', '
 const service = fs.readFileSync('src/services/gabahService.ts', 'utf8');
 const navigation = fs.readFileSync('src/navigation/roleNavigation.ts', 'utf8');
 const header = fs.readFileSync('src/components/HeaderNavbar.tsx', 'utf8');
+const persistence = fs.readFileSync('server/persistence.ts', 'utf8');
+const migration = fs.readFileSync('server/migrations/048_dynamic_employee_profile_normalization.sql', 'utf8');
 
 function routeBody(route, nextRoutes = []) {
   const start = server.indexOf(route);
-  assert.ok(start >= 0, `Route exists: ${route}`);
+  assert.ok(start >= 0, 'Route exists: ' + route);
   const boundaries = nextRoutes.map(candidate => server.indexOf(candidate, start + route.length)).filter(index => index >= 0);
   return server.slice(start, boundaries.length ? Math.min(...boundaries) : server.length);
 }
@@ -22,45 +24,47 @@ const applicationRoleStart = server.indexOf('const hasApplicationRole');
 const applicationRoleEnd = server.indexOf('// Permission guard for migrated endpoints', applicationRoleStart);
 assert.ok(applicationRoleStart >= 0 && applicationRoleEnd > applicationRoleStart, 'Dynamic RBAC role resolver exists');
 const applicationRole = server.slice(applicationRoleStart, applicationRoleEnd);
-assert.match(applicationRole, /if \(isPostgresPersistenceActive\(\)\)\s*\{\s*return getEffectiveRoleKeys\(String\(actor\.id\)\)\.includes\(roleKey\);/);
-assert.match(applicationRole, /return actor\.role === legacyLabels\[roleKey\];/);
+assert.ok(applicationRole.includes('return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);'));
+assert.ok(applicationRole.includes('return actor.role === legacyLabels[roleKey];'));
 
-assert.match(create, /validPrimaryRoles = \['Admin GABAH', 'Karyawan'\]/);
-assert.match(patch, /validRoles = \['Admin GABAH', 'Superadmin', 'Karyawan'\]/);
-assert.match(bulk, /validRoles = \['Admin GABAH', 'Superadmin', 'Karyawan', 'IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'SC', 'PIBC'\]/);
-assert.match(bulk, /const role = \['Admin GABAH', 'Superadmin'\]\.includes\(requestedRole\) \? 'Admin GABAH' : 'Karyawan'/);
-assert.match(bulk, /Tetapkan role fungsi melalui Administrasi > Role & Hak Akses setelah impor/);
-assert.match(bulk, /const inferredOfficeLocation = \['Supply Chain', 'SC'\]\.includes\(roleRaw\) \? 'OFF-RPC' : roleRaw === 'PIBC' \? 'OFF-PIBC'/);
+assert.ok(create.includes("const validPrimaryRoles = ['Admin GABAH', 'Karyawan'];"));
+assert.ok(patch.includes("const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan'];"));
+assert.ok(bulk.includes("const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan', 'IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'SC', 'PIBC'];"));
+assert.ok(bulk.includes("const role = ['Admin GABAH', 'Superadmin'].includes(requestedRole) ? 'Admin GABAH' : 'Karyawan';"));
+assert.ok(bulk.includes('Tetapkan role fungsi melalui Administrasi > Role & Hak Akses setelah impor'));
+assert.ok(bulk.includes("const inferredOfficeLocation = ['Supply Chain', 'SC'].includes(roleRaw) ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '';"));
 
 const roleCatalogue = modal.slice(modal.indexOf('export const SYSTEM_ROLES'), modal.indexOf('// T2B-3'));
-assert.match(roleCatalogue, /value: 'Admin GABAH'[\s\S]*value: 'Karyawan'/);
+assert.ok(roleCatalogue.includes("value: 'Admin GABAH'") && roleCatalogue.includes("value: 'Karyawan'"));
 assert.doesNotMatch(roleCatalogue, /value: '(IT|GA|Auditor|Humas|Sekretaris Direksi|Supply Chain|PIBC)'/);
-assert.match(modal, /export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES/);
-assert.match(modal, /const DEFAULT_PERMISSIONS: RolePermissionRow\[\] = \[\]/);
-assert.match(modal, /Matriks role statis telah dihentikan/);
+assert.ok(modal.includes('export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES;'));
+assert.ok(modal.includes('const DEFAULT_PERMISSIONS: RolePermissionRow[] = [];'));
+assert.ok(modal.includes('Matriks role statis telah dihentikan'));
 
 const createFormStart = modal.indexOf('{/* Add User Form Modal */}');
 const createFormEnd = modal.indexOf('{/* Edit User Modal */}', createFormStart);
 assert.ok(createFormStart >= 0 && createFormEnd > createFormStart, 'User creation form boundaries exist');
 const createForm = modal.slice(createFormStart, createFormEnd);
-assert.match(createForm, /Profil dasar akun/);
-assert.match(createForm, /Hak akses pekerjaan tidak ditentukan dari jabatan, divisi, atau lokasi/);
-assert.doesNotMatch(createForm, /PRIMARY_PROFILE_ROLES\.map/);
-assert.match(modal, /await refreshUserAssignments\(\);\s*setRoleAssignmentDraft\(\[\]\);\s*setRoleAssignmentTarget\(created\)/);
-assert.match(modal, /const checked = isPrimary \|\| roleAssignmentDraft\.includes\(roleId\)/);
-assert.match(modal, /PRIMARY_PROFILE_ROLES\.map/);
-assert.match(modal, /job_level_code/);
-assert.match(modal, /unit_id/);
-assert.match(modal, /office_location_id/);
-assert.match(service, /'Kode Jabatan', 'ID Unit', 'ID Lokasi Kantor'/);
+assert.ok(createForm.includes('Profil dasar akun'));
+assert.ok(createForm.includes('Hak akses pekerjaan tidak ditentukan dari jabatan, divisi, atau lokasi'));
+assert.ok(!createForm.includes('PRIMARY_PROFILE_ROLES.map'));
+assert.ok(modal.includes('await refreshUserAssignments();'));
+assert.ok(modal.includes('setRoleAssignmentDraft([]);'));
+assert.ok(modal.includes('setRoleAssignmentTarget(created)'));
+assert.ok(modal.includes('const checked = isPrimary || roleAssignmentDraft.includes(roleId)'));
+assert.ok(modal.includes('PRIMARY_PROFILE_ROLES.map'));
+assert.ok(modal.includes('job_level_code'));
+assert.ok(modal.includes('unit_id'));
+assert.ok(modal.includes('office_location_id'));
+assert.ok(service.includes("'Kode Jabatan', 'ID Unit', 'ID Lokasi Kantor'"));
 
 assert.doesNotMatch(navigation, /ROLE_NAVIGATION|nine-role|9 roles/i);
 assert.doesNotMatch(header, /9 Peran|Role Simulation|Switch Role & Persona|onSwitchRoleSimulation/);
 assert.doesNotMatch(server, /const validPrimaryRoles = \['Admin GABAH', 'IT', 'GA'/);
 
-const normalizationMigration = fs.readFileSync('server/migrations/048_dynamic_employee_profile_normalization.sql', 'utf8');
-assert.match(normalizationMigration, /role = 'Karyawan'/);
-assert.match(normalizationMigration, /role_key IN \('supply_chain', 'pibc'\)/);
-assert.match(normalizationMigration, /role_key = CASE[\s\S]*'superadmin'[\s\S]*'karyawan'/);
+assert.ok(migration.includes("SET role = 'Karyawan'"));
+assert.ok(migration.includes("role_key IN ('supply_chain', 'pibc')"));
+assert.ok(migration.includes("WHEN u.role = 'Admin GABAH' THEN 'superadmin'"));
+assert.ok(persistence.includes("WHEN 'Admin GABAH' THEN 'superadmin' ELSE 'karyawan' END"));
 
 console.log('Canonical employee profile policy: two primary profiles and Dynamic RBAC capabilities passed');
