@@ -380,7 +380,7 @@ async function startServer() {
       return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
     }
     // File-store development retains compatibility while PostgreSQL is absent.
-    return actor.role === legacyLabels[roleKey];
+    return actor.role === legacyLabels[roleKey] || actor.role_keys?.includes(roleKey) === true;
   };
 
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
