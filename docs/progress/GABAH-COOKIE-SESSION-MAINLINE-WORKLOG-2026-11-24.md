@@ -1,7 +1,7 @@
 # GABAH HttpOnly Cookie Session Mainline Worklog
 
 Date: 2026-11-24
-Status: implementation branch; verification pending; NOT release approval.
+Status: implementation branch; automated CI green on latest exact head; browser/proxy UAT pending; NOT release approval.
 
 ## Branch and ancestry
 
@@ -32,7 +32,7 @@ Status: implementation branch; verification pending; NOT release approval.
 | TypeScript lint/typecheck | PASS | Exact-head run 45277119804, step 14. |
 | Production build and Docker runtime smoke | PASS | Exact-head run 45277119804, steps 47-50. |
 | PostgreSQL 17 CR-04/CR-05 and P0 live HTTP | PASS | Exact-head run 45277119804, steps 51 and 55. |
-| Full CI | PASS | Run #3358 / 45277119804; 117/117 job steps completed successfully on head `5fa9d2f4f4f65b0fb0349f3a940fc90f2299069d`. |
+| Full CI (implementation head) | PASS | Run #3358 / 45277119804; 117/117 job steps completed successfully on code head `5fa9d2f4f4f65b0fb0349f3a940fc90f2299069d`. |\n| Full CI (latest PR head) | PASS | Run #3359 / 45277549562; all 117 job steps completed successfully on latest head `9bea8cf710201fa9e6070e65c7131ac3b8c935a6` (worklog-only commit). |
 | Browser UAT for all roles | NOT TESTED | Required before production approval. |
 | Production HTTPS/reverse-proxy Origin behavior | NOT TESTED | Verify supported deployment topology before release. |
 
@@ -46,7 +46,7 @@ Status: implementation branch; verification pending; NOT release approval.
 
 ## Next actions
 
-1. CI is green on the exact PR head; retain the evidence above.
+1. Automated CI is green on the latest exact PR head (run #3359); retain the evidence above.
 2. Run all role-based browser UAT: Superadmin, IT, GA, ME, RPC/SC, employee, and Auditor.
 3. Validate login, restore, logout, password change, role switch, Origin rejection, uploads/downloads, and session revocation in a real browser.
 4. Validate production HTTPS and the supported reverse-proxy Origin behavior.
