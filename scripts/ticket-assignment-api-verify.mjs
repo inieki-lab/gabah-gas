@@ -37,4 +37,10 @@ assert.match(fs.readFileSync(new URL('../src/services/gabahService.ts', import.m
 assert.match(view, /Simpan Penugasan/);
 assert.match(view, /Lepas Petugas/);
 assert.match(app, /onUpdateTicketAssignment=\{handleUpdateTicketAssignment\}/);
+
+// File-store compatibility must recognize secondary IT/GA capabilities for
+// canonical Karyawan accounts; PostgreSQL remains permission + scope based.
+assert.match(routes, /actor\.role === ticket\.category \|\| hasApplicationRole\(actor, String\(ticket\.category/);
+assert.match(routes, /user\.role === ticket\.category \|\| hasApplicationRole\(user, String\(ticket\.category/);
+
 console.log('PASS: ticket assignment is permission/scope based, excludes inactive/Auditor users, validates queue eligibility, prevents reassignment after work starts, audits, persists, and is wired to UI.');
