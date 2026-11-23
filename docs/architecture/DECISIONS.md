@@ -76,20 +76,20 @@
 
 ---
 
-## ADR-009: Pemisahan Entitas Peran Login (9 Roles) dari Vendor dan Manajemen
+## ADR-009 (HISTORICAL / SUPERSEDED): Pemisahan Entitas Peran Login (9 Roles) dari Vendor dan Manajemen
 - **Konteks**: Sebelumnya terdapat kerancuan mengenai peran `Management` dan `Vendor` dalam RBAC login.
-- **Keputusan**:
-  1. Menetapkan **9 peran login resmi**: `Admin GABAH`, `IT`, `GA`, `Sekretaris Direksi`, `Humas`, `Supply Chain`, `PIBC`, `Karyawan`, dan `Auditor`.
-  2. Peran `Management` dihapus dari autentikasi login pengguna (fungsi pengawasan eksekutif menggunakan akun `Auditor` atau `Admin GABAH`).
-  3. Entitas `Vendor` dikelola murni sebagai entitas data master rekanan servis/kontrak pada tabel `contracts` dan modul Master Data.
-- **Status**: Diterapkan & Aktif (`server/db.ts`, `src/types.ts`).
+- **Keputusan saat itu (historis)**:
+  1. Menetapkan sembilan label login sebagai model awal: `Admin GABAH`, `IT`, `GA`, `Sekretaris Direksi`, `Humas`, `Supply Chain`, `PIBC`, `Karyawan`, dan `Auditor`.
+  2. Peran `Management` dihapus dari autentikasi login pengguna.
+  3. Entitas `Vendor` dikelola sebagai data master rekanan.
+- **Status saat ini**: **SUPERSEDED untuk model role/profil pengguna** oleh keputusan pemilik proyek pada `docs/PROJECT-CONTEXT.md` dan model Dynamic RBAC. Sekretariat Direksi/Humas adalah capability tambahan pegawai; Supply Chain/SC dan PIBC bukan primary role baru. Bagian Vendor tetap merupakan catatan historis dan harus diverifikasi terpisah terhadap modul vendor/contract saat perubahan dilakukan.
 
 ---
 
 ## ADR-010: VIP Auto-Approval Reservasi Ruangan & Notifikasi Multi-Divisi
 - **Konteks**: Ruang rapat representatif sering digunakan oleh jajaran Direksi secara mendesak, dan kebutuhan rapat memerlukan koordinasi paralel antara IT (vicon/layar), GA Sarpras (kursi/sound), Pantry (snack/makan), serta Humas (dokumentasi/liputan).
 - **Keputusan**:
-  1. Pemesanan oleh `Sekretaris Direksi` (mewakili pimpinan BUMD) langsung disetujui secara otomatis (*auto-approved*) dengan prioritas High.
+  1. Pemesanan oleh pegawai yang memiliki capability/permission Sekretariat Direksi yang sah (mewakili pimpinan BUMD) langsung disetujui secara otomatis (*auto-approved*) dengan prioritas High.
   2. Pemesanan oleh staf umum berstatus `pending_approval` menunggu verifikasi GA.
   3. Dispatching notifikasi multi-divisi otomatis: mengirim peringatan ke IT Support jika fasilitas IT dipilih, ke GA Sarpras jika kebutuhan fisik dipilih, ke GA Pantry jika konsumsi dipesan, dan ke Humas jika peliputan/dokumentasi dicentang.
 - **Status**: Diterapkan & Aktif (`server/services.ts` baris 945-1065).
