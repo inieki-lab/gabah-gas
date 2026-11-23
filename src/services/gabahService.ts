@@ -628,12 +628,17 @@ export class GabahService {
   }
 
   // RBAC Permission helpers
+  static hasLegacyCapability(user: UserProfile, capability: string): boolean {
+    const normalize = (value: unknown) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const expected = normalize(capability);
+    return normalize(user.role) === expected || (user.role_keys || []).some(key => normalize(key) === expected);
+  }
+
   static isAuditor(user?: UserProfile): boolean {
     if (!user) return false;
-    // Dynamic RBAC role_keys includes additional assignments; Auditor is a
-    // deny-write capability even when another assigned role grants writes.
-    if (Array.isArray(user.role_keys)) return user.role_keys.includes('auditor');
-    return user.role === 'Auditor';
+    // Auditor is deny-write even when another assigned role grants writes;
+    // retain the legacy primary-label fallback for older client snapshots.
+    return this.hasLegacyCapability(user, 'auditor');
   }
 
   static isSuperAdmin(user?: UserProfile): boolean {
@@ -659,8 +664,8 @@ export class GabahService {
     // File-store compatibility only. This fallback is not an authorization
     // boundary; production authorization is enforced by the API.
     if (user.role === 'Admin GABAH') return true;
-    if (user.role === 'IT' && asset.owner_division === 'IT') return true;
-    if (user.role === 'GA' && asset.owner_division === 'GA') return true;
+    if (this.hasLegacyCapability(user, 'it') && asset.owner_division === 'IT') return true;
+    if (this.hasLegacyCapability(user, 'ga') && asset.owner_division === 'GA') return true;
     return false;
   }
 
@@ -672,8 +677,8 @@ export class GabahService {
     if (user.role === 'Admin GABAH') return true;
     if (!loan) return false;
     const ownerDiv = loan.owner_division || (loan.category_type === 'IT' ? 'IT' : 'GA');
-    if (user.role === 'IT' && ownerDiv === 'IT') return true;
-    if (user.role === 'GA' && ownerDiv === 'GA') return true;
+    if (this.hasLegacyCapability(user, 'it') && ownerDiv === 'IT') return true;
+    if (this.hasLegacyCapability(user, 'ga') && ownerDiv === 'GA') return true;
     return false;
   }
 
@@ -682,7 +687,7 @@ export class GabahService {
     if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
       return this.hasEffectivePermission(user, 'tickets.assign');
     }
-    return ['IT', 'GA'].includes(user.role);
+    return this.hasLegacyCapability(user, 'it') || this.hasLegacyCapability(user, 'ga');
   }
 
   static canManageTickets(user?: UserProfile): boolean {
@@ -708,7 +713,7 @@ export class GabahService {
     // File-store compatibility below is intentionally limited to canonical
     // legacy roles; production authorization is always enforced server-side.
     // 1. IT and Super Admin (Admin GABAH) can see all tickets
-    if (user.role === 'Admin GABAH' || user.role === 'IT') {
+    if (user.role === 'Admin GABAH' || this.hasLegacyCapability(user, 'it')) {
       return true;
     }
 
@@ -723,7 +728,7 @@ export class GabahService {
     );
 
     // 2. GA: can see tickets directed to GA (category 'GA'), or tickets reported by GA user themselves
-    if (user.role === 'GA') {
+    if (this.hasLegacyCapability(user, 'ga')) {
       return ticket.category === 'GA' || isReporter;
     }
 
@@ -741,8 +746,8 @@ export class GabahService {
     if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
       return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => this.hasEffectivePermission(user, key));
     }
-    if (user.role === 'IT') return true;
-    if (user.role === 'GA' && ticket.category === 'GA') return true;
+    if (this.hasLegacyCapability(user, 'it')) return true;
+    if (this.hasLegacyCapability(user, 'ga') && ticket.category === 'GA') return true;
     return false;
   }
 
