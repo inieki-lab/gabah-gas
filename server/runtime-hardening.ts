@@ -43,6 +43,9 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
     .map(value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')));
   if (capabilities.has('it')) return ticket.category === 'IT';
   if (capabilities.has('ga')) return ticket.category === 'GA';
+  if (ticket.category === 'ME') {
+    return ticket.assigned_unit_id === 'UNIT-PIBC-ME' && capabilities.has('admin_tiket_me');
+  }
   return false;
 }
 
