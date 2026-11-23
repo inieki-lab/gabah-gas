@@ -3,9 +3,13 @@
 **Repository:** inieki-lab/GABAH  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Tujuan Dokumen:** Standar acuan rekayasa perangkat lunak, aturan arsitektur, dan disiplin pengembangan yang wajib dipatuhi oleh seluruh pengembang dan agen kecerdasan buatan (AI).  
-**Status:** Authoritative Rules (Mencerminkan 100% Implementasi Aktual)  
+**Status:** Aturan rekayasa wajib; kesesuaian implementasi diverifikasi per perubahan, bukan diasumsikan.  
 
 ---
+
+## 0. Wajib Dibaca oleh Semua AI dan Kontributor
+
+Sebelum mengubah kode atau dokumen, baca [docs/GABAH-DOCUMENTATION-CONTROL.md](./docs/GABAH-DOCUMENTATION-CONTROL.md). Panduan tersebut menetapkan urutan otoritas sumber, label APPROVED/IMPLEMENTED/TESTED/PARTIAL/PROPOSED/DECISION REQUIRED/NOT VERIFIED/HISTORICAL, dokumen yang wajib diselaraskan, aturan keamanan, dan format handoff. Jangan menyebut dokumen 100% sinkron, fitur selesai, atau production-ready tanpa bukti pada exact commit. Jika business intent bertentangan dengan implementasi, catat gap dan minta keputusan; jangan diam-diam mengubah aturan.
 
 ## 1. Arsitektur & Teknologi Wajib (Core Stack)
 
