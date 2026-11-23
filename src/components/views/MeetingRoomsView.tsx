@@ -113,36 +113,36 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   );
   const canManageMeetingFacilities = hasPermission(
     'meeting_facilities.manage',
-    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+    GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH'
   );
   const canUpdateMeetingRooms = hasPermission(
     'meeting_rooms.update',
-    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+    GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH'
   );
   const canManageMeetingTypes = hasPermission(
     'meeting_types.manage',
-    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+    GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH'
   );
   const canManageMeetingMasterData = canManageMeetingTypes || canManageMeetingFacilities;
   const canApproveReservations = hasPermission(
     'room_reservations.approve',
-    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+    GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH'
   );
   const canRejectReservations = hasPermission(
     'room_reservations.reject',
-    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+    GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH'
   );
   const canCheckinReservations = hasPermission(
     'room_reservations.checkin',
-    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+    GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH'
   );
   const canCheckoutReservations = hasPermission(
     'room_reservations.checkout',
-    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH'
+    GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH'
   );
   const canCancelReservations = hasPermission(
     'room_reservations.cancel',
-    currentUser.role === 'GA' || currentUser.role === 'Admin GABAH' || currentUser.role === 'Karyawan'
+    GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH' || currentUser.role === 'Karyawan'
   );
   const canCreateReservations = !isAuditor && hasPermission(
     'room_reservations.create',
