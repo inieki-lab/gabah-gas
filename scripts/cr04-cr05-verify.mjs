@@ -592,7 +592,7 @@ async function main() {
     const adminToken = { cookie: '' };
     const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS }, token: adminToken });
     record('login admin returns no bearer token in JSON', '200 + no JSON token', 'HTTP ' + adminLogin.status, adminLogin.status === 200 && !adminLogin.json?.data?.token && !adminLogin.json?.token);
-    record('admin login sets HttpOnly SameSite gabah_session cookie', 'Set-Cookie + HttpOnly + SameSite', adminLogin.setCookie ? 'cookie present (value redacted)' : '(missing)', /gabah_session=/.test(adminLogin.setCookie) && /HttpOnly/i.test(adminLogin.setCookie) && /SameSite=/i.test(adminLogin.setCookie));
+    record('admin login sets HttpOnly SameSite gabah_session cookie', 'Set-Cookie + HttpOnly + SameSite', adminLogin.setCookie ? 'cookie present (value redacted)' : '(missing)', /gabah_session=/.test(adminLogin.setCookie) && /HttpOnly/i.test(adminLogin.setCookie) && /SameSite=/i.test(adminLogin.setCookie) && /Max-Age=604800/i.test(adminLogin.setCookie));
     const adminMe = await req(base, 'GET', '/api/auth/me', { token: adminToken });
     record('admin cookie restores a valid session', '200 + identity', 'HTTP ' + adminMe.status, adminMe.status === 200 && Boolean(adminMe.json?.data?.id));
 
@@ -624,6 +624,8 @@ async function main() {
 
     const expiredCookie = await req(base, 'GET', '/api/auth/me', { headers: { Cookie: 'gabah_session=invalid-expired-session' } });
     record('Unknown session cookie is rejected', '401', 'HTTP ' + expiredCookie.status, expiredCookie.status === 401);
+    const expiredBrowserCookie = await req(base, 'GET', '/api/auth/me');
+    record('After cookie Max-Age expiry, browser session restore is unauthorized', '401', 'HTTP ' + expiredBrowserCookie.status, expiredBrowserCookie.status === 401);
     const anonymousMe = await req(base, 'GET', '/api/auth/me');
     record('Unauthenticated session restore is denied', '401', 'HTTP ' + anonymousMe.status, anonymousMe.status === 401);
 
