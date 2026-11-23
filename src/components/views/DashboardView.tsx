@@ -59,7 +59,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (hasPermissionMetadata) {
       return currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission);
     }
-    return legacyRoles.includes(currentUser.role);
+    return legacyRoles.some(role => currentUser.role === role || GabahService.hasLegacyCapability(currentUser, role));
   };
   // Superadmin is a system-wide persona, not a Humas/Sekdir persona merely because
   // its wildcard permission set includes their module-specific capabilities.
