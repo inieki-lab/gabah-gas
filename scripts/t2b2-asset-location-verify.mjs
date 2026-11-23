@@ -28,11 +28,11 @@ const rec = (n, e, a, p) => R.push({ n, e, a, p: !!p });
 const req = async (b, m, p, o = {}) => {
   const r = await fetch(b + p, {
     method: m,
-    headers: { 'Content-Type': 'application/json', ...(o.token ? { Authorization: `Bearer ${o.token}` } : {}) },
+    headers: { 'Content-Type': 'application/json', ...(o.token ? { Cookie: o.token } : {}), Origin: b },
     body: o.body === undefined ? undefined : JSON.stringify(o.body),
   });
   let j = {}; try { j = await r.json() } catch { }
-  return { status: r.status, json: j };
+  return { status: r.status, json: j, setCookie: r.headers.get('set-cookie') || '' };
 };
 
 async function boot(sp, port, env) {
@@ -103,7 +103,7 @@ async function main() {
     s1 = await boot(sp, await getAvailablePort(), env);
     const login = async (b, e, pw) => {
       const r = await req(b, 'POST', '/api/auth/login', { body: { email: e, password: pw } });
-      return r.json?.data?.token || '';
+      return r.setCookie?.split(';', 1)[0] || '';
     };
     const admin = await login(s1.base, 'admin@foodstation.co.id', env.ap);
     const it = await login(s1.base, 'it.support@foodstation.co.id', env.up);
