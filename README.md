@@ -126,6 +126,7 @@ Mulai dari [Documentation Authority & AI Handoff Guide](./docs/GABAH-DOCUMENTATI
 
 - **Produk & Kebutuhan**:
   - [docs/PROJECT-CONTEXT.md](./docs/PROJECT-CONTEXT.md) — keputusan dan batasan bisnis yang disetujui pemilik produk; bukan bukti implementasi
+  - [docs/IMPLEMENTATION-TRUTH-REGISTER.md](./docs/IMPLEMENTATION-TRUTH-REGISTER.md) — perilaku yang ditemukan pada source baseline, status parsial, dan gap implementasi; bukan bukti tes
   - [PRD.md](./PRD.md) — Product Requirements Document lengkap
   - [PROJECT-RULES.md](./PROJECT-RULES.md) — Aturan proyek, standar kode, dan kebijakan zero-Laravel
   - [docs/product/REQUIREMENTS.md](./docs/product/REQUIREMENTS.md) — Spesifikasi kebutuhan fungsional & non-fungsional
