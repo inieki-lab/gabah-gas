@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
+import { Pool } from 'pg';
 const R=[];const rec=(n,e,a,p)=>R.push({n,e,a,p});
 const req=async(b,m,p,o={})=>{const r=await fetch(b+p,{method:m,headers:{'Content-Type':'application/json',...(o.token?{Authorization:`Bearer ${o.token}`}:{})},body:o.body===undefined?undefined:JSON.stringify(o.body)});let j={};try{j=await r.json()}catch{}return{status:r.status,json:j}};
 const day=()=>new Date(Date.now()+10*86400000).toISOString().slice(0,10);
@@ -41,9 +42,43 @@ async function main(){
     const u=me.json?.data||{};
     console.log(`[RBAC DIAG] ${label} id=${u.id} role=${u.role} roles=${JSON.stringify(u.role_keys||[])} permissions=${JSON.stringify((u.permission_keys||[]).filter((k)=>k.startsWith('room_reservations.')))}`);
   }
-  const gaRoles=await req(b,'GET','/api/admin/rbac/users/USR-02/roles',{token:admin});
-  const sekRoles=await req(b,'GET','/api/admin/rbac/users/USR-SEKDIR/roles',{token:admin});
-  console.log(`[RBAC DIAG] assignments GA=${JSON.stringify(gaRoles.json?.data||gaRoles.json)} Sekdir=${JSON.stringify(sekRoles.json?.data||sekRoles.json)}`);
+  // Query PostgreSQL directly: the assignment-management API is PUT-only,
+  // so a GET probe would return a misleading empty/404 response.
+  if (process.env.DATABASE_URL || process.env.PGHOST) {
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL || undefined,
+      host: process.env.PGHOST || (process.env.DATABASE_URL ? undefined : '127.0.0.1'),
+      port: Number(process.env.PGPORT || 5432),
+      database: process.env.PGDATABASE || 'gabah_db',
+      user: process.env.PGUSER || 'postgres',
+      password: process.env.PGPASSWORD || 'postgres',
+    });
+    try {
+      const diag = await pool.query(
+        `SELECT u.id, u.email, r.role_key, ur.is_primary,
+                array_agg(rp.permission_key ORDER BY rp.permission_key)
+                  FILTER (WHERE rp.permission_key LIKE 'room_reservations.%') AS room_permissions
+           FROM users u
+           LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id::text
+           LEFT JOIN gabah_roles r ON r.id = ur.role_id
+           LEFT JOIN gabah_role_permissions rp ON rp.role_id = r.id
+           WHERE u.email IN ('ga@foodstation.co.id','sekretariat.direksi@foodstation.co.id','humas@foodstation.co.id')
+           GROUP BY u.id,u.email,r.role_key,ur.is_primary
+           ORDER BY u.email,r.role_key`,
+      );
+      console.log(`[RBAC DIAG] postgres assignments=${JSON.stringify(diag.rows)}`);
+      const grants = await pool.query(
+        `SELECT r.role_key, array_agg(rp.permission_key ORDER BY rp.permission_key)
+           FILTER (WHERE rp.permission_key LIKE 'room_reservations.%') AS room_permissions
+           FROM gabah_roles r LEFT JOIN gabah_role_permissions rp ON rp.role_id=r.id
+           WHERE r.role_key IN ('ga','sekretaris_direksi','humas','karyawan')
+           GROUP BY r.role_key ORDER BY r.role_key`,
+      );
+      console.log(`[RBAC DIAG] postgres role_grants=${JSON.stringify(grants.rows)}`);
+    } finally { await pool.end(); }
+  } else {
+    console.log('[RBAC DIAG] PostgreSQL connection env is absent in test parent process.');
+  }
   const rooms=(await req(b,'GET','/api/meeting-rooms',{token:admin})).json?.data||[],room=rooms.find(x=>x.id==='ROOM-01')||rooms[0],alt=rooms.find(x=>x.id!==room?.id&&x.status!=='maintenance');
   const types=(await req(b,'GET','/api/meeting-types',{token:admin})).json?.data||[],high=types.find(x=>x.priority_level==='high')||{code:'direksi'};
   rec('room fixtures','ROOM-01 + alt',`${room?.id}+${alt?.id}`,Boolean(room&&alt));
