@@ -44,7 +44,7 @@ Menyimpan identitas pegawai, peran RBAC, kredensial hash, dan divisi.
 - `id` (VARCHAR(64), PRIMARY KEY) — Contoh: `'USR-01'`, `'USR-SEKDIR'`
 - `name` (VARCHAR(200), NOT NULL)
 - `email` (VARCHAR(255), NOT NULL, UNIQUE)
-- `role` (VARCHAR(50), NOT NULL) — nilai role primer/kompatibilitas yang tersimpan pada baseline ini. Contoh lama seperti `Supply Chain` dan `PIBC` bukan daftar role aktif atau allowlist Dynamic RBAC. Verifikasi user model, role assignments, dan migrations terbaru.
+- `role` (VARCHAR(50), NOT NULL) — nilai role primer/kompatibilitas legacy pada baseline. PostgreSQL Dynamic RBAC menyimpan assignment role terpisah; union TypeScript `ServerUser.role` masih memuat label lama untuk kompatibilitas. Jangan memperlakukan kolom ini sebagai katalog role dinamis atau sumber permission.
 - `division_id` (BIGINT, REFERENCES divisions(id))
 - `department_id` (BIGINT, REFERENCES departments(id))
 - `phone` (VARCHAR(50))
@@ -134,7 +134,7 @@ Mencatat histori relokasi fisik dan alih tangan pemegang aset.
 - **Indeks Penting**: `idx_movements_asset` ON asset_movements(asset_id, created_at DESC)
 
 ### 2.9 Tabel `asset_number_sequences` (Sequence Penomoran Aset)
-Menjamin nomor sequence aset tidak bertabrakan secara atomik per divisi dan tahun.
+Menyimpan struktur sequence aset pada skema. Keberadaan tabel ini **tidak** berarti generator saat ini memakai transaksi/UPSERT PostgreSQL; `AssetNumberingEngine` masih menggunakan counter in-memory yang disinkronkan saat boot (lihat `docs/asset/ASSET-NUMBERING.md`).
 - `id` (BIGSERIAL, PRIMARY KEY)
 - `owner_division_id` (BIGINT, NOT NULL, REFERENCES divisions(id))
 - `asset_code` (VARCHAR(30), NOT NULL)
