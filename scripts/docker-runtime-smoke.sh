@@ -80,7 +80,7 @@ docker run -d \
   -e PGDATABASE=gabah_ci \
   -e PGUSER="$DB_APP_USER" \
   -e PGPASSWORD="$APP_DB_PASSWORD" \
-  -e GABAH_RATE_LIMIT_SECRET="ci-smoke-independent-rate-limit-secret-2026-only" \\
+  -e GABAH_RATE_LIMIT_SECRET="ci-smoke-independent-rate-limit-secret-2026-only" \
   -e GABAH_INITIAL_ADMIN_PASSWORD="Ci-Admin-${GITHUB_RUN_ID:-local}-Only" \
   -e GABAH_INITIAL_USER_PASSWORD="Ci-User-${GITHUB_RUN_ID:-local}-Only" \
   -e GABAH_UPLOAD_DIR=/app/uploads \
