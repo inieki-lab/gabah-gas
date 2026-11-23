@@ -417,20 +417,9 @@ async function startServer() {
   };
   const primaryRoleKey = (label: string): string => {
     const normalized = String(label || 'Karyawan').trim();
-    const canonical: Record<string, string> = {
-      'Admin GABAH': 'superadmin',
-      'Superadmin': 'superadmin',
-      'IT': 'it',
-      'GA': 'ga',
-      'Karyawan': 'karyawan',
-      'Auditor': 'auditor',
-      'Humas': 'humas',
-      'Sekretaris Direksi': 'sekretaris_direksi',
-      'Supply Chain': 'karyawan',
-      'PIBC': 'karyawan',
-    };
-    return canonical[normalized] || normalized.toLowerCase().normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    return normalized === 'Admin GABAH' || normalized === 'Superadmin'
+      ? 'superadmin'
+      : 'karyawan';
   };
 
   // Keep users.role and the primary dynamic RBAC assignment synchronized,
