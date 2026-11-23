@@ -50,14 +50,16 @@
 
 > **Prinsip model organisasi:** Supply Chain dan PIBC adalah unit/lokasi, bukan role aplikasi permanen. Lokasi kantor aktif saat ini: HO, PIBC, RPC/SC, Pangsub, dan Kantor Perawatan. Subang tidak aktif. Owner aset berbeda dari lokasi fisik dan lokasi kerja pegawai. Pengujian akses dilakukan terhadap permission dan scope efektif di PostgreSQL.
 
-### Skenario 1: Autentikasi, Token Sesi & Logout
-- **Tujuan**: Memastikan sesi diterbitkan dengan aman dan dibersihkan saat logout.
+### Skenario 1: Autentikasi Cookie HttpOnly, Pemulihan Sesi & Logout
+- **Tujuan**: Memastikan browser tidak menyimpan bearer token di JavaScript storage dan sesi hanya dipulihkan melalui cookie server.
 - **Langkah Pengujian**:
-  1. Buka halaman login. Masukkan email admin dan password kredensial resmi (lihat Seksi 2 — placeholder, bukan nilai nyata).
-  2. Periksa apakah sistem berhasil masuk ke dashboard dan menyimpan `gabah_auth_token` di `localStorage`.
-  3. Lakukan logout melalui menu avatar kanan atas.
-  4. Verifikasi bahwa token di `localStorage` terhapus dan pengguna diarahkan kembali ke landing page.
-- **Kriteria Lulus**: Status respon 200, sesi di server dihapus, akses endpoint privat tanpa token ditolak (401).
+  1. Buka halaman login dan autentikasi menggunakan kredensial UAT resmi.
+  2. Verifikasi respons login tidak memuat `data.token`; header `Set-Cookie` menerbitkan `gabah_session` dengan `HttpOnly`, `Secure` (production), `SameSite=Strict`, dan masa berlaku 7 hari.
+  3. Pastikan `localStorage` tidak berisi `gabah_auth_token` atau token sesi lain.
+  4. Refresh halaman; aplikasi harus memanggil `/api/auth/me` dan memulihkan portal melalui cookie tanpa menampilkan login palsu.
+  5. Lakukan logout; server harus mencabut sesi dan mengirim cookie kosong/expired. Request privat berikutnya tanpa cookie harus ditolak (401).
+  6. Uji mutasi cookie dengan Origin lintas domain atau tanpa Origin; keduanya harus ditolak (403), sementara Origin same-origin diterima.
+- **Kriteria Lulus**: Tidak ada token sesi di JSON/localStorage; cookie memiliki atribut keamanan yang diwajibkan; refresh, rotasi, logout, expiry, dan CSRF Origin guard lulus.
 
 ---
 
