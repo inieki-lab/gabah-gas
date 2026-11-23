@@ -76,3 +76,11 @@ Branch audit/full-system-hardening-2026-11-23; draft PR #248 targets main. No me
 - All cookie-authenticated mutation helpers send the same-origin `Origin`; CR-04/CR-05 includes negative invalid/missing-Origin cases. Cookie values are redacted from output.
 - Exact-head CI run **45118658142** (`verify`, started 05:34:51Z and completed 05:36:14Z) is **FAIL**. Detailed GitHub job logs were not available through the connected interface, so the failing step/root cause is **UNKNOWN / BLOCKED**. Earlier runs 45116828949 and 45117681777 also failed; the latest run includes the helper change that adds Origin. Do not mark the suite green or individual CI checks PASS without logs.
 - The test matrix is now present in CI, but runtime outcomes by persona/scenario cannot be certified from the available summary-only check status. Manual browser UAT remains NOT TESTED. No merge was performed.
+
+
+## Follow-up: remaining cookie-test migration and latest CI (2026-11-23)
+
+- A branch-head scan found two missed login-response token reads in `maintenance-authz-verify.mjs` and `rbac-scoping-verify.mjs`; both now retain the `gabah_session` pair from `Set-Cookie` and send it as `Cookie`. Login assertions reject JSON token fields. The separate `test-core-modules.ts` live HTTP suite was also migrated to cookies for all personas, logout, and session restore.
+- Scanned all 108 `scripts/` source files on the audit branch for stale Bearer header use and JSON token extraction. The only remaining Bearer request is the intentional P0 compatibility assertion against server auth; browser-style requests use cookies.
+- Latest exact-head CI run **45121785796** (`verify`, started 06:05:13Z, completed 06:06:46Z) is **FAIL** after the missed parser fixes. The connected GitHub interface exposes only the check summary, not the failing step/log output; root cause and per-test outcomes remain **UNKNOWN / BLOCKED**. This does not establish that the cookie tests passed.
+- No security assertions were removed. The branch and draft PR #248 remain open; no merge. Next action requires the failure step output from run 45121785796 so the actual failing cause can be fixed and CI rerun.

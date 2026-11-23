@@ -99,3 +99,10 @@ The live HTTP regression scripts now exercise cookie-based browser authenticatio
 | Browser UI manual UAT | NOT TESTED | No live browser session evidence. |
 
 Release/UAT status remains NOT APPROVED. Do not infer that the scenarios passed from the presence of assertions. Retrieve the failing job log, fix the actual failing step without weakening assertions, and rerun the exact-head CI before closing this update.
+
+
+## Latest regression follow-up (2026-11-23)
+
+- Fixed remaining stale JSON token extraction in maintenance and RBAC live HTTP tests; migrated the core-module live HTTP auth suite to session cookies and same-origin requests. Branch scan covered all 108 scripts; only P0's explicit compatibility test still sends Bearer, matching current server support.
+- Exact-head CI run **45121785796** failed (completed 2026-11-23 06:06:46Z). The job summary contains no failing-step details; individual scenarios remain **NOT VERIFIED**.
+- Worklog/UAT status is not a green CI result. To proceed without weakening assertions, inspect/provide the failed-step log for run 45121785796, repair its actual cause, and rerun the workflow. No merge.
