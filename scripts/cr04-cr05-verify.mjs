@@ -623,7 +623,7 @@ async function main() {
     if (!adminToken.cookie) throw new Error('cannot continue without admin cookie session');
 
     const expiredCookie = await req(base, 'GET', '/api/auth/me', { headers: { Cookie: 'gabah_session=invalid-expired-session' } });
-    record('Unknown/expired session cookie is rejected', '401', 'HTTP ' + expiredCookie.status, expiredCookie.status === 401);
+    record('Unknown session cookie is rejected', '401', 'HTTP ' + expiredCookie.status, expiredCookie.status === 401);
     const anonymousMe = await req(base, 'GET', '/api/auth/me');
     record('Unauthenticated session restore is denied', '401', 'HTTP ' + anonymousMe.status, anonymousMe.status === 401);
 
@@ -1001,7 +1001,7 @@ async function main() {
     record('Role assignment revokes the target user\'s existing session', '401', `HTTP ${oldKaryawanSession.status}`, oldKaryawanSession.status === 401);
     karyawanToken = { cookie: '' };
     const karyawanReloginAfterGa = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS }, token: karyawanToken });
-    record('Karyawan can sign in again after role assignment', '200 + new token', `HTTP ${karyawanReloginAfterGa.status}`, karyawanReloginAfterGa.status === 200 && Boolean(karyawanToken));
+    record('Karyawan can sign in again after role assignment', '200 + HttpOnly cookie, no JSON token', `HTTP ${karyawanReloginAfterGa.status}`, karyawanReloginAfterGa.status === 200 && Boolean(karyawanToken.cookie) && !karyawanReloginAfterGa.json?.data?.token);
 
     const karyawanView = await req(base, 'GET', `/api/contracts/${contractId}`, { token: karyawanToken });
     record('RBAC Karyawan with GA role cannot read IT-owned contract outside GA scope', '404', `HTTP ${karyawanView.status}`, karyawanView.status === 404);
@@ -1116,7 +1116,7 @@ async function main() {
     record('Karyawan can receive a separate vendor owner capability without changing primary role', '200', `HTTP ${assignVendorRole.status}`, assignVendorRole.status === 200);
     karyawanToken = { cookie: '' };
     const karyawanReloginAfterVendorRole = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS }, token: karyawanToken });
-    record('Karyawan re-authenticates after vendor role assignment', '200 + new token', `HTTP ${karyawanReloginAfterVendorRole.status}`, karyawanReloginAfterVendorRole.status === 200 && Boolean(karyawanToken));
+    record('Karyawan re-authenticates after vendor role assignment', '200 + HttpOnly cookie, no JSON token', `HTTP ${karyawanReloginAfterVendorRole.status}`, karyawanReloginAfterVendorRole.status === 200 && Boolean(karyawanToken.cookie) && !karyawanReloginAfterVendorRole.json?.data?.token);
 
     const rpcscVendor = await req(base, 'POST', '/api/vendors', {
       token: karyawanToken,
@@ -1146,7 +1146,7 @@ async function main() {
       `HTTP ${addAuditorRole.status}`, addAuditorRole.status === 200 && addAuditorRole.json?.data?.role_ids?.includes(Number(auditorRole?.id)));
     karyawanToken = { cookie: '' };
     const karyawanReloginAfterAuditor = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS }, token: karyawanToken });
-    record('Karyawan re-authenticates after Auditor capability assignment', '200 + new token', `HTTP ${karyawanReloginAfterAuditor.status}`, karyawanReloginAfterAuditor.status === 200 && Boolean(karyawanToken));
+    record('Karyawan re-authenticates after Auditor capability assignment', '200 + HttpOnly cookie, no JSON token', `HTTP ${karyawanReloginAfterAuditor.status}`, karyawanReloginAfterAuditor.status === 200 && Boolean(karyawanToken.cookie) && !karyawanReloginAfterAuditor.json?.data?.token);
     const additionalAuditorWrite = await req(base, 'POST', '/api/tickets', {
       token: karyawanToken,
       body: { title: 'VERIFY Auditor additional role write denial', description: 'must be denied', category: 'IT', priority: 'low' },
