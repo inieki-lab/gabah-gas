@@ -1,3 +1,13 @@
+## [2026-11-23] — Normalize employee profiles and retire the legacy nine-role model
+
+- Primary account profile is now only `Admin GABAH` or `Karyawan`; IT, GA, Auditor, Humas, Sekretariat Direksi, and other work functions are additional Dynamic RBAC assignments.
+- RPC/SC and PIBC are location/unit context, not application roles. Migration `048_dynamic_employee_profile_normalization.sql` preserves function assignments, normalizes known legacy account labels to Karyawan, and disables Supply Chain/PIBC role templates.
+- User creation/edit APIs and forms accept only the two primary profiles. Legacy CSV role labels are import-only compatibility aliases and produce a warning.
+- Header role simulation and the fixed role-to-menu matrix are removed; menu and dashboard behavior follows effective permissions and scope.
+- Historical entries below retain their original meaning for audit traceability and must not be treated as the current role model.
+
+---
+
 ## [2026-11-22] — Move API and login rate limiting into shared PostgreSQL state
 
 - Store HMAC-SHA-256 API client keys and per-account/IP login identifiers in a dedicated PostgreSQL bucket table; raw IP/email identifiers and the HMAC secret are not stored in the limiter table.
