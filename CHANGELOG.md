@@ -1,3 +1,11 @@
+## [2026-11-23] — Require independent production rate-limit secret
+
+- Production startup now rejects a missing, weak (<32-byte), whitespace-padded, or database-credential-reused `GABAH_RATE_LIMIT_SECRET` before opening the HTTP listener.
+- Production HMAC rate-limit keys no longer fall back to PostgreSQL passwords or connection URLs; development/UAT retains the documented local fallback.
+- Add direct configuration regression coverage and supply isolated test-only secrets to production Docker and PostgreSQL runtime smoke tests.
+
+---
+
 ## [2026-11-22] — Move API and login rate limiting into shared PostgreSQL state
 
 - Store HMAC-SHA-256 API client keys and per-account/IP login identifiers in a dedicated PostgreSQL bucket table; raw IP/email identifiers and the HMAC secret are not stored in the limiter table.
