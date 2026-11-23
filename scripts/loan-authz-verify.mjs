@@ -21,6 +21,7 @@
  * Credentials are random, generated in-process, and never printed.
  */
 import fs from 'node:fs';
+import assert from 'node:assert/strict';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -30,6 +31,17 @@ const results = [];
 function record(test, expected, actual, pass) {
   results.push({ test, expected, actual, pass: Boolean(pass) });
 }
+
+// Guard the loan-list visibility fallback: canonical Karyawan profiles can
+// carry IT/GA custody through role_keys, while PostgreSQL stays scope-based.
+const loanListRouteSource = fs.readFileSync('server.ts', 'utf8')
+  .split("app.get('/api/loans'")[1]?.split("app.post('/api/loans'")[0] || '';
+assert.match(
+  loanListRouteSource,
+  /hasApplicationRole\(actor, String\(loan\.owner_division \|\| ''\)\.trim\(\)\.toLowerCase\(\)\.replace\(\/\[\^a-z0-9\]\+\/g, '_'\)\)/,
+  'file-store loan list must honor secondary owner capabilities'
+);
+record('Loan list file-store scope honors secondary role_keys', 'IT/GA functional capability', 'hasApplicationRole(owner division)', true);
 
 async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   const res = await fetch(`${base}${urlPath}`, {
