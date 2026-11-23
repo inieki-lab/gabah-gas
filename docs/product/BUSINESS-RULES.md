@@ -19,7 +19,7 @@
 
 ### BR-01.2: Kepemilikan Sentral Furniture (INV-F)
 - **Aturan**: Seluruh perabot kantor (`INV-F`: meja kerja, kursi rapat, lemari arsip, rak dokumen) adalah **hak milik mutlak Divisi GA**, di manapun lokasi fisik penempatannya di seluruh kantor atau pergudangan BUMD.
-- **Enforcement Kode**: `server/services.ts` (baris 120-123 & 135-137), `server/taxonomy.ts` (baris 51-53).
+- **Enforcement yang ditemukan**: `server/services.ts` memaksa owner `GA` untuk kategori `INV-F`; `server/taxonomy.ts` menyediakan mapping kategori. Uji create dan update agar owner tidak dapat dipalsukan dari request body.
 - **Konsekuensi**: Pendaftaran kategori furniture secara otomatis dialokasikan ke divisi pemilik `GA`.
 
 ### BR-01.3: Kepemilikan Aset Operasional di RPC dan PIBC
@@ -104,9 +104,9 @@
 
 ### BR-05.1: Jalur Cepat Direksi (VIP Auto-Approval)
 - **Aturan**:
-  - Setiap permohonan reservasi ruang rapat yang diajukan oleh `Sekretaris Direksi` (atas nama Direksi & Dewan Komisaris) secara otomatis berstatus disetujui (`approved`), memiliki prioritas `high`, dan mengunci ruangan dari jadwal lain.
+  - Setiap permohonan reservasi ruang rapat yang diajukan oleh pegawai dengan capability/permission Sekretariat Direksi yang sah (atas nama Direksi & Dewan Komisaris) secara otomatis berstatus disetujui (`approved`), memiliki prioritas `high`, dan mengunci ruangan dari jadwal lain.
   - Permohonan dari karyawan/divisi lain berstatus `pending_approval` dan memerlukan persetujuan manual Divisi GA.
-- **Enforcement Kode**: `server/services.ts` (baris 945-976).
+- **Enforcement yang ditemukan**: `server/services.ts` dan `server/role-capabilities.ts`; cek capability efektif dan backend route. Nomor baris tidak dijadikan acuan tetap; UAT harus memverifikasi user Karyawan dengan capability dan user tanpa capability.
 
 ### BR-05.2: Perutean Notifikasi Fasilitas & Layanan
 - **Aturan**:
