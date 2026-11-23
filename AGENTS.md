@@ -1,29 +1,30 @@
 # Repository instructions for AI coding agents
 
-## Required project skill
+## Required reading (mandatory, every session)
 
-Before performing any task in this repository, read:
+1. `docs/GABAH-DOCUMENTATION-CONTROL.md` — source-of-truth hierarchy and AI handoff.
+2. `.agents/skills/gabah-maintainer/SKILL.md` — repository workflow.
+3. `docs/AI-CHANGE-GUARDRAILS.md` — safety and change boundaries.
+4. `docs/product/BUSINESS-RULES.md` and `docs/architecture/RBAC.md` for business and access changes.
+5. The relevant current implementation, migrations, tests, and current worklog.
 
-1. `.agents/skills/gabah-maintainer/SKILL.md`
-2. `docs/AI-CHANGE-GUARDRAILS.md`
-3. The relevant audit or architecture documents under `docs/`
-
-The skill defines the required workflow for inspecting, changing, testing, and reporting GABAH work. Treat it as mandatory project guidance.
+If documents conflict, follow the authority order in Documentation Control. Historical reports and stale branch instructions are not current policy.
 
 ## Non-negotiable boundaries
 
-- Do not commit directly to `main`.
-- Do not bulk-change production users, roles, permissions, or operational records without a verified inventory, approved mapping, export/rollback plan, and explicit authorization.
-- Do not treat menu visibility as backend authorization.
+- Never commit directly to `main`.
+- Do not bulk-change production users, roles, permissions, asset owners, locations, or operational records without a verified inventory, approved mapping, export/rollback plan, and explicit authorization.
+- Menu visibility is not backend authorization. Verify server-side authorization and data scope.
 - Do not invent role assignments, business rules, UI behavior, or test results.
-- Preserve existing workflows; make focused changes supported by evidence.
-- Report what was actually tested and what remains unverified.
+- Preserve the existing application and data. No rebuild/rewrite or destructive migration without explicit approval.
+- Keep Supply Chain/RPC and PIBC as location/operational context, not automatic application roles or asset-owner domains.
+- Keep office location, organizational unit, job level, asset physical location, asset owner domain, and custodian as separate dimensions.
+- Report exact branch, commit SHA, changed files, tests actually run, CI state, and remaining unknowns.
 
+## Branch and pull-request workflow
 
-## Branch naming and integration
-
-- Canonical integration branch for the current stabilization effort: `fix/role-based-navigation` (PR #18).
-- Other AI agents must use a unique branch name: `ai/<agent-name>/<work-item>` (for example, `ai/codex/ticket-scope-audit`, `ai/gemini/room-reservation-uat`). Do not push to another agent's branch.
-- Until PR #18 is merged, create AI branches from `fix/role-based-navigation`; after merge, create them from `main`.
-- Every AI branch must open a PR targeting the canonical integration branch, include a concise change record, and pass the required CI gates. No direct pushes to `main`.
-- Do not merge or cherry-pick a whole stale/diverged branch. Review and port only verified commits/files. Close superseded PRs after their unique changes are safely preserved.
+- Use a dedicated, uniquely named work branch; never share another agent's branch.
+- Create work from the current intended base branch and verify that base before editing. Do not assume an old integration branch or PR number remains canonical.
+- Open/update a PR against the repository's intended integration target. Do not merge or deploy unless the repository owner explicitly authorizes it.
+- Before porting commits from another branch, compare histories and review each unique change; never merge a stale/diverged branch wholesale.
+- Preserve unrelated user work and avoid force-push unless explicitly authorized and protected by an expected-SHA lease.
