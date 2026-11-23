@@ -84,3 +84,6 @@ Branch audit/full-system-hardening-2026-11-23; draft PR #248 targets main. No me
 - Scanned all 108 `scripts/` source files on the audit branch for stale Bearer header use and JSON token extraction. The only remaining Bearer request is the intentional P0 compatibility assertion against server auth; browser-style requests use cookies.
 - Latest exact-head CI run **45121785796** (`verify`, started 06:05:13Z, completed 06:06:46Z) is **FAIL** after the missed parser fixes. The connected GitHub interface exposes only the check summary, not the failing step/log output; root cause and per-test outcomes remain **UNKNOWN / BLOCKED**. This does not establish that the cookie tests passed.
 - No security assertions were removed. The branch and draft PR #248 remain open; no merge. Next action requires the failure step output from run 45121785796 so the actual failing cause can be fixed and CI rerun.
+
+
+- Correction: documentation-only exact-head rerun **45122081745** also completed **FAIL** at 06:09:31Z on the same test-code snapshot. Its summary likewise omits the failing step and logs. The code-change run 45121785796 remains the latest run that includes the cookie test changes; no green CI result is established.
