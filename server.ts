@@ -31,12 +31,16 @@ import {
   recordFailedLogin,
   clearFailedLogins,
   sanitizeUser,
+  validateRateLimitSecretConfiguration,
 } from './server/auth';
 
 // Initialize seed data
 seedInitialData();
 
 async function startServer() {
+  // Fail before opening listeners or initializing production services if the
+  // shared rate limiter would otherwise reuse a database credential.
+  validateRateLimitSecretConfiguration();
   await initializePersistence();
   await refreshRbacPolicy();
   AssetNumberingEngine.syncFromExistingRecords({ tickets: db.tickets, loans: db.loans, contracts: db.contracts });
