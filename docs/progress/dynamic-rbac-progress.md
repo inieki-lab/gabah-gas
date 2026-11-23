@@ -1587,3 +1587,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Exact-head CI #3331 on commit `c2b1289db92f5c5ce1ead31800d248ab7650fe90` completed successfully: 116/116 steps green, including the full production, Docker, PostgreSQL, security, RBAC, organization, Meeting Room, ticket, loan, and Maintenance suites.
 - PR #251 was retargeted from the stacked PR #249 branch directly to `main`, its description was consolidated to cover the complete stack, and it was marked ready for review. PR #249 is now superseded but remains open until PR #251 merges successfully.
 - A new exact-head CI run against the final `main` base is mandatory. Merge only after that run is green, the PR remains mergeable, and no required check/review gate is outstanding.
+
+
+### Loan list owner-scope secondary-role fallback — 2026-11-23 (follow-up PR; CI pending)
+
+- Post-merge audit of the live `main` branch found one remaining file-store compatibility check in `GET /api/loans`: borrower visibility was combined with owner custody using `actor.role === loan.owner_division`. This hid division-owned loans from canonical Karyawan accounts whose IT/GA operational role exists only in `role_keys`, even though `GabahDomainService.canOperateLoan()` already honored those secondary roles.
+- Fix commit 2dc420d1b5a6d00c5b0907aa23cbc5e23912fa36 changes only the file-store fallback to `hasApplicationRole()` using a normalized owner-division key. PostgreSQL continues to use the explicit Loans division scope; borrower visibility and server-authoritative allowed actions are unchanged.
+- Commit 277f8c801e653db9107fa1b7110e9d6316089e1e adds a regression guard to the existing loan authorization verification script.
+- Follow-up PR targets `main`; do not merge until the complete CI workflow is green.
