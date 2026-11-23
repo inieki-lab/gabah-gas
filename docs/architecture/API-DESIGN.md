@@ -5,7 +5,7 @@
 **Server Platform:** Node.js + Express 4.21  
 **Base URL:** `/api`  
 **Status:** Kontrak API baseline; endpoint, autentikasi, validasi, dan otorisasi harus diverifikasi terhadap implementasi pada exact commit.  
-**Terakhir Diperbarui:** 28 September 2026 (baseline historis; verifikasi ulang diperlukan)  
+**Terakhir Ditinjau:** 23 November 2026 (baseline source SHA tercatat di atas; handler-level reconciliation masih terbuka)  
 
 ---
 
