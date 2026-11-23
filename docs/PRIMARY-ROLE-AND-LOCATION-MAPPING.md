@@ -11,9 +11,9 @@
 - RPC/SC and PIBC are operational locations/contexts, not application roles and not automatic asset-owner domains.
 - A user at RPC, PIBC, HO, Pangsub, or Kantor Perawatan may hold a job level such as Kadiv, Kadep, Kasi, or Staf and may receive role capabilities according to assigned duties and approved permissions.
 
-## Legacy import aliases
+## Legacy database normalization aliases
 
-These aliases are accepted only for compatibility with old seed/CSV records. They are not valid primary profiles and must not be used to infer job level, organizational unit, owner domain, or permission.
+Migration `048_dynamic_employee_profile_normalization.sql` normalizes existing database records that still contain these legacy values. This migration compatibility table is not the allowlist for new bulk CSV imports. These values are not valid primary profiles and must not be used to infer job level, organizational unit, owner domain, or permission.
 
 | Legacy value | Primary profile after normalization | Location mapping | What is not inferred |
 |---|---|---|---|
@@ -32,7 +32,8 @@ Migration 048 performs this narrowly scoped profile normalization and preserves 
 - Resolve user identity and active status from the approved employee source.
 - Validate office location, organizational unit, and job level against their own masters; do not derive one from another.
 - New user creation accepts only the primary profiles `Admin GABAH` and `Karyawan`.
-- Legacy labels may be accepted by CSV import as compatibility aliases, normalized to Karyawan, and reported with a warning. After import, an administrator assigns the required work-function role through Dynamic RBAC.
+- Bulk CSV import accepts only `Admin GABAH`, `Superadmin` (legacy alias), `Karyawan`, and the location aliases `Supply Chain`/`SC`/`PIBC`; location aliases normalize to Karyawan and the matching office location.
+- Functional labels such as IT, GA, Auditor, Humas, and Sekretaris Direksi are rejected as primary-role CSV values. Existing database records are normalized by migration 048; new users receive work-function capabilities separately through Dynamic RBAC after import.
 - Unknown or inactive values must be reported for review; never silently grant a default role or broad scope.
 - Preserve legacy source values in migration/audit metadata where required for traceability.
 - Never use a location string as permission, role, or asset-owner authority.

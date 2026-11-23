@@ -1589,7 +1589,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // ============ IMPORT MASSAL PEGAWAI (CSV/Excel) ============
-  const validImportRoles = [...PRIMARY_PROFILE_ROLES.map(r => r.value as string), 'IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'];
+  // Keep client-side CSV validation aligned with the server bulk-import
+  // allowlist. Functional capabilities (IT/GA/Auditor/Humas/Sekdir) are
+  // assigned separately through Dynamic RBAC, never imported as primary roles.
+  const validImportRoles = [...PRIMARY_PROFILE_ROLES.map(r => r.value as string), 'Superadmin', 'Supply Chain', 'SC', 'PIBC'];
   const validImportDivisions = divisions.map(d => String(d.code));
   const validImportJobLevels = jobLevels.filter(j => j.is_active).map(j => String(j.code));
   const validImportUnitIds = orgUnits.filter(u => u.is_active).map(u => String(u.id));

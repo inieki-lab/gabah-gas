@@ -1603,3 +1603,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Commit 94803bc9649e14028cc370f10b1022723469b484 updates ticket owner checks to honor `hasApplicationRole()` for the ticket category while preserving legacy primary-label matching; vendor create/update now also recognize normalized owner capabilities. PostgreSQL permission and division/unit scope checks are unchanged.
 - Commits 9958c3cab01f8a8c3a77db53176a263ff6366a44 and dc22706abb31e9b6956e3073c8261d00c1f74bb4 add regression guards for ticket assignment, ticket record/comment/status access, and the existing Dynamic RBAC vendor endpoint contract checks.
 - CI must pass at the final PR head before merge.
+
+
+### Bulk user import primary-role validation alignment — 2026-11-23 (follow-up PR; CI pending)
+
+- Post-merge UI audit found the user-import preview allowlist accepted IT, GA, Auditor, Humas, and Sekretaris Direksi as if they were valid primary profiles, while the authoritative bulk-import API correctly rejects functional capabilities as primary roles. This produced rows that appeared valid in preview but were rejected only after upload.
+- Commit 8ea50bda3743f24ca8c47c3f0558763788e544ff aligns the Administration UI allowlist with the server contract: Admin GABAH, Karyawan, Superadmin compatibility alias, and legacy Supply Chain/SC/PIBC location aliases. Operational capabilities remain assigned separately through Dynamic RBAC.
+- Commit 29aec427bf16f3f56732ebeacc614b68d5b093d0 extends parser regression coverage for accepted legacy aliases and rejection of function roles, and verifies the UI allowlist cannot drift back.
+- CI must pass at the exact PR head before merge.
