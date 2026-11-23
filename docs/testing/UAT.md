@@ -31,9 +31,9 @@
 
 | Persona uji | Konfigurasi yang harus disiapkan | Fokus pengujian |
 |:---|:---|:---|
-| Superadmin | Akun aktif dengan grant administrasi global | Administration, user/role, permission, scope, master, konfigurasi, audit |
-| IT Support | Permission modul IT dan owner scope IT | Aset IT lintas lokasi, tiket IT, tugas/support, lifecycle yang diizinkan |
-| GA asset operator | Permission operasional GA dan owner scope GA | Aset GA, sarpras, peminjaman/approval sesuai kewenangan |
+| Admin GABAH (Superadmin) | Profil utama Admin GABAH dengan grant administrasi global | Administration, user/role, permission, scope, master, konfigurasi, audit |
+| Karyawan + role tambahan IT Support | Permission modul IT dan owner scope IT | Aset IT lintas lokasi, tiket IT, tugas/support, lifecycle yang diizinkan |
+| Karyawan + role tambahan GA asset operator | Permission operasional GA dan owner scope GA | Aset GA, sarpras, peminjaman/approval sesuai kewenangan |
 | GA read-only workstation | Grant khusus `assets.read.it_workstations` tanpa permission mutasi IT | Hanya baca Laptop/PC owner IT; direct API mutation harus ditolak |
 | Karyawan HO | Fungsi dasar karyawan dan office location HO | Aset pribadi/pool, tiket sendiri, reservasi dan layanan mandiri |
 | Karyawan RPC | Fungsi dasar karyawan dan office location RPC/SC | Lokasi kerja tidak otomatis memberi role, owner scope, atau akses aset |
@@ -41,7 +41,7 @@
 | ME / Perawatan | Permission maintenance/tickets yang disetujui dan scope unit terkait | Routing dan penanganan tiket ME PIBC |
 | Humas capability | Akun karyawan dengan capability/permission Humas yang eksplisit | Antrean dokumentasi dan notifikasi yang memang ditugaskan |
 | Sekretariat Direksi capability | Akun karyawan dengan capability/permission sekretariat yang eksplisit | Reservasi VIP dan fungsi sekretariat sesuai grant |
-| Auditor | Grant baca audit yang eksplisit; tidak ada grant mutasi | Baca sesuai scope; semua operasi mutasi ditolak |
+| Karyawan + role tambahan Auditor | Grant baca audit yang eksplisit; tidak ada grant mutasi | Baca sesuai scope; semua operasi mutasi ditolak |
 | Custom role | Role buatan Superadmin dengan permission/scope minimal | Verifikasi granularitas, persistensi, revoke, dan default-deny |
 
 ---
@@ -64,8 +64,8 @@
 ### Skenario 2: Matriks Permission dan Scope Aset
 - **Tujuan**: Memastikan owner, lokasi, dan akses tidak tercampur.
 - **Langkah Pengujian**:
-  1. Login sebagai IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC/SC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
-  2. Login sebagai GA. Pastikan aset owner GA terlihat lintas lokasi. Jika permission assets.read.it_workstations aktif, hanya Laptop/PC owner IT yang dapat dibaca; mutasi langsung via API harus ditolak.
+  1. Login sebagai Karyawan dengan role tambahan IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC/SC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
+  2. Login sebagai Karyawan dengan role tambahan GA. Pastikan aset owner GA terlihat lintas lokasi. Jika permission assets.read.it_workstations aktif, hanya Laptop/PC owner IT yang dapat dibaca; mutasi langsung via API harus ditolak.
   3. Login sebagai Karyawan di unit Supply Chain dan PIBC. Pastikan fungsi dasar karyawan tersedia; lokasi kerja tidak otomatis membuka katalog aset unit/lokasi.
   4. Uji aset historis dengan owner SC/PIBC secara read/review sesuai grant sementara yang disahkan. Jangan menganggap RPC/SC atau PIBC sebagai owner domain baru. Aset owner ambigu tetap menunggu klasifikasi per aset; lokasi fisik tidak memberi hak mutasi.
   5. Login sebagai Humas dan Sekretaris Direksi. Pastikan fungsi dasar karyawan tersedia serta kapabilitas tambahan muncul hanya bila role tambahan/permission diberikan.
@@ -115,7 +115,7 @@
 ### Skenario 3: Pendaftaran Aset & Validasi Duplikasi
 - **Tujuan**: Memverifikasi nomor kanonikal dihasilkan secara atomik dan nomor duplikat ditolak.
 - **Langkah Pengujian**:
-  1. Login sebagai `IT`. Buka modal *Tambah Aset Baru*.
+  1. Login sebagai Karyawan dengan role tambahan IT. Buka modal *Tambah Aset Baru*.
   2. Pilih kategori "Laptop / Notebook", masukkan nama "Lenovo ThinkPad P14s", serial number `SN-TEST-001`.
   3. Simpan aset. Verifikasi nomor mengikuti aturan generator aktif yang dikonfigurasi Superadmin. Jangan mengasumsikan format contoh IT-HLT-2026-xxxx sebagai standar korporat final.
   4. Coba daftarkan aset kedua dengan serial number yang sama (`SN-TEST-001`).
@@ -139,7 +139,7 @@
 - **Tujuan**: Membuktikan server menolak tabrakan peminjaman aset yang sama pada tanggal tumpang tindih.
 - **Langkah Pengujian (Happy Path & Collision Test)**:
   1. Login sebagai `Karyawan` (Hendra). Buka *Peminjaman Barang* $\to$ ajukan pinjaman mobil Toyota Avanza (`GA-KDR-2026-0001`) tanggal 1 s/d 5 Oktober 2026.
-  2. Login sebagai `GA` (Siti) $\to$ buka menu *Peminjaman* $\to$ klik *Setujui Pinjaman*. Status berubah `approved`.
+  2. Login sebagai Karyawan dengan role tambahan GA (Siti) $\to$ buka menu *Peminjaman* $\to$ klik *Setujui Pinjaman*. Status berubah `approved`.
   3. Login sebagai Karyawan lain (atau alih peran) $\to$ ajukan pinjaman untuk mobil Avanza yang sama pada tanggal 3 s/d 7 Oktober 2026 (periode bertabrakan).
 - **Kriteria Lulus**: Permohonan kedua ditolak oleh server dengan pesan error: `Tabrakan Jadwal: Aset sudah direservasi atau dipinjam pada rentang tanggal tersebut.`
 
@@ -180,7 +180,7 @@
   5. **Verifikasi Notifikasi**:
      - Login sebagai `IT` $\to$ Cek lonceng notifikasi: Muncul *"Permintaan Fasilitas IT Ruang Rapat"*.
      - Login sebagai `GA` $\to$ Cek lonceng: Muncul *"Kebutuhan Sarana GA"* dan *"Permintaan Konsumsi Pantry"*.
-     - Login sebagai `Humas` $\to$ Cek lonceng: Muncul *"Permintaan Dokumentasi Humas: VIP Buffet & Liputan"*.
+     - Login sebagai Karyawan dengan role tambahan Humas $\to$ Cek lonceng: Muncul *"Permintaan Dokumentasi Humas: VIP Buffet & Liputan"*.
 - **Kriteria Lulus**: Keempat divisi menerima notifikasi sesuai tugas masing-masing secara akurat.
 
 ---
@@ -201,10 +201,10 @@
 - **Langkah Pengujian**:
   1. Login sebagai `IT` atau `GA` atau `Karyawan`. Periksa sidebar menu.
   2. Verifikasi tombol *Administration Control Panel* **tidak tampil**.
-  3. Login sebagai `Admin GABAH`.
+  3. Login sebagai profil `Admin GABAH`.
   4. Verifikasi tombol *Administration Control Panel* tampil di bagian bawah sidebar.
   5. Buka panel $\to$ uji tab *User Management*, *Organisasi*, *Master Data*, dan *Audit Trail*.
-- **Kriteria Lulus**: Tombol dan modal administrasi terkunci eksklusif untuk peran `Admin GABAH`.
+- **Kriteria Lulus**: Tombol dan modal administrasi terkunci eksklusif untuk profil `Admin GABAH`.
 
 ---
 
@@ -213,7 +213,7 @@
 - **Langkah Pengujian**:
   1. **Uji ID Spoofing**: Kirim request API menggunakan token user biasa tetapi menambahkan header `x-user-id: USR-01`.
      - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden` (`Percobaan manipulasi identitas (ID spoofing) terdeteksi`).
-  2. **Uji Auditor Read-Only**: Login sebagai `Auditor`. Coba lakukan request `POST /api/assets` atau `PATCH /api/tickets/1/status`.
+  2. **Uji Auditor Read-Only**: Login sebagai Karyawan dengan role tambahan Auditor. Coba lakukan request `POST /api/assets` atau `PATCH /api/tickets/1/status`.
      - *Hasil Diharapkan*: Server merespon HTTP `403 Forbidden` (`Akses ditolak: Peran Auditor memiliki hak akses Read-Only`).
   3. **Uji Unauthenticated Request**: Kirim request `GET /api/assets` tanpa menyertakan header Bearer token.
      - *Hasil Diharapkan*: Server merespon HTTP `401 Unauthorized` (tidak pernah auto-login sebagai Super Admin).
