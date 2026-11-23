@@ -88,7 +88,7 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 
 ## 4. Legacy Seed/Test Accounts (Not an HR Roster or Canonical Role List)
 
- > **Status:** Tabel berikut adalah fixture akun/alias dari seed lama untuk kompatibilitas dan pengujian. Nama, jabatan, unit, role primer, dan email harus diverifikasi sebelum digunakan dalam UAT; tabel ini bukan roster HR atau sumber assignment produksi.
+> **Status:** Tabel berikut adalah fixture akun/alias dari seed lama untuk kompatibilitas dan pengujian. Nama, jabatan, unit, role primer, dan email harus diverifikasi sebelum digunakan dalam UAT; tabel ini bukan roster HR atau sumber assignment produksi.
 >
 > **SECURITY (CR-02):** Tidak ada password default yang ditulis di dokumentasi.
 > Kredensial awal diprovision dari environment secrets saat boot:
