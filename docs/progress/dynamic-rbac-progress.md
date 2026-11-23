@@ -1522,3 +1522,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Extended the frontend compatibility audit beyond the first set of buttons. Several modules used `legacyRoles.includes(currentUser.role)`, which silently hid role-specific UI for canonical Karyawan profiles carrying IT/GA in `role_keys` when PostgreSQL permission metadata was absent.
 - Updated Dashboard, Loans, My Assets, Contracts, Asset Detail, and Meeting Master Settings to resolve legacy fallback roles through the shared normalized `GabahService.hasLegacyCapability()` helper. Existing permission metadata remains authoritative; Auditor deny-write and Superadmin precedence are preserved.
 - Earlier related UI fixes also cover Meeting Room GA operations, Sekdir override, and IT license creation. Full typecheck and UI/source-contract CI are pending.
+
+
+### UI regression follow-up — ticket actions and source-test hygiene — 2026-11-23 (PR #251; CI pending)
+
+- CI #3307 caught one missed frontend fallback: `canManageTickets()` still used a primary-role array after the other IT/GA UI gates were migrated. Updated it in commit 551b525de9b6eb89422115daaf773a828a847273 to honor secondary IT/GA capabilities, matching `canAssignTickets()` and the server policy.
+- CI #3309/#3310 caught a duplicate local `licenseUi` declaration introduced while adding the license UI source assertion. Removed the duplicate in commit eff03348e7826826a79017ab3fd895187ac30d85; the assertion now reuses the existing source binding.
+- Both are validation/test maintenance fixes; fresh exact-head CI remains required.
