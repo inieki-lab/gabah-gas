@@ -262,13 +262,17 @@ async function main() {
       const login = await req(base, 'POST', '/api/auth/login', { body: { email: adminEmail, password: adminPass } });
       const adminCookie = login.setCookie?.split(';', 1)[0] || '';
       const ok = login.status === 200 && Boolean(adminCookie) && !login.json?.data?.token;
-      record('CR-02 login with provisioned admin credential (PBKDF2 path)', '200 + token', ok ? '200 + token' : `HTTP ${login.status}`, ok);
+      record('CR-02 login with provisioned admin credential (PBKDF2 path)', '200 + HttpOnly cookie; no JSON token', ok ? '200 + cookie' : `HTTP ${login.status}`, ok);
       if (ok) adminToken = adminCookie;
       const hasTemp = JSON.stringify(login.json).includes('temp_password');
       record('CR-02 login response contains no temp_password', 'absent', hasTemp ? 'FOUND' : 'absent', !hasTemp);
     }
 
     if (!adminToken) throw new Error('Cannot continue without admin session');
+
+    const bearerValue = adminToken.slice('gabah_session='.length);
+    const bearerCompatibility = await rawReq(base, 'GET', '/api/auth/me', { headers: { Authorization: 'Bearer ' + bearerValue } });
+    record('Legacy Bearer compatibility remains intentionally supported by server auth', '200', 'HTTP ' + bearerCompatibility.status, bearerCompatibility.status === 200);
 
     // Oversized attacker-controlled credentials must be rejected before PBKDF2 work.
     const oversizedLogin = await req(base, 'POST', '/api/auth/login', {
