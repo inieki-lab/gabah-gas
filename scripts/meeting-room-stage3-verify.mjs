@@ -5,6 +5,10 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { Pool } from 'pg';
 const R=[];const rec=(n,e,a,p)=>R.push({n,e,a,p});
+const serverSource=fs.readFileSync('server.ts','utf8');
+rec('file-store room queues honor secondary GA/IT capabilities','hasApplicationRole(actor, ga/it)',
+  String(serverSource.includes(": hasApplicationRole(actor, 'ga')") && serverSource.includes(": hasApplicationRole(actor, 'it')")),
+  serverSource.includes(": hasApplicationRole(actor, 'ga')") && serverSource.includes(": hasApplicationRole(actor, 'it')"));
 const req=async(b,m,p,o={})=>{const r=await fetch(b+p,{method:m,headers:{'Content-Type':'application/json',...(o.token?{Authorization:`Bearer ${o.token}`}:{})},body:o.body===undefined?undefined:JSON.stringify(o.body)});let j={};try{j=await r.json()}catch{}return{status:r.status,json:j}};
 const day=()=>new Date(Date.now()+10*86400000).toISOString().slice(0,10);
 async function getAvailablePort() {
