@@ -53,3 +53,38 @@ This batch is a governance correction, not a full audit of every Markdown file o
 ## 6. Handoff instruction
 
 The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, current branch/PR status, then continue the inventory and source reconciliation. Do not repeat the initial governance changes or claim the full audit is complete.
+
+
+## Pass 2 — Full Markdown inventory and stale-source correction (23 November 2026)
+
+### Repository inventory
+- Enumerated the complete main Git tree at base SHA f39db6b8fd819d301f49815c7a33a04c80b2a6c0.
+- Found **41 Markdown files** across agent instructions, root audit reports, PRD/rules, architecture/API/DB/RBAC, asset numbering, audits, design, operations runbooks, security reviews, test/UAT docs, progress logs, and changelog.
+- Inventory is a snapshot of that base SHA; future additions must be included in later reviews.
+
+### Additional files corrected in this pass
+- AGENTS.md: removed stale hard-coded PR #18 integration branch; added mandatory project-context and documentation-control reading; clarified no merge/deploy without owner approval.
+- docs/ops/BRANCH-AND-AI-COLLABORATION.md: replaced obsolete PR #18 branch policy with branch-isolation, exact-base, evidence, and explicit-approval rules. Old PR/branch references are historical only.
+- docs/PROJECT-CONTEXT.md (new): consolidated owner-approved product, role/location, asset ownership, GA read-only workstation visibility, ticket routing, ME, module lifecycle, future endpoint-agent roadmap, and data-safety constraints.
+- docs/GABAH-DOCUMENTATION-CONTROL.md: made owner-approved context part of the authority hierarchy and mandatory reading.
+- docs/PRIMARY-ROLE-AND-LOCATION-MAPPING.md: changed fixed role list into legacy import guidance; no automatic role inference from RPC/PIBC location labels.
+- docs/architecture/RBAC.md: removed RPC/SC as illustrative automatic owner domain; clarified location is not owner/role/scope.
+- docs/product/REQUIREMENTS.md: corrected auth transport wording to state actual main baseline (Bearer) and that unmerged HttpOnly-cookie work is not current behavior; corrected dynamic asset owner and configurable numbering requirements; corrected loan approval and ticket-routing language.
+- docs/product/BUSINESS-RULES.md: narrowed GA read-only visibility to explicitly granted Laptop/PC owner-IT records; no implied read access to all IT assets or software.
+- README.md: added owner-approved context and corrected stale descriptions of RBAC and API documents.
+- GABAH-CURRENT-STATE-AUDIT.md: preserved the original 3 October report, but clearly labeled it historical rather than current authoritative state.
+- AUDIT_NOTES.md, GABAH-ARCHITECTURE-BASELINE.md, GABAH-AUDIT-REPORT.md, GABAH-P0-FINALIZATION-REPORT.md, GABAH-P0-SECURITY-HARDENING-REPORT.md, and GABAH-P0-VERIFICATION-REPORT.md: added historical-evidence warnings without deleting original content.
+
+### Findings still open — do not infer closure
+1. docs/architecture/API-DESIGN.md contains endpoint/auth/role descriptions needing complete route-by-route comparison against current server.ts, middleware, API client, and integration tests. Header warning is not completed reconciliation.
+2. docs/architecture/DATABASE-DESIGN.md needs migration-by-migration schema comparison, including migration ledger and legacy upgrade behavior.
+3. docs/architecture/ARCHITECTURE.md, PRD.md, docs/product/BUSINESS-RULES.md, and remaining RBAC sections still need workflow-level traceability to actual UI/API/domain/persistence/tests.
+4. docs/ops/PRODUCTION-READINESS-GATES.md, security reviews, audit reports, UAT docs, and progress logs contain dated CI/branch/test claims. Revalidate against exact commit and workflow run; old PASS is not current PASS.
+5. Review all remaining 41 Markdown files for dead links, duplicate/contradictory rules, hard-coded role assumptions, secrets/credential remnants, stale branch references, and inaccurate stack/deployment claims.
+6. PR #248 cookie-auth work is separate and unmerged. Keep current main Bearer behavior distinct from that proposed branch until its CI integration failure is corrected and the change is merged.
+
+### Verification and limitations
+- This pass used GitHub source inspection and documentation edits only.
+- No application source code, SQL migration, runtime behavior, or production data was changed.
+- No TypeScript check, build, Docker/PostgreSQL test, browser UAT, security penetration test, or Markdown-link CI was run for these documentation edits.
+- This is documentation correction in progress, not proof of application readiness and not a claim that all 41 files are fully reconciled.
