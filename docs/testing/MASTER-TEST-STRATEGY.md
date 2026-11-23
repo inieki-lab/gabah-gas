@@ -49,9 +49,9 @@ Jangan mengubah `PGHOST=database` atau `PGPORT=5432` di konfigurasi internal apl
 
 **Penting:** CI hijau bukan bukti UAT UI selesai. Merge ke `main` hanya setelah tahap A–H yang relevan lulus dan tidak ada defect P0/P1 terbuka.
 
-## 3. Persona akun uji kanonis
+## 3. Persona dan cakupan akun uji
 
-Gunakan akun yang memang disediakan oleh seed/provisioning aplikasi. Email di bawah mengikuti daftar persona UAT yang sudah ada; verifikasi bahwa akun dan assignment aktual ada di database sebelum menyatakan lulus.
+Dynamic RBAC tidak memiliki daftar role bisnis tertutup. Akun/email seed berikut hanyalah fixture historis untuk lingkungan uji; bukan daftar role kanonis, HR roster, atau dasar assignment produksi. Verifikasi akun dan grant aktual di database sebelum menyatakan lulus. Selain seed fixture, UAT wajib mencakup Karyawan di HO/RPC/PIBC, ME/Perawatan, GA read-only Laptop/PC IT dengan grant khusus, capability Humas/Sekretariat, Auditor, dan setidaknya satu custom role.
 
 | Persona | Akun | Fokus pengujian |
 |---|---|---|
@@ -60,8 +60,8 @@ Gunakan akun yang memang disediakan oleh seed/provisioning aplikasi. Email di ba
 | GA | `ga@foodstation.co.id` | aset GA, sarpras, peminjaman/approval sesuai kewenangan; hanya baca PC/laptop IT bila grant aktif |
 | Sekretariat Direksi | `sekretariat.direksi@foodstation.co.id` | fungsi pegawai + capability sekretariat dan reservasi VIP sesuai grant |
 | Humas | `humas@foodstation.co.id` | fungsi pegawai + capability dokumentasi/notifikasi Humas |
-| Pegawai RPC/SC | `sc.warehouse@foodstation.co.id` | fungsi pegawai dan akses sesuai role/scope; lokasi bukan role |
-| Pegawai PIBC | `pibc.admin@foodstation.co.id` | fungsi pegawai dan akses PIBC yang diberikan; lokasi bukan role |
+| Pegawai RPC (legacy fixture) | `sc.warehouse@foodstation.co.id` | fungsi pegawai; office location RPC/SC bukan role atau owner scope |
+| Pegawai PIBC (legacy fixture) | `pibc.admin@foodstation.co.id` | fungsi pegawai; office location PIBC bukan role atau owner scope |
 | Pegawai umum | `hendra.w@foodstation.co.id` | layanan mandiri, aset milik sendiri, tiket, permohonan |
 | Auditor | `auditor@foodstation.co.id` | baca sesuai scope audit; seluruh mutasi ditolak |
 
