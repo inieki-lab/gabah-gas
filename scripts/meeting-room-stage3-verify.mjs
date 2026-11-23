@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 const R=[];const rec=(n,e,a,p)=>R.push({n,e,a,p});
-const req=async(b,m,p,o={})=>{const r=await fetch(b+p,{method:m,headers:{'Content-Type':'application/json',...(o.token?{Authorization:`Bearer ${o.token}`}:{})},body:o.body===undefined?undefined:JSON.stringify(o.body)});let j={};try{j=await r.json()}catch{}return{status:r.status,json:j}};
+const req=async(b,m,p,o={})=>{const r=await fetch(b+p,{method:m,headers:{'Content-Type':'application/json',...(o.token?{Authorization:`Bearer ${o.token}`}:{})},body:o.body===undefined?undefined:JSON.stringify(o.body)});let j={};try{j=await r.json()}catch{}return{status:r.status,json:j,setCookie:r.headers.get('set-cookie')||''}};
 const day=()=>new Date(Date.now()+10*86400000).toISOString().slice(0,10);
 async function getAvailablePort() {
   return new Promise((resolve, reject) => {
