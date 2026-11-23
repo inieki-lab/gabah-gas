@@ -16,6 +16,8 @@ export interface UserRbacPolicy {
 
 const policiesByUser = new Map<string, UserRbacPolicy[]>();
 let lastLoadedAt: string | null = null;
+let refreshInFlight: Promise<void> | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Load the PostgreSQL-backed RBAC policy into a read-only process cache.
@@ -23,9 +25,13 @@ let lastLoadedAt: string | null = null;
  * Call after persistence initialization and after every RBAC mutation.
  */
 export async function refreshRbacPolicy(): Promise<void> {
-  policiesByUser.clear();
-  lastLoadedAt = null;
-  if (!isPostgresPersistenceActive()) return;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    // Clear first: if PostgreSQL is unavailable, stale grants must never remain
+    // usable. A failed refresh therefore degrades to default-deny on this node.
+    policiesByUser.clear();
+    lastLoadedAt = null;
+    if (!isPostgresPersistenceActive()) return;
 
   const roles = await queryRbac<any>(
     'SELECT ur.user_id, r.role_key, r.name AS role_name, r.is_superadmin, r.is_active, p.permission_key ' +
@@ -69,7 +75,30 @@ export async function refreshRbacPolicy(): Promise<void> {
     }
     if (row.permission_key) policy.permissions.add(String(row.permission_key));
   }
-  lastLoadedAt = new Date().toISOString();
+    lastLoadedAt = new Date().toISOString();
+  })();
+  try {
+    await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
+/**
+ * Keep process-local policy caches convergent when another application node
+ * changes a role, permission, or scope in PostgreSQL. Local mutation handlers
+ * still refresh immediately; this bounded poll covers changes made on peers.
+ */
+export function startRbacPolicyRefresh(intervalMs = 5000): void {
+  if (refreshTimer || !isPostgresPersistenceActive()) return;
+  const safeInterval = Math.max(1000, Math.min(60000, Math.floor(intervalMs) || 5000));
+  refreshTimer = setInterval(() => {
+    void refreshRbacPolicy().catch(error => {
+      // refreshRbacPolicy clears the cache before querying, so errors fail closed.
+      console.error('[GABAH RBAC] Scheduled policy refresh failed; this node is default-deny until recovery:', error?.message || error);
+    });
+  }, safeInterval);
+  refreshTimer.unref?.();
 }
 
 function isAuditorUserId(userId: string): boolean {
