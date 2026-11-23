@@ -1587,3 +1587,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Exact-head CI #3331 on commit `c2b1289db92f5c5ce1ead31800d248ab7650fe90` completed successfully: 116/116 steps green, including the full production, Docker, PostgreSQL, security, RBAC, organization, Meeting Room, ticket, loan, and Maintenance suites.
 - PR #251 was retargeted from the stacked PR #249 branch directly to `main`, its description was consolidated to cover the complete stack, and it was marked ready for review. PR #249 is now superseded but remains open until PR #251 merges successfully.
 - A new exact-head CI run against the final `main` base is mandatory. Merge only after that run is green, the PR remains mergeable, and no required check/review gate is outstanding.
+
+
+### Dynamic RBAC asset-scope contract test diagnostics — 2026-11-23
+
+- CI #3295/#3296 reported one composite static assertion failure (141/142) for the asset-scope contract, although the current implementation contains the expected IT/GA secondary-capability branches, GA workstation-only filter, employee baseline, and PostgreSQL dynamic scopes.
+- Commit 1ac51acbea384cb0873a7f953ef34e241963c720 splits the composite assertion into individual named checks without removing any required condition. This makes the exact failing invariant visible in CI instead of returning one opaque failure. The GA workstation restriction is checked explicitly.
+- Await exact-head CI before any merge decision.
