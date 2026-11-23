@@ -4851,10 +4851,10 @@ async function startServer() {
       const canOperateRooms = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.approve')
           || hasRbacPermission(String(actor.id), 'room_reservations.reject')
-        : actor.role === 'GA';
+        : hasApplicationRole(actor, 'ga');
       const canReadITFacilityQueue = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.it_facilities.read')
-        : actor.role === 'IT';
+        : hasApplicationRole(actor, 'it');
       const canReadDocumentationQueue = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.documentation.read')
         : hasApplicationRole(actor, 'humas');
