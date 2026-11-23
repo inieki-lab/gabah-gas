@@ -179,8 +179,12 @@ export default function App() {
           gabahApi.getMe().catch(() => null),
           new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
         ]);
-        if (me) setCurrentUser(me);
-        else setViewMode('login');
+        if (me) {
+          setCurrentUser(me);
+          setViewMode('portal');
+        } else {
+          setViewMode('login');
+        }
       } catch (err) {
         console.warn('Auth initialization:', err);
         setViewMode('login');
