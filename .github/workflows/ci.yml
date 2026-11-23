@@ -51,6 +51,9 @@ jobs:
       - name: Production dependency boundary regression
         run: npm run test:production-dependency-policy
 
+      - name: Production independent rate-limit secret policy regression
+        run: npm run test:production-secret-policy
+
       - name: Browser storage policy regression
         run: npm run test:browser-storage-policy
 
