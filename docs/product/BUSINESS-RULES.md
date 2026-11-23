@@ -13,9 +13,9 @@
 ## 1. Aturan Kepemilikan Aset & Batas Wewenang Divisi (BR-01)
 
 ### BR-01.1: Kepemilikan Barang IT (IT-H & IT-S)
-- **Aturan**: Seluruh aset hardware komputasi (`IT-H`: Laptop `HLT`, PC `HPC`, Server `HSV`, Workstation `HWS`, Monitor `HMON`, Printer `HPRN`, Jaringan `HNET`, Firewall `HFW`, Storage `HSTG`, UPS `HUPS`, Rack `HRCK`) dan software/lisensi (`IT-S`: `SLIC`) adalah **hak milik mutlak Divisi IT**.
-- **Enforcement Kode**: `server/services.ts` (baris 117-120 & 131-134), `server/taxonomy.ts` (baris 33-50).
-- **Konsekuensi**: Divisi General Affairs (GA) hanya memiliki hak akses lihat (*read-only*). Pengguna peran `GA` ditolak jika mencoba mendaftarkan, menugaskan, memutasi lokasi, atau mengubah status siklus hidup barang IT.
+- **Aturan**: Aset hardware komputasi (termasuk laptop, PC, server, jaringan, storage, UPS) dan software/lisensi yang ditetapkan sebagai owner IT dikelola oleh fungsi IT lintas seluruh lokasi. Lokasi fisik tidak mengubah owner.
+- **Akses GA**: GA hanya dapat diberi akses baca tambahan untuk kategori Laptop/PC owner IT melalui permission/scope yang eksplisit dan dapat dikonfigurasi. Akses tersebut tidak memberikan hak create, update, assign, move, lifecycle, atau approval. Jangan memperluas akses baca ke seluruh aset IT atau software/lisensi tanpa keputusan dan grant khusus.
+- **Enforcement Kode**: Kandidat implementasi tercatat pada `server/services.ts`, `server/taxonomy.ts`, `server/rbac-policy.ts`, dan `server/runtime-hardening.ts`; nama baris dapat berubah. Verifikasi list dan direct-ID dengan test sebelum menyatakan aturan telah ditegakkan.
 
 ### BR-01.2: Kepemilikan Sentral Furniture (INV-F)
 - **Aturan**: Seluruh perabot kantor (`INV-F`: meja kerja, kursi rapat, lemari arsip, rak dokumen) adalah **hak milik mutlak Divisi GA**, di manapun lokasi fisik penempatannya di seluruh kantor atau pergudangan BUMD.
