@@ -82,7 +82,7 @@ async function runAllTests() {
   {
     const res = await api('/api/auth/me', { method: 'GET' }, adminToken);
     const ok = res.status === 200 && res.body?.data?.email === 'admin.gabah@foodstation.co.id';
-    recordTest('Auth', 'Access /api/auth/me with valid Bearer token', ok, ok ? undefined : `Status: ${res.status}, Body: ${JSON.stringify(res.body)}`);
+    recordTest('Auth', 'Access /api/auth/me with valid session cookie', ok, ok ? undefined : `Status: ${res.status}, Body: ${JSON.stringify(res.body)}`);
   }
 
   // 1.3 Access /api/auth/me without token or with invalid token
@@ -127,42 +127,42 @@ async function runAllTests() {
       body: JSON.stringify({ email: 'faisal.it@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (itRes.status === 200) itToken = itRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
-    recordTest('Auth', 'IT Login', itRes.status === 200 && itRes.body?.data?.user?.role === 'IT', itRes.status === 200 ? undefined : JSON.stringify(itRes.body));
+    recordTest('Auth', 'IT Login sets cookie without JSON token', itRes.status === 200 && Boolean(itToken) && !itRes.body?.data?.token && !itRes.body?.token && itRes.body?.data?.user?.role === 'IT', itRes.status === 200 ? undefined : JSON.stringify(itRes.body));
 
     const gaRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'siti.ga@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (gaRes.status === 200) gaToken = gaRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
-    recordTest('Auth', 'GA Login', gaRes.status === 200 && gaRes.body?.data?.user?.role === 'GA', gaRes.status === 200 ? undefined : JSON.stringify(gaRes.body));
+    recordTest('Auth', 'GA Login sets cookie without JSON token', gaRes.status === 200 && Boolean(gaToken) && !gaRes.body?.data?.token && !gaRes.body?.token && gaRes.body?.data?.user?.role === 'GA', gaRes.status === 200 ? undefined : JSON.stringify(gaRes.body));
 
     const scRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'bambang.sc@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (scRes.status === 200) scToken = scRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
-    recordTest('Auth', 'Supply Chain Login', scRes.status === 200 && scRes.body?.data?.user?.role === 'Supply Chain', scRes.status === 200 ? undefined : JSON.stringify(scRes.body));
+    recordTest('Auth', 'Supply Chain Login sets cookie without JSON token', scRes.status === 200 && Boolean(scToken) && !scRes.body?.data?.token && !scRes.body?.token && scRes.body?.data?.user?.role === 'Supply Chain', scRes.status === 200 ? undefined : JSON.stringify(scRes.body));
 
     const pibcRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'joko.pibc@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (pibcRes.status === 200) pibcToken = pibcRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
-    recordTest('Auth', 'PIBC Login', pibcRes.status === 200 && pibcRes.body?.data?.user?.role === 'PIBC', pibcRes.status === 200 ? undefined : JSON.stringify(pibcRes.body));
+    recordTest('Auth', 'PIBC Login sets cookie without JSON token', pibcRes.status === 200 && Boolean(pibcToken) && !pibcRes.body?.data?.token && !pibcRes.body?.token && pibcRes.body?.data?.user?.role === 'PIBC', pibcRes.status === 200 ? undefined : JSON.stringify(pibcRes.body));
 
     const kryRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'dewi.lestari@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (kryRes.status === 200) karyawanToken = kryRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
-    recordTest('Auth', 'Karyawan Login', kryRes.status === 200 && kryRes.body?.data?.user?.role === 'Karyawan', kryRes.status === 200 ? undefined : JSON.stringify(kryRes.body));
+    recordTest('Auth', 'Karyawan Login sets cookie without JSON token', kryRes.status === 200 && Boolean(karyawanToken) && !kryRes.body?.data?.token && !kryRes.body?.token && kryRes.body?.data?.user?.role === 'Karyawan', kryRes.status === 200 ? undefined : JSON.stringify(kryRes.body));
 
     const audRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'hendro.auditor@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
     if (audRes.status === 200) auditorToken = audRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
-    recordTest('Auth', 'Auditor Login', audRes.status === 200 && audRes.body?.data?.user?.role === 'Auditor', audRes.status === 200 ? undefined : JSON.stringify(audRes.body));
+    recordTest('Auth', 'Auditor Login sets cookie without JSON token', audRes.status === 200 && Boolean(auditorToken) && !audRes.body?.data?.token && !audRes.body?.token && audRes.body?.data?.user?.role === 'Auditor', audRes.status === 200 ? undefined : JSON.stringify(audRes.body));
   }
 
   // 1.7 Logout test
@@ -174,7 +174,7 @@ async function runAllTests() {
     const tempToken = tempLogin.headers.get('set-cookie')?.split(';', 1)[0] || '';
     const logoutRes = await api('/api/auth/logout', { method: 'POST' }, tempToken);
     const afterLogout = await api('/api/auth/me', { method: 'GET' }, tempToken);
-    const ok = logoutRes.status === 200 && afterLogout.status === 401;
+    const ok = tempLogin.status === 200 && Boolean(tempToken) && logoutRes.status === 200 && afterLogout.status === 401;
     recordTest('Auth', 'Logout invalidates cookie session', ok, ok ? undefined : `Logout status: ${logoutRes.status}, Me after: ${afterLogout.status}`);
   }
 
