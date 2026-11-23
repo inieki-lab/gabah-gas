@@ -104,12 +104,12 @@ async function main() {
     const adminEmail = 'admin@foodstation.co.id';
     const adminPass = process.env.GABAH_INITIAL_ADMIN_PASSWORD || readDevCredentials()[adminEmail] || '';
     const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: adminEmail, password: adminPass } });
-    record('admin login (Admin GABAH)', '200 + token', adminLogin.status === 200 && adminLogin.setCookie ? '200 + cookie' : `HTTP ${adminLogin.status}`, adminLogin.status === 200 && Boolean(adminLogin.setCookie));
-    const adminToken = adminLogin.status === 200 && adminLogin.json?.data?.token ? adminLogin.json.data.token : '';
+    record('admin login (Admin GABAH)', '200 + cookie, no JSON token', adminLogin.status === 200 && adminLogin.setCookie ? '200 + cookie' : `HTTP ${adminLogin.status}`, adminLogin.status === 200 && Boolean(adminLogin.setCookie?.split(';', 1)[0]) && !adminLogin.json?.data?.token && !adminLogin.json?.token);
+    const adminToken = adminLogin.status === 200 ? adminLogin.setCookie?.split(';', 1)[0] || '' : '';
 
     const staffLogin = await req(base, 'POST', '/api/auth/login', { body: { email: 'hendra.w@foodstation.co.id', password: readDevCredentials()['hendra.w@foodstation.co.id'] || '' } });
-    record('staff login (Karyawan)', '200 + token', staffLogin.status === 200 && staffLogin.setCookie ? '200 + cookie' : `HTTP ${staffLogin.status}`, staffLogin.status === 200 && Boolean(staffLogin.setCookie));
-    const staffToken = staffLogin.status === 200 && staffLogin.json?.data?.token ? staffLogin.json.data.token : '';
+    record('staff login (Karyawan)', '200 + cookie, no JSON token', staffLogin.status === 200 && staffLogin.setCookie ? '200 + cookie' : `HTTP ${staffLogin.status}`, staffLogin.status === 200 && Boolean(staffLogin.setCookie?.split(';', 1)[0]) && !staffLogin.json?.data?.token && !staffLogin.json?.token);
+    const staffToken = staffLogin.status === 200 ? staffLogin.setCookie?.split(';', 1)[0] || '' : '';
 
     if (adminToken) {
       const adminDir = await req(base, 'GET', '/api/users', { token: adminToken });

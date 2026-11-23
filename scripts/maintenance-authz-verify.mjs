@@ -141,8 +141,8 @@ async function main() {
     for (const [key, email] of Object.entries(accounts)) {
       const pass = creds[email] || process.env.GABAH_TEST_PASSWORD || '';
       const login = await req(base, 'POST', '/api/auth/login', { body: { email, password: pass } });
-      record(`login ${key} (${email})`, '200 + token', `HTTP ${login.status}`, login.status === 200 && Boolean(login.setCookie?.split(';', 1)[0]));
-      if (login.status === 200 && Boolean(login.setCookie?.split(';', 1)[0])) tokens[key] = login.json.data.token;
+      record(`login ${key} (${email})`, '200 + cookie, no JSON token', `HTTP ${login.status}`, login.status === 200 && Boolean(login.setCookie?.split(';', 1)[0]) && !login.json?.data?.token && !login.json?.token);
+      if (login.status === 200 && Boolean(login.setCookie?.split(';', 1)[0])) tokens[key] = login.setCookie.split(';', 1)[0];
     }
 
     // ---------- READ (legacy filter chain invariance, file-store) ----------
