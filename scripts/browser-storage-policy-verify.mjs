@@ -24,6 +24,7 @@ assert.equal(/(?:window\.)?localStorage\.(?:getItem|setItem|removeItem)/.test(ad
   'Administration must not use localStorage; server-backed masters and Dynamic RBAC are authoritative');
 
 assert.equal(/localStorage\./.test(api + app), false, 'Authentication credentials must not be stored in localStorage');
+assert.match(app, /if \(me\) \{[\s\S]*setCurrentUser\(me\);[\s\S]*setViewMode\('portal'\);/, 'A valid HttpOnly cookie must restore the authenticated portal after refresh');
 assert.match(api, /credentials: 'same-origin'/, 'API requests must send same-origin cookies');
 assert.match(server, /res\.cookie\('gabah_session',[\s\S]*httpOnly: true[\s\S]*sameSite: 'strict'/,
   'Session cookie must be HttpOnly and SameSite strict');
