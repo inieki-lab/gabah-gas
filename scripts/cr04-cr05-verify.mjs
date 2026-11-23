@@ -142,6 +142,7 @@ function spawnServer({ port, databaseUrl, nodeEnv }) {
       PORT: String(port),
       NODE_ENV: nodeEnv,
       DATABASE_URL: databaseUrl,
+      GABAH_RATE_LIMIT_SECRET: process.env.GABAH_RATE_LIMIT_SECRET || 'ci-cr04-independent-rate-limit-secret-2026-only',
       GABAH_REMINDER_SCHEDULER_DISABLED: 'true',
       GABAH_REMINDER_RUN_ON_BOOT: 'false',
       GABAH_INITIAL_ADMIN_PASSWORD: ADMIN_PASS,
