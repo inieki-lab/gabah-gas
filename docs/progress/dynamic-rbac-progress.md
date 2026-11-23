@@ -1515,3 +1515,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 - CI #3300 reached the asset-scope policy suite and found one outdated source assertion: it expected `isAuditor()` to inspect only an explicit `role_keys.includes('auditor')` array. The frontend helper now also preserves the legacy primary Auditor label through the shared normalized capability helper.
 - Updated the source-contract assertion in commit 0a474c5b7fa9347de2a1edac8c38d2779afddfbe to require `hasLegacyCapability(user, 'auditor')` while retaining deny-write checks in asset edit, loan approval, and ticket management. Runtime authorization behavior is not weakened.
+
+
+### Frontend module capability gates — dashboard, loans, assets, contracts, meeting masters — 2026-11-23 (PR #251; CI pending)
+
+- Extended the frontend compatibility audit beyond the first set of buttons. Several modules used `legacyRoles.includes(currentUser.role)`, which silently hid role-specific UI for canonical Karyawan profiles carrying IT/GA in `role_keys` when PostgreSQL permission metadata was absent.
+- Updated Dashboard, Loans, My Assets, Contracts, Asset Detail, and Meeting Master Settings to resolve legacy fallback roles through the shared normalized `GabahService.hasLegacyCapability()` helper. Existing permission metadata remains authoritative; Auditor deny-write and Superadmin precedence are preserved.
+- Earlier related UI fixes also cover Meeting Room GA operations, Sekdir override, and IT license creation. Full typecheck and UI/source-contract CI are pending.
