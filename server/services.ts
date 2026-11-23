@@ -116,11 +116,13 @@ export function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | n
       && (authority.divisions.has(owner) || (authority.all && !authority.excludedDivisions.has(owner)));
   }
 
-  const legacyOwnerByRole: Record<string, string> = {
-    IT: 'IT',
-    GA: 'GA',
-  };
-  return legacyOwnerByRole[actor.role] === owner;
+  // Canonical employee profiles use role="Karyawan"; operational ownership
+  // authority is carried by secondary Dynamic RBAC role_keys (e.g. "it"/"ga").
+  // Keep legacy IT/GA primary labels readable for older file-store snapshots.
+  const normalizeCapability = (value: unknown) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const ownerKey = normalizeCapability(owner);
+  const assigned = new Set([actor.role, ...(actor.role_keys || [])].map(normalizeCapability));
+  return (ownerKey === 'it' || ownerKey === 'ga') && assigned.has(ownerKey);
 }
 
 function textEquals(left: unknown, right: unknown): boolean {
