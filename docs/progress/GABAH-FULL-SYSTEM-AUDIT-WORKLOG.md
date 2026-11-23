@@ -87,3 +87,12 @@ Branch audit/full-system-hardening-2026-11-23; draft PR #248 targets main. No me
 
 
 - Correction: documentation-only exact-head rerun **45122081745** also completed **FAIL** at 06:09:31Z on the same test-code snapshot. Its summary likewise omits the failing step and logs. The code-change run 45121785796 remains the latest run that includes the cookie test changes; no green CI result is established.
+
+
+## CI completion after cookie-session test fixes (2026-11-23)
+
+- Exact code head `981d811e830b27bcfb2b76d7a0ab6518a31cf655`: GitHub Actions run **45122946585** (`verify`) **PASS**, completed 06:18:02Z. The full workflow completed successfully, including PostgreSQL 17 fresh-database/persistence integration (CR-04/CR-05), P0 live HTTP security verification, and the other configured regressions. This supersedes the earlier failed runs recorded above.
+- CR-04/CR-05’s cookie login/session tests passed for Admin, IT, GA, Karyawan, and Auditor. The run includes HTTP 200/login cookie assertions, session restore, logout/revocation, invalid and missing Origin rejection, unauthenticated/unknown-cookie rejection, and persistence checks. No JSON token was added and no security assertion was removed.
+- Cookie lifetime verification checks `Max-Age=604800` and unauthorized restore when the browser omits its expired cookie; the test does not wait seven days or advance server time.
+- The separate `scripts/test-core-modules.ts` migration is not a configured CI step, so it is migrated but NOT independently executed by this workflow. Manual browser UAT also remains NOT TESTED.
+- PR #248 remains open/draft and unmerged.

@@ -106,3 +106,20 @@ Release/UAT status remains NOT APPROVED. Do not infer that the scenarios passed 
 - Fixed remaining stale JSON token extraction in maintenance and RBAC live HTTP tests; migrated the core-module live HTTP auth suite to session cookies and same-origin requests. Branch scan covered all 108 scripts; only P0's explicit compatibility test still sends Bearer, matching current server support.
 - Exact-head CI run **45121785796** failed (completed 2026-11-23 06:06:46Z). The job summary contains no failing-step details; individual scenarios remain **NOT VERIFIED**.
 - Worklog/UAT status is not a green CI result. To proceed without weakening assertions, inspect/provide the failed-step log for run 45121785796, repair its actual cause, and rerun the workflow. No merge.
+
+
+## CI completion correction (2026-11-23)
+
+The earlier failing status above is superseded for the cookie test changes by exact code-head run **45122946585** on `981d811e830b27bcfb2b76d7a0ab6518a31cf655`: **PASS**, completed 06:18:02Z. The full `verify` workflow passed, including the PostgreSQL 17 fresh-database/persistence integration, P0 live HTTP security checks, and configured regressions.
+
+| Scenario | Status | Evidence / limit |
+|---|---|---|
+| Admin, IT, GA, Karyawan, Auditor cookie login and session identity | PASS | CR-04/CR-05 live PostgreSQL integration in run 45122946585. |
+| HttpOnly/SameSite cookie, no login JSON token, restore, logout/revocation | PASS | CR-04/CR-05 assertions passed in run 45122946585. |
+| Invalid/missing Origin and unauthenticated/unknown session | PASS | CR-04/CR-05 negative assertions passed in run 45122946585. |
+| Browser expiry behavior | PASS (bounded) | `Max-Age=604800` is checked and restore without a cookie is unauthorized; no seven-day wait or server-clock advance. |
+| Legacy Bearer compatibility | PASS | Explicit P0 compatibility assertion passed; retained intentionally as non-browser transport. |
+| `scripts/test-core-modules.ts` | NOT TESTED | Migrated to cookie transport but is not a configured CI step. |
+| Manual browser UI UAT | NOT TESTED | CI HTTP tests do not substitute for manual browser workflows. |
+
+Release/UAT scope remains limited by the manual browser scenarios above. PR #248 remains open/draft; no merge.
