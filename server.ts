@@ -911,7 +911,7 @@ async function startServer() {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'users.read')) return;
-    } else if (!isSuperadminActor(actor) && !['IT', 'GA'].includes(actor.role)) {
+    } else if (!isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
       return res.status(403).json({ success: false, message: 'Akses direktori pegawai hanya untuk Super Admin, IT, dan GA.' });
     }
     res.json({ success: true, data: db.users.map(u => sanitizeUser(u, { includeTelegramChatId: isSuperadminActor(actor) })) });
@@ -3254,7 +3254,8 @@ async function startServer() {
     // primary-role labels here: that would hide scoped assets from employees
     // who hold additional operational roles.
     const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
-    const isEmployeeBaseline = employeeBaselineRoles.includes(actor.role);
+    const isEmployeeBaseline = employeeBaselineRoles.includes(actor.role)
+      && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga');
     const scopedAssets = GabahDomainService.getScopedAssets(actor);
     // Employee baseline may see unassigned loanable assets in the asset catalogue
     // to request a loan, but that catalogue visibility must not expose their
@@ -3470,7 +3471,7 @@ async function startServer() {
     const canReadTicketOwner = (owner: string) =>
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, 'tickets')
-        : actor.role === owner;
+        : hasApplicationRole(actor, owner.toLowerCase());
     const canReadTicketUnit = (unitId?: string) =>
       Boolean(unitId && isPostgresPersistenceActive()
         && hasRbacScope(String(actor.id), 'unit', unitId, 'tickets'));
@@ -4095,7 +4096,7 @@ async function startServer() {
       if (!owner) return false;
       return isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, 'vendors')
-        : actor.role === owner;
+        : hasApplicationRole(actor, owner.toLowerCase());
     });
     return res.json({ success: true, data: data.map(v => ({ ...v, active_contracts_count: getActiveVendorContractCount(v.name) })) });
   });
@@ -4254,7 +4255,7 @@ async function startServer() {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.create')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+    } else if (!isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH, IT, atau GA yang berwenang menulis artikel panduan.' });
     }
     const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
@@ -4283,7 +4284,7 @@ async function startServer() {
     const actor = getActor(req);
     if (isPostgresPersistenceActive()) {
       if (!requireRbacPermission(req, res, 'knowledge.update')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
+    } else if (!isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH, IT, atau GA yang berwenang mengubah artikel.' });
     }
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
@@ -4384,7 +4385,7 @@ async function startServer() {
     const canReadOwnerScope = (owner: string, module: 'loans' | 'tickets') =>
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, module)
-        : actor.role === owner;
+        : hasApplicationRole(actor, owner.toLowerCase());
     const visibleLoans = isSuperadminActor(actor) || isAuditorActor(actor)
       ? db.loans
       : db.loans.filter(loan =>
@@ -4448,7 +4449,7 @@ async function startServer() {
     const canReadOwnerScope = (module: 'loans' | 'tickets', owner: string) =>
       isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', owner, module)
-        : actor.role === owner;
+        : hasApplicationRole(actor, owner.toLowerCase());
     const visibleItems = filterDashboardAttentionItems(items, {
       actorId: String(actor.id),
       isGlobalReader,
