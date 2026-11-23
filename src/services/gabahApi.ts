@@ -222,11 +222,7 @@ class GabahApiClient {
       body: JSON.stringify(payload),
     });
 
-    const token = data?.token || data?.data?.token;
     const user = data?.user || data?.data?.user;
-    if (token) {
-      this.setToken(token);
-    }
     if (user?.id) {
       this.setActor(user.id);
     }
