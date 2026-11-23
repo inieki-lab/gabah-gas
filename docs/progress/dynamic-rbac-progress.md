@@ -1550,3 +1550,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - A broader server route audit found additional primary-role-only checks that were not covered by the first UI/asset/maintenance tests: ticket owner queue visibility, vendor owner filtering, dashboard owner summaries/attention, movement-history filtering, employee-directory read allowlist, and Knowledge Base write allowlists.
 - Fix commit dc415da4e8682a42c618f80896e7bc508c0c82a2 replaces these file-store-only role-label comparisons with the existing `hasApplicationRole()` resolver, which honors both legacy primary labels and explicit secondary `role_keys`. PostgreSQL paths continue to require their explicit permission and module scope. SC/RPC and PIBC location identities do not gain IT/GA capabilities from location alone.
 - This is a consistency pass across remaining server routes; full CI must validate movement, ticket, dashboard, directory, vendor, maintenance, and Knowledge Base behavior before merge.
+
+
+### Maintenance Dynamic RBAC source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3319 failed one of 142 Dynamic RBAC source-contract checks after the maintenance file-store allowlist was migrated from primary labels to `hasApplicationRole()`. The test still required the obsolete `['Admin GABAH', 'IT', 'GA'].includes(actor.role)` expression.
+- Updated the assertion in commit 347f5a99427c3aac3f24922c5ec4b76904e7e3eb to require the new Superadmin + explicit IT/GA capability guard for both create and update routes, while retaining the PostgreSQL permission gate and shared owner-scope mutation policy.
