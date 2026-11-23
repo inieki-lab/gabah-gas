@@ -8,6 +8,9 @@ const dynamic = fs.readFileSync('scripts/dynamic-rbac-foundation-verify.mjs', 'u
 const migration = fs.readFileSync('server/migrations/048_dynamic_employee_profile_normalization.sql', 'utf8');
 
 assert.ok(persistence.includes('function collectLegacyEmployeeCapabilityAssignments'));
+assert.ok(persistence.includes('if (!Array.isArray(existingUser.role_keys) && Array.isArray(cu.role_keys))'));
+assert.ok(persistence.includes('existingUser.role_keys = [...cu.role_keys]'));
+assert.ok(persistence.includes('an explicit empty array remains an intentional revocation') || persistence.includes('explicit empty array remains an intentional revocation'));
 assert.ok(persistence.includes('function normalizeLegacyEmployeeProfileRoles'));
 assert.match(persistence, /await backfillNormalizedTables\(\);\s*const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments\(\);\s*await ensureEmployeeCapabilityAssignments\(legacyCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/);
 assert.ok(persistence.includes('INSERT INTO gabah_user_roles (user_id, role_id, is_primary, assigned_by_user_id) VALUES ($1, $2, FALSE, NULL)'));
