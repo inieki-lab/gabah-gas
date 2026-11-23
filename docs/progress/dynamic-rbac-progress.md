@@ -1611,3 +1611,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Commit 8ea50bda3743f24ca8c47c3f0558763788e544ff aligns the Administration UI allowlist with the server contract: Admin GABAH, Karyawan, Superadmin compatibility alias, and legacy Supply Chain/SC/PIBC location aliases. Operational capabilities remain assigned separately through Dynamic RBAC.
 - Commit 29aec427bf16f3f56732ebeacc614b68d5b093d0 extends parser regression coverage for accepted legacy aliases and rejection of function roles, and verifies the UI allowlist cannot drift back.
 - CI must pass at the exact PR head before merge.
+
+
+### PIBC ME ticket file-store capability fallback — 2026-11-23 (follow-up PR; CI pending)
+
+- Post-merge audit of the dedicated ME ticket workflow found the PostgreSQL path correctly enforces `tickets.create.me`, `tickets.queue.me`, and `UNIT-PIBC-ME`, but the development file-store path has no effective-permission resolver. The generic permission guard therefore did not enforce the ME requester grant in that mode, and `hasApplicationRole(..., 'me')` did not recognize the canonical `admin_tiket_me` role key.
+- Fix commits f0521148b02ed3df6f400cd7da8372ae0be208e4 and f51239a16dc26cc073d5d2d08065248b5c543f01 add a file-store-only alias from ME queue operations to `admin_tiket_me` and explicitly require `pemohon_tiket_me` (or Superadmin) before creating ME tickets. PostgreSQL remains governed by explicit permissions and unit scopes.
+- Commit 1229ae3425a155837866039c115f8f9692b56a5f adds regression checks for both fallback paths. Exact-head CI is required before merge.
