@@ -5,7 +5,7 @@
 **Database Engine:** PostgreSQL 17  
 **Driver:** `pg` (Node-Postgres)  
 **Status:** Spesifikasi skema baseline; kecocokan wajib diverifikasi terhadap seluruh migration SQL dan database integration test pada commit yang disebutkan.  
-**Terakhir Diperbarui:** 28 September 2026 (baseline historis; verifikasi ulang diperlukan)  
+**Terakhir Ditinjau:** 23 November 2026 (migration inventory tersedia; actual schema comparison masih terbuka)  
 
 ---
 
