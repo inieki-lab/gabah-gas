@@ -43,6 +43,10 @@ assert.doesNotThrow(
   () => validateRateLimitSecretConfiguration({ ...production, GABAH_APP_MODE: 'uat' }),
   'UAT retains the local development fallback',
 );
+assert.doesNotThrow(
+  () => validateRateLimitSecretConfiguration({ NODE_ENV: 'development' }),
+  'non-production Node runtime defaults to development when app mode is unset',
+);
 
 console.log('PASS | production rejects missing, weak, padded, or database-reused rate-limit secrets');
 console.log('PASS | production accepts an independent 32+ byte secret');
