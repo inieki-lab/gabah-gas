@@ -7,7 +7,7 @@ import path from 'path';
 import { db, seedInitialData, ServerUser, ServerAsset, ServerSession, CANONICAL_USERS } from './server/db';
 import { CANONICAL_TAXONOMY, FIXED_ASSET_MAIN_TYPES, isFixedAssetMainType, isGabahCategoryType, isOwnerDivision, normalizeCategoryMaster, resolveTaxonomyByHumanName } from './server/taxonomy';
 import { AssetNumberingEngine } from './server/numbering';
-import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isLegacyScopedRole, isNonLoanableInfrastructureAsset } from './server/services';
+import { GabahDomainService, assetVisibleUnderDynamicScopes, canMutateAssetOwner, filterMaintenanceSchedulesByDynamicScopes, isNonLoanableInfrastructureAsset } from './server/services';
 import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocationParent, getAssetLocationPath } from './server/asset-location';
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
@@ -935,7 +935,7 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menambah pengguna.' });
       }
       const { name, email, role, division, department, password, phone } = req.body || {};
-      const validPrimaryRoles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor'];
+      const validPrimaryRoles = ['Admin GABAH', 'Karyawan'];
       const profileTextFields: Array<[string, unknown, number]> = [
         ['division', division, 120],
         ['department', department, 120],
@@ -1070,7 +1070,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Maksimal 500 baris per impor. Pisahkan menjadi beberapa berkas.' });
       }
 
-      const validRoles = ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Auditor', 'Supply Chain', 'PIBC'];
+      const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan', 'IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'SC', 'PIBC'];
       const roleLabels: Record<string, string> = {
         'Admin GABAH': 'Super Admin',
         'IT': 'IT Technical Support',
@@ -1104,15 +1104,11 @@ async function startServer() {
         // Unit is an organizational attribute; SC/RPC and PIBC are office locations.
         const unitId = String(row.unit_id || '').trim().toUpperCase();
         const requestedOfficeLocation = String(row.office_location_id || '').trim().toUpperCase();
-        const inferredOfficeLocation = roleRaw === 'Supply Chain' ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '';
+        const inferredOfficeLocation = ['Supply Chain', 'SC'].includes(roleRaw) ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '';
         const officeLocationId = requestedOfficeLocation || inferredOfficeLocation;
 
         if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
         if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
-        if (['Humas', 'Sekretaris Direksi'].includes(roleRaw)) {
-          errors.push(`Baris ${rowNo}: "${roleRaw}" adalah role tambahan, bukan role primer. Impor sebagai Karyawan lalu tetapkan capability melalui Role & Hak Akses.`);
-          continue;
-        }
         if (roleRaw && !validRoles.includes(roleRaw)) {
           errors.push(`Baris ${rowNo}: Role primer "${roleRaw}" tidak dikenali. Gunakan role profil utama yang valid.`);
           continue;
@@ -1130,9 +1126,10 @@ async function startServer() {
         }
 
         const requestedRole = roleRaw || 'Karyawan';
-        const role = requestedRole === 'Supply Chain' || requestedRole === 'PIBC' ? 'Karyawan' : requestedRole;
-        if (requestedRole === 'Supply Chain' || requestedRole === 'PIBC') {
-          warnings.push(`Baris ${rowNo}: "${requestedRole}" dipetakan sebagai Karyawan dengan lokasi kantor; unit organisasi tetap independen.`);
+        const role = ['Admin GABAH', 'Superadmin'].includes(requestedRole) ? 'Admin GABAH' : 'Karyawan';
+        if (requestedRole !== role) {
+          const locationNote = ['Supply Chain', 'SC'].includes(requestedRole) ? ' Lokasi RPC diterapkan.' : requestedRole === 'PIBC' ? ' Lokasi PIBC diterapkan.' : '';
+          warnings.push(`Baris ${rowNo}: "${requestedRole}" bukan profil utama; akun disimpan sebagai Karyawan. Tetapkan role fungsi melalui Administrasi > Role & Hak Akses setelah impor.${locationNote}`);
         }
 
         const existing = db.users.find(u => u.email.toLowerCase().trim() === email);
@@ -1145,12 +1142,11 @@ async function startServer() {
           if (previousPrimaryRole !== existing.role) {
             revokeUserSessions(existing.id);
           }
-          const existingFunctionLabel = String(existing.role_label || '');
-          (existing as any).role_label = /humas|sekretariat/i.test(existingFunctionLabel)
-            ? existingFunctionLabel
-            : requestedRole === 'Supply Chain' ? 'Karyawan — Lokasi RPC/SC'
+          const existingFunctionLabel = String(existing.role_label || '').trim();
+          (existing as any).role_label = existingFunctionLabel
+            || (['Supply Chain', 'SC'].includes(requestedRole) ? 'Karyawan — Lokasi RPC'
               : requestedRole === 'PIBC' ? 'Karyawan — Lokasi PIBC'
-                : (roleLabels[role] || role);
+                : (roleLabels[requestedRole] || roleLabels[role] || 'Pegawai'));
           existing.division = division as ServerUser['division'];
           existing.department = department;
           if (jobLevelCode) existing.job_level_code = jobLevelCode;
@@ -1175,9 +1171,9 @@ async function startServer() {
             name,
             email,
             role: role as ServerUser['role'],
-            role_label: requestedRole === 'Supply Chain' ? 'Karyawan — Lokasi RPC/SC'
+            role_label: ['Supply Chain', 'SC'].includes(requestedRole) ? 'Karyawan — Lokasi RPC'
               : requestedRole === 'PIBC' ? 'Karyawan — Lokasi PIBC'
-                : (roleLabels[role] || 'Pegawai Operasional'),
+                : (roleLabels[requestedRole] || roleLabels[role] || 'Pegawai Operasional'),
             division: division as ServerUser['division'],
             department,
             job_level_code: jobLevelCode || undefined,
@@ -1258,7 +1254,7 @@ async function startServer() {
       }
       // Primary profile roles are the built-in identity roles; custom job-function
       // roles remain independently assignable through Dynamic RBAC.
-      const validRoles = ['Admin GABAH', 'Superadmin', 'IT', 'GA', 'Auditor', 'Karyawan'];
+      const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan'];
       if (role !== undefined && (typeof role !== 'string' || !validRoles.includes(role))) {
         return res.status(400).json({ success: false, message: 'Role tidak dikenal.' });
       }
