@@ -139,6 +139,17 @@ export async function gabahSecurityMiddleware(req: Request, res: Response, next:
   // Allow public endpoints
   if (PUBLIC_API_PATHS.includes(normalizedPath)) return next();
 
+  // HttpOnly cookies are sent automatically by browsers, so unsafe cookie-
+  // authenticated requests must prove same-origin. SameSite is defense in
+  // depth; this Origin check is the CSRF boundary.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.cookie?.includes('gabah_session=')) {
+    const origin = req.headers.origin;
+    const expectedOrigin = `${req.protocol}://${req.get('host')}`;
+    if (!origin || origin !== expectedOrigin) {
+      return void res.status(403).json({ success: false, message: 'Permintaan lintas origin ditolak.' });
+    }
+  }
+
   // Validate server-side session token
   const authResult = authenticateRequest(req);
 
