@@ -7,6 +7,8 @@ export interface ServerUser {
   email: string;
   /** Legacy-compatible profile label; effective authorization lives in Dynamic RBAC. */
   role: string;
+  /** Additional Dynamic RBAC role keys; never encoded into the primary profile label. */
+  role_keys?: string[];
   role_label?: string;
   division: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
   department: string;
@@ -590,7 +592,8 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     id: 'USR-02',
     name: 'Siti Rahmawati',
     email: 'ga@foodstation.co.id',
-    role: 'GA',
+    role: 'Karyawan',
+    role_keys: ['ga'],
     role_label: 'Staff Divisi General Affairs',
     division: 'GA',
     department: 'General Affairs & Rumah Tangga',
@@ -602,7 +605,8 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     id: 'USR-SEKDIR',
     name: 'Dewi Anggraini, S.Sos',
     email: 'sekretariat.direksi@foodstation.co.id',
-    role: 'Sekretaris Direksi',
+    role: 'Karyawan',
+    role_keys: ['sekretaris_direksi'],
     role_label: 'Staf Sekretariat Direksi',
     division: 'GA',
     department: 'Sekretariat Direksi & Dewan Komisaris',
@@ -614,7 +618,8 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     id: 'USR-HUMAS',
     name: 'Rina Kartika, M.I.Kom',
     email: 'humas@foodstation.co.id',
-    role: 'Humas',
+    role: 'Karyawan',
+    role_keys: ['humas'],
     role_label: 'Staf Humas & Protokoler',
     division: 'GA',
     department: 'Humas & Protokoler Perusahaan',
@@ -626,7 +631,8 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     id: 'USR-03',
     name: 'Dani Setiawan',
     email: 'it.support@foodstation.co.id',
-    role: 'IT',
+    role: 'Karyawan',
+    role_keys: ['it'],
     role_label: 'Staff Divisi IT Support',
     division: 'IT',
     department: 'Management Information System & TI',
@@ -678,7 +684,8 @@ export const CANONICAL_USERS: Array<Omit<ServerUser, 'password_hash' | 'password
     id: 'USR-AUDITOR',
     name: 'Maya Indriani, SE, Ak, CA',
     email: 'auditor@foodstation.co.id',
-    role: 'Auditor',
+    role: 'Karyawan',
+    role_keys: ['auditor'],
     role_label: 'Auditor Satuan Pengawas Internal',
     division: 'Audit',
     department: 'Satuan Pengawas Internal (SPI)',
