@@ -36,10 +36,13 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
     const owner = String(ticket.category || '').trim();
     return Boolean(owner) && hasRbacScope(String(actor.id), 'division', owner, 'tickets');
   }
-  // File-store compatibility only. Production PostgreSQL never grants ticket
-  // authority from a legacy role label alone.
-  if (actor.role === 'IT') return ticket.category === 'IT';
-  if (actor.role === 'GA') return ticket.category === 'GA';
+  // File-store compatibility only. Canonical employees carry operational
+  // functions in role_keys while their primary profile remains Karyawan.
+  // Production PostgreSQL still requires explicit ticket scopes above.
+  const capabilities = new Set([actor.role, ...(actor.role_keys || [])]
+    .map(value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')));
+  if (capabilities.has('it')) return ticket.category === 'IT';
+  if (capabilities.has('ga')) return ticket.category === 'GA';
   return false;
 }
 
@@ -57,7 +60,9 @@ function scopedAttention(actor: ServerUser, items: any[]) {
       }
       // File-store compatibility only. Production PostgreSQL uses explicit
       // module scope, never a primary-role label, for owner-division visibility.
-      return (actor.role === 'IT' || actor.role === 'GA') && loan.owner_division === actor.role;
+      const capabilities = new Set([actor.role, ...(actor.role_keys || [])]
+        .map(value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').toUpperCase()));
+      return capabilities.has(String(loan.owner_division || '').trim().toUpperCase());
     }
     if (item.link_type === 'ticket') return canManageTicket(actor, item.link_id);
     return false;
