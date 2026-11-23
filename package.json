@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "docker compose up --build",
+    "dev": "tsx server.ts",
     "build": "vite build && node scripts/build-server.cjs",
     "start": "docker compose up -d --build",
     "clean": "rm -rf dist server.js",
@@ -22,7 +22,7 @@
     "test:division-reference-integrity": "node scripts/division-reference-integrity-verify.mjs",
     "test:t2b1": "node scripts/t2b1-managing-unit-verify.mjs",
     "test:t2b2": "node scripts/t2b2-asset-location-verify.mjs",
-    "test:t2b3": "node scripts/t2b3-category-master-verify.mjs",
+    "test:t2b3": "node scripts/t2b3-asset-category-master-verify.mjs",
     "test:dynamic-rbac-foundation": "node scripts/dynamic-rbac-foundation-verify.mjs",
     "test:maintenance-authz": "node scripts/maintenance-authz-verify.mjs",
     "test:maintenance-dynamic-scope": "node scripts/maintenance-dynamic-scope-verify.mjs",
