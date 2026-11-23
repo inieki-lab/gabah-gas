@@ -4,7 +4,7 @@
 **Organisasi Pemilik:** PT Food Station Tjipinang Jaya (Perseroda) — BUMD Pangan DKI Jakarta  
 **Versi Sistem:** 2026.1.0-enterprise  
 **Status Dokumen:** Baseline kebutuhan bisnis; sinkronisasi implementasi dan UAT masih berjalan (bukan klaim seluruh fitur sudah selesai).  
-**Terakhir Diperbarui:** 8 November 2026  
+**Terakhir Ditinjau:** 23 November 2026 (business baseline; implementation reconciliation ongoing)  
 
 ---
 
