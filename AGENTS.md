@@ -3,10 +3,12 @@
 ## Required reading (mandatory, every session)
 
 1. `docs/GABAH-DOCUMENTATION-CONTROL.md` — source-of-truth hierarchy and AI handoff.
-2. `.agents/skills/gabah-maintainer/SKILL.md` — repository workflow.
-3. `docs/AI-CHANGE-GUARDRAILS.md` — safety and change boundaries.
-4. `docs/product/BUSINESS-RULES.md` and `docs/architecture/RBAC.md` for business and access changes.
-5. The relevant current implementation, migrations, tests, and current worklog.
+2. `docs/PROJECT-CONTEXT.md` — owner-approved product and organization constraints.
+3. `docs/IMPLEMENTATION-TRUTH-REGISTER.md` — source-observed behavior, partial migrations, and known gaps (not test evidence).
+4. `.agents/skills/gabah-maintainer/SKILL.md` — repository workflow.
+5. `docs/AI-CHANGE-GUARDRAILS.md` — safety and change boundaries.
+6. `docs/product/BUSINESS-RULES.md` and `docs/architecture/RBAC.md` for business and access changes.
+7. The relevant current implementation, migrations, tests, and latest worklog.
 
 If documents conflict, follow the authority order in Documentation Control. Historical reports and stale branch instructions are not current policy.
 
