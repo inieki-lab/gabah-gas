@@ -15,8 +15,8 @@ The application is an operational asset/helpdesk portal. Correctness, role-speci
 
 Before changing code:
 
-1. Read the repository `AGENTS.md` and `docs/AI-CHANGE-GUARDRAILS.md`.
-2. Read the relevant audit documents under `docs/audit/`.
+1. Read `AGENTS.md`, `docs/GABAH-DOCUMENTATION-CONTROL.md`, `docs/PROJECT-CONTEXT.md`, `docs/IMPLEMENTATION-TRUTH-REGISTER.md`, and `docs/AI-CHANGE-GUARDRAILS.md`.
+2. Read relevant audit documents under `docs/audits/` and the product/architecture documents for the affected workflow.
 3. Inspect the actual implementation: route, component, API client, database schema/migration, permission checks, and tests.
 4. Trace callers and dependent workflows. Search for duplicate implementations and competing sources of truth.
 5. Write down the concrete defect, affected role, current behavior, expected behavior, and evidence.
