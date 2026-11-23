@@ -3209,7 +3209,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {permissions.map((row) => (
+                    {permissions.length === 0 ? (
+                      <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                        Matriks role statis telah dihentikan. Kelola role, permission, dan scope aktual pada bagian Dynamic RBAC.
+                      </td></tr>
+                    ) : permissions.map((row) => (
                       <tr key={row.role} className="hover:bg-slate-50">
                         <td className="px-4 py-3">
                           <div className="font-bold text-slate-800">{row.role}</div>
