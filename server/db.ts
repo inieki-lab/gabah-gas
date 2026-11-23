@@ -5,7 +5,8 @@ export interface ServerUser {
   id: string;
   name: string;
   email: string;
-  role: 'Admin GABAH' | 'IT' | 'GA' | 'Supply Chain' | 'PIBC' | 'Karyawan' | 'Auditor' | 'Sekretaris Direksi' | 'Humas';
+  /** Legacy-compatible profile label; effective authorization lives in Dynamic RBAC. */
+  role: string;
   role_label?: string;
   division: 'IT' | 'GA' | 'SC' | 'PIBC' | 'Audit' | 'Umum';
   department: string;
