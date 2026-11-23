@@ -3327,7 +3327,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         ))}
                       </div>
                       <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800 leading-relaxed">
-                        <strong>Catatan tata kelola:</strong> matriks ini adalah referensi hak akses pada panel administrasi. Penegakan akses aktual (RBAC) tetap ditegakkan oleh server terhadap 9 peran resmi GABAH — perubahan di sini tidak memperluas atau membatasi hak akses riil pengguna.
+                        <strong>Catatan tata kelola:</strong> matriks ini adalah referensi hak akses pada panel administrasi. Penegakan akses aktual mengikuti Dynamic RBAC di server; profil utama hanya Admin GABAH/Karyawan, sedangkan role fungsi dan scope dikelola terpisah.
                       </div>
 
                       <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
