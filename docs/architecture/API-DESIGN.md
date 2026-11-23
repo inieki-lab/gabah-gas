@@ -16,7 +16,13 @@
 > **Baseline contract, not a verified live endpoint catalogue.** Tabel endpoint dan hak akses di bawah masih harus dicocokkan route-by-route dengan server.ts, middleware, domain services, API client, dan integration tests. Dynamic RBAC permission/scope mengungguli label role statis pada tabel. Jangan gunakan daftar ini sebagai bukti bahwa endpoint aktif atau authorization-nya telah diuji.
 
 ### 1.1 Header Permintaan & Autentikasi
-Pada baseline `main` SHA `f39db6b8fd819d301f49815c7a33a04c80b2a6c0` (23 November 2026), middleware memvalidasi sesi dari Bearer token untuk semua endpoint selain `/api/health` dan `/api/auth/login`. Periksa `server/runtime-hardening.ts` dan `server/auth.ts` sebelum mengubah kontrak ini. PR cookie-auth yang belum merge tidak mengubah baseline ini. Setiap route juga dapat memiliki permission/scope tambahan di handler.
+Pada branch implementasi cookie-session (PR #256; CI pending), browser memakai cookie `gabah_session` yang diterbitkan server dengan atribut HttpOnly, SameSite Strict, dan Secure pada production. Browser API client mengirim `credentials: 'same-origin'`; token sesi tidak dikembalikan dalam JSON dan tidak disimpan di localStorage. Mutasi yang memakai cookie harus menyertakan Origin yang sama dengan origin aplikasi. Header Bearer tetap tersedia sementara untuk integrasi non-browser yang dipercaya. Setiap route tetap dapat memiliki permission/scope tambahan di handler.
+```http
+Cookie: gabah_session=<HttpOnly session value>
+Content-Type: application/json
+```
+
+Untuk trusted non-browser clients selama masa migrasi:
 ```http
 Authorization: Bearer <session_token>
 Content-Type: application/json
