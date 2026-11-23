@@ -82,9 +82,9 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState('');
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [meetingCategoryFilter, setMeetingCategoryFilter] = useState<'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities' | 'high_priority'>('all');
-  // The HttpOnly session cookie is not readable from JavaScript. Start in
-  // login mode and let the server validate the cookie through /api/auth/me.
-  const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>('login');
+  // The HttpOnly cookie is not readable from JavaScript. Render the neutral
+  // session-recovery shell until /api/auth/me decides portal vs login.
+  const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>('portal');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Modals state
@@ -670,7 +670,7 @@ export default function App() {
     );
   }
 
-  // Session restore in flight (page reload with a stored token): never render
+  // Session restore in flight (page reload with an HttpOnly cookie): never render
   // the portal shell without an authenticated user — every child reads
   // currentUser.role. Show a neutral loading screen until initAuth resolves.
   if (!currentUser) {
