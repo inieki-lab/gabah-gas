@@ -4,10 +4,12 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Authority Kode Sumber:** `server/numbering.ts`, `server/taxonomy.ts`, `server/services.ts`  
-**Status:** Spesifikasi aktif; batasan implementasi runtime dicatat pada §4  
-**Terakhir Diperbarui:** 16 November 2026  
+**Status:** Catatan implementasi numbering saat ini + kandidat kebijakan; format korporat final menunggu konfirmasi standar resmi perusahaan.  
+**Terakhir Diperbarui:** 16 November 2026 (status kebijakan ditinjau 23 November 2026)  
 
 ---
+
+> **Keputusan pemilik proses:** jangan menetapkan atau mengubah format nomor aset sebagai standar korporat final sebelum standar perusahaan dikonfirmasi. Contoh dan format di bawah menjelaskan implementasi/kandidat yang ada, bukan persetujuan final. Pertahankan nomor historis; perubahan aturan hanya melalui konfigurasi yang disetujui, validasi collision, audit log, dan rencana rollback.
 
 ## 1. Format Penomoran Kanonikal
 
