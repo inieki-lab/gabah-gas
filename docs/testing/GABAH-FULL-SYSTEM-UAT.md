@@ -93,7 +93,7 @@ The live HTTP regression scripts now exercise cookie-based browser authenticatio
 
 | Verification | Status | Evidence |
 |---|---|---|
-| Cookie helper/login assertions and persona matrix present | PASS (code review only) | `scripts/cr04-cr05-verify.mjs`; JSON token is not expected. This is not a runtime PASS. |
+| Cookie helper/login assertions and persona matrix present | NOT TESTED (assertions are present) | `scripts/cr04-cr05-verify.mjs`; source change only, not a runtime PASS. |
 | PostgreSQL 17 fresh-database/persistence CI | FAIL | Exact-head run 45118658142 completed 2026-11-23 05:36:14Z with failure. Job logs were unavailable; failing step and per-scenario outcomes are unknown. |
 | Invalid/missing Origin and logout runtime outcome | NOT VERIFIED | Assertions are included, but CI overall failed and logs are unavailable. |
 | Browser UI manual UAT | NOT TESTED | No live browser session evidence. |
