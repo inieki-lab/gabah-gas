@@ -83,13 +83,7 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState('');
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [meetingCategoryFilter, setMeetingCategoryFilter] = useState<'all' | 'consumption' | 'documentation' | 'it_facilities' | 'ga_facilities' | 'high_priority'>('all');
-  // Default to 'portal' to show working application immediately
-  // Initial view mode follows the actual session state: only enter the portal
-  // when a token exists (validated by initAuth below); otherwise show the login
-  // flow. Prevents being stuck in the portal shell after logout/stale session.
-  const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>(
-    () => (typeof window !== 'undefined' && localStorage.getItem('gabah_auth_token') ? 'portal' : 'login')
-  );
+  const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>('login');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Modals state
@@ -180,35 +174,14 @@ export default function App() {
   useEffect(() => {
     async function initAuth() {
       try {
-        const token = gabahApi.getToken();
-        if (token) {
-          // Race with a hard timeout so a hung/orphaned request (mis. dev server
-          // restart di tengah request) tidak mengurung pengguna di layar
-          // "Memulihkan sesi…" selamanya. Setiap jalur selesai ≤ 10 detik.
-          const me = await Promise.race([
-            gabahApi.getMe().catch(() => null),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
-          ]);
-          if (me) {
-            setCurrentUser(me);
-          } else {
-            // Stale/invalid token (e.g. server restarted with memory-only
-            // sessions): clear it and drop to the login page instead of
-            // rendering a portal shell without an authenticated user.
-            gabahApi.setToken(null);
-            setViewMode('login');
-          }
-          // SECURITY (CR-02): no automatic login with hardcoded credentials.
-          // An invalid/expired token simply clears the session; the user must
-          // authenticate explicitly via the Login page.
-        } else {
-          // No token: stay signed out until the user logs in with real
-          // credentials (server-side verification only).
-          setViewMode('login');
-        }
+        const me = await Promise.race([
+          gabahApi.getMe().catch(() => null),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
+        ]);
+        if (me) setCurrentUser(me);
+        else setViewMode('login');
       } catch (err) {
         console.warn('Auth initialization:', err);
-        gabahApi.setToken(null);
         setViewMode('login');
       } finally {
         // Do not block auth initialization on the bulk data refresh. Each API
@@ -766,14 +739,13 @@ export default function App() {
         onChangePassword={() => setIsChangePasswordOpen(true)}
         onLogout={async () => {
           // Logout must ALWAYS succeed locally: even if the server rejects the
-          // call (stale session, server restarted, network error), the client
-          // session is cleared and the user returns to the login page.
+          // call (stale session, server restarted, network error), the user
+          // returns to the login page even if server-side revocation fails.
           try {
             await gabahApi.logout();
           } catch {
             /* server-side destroy best-effort */
           }
-          gabahApi.setToken(null);
           setCurrentUser(null);
           setCurrentTab('dashboard');
           setMeetingCategoryFilter('all');
