@@ -44,7 +44,7 @@ Menyimpan identitas pegawai, peran RBAC, kredensial hash, dan divisi.
 - `id` (VARCHAR(64), PRIMARY KEY) — Contoh: `'USR-01'`, `'USR-SEKDIR'`
 - `name` (VARCHAR(200), NOT NULL)
 - `email` (VARCHAR(255), NOT NULL, UNIQUE)
-- `role` (VARCHAR(50), NOT NULL) — nilai role primer/kompatibilitas legacy pada baseline. PostgreSQL Dynamic RBAC menyimpan assignment role terpisah; union TypeScript `ServerUser.role` masih memuat label lama untuk kompatibilitas. Jangan memperlakukan kolom ini sebagai katalog role dinamis atau sumber permission.
+- `role` (VARCHAR(50), NOT NULL) — profil utama hanya `Admin GABAH` atau `Karyawan`. Fungsi IT/GA/Auditor/Humas/Sekretariat Direksi dan role lain disimpan sebagai assignment di `gabah_user_roles`; kolom ini bukan katalog role dinamis dan bukan sumber permission.
 - `division_id` (BIGINT, REFERENCES divisions(id))
 - `department_id` (BIGINT, REFERENCES departments(id))
 - `phone` (VARCHAR(50))
