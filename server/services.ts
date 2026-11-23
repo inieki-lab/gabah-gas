@@ -1238,6 +1238,16 @@ export class GabahDomainService {
     if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
       throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
     }
+
+    // File-store compatibility must enforce the dedicated ME requester grant
+    // too; requireRbacPermission() is PostgreSQL-authoritative and intentionally
+    // does not synthesize permissions when the development file store is active.
+    if (payload.category === 'ME'
+      && !isPostgresPersistenceActive()
+      && !isSuperadminActor(actor)
+      && !(actor.role_keys || []).includes('pemohon_tiket_me')) {
+      throw Object.assign(new Error('Akses ditolak: tiket ME memerlukan kapabilitas Pemohon Tiket ME.'), { statusCode: 403 });
+    }
     const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
     if (!VALID_PRIORITIES.includes(payload.priority as any)) {
       throw Object.assign(new Error(`Prioritas "${payload.priority}" tidak valid. Pilihan: ${VALID_PRIORITIES.join(', ')}.`), { statusCode: 400 });

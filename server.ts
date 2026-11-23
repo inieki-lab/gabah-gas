@@ -374,13 +374,20 @@ async function startServer() {
       supply_chain: 'Supply Chain',
       pibc: 'PIBC',
     };
+    // File-store compatibility aliases for the dedicated ME ticket templates.
+    // The ME queue is a unit-scoped capability, not a primary profile or owner division.
+    const secondaryRoleAliases: Record<string, string[]> = {
+      me: ['admin_tiket_me'],
+    };
     // Production authorization is assignment-only: legacy profile labels must
     // never grant operational capabilities without an active Dynamic RBAC role.
     if (isPostgresPersistenceActive()) {
       return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
     }
     // File-store development retains compatibility while PostgreSQL is absent.
-    return actor.role === legacyLabels[roleKey] || actor.role_keys?.includes(roleKey) === true;
+    return actor.role === legacyLabels[roleKey]
+      || actor.role_keys?.includes(roleKey) === true
+      || (secondaryRoleAliases[roleKey] || []).some(alias => actor.role_keys?.includes(alias) === true);
   };
 
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
@@ -4325,7 +4332,8 @@ async function startServer() {
     if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
     if (notification.recipient_unit_id) {
       return isPostgresPersistenceActive()
-        && hasRbacScope(String(actor.id), 'unit', notification.recipient_unit_id, 'tickets');
+        ? hasRbacScope(String(actor.id), 'unit', notification.recipient_unit_id, 'tickets')
+        : notification.recipient_unit_id === 'UNIT-PIBC-ME' && hasApplicationRole(actor, 'me');
     }
     // A user may hold additional RBAC roles beyond the primary profile role.
     if (notification.recipient_role) {
