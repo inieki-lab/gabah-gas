@@ -86,8 +86,10 @@ Sumber implementasi yang harus ditinjau bersama sebelum perubahan RBAC:
 
 Setiap perubahan harus memeriksa route, domain service, policy, persistence/migration, API client, UI, dan test yang terdampak. Jangan mengandalkan nomor baris dokumentasi karena kode terus berubah.
 
-## 4. Akun Kanonikal (Kredensial Tidak Dipublikasikan)
+## 4. Legacy Seed/Test Accounts (Not an HR Roster or Canonical Role List)
 
+ > **Status:** Tabel berikut adalah fixture akun/alias dari seed lama untuk kompatibilitas dan pengujian. Nama, jabatan, unit, role primer, dan email harus diverifikasi sebelum digunakan dalam UAT; tabel ini bukan roster HR atau sumber assignment produksi.
+>
 > **SECURITY (CR-02):** Tidak ada password default yang ditulis di dokumentasi.
 > Kredensial awal diprovision dari environment secrets saat boot:
 > `GABAH_INITIAL_ADMIN_PASSWORD` (akun Admin GABAH) dan
