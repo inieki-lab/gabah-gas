@@ -1,73 +1,73 @@
 # GABAH Full-System UAT
 
-Status: NOT TESTED unless execution evidence is entered. Snapshot: 2026-11-23. Target an isolated PostgreSQL 17 / Docker Compose environment only. Never use production data or include passwords/session tokens in evidence.
+Status: NOT TESTED unless execution evidence is entered. Snapshot: 2026-11-23. Use isolated PostgreSQL 17 / Docker Compose only. Never use production data or include passwords/session tokens in evidence.
 
 ## Status rules
 
-PASS means executed and passed. FAIL means executed and failed. NOT TESTED means not executed. BLOCKED requires a named unavailable prerequisite. Source inspection, file presence, typecheck or build alone does not prove an end-to-end scenario. Record candidate commit, persona, steps, expected/actual result, evidence and defect ID.
+PASS means executed and passed. FAIL means executed and failed. NOT TESTED means not executed. BLOCKED requires a named unavailable prerequisite. Source inspection, file presence, typecheck or build alone does not prove end-to-end behavior. Record candidate commit, persona, steps, expected/actual, evidence and defect ID.
 
 ## Preflight
 
-| Scenario | Expected evidence | Status |
-|---|---|---|
-| Candidate branch and isolated test database | SHA recorded; no production data | NOT TESTED |
-| Docker Compose and PostgreSQL health | PostgreSQL-backed app health; no fallback persistence | NOT TESTED |
-| Backup and restore | Disposable UAT fixture restored and checked | NOT TESTED |
-| Approved test accounts and browser | Persona accounts provisioned | BLOCKED — credentials/browser run not supplied |
+| Scenario | Status |
+|---|---|
+| Candidate branch and isolated test database | NOT TESTED |
+| Docker Compose, PostgreSQL readiness and health endpoint | NOT TESTED |
+| Disposable database backup and restore | NOT TESTED |
+| Approved role accounts and browser run | BLOCKED — credentials/browser execution unavailable in this stage |
 
-## Role and organization matrix
+## Persona and organization matrix
 
-Locations are not roles/divisions. Job titles can be assigned at any location. Subang is inactive. Validate both UI and direct API/object-ID access; backend scope is authoritative.
+Locations are not roles/divisions. Job titles can be assigned at any location. Subang is inactive. Check UI and direct API/object-ID access; backend scope is authoritative.
 
 | Persona | Required checks | Status |
 |---|---|---|
-| Superadmin | Administration renders all sections; user assignment persists and reaches recipient; numbering rules configurable | NOT TESTED |
-| IT | IT assets managed across locations; IT tickets route to IT Support; spoofed identity/scope denied | NOT TESTED |
-| GA | GA asset management; configured PC/laptop IT read-only access; IT mutation denied; Kasi GA not asset operator | NOT TESTED |
-| PIBC ME/Admin ME | ME queue, routing, assignment, transitions and audit | NOT TESTED |
-| RPC/SC employee | RPC location label only; explicit grants control access | NOT TESTED |
-| General employee | Own records only; other-user IDOR denied | NOT TESTED |
-| Auditor | Mutation endpoints denied regardless of UI visibility | NOT TESTED |
+| Superadmin | Administration sections render; user assignment reaches recipient; numbering configurable | NOT TESTED |
+| IT | IT assets across locations; tickets route to IT Support; spoofed scope denied | NOT TESTED |
+| GA | GA asset management; configured PC/laptop IT read-only; mutations denied; Kasi GA not asset operator | NOT TESTED |
+| PIBC ME/Admin ME | Queue, routing, assignment, transitions and audit | NOT TESTED |
+| RPC/SC employee | RPC is a location label; explicit grants control access | NOT TESTED |
+| General employee | Own records only; IDOR denied | NOT TESTED |
+| Auditor | Mutations denied by backend | NOT TESTED |
 
 ## Module workflows
 
-| Module | End-to-end checks | Status |
+| Module | Required end-to-end scenario | Status |
 |---|---|---|
-| Authentication/session | Login, HttpOnly/SameSite cookie, session restore, logout, password/role session revocation, cross-origin mutation rejection | NOT TESTED |
-| User/admin/RBAC | Create/update/deactivate test user; separate role/job/unit/location; permission/scope persistence and stale session revocation | NOT TESTED |
-| Assets/categories/numbering | Create/read/update/assign/move/lifecycle/audit; IT ownership/category; configured numbering; GA IT read-only | NOT TESTED |
+| Authentication | Login, HttpOnly/SameSite cookie, restore, logout, password/role revocation, cross-origin mutation rejected | NOT TESTED |
+| Administration/RBAC | User lifecycle; separate role/job/unit/location; permission persistence; stale sessions revoked | NOT TESTED |
+| Assets/categories/numbering | Create/read/update/assign/move/lifecycle/audit; IT owner/category and configurable number; GA IT read-only | NOT TESTED |
 | Loans | Request/approve/handover/return, condition, concurrency and pool availability | NOT TESTED |
-| IT tickets | Creation, IT Support routing, recipient assignment, comments/status/resolution, notification and audit | NOT TESTED |
-| ME/GA maintenance | Create/assign/progress/close; unauthorized denial; durable audit | NOT TESTED |
-| Ticket asset relation | Existing, missing, inaccessible and optional asset link; invalid relation rollback; asset delete FK behavior | NOT TESTED |
-| Other modules | Contracts/vendors/documents, licenses, knowledge, reports/export, notifications, rooms, lifecycle, audit logs | NOT TESTED |
-| Security/deployment | Upload validation, CORS/headers, rate limits, secrets/logging, dependency policy, container and DB privileges | NOT TESTED |
+| IT helpdesk | Create, route to IT Support, assignment delivery, comments/status/resolve, notification/audit | NOT TESTED |
+| ME/GA maintenance | Create/assign/progress/close; unauthorized actions denied; audit durable | NOT TESTED |
+| Ticket asset FK | Valid/missing/inaccessible/optional links; rollback; asset deletion behavior | NOT TESTED |
+| Other modules | Contracts/vendors, licenses, knowledge, reports/export, notifications, rooms, lifecycle and audit logs | NOT TESTED |
+| Security/deployment | Upload, CORS/headers, rate limits, secret/log audit, dependencies, container/DB privileges | NOT TESTED |
 | Responsive/accessibility | Keyboard/focus/labels, viewport, loading/error/empty states, console/network | NOT TESTED |
 
-## Required regression checks
+## Mandatory regressions
 
-| Regression | Required evidence | Status |
+| Regression | Evidence needed | Status |
 |---|---|---|
-| Administration blank / Rules of Hooks | Login, every admin section, clean console | NOT TESTED; static test exists |
-| PostgreSQL health and RBAC status | Compare actual DB failure with health and fail-closed behavior | NOT TESTED |
-| Stuck restoring session | Valid, expired and unavailable session endpoint cold loads | NOT TESTED |
-| Superadmin assignment not delivered | Verify recipient assignment, notification and audit | NOT TESTED |
-| React error #310 | Role dashboard/admin navigation and browser console | NOT TESTED |
-| tickets_related_asset_id_fkey | PostgreSQL integration for valid/missing links and deletion/rollback | NOT TESTED |
-| MacBook Air M2 pool case IT-HLT-2026-0002 | Isolated fixture and test identities; sequential and concurrent loan checks | NOT TESTED; never use production records |
-| IT category/GA numbering | Sample IT asset category and configured number rule | NOT TESTED |
-| IT and PIBC ME routing | Runtime ticket creation and queue/recipient check | NOT TESTED |
+| Administration blank / Rules of Hooks | Every section opened; console clean | NOT TESTED; static test exists |
+| PostgreSQL health/RBAC accuracy | Compare database outage with health and fail-closed behavior | NOT TESTED |
+| Stuck restoring session | Valid, expired and unavailable endpoint cold loads | NOT TESTED |
+| Assignment not delivered | Recipient assignment, notification and audit verified | NOT TESTED |
+| React error #310 | Admin and role dashboards with console evidence | NOT TESTED |
+| tickets_related_asset_id_fkey | PostgreSQL relation, deletion and rollback | NOT TESTED |
+| MacBook Air M2 IT-HLT-2026-0002 | Isolated fixture/test identities; sequential/concurrent loan checks | NOT TESTED; never production records |
+| IT category/GA numbering | Fixture and configured numbering rule | NOT TESTED |
+| IT and PIBC ME routing | Runtime ticket destination and recipient | NOT TESTED |
 
-## Execution status
+## Test execution record
 
 | Check | Status | Evidence |
 |---|---|---|
-| TypeScript lint/typecheck | NOT TESTED | Not executed |
-| Production build | NOT TESTED | Not executed |
-| Automated regression suite | NOT TESTED | Scripts inventoried only |
-| PostgreSQL integration/migration tests | NOT TESTED | No isolated DB run |
-| Docker smoke test | NOT TESTED | Not executed |
-| Browser/API role matrix | BLOCKED | Approved UAT accounts and runtime execution unavailable |
-| CI/security dependency checks | NOT TESTED | No audit PR run |
+| TypeScript check | PASS | Local captured workspace; no type errors. Not remote PR CI. |
+| Production build | PASS | Local captured workspace build succeeded; large chunk warning. Not remote PR CI. |
+| Automated regression suite | NOT TESTED | Scripts inventoried, not run. |
+| PostgreSQL integration/migration | NOT TESTED | No isolated DB run. |
+| Docker runtime smoke | NOT TESTED | Not run. |
+| Browser/API role matrix | BLOCKED | Approved test accounts and runtime execution unavailable. |
+| Exact-head GitHub CI | NOT TESTED | Draft PR #248; check run not verified. |
 
-Release approval: NOT APPROVED until relevant tests are executed and P0/P1 findings closed or accepted.
+Release decision: NOT APPROVED until relevant tests run and P0/P1 findings close or are explicitly accepted.
