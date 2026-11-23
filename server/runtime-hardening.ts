@@ -144,8 +144,15 @@ export async function gabahSecurityMiddleware(req: Request, res: Response, next:
   // depth; this Origin check is the CSRF boundary.
   if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.cookie?.includes('gabah_session=')) {
     const origin = req.headers.origin;
-    const expectedOrigin = `${req.protocol}://${req.get('host')}`;
-    if (!origin || origin !== expectedOrigin) {
+    let sameOrigin = false;
+    try {
+      const requestOrigin = new URL(origin || '');
+      const expectedOrigin = new URL(`${req.protocol}://${req.get('host')}`);
+      sameOrigin = requestOrigin.origin === expectedOrigin.origin;
+    } catch {
+      sameOrigin = false;
+    }
+    if (!sameOrigin) {
       return void res.status(403).json({ success: false, message: 'Permintaan lintas origin ditolak.' });
     }
   }
