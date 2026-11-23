@@ -4222,7 +4222,7 @@ async function startServer() {
       : (actor.role === existingOwner || hasApplicationRole(actor, existingOwner.toLowerCase().replace(/[^a-z0-9]+/g, '_'))));
     const canManageRequested = isSuperadminActor(actor) || (isPostgresPersistenceActive()
       ? hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors')
-      : actor.role === requestedOwner);
+      : (actor.role === requestedOwner || hasApplicationRole(actor, requestedOwner.toLowerCase().replace(/[^a-z0-9]+/g, '_'))));
     if (!canManageExisting || !canManageRequested) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor ini.' });
     }
