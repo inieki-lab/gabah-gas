@@ -4,10 +4,12 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Versi Arsitektur:** 2026.1.0-enterprise  
-**Status:** Authoritative Baseline (Tervalidasi Sesuai Source Code Aktual)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Baseline arsitektur; setiap komponen dan diagram wajib direkonsiliasi dengan source code pada commit yang dinyatakan.  
+**Terakhir Diperbarui:** 28 September 2026 (baseline historis; verifikasi ulang diperlukan)  
 
 ---
+
+> Dokumen ini merupakan baseline, bukan sertifikat bahwa seluruh diagram, jumlah modul, atau alur masih identik dengan implementasi saat ini. Untuk perubahan, periksa `server.ts`, `server/`, `src/`, `server/migrations/`, konfigurasi Compose, dan regression tests. Catat bagian yang belum diverifikasi sebagai NOT VERIFIED.
 
 ## 1. Ringkasan Eksekutif Arsitektur
 
