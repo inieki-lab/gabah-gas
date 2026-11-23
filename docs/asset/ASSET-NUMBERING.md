@@ -83,7 +83,7 @@ Kode kategori dan nomor historis yang memuat `SC` atau `PIBC` hanya dipertahanka
 - **Batasan yang masih harus ditutup sebelum klaim production-ready:** counter generator masih berada di memori proses. Tabel `asset_number_sequences` tersedia pada skema, tetapi belum menjadi jalur atomik yang dipakai `generateAssetNumber()`. Karena itu, multi-instance/concurrent issuance belum dijamin atomik oleh PostgreSQL. Jangan mengklaim concurrency-safe sampai generator dipindahkan ke transaksi/UPSERT database dan diuji lintas proses.
 
 ### 4.2 Master Aturan Penomoran
-- Aturan tersimpan di tabel `asset_numbering_rules` (Migration 034) dan dikelola melalui Administration Control Panel oleh Superadmin.
+- Aturan tersimpan di tabel `asset_numbering_rules` (migration yang menambah aturan harus diverifikasi pada direktori `server/migrations/`; migration 043 tercatat sebagai baseline terkait) dan dikelola melalui Administration Control Panel oleh Superadmin.
 - Setiap aturan mengikat kombinasi `owner_division + asset_code`, separator, panjang sequence (3–8 digit), status aktif/nonaktif, dan catatan.
 - Jika tidak ada aturan khusus, generator mempertahankan format default `DIV-CODE-YEAR-SEQUENCE` dengan separator strip dan 4 digit.
 - Aturan nonaktif menolak penerbitan nomor baru untuk kombinasi tersebut; nomor aset lama tetap valid dan tidak diubah.
@@ -92,8 +92,6 @@ Kode kategori dan nomor historis yang memuat `SC` atau `PIBC` hanya dipertahanka
 - Aturan yang sudah memiliki aset atau sequence tidak dapat dihapus; gunakan Nonaktifkan agar histori tetap utuh.
 
 ### 4.3 Validasi Duplikasi Nomor Seri Fisik
-
-### 4.4 Validasi Duplikasi Nomor Seri Fisik
 - Sistem memvalidasi keunikan `serial_number`. Jika serial number yang sama sudah ada di database, server menolak pendaftaran dengan pesan:
   `Nomor Seri (Serial Number) "XYZ" sudah terdaftar pada aset IT-HLT-2026-0001 (Laptop Lenovo ThinkPad).`
 
@@ -115,7 +113,7 @@ Kode kategori dan nomor historis yang memuat `SC` atau `PIBC` hanya dipertahanka
 - `server.ts`: API Superadmin untuk membaca, membuat, mengubah, menonaktifkan, dan menghapus aturan dengan guard server-side.
 
 Logika di atas tertanam secara otoritatif pada:
-- `server/numbering.ts`: Class `AssetNumberingEngine` yang mengatur sinkronisasi sequence dari memori dan generator atomik.
+- `server/numbering.ts`: class `AssetNumberingEngine` yang menyinkronkan sequence dari aset existing saat boot dan mengalokasikan nomor melalui `Map` in-memory. Generator belum menggunakan tabel `asset_number_sequences` untuk alokasi atomik PostgreSQL; multi-instance collision safety belum terjamin.
 - `server/taxonomy.ts`: Array `CANONICAL_TAXONOMY` dan fungsi `resolveTaxonomyByHumanName()`.
 - `server/services.ts`: Fungsi `createAsset()` pada `GabahDomainService`.
 - `server/migrations/001_gabah_normalized_schema.sql`: DDL tabel `assets`, `asset_categories`, dan `asset_number_sequences`.
