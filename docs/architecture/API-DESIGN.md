@@ -4,10 +4,12 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Server Platform:** Node.js + Express 4.21  
 **Base URL:** `/api`  
-**Status:** Authoritative API Specification (100% Sesuai Endpoint Aktual di `server.ts`)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Kontrak API baseline; endpoint, autentikasi, validasi, dan otorisasi harus diverifikasi terhadap implementasi pada exact commit.  
+**Terakhir Diperbarui:** 28 September 2026 (baseline historis; verifikasi ulang diperlukan)  
 
 ---
+
+> Transport autentikasi browser dapat berubah. Jangan menganggap Bearer token, cookie session, header, endpoint, atau response shape masih berlaku tanpa memeriksa middleware auth, route handlers, API client, dan integration tests. Dokumentasikan perbedaan browser vs machine/API clients bila keduanya didukung.
 
 ## 1. Konvensi Umum API
 
