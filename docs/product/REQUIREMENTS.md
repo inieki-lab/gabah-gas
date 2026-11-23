@@ -36,11 +36,11 @@
 - **FR-04.1**: Sistem harus mendukung penugasan aset ke karyawan tertentu (`POST /api/assets/:id/assign`), mengubah status aset menjadi `assigned`, dan mencatat riwayat pergerakan pada tabel `asset_movements`.
 - **FR-04.2**: Sistem harus mendukung pelepasan penugasan (*unassign*) ke gudang penampungan (`available`), mencatat riwayat pengembalian ke gudang.
 - **FR-04.3**: Sistem harus mendukung mutasi perpindahan lokasi aset (`POST /api/assets/:id/move`), mencatat lokasi asal, lokasi tujuan, dan alasan mutasi.
-- **FR-04.4**: Hanya personel divisi pemilik yang berwenang menugaskan atau merelokasi aset miliknya (personel GA dilarang memutasi atau menugaskan aset milik IT).
+- **FR-04.4**: Penugasan dan relokasi aset harus memerlukan permission operasi yang sesuai serta scope owner aset pada backend. Label role, jabatan, unit, atau lokasi pegawai tidak memberi kewenangan otomatis. GA tidak boleh memutasi aset owner IT hanya karena memperoleh akses baca HLT/HPC.
 
 ### FR-05: Siklus Hidup Aset (*Lifecycle Management*)
 - **FR-05.1**: Sistem harus menyediakan fungsi mutasi siklus hidup: servis/reparasi (`repair` → `in_repair`), rusak (`damaged` → `broken`), kanibalisasi suku cadang (`cannibalize` → `cannibalized`), usulan penghapusan (`propose_disposal` → `pending_disposal`), lelang (`auction` → `pending_auction`), dan penghapusan aset final (`approve_disposal` → `disposed`).
-- **FR-05.2**: Persetujuan penghapusan aset final (`approve_disposal`) hanya dapat dilakukan secara eksklusif oleh peran `Admin GABAH`.
+- **FR-05.2**: Persetujuan penghapusan aset final (`approve_disposal`) hanya dapat dilakukan oleh Superadmin yang memiliki otoritas administrasi global; label tampilan role tidak boleh menjadi satu-satunya kontrol backend.
 
 ### FR-06: Sirkulasi Peminjaman Aset (*Loans*) & BAST
 - **FR-06.1**: Sistem harus menyediakan alur pengajuan peminjaman barang dinas untuk aset berkategori `is_loanable`.
