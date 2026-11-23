@@ -25,7 +25,8 @@ const applicationRoleEnd = server.indexOf('// Permission guard for migrated endp
 assert.ok(applicationRoleStart >= 0 && applicationRoleEnd > applicationRoleStart, 'Dynamic RBAC role resolver exists');
 const applicationRole = server.slice(applicationRoleStart, applicationRoleEnd);
 assert.ok(applicationRole.includes('return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);'));
-assert.ok(applicationRole.includes('return actor.role === legacyLabels[roleKey];'));
+assert.ok(applicationRole.includes('return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);'));
+assert.ok(applicationRole.includes('return actor.role === legacyLabels[roleKey] || actor.role_keys?.includes(roleKey) === true;'));
 
 assert.ok(create.includes("const validPrimaryRoles = ['Admin GABAH', 'Karyawan'];"));
 assert.ok(patch.includes("const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan'];"));
