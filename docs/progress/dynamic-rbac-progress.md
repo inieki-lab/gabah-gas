@@ -1574,3 +1574,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 - CI #3327 passed the maintenance live HTTP authorization matrix (19/19), including IT/GA list filtering and matching-owner create/update. It then failed one source-contract check in `scripts/maintenance-dynamic-scope-verify.mjs`, which still expected the old primary-role GA filter.
 - Updated that assertion in commit 5a389ca939fcc56c972fd6be2e5525d19068cb9b to verify the new IT/GA secondary-capability owner filters, while retaining the PostgreSQL dynamic-scope and workstation-read-exclusion assertions.
+
+
+### Maintenance input-validation source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3328 passed the maintenance authorization live HTTP matrix (19/19), dynamic-scope consistency, and vendor reference checks. It then failed the maintenance input-validation source test because it still expected the old primary-role allowlist on POST.
+- Updated `scripts/maintenance-input-validation-verify.mjs` in commit 7999ddabf7803edb40808d54a88ec061331daf15 to assert the new capability-aware Superadmin/IT/GA allowlist on both POST and PATCH while retaining the validation-before-mutation assertions.
