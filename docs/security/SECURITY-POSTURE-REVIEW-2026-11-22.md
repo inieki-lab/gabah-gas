@@ -43,17 +43,18 @@
 
 **Acceptance:** no unexplained CSP violations during full role-based browser UAT; production CSP is enforced and documented. Do not ship a guessed policy.
 
-### SEC-FU-02 — Bearer token in localStorage increases XSS impact (HIGH)
+### SEC-FU-02 — Bearer token in localStorage increases XSS impact (HIGH) — implementation submitted in PR #256
 
-**Evidence:** `src/services/gabahApi.ts` reads `gabah_auth_token` from localStorage and sends it as `Authorization: Bearer ...`. `PROJECT-RULES.md` also documents this as the sole permitted localStorage key.
+**Prior evidence:** the browser previously read `gabah_auth_token` from localStorage and sent it as `Authorization: Bearer ...`, making the live session token readable to JavaScript executing in the application origin.
 
-**Why it matters:** localStorage is readable by JavaScript executing in the application origin. A successful XSS can therefore steal a live bearer token. Server-side revocation and the seven-day absolute session lifetime limit some exposure but do not prevent token theft.
+**Implementation in PR #256 (CI pending):**
+- Browser API client no longer reads/writes localStorage credentials and sends same-origin cookies.
+- Server issues `gabah_session` as HttpOnly, SameSite Strict, Secure in production, and Path=/; login, password rotation, and switch-role do not return session tokens in JSON.
+- Logout clears the cookie; the server accepts the cookie as the browser session credential.
+- Unsafe cookie-authenticated requests require a matching Origin; missing or cross-origin Origin is rejected.
+- Bearer authentication remains temporarily available for trusted non-browser clients; it is not used by the browser application.
 
-**Recommended options (architecture decision required):**
-- Prefer an HttpOnly, Secure, SameSite cookie-backed session if the application can adopt CSRF protections (SameSite policy plus Origin/Referer validation or a CSRF token for state-changing requests).
-- If Bearer/localStorage is retained temporarily, prioritize CSP, strict output encoding, dependency hygiene, and short session lifetime/revocation. Do not claim this is equivalent to HttpOnly storage.
-
-**Acceptance:** document the selected session architecture and threat-model decision; test logout, expiry, revocation, cross-site request behavior, and XSS containment.
+**Remaining acceptance:** exact-head CI and post-merge CI must pass; perform browser UAT through the actual hostname/reverse proxy to confirm Secure cookie delivery and Origin matching. CSP enforcement, TLS/HSTS, and XSS containment remain separate gates.
 
 ### SEC-FU-03 — TLS and HSTS are deployment gates, not provided by the Compose topology (HIGH)
 
@@ -93,7 +94,7 @@ The latest exact-main CI run is green, including typecheck, production build, Do
 - Browser UAT for each role/capability and office location.
 - TLS/reverse-proxy deployment and secure-header verification on the actual hostname.
 - CSP report-only rollout followed by enforced policy.
-- Decision and test coverage for bearer-token storage / CSRF architecture.
+- Browser UAT for the new HttpOnly cookie/Origin flow through the actual hostname and reverse proxy (PR #256 implementation pending CI).
 - PostgreSQL plus uploads-volume backup and demonstrated restore.
 - Existing-data migration rehearsal, staging deployment/rollback, monitoring/alerting, and business-owner sign-off.
 
