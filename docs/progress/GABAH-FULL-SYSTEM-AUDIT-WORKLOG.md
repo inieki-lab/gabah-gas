@@ -55,3 +55,12 @@ Branch audit/full-system-hardening-2026-11-23; draft PR #248 targets main. No me
 3. Run browser/API workflows for Superadmin, IT, GA, PIBC ME, RPC/SC, employee and Auditor.
 4. Complete route-by-route module, migration, security, backup/restore and deployment audit.
 5. Poll exact-head GitHub CI and update this record; only close findings with evidence.
+
+## Follow-up verification (2026-11-23)
+
+- package.json already includes @dyad-sh/react-vite-component-tagger@^0.9.0. The PR lockfile omitted it from root devDependencies and package entry. Synchronized package-lock.json; commit fd03d2105534f7c735c0e9fd1a3bcb0095197789. No dependency removed.
+- Clean dependency reinstall: PASS using the workspace clean reinstall operation. Literal npm ci CLI invocation: NOT TESTED.
+- TypeScript check: PASS on current captured workspace, no errors. Production build: PASS on isolated snapshot; 1,034 kB JS chunk warning.
+- PR branch CI after lockfile update: FAIL, run 45113180356 (verify, completed 04:41:05Z). Detailed job output was unavailable; root cause beyond the observed lock mismatch is NOT TESTED. Do not mark CI green.
+- Auth source inspection: no active Bearer, Authorization, x-auth-token, gabah_auth_token, or getToken usage in browser source. API, password reset, and document upload/download requests use same-origin credentials. Server extractToken still accepts legacy Bearer and x-auth-token compatibility transports; runtime endpoint proof and retirement remain open.
+- Cookie/session/Origin, password reset, upload authorization, and endpoint matrix have not received runtime integration tests. Module/security backlog remains open.
