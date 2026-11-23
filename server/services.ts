@@ -332,22 +332,33 @@ export class GabahDomainService {
     const isEmployeeBaseline = !isSuperadminActor(user) && !isAuditorActor(user);
 
     if (!isPostgresPersistenceActive()) {
-      if (isEmployeeBaseline) {
-        return db.assets.filter(asset => asset.assigned_to?.id === user.id || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())));
-      }
-      if (user.role === 'IT') {
-        return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
-      }
-      if (user.role === 'GA') {
-        // File-store compatibility mirrors the conservative legacy default:
-        // GA owns GA assets and may read IT laptops/desktops only. PostgreSQL
-        // deployments use the explicit assets.read.it_workstations capability.
+      const assignedOrLoanable = (asset: ServerAsset) =>
+        asset.assigned_to?.id === user.id
+        || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase()));
+      const capabilities = new Set([user.role, ...(user.role_keys || [])]
+        .map(value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')));
+      const hasItCapability = capabilities.has('it');
+      const hasGaCapability = capabilities.has('ga');
+
+      // Keep the employee's personal/loan-pool baseline, then add only the
+      // explicit operational read scope carried by the secondary capability.
+      // Do not let the baseline branch swallow IT/GA users before these checks.
+      if (hasItCapability) {
         return db.assets.filter(asset =>
-          String(asset.owner_division || '').toUpperCase() === 'GA'
+          assignedOrLoanable(asset) || String(asset.owner_division || '').toUpperCase() === 'IT'
+        );
+      }
+      if (hasGaCapability) {
+        // GA owns GA assets and may read IT laptops/desktops only; it must not
+        // gain visibility into IT servers/network infrastructure.
+        return db.assets.filter(asset =>
+          assignedOrLoanable(asset)
+          || String(asset.owner_division || '').toUpperCase() === 'GA'
           || (String(asset.owner_division || '').toUpperCase() === 'IT'
             && ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase()))
         );
       }
+      if (isEmployeeBaseline) return db.assets.filter(assignedOrLoanable);
       return [];
     }
 
