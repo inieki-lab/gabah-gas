@@ -29,10 +29,11 @@ async function api(path: string, options: RequestInit = {}, token?: string, cust
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Forwarded-For': customIp,
+    Origin: BASE_URL,
     ...(options.headers as Record<string, string> || {}),
   };
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers['Cookie'] = token;
   }
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
@@ -71,20 +72,20 @@ async function runAllTests() {
       method: 'POST',
       body: JSON.stringify({ email: 'admin.gabah@foodstation.co.id', password: TEST_ADMIN_PASSWORD }),
     });
-    const token = res.body?.data?.token;
+    const token = res.headers.get('set-cookie')?.split(';', 1)[0] || '';
     const ok = res.status === 200 && res.body?.success && token && res.body?.data?.user?.role === 'Admin GABAH';
     if (ok) adminToken = token;
-    recordTest('Auth', 'Valid Admin GABAH Login & Token Generation', ok, ok ? undefined : JSON.stringify(res.body));
+    recordTest('Auth', 'Valid Admin GABAH Login & Session Cookie Issuance', ok, ok ? undefined : JSON.stringify(res.body));
   }
 
-  // 1.2 Access /api/auth/me with valid Bearer token
+  // 1.2 Access /api/auth/me with valid HttpOnly cookie
   {
     const res = await api('/api/auth/me', { method: 'GET' }, adminToken);
     const ok = res.status === 200 && res.body?.data?.email === 'admin.gabah@foodstation.co.id';
-    recordTest('Auth', 'Access /api/auth/me with valid Bearer token', ok, ok ? undefined : `Status: ${res.status}, Body: ${JSON.stringify(res.body)}`);
+    recordTest('Auth', 'Access /api/auth/me with valid HttpOnly cookie', ok, ok ? undefined : `Status: ${res.status}, Body: ${JSON.stringify(res.body)}`);
   }
 
-  // 1.3 Access /api/auth/me without token or with invalid token
+  // 1.3 Access /api/auth/me without cookie or with invalid cookie
   {
     const resNoToken = await api('/api/auth/me', { method: 'GET' });
     const resBadToken = await api('/api/auth/me', { method: 'GET' }, 'invalid-fake-session-token');
@@ -125,42 +126,42 @@ async function runAllTests() {
       method: 'POST',
       body: JSON.stringify({ email: 'faisal.it@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
-    if (itRes.status === 200) itToken = itRes.body?.data?.token;
+    if (itRes.status === 200) itToken = itRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
     recordTest('Auth', 'IT Login', itRes.status === 200 && itRes.body?.data?.user?.role === 'IT', itRes.status === 200 ? undefined : JSON.stringify(itRes.body));
 
     const gaRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'siti.ga@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
-    if (gaRes.status === 200) gaToken = gaRes.body?.data?.token;
+    if (gaRes.status === 200) gaToken = gaRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
     recordTest('Auth', 'GA Login', gaRes.status === 200 && gaRes.body?.data?.user?.role === 'GA', gaRes.status === 200 ? undefined : JSON.stringify(gaRes.body));
 
     const scRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'bambang.sc@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
-    if (scRes.status === 200) scToken = scRes.body?.data?.token;
+    if (scRes.status === 200) scToken = scRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
     recordTest('Auth', 'Supply Chain Login', scRes.status === 200 && scRes.body?.data?.user?.role === 'Supply Chain', scRes.status === 200 ? undefined : JSON.stringify(scRes.body));
 
     const pibcRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'joko.pibc@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
-    if (pibcRes.status === 200) pibcToken = pibcRes.body?.data?.token;
+    if (pibcRes.status === 200) pibcToken = pibcRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
     recordTest('Auth', 'PIBC Login', pibcRes.status === 200 && pibcRes.body?.data?.user?.role === 'PIBC', pibcRes.status === 200 ? undefined : JSON.stringify(pibcRes.body));
 
     const kryRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'dewi.lestari@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
-    if (kryRes.status === 200) karyawanToken = kryRes.body?.data?.token;
+    if (kryRes.status === 200) karyawanToken = kryRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
     recordTest('Auth', 'Karyawan Login', kryRes.status === 200 && kryRes.body?.data?.user?.role === 'Karyawan', kryRes.status === 200 ? undefined : JSON.stringify(kryRes.body));
 
     const audRes = await api('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email: 'hendro.auditor@foodstation.co.id', password: TEST_USER_PASSWORD }),
     });
-    if (audRes.status === 200) auditorToken = audRes.body?.data?.token;
+    if (audRes.status === 200) auditorToken = audRes.headers.get('set-cookie')?.split(';', 1)[0] || '';
     recordTest('Auth', 'Auditor Login', audRes.status === 200 && audRes.body?.data?.user?.role === 'Auditor', audRes.status === 200 ? undefined : JSON.stringify(audRes.body));
   }
 
@@ -170,7 +171,7 @@ async function runAllTests() {
       method: 'POST',
       body: JSON.stringify({ email: 'admin.gabah@foodstation.co.id', password: TEST_ADMIN_PASSWORD }),
     });
-    const tempToken = tempLogin.body?.data?.token;
+    const tempToken = tempLogin.headers.get('set-cookie')?.split(';', 1)[0] || '';
     const logoutRes = await api('/api/auth/logout', { method: 'POST' }, tempToken);
     const afterLogout = await api('/api/auth/me', { method: 'GET' }, tempToken);
     const ok = logoutRes.status === 200 && afterLogout.status === 401;
