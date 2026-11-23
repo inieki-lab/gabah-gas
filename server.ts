@@ -1969,7 +1969,6 @@ async function startServer() {
       // re-issue one session for the calling device so it stays signed in.
       revokeUserSessions(user.id);
       const session = createSession(user.id, req);
-      setSessionCookie(res, session.token);
 
       GabahDomainService.recordAudit(
         'USER_PASSWORD_SELF_CHANGED',
@@ -1980,6 +1979,7 @@ async function startServer() {
       );
       if (!(await persistBeforeSuccess(req, res))) return;
 
+      setSessionCookie(res, session.token);
       res.json({
         success: true,
         data: { user: sanitizeUser(user), expires_at: session.expires_at },
@@ -2064,7 +2064,6 @@ async function startServer() {
       }
 
       const session = createSession(targetUser.id, req, undefined, originalAdminId);
-      setSessionCookie(res, session.token);
 
       GabahDomainService.recordAudit(
         'AUTH_SWITCH_ROLE',
@@ -2077,6 +2076,7 @@ async function startServer() {
       await persistDataStore();
       (req as any).__gabahPersisted = true;
 
+      setSessionCookie(res, session.token);
       res.json({
         success: true,
         data: {
