@@ -53,6 +53,19 @@ async function startServer() {
 
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
+  const setSessionCookie = (res: express.Response, token: string) => res.cookie('gabah_session', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  const clearSessionCookie = (res: express.Response) => res.clearCookie('gabah_session', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/',
+  });
 
   // Baseline browser security headers apply to API, HTML, and static assets.
   // CSP starts in report-only mode: script execution is same-origin only, while
@@ -1883,11 +1896,11 @@ async function startServer() {
         user
       );
 
+      setSessionCookie(res, session.token);
       res.json({
         success: true,
         data: {
           user: serializeAuthenticatedUser(user),
-          token: session.token,
           expires_at: session.expires_at,
         },
       });
@@ -1909,6 +1922,7 @@ async function startServer() {
       if (token) {
         destroySession(token);
       }
+      clearSessionCookie(res);
       res.json({ success: true, message: 'Logout berhasil.' });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
@@ -1964,9 +1978,10 @@ async function startServer() {
       );
       if (!(await persistBeforeSuccess(req, res))) return;
 
+      setSessionCookie(res, session.token);
       res.json({
         success: true,
-        data: { user: sanitizeUser(user), token: session.token, expires_at: session.expires_at },
+        data: { user: sanitizeUser(user), expires_at: session.expires_at },
       });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
@@ -2060,11 +2075,11 @@ async function startServer() {
       await persistDataStore();
       (req as any).__gabahPersisted = true;
 
+      setSessionCookie(res, session.token);
       res.json({
         success: true,
         data: {
           user: serializeAuthenticatedUser(targetUser),
-          token: session.token,
           expires_at: session.expires_at,
         },
       });
