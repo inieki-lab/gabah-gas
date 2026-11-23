@@ -19,7 +19,7 @@ import {
   Building2,
   Camera
 } from 'lucide-react';
-import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation } from '../../types';
+import { Asset, Loan, Ticket, UserProfile, AuditLog, RoomReservation } from '../../types';
 import { GabahService, formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
 
