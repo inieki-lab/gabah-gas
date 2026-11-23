@@ -68,6 +68,27 @@ async function req(base, method, urlPath, { body, token, headers, omitOrigin = f
   return { status: res.status, json, setCookie };
 }
 
+async function uploadContractDocument(base, contractId, token, fileContent) {
+  const form = new FormData();
+  form.append('file', new Blob([fileContent], { type: 'application/pdf' }), 'contract.pdf');
+  const res = await fetch(`${base}/api/contracts/${contractId}/documents/upload`, {
+    method: 'POST',
+    headers: { Cookie: token.cookie, Origin: base },
+    body: form,
+    signal: AbortSignal.timeout(15000),
+  });
+  let json = {};
+  try { json = await res.json(); } catch { /* empty body */ }
+  return { status: res.status, json };
+}
+
+async function downloadContractDocument(base, contractId, documentId, token) {
+  return fetch(`${base}/api/contracts/${contractId}/documents/${documentId}/download`, {
+    headers: { Cookie: token.cookie },
+    signal: AbortSignal.timeout(15000),
+  });
+}
+
 async function waitForServer(base, tries = 80) {
   for (let i = 0; i < tries; i++) {
     try {
