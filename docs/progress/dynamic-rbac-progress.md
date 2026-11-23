@@ -1488,3 +1488,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The organization-model test exposed a second-stage access check: even after IT mutation capability was corrected, request middleware denied the asset because file-store `getScopedAssets()` returned the generic employee baseline before evaluating IT/GA secondary roles. Fix d7cdcc6a0c3d5c40c1442ab0743b2bea6fc7d18 resolves that ordering and preserves GA's workstation-only IT read exception.
 - Follow-up code audit found the same primary-role-only fallback pattern in scoped ticket/loan attention checks and Meeting Room operational queue visibility. Fix commits cb1b5ec7ae56e53da755425f074c211c42279672 and bb2088578692524400497731f7390d0a40d0e9aa now honor normalized IT/GA `role_keys` in file-store compatibility mode. PostgreSQL permission/scope checks remain authoritative.
 - Added regression guards to ticket transition and Meeting Room Stage 3 verification scripts to prevent these secondary-role fallbacks from regressing. Fresh full CI is required.
+
+
+### Dynamic RBAC source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3295 reached the Dynamic RBAC foundation checks and failed 1/142 source-contract assertions. Runtime behavior changes were not implicated: the static assertion still required the obsolete unreachable `user.role === 'IT'` branch in `getScopedAssets()`, which the new secondary-capability-first fallback intentionally replaces.
+- Updated `scripts/dynamic-rbac-foundation-verify.mjs` in commit 23ef8744fa267d3c54e4d5a35efa18ac8e9e7a3e to assert the new ordered IT/GA capability checks and the constrained owner-domain filters, while retaining the PostgreSQL dynamic scope and workstation-read assertions.
+- The exact-head full CI run must pass before merge. This updates the test contract to the intended model; it does not remove runtime coverage.
