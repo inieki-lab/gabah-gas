@@ -83,3 +83,5 @@ Release decision: NOT APPROVED until relevant tests run and P0/P1 findings close
 | Exact-head PR CI after lockfile sync | FAIL | Run 45113180356, verify completed failure. Detailed job log unavailable. |
 
 Static auth transport review found no active browser Bearer or localStorage credential usage. Server still accepts legacy Bearer and x-auth-token for compatibility. Cookie/Origin/login/logout/restore/reset/upload and all API runtime scenarios remain NOT TESTED.
+
+Latest exact-head GitHub CI: FAIL — run 45113547899 (verify; completed 2026-11-23 04:44:53Z). Logs unavailable; no cause inferred.
