@@ -1509,3 +1509,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 - CI #3299 passed Dynamic RBAC foundation checks (142/142) and then failed one source-contract assertion in `scripts/dashboard-attention-middleware-verify.mjs`. That assertion still required primary IT/GA role-label checks in the file-store branch; the implementation now intentionally resolves both primary legacy labels and normalized secondary `role_keys`.
 - Updated the assertion in commit 42c83da721f6e2015ada77e3ef9a0ff2feb8bcfe to verify the secondary-role capability path and retain the requirement that it stays behind the file-store compatibility branch. Runtime PostgreSQL module-scope checks remain unchanged.
+
+
+### Asset-scope policy test contract alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3300 reached the asset-scope policy suite and found one outdated source assertion: it expected `isAuditor()` to inspect only an explicit `role_keys.includes('auditor')` array. The frontend helper now also preserves the legacy primary Auditor label through the shared normalized capability helper.
+- Updated the source-contract assertion in commit 0a474c5b7fa9347de2a1edac8c38d2779afddfbe to require `hasLegacyCapability(user, 'auditor')` while retaining deny-write checks in asset edit, loan approval, and ticket management. Runtime authorization behavior is not weakened.
