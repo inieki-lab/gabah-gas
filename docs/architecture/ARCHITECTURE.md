@@ -27,10 +27,10 @@ Sistem tidak lagi menggunakan arsitektur warisan (legacy) PHP/Laravel. Seluruh k
 |   |   - Tailwind CSS v4             - Plus Jakarta Sans Typography            |   |
 |   |   - Lucide React Icons          - Motion Animations                       |   |
 |   |   - 11 Main Views               - 14 Interactive Modals                   |   |
-|   |   - Bearer Token Session Client (localStorage: gabah_auth_token only)     |   |
+|   |   - HttpOnly SameSite Cookie Session Client (no session token in localStorage)     |   |
 |   +---------------------------------------------------------------------------+   |
 +------------------------------------------+----------------------------------------+
-                                           | HTTP REST API (Bearer Token)
+                                           | HTTP REST API (same-origin HttpOnly cookie; Bearer retained for trusted non-browser clients)
                                            v
 +-----------------------------------------------------------------------------------+
 |                        APPLICATION SERVER (Node.js 22 Alpine)                     |
@@ -42,7 +42,7 @@ Sistem tidak lagi menggunakan arsitektur warisan (legacy) PHP/Laravel. Seluruh k
 |   [ Security & Hardening Middleware: server/runtime-hardening.ts ]                |
 |   - API Rate Limiter (200 req/min per IP)                                         |
 |   - Anti-Spoofing Guard (Rejects unverified x-user-id headers)                    |
-|   - Token Authenticator (Validates Bearer token via server/auth.ts)               |
+|   - Session Authenticator (HttpOnly cookie for browser; Bearer compatibility for trusted integrations)               |
 |   - Auditor Read-Only Interceptor (Enforces strict 403 on non-GET)                |
 |   - Role-Based Attention Scoping                                                  |
 |                                                                                   |
