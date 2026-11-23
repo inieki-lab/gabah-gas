@@ -54,10 +54,10 @@ function summary() {
   return failed.length === 0 ? 0 : 1;
 }
 
-async function req(base, method, urlPath, { body, token, headers } = {}) {
+async function req(base, method, urlPath, { body, token, headers, omitOrigin = false } = {}) {
   const res = await fetch(base + urlPath, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(token?.cookie ? { Cookie: token.cookie } : {}), ...(headers || {}) },
+    headers: { 'Content-Type': 'application/json', ...(token?.cookie ? { Cookie: token.cookie } : {}), ...(!omitOrigin && token?.cookie && !['GET', 'HEAD', 'OPTIONS'].includes(method) ? { Origin: base } : {}), ...(headers || {}) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(15000),
   });
@@ -636,7 +636,7 @@ async function main() {
     record('Cookie mutation rejects invalid Origin', '403', 'HTTP ' + invalidOriginLogout.status, invalidOriginLogout.status === 403);
     const validAfterInvalidOrigin = await req(base, 'GET', '/api/auth/me', { token: logoutToken });
     record('Invalid-Origin logout does not destroy session', '200', 'HTTP ' + validAfterInvalidOrigin.status, validAfterInvalidOrigin.status === 200);
-    const missingOriginLogout = await req(base, 'POST', '/api/auth/logout', { token: logoutToken });
+    const missingOriginLogout = await req(base, 'POST', '/api/auth/logout', { token: logoutToken, omitOrigin: true });
     record('Cookie mutation rejects missing Origin', '403', 'HTTP ' + missingOriginLogout.status, missingOriginLogout.status === 403);
     const validAfterMissingOrigin = await req(base, 'GET', '/api/auth/me', { token: logoutToken });
     record('Missing-Origin logout does not destroy session', '200', 'HTTP ' + validAfterMissingOrigin.status, validAfterMissingOrigin.status === 200);
