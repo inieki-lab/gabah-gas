@@ -21,6 +21,7 @@ const employeeNavigationPermissionSeed = fs.readFileSync('server/migrations/023_
 const moduleScopeMigration = fs.readFileSync('server/migrations/029_rbac_module_scoped_data_scopes.sql', 'utf8');
 const primaryRoleMigration = fs.readFileSync('server/migrations/030_rbac_primary_role_assignment.sql', 'utf8');
 const employeeCapabilityMigration = fs.readFileSync('server/migrations/031_employee_primary_role_with_job_capabilities.sql', 'utf8');
+const employeeProfileMigration = fs.readFileSync('server/migrations/048_dynamic_employee_profile_normalization.sql', 'utf8');
 const branchLocationMigration = fs.readFileSync('server/migrations/026_map_branch_accounts_to_employee_location.sql', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
 const createRoleRoute = server.slice(server.indexOf("app.post('/api/admin/rbac/roles'"), server.indexOf("app.patch('/api/admin/rbac/roles/:id'"));
@@ -51,7 +52,7 @@ const effectivePermissionQuery = policy.slice(policy.indexOf('SELECT ur.user_id'
 const checks = [
   ['Changing a user\'s dynamic role assignments revokes all existing sessions before success', /revokeUserSessions\(userId\)/.test(assignUserRolesRoute) && assignUserRolesRoute.indexOf('revokeUserSessions(userId)') > assignUserRolesRoute.indexOf('withRbacTransaction')],
   ['Legacy function roles are assigned after normalized user rows exist and before profiles are normalized', /await backfillNormalizedTables\(\);\s*const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments\(\);\s*await ensureEmployeeCapabilityAssignments\(legacyCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/.test(persistence)],
-  ['Legacy Humas and Secretariat primary mirrors are reconciled to Karyawan', !/WHEN 'Sekretaris Direksi' THEN 'sekretaris_direksi' WHEN 'Humas' THEN 'humas'/.test(persistence) && /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/.test(persistence)],
+  ['Legacy IT/GA/Auditor/Humas/Sekretariat functions are retained as secondary assignments while employee profile is normalized', /IT: 'it'[\\s\\S]*GA: 'ga'[\\s\\S]*Auditor: 'auditor'[\\s\\S]*Humas: 'humas'[\\s\\S]*'Sekretaris Direksi': 'sekretaris_direksi'/.test(persistence) && /user\\.role = 'Karyawan'/.test(persistence) && /WHEN 'Admin GABAH' THEN 'superadmin' ELSE 'karyawan' END/.test(persistence)],
   ['runtime effective permissions ignore inactive permission catalogue entries', effectivePermissionQuery.includes('p.permission_key') && effectivePermissionQuery.includes('LEFT JOIN gabah_permissions p') && effectivePermissionQuery.includes('p.is_active = TRUE') && !effectivePermissionQuery.includes('rp.permission_key FROM')],
   ['custom role creation accepts selected permissions atomically and validates the permission catalogue', createRoleRoute.includes('req.body?.permission_keys') && createRoleRoute.includes('withRbacTransaction') && createRoleRoute.includes('INSERT INTO gabah_role_permissions')],
   ['custom role creation rejects an empty permission selection at the API boundary', createRoleRoute.includes('permissionKeys.length === 0') && createRoleRoute.includes('minimal satu permission aktif')],
