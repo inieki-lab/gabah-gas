@@ -40,8 +40,8 @@ Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun 
 | 1 | **Admin GABAH** | Budi Santoso | IT (MIS & TI) | Super Administrator. Kontrol penuh seluruh modul, Master Data, Manajemen Pengguna, Persetujuan Penghapusan Aset (*Disposal*), Override Reservasi, dan Akses Administration Control Panel. |
 | 2 | **IT** | Dani Setiawan | IT (MIS & TI) | Pengelola seluruh aset komputasi, hardware jaringan, server, lisensi software, penanganan tiket kategori IT/License, persetujuan pinjaman laptop/proyektor, serta penyiapan fasilitas IT ruang rapat. |
 | 3 | **GA** | Siti Rahmawati | General Affairs | Pengelola aset umum (furniture, peralatan kantor, kendaraan dinas, gedung), persetujuan pinjaman kendaraan kantor, pengelolaan tiket GA, persetujuan reservasi ruang rapat, dan koordinasi konsumsi pantry. |
-| 4 | **Sekretaris Direksi** | Dewi Anggraini, S.Sos | GA (Sekretariat Direksi) | Pemesanan ruang rapat prioritas tinggi untuk jajaran Direksi & Dewan Komisaris (otomatis disetujui / auto-approved), peminjaman perlengkapan rapat, dan pelaporan kendala eksekutif. |
-| 5 | **Humas** | Rina Kartika, M.I.Kom | GA (Humas & Protokoler) | Menerima notifikasi khusus permintaan peliputan dan dokumentasi acara/rapat VIP (foto, video, press release). Akses menu aset disembunyikan sesuai SOP protokoler. |
+| 4 | **Sekretariat Direksi (capability legacy)** | Pegawai dengan capability Sekretariat Direksi | Unit/lokasi sesuai master pegawai | Kewenangan agenda/reservasi Direksi dan permintaan dukungan Humas melalui grant khusus; bukan primary role terpisah. |
+| 5 | **Humas (capability legacy)** | Pegawai dengan capability Humas | Unit/lokasi sesuai master pegawai | Antrean dan penanganan dokumentasi/peliputan melalui grant khusus; bukan primary role terpisah. |
 | 6 | **RPC (legacy account label)** | Agus Pratama | Lokasi RPC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
 | 7 | **PIBC (legacy)** | Bambang Hermawan | Lokasi PIBC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
 | 8 | **Karyawan** | Hendra Wijaya | Komersial / Operasional | Staf umum perusahaan. Melihat aset kerja yang ditugaskan (*Aset Saya*), mengajukan peminjaman barang dinas, membuat tiket bantuan IT/GA, dan mereservasi ruang rapat. |
@@ -69,9 +69,9 @@ Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun 
 - Hak baca terbatas GA tidak membuka data sensitif seperti kredensial, konfigurasi keamanan, detail lisensi tertentu, maupun administrasi infrastruktur.
 - Akses baca tidak pernah otomatis memberikan hak create, update, delete, approve, assign, atau admin. Backend wajib menegakkan aturan yang sama; menyembunyikan menu di frontend saja tidak cukup.
 
-### C. Sekretaris Direksi dan Humas tetap pengguna/karyawan dengan kewenangan tambahan
-- Pengguna dengan role **Sekretaris Direksi** dan **Humas** tetap merupakan karyawan/staf perusahaan. Keduanya tetap membutuhkan fungsi dasar karyawan, seperti melihat aset yang ditugaskan kepada dirinya, mengajukan peminjaman, membuat tiket bantuan, dan menggunakan fasilitas/reservasi sesuai kebijakan.
-- Perbedaan role terletak pada **kewenangan tambahan dan alur kerja khusus**, bukan status kepegawaian atau pemisahan total dari pengalaman dasar karyawan.
+### C. Sekretariat Direksi dan Humas adalah capability tambahan pada profil pegawai
+- Pengguna yang menjalankan fungsi Sekretariat Direksi atau Humas tetap merupakan karyawan/staf perusahaan dengan profil dasar pegawai (umumnya Karyawan) dan atribut unit, jabatan, serta lokasi yang terpisah.
+- Sekretariat Direksi dan Humas menerima **permission/capability tambahan** sesuai tugas, bukan primary role terpisah. Fungsi dasar pegawai tetap tersedia sesuai grant.
 - Sekretaris Direksi dapat memiliki kewenangan khusus untuk mengelola kebutuhan agenda Direksi, termasuk reservasi/agenda prioritas sesuai kebijakan. Sekretaris Direksi juga dapat membuat permintaan dukungan Humas (misalnya foto atau dokumentasi rapat Direksi) yang terkait dengan agenda/rapat tertentu.
 - Humas memiliki fungsi dasar karyawan sekaligus kewenangan operasional untuk menerima, melihat, mengonfirmasi, dan menangani permintaan peliputan/dokumentasi yang menjadi tugasnya. Humas bukan pemilik aset IT atau GA hanya karena menerima permintaan dukungan.
 
@@ -110,7 +110,7 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 
 ### 2.3 Role Primer, Role Tambahan, dan Scope per Modul
 
-- Setiap pegawai memiliki satu role primer yang selaras dengan role aplikasi dasarnya (misalnya Karyawan, IT, GA, Humas, Sekretaris Direksi, Auditor). Role primer tersimpan selaras dengan profil pengguna.
+- Setiap pegawai memiliki satu profil/role primer sesuai model transisi (misalnya Karyawan, IT, GA, atau Auditor; Admin GABAH untuk administrator). Fungsi Sekretariat Direksi dan Humas diberikan sebagai capability/role tambahan pada pegawai, bukan primary role tersendiri.
 - Super Admin dapat menetapkan role tambahan kepada pegawai untuk fungsi/jabatan tertentu. Role tambahan menambah permission dan scope tanpa mengganti identitas pegawai, jabatan, unit, atau lokasi kerja.
 - Penggantian role primer tidak boleh menghapus role tambahan yang masih sah; role primer lama harus dilepas agar permission lama tidak tertinggal.
 - Permission dan scope adalah dua hal berbeda. Permission menjawab tindakan apa yang boleh dilakukan; scope menjawab data mana yang boleh dijangkau.
@@ -156,7 +156,7 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 - Klasifikasi Aset Tetap PSAK 16:
   - `TNH`: Tanah & Lahan
   - `BGN`: Bangunan Fisik & Gudang
-  - `MSN`: Mesin Produksi & Timbangan PIBC
+  - `MSN`: Mesin produksi, forklift, dan peralatan mekanikal; owner setiap aset ditetapkan melalui review fungsi pemilik, bukan otomatis SC/PIBC dari kategori atau lokasi.
   - `KDR`: Kendaraan Dinas & Truk Logistik
   - `INV-F`: Inventaris Furniture (Wajib Milik Divisi GA secara sentral)
   - `INV-P`: Inventaris Peralatan Kantor (Dispenser, AC, APAR)
