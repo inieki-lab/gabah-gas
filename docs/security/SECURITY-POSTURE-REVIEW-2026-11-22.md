@@ -27,7 +27,7 @@
 
 **Evidence (updated 2026-11-23):** PR #243 adds `Content-Security-Policy-Report-Only` with same-origin scripts and explicit temporary style/font/image/connect allowances. It is non-enforcing and currently reports through browser tooling only; no server-side report collector is enabled. Full enforcement remains deferred until role-based browser UAT and violation review pass.
 
-**Why it matters:** CSP is a browser-side containment layer for script injection and related XSS impact. Its absence is especially relevant because the current browser authentication model stores a bearer token in localStorage (SEC-FU-02).
+**Why it matters:** CSP is a browser-side containment layer for script injection and related XSS impact. This remains important after the browser session moved to an HttpOnly cookie: XSS can still issue same-origin actions even when it cannot read the session token.
 
 **Compatibility inventory observed in source:**
 - `index.html` loads the application entrypoint as an external module script at `/src/main.tsx`.
