@@ -88,3 +88,23 @@ The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, curre
 - No application source code, SQL migration, runtime behavior, or production data was changed.
 - No TypeScript check, build, Docker/PostgreSQL test, browser UAT, security penetration test, or Markdown-link CI was run for these documentation edits.
 - This is documentation correction in progress, not proof of application readiness and not a claim that all 41 files are fully reconciled.
+
+
+## Pass 3 — UAT, API, database, and release-doc corrections (23 November 2026)
+
+- UAT persona matrix now tests flexible Dynamic RBAC capabilities instead of presenting the nine legacy seed identities as the permanent role catalogue. Added explicit coverage for GA read-only Laptop/PC IT, ME/Perawatan, Humas and Secretariat capabilities, and custom roles.
+- Removed an obsolete UAT scenario that implied RPC/SC could be an automatically approved asset owner. Legacy SC/PIBC-owned assets are review-only pending per-record classification.
+- Marked historic PASS totals in UAT as evidence tied to their original commit/run, not current HEAD.
+- Master Test Strategy now labels the existing seed accounts as test fixtures, not an official HR roster or role catalogue.
+- API Design now explicitly records switch-role as authenticated and Admin-only, not public in development; its endpoint table remains a baseline pending full route-by-route reconciliation.
+- Database Design now labels SC/PIBC and old role examples as legacy schema values, not current organizational or Dynamic RBAC policy.
+- Production Readiness Gates and Office VM Runbook no longer prescribe PR #18/old branch as the current integration/deployment path. Release instructions require owner-approved release branch, exact-SHA CI, UAT, backup/restore, rollback, TLS, and monitoring evidence.
+- RBAC data-scope audit is explicitly labeled a dated snapshot.
+- UAT checklist now distinguishes a Karyawan at RPC from an application role and requires additional persona coverage.
+
+### Validation status after pass 3
+- Documentation/source inspection only; no application code, migration, runtime, or production data changed.
+- PR #249 exact head before this pass was 320d65c07f1908eecd29a7e0c38fce558c183083; fetch the current head again before review.
+- A bulk Markdown link-validation attempt was not completed because the repository connector call limit was reached. Do not claim links are clean.
+- CI status checks/workflow runs were absent for the previously checked exact head; no CI PASS is claimed.
+- Full API route reconciliation, migration-by-migration schema reconciliation, full Markdown link validation, browser UAT, and production readiness remain open.
