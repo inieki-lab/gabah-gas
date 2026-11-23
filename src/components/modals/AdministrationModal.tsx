@@ -2978,7 +2978,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           <span className="text-[11px] text-slate-500">{rbacRoles.length} role</span>
                         </div>
                         <div className="divide-y divide-slate-100">
-                          {rbacRoles.map(role => (
+                          {rbacRoles.filter(role => !['supply_chain', 'pibc'].includes(String(role.role_key))).map(role => (
                             <div key={role.id} className={'p-3 ' + (rbacSelectedRoleId === role.id ? 'bg-emerald-50/70' : '')}>
                               <button type="button" onClick={() => handleSelectRbacRole(role)} className="w-full text-left">
                                 <div className="flex items-start justify-between gap-2">
