@@ -5370,7 +5370,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 <div>[GABAH Health] persistence: {healthStatus.persistence || 'belum diperiksa'}</div>
                 <div>[GABAH Scheduler] enabled: {healthStatus.scheduler?.enabled ?? 'belum diperiksa'} · timezone: {healthStatus.scheduler?.timezone || '-'} · intervalMs: {healthStatus.scheduler?.intervalMs ?? '-'}</div>
                 <div>[GABAH Data] {assets.length} aset · {loans.length} peminjaman · {tickets.length} tiket · {userList.length} pengguna · {auditLogs.length} log audit</div>
-                <div>[GABAH RBAC] 9 peran resmi ditegakkan server-side (Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Supply Chain, PIBC, Karyawan, Auditor)</div>
+                <div>[GABAH RBAC] Profil utama: Admin GABAH / Karyawan · role fungsi, permission, dan scope dikelola dinamis di server</div>
               </div>
             </div>
           )}
