@@ -59,20 +59,18 @@
 
 ---
 
-## ADR-007: Standardisasi Format Penomoran Aset Korporat
+## ADR-007 (PARTIAL / POLICY PENDING): Format Teknis Penomoran Aset
 - **Konteks**: Divisi akuntansi, logistik, dan IT membutuhkan format penomoran inventaris yang konsisten dan mencerminkan divisi pemilik serta tahun perolehan.
-- **Keputusan**: Menetapkan format baku kanonikal `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` yang di-generate atomik oleh `AssetNumberingEngine` di backend. Nomor aset Accurate ERP dipisahkan ke kolom `corporate_asset_number` agar tidak merusak format kanonikal internal.
-- **Status**: Diterapkan & Aktif (`server/numbering.ts`, `server/taxonomy.ts`, `server/services.ts`).
+- **Keputusan saat itu**: Mengimplementasikan pola teknis default `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` dan menyimpan nomor Accurate ERP terpisah pada `corporate_asset_number`.
+- **Status saat ini**: **PARTIAL**. Format korporat final masih menunggu pengesahan perusahaan. Generator `AssetNumberingEngine` menggunakan counter `Map` in-memory yang disinkronkan saat boot; bukan alokasi atomik PostgreSQL dan belum aman untuk multi-instance. Lihat `docs/asset/ASSET-NUMBERING.md` dan `docs/IMPLEMENTATION-TRUTH-REGISTER.md`.
 
 ---
 
-## ADR-008: Dual-Persistence Resilience Architecture
+## ADR-008 (PARTIAL / ENVIRONMENT-SCOPED): PostgreSQL and Development File-Store Resilience
 - **Konteks**: Dalam lingkungan pengembangan atau saat kontainer basis data host sedang restart, aplikasi tidak boleh crash atau kehilangan data operasional yang sedang diuji.
-- **Keputusan**: Mengimplementasikan arsitektur ketahanan ganda (*dual-persistence*):
-  - Primary store: PostgreSQL 17 relasional.
-  - Secondary fallback store: Snapshot file lokal terstruktur `server/data/gabah_state.json`.
-  Server mampu melakukan auto-fallback ke file store jika koneksi PostgreSQL terputus, dan melakukan sinkronisasi kembali (*backfill*) saat database kembali online.
-- **Status**: Diterapkan & Aktif (`server/persistence.ts`).
+- **Keputusan saat itu**: PostgreSQL 17 adalah primary store; file snapshot `server/data/gabah_state.json` mendukung development/test saat PostgreSQL tidak tersedia pada startup.
+- **Batasan saat ini**: Production menolak startup bila PostgreSQL yang dikonfigurasi tidak tersedia. Setelah PostgreSQL menjadi authoritative, kegagalan koneksi/write saat runtime dilatch dan operasi ditolak sampai layanan dipulihkan serta proses aplikasi direstart; tidak ada silent runtime fallback ke file store.
+- **Status saat ini**: **PARTIAL / ENVIRONMENT-SCOPED** (`server/persistence.ts`, `server/runtime-hardening.ts`). Jangan menjelaskan file store sebagai production failover otomatis.
 
 ---
 
