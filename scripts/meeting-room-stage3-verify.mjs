@@ -33,6 +33,17 @@ async function main(){
   const login=async(e)=>{const r=await req(b,'POST','/api/auth/login',{body:{email:e,password:e.startsWith('admin@')?ap:up}});return r.json?.data?.token||''};
   const [admin,ga,sek,karyawan,humas]=await Promise.all(['admin@foodstation.co.id','ga@foodstation.co.id','sekretariat.direksi@foodstation.co.id','hendra.w@foodstation.co.id','humas@foodstation.co.id'].map(login));
   rec('logins','5 tokens',[admin,ga,sek,karyawan,humas].filter(Boolean).length+' tokens',[admin,ga,sek,karyawan,humas].every(Boolean));
+  // Diagnostics: expose the authoritative PostgreSQL policy returned by the
+  // authenticated principal so permission failures can be traced to either
+  // missing role assignment or missing permission mapping.
+  for (const [label,token] of [['GA',ga],['Sekdir',sek],['Humas',humas]]) {
+    const me=await req(b,'GET','/api/auth/me',{token});
+    const u=me.json?.data||{};
+    console.log(`[RBAC DIAG] ${label} id=${u.id} role=${u.role} roles=${JSON.stringify(u.role_keys||[])} permissions=${JSON.stringify((u.permission_keys||[]).filter((k)=>k.startsWith('room_reservations.')))}`);
+  }
+  const gaRoles=await req(b,'GET','/api/admin/rbac/users/USR-02/roles',{token:admin});
+  const sekRoles=await req(b,'GET','/api/admin/rbac/users/USR-SEKDIR/roles',{token:admin});
+  console.log(`[RBAC DIAG] assignments GA=${JSON.stringify(gaRoles.json?.data||gaRoles.json)} Sekdir=${JSON.stringify(sekRoles.json?.data||sekRoles.json)}`);
   const rooms=(await req(b,'GET','/api/meeting-rooms',{token:admin})).json?.data||[],room=rooms.find(x=>x.id==='ROOM-01')||rooms[0],alt=rooms.find(x=>x.id!==room?.id&&x.status!=='maintenance');
   const types=(await req(b,'GET','/api/meeting-types',{token:admin})).json?.data||[],high=types.find(x=>x.priority_level==='high')||{code:'direksi'};
   rec('room fixtures','ROOM-01 + alt',`${room?.id}+${alt?.id}`,Boolean(room&&alt));
