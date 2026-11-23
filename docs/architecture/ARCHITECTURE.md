@@ -1,4 +1,4 @@
-# GABAH — Authoritative System Architecture Specification
+# GABAH — System Architecture Baseline
 
 **Dokumen:** `docs/architecture/ARCHITECTURE.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
