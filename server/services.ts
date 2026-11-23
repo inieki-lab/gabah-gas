@@ -39,7 +39,23 @@ function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?
   if (isAuditorActor(actor)) return false;
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
-  return Boolean(legacyRole && (Array.isArray(legacyRole) ? legacyRole.includes(actor.role) : actor.role === legacyRole));
+
+  // File-store compatibility must honor secondary functional capabilities too.
+  // Employee profile normalization intentionally sets actor.role to Karyawan;
+  // the assigned job function is retained in role_keys (e.g. "ga" or
+  // "sekretaris_direksi"). Checking only the primary label silently strips
+  // Meeting Room operations from those employees during non-Postgres runs.
+  const allowedLabels = legacyRole ? (Array.isArray(legacyRole) ? legacyRole : [legacyRole]) : [];
+  const normalizeRoleKey = (value: string): string => value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const assignedKeys = new Set((actor.role_keys || []).map(normalizeRoleKey));
+  return allowedLabels.some(label =>
+    actor.role === label || assignedKeys.has(normalizeRoleKey(label))
+  );
 }
 
 /**
