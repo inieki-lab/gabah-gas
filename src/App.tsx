@@ -14,7 +14,6 @@ import {
   MaintenanceStatus,
   MeetingRoom,
   RoomReservation,
-  UserRole,
   Contract,
   AssetMovement
 } from './types';
