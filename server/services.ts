@@ -33,14 +33,6 @@ export function isNonLoanableInfrastructureAsset(asset: Partial<ServerAsset> & R
     || protectedDescription;
 }
 
-/** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
-const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
-
-/** Dibagikan agar guard rute (mis. Maintenance Stage 13F) memakai satu definisi. */
-export function isLegacyScopedRole(role: string): boolean {
-  return LEGACY_SCOPED_ROLES.has(String(role));
-}
-
 interface AssetScopeSpec { type: string; value: string | null }
 
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string | string[]): boolean {
@@ -319,8 +311,7 @@ export class GabahDomainService {
   static getScopedAssets(user: ServerUser): ServerAsset[] {
     if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
 
-    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
-    const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
+    const isEmployeeBaseline = !isSuperadminActor(user) && !isAuditorActor(user);
 
     if (!isPostgresPersistenceActive()) {
       if (isEmployeeBaseline) {
