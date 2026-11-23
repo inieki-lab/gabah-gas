@@ -30,7 +30,7 @@ Sistem tidak lagi menggunakan arsitektur warisan (legacy) PHP/Laravel. Seluruh k
 |   |   - HttpOnly SameSite Cookie Session Client (no browser-readable token)  |   |
 |   +---------------------------------------------------------------------------+   |
 +------------------------------------------+----------------------------------------+
-                                           | HTTP REST API (Bearer Token)
+                                           | HTTP REST API (HttpOnly Cookie Session)
                                            v
 +-----------------------------------------------------------------------------------+
 |                        APPLICATION SERVER (Node.js 22 Alpine)                     |
