@@ -20,7 +20,9 @@ This document records decisions and constraints explicitly supplied by the proje
 - Active office/operational locations recorded for the current model: HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is closed/inactive; preserve historical references.
 - A person at any location may hold a job level such as Kadiv, Kadep, Kasi, or Staf. Location does not determine job level or permission.
 - Keep these dimensions separate: employee identity, application role/capability, permission, data scope, job level, organizational unit, office location, asset owner domain, physical asset location, and custodian/PIC.
-- Role and capability assignments must be flexible and administrable. Do not hard-code a fixed role list or assume a person's title/location grants permissions.
+- Profil utama aplikasi hanya `Admin GABAH` (administrator sistem) dan `Karyawan` (seluruh pegawai). IT, GA, Auditor, Sekretariat Direksi, Humas, ME Admin, dan fungsi kerja lain adalah role/capability tambahan yang dibuat serta ditetapkan melalui Dynamic RBAC; tidak boleh dijadikan union role primer yang di-hardcode.
+- RPC/SC dan PIBC tidak boleh muncul sebagai role aplikasi. Akun lama dinormalisasi menjadi profil Karyawan, dengan role fungsi yang sah tetap dipertahankan sebagai assignment terpisah; assignment Supply Chain/PIBC dinonaktifkan karena keduanya hanya lokasi/unit.
+- Role dan capability harus fleksibel dan dapat dikelola. Jangan hard-code katalog role fungsi atau menganggap jabatan/lokasi memberi permission.
 
 ## 3. Asset ownership and access
 
