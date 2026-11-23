@@ -31,7 +31,8 @@ Status yang digunakan: `NOT RUN`, `PASS`, `FAIL`, `BLOCKED`.
 | UAT-021 | Backup/restore | Backup database dan berkas; pulihkan ke lingkungan uji dan verifikasi integritas | Pemulihan teruji, aplikasi bisa digunakan setelah restore | BLOCKED | Perlu akses lingkungan dan bukti restore |
 | UAT-022 | Deployment/go-live | Deploy kandidat ke staging, cek konfigurasi, TLS, health, log, migrasi, rollback | Deployment/rollback terdokumentasi dan tervalidasi | BLOCKED | Belum diverifikasi melalui akses runtime |
 | UAT-023 | User acceptance | Perwakilan pengguna tiap divisi menyelesaikan skenario kerja nyata dan menandatangani hasil | Semua kegagalan kritis diselesaikan atau diterima tertulis | NOT RUN | Isi nama peran penguji, tanggal, dan persetujuan |
-| UAT-024 | Go-live decision | Review seluruh hasil, risiko terbuka, backup/restore, dan persetujuan pemilik proses | Keputusan READY / BLOCKED berbasis bukti | BLOCKED | Tidak boleh dianggap lulus hanya karena checklist dibuat |
+|| UAT-024 | Go-live decision | Review seluruh hasil, risiko terbuka, backup/restore, dan persetujuan pemilik proses | Keputusan READY / BLOCKED berbasis bukti | BLOCKED | Tidak boleh dianggap lulus hanya karena checklist dibuat |
+|| UAT-025 | Reports & exports | Uji akses ke laporan/API export (nav "Laporan", permission `reports.read`) | Endpoint /api/reports dan /api/exports belum diimplementasikan di server; menu navigasi ada tapi aksi tidak menunjuk API | BLOCKED | Catat: tidak ada route di server.ts; hanya rujukan client di src/navigation/roleNavigation.ts + Sidebar/Administration; ubah ke PASS setelah endpoint + authorization dibuat |
 
 ## Exit criteria
 

@@ -1229,8 +1229,12 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - PostgreSQL integration coverage added for IT/GA owner isolation, cross-owner write denial, Karyawan denial without permission, creating a future owner domain, creating a custom role with vendors permissions + RPCSC scope, and category/owner independence.
 
 
-### Production deployment safety — 2026-11-08
-- Reworked deploy.sh: no automatic Docker installation, no docker compose down/--remove-orphans, preflight requires .env and non-empty PGPASSWORD, validates Compose, recreates only the app service, and waits for /api/health before returning success. Failure prints container/log diagnostics and exits non-zero.
-- Docker PostgreSQL port now binds to 127.0.0.1 only, not all VM interfaces. Initial admin/user provisioning secrets are passed from .env to the app container.
-- CI now validates docker compose config and bash -n deploy.sh.
-- Replaced OFFICE-VM-RUNBOOK's destructive reset --hard/clean instructions with a release-gated update, PostgreSQL backup, health verification, rollback and restore procedure. It explicitly marks current release NO-GO.
+### Endpoint authorization & verification — 2026-11-23
+- Dilanjutkan audit otorisasi backend per endpoint (PR #18 masih draft/open). Hasil: dashboard/stats, dashboard/attention, reconciliation, dan /api/admin/rbac/* semua ter-enforce dengan permission/superadmin gate dan fail-closed.
+- Temuan: endpoint `/api/reports` dan `/api/exports` **belum diimplementasikan** (tidak ada route di server). Ini celah dokumentasi yang terbuka, bukan regresi — otorisasi untuk keduanya belum bisa ditegakkan karena endpoint tidak ada. Dilacak ke checklist UAT.
+- Master lokasi kantor: lima lokasi aktif (HO, Kantor Perawatan, PIBC, Pangsub, RPC/SC) dan Subang tidak aktif, sesuai keputusan bisnis. Uji `scripts/org-model-verify.mjs` 15/15 PASS.
+- Command: `npm run lint` 0 error; `node scripts/org-model-verify.mjs` 15/15 PASS; `node scripts/dynamic-rbac-foundation-verify.mjs` 125/125 PASS.
+- Batas: PostgreSQL live integration, browser UAT per persona, backup/restore, staging deploy masih belum dilakukan. Release tetap NO-GO.
+
+### Release status
+**NO-GO.** PR #18 tetap draft/open.
