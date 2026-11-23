@@ -1,4 +1,4 @@
-# GABAH — Authoritative Business Rules Matrix
+# GABAH — Business Rules and Decisions Register
 
 **Dokumen:** `docs/product/BUSINESS-RULES.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
