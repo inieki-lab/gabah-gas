@@ -25,12 +25,12 @@ const applicationRoleEnd = server.indexOf('// Permission guard for migrated endp
 assert.ok(applicationRoleStart >= 0 && applicationRoleEnd > applicationRoleStart, 'Dynamic RBAC role resolver exists');
 const applicationRole = server.slice(applicationRoleStart, applicationRoleEnd);
 assert.ok(applicationRole.includes('return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);'));
-assert.ok(applicationRole.includes('return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);'));
 assert.ok(applicationRole.includes('return actor.role === legacyLabels[roleKey] || actor.role_keys?.includes(roleKey) === true;'));
 
 assert.ok(create.includes("const validPrimaryRoles = ['Admin GABAH', 'Karyawan'];"));
 assert.ok(patch.includes("const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan'];"));
-assert.ok(bulk.includes("const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan', 'IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'SC', 'PIBC'];"));
+assert.ok(bulk.includes("const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan', 'PIBC', 'Supply Chain', 'SC'];"));
+assert.ok(bulk.includes('Role primer "${roleRaw}" adalah role tambahan, bukan profil utama. Gunakan role profil utama yang valid.'));
 assert.ok(bulk.includes("const role = ['Admin GABAH', 'Superadmin'].includes(requestedRole) ? 'Admin GABAH' : 'Karyawan';"));
 assert.ok(bulk.includes('Tetapkan role fungsi melalui Administrasi > Role & Hak Akses setelah impor'));
 assert.ok(bulk.includes("const inferredOfficeLocation = ['Supply Chain', 'SC'].includes(roleRaw) ? 'OFF-RPC' : roleRaw === 'PIBC' ? 'OFF-PIBC' : '';"));
