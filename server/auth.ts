@@ -41,8 +41,9 @@ function isLoginLockoutDisabled(): boolean {
 
 function isProductionAppMode(env: NodeJS.ProcessEnv = process.env): boolean {
   const configuredMode = String(env.GABAH_APP_MODE || '').trim().toLowerCase();
-  const mode = configuredMode || (env.NODE_ENV === 'production' ? 'production' : 'development');
-  return mode === 'production';
+  // NODE_ENV=production is authoritative; an accidental UAT override must
+  // never disable production secret validation.
+  return env.NODE_ENV === 'production' || configuredMode === 'production';
 }
 
 /**
