@@ -41,17 +41,17 @@ Do not assume job title or division alone grants permission. Business owners mus
 
 ## Role-specific product principles
 
-Treat these as hypotheses to validate against actual requirements, not as automatic grants:
+Treat these as functional responsibilities and capabilities to validate, not as a fixed role catalogue or automatic grants:
 
 - **Superadmin:** system configuration, user and role administration, permission management, and audit.
-- **IT:** IT helpdesk, device incidents, maintenance, and IT asset responsibilities.
-- **GA:** facilities, general services, room/facility requests, loans, and GA asset responsibilities.
-- **Supply Chain:** operational assets and workflows within explicitly approved scope.
-- **PIBC:** operational assets and facility workflows within explicitly approved scope.
-- **Karyawan:** own requests, own tickets, own assigned assets, and own loans.
+- **IT:** IT helpdesk, device incidents, maintenance, and IT asset responsibilities across locations.
+- **GA:** facilities, general services, room/facility requests, loans, and GA asset responsibilities; optional read-only visibility to IT Laptop/PC requires the dedicated grant.
+- **RPC/SC and PIBC employees:** ordinary employee profiles with their unit and office-location attributes; location does not create an application role, asset owner, or permission.
+- **Karyawan:** own requests, own tickets, own assigned assets, and own loans according to explicit permissions.
 - **Auditor:** explicitly authorized read-only records and reports.
-- **Sekretaris Direksi:** authorized executive agenda and service workflows.
-- **Humas:** authorized documentation, publication, and coverage workflows.
+- **Sekretariat Direksi capability:** authorized executive agenda and service workflows assigned to an employee; not a separate primary employee profile.
+- **Humas capability:** authorized documentation, publication, and coverage workflows assigned to an employee; not a separate primary employee profile.
+- **ME/Perawatan:** maintenance and PIBC service-ticket queue capabilities only where explicitly assigned.
 
 Do not expose every module to every role. Do not invent a role's dashboard or actions without tracing available modules and confirming the business process.
 
