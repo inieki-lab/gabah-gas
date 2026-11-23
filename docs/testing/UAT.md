@@ -4,7 +4,9 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Ikuti [Documentation Authority & AI Handoff Guide](../GABAH-DOCUMENTATION-CONTROL.md) dan [Master Test Strategy](./MASTER-TEST-STRATEGY.md) untuk menjaga istilah, status, dan bukti tetap konsisten.  
-**Terakhir Diperbarui:** 8 November 2026
+**Terakhir Diperbarui:** 23 November 2026
+
+> **Batas bukti:** Bagian hasil PASS/angka total pengujian yang tercatat dari siklus terdahulu adalah HISTORICAL dan hanya berlaku pada commit/run yang disebutkan di catatan asal. Jangan menganggapnya sebagai hasil UAT pada HEAD saat ini. Setiap siklus baru harus mengisi bukti dan SHA aktual.
 
 ---
 
