@@ -1,25 +1,33 @@
-### Production dependency vulnerability gate — 2026-11-23 (PR #244; CI pending)
+### Production dependency vulnerability gate — 2026-11-23 (PR #244; merged)
+
+- PR #244 merged after exact-head CI run #3115 (`45083676687`) completed successfully. All 112 verification steps passed, including `npm audit --omit=dev --audit-level=high`, production dependency-boundary checks, typecheck, production build, Docker runtime smoke, PostgreSQL integration, and P0 live HTTP security checks.
 
 - Added `npm audit --omit=dev --audit-level=high` immediately after dependency installation in CI. The first run found three High and one Moderate advisory: body-parser 1.20.8, multer 2.4.0, qs 6.16.0, and Vite 6.4.3.
 - Updated the lockfile to body-parser 1.20.9, multer 2.5.0, and qs 6.16.2; moved Vite 6.4.6 plus Vite build plugins into devDependencies. The server now dynamically imports Vite only in development, so production startup does not require a build dependency.
 - Documented remediation policy: prefer compatible patched releases, avoid unreviewed `--force` upgrades, and require scoped/expiring exceptions rather than blanket suppressions.
-- Added a production dependency boundary verifier to ensure package-lock/package.json agreement, development-only Vite imports, and Docker `npm ci --omit=dev`. Exact-head CI must verify the patched graph, production audit, and runtime smoke before merge.
+- Added a production dependency boundary verifier to ensure package-lock/package.json agreement, development-only Vite imports, and Docker `npm ci --omit=dev`. The exact-head CI gate passed before merge.
 
-### CSP report-only rollout — 2026-11-23 (PR #243; CI pending)
+### CSP report-only rollout — 2026-11-23 (PR #243; merged)
+
+- Exact-head CI run #3103 (`45082715443`) completed successfully before merge.
 
 - Added a non-enforcing `Content-Security-Policy-Report-Only` header to API, HTML, and static asset responses.
 - Scripts are restricted to same-origin in the initial policy; no `unsafe-inline` or `unsafe-eval` script allowance is present. Inline styles and Google Fonts remain explicit temporary allowances pending browser compatibility inventory.
 - External HTTPS images/connections remain broad in report-only mode so current integrations can be observed before tightening.
 - Added a P0 HTTP header regression and a rollout note. No claim of enforced CSP or active TLS/HSTS; enforcing CSP remains gated on browser UAT and violation review.
 
-### Dynamic RBAC live HTTP authorization coverage — 2026-11-23 (PR #242; CI pending)
+### Dynamic RBAC live HTTP authorization coverage — 2026-11-23 (PR #242; merged)
+
+- Exact-head CI run #3099 (`45081855506`) completed successfully before merge.
 
 - Extended the fresh PostgreSQL integration to exercise all nine Dynamic RBAC administration endpoints as a Karyawan: permissions, roles, assignments, role create/update/delete, permission updates, scope updates, and user-role assignment.
 - Each non-Superadmin request must receive HTTP 403; anonymous role reads must receive HTTP 401.
 - The integration also compares role and target-user assignment counts before/after the denied requests to detect unauthorized mutation.
-- This complements PR #238's source-level route guard regression with live HTTP enforcement coverage. Exact-head CI is pending.
+- This complements PR #238's source-level route guard regression with live HTTP enforcement coverage. The nine endpoint denial checks and mutation-count assertions passed in CI.
 
-### Company profile settings persistence — 2026-11-23 (PR #241; CI pending)
+### Company profile settings persistence — 2026-11-23 (PR #241; merged)
+
+- Exact-head CI run #3096 (`45081458866`) completed successfully before merge.
 
 - Added migration `103_system_settings_company_profile.sql` for company name, accounting standard, base currency, and fiscal year. Defaults are seeded idempotently.
 - Added authenticated reads and Superadmin-only writes. The API rejects extra fields, non-string values, invalid lengths, and invalid fiscal years; updates lock the singleton row and append audit history in the same transaction.
@@ -27,21 +35,21 @@
 - Administration now loads the company profile from PostgreSQL, saves through the API, and disables editing when loading fails. Operational SLA values remain read-only server policy and are excluded from this endpoint.
 - Added `test:system-settings-persistence` and PostgreSQL integration coverage for anonymous/staff/Superadmin access, validation, save/no-op/restore audit counts, and immutable audit history. Exact-head CI is pending.
 
-### Company profile settings persistence — 2026-11-23 (PR #241; CI pending)
+### Notification rule persistence and enforcement — 2026-11-23 (PR #240; merged)
 
-- Added migration `103_system_settings_company_profile.sql` for the company profile fields: company name, accounting standard, base currency, and fiscal year. Defaults are seeded idempotently.
-- Added authenticated reads and Superadmin-only writes. The API rejects extra fields, non-string values, invalid lengths, and invalid fiscal years; updates lock the singleton row and append audit history in the same transaction.
-- Company profile audit history is protected from UPDATE, DELETE, and TRUNCATE. No-op saves do not create audit entries.
-- Administration now loads the company profile from PostgreSQL, saves through the API, and disables editing when loading fails. Operational SLA values remain read-only server policy and are not included in this endpoint.
-- Added `test:system-settings-persistence` and PostgreSQL integration coverage for anonymous/staff/Superadmin access, validation, save/no-op/restore audit counts, and immutable audit history. Exact-head CI is pending.
-
-### Notification rule persistence and enforcement — 2026-11-23 (PR #240; CI pending)
+- Exact-head CI run #3091 (`45080610956`) completed successfully before merge.
 
 - Added migration `102_notification_rule_settings.sql` for four code-owned notification rules. Defaults are inserted idempotently; existing operator choices are preserved on subsequent migrations.
 - Added authenticated read and Superadmin-only update endpoints. Updates accept strict booleans, lock the current row, and write immutable audit history in the same PostgreSQL transaction; no-op updates do not create audit events.
 - Administration now loads actual rule states from PostgreSQL. It shows no assumed Active defaults when the server configuration is unavailable and disables controls during load, errors, and saves. UI state changes only after API success.
 - Dashboard attention now applies persisted warranty, loan, and SLA switches. The BAST switch is read before handover, and resulting borrower/owner notifications are created inside the atomic loan mutation.
-- Added `test:notification-rule-persistence` and registered it in CI. Exact-head workflow is running; this change is not yet eligible for merge.
+- Added `test:notification-rule-persistence` and registered it in CI. PostgreSQL integration and persisted rule enforcement passed before merge.
+
+### Server-authoritative administration and honest preview labels — 2026-11-23 (PR #239; merged)
+
+- Exact-head CI run #3083 (`45079526047`) completed successfully before merge.
+- Added regression assertions that office locations and divisions use server APIs for persistence, while system settings, the legacy permission matrix, numbering previews, and notification toggles clearly disclose when they are session-only previews and do not claim to update server policy.
+- This prevents the Administration screen from presenting local-only controls as authoritative configuration. The active Dynamic RBAC policy remains server-side.
 
 ### Dynamic observer route permission alignment — 2026-11-21
 
