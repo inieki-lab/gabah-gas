@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "docker compose up --build",
+    "dev": "tsx server.ts",
     "build": "vite build && node scripts/build-server.cjs",
     "start": "docker compose up -d --build",
     "clean": "rm -rf dist server.js",
@@ -131,6 +131,7 @@
     "typescript": "~5.8.2",
     "vite": "^6.4.6",
     "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4"
+    "@vitejs/plugin-react": "^5.0.4",
+    "@dyad-sh/react-vite-component-tagger": "^0.9.0"
   }
 }
