@@ -610,9 +610,12 @@ function collectLegacyEmployeeCapabilityAssignments(): Array<{ userId: string; r
     Humas: 'humas',
     'Sekretaris Direksi': 'sekretaris_direksi',
   };
-  return (db.users as any[])
-    .map(user => ({ userId: String(user.id), roleKey: legacyFunctionRoles[String(user.role || '').trim()] }))
-    .filter((assignment): assignment is { userId: string; roleKey: string } => Boolean(assignment.roleKey));
+  return (db.users as any[]).flatMap(user => {
+    const legacyRoleKey = legacyFunctionRoles[String(user.role || '').trim()];
+    const roleKeys = Array.isArray(user.role_keys) ? user.role_keys.map((key: unknown) => String(key).trim()) : [];
+    return [...new Set([...roleKeys, legacyRoleKey].filter((key): key is string => Boolean(key)))]
+      .map(roleKey => ({ userId: String(user.id), roleKey }));
+  });
 }
 
 function normalizeLegacyEmployeeProfileRoles(): void {
