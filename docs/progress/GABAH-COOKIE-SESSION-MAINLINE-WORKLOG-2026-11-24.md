@@ -1,0 +1,53 @@
+# GABAH HttpOnly Cookie Session Mainline Worklog
+
+Date: 2026-11-24
+Status: implementation branch; verification pending; NOT release approval.
+
+## Branch and ancestry
+
+- Branch: `fix/http-only-session-cookie-mainline-2026-11-24`
+- Base: current GitHub `main` at `3ea715723d96e2afbcc25bd3d1683affb46b87ad`.
+- This branch is created from current main after the RBAC/secondary-role fixes and production rate-limit secret hardening. It does not reuse the stale ancestry of draft PR #248.
+- No merge to main. No production data or schema migration changed.
+
+## Implemented
+
+- `server/auth.ts`: accept `gabah_session` cookie while retaining server-side session validation.
+- `server.ts`: issue HttpOnly/SameSite=Strict cookie on login, password change, and role switch; omit session token from JSON; clear cookie on logout.
+- `server/runtime-hardening.ts`: require exact same-origin Origin on cookie-authenticated mutation requests.
+- `src/services/gabahApi.ts`: use same-origin credentials; remove localStorage/Bearer token client handling, including role-switch and 401 cleanup.
+- `src/App.tsx`: restore session by calling server `/api/auth/me`, not by reading browser token.
+- `src/components/modals/AdministrationModal.tsx`: password-reset request uses same-origin cookie credentials.
+- Regression helpers migrated to cookie transport: asset import, bulk import, CR-04/CR-05, loan authorization, maintenance authorization, meeting-room stage 3, menu connectivity, organization model, P0/P1, RBAC scoping, T2B1-T2B3, and core module test helper.
+- Documentation updated: PROJECT-RULES, architecture baseline, security posture review, and UAT session scenario.
+
+## Verification evidence
+
+| Check | Status | Notes |
+|---|---|---|
+| Branch created from current main | PASS | Based on `3ea7157`; preserves latest main history. |
+| Static source scan | PASS | No `gabah_auth_token`, localStorage, getToken/setToken, Bearer headers, or JSON session-token return in the migrated application source files. |
+| Regression helper migration scan | PASS | Cookie transport applied; intentional legacy Bearer compatibility assertion remains in P0 verification only. |
+| Browser storage policy regression | NOT RUN | Must run on exact PR head. |
+| TypeScript lint/typecheck | NOT RUN | Must run on exact PR head. |
+| Production build and Docker runtime smoke | NOT RUN | Must run on exact PR head. |
+| PostgreSQL 17 CR-04/CR-05 and P0 live HTTP | NOT RUN | Must run on exact PR head. |
+| Full CI | PENDING | Open draft PR to trigger exact-head CI. |
+| Browser UAT for all roles | NOT TESTED | Required before production approval. |
+| Production HTTPS/reverse-proxy Origin behavior | NOT TESTED | Verify supported deployment topology before release. |
+
+## Important limitations
+
+- HttpOnly prevents JavaScript from reading the session token; it does not stop XSS from issuing same-origin requests.
+- Cookie lifetime remains seven days; CI should verify Max-Age and unauthorized restore after browser cookie omission, not claim a seven-day time-advance test.
+- Verify proxy protocol/host behavior in production. Do not weaken Origin validation merely to make a proxy test pass.
+- `scripts/test-core-modules.ts` is migrated but is not currently a configured CI workflow step.
+- Do not close SEC-FU-02 or mark production-ready until exact-head CI, browser UAT, and production HTTPS/proxy checks pass.
+
+## Next actions
+
+1. Run exact-head CI; inspect failed job logs and fix actual failures.
+2. Confirm all application direct-fetch paths use same-origin credentials.
+3. Run all role-based browser UAT: Superadmin, IT, GA, ME, RPC/SC, employee, and Auditor.
+4. Validate login, restore, logout, password change, role switch, Origin rejection, uploads/downloads, and session revocation.
+5. Only then request final review and consider merge.
