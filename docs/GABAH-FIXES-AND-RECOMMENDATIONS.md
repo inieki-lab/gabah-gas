@@ -1,5 +1,7 @@
 # GABAH — Laporan Perbaikan & Rekomendasi Produk
 
+> **HISTORICAL SNAPSHOT — 29 September 2026.** This report describes an earlier application state and earlier nine-role model. Its findings, endpoint absence claims, role mappings, and recommendations are not current facts. For example, loan rejection endpoints and Dynamic RBAC workflows have since evolved; RPC/SC and PIBC are not current application roles or automatic asset owners. Preserve this report as audit history only. Current owner intent is in `docs/PROJECT-CONTEXT.md`; current source-observed behavior is in `docs/IMPLEMENTATION-TRUTH-REGISTER.md`.
+
 **Tanggal:** 29 September 2026
 **Basis:** Commit `de83074` (28 Sep 2026) + hasil audit menyeluruh per tanggal ini
 **Status Typecheck:** ✅ `tsc --noEmit` — 0 error
