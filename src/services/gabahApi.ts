@@ -68,9 +68,6 @@ class GabahApiClient {
 
     const json = await res.json().catch(() => ({}));
     if (!res.ok || json.success === false) {
-      if (res.status === 401 && endpoint !== '/api/auth/login') {
-        this.setToken(null);
-      }
       const err: any = new Error(json.message || `Request gagal: ${res.statusText}`);
       err.conflict = json.conflict;
       err.can_override = json.can_override;
