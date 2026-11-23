@@ -1,3 +1,12 @@
+## [2026-11-23] — Move browser sessions to HttpOnly cookies (PR #256; CI pending)
+
+- Browser authentication is migrated away from `gabah_auth_token` in localStorage to same-origin `gabah_session` cookies.
+- Session cookies are HttpOnly, SameSite Strict, Secure in production, and rotated on login/password change/switch-role; logout clears the cookie.
+- Cookie-authenticated mutations require a matching Origin. Trusted non-browser Bearer compatibility remains temporarily available.
+- Browser-storage, P0 security, and CR-04/CR-05 integration tests now verify cookie attributes, refresh restoration, logout, rotation, and cross-origin rejection.
+
+---
+
 ## [2026-11-23] — Require independent production rate-limit secret
 
 - Production startup rejects a missing, weak (<32-byte), whitespace-padded, or database-credential-reused `GABAH_RATE_LIMIT_SECRET`.
