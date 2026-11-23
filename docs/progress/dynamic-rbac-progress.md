@@ -1536,3 +1536,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Exact-head CI #3315 confirmed the IT relocation path now succeeds (case 6: HTTP 200 and unchanged asset number). The remaining organization-model failure was case 5: the test selected the first Karyawan account without excluding assigned IT/GA capabilities, then expected it to be denied asset mutation after changing only job level to DIREKSI. With the new role model that fixture could be an operational IT/GA employee, so HTTP 200 was correct for its assigned capability.
 - Updated `scripts/org-model-verify.mjs` in commit a39508206a0febc699c0a07420ffc24075384b52 to select a Karyawan with no IT/GA operational role keys. The test now isolates the intended invariant: job level alone must not grant asset mutation.
 - No production authorization was weakened. Fresh exact-head CI remains pending.
+
+
+### Maintenance schedule secondary-role authorization fix — 2026-11-23 (PR #251; CI pending)
+
+- CI #3316 passed the organization-model regression, including IT asset relocation (HTTP 200) and job-level non-escalation. It then exposed the same primary-role-only pattern in Maintenance schedules: IT/GA list filters returned empty, while create/update allowlists denied canonical Karyawan users carrying `it`/`ga` capabilities.
+- Fix commit 40c013be3273bd62514fdc85a599244988617c5e updates the file-store maintenance list to scope IT schedules to IT-owned assets and GA schedules to GA-owned assets, using `hasApplicationRole()` for secondary capabilities. Create/update allowlists now accept Admin GABAH or explicitly assigned IT/GA capability, while the existing `canMutateAssetOwner()` check still enforces matching owner domain. Ordinary Karyawan, SC/RPC, PIBC, and Auditor remain denied as before.
+- Exact-head CI must rerun the maintenance live HTTP matrix and full workflow before merge.
