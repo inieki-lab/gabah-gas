@@ -28,7 +28,7 @@ No schema migration or business rule change. RPC labels, role/division/location 
 - e9d1d5a — server cookie issue/clear handling.
 - 5c2ca29 — cookie Origin checks and same-origin client requests.
 - d9fbcc9 — UI/storage verifier and preview dev command carry-forward.
-- Current PR #248 head observed: 064599846af76d119da68b41404f7d2a4a8b4e35.
+- PR #248 opened at 064599846af76d119da68b41404f7d2a4a8b4e35; subsequent documentation/package commits updated the branch. Latest recorded branch commit: 900b809992a7d8cd9ddcc96b4d372151b3e79f98. Exact-head CI run 45112670340 was in progress at the last check.
 
 ## Verification evidence
 
@@ -40,7 +40,7 @@ No schema migration or business rule change. RPC labels, role/division/location 
 | Production build | PASS | run_build on local captured workspace; frontend and bundled Express build completed. Large-chunk warning remains. |
 | Regression scripts | NOT TESTED | Files inventoried, scripts not executed. |
 | PostgreSQL/Docker/API/browser/role UAT | NOT TESTED | No runtime evidence collected. |
-| GitHub CI | NOT TESTED | Draft PR opened; exact-head checks not verified. |
+| GitHub CI | NOT TESTED | Exact-head run 45112670340 was in progress at last check; no completion result verified. |
 
 PASS for typecheck/build applies to the local captured snapshot, not a CI run on remote PR head.
 
@@ -54,4 +54,4 @@ Branch audit/full-system-hardening-2026-11-23; draft PR #248 targets main. No me
 2. Run package regression scripts and isolated PostgreSQL/Docker checks, including FK and loan collision fixtures.
 3. Run browser/API workflows for Superadmin, IT, GA, PIBC ME, RPC/SC, employee and Auditor.
 4. Complete route-by-route module, migration, security, backup/restore and deployment audit.
-5. Obtain exact-head GitHub CI and update this record; only close findings with evidence.
+5. Poll exact-head GitHub CI and update this record; only close findings with evidence.
