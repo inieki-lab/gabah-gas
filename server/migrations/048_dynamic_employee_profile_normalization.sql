@@ -29,12 +29,10 @@ END
 WHERE role IN ('Supply Chain', 'SC', 'PIBC');
 
 -- The only primary profile identities are the system administrator and employee baseline.
+UPDATE users SET role = 'Admin GABAH' WHERE role = 'Superadmin';
 UPDATE users
-SET role = CASE WHEN role IN ('Superadmin', 'Admin GABAH') THEN 'Admin GABAH' ELSE 'Karyawan' END
-WHERE role IS DISTINCT FROM CASE
-  WHEN role IN ('Superadmin', 'Admin GABAH') THEN 'Admin GABAH'
-  ELSE 'Karyawan'
-END;
+SET role = 'Karyawan'
+WHERE role IN ('IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'SC', 'PIBC');
 
 -- Rebuild the primary marker without deleting any unrelated/custom role assignment.
 UPDATE gabah_user_roles ur
@@ -49,7 +47,7 @@ JOIN gabah_roles r ON r.role_key = CASE
   WHEN u.role = 'Admin GABAH' THEN 'superadmin'
   ELSE 'karyawan'
 END
-WHERE r.is_active = TRUE
+WHERE r.is_active = TRUE AND u.role IN ('Admin GABAH', 'Karyawan')
 ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE;
 
 -- Job-function roles remain available as additional Dynamic RBAC templates.
