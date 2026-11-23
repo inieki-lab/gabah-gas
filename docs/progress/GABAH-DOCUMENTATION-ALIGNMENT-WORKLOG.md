@@ -108,3 +108,15 @@ The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, curre
 - A bulk Markdown link-validation attempt was not completed because the repository connector call limit was reached. Do not claim links are clean.
 - CI status checks/workflow runs were absent for the previously checked exact head; no CI PASS is claimed.
 - Full API route reconciliation, migration-by-migration schema reconciliation, full Markdown link validation, browser UAT, and production readiness remain open.
+
+
+## Pass 4 — Source inventories for API and database docs (23 November 2026)
+
+- Compared route registrations in main server.ts at SHA f39db6b8fd819d301f49815c7a33a04c80b2a6c0 against the API Design endpoint tables. Static extraction found 130 explicit registered route/method combinations; 66 were already represented in the tables and 64 additional route combinations were absent. Added the 64 paths as a source inventory appendix, explicitly stating that route presence is not proof of authorization or UAT.
+- Compared the main Git tree migration directory at the same SHA and found 47 SQL migration files (through 103_system_settings_company_profile.sql). Added the file inventory to Database Design and explicitly distinguished file presence from successful fresh install, legacy upgrade, idempotence, rollback, or restore testing.
+- Updated RBAC account section to label named seed identities as legacy test fixtures, not official HR roster or canonical role catalogue.
+
+### Remaining technical documentation reconciliation
+- API route authorization/validation/request-response details still require handler-by-handler review and test mapping; route inventory alone is not sufficient.
+- Database schema still requires actual table/column/constraint/index/trigger comparison after applying all 47 migrations to fresh and representative legacy databases.
+- Markdown relative-link validation was not completed. CI checks/workflow runs were absent on the previously checked documentation PR head; fetch latest PR head before final review.
