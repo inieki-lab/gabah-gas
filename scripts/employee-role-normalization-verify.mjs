@@ -10,7 +10,7 @@ assert.match(persistence, /function collectLegacyEmployeeCapabilityAssignments/)
 assert.match(persistence, /function normalizeLegacyEmployeeProfileRoles/);
 assert.match(persistence, /await backfillNormalizedTables\(\);\s*const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments\(\);\s*await ensureEmployeeCapabilityAssignments\(legacyCapabilities\);\s*normalizeLegacyEmployeeProfileRoles\(\);/);
 assert.match(persistence, /INSERT INTO gabah_user_roles \(user_id, role_id, is_primary, assigned_by_user_id\) VALUES \(\$1, \$2, FALSE, NULL\)/);
-assert.match(persistence, /WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan'/);
+assert.match(persistence, /IT: 'it'[\\s\\S]*GA: 'ga'[\\s\\S]*Auditor: 'auditor'[\\s\\S]*Humas: 'humas'[\\s\\S]*'Sekretaris Direksi': 'sekretaris_direksi'/);\nassert.match(persistence, /WHEN 'Admin GABAH' THEN 'superadmin' ELSE 'karyawan' END/);\nassert.match(persistence, /user\\.role = 'Karyawan'/);
 assert.match(persistence, /user\.office_location_id = 'OFF-RPC'/);
 assert.match(persistence, /user\.office_location_id = 'OFF-PIBC'/);
 assert.match(dashboard, /hasEffectivePermission\('room_reservations\.documentation\.read', \['Humas'\]\)/);
