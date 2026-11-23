@@ -48,7 +48,7 @@ Owner domain adalah master fleksibel (misalnya IT, GA, dan domain fungsi lain ya
 
 ### 1.4 Legacy role labels
 
-Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. Supply Chain dan PIBC adalah lokasi/unit/fungsi operasional, bukan role aplikasi permanen. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
+Profil primer transisi yang diizinkan oleh jalur pembuatan user pada baseline adalah Admin GABAH, IT, GA, Karyawan, dan Auditor. Sekretariat Direksi serta Humas adalah capability/permission tambahan bagi pegawai, bukan profil primer tersendiri. Supply Chain/SC dan PIBC pada data akun lama adalah alias/label legacy; keduanya tidak boleh dijadikan role aplikasi baru. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
 
 Contract Management tetap domain tersendiri; scope kontrak menggunakan owner domain dan PIC. Vendor category tidak boleh dipakai sebagai pengganti owner domain.
 
@@ -62,8 +62,8 @@ Contract Management tetap domain tersendiri; scope kontrak menggunakan owner dom
 | IT | Owner IT lintas lokasi | Aksi per modul tetap memerlukan permission dan scope |
 | GA | Owner GA lintas lokasi | IT workstation hanya read-only melalui permission khusus |
 | Karyawan | Fungsi dasar pribadi: aset ditugaskan, permintaan pinjaman, tiket sendiri, reservasi | Role tambahan dapat memberi kapabilitas kerja yang disahkan |
-| Sekretaris Direksi | Fungsi dasar karyawan + agenda/permintaan dukungan Direksi | Prioritas/override harus permission khusus dan audit |
-| Humas | Fungsi dasar karyawan + antrean pekerjaan dokumentasi yang ditugaskan | Detail agenda disamarkan untuk pihak tanpa kewenangan |
+| Capability Sekretariat Direksi | Ditambahkan pada profil pegawai yang ditugaskan; bukan primary role terpisah | Prioritas/override harus permission khusus dan audit |
+| Capability Humas | Ditambahkan pada profil pegawai yang ditugaskan; bukan primary role terpisah | Detail agenda disamarkan untuk pihak tanpa kewenangan |
 | Auditor | Read-only sesuai grant audit | Tidak boleh create/update/delete/approve |
 | Unit/fungsi operasional lain | Kapabilitas sesuai owner domain dan scope yang disahkan | Nama unit/lokasi tidak otomatis menjadi role, owner, atau scope |
 
@@ -124,7 +124,7 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 |:---|:---|:---|:---|
 | `dashboard.read` | `GET /api/dashboard/stats` + `/api/dashboard/attention` | `013` (legacy compatibility seed; review before production mapping) | aktif di PostgreSQL |
 | `assets.read` | `GET /api/assets` + `GET /api/assets/:id` | `014` (legacy compatibility seed; review before production mapping) | aktif di PostgreSQL |
-| `assets.create` | `POST /api/assets` | `016` (superadmin/it/ga/supply_chain/pibc) | aktif |
+| `assets.create` | `POST /api/assets` | `016` (legacy compatibility grants; `supply_chain`/`pibc` tidak boleh dianggap role aktif baru) | Grant tersedia; mapping produksi wajib review |
 | `assets.update` | `PATCH /api/assets/:id` | `016` | aktif |
 | `assets.bulk_import` | `POST /api/assets/bulk-import` | `016` | aktif |
 | `assets.assign` | `POST /api/assets/:id/assign` | `016` | aktif |
@@ -173,6 +173,5 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
   is handled according to the policy resolver. Role without assignment/scope
   fails closed. File-store development fallback is compatibility-only and is
   not evidence of production PostgreSQL authorization.
-- Role Karyawan, Auditor, Humas, dan Sekretaris Direksi sengaja tidak menerima
-  grant tulis di migration `016`, mengikuti guard legacy yang menolak mereka.
+- Migration `016` adalah seed kompatibilitas historis, bukan katalog role yang harus dipertahankan. Karyawan adalah profil pegawai; Humas dan Sekretariat Direksi harus dimodelkan sebagai capability tambahan. Jangan menambah user baru dengan label role `Supply Chain`, `SC`, `PIBC`, `Humas`, atau `Sekretaris Direksi` sebagai primary role.
 
