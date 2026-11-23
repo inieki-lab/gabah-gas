@@ -131,8 +131,8 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
         || currentUser.permission_keys.includes('room_reservations.override_priority');
     }
     // File-store compatibility only; PostgreSQL uses explicit capability grants.
-    return isSekdir || currentUser.role === 'GA' || currentUser.role === 'Admin GABAH';
-  }, [currentUser.permission_keys, currentUser.is_superadmin, currentUser.role, isSekdir, isAuditor]);
+    return isSekdir || GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH';
+  }, [currentUser.permission_keys, currentUser.is_superadmin, currentUser.role, currentUser.role_keys, isSekdir, isAuditor]);
 
   // Load master types and facilities
   useEffect(() => {
