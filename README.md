@@ -36,8 +36,8 @@
 - Docker Engine / Docker Desktop dan Docker Compose v2.
 - Port host 80 (web) dan 5432 (PostgreSQL admin lokal); keduanya dapat diubah di `.env`.
 
-### 2. Runtime tunggal: Docker Compose
-Development, UAT, dan deployment menggunakan arsitektur yang sama: app + PostgreSQL berjalan di Docker Compose. Jangan menjalankan server TSX/Node langsung di host; `npm run dev` dan `npm start` juga diarahkan ke Docker Compose agar tidak ada dua instance dengan konfigurasi database berbeda.
+### 2. Preview aplikasi dan runtime Docker
+Untuk preview/dev lokal (termasuk preview IDE), `npm run dev` menjalankan server Express dengan middleware Vite; server memakai local file persistence bila PostgreSQL tidak dikonfigurasi. Untuk UAT dan deployment, gunakan Docker Compose dengan PostgreSQL authoritative seperti di bawah ini.
 
 ```bash
 cp .env.example .env
@@ -48,7 +48,7 @@ docker compose ps
 docker compose logs -f --tail=200 app
 ```
 
-Buka `http://localhost` (host port default 80).
+Buka `http://localhost` (host port default 80) untuk Docker Compose. `npm start` tetap menjalankan Docker Compose.
 
 Kontrak koneksi internal:
 - Browser → host port `GABAH_WEB_PORT` (default 80) → app container port 3000.
