@@ -25,6 +25,7 @@ If business intent and implementation differ, preserve both facts: label the bus
 Before any task:
 1. Read this guide and `README.md`.
 2. Read `PROJECT-RULES.md` and `docs/PROJECT-CONTEXT.md`.
+3. Read `docs/IMPLEMENTATION-TRUTH-REGISTER.md` to distinguish source-observed behavior from owner-approved intent and test evidence.
 3. Read the relevant product/business rule and architecture documents.
 4. Inspect the relevant frontend, API route, domain service, authorization/scope policy, DB migration and tests.
 5. Check recent WORKLOG/UAT and open PRs to avoid repeating or overwriting work.
@@ -39,6 +40,7 @@ Never assume that a document is current because its title says â€œAuthoritativeâ
 | `README.md` | Entry point, current stack/runtime and links to authoritative docs | Proof that every feature works |
 | `PROJECT-RULES.md` | Mandatory engineering and AI-agent rules | Product requirements catalogue |
 | `docs/PROJECT-CONTEXT.md` | Owner-approved business context and non-negotiable product constraints | Proof that the implementation already conforms |
+| `docs/IMPLEMENTATION-TRUTH-REGISTER.md` | Dated source-inspection facts, partial migrations, and implementation gaps | Test evidence or approval to change business policy |
 | `PRD.md` | Product vision, scope, actors and business outcomes | Runtime implementation evidence |
 | `docs/product/REQUIREMENTS.md` | Traceable functional/non-functional requirements | Claim that requirements are implemented |
 | `docs/product/BUSINESS-RULES.md` | Owner-approved business rules and unresolved decisions | Guesswork inferred from old code |
