@@ -724,7 +724,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Header Navbar with Role Switcher & Scan Barcode */}
+      {/* Top Header Navbar with Account Menu & Scan Barcode */}
       <HeaderNavbar
         currentUser={currentUser}
         allUsers={allUsers}
