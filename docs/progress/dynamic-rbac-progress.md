@@ -1556,3 +1556,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 
 - CI #3319 failed one of 142 Dynamic RBAC source-contract checks after the maintenance file-store allowlist was migrated from primary labels to `hasApplicationRole()`. The test still required the obsolete `['Admin GABAH', 'IT', 'GA'].includes(actor.role)` expression.
 - Updated the assertion in commit 347f5a99427c3aac3f24922c5ec4b76904e7e3eb to require the new Superadmin + explicit IT/GA capability guard for both create and update routes, while retaining the PostgreSQL permission gate and shared owner-scope mutation policy.
+
+
+### Knowledge Base source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3322 passed the maintenance source-contract check but reported two stale Dynamic RBAC source assertions for Knowledge Base create/update. The routes now intentionally use `isSuperadminActor()` plus `hasApplicationRole(it/ga)` in file-store mode rather than the legacy primary-role array.
+- Updated both assertions in commit 78e2efd3de439538d2df64b05572adc43a91805d to require the new capability-aware allowlist while preserving PostgreSQL `knowledge.create`/`knowledge.update` permission checks.
