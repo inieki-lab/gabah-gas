@@ -3291,7 +3291,7 @@ async function startServer() {
           loan.borrower_id === actor.id
           || (isPostgresPersistenceActive()
             ? hasRbacScope(String(actor.id), 'division', loan.owner_division, 'loans')
-            : actor.role === loan.owner_division)
+            : hasApplicationRole(actor, String(loan.owner_division || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')))
         );
 
     // Return server-authoritative action capabilities with each visible loan.
