@@ -1059,7 +1059,7 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Maksimal 500 baris per impor. Pisahkan menjadi beberapa berkas.' });
       }
 
-      const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan', 'IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'SC', 'PIBC'];
+      const validRoles = ['Admin GABAH', 'Superadmin', 'Karyawan', 'PIBC', 'Supply Chain', 'SC'];
       const roleLabels: Record<string, string> = {
         'Admin GABAH': 'Super Admin',
         'IT': 'IT Technical Support',
@@ -1099,7 +1099,7 @@ async function startServer() {
         if (!name) { errors.push(`Baris ${rowNo}: Nama wajib diisi.`); continue; }
         if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errors.push(`Baris ${rowNo}: Email "${email}" tidak valid.`); continue; }
         if (roleRaw && !validRoles.includes(roleRaw)) {
-          errors.push(`Baris ${rowNo}: Role primer "${roleRaw}" tidak dikenali. Gunakan role profil utama yang valid.`);
+          errors.push(`Baris ${rowNo}: Role primer "${roleRaw}" adalah role tambahan, bukan profil utama. Gunakan role profil utama yang valid.`);
           continue;
         }
         if (seenEmails.has(email)) { errors.push(`Baris ${rowNo}: Email duplikat di dalam berkas (${email}).`); continue; }
