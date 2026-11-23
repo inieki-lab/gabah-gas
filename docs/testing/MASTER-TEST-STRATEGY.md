@@ -1,11 +1,11 @@
 # GABAH — Standar Pengujian Terpadu (Single Test Method)
 
-**Status:** Standar kerja pengujian untuk Development, CI, UAT, dan Release  
+**Status:** Standar kerja pengujian untuk Development, CI, UAT, dan Release; bukan bukti bahwa seluruh skenario sudah dijalankan  
 **Runtime wajib:** Docker Compose + PostgreSQL 17  
 **URL default:** http://localhost  
 **Prinsip:** satu build, satu runtime, satu database UAT, satu matriks role/menu, satu bukti hasil.
 
-Dokumen ini menjadi acuan utama untuk menyatukan pengujian. Skenario rinci bisnis tetap berada di [UAT.md](./UAT.md), sedangkan workflow CI adalah pemeriksaan otomatis yang berjalan pada Pull Request.
+Dokumen ini menjadi acuan utama untuk menyatukan pengujian. Baca [Documentation Authority & AI Handoff Guide](../GABAH-DOCUMENTATION-CONTROL.md) untuk aturan status kebenaran, sinkronisasi spesifikasi, dan bukti yang wajib disertakan. Skenario rinci bisnis tetap berada di [UAT.md](./UAT.md), sedangkan workflow CI adalah pemeriksaan otomatis yang berjalan pada Pull Request.
 
 ## 1. Aturan lingkungan tunggal
 
