@@ -4,10 +4,12 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Database Engine:** PostgreSQL 17  
 **Driver:** `pg` (Node-Postgres)  
-**Status:** Authoritative Database Specification (100% Sesuai Skema Aktual)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Spesifikasi skema baseline; kecocokan wajib diverifikasi terhadap seluruh migration SQL dan database integration test pada commit yang disebutkan.  
+**Terakhir Ditinjau:** 23 November 2026 (migration inventory tersedia; actual schema comparison masih terbuka)  
 
 ---
+
+> Jangan menganggap daftar tabel, constraint, trigger, backfill, atau strategi persistensi di bawah sebagai kondisi terkini tanpa memeriksa `server/migrations/`, `server/persistence.ts`, migration upgrade tests, dan PostgreSQL integration tests. Bedakan skema fresh-install dari jalur upgrade database existing.
 
 ## 1. Ringkasan Desain Basis Data
 
@@ -19,8 +21,9 @@ Sistem juga mengimplementasikan mekanisme **Dual-Persistence Bridge** (`server/p
 
 ## 2. Struktur Tabel Relasional PostgreSQL
 
-### 2.1 Tabel `divisions` (Divisi Korporat)
-Menyimpan struktur divisi resmi BUMD PT Food Station Tjipinang Jaya.
+### 2.1 Tabel `divisions` (Master organisasi — baseline historis)
+Contoh kode/nama di bawah berasal dari skema/seed lama dan bukan daftar divisi, owner domain, atau lokasi yang disahkan saat ini. RPC/SC dan PIBC adalah lokasi/operasional context, bukan owner aset otomatis. Verifikasi master organisasi aktif dan migration terbaru sebelum membuat perubahan skema atau memetakan data.
+Menyimpan struktur organisasi sesuai model pada saat baseline ini ditulis.
 - `id` (BIGSERIAL, PRIMARY KEY)
 - `code` (VARCHAR(20), NOT NULL, UNIQUE) — Contoh: `'SC'`, `'PIBC'`, `'IT'`, `'GA'`
 - `name` (VARCHAR(100), NOT NULL) — Contoh: `'Supply Chain'`, `'Pasar'`, `'IT'`, `'General Affairs'`
@@ -41,7 +44,7 @@ Menyimpan identitas pegawai, peran RBAC, kredensial hash, dan divisi.
 - `id` (VARCHAR(64), PRIMARY KEY) — Contoh: `'USR-01'`, `'USR-SEKDIR'`
 - `name` (VARCHAR(200), NOT NULL)
 - `email` (VARCHAR(255), NOT NULL, UNIQUE)
-- `role` (VARCHAR(50), NOT NULL) — `'Admin GABAH'`, `'IT'`, `'GA'`, `'Sekretaris Direksi'`, `'Humas'`, `'Supply Chain'`, `'PIBC'`, `'Karyawan'`, `'Auditor'`
+- `role` (VARCHAR(50), NOT NULL) — profil utama hanya `Admin GABAH` atau `Karyawan`. Fungsi IT/GA/Auditor/Humas/Sekretariat Direksi dan role lain disimpan sebagai assignment di `gabah_user_roles`; kolom ini bukan katalog role dinamis dan bukan sumber permission.
 - `division_id` (BIGINT, REFERENCES divisions(id))
 - `department_id` (BIGINT, REFERENCES departments(id))
 - `phone` (VARCHAR(50))
@@ -52,8 +55,8 @@ Menyimpan identitas pegawai, peran RBAC, kredensial hash, dan divisi.
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 - `updated_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 
-### 2.4 Tabel `user_sessions` (Sesi Token Otentikasi)
-Menyimpan sesi aktif pengguna untuk autentikasi Bearer token.
+### 2.4 Tabel `user_sessions` (Sesi Token Otentikasi — baseline historis)
+Menyimpan sesi autentikasi server-side. Kolom/transport di bawah adalah baseline Bearer yang harus diverifikasi terhadap migration dan auth middleware pada exact commit; PR cookie-auth yang belum merge tidak mengubah kondisi main.
 - `id` (VARCHAR(64), PRIMARY KEY)
 - `token` (VARCHAR(128), NOT NULL, UNIQUE)
 - `user_id` (VARCHAR(64), NOT NULL, REFERENCES users(id) ON DELETE CASCADE)
@@ -131,7 +134,7 @@ Mencatat histori relokasi fisik dan alih tangan pemegang aset.
 - **Indeks Penting**: `idx_movements_asset` ON asset_movements(asset_id, created_at DESC)
 
 ### 2.9 Tabel `asset_number_sequences` (Sequence Penomoran Aset)
-Menjamin nomor sequence aset tidak bertabrakan secara atomik per divisi dan tahun.
+Menyimpan struktur sequence aset pada skema. Keberadaan tabel ini **tidak** berarti generator saat ini memakai transaksi/UPSERT PostgreSQL; `AssetNumberingEngine` masih menggunakan counter in-memory yang disinkronkan saat boot (lihat `docs/asset/ASSET-NUMBERING.md`).
 - `id` (BIGSERIAL, PRIMARY KEY)
 - `owner_division_id` (BIGINT, NOT NULL, REFERENCES divisions(id))
 - `asset_code` (VARCHAR(30), NOT NULL)
@@ -310,3 +313,60 @@ CREATE TRIGGER trg_check_loan_schedule_collision
   FOR EACH ROW
   EXECUTE FUNCTION check_loan_schedule_collision();
 ```
+
+
+## 9. Migration file inventory — main snapshot 23 November 2026
+
+> File inventory only, extracted from `server/migrations/` at main SHA `f39db6b8fd819d301f49815c7a33a04c80b2a6c0`. This does not prove that every migration applies cleanly, is idempotent, or upgrades a representative legacy database. Fresh-install and legacy-upgrade paths require separate PostgreSQL integration tests. Migration SQL is the schema authority; this design document must be updated when migrations change.
+
+Found 47 SQL migration files:
+
+- `server/migrations/001_gabah_normalized_schema.sql`
+- `server/migrations/002_gabah_auth_hardening.sql`
+- `server/migrations/003_loan_anti_collision_trigger.sql`
+- `server/migrations/004_contract_management.sql`
+- `server/migrations/005_contract_notification_delivery.sql`
+- `server/migrations/006_org_model_masters.sql`
+- `server/migrations/007_asset_managing_unit.sql`
+- `server/migrations/008_asset_location_master.sql`
+- `server/migrations/009_asset_category_master.sql`
+- `server/migrations/010_dynamic_rbac_foundation.sql`
+- `server/migrations/011_dynamic_rbac_legacy_backfill.sql`
+- `server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql`
+- `server/migrations/013_dynamic_rbac_dashboard_permission_seed.sql`
+- `server/migrations/014_dynamic_rbac_assets_read_permission_seed.sql`
+- `server/migrations/015_room_reservations.sql`
+- `server/migrations/016_dynamic_rbac_asset_write_permissions_seed.sql`
+- `server/migrations/017_dynamic_rbac_movements_read_permission_seed.sql`
+- `server/migrations/018_dynamic_rbac_knowledge_permissions_seed.sql`
+- `server/migrations/019_dynamic_rbac_vendor_write_permissions_seed.sql`
+- `server/migrations/020_dynamic_rbac_maintenance_permissions_seed.sql`
+- `server/migrations/021_dynamic_rbac_ga_it_workstation_read.sql`
+- `server/migrations/022_dynamic_rbac_it_ga_asset_owner_scopes.sql`
+- `server/migrations/023_dynamic_rbac_employee_and_navigation_permissions.sql`
+- `server/migrations/024_dynamic_rbac_core_operational_permissions.sql`
+- `server/migrations/025_dynamic_rbac_audit_and_admin_permissions.sql`
+- `server/migrations/026_map_branch_accounts_to_employee_location.sql`
+- `server/migrations/027_dynamic_rbac_asset_catalog_read.sql`
+- `server/migrations/028_dynamic_rbac_user_directory_read.sql`
+- `server/migrations/029_rbac_module_scoped_data_scopes.sql`
+- `server/migrations/030_rbac_primary_role_assignment.sql`
+- `server/migrations/031_employee_primary_role_with_job_capabilities.sql`
+- `server/migrations/032_rbac_owner_scope_exclusions.sql`
+- `server/migrations/033_current_office_location_master.sql`
+- `server/migrations/034_dynamic_rbac_room_reservation_capabilities.sql`
+- `server/migrations/036_dynamic_rbac_auditor_ticket_create_deny.sql`
+- `server/migrations/042_module_lifecycle_registry.sql`
+- `server/migrations/043_asset_numbering_rules.sql`
+- `server/migrations/044_pibc_me_helpdesk_queue.sql`
+- `server/migrations/045_rpc_location_label_consistency.sql`
+- `server/migrations/046_dynamic_me_queue_capability.sql`
+- `server/migrations/047_me_ticket_assignment_permission.sql`
+- `server/migrations/098_loan_collision_asset_lock.sql`
+- `server/migrations/099_room_reservation_collision_lock.sql`
+- `server/migrations/100_audit_log_immutability.sql`
+- `server/migrations/101_shared_rate_limit_buckets.sql`
+- `server/migrations/102_notification_rule_settings.sql`
+- `server/migrations/103_system_settings_company_profile.sql`
+
+**NOT VERIFIED by this inventory:** execution order/ledger behavior, actual schema after full migration, foreign-key/index/trigger definitions, upgrade from legacy snapshots, rollback safety, and PostgreSQL restore.

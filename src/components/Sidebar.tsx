@@ -99,9 +99,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isGA = hasPermission('room_reservations.approve', ['GA', 'Admin GABAH'])
     || hasPermission('room_reservations.reject', ['GA', 'Admin GABAH'])
     || hasPermission('meeting_facilities.manage', ['GA', 'Admin GABAH']);
-  const isStaff = activeRole
-    ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) || isSekdir || isHumas
-    : isSekdir || isHumas;
+  const isStaff = activeRole === 'Karyawan' || isSekdir || isHumas
+    || ['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole || '');
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [

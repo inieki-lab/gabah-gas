@@ -36,7 +36,7 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
   const canCreateLicense = !isAuditor && (isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('assets.create') || currentUser.permission_keys!.includes('*')
-      : currentUser.role === 'IT'));
+      : GabahService.hasLegacyCapability(currentUser, 'it')));
   const handleOpenCreate = onOpenCreateLicenseModal || onOpenNewAssetModal || (() => {});
   const safeAssets = Array.isArray(assets) ? assets : [];
   const licenseAssets = safeAssets.filter((a) => a.category_type === 'License');

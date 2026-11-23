@@ -72,7 +72,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const hasEffectivePermission = (permission: string, legacyRoles: string[] = []) =>
     !isAuditor && (isSuperAdmin || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
-      : legacyRoles.includes(currentUser.role)));
+      : legacyRoles.some(role => currentUser.role === role || GabahService.hasLegacyCapability(currentUser, role))));
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeAssets = Array.isArray(assets) ? assets : [];

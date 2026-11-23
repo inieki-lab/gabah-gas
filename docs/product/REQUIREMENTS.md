@@ -11,13 +11,13 @@
 
 ### FR-01: Autentikasi Pengguna & Manajemen Sesi
 - **FR-01.1**: Sistem harus menyediakan mekanisme login berbasis email/alias dan kata sandi dengan verifikasi hash PBKDF2/SHA-256 dan salt kriptografis.
-- **FR-01.2**: Sistem harus menerbitkan token sesi unik (`token`) dengan masa aktif 7 hari yang disimpan pada tabel `user_sessions`.
-- **FR-01.3**: Sistem harus menyediakan endpoint `/api/auth/me` untuk memverifikasi profil akun aktif berdasarkan Bearer token.
-- **FR-01.4**: Sistem harus menyediakan fasilitas alih peran / simulasi persona (`/api/auth/switch-role`) untuk mempermudah evaluasi multi-peran pada lingkungan pengujian/pengembangan.
+- **FR-01.2**: Sistem harus menerbitkan sesi autentikasi unik dengan masa aktif yang dikonfigurasi dan menyimpan status sesi secara server-side pada `user_sessions`.
+- **FR-01.3**: Sistem harus menyediakan endpoint `/api/auth/me` untuk memverifikasi profil akun aktif melalui mekanisme sesi yang benar-benar diterapkan pada versi aplikasi. **Baseline `main` yang diperiksa 23 November 2026 menggunakan Bearer token**; perubahan ke HttpOnly cookie pada PR terpisah belum dianggap berlaku sebelum merge dan verifikasi.
+- **FR-01.4**: Fasilitas simulasi/alih identitas hanya boleh tersedia pada konteks yang diotorisasi dan tidak boleh menjadi jalur publik, fallback autentikasi, atau cara menaikkan hak akses. Perilaku dan ketersediaannya harus diverifikasi terhadap implementasi aktif; jangan menganggap simulasi lintas user sebagai fitur produksi.
 - **FR-01.5**: Sistem harus menerapkan rate limiting login (maksimal 5 kali percobaan gagal sebelum lockout 5 menit pada lingkungan produksi) dan API rate limiting (maksimal 200 req/menit per client IP).
 
 ### FR-02: Katalog Aset & Klasifikasi Akuntansi PSAK 16
-- **FR-02.1**: Sistem harus mencatat aset dengan atribut identitas: nomor aset kanonikal, nomor ERP Accurate (`corporate_asset_number`), nama aset, kategori, tipe taksonomi, owner domain dari master dinamis, unit pengelola, lokasi fisik dari master lokasi aset, custodian/PIC, merek, model, nomor seri, spesifikasi teknis, tanggal pembelian, harga perolehan, masa garansi, status, kondisi, status loanable, dan catatan. Owner domain tidak boleh dibatasi enum IT/GA/SC/PIBC atau disimpulkan dari lokasi kantor, lokasi fisik, unit, kategori, maupun pegawai pemegang aset.
+- **FR-02.1**: Sistem harus mencatat aset dengan atribut identitas: nomor aset kanonikal, nomor ERP Accurate (`corporate_asset_number`), nama aset, kategori, tipe taksonomi, owner domain dari master dinamis, unit pengelola, lokasi fisik dari master lokasi aset, custodian/PIC, merek, model, nomor seri, spesifikasi teknis, tanggal pembelian, harga perolehan, masa garansi, status, kondisi, status loanable, dan catatan. Owner domain tidak boleh disimpulkan dari lokasi kantor, lokasi fisik, unit, kategori, maupun pegawai pemegang aset. RPC/SC dan PIBC adalah lokasi/operasional context, bukan owner domain otomatis.
 - **FR-02.2**: Sistem membatasi akses katalog aset berdasarkan permission efektif dan data scope per modul, bukan label role atau lokasi kerja semata. Super Admin memiliki akses global; IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. GA hanya dapat memperoleh akses baca tambahan ke Laptop/PC owner IT melalui permission khusus `assets.read.it_workstations`. Owner operasional lain dapat ditambahkan melalui master dan diberi scope eksplisit. Karyawan melihat aset pribadi/pool sesuai permission; Auditor hanya membaca data yang secara eksplisit diotorisasi. Backend wajib menerapkan scope untuk list dan detail-by-ID.
 - **FR-02.3**: Sistem harus mendukung filter cepat berdasarkan kategori dan counter badge dinamis.
 - **FR-02.4**: Sistem harus mendukung pembuatan dan pencetakan label QR Code aset standar inventaris BUMD serta pemindaian QR menggunakan kamera web.
@@ -27,8 +27,8 @@
 - **FR-02.8**: Data historis dengan owner ambigu tidak boleh dimigrasikan massal berdasarkan lokasi atau kategori. Sistem harus menyediakan proses review dan audit untuk klasifikasi ulang.
 
 ### FR-03: Mesin Penomoran Kanonikal & Integritas Duplikasi
-- **FR-03.1**: Sistem harus meng-generate nomor aset otomatis dengan format `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` (Contoh: `IT-HLT-2026-0001`).
-- **FR-03.2**: Sequence nomor aset harus mereset setiap pergantian tahun per kombinasi divisi pemilik dan kode aset.
+- **FR-03.1**: Sistem harus mendukung generator nomor aset yang dapat dikonfigurasi Super Admin. **Standar nomor korporat final belum disahkan pemilik proses**; format yang tampil di contoh, konfigurasi lama, atau data historis bukan otomatis standar perusahaan.
+- **FR-03.2**: Aturan sequence, reset tahunan, prefix, dan kombinasi owner/kategori harus mengikuti konfigurasi aktif yang tervalidasi. Jangan hard-code pola IT/GA atau menganggap lokasi RPC/SC/PIBC sebagai owner aset.
 - **FR-03.3**: Sistem harus menolak pendaftaran aset jika nomor seri (`serial_number`) sudah terdaftar pada aset lain.
 - **FR-03.4**: Sistem harus menolak pendaftaran aset jika nomor Accurate ERP (`corporate_asset_number`) sudah terdaftar pada aset lain.
 
@@ -36,16 +36,16 @@
 - **FR-04.1**: Sistem harus mendukung penugasan aset ke karyawan tertentu (`POST /api/assets/:id/assign`), mengubah status aset menjadi `assigned`, dan mencatat riwayat pergerakan pada tabel `asset_movements`.
 - **FR-04.2**: Sistem harus mendukung pelepasan penugasan (*unassign*) ke gudang penampungan (`available`), mencatat riwayat pengembalian ke gudang.
 - **FR-04.3**: Sistem harus mendukung mutasi perpindahan lokasi aset (`POST /api/assets/:id/move`), mencatat lokasi asal, lokasi tujuan, dan alasan mutasi.
-- **FR-04.4**: Hanya personel divisi pemilik yang berwenang menugaskan atau merelokasi aset miliknya (personel GA dilarang memutasi atau menugaskan aset milik IT).
+- **FR-04.4**: Penugasan dan relokasi aset harus memerlukan permission operasi yang sesuai serta scope owner aset pada backend. Label role, jabatan, unit, atau lokasi pegawai tidak memberi kewenangan otomatis. GA tidak boleh memutasi aset owner IT hanya karena memperoleh akses baca HLT/HPC.
 
 ### FR-05: Siklus Hidup Aset (*Lifecycle Management*)
 - **FR-05.1**: Sistem harus menyediakan fungsi mutasi siklus hidup: servis/reparasi (`repair` → `in_repair`), rusak (`damaged` → `broken`), kanibalisasi suku cadang (`cannibalize` → `cannibalized`), usulan penghapusan (`propose_disposal` → `pending_disposal`), lelang (`auction` → `pending_auction`), dan penghapusan aset final (`approve_disposal` → `disposed`).
-- **FR-05.2**: Persetujuan penghapusan aset final (`approve_disposal`) hanya dapat dilakukan secara eksklusif oleh peran `Admin GABAH`.
+- **FR-05.2**: Persetujuan penghapusan aset final (`approve_disposal`) hanya dapat dilakukan oleh Superadmin yang memiliki otoritas administrasi global; label tampilan role tidak boleh menjadi satu-satunya kontrol backend.
 
 ### FR-06: Sirkulasi Peminjaman Aset (*Loans*) & BAST
 - **FR-06.1**: Sistem harus menyediakan alur pengajuan peminjaman barang dinas untuk aset berkategori `is_loanable`.
 - **FR-06.2**: Sistem harus mencegah tabrakan jadwal (*anti-collision*): menolak pengajuan atau persetujuan pinjaman jika aset yang sama telah disetujui atau sedang dipinjam pada rentang waktu yang bertabrakan.
-- **FR-06.3**: Persetujuan peminjaman (*approve*) hanya dapat dilakukan oleh divisi pemilik aset (IT untuk laptop/proyektor, GA untuk kendaraan, SC untuk alat logistik).
+- **FR-06.3**: Persetujuan peminjaman hanya dapat dilakukan oleh principal yang memiliki permission efektif dan data scope pada owner domain aset terkait. Contoh IT untuk aset owner IT dan GA untuk aset owner GA; contoh ini tidak membatasi owner domain masa depan. RPC/SC dan PIBC adalah konteks lokasi/operasional, bukan role atau owner otomatis.
 - **FR-06.4**: Sistem harus mencatat serah terima fisik barang (*handover*) dan pengembalian (*return*) dengan pencatatan kondisi fisik (`good`, `fair`, `poor`, `broken`).
 - **FR-06.5**: Sistem harus menyediakan dokumen Berita Acara Serah Terima (BAST) resmi siap cetak/unduh.
 
@@ -56,7 +56,7 @@
   - `high`: 8 jam kerja
   - `medium`: 24 jam kerja
   - `low`: 48 jam kerja
-- **FR-07.3**: Tiket secara otomatis diteruskan ke antrean divisi terkait (kategori IT/License ke IT Support, kategori GA ke Tim GA).
+- **FR-07.3**: Tiket harus diarahkan berdasarkan kategori/jenis layanan dan aturan routing yang dikelola, bukan asumsi role/lokasi pelapor. Baseline operasional yang disepakati: tiket IT diarahkan langsung ke IT Support; tiket fasilitas/GA dan ME mengikuti penanggung jawab/routing yang dikonfigurasi. Jangan menambahkan lapisan Admin IT tanpa keputusan bisnis.
 - **FR-07.4**: Agen teknisi dapat memperbarui status tiket (`open` → `in_progress` → `resolved` → `closed`), menambahkan catatan solusi teknis, dan pengguna dapat memberikan rating kepuasan.
 
 ### FR-08: Preventive Maintenance & Uji Tera

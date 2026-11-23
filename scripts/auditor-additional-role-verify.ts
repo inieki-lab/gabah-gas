@@ -40,4 +40,32 @@ assert.equal(GabahService.isAuditor(operationalUser), false);
 assert.equal(GabahService.canEditAsset(operationalUser, asset), true,
   'non-Auditor with effective assets.update retains the edit action');
 
-console.log('Auditor additional-role deny-write regression: 6/6 PASS');
+
+const canonicalItEmployee = {
+  ...operationalUser,
+  role: 'Karyawan',
+  role_keys: ['it'],
+  permission_keys: undefined,
+} as UserProfile;
+assert.equal(GabahService.canEditAsset(canonicalItEmployee, asset), true,
+  'file-store UI fallback must honor IT secondary capability on Karyawan profile');
+assert.equal(GabahService.canManageTickets(canonicalItEmployee), true,
+  'file-store UI fallback must expose IT ticket actions to Karyawan with IT capability');
+assert.equal(GabahService.isTicketVisibleToUser({ id: 'TKT-IT', category: 'IT', reporter_id: 'OTHER' } as any, canonicalItEmployee), true,
+  'IT secondary capability must expose the IT ticket queue in file-store mode');
+
+const canonicalGaEmployee = {
+  ...operationalUser,
+  role: 'Karyawan',
+  role_keys: ['ga'],
+  permission_keys: undefined,
+} as UserProfile;
+const gaAsset = { id: 'ASSET-GA-001', owner_division: 'GA' } as Asset;
+assert.equal(GabahService.canEditAsset(canonicalGaEmployee, gaAsset), true,
+  'file-store UI fallback must honor GA secondary capability on Karyawan profile');
+assert.equal(GabahService.canEditAsset(canonicalGaEmployee, asset), false,
+  'GA may not edit IT assets through the legacy UI fallback');
+assert.equal(GabahService.canManageTickets(canonicalGaEmployee), true,
+  'file-store UI fallback must expose GA ticket actions to Karyawan with GA capability');
+
+console.log('Auditor additional-role deny-write and secondary-capability regression: PASS');

@@ -1,57 +1,49 @@
 # Branch and AI Collaboration Policy
 
-**Reviewed:** 8 November 2026  
-**Repository:** inieki-lab/gabah-gas
+**Reviewed:** 23 November 2026  
+**Repository:** `inieki-lab/gabah-gas`  
+**Status:** Current workflow policy. PR numbers, branch names, and historical snapshots below are not permanent integration instructions.
 
-## Canonical work path
+## Canonical collaboration rules
 
-- The only active stabilization branch is fix/role-based-navigation (PR #18).
-- PR #18 is still Draft and targets main. It must remain unmerged until the full current-head CI, browser UAT, and release gates pass.
-- Dependabot PRs are managed separately and must not be mixed with product work.
-- Do not push new work to historical branches.
+1. Each agent works on a unique branch; never share or overwrite another agent's branch.
+2. Start from the explicitly agreed current base branch. Verify its name and HEAD SHA before editing.
+3. Open a pull request against the intended integration branch and include evidence, changed files, migration impact, tests, risks, and rollback.
+4. Never commit directly to `main`.
+5. Do not merge or deploy without explicit repository-owner approval.
+6. Do not merge stale branches wholesale. Compare histories and port only individually reviewed changes that are still needed.
+7. Dependabot changes remain separate from product changes unless there is a documented dependency-security reason to coordinate them.
+8. A closed PR does not mean its remote branch is safe to delete. Review unique commits and references before cleanup.
 
-## Closed/superseded pull requests
+## Branch naming
 
-The following PRs were closed after their relevant work was ported, replaced, or reviewed as stale:
+Use a unique, descriptive branch name, for example:
 
-| PR | Status | Disposition |
-|---|---|---|
-| #3 | Closed | Old ticket permission seed is superseded; current permission catalog and Auditor ticket-create deny migration are in PR #18. |
-| #11 | Closed | Docker Compose fail-fast, DB health dependency, env cleanup and Compose CI validation were ported. Historical sandbox audit is not treated as current test evidence. |
-| #12 | Closed | Superseded by docs/ops/PRODUCTION-READINESS-GATES.md and updated docs/testing/UAT.md. |
-| #13 | Closed | Regression CI expansion is included in PR #18. |
-| #14 | Closed | Fresh PostgreSQL migration corrections are included in PR #18 and exercised by PostgreSQL CI. |
-| #15 | Closed | Fail-closed sidebar behavior is included in the current navigation policy. |
-| #17 | Closed | Maintainer skill/AGENTS/guardrails, session restore behavior, user-role assignment API/UI and user-directory verification are incorporated or already present in PR #18. Multi-role persistence is verified by current PostgreSQL integration tests. |
+- `ai/codex/ticket-scope-audit`
+- `ai/gemini/room-reservation-uat`
+- `docs/ai-handoff-source-of-truth-2026-11-23`
+- `fix/session-cookie-integration-tests`
 
-Closing a PR does not delete its remote branch. Historical refs remain preserved until a repository maintainer performs a deliberate cleanup after reviewing unique commits. Do not use those branches for new work.
+The prefix may reflect the work type or agent. The critical rule is branch isolation and an explicit base/target, not a hard-coded agent list.
 
-## Remaining historical branches
+## Pull request evidence
 
-Branches such as chore/gabah-finalization-checklist, ci/expand-regression-gates, docs/record-stage-13f-merged, docs/uat-readiness-after-stage-13e, fix/contract-migration-fresh-db, fix/phase-1-user-role-audit, fix/rbac-sidebar-fail-closed, fix/session-restore-preview-login, stage-11-ticket-read-create-rbac, work/antigravity-sync, and work/stage-13* are historical/closed work paths. Their commits must not be merged wholesale. Port only a reviewed, missing fix with tests.
+Every PR must state:
 
-## New AI branch naming
+- Problem statement and source evidence.
+- Exact base branch/SHA and head branch/SHA.
+- Files and behavior changed.
+- Business-rule and data-impact assessment.
+- Migrations and rollback plan, or explicitly "none".
+- Commands and tests actually run, with pass/fail output.
+- CI result for the exact head SHA; "no checks" is not a pass.
+- Browser UAT and production-readiness gaps.
+- Documentation synchronized and unresolved decisions.
 
-While PR #18 is open, every AI agent creates a separate branch from fix/role-based-navigation:
+## Historical snapshot — do not use as current branch instructions
 
-- ai/codex/<work-item>
-- ai/gemini/<work-item>
-- ai/claude/<work-item>
-- ai/<other-agent-name>/<work-item>
+The following details belonged to a previous stabilization period and are retained only for traceability: PR #3, #11–#17, branch `fix/role-based-navigation`, the closed/superseded PR dispositions, and the list of historical branches recorded in earlier revisions. Their status must be re-fetched from GitHub before any operational decision. They do not define today's canonical integration branch.
 
-Examples:
-- ai/codex/ticket-scope-audit
-- ai/gemini/room-reservation-uat
-- ai/claude/vendor-contract-review
+## Current work snapshot
 
-Rules:
-1. One agent, one branch. Never share an AI branch.
-2. Open a PR targeting fix/role-based-navigation.
-3. Include problem/evidence, changed files, migrations, tests, risks, and rollback.
-4. No direct commits to main and no direct deploy from AI branches.
-5. Do not create a second integration branch.
-6. After PR #18 merges, new AI branches start from main and target main.
-
-## Current repository snapshot
-
-At the review point, only PR #18 and a separate Dependabot PR remained open. The canonical working branch was fix/role-based-navigation. Old remote branch refs were not deleted by this change; branch deletion requires repository-maintainer cleanup after verifying that no unique work remains.
+The documentation alignment work is tracked in PR #249 on branch `docs/ai-handoff-source-of-truth-2026-11-23`. A separate security/authentication workstream exists in PR #248 on branch `audit/full-system-hardening-2026-11-23`. Both were observed as open drafts during the 23 November 2026 review; re-check GitHub before relying on this snapshot. Neither PR being open means it is approved to merge.

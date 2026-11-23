@@ -1,5 +1,7 @@
 # GABAH — CURRENT STATE AUDIT
 
+> **HISTORICAL SNAPSHOT — NOT CURRENT SOURCE OF TRUTH.** Updated 3 October 2026. This report is preserved as historical evidence only. Its role list, authentication/storage claims, module status, test results, and production-readiness statements must not be treated as current without rechecking exact source, migrations, tests, CI, and UAT. Known superseded assumptions include a fixed nine-role model and Supply Chain/PIBC as login roles. Current owner-approved context is in `docs/PROJECT-CONTEXT.md`; document authority is defined in `docs/GABAH-DOCUMENTATION-CONTROL.md`.
+
 **Repository:** inieki-lab/GABAH
 **Status:** Current authoritative application architecture + verified status
 **Updated:** 3 Oktober 2026

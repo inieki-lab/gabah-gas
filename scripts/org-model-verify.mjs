@@ -53,16 +53,16 @@ async function main() {
     // Case 12: Supply Chain and PIBC are not application roles in the target model.
     // Their employee identities remain Karyawan with independent unit/location attributes.
     const users = (await req(b, 'GET', '/api/users', { token: admin })).json?.data || [];
-    const expectedSeedRoles = ['Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas', 'Karyawan', 'Auditor'];
+    const expectedSeedRoles = ['Admin GABAH', 'Karyawan'];
     const presentRoles = expectedSeedRoles.filter(r => users.some(u => u.role === r));
     const scUser = users.find(u => u.email === 'sc.warehouse@foodstation.co.id');
     const pibcUser = users.find(u => u.email === 'pibc.admin@foodstation.co.id');
     const noBranchRole = !users.some(u => ['Supply Chain', 'PIBC'].includes(u.role));
     const branchProfilesValid = scUser?.role === 'Karyawan' && scUser?.office_location_id === 'OFF-RPC'
       && pibcUser?.role === 'Karyawan' && pibcUser?.office_location_id === 'OFF-PIBC';
-    rec('12: SC/PIBC are employee locations/units, not seeded application roles', '7 canonical roles; SC/RPC + PIBC users are Karyawan with independent locations',
-      `${presentRoles.length}/7; branchProfiles=${branchProfilesValid}; legacyBranchRoles=${noBranchRole}`,
-      presentRoles.length === 7 && noBranchRole && branchProfilesValid);
+    rec('12: employee identity uses two primary profiles; functions are Dynamic RBAC and SC/PIBC are locations', '2 primary profiles; SC/RPC + PIBC users are Karyawan with independent locations',
+      `${presentRoles.length}/2; branchProfiles=${branchProfilesValid}; legacyBranchRoles=${noBranchRole}`,
+      presentRoles.length === 2 && noBranchRole && branchProfilesValid);
 
     // Case 1: user punya Role + Jabatan + Unit + Location independen
     const stafUnit = (db => db)(null);
@@ -76,14 +76,14 @@ async function main() {
     const unitSC = units.find(u => u.name === 'Supply Chain');
     const offPIBC = offices.find(l => l.name === 'PIBC');
     const offKP = offices.find(l => l.name === 'HO');
-    const itUser = users.find(u => u.role === 'IT');
-    // Staf + IT + PIBC: role IT, jabatan Staf, unit PIBC, lokasi PIBC
+    const itUser = users.find(u => u.email === 'it.support@foodstation.co.id');
+    // Staf + IT capability + PIBC unit/location: primary profile remains Karyawan
     const u1 = await req(b, 'PATCH', `/api/users/${itUser.id}`, { token: admin, body: { job_level_code: 'STAF', unit_id: unitPIBC?.id, office_location_id: offPIBC?.id } });
     const me1 = (await req(b, 'GET', '/api/auth/me', { token: it })).json?.data || {};
     rec('1: role+jabatan+unit+lokasi independen (IT+Staf+PIBC+PIBC)',
-      'role IT tetap + STAF + PIBC + PIBC',
+      'profil Karyawan + capability IT + STAF + PIBC + PIBC',
       `${me1.role}+${me1.job_level_code}+${me1.unit_id === unitPIBC?.id ? 'PIBC-unit' : me1.unit_id}+${me1.office_location_id === offPIBC?.id ? 'PIBC-off' : me1.office_location_id}`,
-      u1.status === 200 && me1.role === 'IT' && me1.job_level_code === 'STAF' && me1.unit_id === unitPIBC?.id && me1.office_location_id === offPIBC?.id);
+      u1.status === 200 && me1.role === 'Karyawan' && (me1.role_keys || []).includes('it') && me1.job_level_code === 'STAF' && me1.unit_id === unitPIBC?.id && me1.office_location_id === offPIBC?.id);
 
     // Case 2: Admin CRUD/disable master Jabatan
     const j1 = await req(b, 'POST', '/api/master/job-levels', { token: admin, body: { code: 'MANAGER', label: 'Manajer Senior', order: 3 } });
@@ -115,7 +115,9 @@ async function main() {
 
     // Case 5: Jabatan tidak otomatis memberikan permission mutation
     // Buat user Karyawan dengan jabatan DIREKSI — tetap ditolak mutasi aset.
-    const kar = users.find(u => u.role === 'Karyawan');
+    // Select an ordinary employee with no IT/GA operational capability;
+    // job level alone must never grant asset mutation authority.
+    const kar = users.find(u => u.role === 'Karyawan' && !(u.role_keys || []).some(key => ['it', 'ga'].includes(String(key).toLowerCase())));
     await req(b, 'PATCH', `/api/users/${kar.id}`, { token: admin, body: { job_level_code: 'DIREKSI' } });
     const karLogin = await (async () => { const r = await req(b, 'POST', '/api/auth/login', { body: { email: kar.email, password: up } }); return r.json?.data?.token || '' })();
     const gaAsset = ((await req(b, 'GET', '/api/assets', { token: admin })).json?.data || []).find(a => a.owner_division === 'GA');
@@ -129,7 +131,7 @@ async function main() {
     // pindahkan aset IT ke lokasi teks "PIBC" (lokasi ≠ owner)
     const mv = await req(b, 'POST', `/api/assets/${itLaptop?.id}/move`, { token: it, body: { newLocation: 'PIBC - Los Kantor' } });
     const after = ((await req(b, 'GET', '/api/assets', { token: admin })).json?.data || []).find(a => a.id === itLaptop?.id);
-    rec('6: Lokasi tidak mengubah asset number', originalNumber, `${after?.asset_number}`, mv.status === 200 && after?.asset_number === originalNumber);
+    rec('6: Lokasi tidak mengubah asset number', originalNumber, `${after?.asset_number} (move HTTP ${mv.status}${mv.json?.message ? ': ' + mv.json.message : ''})`, mv.status === 200 && after?.asset_number === originalNumber);
     rec('7: Asset IT di PIBC tetap owner IT', 'IT', `${after?.owner_division}`, after?.owner_division === 'IT');
     const gaAsset2 = assets.find(a => a.owner_division === 'GA');
     await req(b, 'POST', `/api/assets/${gaAsset2?.id}/move`, { token: admin, body: { newLocation: 'PIBC - Blok A' } });

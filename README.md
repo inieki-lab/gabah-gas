@@ -89,7 +89,7 @@ Server Linux menggunakan Docker Compose yang sama. Jalankan `chmod +x deploy.sh 
 ├── server/                      # Modul backend & business logic
 │   ├── auth.ts                  # Autentikasi sesi token Bearer, rate limiting, hashing
 │   ├── crypto.ts                # SHA-256 + salt password hashing & token generation
-│   ├── db.ts                    # In-memory store, seeder, canonical users (9 roles)
+│   ├── db.ts                    # In-memory store, seeder, legacy-compatible users normalized by Dynamic RBAC
 │   ├── migrations/              # Skema SQL PostgreSQL (DDL, Auth, Trigger)
 │   ├── numbering.ts             # Generator nomor kanonikal aset, tiket, pinjaman
 │   ├── persistence.ts           # PostgreSQL pool & dual-persistence resilience
@@ -120,24 +120,26 @@ Server Linux menggunakan Docker Compose yang sama. Jalankan `chmod +x deploy.sh 
 
 ---
 
-## 📚 Dokumentasi Utama (Single Source of Truth)
+## 📚 Dokumentasi Utama & Peta Acuan
 
-Seluruh dokumentasi telah disinkronkan secara presisi dengan source code aktual:
+Mulai dari [Documentation Authority & AI Handoff Guide](./docs/GABAH-DOCUMENTATION-CONTROL.md). Dokumentasi GABAH dikelola sebagai spesifikasi hidup. Tidak ada satu file yang sendirian menjadi sumber kebenaran untuk seluruh aspek: keputusan bisnis, implementasi, dan bukti tes memiliki fungsi serta otoritas berbeda. **Jangan menganggap semua dokumen otomatis sinkron**; status implementasi harus dibuktikan dari kode, migrasi, dan pengujian pada commit yang disebutkan.
 
 - **Produk & Kebutuhan**:
+  - [docs/PROJECT-CONTEXT.md](./docs/PROJECT-CONTEXT.md) — keputusan dan batasan bisnis yang disetujui pemilik produk; bukan bukti implementasi
+  - [docs/IMPLEMENTATION-TRUTH-REGISTER.md](./docs/IMPLEMENTATION-TRUTH-REGISTER.md) — perilaku yang ditemukan pada source baseline, status parsial, dan gap implementasi; bukan bukti tes
   - [PRD.md](./PRD.md) — Product Requirements Document lengkap
   - [PROJECT-RULES.md](./PROJECT-RULES.md) — Aturan proyek, standar kode, dan kebijakan zero-Laravel
   - [docs/product/REQUIREMENTS.md](./docs/product/REQUIREMENTS.md) — Spesifikasi kebutuhan fungsional & non-fungsional
   - [docs/product/BUSINESS-RULES.md](./docs/product/BUSINESS-RULES.md) — Matriks aturan bisnis otoritatif
 - **Arsitektur & Keamanan**:
   - [docs/architecture/ARCHITECTURE.md](./docs/architecture/ARCHITECTURE.md) — Arsitektur sistem fullstack & alur data
-  - [docs/architecture/RBAC.md](./docs/architecture/RBAC.md) — Matriks izin akses 9 peran resmi & titik penegakan kode
+  - [docs/architecture/RBAC.md](./docs/architecture/RBAC.md) — model Dynamic RBAC, permission, data scope, dan titik penegakan kode
   - [docs/architecture/DATABASE-DESIGN.md](./docs/architecture/DATABASE-DESIGN.md) — Skema tabel PostgreSQL, relasi, indeks, & trigger
-  - [docs/architecture/API-DESIGN.md](./docs/architecture/API-DESIGN.md) — Spesifikasi 46 endpoint REST API aktual
+  - [docs/architecture/API-DESIGN.md](./docs/architecture/API-DESIGN.md) — baseline kontrak API; endpoint dan auth wajib diverifikasi ke exact commit
   - [docs/architecture/DECISIONS.md](./docs/architecture/DECISIONS.md) — Architectural Decision Records (ADRs) yang telah diterapkan
 - **Desain, Aset & Pengujian**:
   - [docs/design/DESIGN-SYSTEM.md](./docs/design/DESIGN-SYSTEM.md) — Tipografi, palet warna korporat, tombol, form, dan modal
-  - [docs/asset/ASSET-NUMBERING.md](./docs/asset/ASSET-NUMBERING.md) — Standar penomoran aset kanonikal & rekonsiliasi Accurate ERP
+  - [docs/asset/ASSET-NUMBERING.md](./docs/asset/ASSET-NUMBERING.md) — catatan implementasi generator dan kebijakan penomoran yang masih menunggu standar korporat
   - [docs/testing/UAT.md](./docs/testing/UAT.md) — Skenario pengujian penerimaan pengguna (UAT) dan uji keamanan negatif
 - **Catatan Audit Sebelumnya**:
   - [AUDIT_NOTES.md](./AUDIT_NOTES.md) — Catatan rekam jejak pembaruan dan changelog audit

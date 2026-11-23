@@ -15,50 +15,10 @@ export type AppNavTab =
   | 'reports';
 
 /**
- * Product navigation policy.
- *
- * This controls presentation only. Every API and business operation must
- * continue to enforce authorization on the server.
+ * Navigation is permission-driven. There is deliberately no fixed role-to-menu
+ * matrix: Superadmin and custom job-function roles use the same effective
+ * permission contract returned by the backend.
  */
-export const ROLE_NAVIGATION: Readonly<Record<UserRole, readonly AppNavTab[]>> = {
-  'Admin GABAH': [
-    'dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance',
-    'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports',
-  ],
-  IT: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance',
-    'loans', 'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports',
-  ],
-  GA: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance',
-    'loans', 'tickets', 'contracts', 'vendors', 'knowledge', 'reports',
-  ],
-  'Sekretaris Direksi': [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  Humas: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  // Legacy labels retained for account compatibility only. These are
-  // locations, not application roles or asset-owner domains.
-  'Supply Chain': [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  PIBC: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  Karyawan: [
-    'dashboard', 'my_assets', 'meeting_rooms', 'loans', 'tickets', 'knowledge',
-  ],
-  Auditor: [
-    'dashboard', 'assets', 'maintenance', 'loans', 'tickets', 'licenses',
-    'contracts', 'vendors', 'knowledge', 'reports',
-  ],
-};
-
-// Core employee workspace tabs are the baseline product surface. In PostgreSQL
-// mode they still require their explicit read permission; this list is not a grant.
-// Backend endpoints remain authoritative for data scope and actions.
 export const CORE_NAVIGATION_TABS: readonly AppNavTab[] = [
   'dashboard', 'my_assets', 'loans', 'tickets', 'knowledge',
 ];
@@ -70,9 +30,8 @@ export function isCoreNavigationTab(tab: AppNavTab): boolean {
 const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   dashboard: ['dashboard.read'],
   my_assets: ['assets.read'],
-  // A visible page must be readable; mutation-only permissions cannot expose a page.
-  meeting_rooms: ['meeting_rooms.read'],
-  assets: ['assets.catalog.read'],
+  meeting_rooms: ['meeting_rooms.read', 'room_reservations.read'],
+  assets: ['assets.read', 'assets.catalog.read', 'assets.audit.read'],
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
   tickets: ['tickets.read'],
@@ -83,14 +42,15 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   reports: ['reports.read'],
 };
 
-/** Superadmin navigation follows the effective RBAC capability in PostgreSQL mode. */
+/** Superadmin navigation follows stable server metadata, never a display label. */
 export function isSuperadminNavigationAllowed(
-  role: UserRole | null | undefined,
+  _role: UserRole | null | undefined,
   isSuperadmin: boolean | undefined,
   permissionKeys?: readonly string[],
 ): boolean {
   if (permissionKeys !== undefined) return isSuperadmin === true || permissionKeys.includes('*');
-  return isSuperadmin === true || role === 'Admin GABAH';
+  // Compatibility only for file-store development before RBAC metadata exists.
+  return isSuperadmin === true || _role === 'Admin GABAH';
 }
 
 const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
@@ -98,7 +58,7 @@ const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
   'maintenance', 'contracts', 'vendors', 'licenses', 'knowledge', 'reports',
 ];
 
-/** Pick an authorized landing page when a user's current tab is no longer allowed. */
+/** Pick the first page the actor can actually read and whose module is active. */
 export function getDefaultNavTabForRole(
   role: UserRole | null | undefined,
   permissionKeys?: readonly string[],
@@ -108,15 +68,13 @@ export function getDefaultNavTabForRole(
     isNavTabAllowedForRole(role, tab, permissionKeys)
       && (activeModuleKeys === undefined || activeModuleKeys.includes(tab)),
   );
-  // In PostgreSQL mode, an empty effective permission set or a disabled
-  // module set must not silently fall back to an unavailable Dashboard.
   return allowedTab || (permissionKeys === undefined && activeModuleKeys === undefined ? 'dashboard' : null);
 }
 
 /**
- * PostgreSQL RBAC permissions are authoritative for the visible menu.
- * The role map is retained only for the file-store compatibility mode where
- * effective permission keys are intentionally not emitted by the API.
+ * PostgreSQL effective permission keys are authoritative. In file-store
+ * development, only the employee workspace is exposed to non-admin users;
+ * privileged modules require an authenticated RBAC permission payload.
  */
 export function isNavTabAllowedForRole(
   role: UserRole | null | undefined,
@@ -126,13 +84,16 @@ export function isNavTabAllowedForRole(
   if (!role) return false;
   if (permissionKeys !== undefined) {
     if (permissionKeys.includes('*')) return true;
-    // The room workspace loads both the room catalogue and reservation queue.
-    if (tab === 'meeting_rooms') return permissionKeys.includes('meeting_rooms.read')
-      && permissionKeys.includes('room_reservations.read');
-    // The inventory page requires its catalogue capability and shared asset read.
-    if (tab === 'assets') return permissionKeys.includes('assets.read')
-      && (permissionKeys.includes('assets.catalog.read') || permissionKeys.includes('assets.audit.read'));
-    return NAV_TAB_PERMISSIONS[tab].some(key => permissionKeys.includes(key));
+    const required = NAV_TAB_PERMISSIONS[tab];
+    if (tab === 'meeting_rooms') {
+      return permissionKeys.includes('meeting_rooms.read')
+        && permissionKeys.includes('room_reservations.read');
+    }
+    if (tab === 'assets') {
+      return permissionKeys.includes('assets.read')
+        && (permissionKeys.includes('assets.catalog.read') || permissionKeys.includes('assets.audit.read'));
+    }
+    return required.some(key => permissionKeys.includes(key));
   }
-  return ROLE_NAVIGATION[role]?.includes(tab) ?? false;
+  return role === 'Admin GABAH' || isCoreNavigationTab(tab);
 }

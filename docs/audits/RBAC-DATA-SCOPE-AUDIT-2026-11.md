@@ -1,8 +1,8 @@
 # Audit RBAC, Struktur Organisasi, dan Data Scope GABAH
 
-Tanggal audit: 8 November 2026  
-Branch: `fix/role-based-navigation`  
-Status: temuan awal terverifikasi dari source code; belum merupakan pernyataan bahwa seluruh endpoint telah diaudit.
+Tanggal audit awal: 8 November 2026  
+Branch pada saat audit: `fix/role-based-navigation`  
+Status: HISTORICAL audit snapshot; branch/temuan harus dibandingkan ulang dengan current main sebelum dipakai untuk keputusan.
 
 > **Pembaruan status 8 November 2026:** Bagian 2 di bawah adalah snapshot temuan awal, bukan seluruhnya kondisi kode terkini. Perbaikan lanjutan pada branch stabilisasi sudah mengubah beberapa poin. Gunakan pembaruan ini sebagai status terkini; temuan historis dipertahankan untuk jejak audit.
 

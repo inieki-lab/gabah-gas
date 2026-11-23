@@ -1,31 +1,38 @@
-# Primary profile roles and office-location mapping
+# Legacy Import Mapping — Primary Profiles and Office Locations
 
-## Canonical primary profile roles
+**Status:** Current compatibility rule for migration `048_dynamic_employee_profile_normalization.sql`; not an HR source-of-truth or authority to infer job/unit/permission.  
+**Reviewed:** 23 November 2026
 
-The primary profile role identifies the employee's broad application identity:
+## Current organization model
 
-- Admin GABAH
-- IT
-- GA
-- Karyawan
-- Auditor
+- The only primary account profiles are `Admin GABAH` and `Karyawan`.
+- IT, GA, Auditor, Humas, Sekretariat Direksi, ME Admin, and other work functions are additional Dynamic RBAC role/capability assignments.
+- Office location, organizational unit, job level, primary profile, additional role, permission, data scope, asset owner, physical asset location, and custodian are separate attributes.
+- RPC/SC and PIBC are operational locations/contexts, not application roles and not automatic asset-owner domains.
+- A user at RPC, PIBC, HO, Pangsub, or Kantor Perawatan may hold a job level such as Kadiv, Kadep, Kasi, or Staf and may receive role capabilities according to assigned duties and approved permissions.
 
-Humas and Sekretariat Direksi are function capabilities assigned through Dynamic RBAC, not primary profile roles. This lets an employee remain Karyawan while receiving narrowly scoped Humas or Secretariat permissions.
+## Legacy import aliases
 
-## Office locations are not roles
+These aliases are accepted only for compatibility with old seed/CSV records. They are not valid primary profiles and must not be used to infer job level, organizational unit, owner domain, or permission.
 
-Legacy import values are accepted only as migration aliases:
+| Legacy value | Primary profile after normalization | Location mapping | What is not inferred |
+|---|---|---|---|
+| Supply Chain / SC | Karyawan | RPC (`OFF-RPC`), only if no location is already set | Unit, job level, division/owner, role capability, permission, data scope |
+| PIBC | Karyawan | PIBC (`OFF-PIBC`), only if no location is already set | Unit, job level, division/owner, role capability, permission, data scope |
+| IT | Karyawan | Preserve existing location | IT capability is retained/assigned separately through Dynamic RBAC |
+| GA | Karyawan | Preserve existing location | GA capability is retained/assigned separately through Dynamic RBAC |
+| Auditor | Karyawan | Preserve existing location | Auditor read-only capability is retained/assigned separately through Dynamic RBAC |
+| Humas | Karyawan | Preserve existing location | Humas capability is retained/assigned separately through Dynamic RBAC |
+| Sekretaris Direksi | Karyawan | Preserve existing location | Secretariat capability is retained/assigned separately through Dynamic RBAC |
 
-| Legacy value | Stored primary role | Office location |
-|---|---|---|
-| Supply Chain | Karyawan | OFF-RPC |
-| PIBC | Karyawan | OFF-PIBC |
-
-The import does not infer an organizational unit from a location. Unit, job level, division, and office location remain separate attributes and must be supplied from their own masters when applicable.
+Migration 048 performs this narrowly scoped profile normalization and preserves existing unit/job/division data. It does not derive permissions or owner scope from a location. For production records, any additional correction to HR attributes must use approved HR/master data, an export/dry-run, backup, and a reviewed rollback plan.
 
 ## Import rules
 
-- Unknown primary roles are rejected; they are not silently converted to Karyawan.
-- Humas and Sekretaris Direksi rows are rejected as primary roles and must be imported as Karyawan, then receive the corresponding Dynamic RBAC capability.
-- Legacy Supply Chain and PIBC aliases are mapped to Karyawan with the matching office location.
-- Job level, unit, and office location IDs are validated against active master records.
+- Resolve user identity and active status from the approved employee source.
+- Validate office location, organizational unit, and job level against their own masters; do not derive one from another.
+- New user creation accepts only the primary profiles `Admin GABAH` and `Karyawan`.
+- Legacy labels may be accepted by CSV import as compatibility aliases, normalized to Karyawan, and reported with a warning. After import, an administrator assigns the required work-function role through Dynamic RBAC.
+- Unknown or inactive values must be reported for review; never silently grant a default role or broad scope.
+- Preserve legacy source values in migration/audit metadata where required for traceability.
+- Never use a location string as permission, role, or asset-owner authority.

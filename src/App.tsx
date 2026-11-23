@@ -14,7 +14,6 @@ import {
   MaintenanceStatus,
   MeetingRoom,
   RoomReservation,
-  UserRole,
   Contract,
   AssetMovement
 } from './types';
@@ -247,36 +246,6 @@ export default function App() {
       setIsGlobalSearchOpen(false);
       setIsAdministrationModalOpen(false);
       showToast(`Berpindah akun aktif: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
-      await refreshData();
-    } catch (err: any) {
-      showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
-    }
-  };
-
-  const handleSwitchRoleSimulation = async (role: UserRole) => {
-    try {
-      const res = await gabahApi.switchRole({ role });
-      const targetUser = res?.user || res?.data?.user;
-      if (!targetUser) {
-        showToast('Alih peran ditolak oleh server.', 'warning');
-        return;
-      }
-      setCurrentUser(targetUser);
-      setCurrentTab('dashboard');
-      setMeetingCategoryFilter('all');
-      setSelectedAssetForDetail(null);
-      setSelectedAssetForEdit(null);
-      setSelectedAssetForQr(null);
-      setSelectedLoanForBast(null);
-      setPreselectedTicketAssetId(undefined);
-      setContractForLinkedTicket(null);
-      setLinkedTicketContractId(undefined);
-      setIsCreateAssetModalOpen(false);
-      setIsCreateLoanModalOpen(false);
-      setIsCreateTicketModalOpen(false);
-      setIsGlobalSearchOpen(false);
-      setIsAdministrationModalOpen(false);
-      showToast(`Beralih peran: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
       showToast(err?.message || 'Alih peran ditolak oleh server.', 'warning');
@@ -755,12 +724,11 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Header Navbar with Role Switcher & Scan Barcode */}
+      {/* Top Header Navbar with Account Menu & Scan Barcode */}
       <HeaderNavbar
         currentUser={currentUser}
         allUsers={allUsers}
         onSelectUser={handleSelectUser}
-        onSwitchRoleSimulation={handleSwitchRoleSimulation}
         onOpenScannerModal={() => setIsScannerModalOpen(true)}
         onOpenGlobalSearch={() => setIsGlobalSearchOpen(true)}
         onChangePassword={() => setIsChangePasswordOpen(true)}

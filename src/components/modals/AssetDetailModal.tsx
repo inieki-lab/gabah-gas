@@ -109,7 +109,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
     isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser?.permission_keys?.includes('*') === true || currentUser?.permission_keys?.includes(permission) === true
-      : !!currentUser && legacyRoles.includes(currentUser.role))
+      : !!currentUser && legacyRoles.some(role => currentUser.role === role || GabahService.hasLegacyCapability(currentUser, role)))
   );
   const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);

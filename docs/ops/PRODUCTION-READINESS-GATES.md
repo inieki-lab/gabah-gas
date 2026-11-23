@@ -1,3 +1,7 @@
+# Production Readiness Gates — Historical Evidence and Current Gate Checklist
+
+> **HISTORICAL EVIDENCE WARNING (23 November 2026):** Semua SHA, CI run, angka PASS, migration counts, dan status branch di bawah adalah snapshot pada tanggal/commit yang disebutkan. Jangan menganggapnya sebagai status current HEAD. Re-fetch current main SHA, workflows, and test artifacts before using any item as passed. This document remains a checklist; no production GO is granted by old CI evidence.
+
 > **Pembaruan verifikasi 20 November 2026:** main HEAD `12c6d6830039e4effbd18125effead97b91983ef`. PR #165 (76/76), #167 (77/77), #169 (78/78), #170 (78/78), dan #172 (78/78) telah merged setelah CI exact-head lulus. Perubahan meliputi validasi relasi kontrak, integritas seed maintenance, kepemilikan data berdasarkan immutable ID, UUID akun yang collision-resistant, dan pencabutan sesi setelah perubahan assignment RBAC. Integrasi PostgreSQL membuktikan token lama ditolak setelah role assignment dan user dapat login ulang. **Status keseluruhan tetap NO-GO** sampai browser UAT per persona/lokasi, upgrade snapshot legacy, backup/restore PostgreSQL + uploads, staging deploy/rollback, dan sign-off selesai.
 
 > **Pembaruan verifikasi 20 November 2026:** PR #163 merged; main HEAD `a5838bae7b2e2faf854d605420f0e39b330d144f`. CI exact-head PR #163 lulus pada SHA `59f1dbfd59af0436fbe4b8a6fb92f57a3afa8c34` (71 langkah pemeriksaan substantif). Ini menguatkan G0 untuk lint/typecheck, regression suite, build, Docker runtime, PostgreSQL 17, dan P0 security pada tree yang di-merge. Pemeriksaan dead menu actions/placeholder routes dan hidden runtime exceptions tetap terbuka. CI bukan pengganti browser UAT, legacy upgrade rehearsal, backup/restore, staging, atau sign-off. Status keseluruhan tetap **NO-GO**.
@@ -5,16 +9,16 @@
 # GABAH — Production Readiness Gates
 
 **Owner:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Working integration branch:** fix/role-based-navigation (PR #18)  
-**Status:** NO-GO / stabilization in progress  
-**Last reviewed:** 8 November 2026
+**Historical snapshot:** last reviewed 8 November 2026; later CI/PR evidence must be re-fetched against the exact release SHA.  
+**Status at that snapshot:** NO-GO / stabilization in progress  
+**Current integration branch:** verify from GitHub; do not infer from this document.
 
 This checklist is the release control record. A green build is necessary but is not proof of production readiness. Every gate needs a timestamp, commit SHA, actual result, evidence, and reviewer.
 
 ## Release rules
 
 1. Freeze feature expansion. Close demonstrated defects and finish existing workflows before adding modules.
-2. One integration branch at a time. AI contributors use ai/agent-name/work-item branches and submit PRs to the integration branch.
+2. Use isolated contributor branches and submit PRs to the explicitly agreed current integration target; check AGENTS.md and docs/ops/BRANCH-AND-AI-COLLABORATION.md for the current workflow.
 3. Never merge a diverged branch wholesale. Port only reviewed, unique work.
 4. Do not run production data migrations until backup, dry-run, impact report, rollback plan, and explicit approval are complete.
 5. Do not deploy a draft PR. Production deploy must use a reviewed, merged commit/tag.
@@ -22,7 +26,7 @@ This checklist is the release control record. A green build is necessary but is 
 
 ## G0 — Repository and code health
 
-- [ ] Confirm the integration branch and exact HEAD SHA.
+- [ ] Confirm the intended integration/release branch and exact HEAD SHA. Historical PR #18/branch references are not current instructions.
 - [x] npm ci succeeds (CI #589).
 - [x] npm run lint succeeds (CI #589).
 - [x] npm run build succeeds (CI #589).

@@ -1,18 +1,22 @@
-# GABAH — Authoritative REST API Design Specification
+# GABAH — REST API Contract Baseline & Route Inventory
 
 **Dokumen:** `docs/architecture/API-DESIGN.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Server Platform:** Node.js + Express 4.21  
 **Base URL:** `/api`  
-**Status:** Authoritative API Specification (100% Sesuai Endpoint Aktual di `server.ts`)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Kontrak API baseline; endpoint, autentikasi, validasi, dan otorisasi harus diverifikasi terhadap implementasi pada exact commit.  
+**Terakhir Ditinjau:** 23 November 2026 (baseline source SHA tercatat di atas; handler-level reconciliation masih terbuka)  
 
 ---
 
+> Transport autentikasi browser dapat berubah. Jangan menganggap Bearer token, cookie session, header, endpoint, atau response shape masih berlaku tanpa memeriksa middleware auth, route handlers, API client, dan integration tests. Dokumentasikan perbedaan browser vs machine/API clients bila keduanya didukung.
+
 ## 1. Konvensi Umum API
 
+> **Baseline contract, not a verified live endpoint catalogue.** Tabel endpoint dan hak akses di bawah masih harus dicocokkan route-by-route dengan server.ts, middleware, domain services, API client, dan integration tests. Dynamic RBAC permission/scope mengungguli label role statis pada tabel. Jangan gunakan daftar ini sebagai bukti bahwa endpoint aktif atau authorization-nya telah diuji.
+
 ### 1.1 Header Permintaan & Autentikasi
-Kecuali untuk endpoint publik (`PUBLIC_API_PATHS`), setiap request wajib menyertakan header otentikasi Bearer token:
+Pada baseline `main` SHA `f39db6b8fd819d301f49815c7a33a04c80b2a6c0` (23 November 2026), middleware memvalidasi sesi dari Bearer token untuk semua endpoint selain `/api/health` dan `/api/auth/login`. Periksa `server/runtime-hardening.ts` dan `server/auth.ts` sebelum mengubah kontrak ini. PR cookie-auth yang belum merge tidak mengubah baseline ini. Setiap route juga dapat memiliki permission/scope tambahan di handler.
 ```http
 Authorization: Bearer <session_token>
 Content-Type: application/json
@@ -73,7 +77,7 @@ Content-Type: application/json
 | `/api/auth/login` | `POST` | Publik | Semua | Otentikasi email/alias & password. Mengembalikan user profile & Bearer token |
 | `/api/auth/logout` | `POST` | Bearer Token | Semua (termasuk Auditor) | Menghancurkan sesi aktif pada tabel `user_sessions` |
 | `/api/auth/me` | `GET` | Bearer Token | Semua | Mengembalikan data profil akun aktif berdasarkan token sesi |
-| `/api/auth/switch-role` | `POST` | Bearer Token / Publik (Dev) | Semua | Beralih persona/peran aktif untuk pengujian end-to-end multi-role |
+| `/api/auth/switch-role` | `POST` | Sesi Bearer terautentikasi | Admin GABAH saja (verifikasi ulang pada exact commit) | Alih identitas yang diotorisasi; sesi lama dirotasi dan aksi diaudit. Tidak boleh public atau menjadi bypass Auditor |
 
 ---
 
@@ -224,3 +228,77 @@ Content-Type: application/json
 | `/api/meeting-facilities` | `POST` | Bearer Token | `Admin GABAH` & `GA` | Menambah fasilitas baru ke katalog |
 | `/api/meeting-facilities/:id` | `PATCH`| Bearer Token | `Admin GABAH` & `GA` | Memperbarui fasilitas |
 | `/api/meeting-facilities/:id` | `DELETE`| Bearer Token | `Admin GABAH` & `GA` | Menghapus fasilitas |
+
+
+## 3. Source route inventory supplement — main snapshot 23 November 2026
+
+> Static extraction from route registrations in `server.ts` at main SHA `f39db6b8fd819d301f49815c7a33a04c80b2a6c0`. The existing endpoint tables above covered only a subset of registered routes. The following routes were present in source but absent from those tables at that SHA. This is a path inventory only: it does **not** prove route reachability, authorization correctness, request/response schema, or UAT. Verify middleware and handler behavior before relying on any route.
+
+Additional source routes found (64):
+
+- `DELETE /api/admin/rbac/roles/:id`
+- `DELETE /api/numbering/rules/:id`
+- `GET /api/admin/notification-rules`
+- `GET /api/admin/rbac/permissions`
+- `GET /api/admin/rbac/roles`
+- `GET /api/admin/rbac/user-assignments`
+- `GET /api/admin/system-settings`
+- `GET /api/assets/create-options`
+- `GET /api/contracts`
+- `GET /api/contracts/:id`
+- `GET /api/contracts/:id/documents/:documentId/download`
+- `GET /api/contracts/:id/notification-logs`
+- `GET /api/contracts/reminders/overview`
+- `GET /api/contracts/reminders/scheduler-status`
+- `GET /api/knowledge`
+- `GET /api/master/asset-locations`
+- `GET /api/master/job-levels`
+- `GET /api/master/office-locations`
+- `GET /api/master/org-units`
+- `GET /api/modules`
+- `GET /api/modules/:moduleKey/audit`
+- `GET /api/numbering/rules`
+- `GET /api/numbering/sequences`
+- `GET /api/tickets/:id/assignees`
+- `GET /api/tickets/:id/comments`
+- `GET /api/vendors`
+- `PATCH /api/admin/notification-rules/:ruleId`
+- `PATCH /api/admin/rbac/roles/:id`
+- `PATCH /api/admin/system-settings`
+- `PATCH /api/contracts/:id`
+- `PATCH /api/knowledge/:id`
+- `PATCH /api/master/asset-locations/:id`
+- `PATCH /api/master/job-levels/:code`
+- `PATCH /api/master/office-locations/:id`
+- `PATCH /api/master/org-units/:id`
+- `PATCH /api/modules/:moduleKey`
+- `PATCH /api/numbering/rules/:id`
+- `PATCH /api/tickets/:id/assignment`
+- `PATCH /api/vendors/:id`
+- `POST /api/admin/rbac/roles`
+- `POST /api/assets/bulk-import`
+- `POST /api/auth/change-password`
+- `POST /api/contracts`
+- `POST /api/contracts/:id/documents`
+- `POST /api/contracts/:id/documents/upload`
+- `POST /api/contracts/:id/milestones`
+- `POST /api/contracts/:id/renewal-decision`
+- `POST /api/contracts/reminders/run`
+- `POST /api/knowledge`
+- `POST /api/knowledge/:id/view`
+- `POST /api/knowledge/:id/vote`
+- `POST /api/loans/:id/reject`
+- `POST /api/master/asset-locations`
+- `POST /api/master/job-levels`
+- `POST /api/master/office-locations`
+- `POST /api/master/org-units`
+- `POST /api/numbering/rules`
+- `POST /api/tickets/:id/comments`
+- `POST /api/users/:id/reset-password`
+- `POST /api/users/bulk-import`
+- `POST /api/vendors`
+- `PUT /api/admin/rbac/roles/:id/permissions`
+- `PUT /api/admin/rbac/roles/:id/scopes`
+- `PUT /api/admin/rbac/users/:id/roles`
+
+The source inventory is a dated snapshot. Re-run extraction after route changes and update this document together with API tests and UAT.

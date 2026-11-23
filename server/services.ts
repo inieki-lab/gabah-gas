@@ -33,21 +33,29 @@ export function isNonLoanableInfrastructureAsset(asset: Partial<ServerAsset> & R
     || protectedDescription;
 }
 
-/** Sembilan role legacy yang perilaku scope-nya tetap berbasis rule lama getScopedAssets. */
-const LEGACY_SCOPED_ROLES = new Set(['Admin GABAH', 'Auditor', 'Humas', 'Karyawan', 'Sekretaris Direksi', 'IT', 'GA', 'Supply Chain', 'PIBC']);
-
-/** Dibagikan agar guard rute (mis. Maintenance Stage 13F) memakai satu definisi. */
-export function isLegacyScopedRole(role: string): boolean {
-  return LEGACY_SCOPED_ROLES.has(String(role));
-}
-
 interface AssetScopeSpec { type: string; value: string | null }
 
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string | string[]): boolean {
   if (isAuditorActor(actor)) return false;
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
-  return Boolean(legacyRole && (Array.isArray(legacyRole) ? legacyRole.includes(actor.role) : actor.role === legacyRole));
+
+  // File-store compatibility must honor secondary functional capabilities too.
+  // Employee profile normalization intentionally sets actor.role to Karyawan;
+  // the assigned job function is retained in role_keys (e.g. "ga" or
+  // "sekretaris_direksi"). Checking only the primary label silently strips
+  // Meeting Room operations from those employees during non-Postgres runs.
+  const allowedLabels = legacyRole ? (Array.isArray(legacyRole) ? legacyRole : [legacyRole]) : [];
+  const normalizeRoleKey = (value: string): string => value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const assignedKeys = new Set((actor.role_keys || []).map(normalizeRoleKey));
+  return allowedLabels.some(label =>
+    actor.role === label || assignedKeys.has(normalizeRoleKey(label))
+  );
 }
 
 /**
@@ -108,11 +116,13 @@ export function canMutateAssetOwner(actor: ServerUser, ownerDivision: string | n
       && (authority.divisions.has(owner) || (authority.all && !authority.excludedDivisions.has(owner)));
   }
 
-  const legacyOwnerByRole: Record<string, string> = {
-    IT: 'IT',
-    GA: 'GA',
-  };
-  return legacyOwnerByRole[actor.role] === owner;
+  // Canonical employee profiles use role="Karyawan"; operational ownership
+  // authority is carried by secondary Dynamic RBAC role_keys (e.g. "it"/"ga").
+  // Keep legacy IT/GA primary labels readable for older file-store snapshots.
+  const normalizeCapability = (value: unknown) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const ownerKey = normalizeCapability(owner);
+  const assigned = new Set([actor.role, ...(actor.role_keys || [])].map(normalizeCapability));
+  return (ownerKey === 'it' || ownerKey === 'ga') && assigned.has(ownerKey);
 }
 
 function textEquals(left: unknown, right: unknown): boolean {
@@ -319,26 +329,36 @@ export class GabahDomainService {
   static getScopedAssets(user: ServerUser): ServerAsset[] {
     if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
 
-    const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
-    const isEmployeeBaseline = employeeBaselineRoles.includes(user.role);
+    const isEmployeeBaseline = !isSuperadminActor(user) && !isAuditorActor(user);
 
     if (!isPostgresPersistenceActive()) {
-      if (isEmployeeBaseline) {
-        return db.assets.filter(asset => asset.assigned_to?.id === user.id || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase())));
-      }
-      if (user.role === 'IT') {
-        return db.assets.filter(asset => String(asset.owner_division || '').toUpperCase() === 'IT');
-      }
-      if (user.role === 'GA') {
-        // File-store compatibility mirrors the conservative legacy default:
-        // GA owns GA assets and may read IT laptops/desktops only. PostgreSQL
-        // deployments use the explicit assets.read.it_workstations capability.
+      const assignedOrLoanable = (asset: ServerAsset) =>
+        asset.assigned_to?.id === user.id
+        || (asset.is_loanable && ['IT', 'GA'].includes(String(asset.owner_division || '').toUpperCase()));
+      const capabilities = new Set([user.role, ...(user.role_keys || [])]
+        .map(value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')));
+      const hasItCapability = capabilities.has('it');
+      const hasGaCapability = capabilities.has('ga');
+
+      // Keep the employee's personal/loan-pool baseline, then add only the
+      // explicit operational read scope carried by the secondary capability.
+      // Do not let the baseline branch swallow IT/GA users before these checks.
+      if (hasItCapability) {
         return db.assets.filter(asset =>
-          String(asset.owner_division || '').toUpperCase() === 'GA'
+          assignedOrLoanable(asset) || String(asset.owner_division || '').toUpperCase() === 'IT'
+        );
+      }
+      if (hasGaCapability) {
+        // GA owns GA assets and may read IT laptops/desktops only; it must not
+        // gain visibility into IT servers/network infrastructure.
+        return db.assets.filter(asset =>
+          assignedOrLoanable(asset)
+          || String(asset.owner_division || '').toUpperCase() === 'GA'
           || (String(asset.owner_division || '').toUpperCase() === 'IT'
             && ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase()))
         );
       }
+      if (isEmployeeBaseline) return db.assets.filter(assignedOrLoanable);
       return [];
     }
 
@@ -1059,7 +1079,11 @@ export class GabahDomainService {
       return hasRbacPermission(String(actor.id), permissionKey)
         && hasRbacScope(String(actor.id), 'division', owner, 'loans');
     }
-    return actor.role === owner;
+    // Fallback (file-store, PostgreSQL unavailable): role and role_keys both
+    // map to owner-division authority. Canonical accounts carry role_keys
+    // ('it', 'ga') that mirror the legacy operator badges; role alone is not
+    // the only authorization token in file-store mode.
+    return actor.role === owner || (actor.role_keys || []).some((k) => String(k).toUpperCase() === owner);
   }
 
   /**

@@ -1,3 +1,5 @@
+> **Historical-progress note:** This file is a chronological log of work at the PR/commit stated in each entry. Older recommendations and role/owner assumptions may have been superseded. Do not use an old PASS or old status as current-head evidence. Current owner intent and source behavior are summarized in `docs/PROJECT-CONTEXT.md` and `docs/IMPLEMENTATION-TRUTH-REGISTER.md`.
+
 ### Production dependency vulnerability gate — 2026-11-23 (PR #244; CI pending)
 
 - Added `npm audit --omit=dev --audit-level=high` immediately after dependency installation in CI. The first run found three High and one Moderate advisory: body-parser 1.20.8, multer 2.4.0, qs 6.16.0, and Vite 6.4.3.
@@ -84,7 +86,7 @@
 
 - **Main HEAD:** `12c6d6830039e4effbd18125effead97b91983ef`.
 - **PR #165 — validasi relasi kontrak:** MERGED; CI exact-head lulus **76/76**.
-- **PR #167 — integritas seed maintenance:** MERGED; CI exact-head lulus **77/77**. Jadwal maintenance kini menunjuk master aset/vendor yang tepat; kode owner legacy `SC` dipertahankan sebagai domain divisi, sedangkan RPC tetap lokasi.
+- **PR #167 — integritas seed maintenance:** MERGED; CI exact-head lulus **77/77**. Jadwal maintenance kini menunjuk master aset/vendor yang tepat. Catatan lama tentang SC sebagai domain owner adalah snapshot saat itu dan tidak boleh digunakan untuk membuat owner baru; keputusan pemilik proyek saat ini memperlakukan RPC/SC sebagai lokasi/operasional context dan owner legacy SC/PIBC menunggu review per aset.
 - **PR #169 — kepemilikan data berbasis immutable user ID:** MERGED; CI exact-head lulus **78/78**. Kepemilikan tiket, pinjaman, dan aset pribadi tidak lagi diperoleh dari kecocokan nama/email.
 - **PR #170 — ID akun collision-resistant:** MERGED; CI exact-head lulus **78/78**. Create tunggal dan bulk import memakai `crypto.randomUUID()`; regression HTTP menguji dua create paralel.
 - **PR #172 — session revocation pada perubahan dynamic RBAC:** MERGED; CI exact-head lulus **78/78**. Setiap perubahan assignment role mencabut sesi target; integrasi PostgreSQL membuktikan token lama ditolak (401), kemudian user dapat login ulang dan hak baru diterapkan.
@@ -1438,3 +1440,150 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Removed the "Ingat perangkat ini" checkbox because login always stores the session token in localStorage regardless of the checkbox state. Replaced the inert password-help text with clear Service Desk contact guidance.
 - Removed the unused `availableUsers` prop and mock-user import from LoginPage; employee directory state is no longer passed into either public landing or login screens.
 - Expanded `test:public-landing-privacy` to assert these public-facing claims and controls remain truthful.
+
+
+### Legacy snapshot capability restoration — 2026-11-23 (stacked fix for PR #249; validation pending)
+
+- PR #249 CI run #3282 passed typecheck, dependency audit, production build, Docker runtime smoke, and PostgreSQL integration, but the meeting-room stage-3 regression failed 7 of 34 assertions: Sekdir HIGH-priority interruption and GA room operations were denied.
+- Root cause identified in `hydrateDbFromState()`: canonical users' primary profile and label were refreshed from `CANONICAL_USERS`, but canonical `role_keys` were not restored when loading older persisted snapshots that predate the `role_keys` field. That left canonical GA/Sekdir/Humas/IT users without their default secondary capability mirror after hydration, despite the new two-profile model.
+- Fix: when a canonical user's persisted `role_keys` field is absent/malformed, restore the canonical seed role keys. Preserve an explicit empty array so a deliberate role revocation is not undone. The subsequent existing Dynamic RBAC reconciliation persists those assignments and the PostgreSQL policy refresh reads them.
+- Added regression assertions to `test:employee-role-normalization` for missing-field restoration and explicit-empty preservation.
+- Fix branch: `fix/rbac-restore-canonical-secondary-roles-2026-11-23`. Code commit: `ae7db7906d1174f7072edecfff08317bc1a04c73`; test commit: `977a2b116e9e4766e61c76866ef044abd5f92f67`.
+- Exact-head CI and the previously failing meeting-room PostgreSQL test remain PENDING. Do not treat this as resolved until a fresh exact-head CI run passes.
+
+
+### Meeting Room secondary-role authorization fix — 2026-11-23 (PR #251; CI pending)
+
+- Exact CI run #3286 reproduced the same 7/34 failures. The diagnostic output showed canonical functional role keys (ga, sekretaris_direksi, humas) but no effective PostgreSQL permission metadata. The direct SQL probe did not run because the test parent process has no DATABASE_URL/PGHOST; therefore its absence must not be interpreted as proof of missing database assignments.
+- The actionable root cause is in server/services.ts: hasRoomPermission() used Dynamic RBAC permissions when PostgreSQL was active, but its file-store compatibility fallback compared only actor.role with legacy labels such as GA and Sekretaris Direksi. Employee-profile normalization intentionally sets these users' primary role to Karyawan, retaining their actual job functions in role_keys. Thus GA approval/check-in/check-out and Sekdir priority override were denied in file-store test/runtime mode.
+- Fix commit 7529a5e54044d0018e02bf070226d4b77e36efd3: file-store fallback now matches the requested legacy function against both the primary label and normalized secondary role_keys. Auditor denial and PostgreSQL authoritative permission checks remain unchanged; this does not grant roles by division or location.
+- CI run #3286 is still red on the meeting-room test; this new fix requires a fresh exact-head run. Do not claim resolved until all 34 assertions and the full workflow pass.
+
+
+### Contract creation role-capability and owner-scope fallback fix — 2026-11-23 (PR #251; CI pending)
+
+- Exact-head CI #3287 exposed a contract creation fixture failure: the seeded IT employee (USR-03) has primary profile Karyawan, functional capability `role_keys: ['it']`, and division IT. The file-store compatibility checks still compared only `user.role` with IT/GA and used the primary role as the owner-division scope. The create request was therefore denied before the test could validate missing/inactive PIC relations.
+- Fix commit 6a26f9995b6c903d92daff1b6ed35e9f5617c5ea: contract file-store fallback now honors normalized IT/GA secondary capabilities for contract management/create, and uses the employee's explicit `division` for owner-division scope/read/edit checks. PostgreSQL remains authoritative through `contracts.*` permissions and module-specific division scopes; Auditor deny-write and Superadmin handling remain unchanged.
+- This is an authorization compatibility fix, not a test bypass. The existing contract relation test still verifies missing/inactive PIC, escalation user, parent contract, dates, and payload integrity after authorization succeeds. Awaiting fresh CI validation.
+
+
+### Asset owner mutation secondary-role fallback fix — 2026-11-23 (PR #251; CI pending)
+
+- CI #3289 and #3290: Meeting Room now passes all 34/34 assertions. The remaining organization-model failure was case 6 (relocating an IT asset while preserving its asset number). The expected and actual asset-number strings were identical; the compound assertion failed because the move request itself was not HTTP 200.
+- Root cause in `canMutateAssetOwner()`: file-store fallback mapped ownership only from `actor.role` (legacy IT/GA primary labels). Canonical employees have primary role Karyawan and their operational function in `role_keys`, so the IT employee was denied relocation despite carrying `it` capability.
+- Fix commit e323a618c21e6b5f4104a7aecd07bc3dd1ff2a1f: file-store asset owner mutation now matches normalized IT/GA capability in either legacy primary role or secondary `role_keys`. PostgreSQL still requires both the explicit operation permission and owner-division scope; Superadmin and Auditor enforcement remain unchanged.
+- Updated `scripts/org-model-verify.mjs` to print move HTTP status and error message alongside the asset number, so future failures identify the failed condition rather than displaying two identical numbers. Fresh exact-head CI is required before declaring green.
+
+
+### Asset read-scope fallback ordering fix — 2026-11-23 (PR #251; CI pending)
+
+- Exact-head CI #3292 confirmed the prior mutation-capability fix was not sufficient: the organization-model case 6 still received HTTP 403 `Aset berada di luar scope pengguna.` before the move handler. The assertion now reports the move status and response message, exposing the true failing layer.
+- Root cause: `getScopedAssets()` file-store compatibility branch evaluated the generic employee baseline first. Because `isEmployeeBaseline` is true for all non-Superadmin/non-Auditor actors, the subsequent IT/GA branches were unreachable. Canonical IT employees (primary role Karyawan, secondary `it`) therefore could not see non-loanable IT assets at all locations, and GA's explicit read filter was also bypassed.
+- Fix commit d7cdcc6a0c3d5c40c1442ab0743b2bea6fc7d18b: evaluate explicit IT/GA secondary capabilities before the employee baseline. IT receives its IT owner domain plus personal/loan-pool assets; GA receives GA owner assets and IT HLT/HPC workstations only, plus personal/loan-pool assets; ordinary Karyawan retain assigned/pool-only visibility. PostgreSQL dynamic scope and permission logic is unchanged.
+- Exact-head CI must rerun the organization-model regression and the full workflow before this fix is considered complete.
+
+
+### Secondary-role consistency across tickets, loans, and room queues — 2026-11-23 (PR #251; CI pending)
+
+- The organization-model test exposed a second-stage access check: even after IT mutation capability was corrected, request middleware denied the asset because file-store `getScopedAssets()` returned the generic employee baseline before evaluating IT/GA secondary roles. Fix d7cdcc6a0c3d5c40c1442ab0743b2bea6fc7d18 resolves that ordering and preserves GA's workstation-only IT read exception.
+- Follow-up code audit found the same primary-role-only fallback pattern in scoped ticket/loan attention checks and Meeting Room operational queue visibility. Fix commits cb1b5ec7ae56e53da755425f074c211c42279672 and bb2088578692524400497731f7390d0a40d0e9aa now honor normalized IT/GA `role_keys` in file-store compatibility mode. PostgreSQL permission/scope checks remain authoritative.
+- Added regression guards to ticket transition and Meeting Room Stage 3 verification scripts to prevent these secondary-role fallbacks from regressing. Fresh full CI is required.
+
+
+### Dynamic RBAC source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3295 reached the Dynamic RBAC foundation checks and failed 1/142 source-contract assertions. Runtime behavior changes were not implicated: the static assertion still required the obsolete unreachable `user.role === 'IT'` branch in `getScopedAssets()`, which the new secondary-capability-first fallback intentionally replaces.
+- Updated `scripts/dynamic-rbac-foundation-verify.mjs` in commit 23ef8744fa267d3c54e4d5a35efa18ac8e9e7a3e to assert the new ordered IT/GA capability checks and the constrained owner-domain filters, while retaining the PostgreSQL dynamic scope and workstation-read assertions.
+- The exact-head full CI run must pass before merge. This updates the test contract to the intended model; it does not remove runtime coverage.
+
+
+### Frontend capability fallback consistency — 2026-11-23 (PR #251; CI pending)
+
+- Extended the secondary-role audit to the frontend compatibility layer. `src/services/gabahService.ts` still used primary-role labels for asset edit, loan approval, ticket visibility, and ticket actions whenever effective PostgreSQL permission metadata was absent. Canonical Karyawan users with IT/GA capabilities could therefore have correct backend access but missing UI actions in file-store mode.
+- Fix commit 0c3656f7a98ac7b1060f9859ac0906cb0ae6bce0 adds normalized capability matching for IT/GA and preserves Auditor deny-write precedence.
+- Added regression coverage in `scripts/auditor-additional-role-verify.ts` (commit 6c2b3d125827a26e7402fe7452d423ecd246bb35) for Karyawan+IT and Karyawan+GA fallback behavior, including GA's prohibition on editing IT assets.
+- CI must validate typecheck, UI capability tests, and all integration suites before merge.
+
+
+### Dashboard attention test contract alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3299 passed Dynamic RBAC foundation checks (142/142) and then failed one source-contract assertion in `scripts/dashboard-attention-middleware-verify.mjs`. That assertion still required primary IT/GA role-label checks in the file-store branch; the implementation now intentionally resolves both primary legacy labels and normalized secondary `role_keys`.
+- Updated the assertion in commit 42c83da721f6e2015ada77e3ef9a0ff2feb8bcfe to verify the secondary-role capability path and retain the requirement that it stays behind the file-store compatibility branch. Runtime PostgreSQL module-scope checks remain unchanged.
+
+
+### Asset-scope policy test contract alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3300 reached the asset-scope policy suite and found one outdated source assertion: it expected `isAuditor()` to inspect only an explicit `role_keys.includes('auditor')` array. The frontend helper now also preserves the legacy primary Auditor label through the shared normalized capability helper.
+- Updated the source-contract assertion in commit 0a474c5b7fa9347de2a1edac8c38d2779afddfbe to require `hasLegacyCapability(user, 'auditor')` while retaining deny-write checks in asset edit, loan approval, and ticket management. Runtime authorization behavior is not weakened.
+
+
+### Frontend module capability gates — dashboard, loans, assets, contracts, meeting masters — 2026-11-23 (PR #251; CI pending)
+
+- Extended the frontend compatibility audit beyond the first set of buttons. Several modules used `legacyRoles.includes(currentUser.role)`, which silently hid role-specific UI for canonical Karyawan profiles carrying IT/GA in `role_keys` when PostgreSQL permission metadata was absent.
+- Updated Dashboard, Loans, My Assets, Contracts, Asset Detail, and Meeting Master Settings to resolve legacy fallback roles through the shared normalized `GabahService.hasLegacyCapability()` helper. Existing permission metadata remains authoritative; Auditor deny-write and Superadmin precedence are preserved.
+- Earlier related UI fixes also cover Meeting Room GA operations, Sekdir override, and IT license creation. Full typecheck and UI/source-contract CI are pending.
+
+
+### UI regression follow-up — ticket actions and source-test hygiene — 2026-11-23 (PR #251; CI pending)
+
+- CI #3307 caught one missed frontend fallback: `canManageTickets()` still used a primary-role array after the other IT/GA UI gates were migrated. Updated it in commit 551b525de9b6eb89422115daaf773a828a847273 to honor secondary IT/GA capabilities, matching `canAssignTickets()` and the server policy.
+- CI #3309/#3310 caught a duplicate local `licenseUi` declaration introduced while adding the license UI source assertion. Removed the duplicate in commit eff03348e7826826a79017ab3fd895187ac30d85; the assertion now reuses the existing source binding.
+- Both are validation/test maintenance fixes; fresh exact-head CI remains required.
+
+
+### Organization-model fixture correction after IT asset scope passed — 2026-11-23 (PR #251; CI pending)
+
+- Exact-head CI #3315 confirmed the IT relocation path now succeeds (case 6: HTTP 200 and unchanged asset number). The remaining organization-model failure was case 5: the test selected the first Karyawan account without excluding assigned IT/GA capabilities, then expected it to be denied asset mutation after changing only job level to DIREKSI. With the new role model that fixture could be an operational IT/GA employee, so HTTP 200 was correct for its assigned capability.
+- Updated `scripts/org-model-verify.mjs` in commit a39508206a0febc699c0a07420ffc24075384b52 to select a Karyawan with no IT/GA operational role keys. The test now isolates the intended invariant: job level alone must not grant asset mutation.
+- No production authorization was weakened. Fresh exact-head CI remains pending.
+
+
+### Maintenance schedule secondary-role authorization fix — 2026-11-23 (PR #251; CI pending)
+
+- CI #3316 passed the organization-model regression, including IT asset relocation (HTTP 200) and job-level non-escalation. It then exposed the same primary-role-only pattern in Maintenance schedules: IT/GA list filters returned empty, while create/update allowlists denied canonical Karyawan users carrying `it`/`ga` capabilities.
+- Fix commit 40c013be3273bd62514fdc85a599244988617c5e updates the file-store maintenance list to scope IT schedules to IT-owned assets and GA schedules to GA-owned assets, using `hasApplicationRole()` for secondary capabilities. Create/update allowlists now accept Admin GABAH or explicitly assigned IT/GA capability, while the existing `canMutateAssetOwner()` check still enforces matching owner domain. Ordinary Karyawan, SC/RPC, PIBC, and Auditor remain denied as before.
+- Exact-head CI must rerun the maintenance live HTTP matrix and full workflow before merge.
+
+
+### Cross-module file-store secondary-role fallback audit — 2026-11-23 (PR #251; CI pending)
+
+- A broader server route audit found additional primary-role-only checks that were not covered by the first UI/asset/maintenance tests: ticket owner queue visibility, vendor owner filtering, dashboard owner summaries/attention, movement-history filtering, employee-directory read allowlist, and Knowledge Base write allowlists.
+- Fix commit dc415da4e8682a42c618f80896e7bc508c0c82a2 replaces these file-store-only role-label comparisons with the existing `hasApplicationRole()` resolver, which honors both legacy primary labels and explicit secondary `role_keys`. PostgreSQL paths continue to require their explicit permission and module scope. SC/RPC and PIBC location identities do not gain IT/GA capabilities from location alone.
+- This is a consistency pass across remaining server routes; full CI must validate movement, ticket, dashboard, directory, vendor, maintenance, and Knowledge Base behavior before merge.
+
+
+### Maintenance Dynamic RBAC source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3319 failed one of 142 Dynamic RBAC source-contract checks after the maintenance file-store allowlist was migrated from primary labels to `hasApplicationRole()`. The test still required the obsolete `['Admin GABAH', 'IT', 'GA'].includes(actor.role)` expression.
+- Updated the assertion in commit 347f5a99427c3aac3f24922c5ec4b76904e7e3eb to require the new Superadmin + explicit IT/GA capability guard for both create and update routes, while retaining the PostgreSQL permission gate and shared owner-scope mutation policy.
+
+
+### Knowledge Base source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3322 passed the maintenance source-contract check but reported two stale Dynamic RBAC source assertions for Knowledge Base create/update. The routes now intentionally use `isSuperadminActor()` plus `hasApplicationRole(it/ga)` in file-store mode rather than the legacy primary-role array.
+- Updated both assertions in commit 78e2efd3de439538d2df64b05572adc43a91805d to require the new capability-aware allowlist while preserving PostgreSQL `knowledge.create`/`knowledge.update` permission checks.
+
+
+### Employee-directory source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3324 passed Dynamic RBAC foundation checks after the Knowledge Base assertion update, then found one stale asset-scope source assertion for the file-store employee-directory allowlist. The implementation now uses Superadmin plus explicit IT/GA capabilities through `hasApplicationRole()`.
+- Updated the assertion in commit b05f75fafa39b75d45ea996490ca1e03278006bf to validate the capability-aware fallback while retaining the PostgreSQL `users.read` gate.
+
+
+### Maintenance dynamic-scope source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3327 passed the maintenance live HTTP authorization matrix (19/19), including IT/GA list filtering and matching-owner create/update. It then failed one source-contract check in `scripts/maintenance-dynamic-scope-verify.mjs`, which still expected the old primary-role GA filter.
+- Updated that assertion in commit 5a389ca939fcc56c972fd6be2e5525d19068cb9b to verify the new IT/GA secondary-capability owner filters, while retaining the PostgreSQL dynamic-scope and workstation-read-exclusion assertions.
+
+
+### Maintenance input-validation source-contract test alignment — 2026-11-23 (PR #251; CI pending)
+
+- CI #3328 passed the maintenance authorization live HTTP matrix (19/19), dynamic-scope consistency, and vendor reference checks. It then failed the maintenance input-validation source test because it still expected the old primary-role allowlist on POST.
+- Updated `scripts/maintenance-input-validation-verify.mjs` in commit 7999ddabf7803edb40808d54a88ec061331daf15 to assert the new capability-aware Superadmin/IT/GA allowlist on both POST and PATCH while retaining the validation-before-mutation assertions.
+
+
+### Merge readiness and final target-base validation — 2026-11-23
+
+- Exact-head CI #3331 on commit `c2b1289db92f5c5ce1ead31800d248ab7650fe90` completed successfully: 116/116 steps green, including the full production, Docker, PostgreSQL, security, RBAC, organization, Meeting Room, ticket, loan, and Maintenance suites.
+- PR #251 was retargeted from the stacked PR #249 branch directly to `main`, its description was consolidated to cover the complete stack, and it was marked ready for review. PR #249 is now superseded but remains open until PR #251 merges successfully.
+- A new exact-head CI run against the final `main` base is mandatory. Merge only after that run is green, the PR remains mergeable, and no required check/review gate is outstanding.

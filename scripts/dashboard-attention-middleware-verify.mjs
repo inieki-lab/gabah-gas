@@ -8,7 +8,7 @@ const block = source.slice(start, end + 2);
 const checks = [
   ['Borrower can always see own loan attention card', /loan\.borrower_id === actor\.id\) return true/.test(block)],
   ['PostgreSQL loan attention uses explicit loans owner scope', /isPostgresPersistenceActive\(\)[\s\S]*hasRbacScope\(String\(actor\.id\), 'division', owner, 'loans'\)/.test(block)],
-  ['Primary IT/GA role fallback is limited to file-store compatibility', /File-store compatibility only[\s\S]*actor\.role === 'IT' \|\| actor\.role === 'GA'/.test(block)],
+  ['Secondary IT/GA capability fallback is limited to file-store compatibility', /File-store compatibility only[\s\S]*actor\.role_keys \|\| \[\][\s\S]*capabilities\.has\(String\(loan\.owner_division/.test(block)],
 ];
 let failed = 0;
 for (const [name, pass] of checks) {

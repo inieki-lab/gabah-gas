@@ -1,17 +1,19 @@
-# GABAH — Authoritative Asset Numbering & Taxonomy Specification
+# GABAH — Asset Numbering Implementation Notes & Pending Policy
 
 **Dokumen:** `docs/asset/ASSET-NUMBERING.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Authority Kode Sumber:** `server/numbering.ts`, `server/taxonomy.ts`, `server/services.ts`  
-**Status:** Spesifikasi aktif; batasan implementasi runtime dicatat pada §4  
-**Terakhir Diperbarui:** 16 November 2026  
+**Status:** Catatan implementasi numbering saat ini + kandidat kebijakan; format korporat final menunggu konfirmasi standar resmi perusahaan.  
+**Terakhir Diperbarui:** 16 November 2026 (status kebijakan ditinjau 23 November 2026)  
 
 ---
 
-## 1. Format Penomoran Kanonikal
+> **Keputusan pemilik proses:** jangan menetapkan atau mengubah format nomor aset sebagai standar korporat final sebelum standar perusahaan dikonfirmasi. Contoh dan format di bawah menjelaskan implementasi/kandidat yang ada, bukan persetujuan final. Pertahankan nomor historis; perubahan aturan hanya melalui konfigurasi yang disetujui, validasi collision, audit log, dan rencana rollback.
 
-Sistem GABAH menetapkan format penomoran aset resmi yang seragam dan dihasilkan secara otomatis oleh server:
+## 1. Pola Format yang Digunakan Implementasi Saat Ini
+
+Generator saat ini mendukung pola berikut sebagai konfigurasi/implementasi teknis. Pola ini **belum disahkan sebagai standar korporat final**:
 
 $$\mathbf{\{OWNER\_DIVISION\}-\{ASSET\_CODE\}-\{YEAR\}-\{SEQUENCE\}}$$
 
@@ -23,7 +25,9 @@ Setiap komponen memiliki arti teknis dan akuntansi:
 
 ---
 
-## 2. Taksonomi Divisi & Kode Kategori Aset
+## 2. Kategori Aset dan Owner Domain
+
+IT dan GA adalah owner domain fungsional yang sudah digunakan pada aturan aset. Daftar kategori harus diverifikasi terhadap master kategori aktif dan taxonomy code; tabel ini tidak boleh digunakan untuk menyimpulkan owner dari lokasi fisik.
 
 ### 2.1 Divisi Teknologi Informasi (`IT`)
 Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik Divisi IT:
@@ -53,29 +57,20 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 | `TNH` | Tanah & Lahan Korporat | `General` | `TNH` | Lahan kawasan Cipinang & sentra produksi daerah |
 | `LNY` | Aset Tetap Lainnya | `General` | `LNY` | Aset sarana penunjang umum lainnya |
 
-### 2.3 Divisi Supply Chain & Logistik (`SC`)
-| Kode Aset | Nama Kategori | Tipe Taksonomi | Klasifikasi PSAK 16 | Deskripsi Singkat |
-|:---|:---|:---:|:---:|:---|
-| `KDR-SC` | Kendaraan Logistik Truk | `General` | `KDR` | Truk tronton beras, fuso wingbox, colt diesel |
-| `MSN` | Mesin Pabrik & Forklift | `General` | `MSN` | Rice milling plant, forklift gudang, conveyor |
+### 2.3 Histori kategori operasional (bukan owner domain)
 
-### 2.4 Divisi Pasar Induk Beras Cipinang (`PIBC`)
-| Kode Aset | Nama Kategori | Tipe Taksonomi | Klasifikasi PSAK 16 | Deskripsi Singkat |
-|:---|:---|:---:|:---:|:---|
-| `MSN-PIBC`| Mesin Timbangan & Tera | `General` | `MSN` | Jembatan timbang truk 60 ton & alat tera resmi |
+Kode kategori dan nomor historis yang memuat `SC` atau `PIBC` hanya dipertahankan untuk membaca dan menelusuri data lama. RPC/SC dan PIBC adalah lokasi/unit operasional, bukan role aplikasi atau owner aset otomatis. Jangan membuat owner domain baru, kategori baru, atau nomor baru dengan owner `SC`/`PIBC` berdasarkan tabel historis. Aset kendaraan, mesin, forklift, jembatan timbang dan peralatan operasional harus ditinjau per aset untuk menentukan fungsi owner/pengelola yang disahkan. Data lama tidak boleh direklasifikasi massal.
 
 ---
 
-## 3. Contoh Nomor Aset Aktual di Lapangan
+## 3. Contoh Nomor Historis / Pola Teknis (bukan persetujuan standar korporat)
 
 1. **Laptop IT Staff**: `IT-HLT-2026-0001`
 2. **Server Datacenter Utama**: `IT-HSV-2026-0001`
 3. **Lisensi Microsoft 365 E3**: `IT-SLIC-2026-0001`
 4. **Meja Kerja Kayu Jati Kantor**: `GA-INV-F-2026-0001`
 5. **Mobil Dinas Toyota Innova**: `GA-KDR-2026-0001`
-6. **Truk Logistik Fuso Wingbox**: `SC-KDR-SC-2026-0001`
-7. **Forklift Komatsu Pergudangan**: `SC-MSN-2026-0001`
-8. **Jembatan Timbang Truk 60 Ton PIBC**: `PIBC-MSN-PIBC-2026-0001`
+6. Nomor dengan owner `SC` atau `PIBC` yang sudah tersimpan harus diperlakukan sebagai histori/legacy dan ditinjau per aset; jangan gunakan contoh lama tersebut untuk penerbitan nomor baru.
 
 ---
 
@@ -88,7 +83,7 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 - **Batasan yang masih harus ditutup sebelum klaim production-ready:** counter generator masih berada di memori proses. Tabel `asset_number_sequences` tersedia pada skema, tetapi belum menjadi jalur atomik yang dipakai `generateAssetNumber()`. Karena itu, multi-instance/concurrent issuance belum dijamin atomik oleh PostgreSQL. Jangan mengklaim concurrency-safe sampai generator dipindahkan ke transaksi/UPSERT database dan diuji lintas proses.
 
 ### 4.2 Master Aturan Penomoran
-- Aturan tersimpan di tabel `asset_numbering_rules` (Migration 034) dan dikelola melalui Administration Control Panel oleh Superadmin.
+- Aturan tersimpan di tabel `asset_numbering_rules` (migration yang menambah aturan harus diverifikasi pada direktori `server/migrations/`; migration 043 tercatat sebagai baseline terkait) dan dikelola melalui Administration Control Panel oleh Superadmin.
 - Setiap aturan mengikat kombinasi `owner_division + asset_code`, separator, panjang sequence (3–8 digit), status aktif/nonaktif, dan catatan.
 - Jika tidak ada aturan khusus, generator mempertahankan format default `DIV-CODE-YEAR-SEQUENCE` dengan separator strip dan 4 digit.
 - Aturan nonaktif menolak penerbitan nomor baru untuk kombinasi tersebut; nomor aset lama tetap valid dan tidak diubah.
@@ -97,8 +92,6 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 - Aturan yang sudah memiliki aset atau sequence tidak dapat dihapus; gunakan Nonaktifkan agar histori tetap utuh.
 
 ### 4.3 Validasi Duplikasi Nomor Seri Fisik
-
-### 4.4 Validasi Duplikasi Nomor Seri Fisik
 - Sistem memvalidasi keunikan `serial_number`. Jika serial number yang sama sudah ada di database, server menolak pendaftaran dengan pesan:
   `Nomor Seri (Serial Number) "XYZ" sudah terdaftar pada aset IT-HLT-2026-0001 (Laptop Lenovo ThinkPad).`
 
@@ -120,7 +113,7 @@ Seluruh perangkat keras komputasi dan lisensi digital merupakan aset resmi milik
 - `server.ts`: API Superadmin untuk membaca, membuat, mengubah, menonaktifkan, dan menghapus aturan dengan guard server-side.
 
 Logika di atas tertanam secara otoritatif pada:
-- `server/numbering.ts`: Class `AssetNumberingEngine` yang mengatur sinkronisasi sequence dari memori dan generator atomik.
+- `server/numbering.ts`: class `AssetNumberingEngine` yang menyinkronkan sequence dari aset existing saat boot dan mengalokasikan nomor melalui `Map` in-memory. Generator belum menggunakan tabel `asset_number_sequences` untuk alokasi atomik PostgreSQL; multi-instance collision safety belum terjamin.
 - `server/taxonomy.ts`: Array `CANONICAL_TAXONOMY` dan fungsi `resolveTaxonomyByHumanName()`.
 - `server/services.ts`: Fungsi `createAsset()` pada `GabahDomainService`.
 - `server/migrations/001_gabah_normalized_schema.sql`: DDL tabel `assets`, `asset_categories`, dan `asset_number_sequences`.

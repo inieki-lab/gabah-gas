@@ -135,23 +135,14 @@ export interface NotificationRule {
 }
 
 export const SYSTEM_ROLES: { value: UserRole; label: string; desc: string }[] = [
-  { value: 'Admin GABAH', label: 'Admin GABAH (Super Admin)', desc: 'Kendali Penuh Seluruh Sistem & Konfigurasi' },
-  { value: 'IT', label: 'IT (Infrastruktur & Jaringan)', desc: 'Pengelola Aset TI, Komputasi & Lisensi' },
-  { value: 'GA', label: 'GA (General Affairs & Fasilitas)', desc: 'Pengelola Fasilitas, Gedung & Ruang Rapat' },
-  { value: 'Sekretaris Direksi', label: 'Sekretaris Direksi', desc: 'Reservasi VIP Ruang Rapat & Notifikasi Agenda' },
-  { value: 'Humas', label: 'Humas & Protokoler', desc: 'Dokumentasi Acara & Rapat di Semua Ruangan' },
-  { value: 'Supply Chain', label: 'Supply Chain & Pergudangan', desc: 'Pengelola Armada Truk & Pabrik Beras' },
-  { value: 'PIBC', label: 'PIBC (Pasar Induk Cipinang)', desc: 'Operasional Kawasan Pasar & Retribusi' },
-  { value: 'Karyawan', label: 'Karyawan (Pegawai Umum)', desc: 'Peminjaman Aset & Pengajuan Tiket' },
-  { value: 'Auditor', label: 'Auditor (Satuan Pengawas Internal)', desc: 'Audit Trail & Rekonsiliasi PSAK 16 Read-Only' },
+  { value: 'Admin GABAH', label: 'Admin GABAH (Superadmin)', desc: 'Administrator sistem dengan akses global melalui Dynamic RBAC.' },
+  { value: 'Karyawan', label: 'Karyawan / Pegawai', desc: 'Profil dasar seluruh pegawai; fungsi kerja diberikan melalui Dynamic RBAC.' },
 ];
 
-// Primary employee profiles only. Function capabilities (Humas/Sekretariat)
-// and branch work locations are assigned independently in the Role dialog
-// and Office Location master; they are not primary employee roles.
-export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES.filter(role =>
-  !['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(role.value)
-);
+// Profil utama hanya menyatakan identitas akun. IT, GA, Auditor, Humas,
+// Sekretariat Direksi, dan fungsi lain adalah role/capability tambahan dinamis.
+// RPC dan PIBC dikelola sebagai unit/lokasi, bukan role aplikasi.
+export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES;
 
 // T2B-3 — MASTER KATEGORI & ASET TETAP
 // Domain `main_type` kini diseragamkan dengan kode kanonikal di
@@ -176,17 +167,8 @@ export const GABAH_TAXONOMY_TYPES: { value: 'IT' | 'License' | 'General'; label:
   { value: 'General', label: 'General (Modul Inventaris Fisik / Fasilitas)', desc: 'Pengelolaan sarpras, mebel, kendaraan operasional, dan gedung dengan pelacakan fisik BAST' },
 ];
 
-const DEFAULT_PERMISSIONS: RolePermissionRow[] = [
-  { role: 'Admin GABAH', desc: 'Super Administrator', assets: 'Full Access', loans: 'Approve & Handover', tickets: 'All Categories', licenses: 'Full', reports: 'Full', audit: 'Full', admin: 'Full Control' },
-  { role: 'IT', desc: 'Teknologi Informasi & Sistem', assets: 'Divisi IT', loans: 'Approve IT Aset', tickets: 'IT & License', licenses: 'Manage', reports: 'Divisi IT', audit: 'View IT', admin: 'No' },
-  { role: 'GA', desc: 'General Affairs & Fasilitas', assets: 'Divisi GA', loans: 'Approve GA Aset', tickets: 'Fasilitas GA', licenses: 'Read', reports: 'Divisi GA', audit: 'View GA', admin: 'No' },
-  { role: 'Sekretaris Direksi', desc: 'Sekretariat Direksi & Komisaris', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
-  { role: 'Humas', desc: 'Humas & Protokoler Perusahaan', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
-  { role: 'Supply Chain', desc: 'Armada & Pergudangan Beras', assets: 'Divisi SC', loans: 'Approve Truk/SC', tickets: 'Logistik SC', licenses: 'Read', reports: 'Divisi SC', audit: 'View SC', admin: 'No' },
-  { role: 'PIBC', desc: 'Pasar Induk Beras Cipinang', assets: 'Divisi PIBC', loans: 'Approve Pasar', tickets: 'Operasional', licenses: 'Read', reports: 'Divisi PIBC', audit: 'View', admin: 'No' },
-  { role: 'Karyawan', desc: 'Pegawai Operasional BUMD', assets: 'Aset Pribadi', loans: 'Request Pinjam', tickets: 'Buat Tiket Sendiri', licenses: 'No', reports: 'No', audit: 'No', admin: 'No' },
-  { role: 'Auditor', desc: 'Satuan Pengawas Internal / BPKP', assets: 'Audit Only', loans: 'Audit History', tickets: 'Audit Trail', licenses: 'Audit', reports: 'Rekonsiliasi', audit: 'Full Read', admin: 'No' },
-];
+// No static permission matrix: role templates and grants are loaded from PostgreSQL Dynamic RBAC.
+const DEFAULT_PERMISSIONS: RolePermissionRow[] = [];
 
 /**
  * Vocabulary otorisasi standar (template) per kolom matriks, diturunkan dari
@@ -1607,7 +1589,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // ============ IMPORT MASSAL PEGAWAI (CSV/Excel) ============
-  const validImportRoles = [...PRIMARY_PROFILE_ROLES.map(r => r.value as string), 'Supply Chain', 'PIBC'];
+  const validImportRoles = [...PRIMARY_PROFILE_ROLES.map(r => r.value as string), 'IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'];
   const validImportDivisions = divisions.map(d => String(d.code));
   const validImportJobLevels = jobLevels.filter(j => j.is_active).map(j => String(j.code));
   const validImportUnitIds = orgUnits.filter(u => u.is_active).map(u => String(u.id));
@@ -2356,20 +2338,6 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
                                 user.role === 'Admin GABAH'
                                   ? 'bg-purple-50 text-purple-700 border-purple-200'
-                                  : user.role === 'IT'
-                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                  : user.role === 'GA'
-                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                  : user.role === 'Supply Chain'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : user.role === 'Auditor'
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : user.role === 'PIBC'
-                                  ? 'bg-teal-50 text-teal-700 border-teal-200'
-                                  : user.role === 'Sekretaris Direksi'
-                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                  : user.role === 'Humas'
-                                  ? 'bg-pink-50 text-pink-700 border-pink-200'
                                   : 'bg-slate-100 text-slate-700 border-slate-200'
                               }`}>
                                 {user.role}
@@ -3010,7 +2978,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                           <span className="text-[11px] text-slate-500">{rbacRoles.length} role</span>
                         </div>
                         <div className="divide-y divide-slate-100">
-                          {rbacRoles.map(role => (
+                          {rbacRoles.filter(role => !['supply_chain', 'pibc'].includes(String(role.role_key))).map(role => (
                             <div key={role.id} className={'p-3 ' + (rbacSelectedRoleId === role.id ? 'bg-emerald-50/70' : '')}>
                               <button type="button" onClick={() => handleSelectRbacRole(role)} className="w-full text-left">
                                 <div className="flex items-start justify-between gap-2">
@@ -3227,7 +3195,11 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {permissions.map((row) => (
+                    {permissions.length === 0 ? (
+                      <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                        Matriks role statis telah dihentikan. Kelola role, permission, dan scope aktual pada bagian Dynamic RBAC.
+                      </td></tr>
+                    ) : permissions.map((row) => (
                       <tr key={row.role} className="hover:bg-slate-50">
                         <td className="px-4 py-3">
                           <div className="font-bold text-slate-800">{row.role}</div>
@@ -3355,7 +3327,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         ))}
                       </div>
                       <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800 leading-relaxed">
-                        <strong>Catatan tata kelola:</strong> matriks ini adalah referensi hak akses pada panel administrasi. Penegakan akses aktual (RBAC) tetap ditegakkan oleh server terhadap 9 peran resmi GABAH — perubahan di sini tidak memperluas atau membatasi hak akses riil pengguna.
+                        <strong>Catatan tata kelola:</strong> matriks ini adalah referensi hak akses pada panel administrasi. Penegakan akses aktual mengikuti Dynamic RBAC di server; profil utama hanya Admin GABAH/Karyawan, sedangkan role fungsi dan scope dikelola terpisah.
                       </div>
 
                       <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
@@ -5384,7 +5356,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 <div>[GABAH Health] persistence: {healthStatus.persistence || 'belum diperiksa'}</div>
                 <div>[GABAH Scheduler] enabled: {healthStatus.scheduler?.enabled ?? 'belum diperiksa'} · timezone: {healthStatus.scheduler?.timezone || '-'} · intervalMs: {healthStatus.scheduler?.intervalMs ?? '-'}</div>
                 <div>[GABAH Data] {assets.length} aset · {loans.length} peminjaman · {tickets.length} tiket · {userList.length} pengguna · {auditLogs.length} log audit</div>
-                <div>[GABAH RBAC] 9 peran resmi ditegakkan server-side (Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Supply Chain, PIBC, Karyawan, Auditor)</div>
+                <div>[GABAH RBAC] Profil utama: Admin GABAH / Karyawan · role fungsi, permission, dan scope dikelola dinamis di server</div>
               </div>
             </div>
           )}

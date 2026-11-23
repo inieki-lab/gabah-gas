@@ -264,16 +264,12 @@ export interface KnowledgeArticle {
   updated_at: string;
 }
 
-export type UserRole =
-  | 'Admin GABAH'
-  | 'IT'
-  | 'GA'
-  | 'Sekretaris Direksi'
-  | 'Humas'
-  | 'Supply Chain'
-  | 'PIBC'
-  | 'Karyawan'
-  | 'Auditor';
+/**
+ * Display/profile label only. Authorization is resolved from Dynamic RBAC
+ * assignments and effective permission keys, never from a closed role union.
+ * Legacy values remain readable during the account-normalization transition.
+ */
+export type UserRole = string;
 
 export interface UserProfile {
   id: string;

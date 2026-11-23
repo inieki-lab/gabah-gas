@@ -61,8 +61,14 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     checklistText: '',
   });
 
-  const canManage = ['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
-  const isRequestRole = ['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan'].includes(currentUser?.role || '');
+  const hasPermissionMetadata = Array.isArray(currentUser?.permission_keys);
+  const canManage = currentUser?.is_superadmin === true
+    || currentUser?.role_keys?.includes('superadmin') === true
+    || currentUser?.permission_keys?.includes('*') === true
+    || (hasPermissionMetadata
+      ? currentUser!.permission_keys!.some(key => ['maintenances.create', 'maintenances.update'].includes(key))
+      : currentUser?.role === 'Admin GABAH' || ['IT', 'GA'].includes(currentUser?.role || '') || ['it', 'ga'].some(key => currentUser?.role_keys?.includes(key) === true));
+  const isRequestRole = currentUser?.role === 'Karyawan' || ['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(currentUser?.role || '');
 
   // Filtered schedules
   const filteredSchedules = schedules.filter((sch) => {

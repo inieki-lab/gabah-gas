@@ -34,7 +34,7 @@ GABAH tidak menggunakan sembilan label role lama sebagai daftar role permanen. R
 2. Permission dan scope harus diperiksa pada backend untuk list, detail-by-ID, create, update, delete, approval, export, pencarian, dashboard, dan agregasi.
 3. Frontend hanya menyajikan menu dan aksi sesuai permission efektif; menyembunyikan menu bukan kontrol keamanan.
 4. Beberapa role dinamis dapat diberikan ke satu user. Role tambahan bersifat additive sesuai permission/scope yang ditetapkan, dan tidak boleh hilang akibat siklus persistensi normal.
-5. Satu primary role tetap selaras dengan profil user selama masa transisi. Backfill kompatibilitas tidak boleh menghapus role tambahan yang sah.
+5. Profil utama hanya `Karyawan` atau `Admin GABAH`. Fungsi IT, GA, Auditor, Humas, Sekretariat Direksi, ME Admin, dan fungsi lain diberikan melalui assignment Dynamic RBAC; jangan membuat union role primer baru di kode.
 6. Role tidak aktif, user nonaktif, scope tidak dikenal, dan role dinamis tanpa scope harus gagal tertutup (deny-by-default).
 7. Jabatan dan lokasi kerja tidak memberikan permission secara implisit.
 8. Auditor hanya memiliki akses baca yang diberikan secara eksplisit; operasi mutasi harus ditolak di backend.
@@ -44,11 +44,11 @@ GABAH tidak menggunakan sembilan label role lama sebagai daftar role permanen. R
 
 Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC/SC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
 
-Owner domain adalah master fleksibel (misalnya IT, GA, RPC/SC, dan domain lain yang disahkan), bukan enum tetap. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
+Owner domain adalah master fleksibel (misalnya IT, GA, dan domain fungsi lain yang secara eksplisit disahkan). RPC/SC dan PIBC adalah lokasi/operasional context, bukan owner domain otomatis. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
 
 ### 1.4 Legacy role labels
 
-Admin GABAH, IT, GA, Sekretaris Direksi, Humas, Karyawan, dan Auditor tetap menjadi profil/role primer transisi. Supply Chain dan PIBC adalah lokasi/unit/fungsi operasional, bukan role aplikasi permanen. Akun historis tidak boleh diubah massal berdasarkan lokasi saja. Mapping harus berdasarkan data HR, unit kerja, jabatan, dan persetujuan administrator.
+Profil utama yang boleh disimpan di `users.role` hanya `Admin GABAH` dan `Karyawan`. IT, GA, Auditor, Humas, Sekretariat Direksi, ME Admin, dan fungsi lainnya adalah role/capability tambahan dari Dynamic RBAC. RPC/SC dan PIBC adalah lokasi/unit operasional, bukan role. Migration `048_dynamic_employee_profile_normalization.sql` menormalkan label primer lama menjadi Karyawan, mempertahankan assignment fungsi IT/GA/Auditor/Humas/Sekretariat Direksi sebagai role tambahan, dan menonaktifkan template lokasi `supply_chain`/`pibc`. Jangan mengubah akun produksi secara manual di luar migration yang ditinjau, backup, dan rollback.
 
 Contract Management tetap domain tersendiri; scope kontrak menggunakan owner domain dan PIC. Vendor category tidak boleh dipakai sebagai pengganti owner domain.
 
@@ -59,13 +59,13 @@ Contract Management tetap domain tersendiri; scope kontrak menggunakan owner dom
 | Fungsi | Kebijakan dasar | Catatan enforcement |
 |---|---|---|
 | Super Admin | Global administration sesuai permission | Satu-satunya role dengan hak administrasi global; lindungi Super Admin aktif terakhir |
-| IT | Owner IT lintas lokasi | Aksi per modul tetap memerlukan permission dan scope |
-| GA | Owner GA lintas lokasi | IT workstation hanya read-only melalui permission khusus |
+| Dynamic role IT | Owner IT lintas lokasi | Assignment tambahan pada profil Karyawan; aksi tetap memerlukan permission dan scope |
+| Dynamic role GA | Owner GA lintas lokasi | Assignment tambahan pada profil Karyawan; IT workstation hanya read-only melalui permission khusus |
 | Karyawan | Fungsi dasar pribadi: aset ditugaskan, permintaan pinjaman, tiket sendiri, reservasi | Role tambahan dapat memberi kapabilitas kerja yang disahkan |
-| Sekretaris Direksi | Fungsi dasar karyawan + agenda/permintaan dukungan Direksi | Prioritas/override harus permission khusus dan audit |
-| Humas | Fungsi dasar karyawan + antrean pekerjaan dokumentasi yang ditugaskan | Detail agenda disamarkan untuk pihak tanpa kewenangan |
-| Auditor | Read-only sesuai grant audit | Tidak boleh create/update/delete/approve |
-| RPC/SC dan owner operasional lain | Kapabilitas sesuai owner domain dan scope yang diberikan | Nama unit/lokasi tidak otomatis menjadi role atau scope |
+| Capability Sekretariat Direksi | Ditambahkan pada profil pegawai yang ditugaskan; bukan primary role terpisah | Prioritas/override harus permission khusus dan audit |
+| Capability Humas | Ditambahkan pada profil pegawai yang ditugaskan; bukan primary role terpisah | Detail agenda disamarkan untuk pihak tanpa kewenangan |
+| Dynamic role Auditor | Read-only sesuai grant audit | Assignment tambahan pada profil Karyawan; tidak boleh create/update/delete/approve |
+| Unit/fungsi operasional lain | Kapabilitas sesuai owner domain dan scope yang disahkan | Nama unit/lokasi tidak otomatis menjadi role, owner, atau scope |
 
 Matriks di atas adalah baseline kebijakan. Permission dan scope aktual harus dibaca dari database RBAC, bukan dari nama role atau tabel statis di frontend.
 
@@ -86,8 +86,10 @@ Sumber implementasi yang harus ditinjau bersama sebelum perubahan RBAC:
 
 Setiap perubahan harus memeriksa route, domain service, policy, persistence/migration, API client, UI, dan test yang terdampak. Jangan mengandalkan nomor baris dokumentasi karena kode terus berubah.
 
-## 4. Akun Kanonikal (Kredensial Tidak Dipublikasikan)
+## 4. Legacy Seed/Test Accounts (Not an HR Roster or Canonical Role List)
 
+> **Status:** Tabel berikut adalah fixture akun/alias dari seed lama untuk kompatibilitas dan pengujian. Nama, jabatan, unit, role primer, dan email harus diverifikasi sebelum digunakan dalam UAT; tabel ini bukan roster HR atau sumber assignment produksi.
+>
 > **SECURITY (CR-02):** Tidak ada password default yang ditulis di dokumentasi.
 > Kredensial awal diprovision dari environment secrets saat boot:
 > `GABAH_INITIAL_ADMIN_PASSWORD` (akun Admin GABAH) dan
@@ -98,14 +100,14 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 | Peran | Nama Pegawai | Email Kanonikal | Password | Divisi & Jabatan |
 |:---|:---|:---|:---|:---|
 | **Admin GABAH** | Budi Santoso | `admin@foodstation.co.id` | `<INITIAL_ADMIN_PASSWORD>` | IT / Super Administrator |
-| **IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT / IT Technical Support |
-| **GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / General Affairs & Sarpras |
-| **Karyawan + capability Sekretaris Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Sekretariat Direksi |
-| **Karyawan + capability Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Humas & Protokoler |
+| **Karyawan + role IT** | Dani Setiawan | `it.support@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | IT / IT Technical Support |
+| **Karyawan + role GA** | Siti Rahmawati | `ga@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / General Affairs & Sarpras |
+| **Karyawan + role Sekretariat Direksi** | Dewi Anggraini, S.Sos | `sekretariat.direksi@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Sekretariat Direksi |
+| **Karyawan + role Humas** | Rina Kartika, M.I.Kom | `humas@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | GA / Staf Humas & Protokoler |
 | **Karyawan** | Agus Pratama | `sc.warehouse@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit Supply Chain / lokasi RPC/SC |
 | **Karyawan** | Bambang Hermawan | `pibc.admin@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Unit PIBC / lokasi PIBC |
 | **Karyawan** | Hendra Wijaya | `hendra.w@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Komersial / Staf Komersial |
-| **Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Audit / Auditor Internal (SPI) |
+| **Karyawan + role Auditor** | Maya Indriani, SE, Ak, CA | `auditor@foodstation.co.id` | `<INITIAL_USER_PASSWORD>` | Audit / Auditor Internal (SPI) |
 
 ---
 
@@ -122,7 +124,7 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 |:---|:---|:---|:---|
 | `dashboard.read` | `GET /api/dashboard/stats` + `/api/dashboard/attention` | `013` (legacy compatibility seed; review before production mapping) | aktif di PostgreSQL |
 | `assets.read` | `GET /api/assets` + `GET /api/assets/:id` | `014` (legacy compatibility seed; review before production mapping) | aktif di PostgreSQL |
-| `assets.create` | `POST /api/assets` | `016` (superadmin/it/ga/supply_chain/pibc) | aktif |
+| `assets.create` | `POST /api/assets` | `016` (legacy compatibility grants; `supply_chain`/`pibc` tidak boleh dianggap role aktif baru) | Grant tersedia; mapping produksi wajib review |
 | `assets.update` | `PATCH /api/assets/:id` | `016` | aktif |
 | `assets.bulk_import` | `POST /api/assets/bulk-import` | `016` | aktif |
 | `assets.assign` | `POST /api/assets/:id/assign` | `016` | aktif |
@@ -134,8 +136,10 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
 
 1. **Owner-domain authority di domain service** (`server/services.ts`):
    `createAsset`, `assignAsset`, `moveAsset`, dan `mutateLifecycle` memakai
-   permission serta scope owner dinamis (termasuk pengecualian owner). Owner
-   tidak dibatasi enum IT/GA/SC/PIBC; scope eksplisit menentukan kewenangan.
+   permission serta scope owner dinamis (termasuk pengecualian owner). Master
+   owner dapat diperluas untuk fungsi yang disahkan; namun `createAsset()`
+   secara eksplisit menolak SC/PIBC/UNASSIGNED untuk aset baru. Scope eksplisit
+   menentukan kewenangan atas owner aktif yang valid.
    `approve_disposal` tetap memerlukan kapabilitas Super Admin yang sesuai.
 2. **Jalur UPDATE bulk-import** kini meniru authority divisi `PATCH /api/assets/:id`
    (perbaikan SEC-10) — impor massal tidak lagi melewati pembatasan
@@ -171,6 +175,5 @@ Setiap perubahan harus memeriksa route, domain service, policy, persistence/migr
   is handled according to the policy resolver. Role without assignment/scope
   fails closed. File-store development fallback is compatibility-only and is
   not evidence of production PostgreSQL authorization.
-- Role Karyawan, Auditor, Humas, dan Sekretaris Direksi sengaja tidak menerima
-  grant tulis di migration `016`, mengikuti guard legacy yang menolak mereka.
+- Migration `016` adalah seed kompatibilitas historis, bukan katalog role primer. `users.role` hanya berisi Admin GABAH atau Karyawan; role fungsi IT/GA/Auditor/Humas/Sekretariat Direksi ditetapkan sebagai assignment tambahan. Migration `048` menonaktifkan role lokasi `supply_chain` dan `pibc`. Jangan membuat primary role baru berdasarkan nama unit, lokasi, atau jabatan.
 

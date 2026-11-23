@@ -3,16 +3,20 @@
 **Repository:** inieki-lab/GABAH  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Tujuan Dokumen:** Standar acuan rekayasa perangkat lunak, aturan arsitektur, dan disiplin pengembangan yang wajib dipatuhi oleh seluruh pengembang dan agen kecerdasan buatan (AI).  
-**Status:** Authoritative Rules (Mencerminkan 100% Implementasi Aktual)  
+**Status:** Aturan rekayasa wajib; kesesuaian implementasi diverifikasi per perubahan, bukan diasumsikan.  
 
 ---
+
+## 0. Wajib Dibaca oleh Semua AI dan Kontributor
+
+Sebelum mengubah kode atau dokumen, baca [docs/GABAH-DOCUMENTATION-CONTROL.md](./docs/GABAH-DOCUMENTATION-CONTROL.md). Panduan tersebut menetapkan urutan otoritas sumber, label APPROVED/IMPLEMENTED/TESTED/PARTIAL/PROPOSED/DECISION REQUIRED/NOT VERIFIED/HISTORICAL, dokumen yang wajib diselaraskan, aturan keamanan, dan format handoff. Jangan menyebut dokumen 100% sinkron, fitur selesai, atau production-ready tanpa bukti pada exact commit. Jika business intent bertentangan dengan implementasi, catat gap dan minta keputusan; jangan diam-diam mengubah aturan.
 
 ## 1. Arsitektur & Teknologi Wajib (Core Stack)
 
 1. **Frontend**: React 19, TypeScript (~5.8), Vite 6, Tailwind CSS v4, Lucide React icons, Motion.
 2. **Backend**: Node.js 20+, Express 4.21+, TSX (untuk runtime development), esbuild (untuk bundling server produksi).
 3. **Database**: PostgreSQL 17 (driver `pg`), skema ternormalisasi relasional (11 tabel inti + 2 tabel auth & trigger).
-4. **Resilience Store**: Fail-safe snapshot JSON file (`server/data/gabah_state.json`) untuk kelangsungan operasional cold-boot jika instance database host mengalami gangguan jaringan.
+4. **Development/Test File Store**: Snapshot JSON (`server/data/gabah_state.json`) hanya untuk standalone development/test atau fallback saat PostgreSQL tidak tersedia pada startup di lingkungan non-production. Production wajib fail-fast jika PostgreSQL tidak tersedia; setelah PostgreSQL authoritative, kegagalan runtime dilatch dan operasi ditolak sampai layanan dipulihkan serta aplikasi direstart. Ini bukan mekanisme production failover otomatis.
 5. **Containerization**: Docker Compose (`gabah_database` + `gabah_app`).
 
 ### Aturan Bebas PHP / Laravel:

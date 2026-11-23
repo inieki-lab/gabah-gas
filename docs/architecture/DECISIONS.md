@@ -3,10 +3,12 @@
 **Dokumen:** `docs/architecture/DECISIONS.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Authoritative Decision Log (Hanya Mencatat Keputusan yang Benar-Benar Diterapkan di Source Code)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Register keputusan arsitektur. Setiap ADR wajib menyebut status (PROPOSED/ACCEPTED/IMPLEMENTED/SUPERSEDED), tanggal, bukti implementasi, dan keputusan pengganti bila ada.  
+**Terakhir Ditinjau:** 23 November 2026 (status ADR lama direkonsiliasi bertahap; ADR-009 telah ditandai SUPERSEDED)  
 
 ---
+
+> ADR yang pernah diterapkan tidak otomatis tetap menjadi keputusan aktif. Cocokkan setiap ADR dengan kode dan konfigurasi terkini; tambahkan ADR baru untuk keputusan baru dan tandai keputusan lama SUPERSEDED, jangan menghapus histori.
 
 ## ADR-001: Adopsi React 19 SPA + Vite 6 + Tailwind CSS v4
 - **Konteks**: Aplikasi membutuhkan antarmuka operasional yang responsif, modern, cepat dimuat, dan mudah dikembangkan secara modular untuk multi-divisi.
@@ -57,37 +59,35 @@
 
 ---
 
-## ADR-007: Standardisasi Format Penomoran Aset Korporat
+## ADR-007 (PARTIAL / POLICY PENDING): Format Teknis Penomoran Aset
 - **Konteks**: Divisi akuntansi, logistik, dan IT membutuhkan format penomoran inventaris yang konsisten dan mencerminkan divisi pemilik serta tahun perolehan.
-- **Keputusan**: Menetapkan format baku kanonikal `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` yang di-generate atomik oleh `AssetNumberingEngine` di backend. Nomor aset Accurate ERP dipisahkan ke kolom `corporate_asset_number` agar tidak merusak format kanonikal internal.
-- **Status**: Diterapkan & Aktif (`server/numbering.ts`, `server/taxonomy.ts`, `server/services.ts`).
+- **Keputusan saat itu**: Mengimplementasikan pola teknis default `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` dan menyimpan nomor Accurate ERP terpisah pada `corporate_asset_number`.
+- **Status saat ini**: **PARTIAL**. Format korporat final masih menunggu pengesahan perusahaan. Generator `AssetNumberingEngine` menggunakan counter `Map` in-memory yang disinkronkan saat boot; bukan alokasi atomik PostgreSQL dan belum aman untuk multi-instance. Lihat `docs/asset/ASSET-NUMBERING.md` dan `docs/IMPLEMENTATION-TRUTH-REGISTER.md`.
 
 ---
 
-## ADR-008: Dual-Persistence Resilience Architecture
+## ADR-008 (PARTIAL / ENVIRONMENT-SCOPED): PostgreSQL and Development File-Store Resilience
 - **Konteks**: Dalam lingkungan pengembangan atau saat kontainer basis data host sedang restart, aplikasi tidak boleh crash atau kehilangan data operasional yang sedang diuji.
-- **Keputusan**: Mengimplementasikan arsitektur ketahanan ganda (*dual-persistence*):
-  - Primary store: PostgreSQL 17 relasional.
-  - Secondary fallback store: Snapshot file lokal terstruktur `server/data/gabah_state.json`.
-  Server mampu melakukan auto-fallback ke file store jika koneksi PostgreSQL terputus, dan melakukan sinkronisasi kembali (*backfill*) saat database kembali online.
-- **Status**: Diterapkan & Aktif (`server/persistence.ts`).
+- **Keputusan saat itu**: PostgreSQL 17 adalah primary store; file snapshot `server/data/gabah_state.json` mendukung development/test saat PostgreSQL tidak tersedia pada startup.
+- **Batasan saat ini**: Production menolak startup bila PostgreSQL yang dikonfigurasi tidak tersedia. Setelah PostgreSQL menjadi authoritative, kegagalan koneksi/write saat runtime dilatch dan operasi ditolak sampai layanan dipulihkan serta proses aplikasi direstart; tidak ada silent runtime fallback ke file store.
+- **Status saat ini**: **PARTIAL / ENVIRONMENT-SCOPED** (`server/persistence.ts`, `server/runtime-hardening.ts`). Jangan menjelaskan file store sebagai production failover otomatis.
 
 ---
 
-## ADR-009: Pemisahan Entitas Peran Login (9 Roles) dari Vendor dan Manajemen
+## ADR-009 (HISTORICAL / SUPERSEDED): Pemisahan Entitas Peran Login (9 Roles) dari Vendor dan Manajemen
 - **Konteks**: Sebelumnya terdapat kerancuan mengenai peran `Management` dan `Vendor` dalam RBAC login.
-- **Keputusan**:
-  1. Menetapkan **9 peran login resmi**: `Admin GABAH`, `IT`, `GA`, `Sekretaris Direksi`, `Humas`, `Supply Chain`, `PIBC`, `Karyawan`, dan `Auditor`.
-  2. Peran `Management` dihapus dari autentikasi login pengguna (fungsi pengawasan eksekutif menggunakan akun `Auditor` atau `Admin GABAH`).
-  3. Entitas `Vendor` dikelola murni sebagai entitas data master rekanan servis/kontrak pada tabel `contracts` dan modul Master Data.
-- **Status**: Diterapkan & Aktif (`server/db.ts`, `src/types.ts`).
+- **Keputusan saat itu (historis)**:
+  1. Menetapkan sembilan label login sebagai model awal: `Admin GABAH`, `IT`, `GA`, `Sekretaris Direksi`, `Humas`, `Supply Chain`, `PIBC`, `Karyawan`, dan `Auditor`.
+  2. Peran `Management` dihapus dari autentikasi login pengguna.
+  3. Entitas `Vendor` dikelola sebagai data master rekanan.
+- **Status saat ini**: **SUPERSEDED untuk model role/profil pengguna** oleh keputusan pemilik proyek pada `docs/PROJECT-CONTEXT.md` dan model Dynamic RBAC. Sekretariat Direksi/Humas adalah capability tambahan pegawai; Supply Chain/SC dan PIBC bukan primary role baru. Bagian Vendor tetap merupakan catatan historis dan harus diverifikasi terpisah terhadap modul vendor/contract saat perubahan dilakukan.
 
 ---
 
 ## ADR-010: VIP Auto-Approval Reservasi Ruangan & Notifikasi Multi-Divisi
 - **Konteks**: Ruang rapat representatif sering digunakan oleh jajaran Direksi secara mendesak, dan kebutuhan rapat memerlukan koordinasi paralel antara IT (vicon/layar), GA Sarpras (kursi/sound), Pantry (snack/makan), serta Humas (dokumentasi/liputan).
 - **Keputusan**:
-  1. Pemesanan oleh `Sekretaris Direksi` (mewakili pimpinan BUMD) langsung disetujui secara otomatis (*auto-approved*) dengan prioritas High.
+  1. Pemesanan oleh pegawai yang memiliki capability/permission Sekretariat Direksi yang sah (mewakili pimpinan BUMD) langsung disetujui secara otomatis (*auto-approved*) dengan prioritas High.
   2. Pemesanan oleh staf umum berstatus `pending_approval` menunggu verifikasi GA.
   3. Dispatching notifikasi multi-divisi otomatis: mengirim peringatan ke IT Support jika fasilitas IT dipilih, ke GA Sarpras jika kebutuhan fisik dipilih, ke GA Pantry jika konsumsi dipesan, dan ke Humas jika peliputan/dokumentasi dicentang.
 - **Status**: Diterapkan & Aktif (`server/services.ts` baris 945-1065).

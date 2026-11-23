@@ -83,7 +83,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
     if (Array.isArray(currentUser.permission_keys)) {
       return currentUser.permission_keys.includes('*') || currentUser.permission_keys.includes(permission);
     }
-    return legacyRoles.includes(currentUser.role);
+    return legacyRoles.some(role => currentUser.role === role || GabahService.hasLegacyCapability(currentUser, role));
   };
   // Legacy file-store compatibility is restricted to actual IT/GA roles.
   // Supply Chain and PIBC are office/location labels, not application roles.

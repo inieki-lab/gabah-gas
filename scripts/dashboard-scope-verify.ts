@@ -101,7 +101,11 @@ console.log('Role dashboard scope: PASS (division, personal, maintenance, contra
 const dashboardSource = readFileSync('src/components/views/DashboardView.tsx', 'utf8');
 assert.match(dashboardSource, /const isHumas = !isSuperAdmin && hasEffectivePermission/);
 assert.match(dashboardSource, /const isSekdir = !isSuperAdmin && hasEffectivePermission/);
-assert.match(dashboardSource, /: isSuperAdmin\s*\? roleDescriptions\['Admin GABAH'\]/);
+// A Superadmin's wildcard permissions must not turn the dashboard into a
+// Humas/Sekdir persona, and the role description must be the admin role
+// description (the roleDescriptions lookup is no longer carried through
+// DashboardView).
+assert.match(dashboardSource, /: isSuperAdmin\s*\? adminDescription/);
 console.log('Superadmin dashboard persona: PASS (global dashboard is not overridden by Humas/Sekdir wildcard permissions)');
 
 // Employee dashboard empty states must not expose create actions without effective permissions.

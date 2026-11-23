@@ -193,9 +193,16 @@ function hydrateDbFromState(state: any): void {
       });
     } else {
       // Sync canonical role and label if needed
-      mergedUsers[foundIndex].role = cu.role;
-      mergedUsers[foundIndex].role_label = cu.role_label || mergedUsers[foundIndex].role_label;
-      if (typeof mergedUsers[foundIndex].authVersion !== 'number') mergedUsers[foundIndex].authVersion = 1;
+      const existingUser = mergedUsers[foundIndex];
+      existingUser.role = cu.role;
+      existingUser.role_label = cu.role_label || existingUser.role_label;
+      // Older persisted snapshots predate the role_keys mirror. Restore only
+      // the canonical seed grants when the field is absent/malformed; an
+      // explicit empty array remains an intentional revocation and is kept.
+      if (!Array.isArray(existingUser.role_keys) && Array.isArray(cu.role_keys)) {
+        existingUser.role_keys = [...cu.role_keys];
+      }
+      if (typeof existingUser.authVersion !== 'number') existingUser.authVersion = 1;
     }
   }
 
@@ -603,24 +610,40 @@ async function backfillNormalizedTables(existingClient?: PoolClient): Promise<vo
 }
 
 function collectLegacyEmployeeCapabilityAssignments(): Array<{ userId: string; roleKey: string }> {
-  return (db.users as any[])
-    .filter(user => ['Humas', 'Sekretaris Direksi'].includes(String(user.role || '').trim()))
-    .map(user => ({
-      userId: String(user.id),
-      roleKey: String(user.role).trim() === 'Humas' ? 'humas' : 'sekretaris_direksi',
-    }));
+  const legacyFunctionRoles: Record<string, string> = {
+    IT: 'it',
+    GA: 'ga',
+    Auditor: 'auditor',
+    Humas: 'humas',
+    'Sekretaris Direksi': 'sekretaris_direksi',
+  };
+  return (db.users as any[]).flatMap(user => {
+    const legacyRoleKey = legacyFunctionRoles[String(user.role || '').trim()];
+    const roleKeys = Array.isArray(user.role_keys) ? user.role_keys.map((key: unknown) => String(key).trim()) : [];
+    return [...new Set([...roleKeys, legacyRoleKey].filter((key): key is string => Boolean(key)))]
+      .map(roleKey => ({ userId: String(user.id), roleKey }));
+  });
 }
 
 function normalizeLegacyEmployeeProfileRoles(): void {
+  const functionLabels: Record<string, string> = {
+    IT: 'IT Technical Support',
+    GA: 'General Affairs',
+    Auditor: 'Auditor Internal',
+    Humas: 'Humas & Protokoler',
+    'Sekretaris Direksi': 'Sekretariat Direksi',
+  };
   for (const user of db.users as any[]) {
     const legacyRole = String(user.role || '').trim();
-    if (!['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(legacyRole)) continue;
+    if (legacyRole === 'Admin GABAH' || legacyRole === 'Karyawan') continue;
+    if (!['Superadmin', 'IT', 'GA', 'Auditor', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'SC', 'PIBC'].includes(legacyRole)) continue;
 
-    if (legacyRole === 'Humas') {
-      if (!user.role_label) user.role_label = 'Humas & Protokoler';
-    } else if (legacyRole === 'Sekretaris Direksi') {
-      if (!user.role_label) user.role_label = 'Sekretariat Direksi';
-    } else if (legacyRole === 'Supply Chain') {
+    if (legacyRole === 'Superadmin') {
+      user.role = 'Admin GABAH';
+      continue;
+    }
+    if (functionLabels[legacyRole] && !user.role_label) user.role_label = functionLabels[legacyRole];
+    if (['Supply Chain', 'SC'].includes(legacyRole)) {
       if (!user.role_label) user.role_label = 'Karyawan — Lokasi RPC';
       if (!user.office_location_id && db.officeLocations.some(location => location.id === 'OFF-RPC')) {
         user.office_location_id = 'OFF-RPC';
@@ -630,8 +653,11 @@ function normalizeLegacyEmployeeProfileRoles(): void {
       if (!user.office_location_id && db.officeLocations.some(location => location.id === 'OFF-PIBC')) {
         user.office_location_id = 'OFF-PIBC';
       }
+    } else if (!user.role_label) {
+      user.role_label = 'Pegawai';
     }
 
+    // Only the system administrator retains a distinct primary profile.
     user.role = 'Karyawan';
   }
 }
@@ -708,10 +734,7 @@ async function backfillDynamicRbacUserRoles(existingClient?: PoolClient): Promis
     "WHERE ur.user_id = u.id::text AND ur.user_id = ANY($1::text[]) AND assigned_role.id = ur.role_id " +
     "AND ur.is_primary = TRUE " +
     "AND assigned_role.role_key IS DISTINCT FROM CASE u.role " +
-    "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
-    "WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan' " +
-    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END",
+    "WHEN 'Admin GABAH' THEN 'superadmin' ELSE 'karyawan' END",
     [userIds],
   );
   // The users.role field is the primary application role; additional roles
@@ -724,11 +747,8 @@ async function backfillDynamicRbacUserRoles(existingClient?: PoolClient): Promis
     "INSERT INTO gabah_user_roles (user_id, role_id, is_primary) " +
     "SELECT u.id::text, r.id, TRUE FROM users u " +
     "JOIN gabah_roles r ON (r.role_key = CASE u.role " +
-    "WHEN 'Admin GABAH' THEN 'superadmin' WHEN 'IT' THEN 'it' WHEN 'GA' THEN 'ga' " +
-    "WHEN 'Sekretaris Direksi' THEN 'karyawan' WHEN 'Humas' THEN 'karyawan' " +
-    "WHEN 'Supply Chain' THEN 'karyawan' WHEN 'PIBC' THEN 'karyawan' " +
-    "WHEN 'Karyawan' THEN 'karyawan' WHEN 'Auditor' THEN 'auditor' ELSE lower(regexp_replace(u.role, '[^a-zA-Z0-9]+', '_', 'g')) END OR r.name = u.role) " +
-    "WHERE u.id::text = ANY($1::text[]) " +
+    "WHEN 'Admin GABAH' THEN 'superadmin' ELSE 'karyawan' END) " +
+    "WHERE u.id::text = ANY($1::text[]) AND u.role IN ('Admin GABAH', 'Karyawan') " +
     "ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = TRUE",
     [userIds],
   );

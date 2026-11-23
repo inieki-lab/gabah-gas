@@ -20,7 +20,8 @@ assert.ok(createStart >= 0 && updateStart > createStart && vendorStart > updateS
 const create = source.slice(createStart, updateStart);
 const update = source.slice(updateStart, vendorStart);
 assert.match(create, /requireRbacPermission\(req, res, 'maintenances\.create'\)[\s\S]*validateMaintenanceInput\(req\.body \|\| \{\}\)/);
-assert.match(create, /else if \(!\['Admin GABAH', 'IT', 'GA'\]\.includes\(actor\.role\)\)[\s\S]*validateMaintenanceInput/);
+assert.match(create, /else if \(!isSuperadminActor\(actor\) && !hasApplicationRole\(actor, 'it'\) && !hasApplicationRole\(actor, 'ga'\)\)[\s\S]*validateMaintenanceInput/);
+assert.match(update, /else if \(!isSuperadminActor\(actor\) && !hasApplicationRole\(actor, 'it'\) && !hasApplicationRole\(actor, 'ga'\)\)[\s\S]*validateMaintenanceInput/);
 assert.match(update, /requireRbacPermission\(req, res, 'maintenances\.update'\)[\s\S]*validateMaintenanceInput/);
 assert.match(update, /canMutateAssetOwner\(actor, schedule\.owner_division, 'maintenances\.update'\)[\s\S]*validateMaintenanceInput/);
 assert.equal((source.match(/validateMaintenanceInput\(req\.body \|\| \{\}\)/g) || []).length, 2);

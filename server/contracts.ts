@@ -79,6 +79,16 @@ export function getReminderLevel(contract: ServerContract): { level: 'normal' | 
   return { level: 'normal', label: `Normal — sisa ${daysLeft} hari`, daysLeft };
 }
 
+function hasLegacyContractCapability(user: ServerUser, capability: 'IT' | 'GA'): boolean {
+  const normalize = (value: unknown) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const expected = normalize(capability);
+  return normalize(user.role) === expected || (user.role_keys || []).some(key => normalize(key) === expected);
+}
+
+function hasLegacyContractDivisionScope(user: ServerUser, ownerDivision: string): boolean {
+  return String(user.division || '').trim().toUpperCase() === ownerDivision;
+}
+
 export function canSeeContract(user: ServerUser, contract: ServerContract): boolean {
   if (isSuperadminActor(user) || isAuditorActor(user)) return true;
   if (contract.pic_user_id === user.id) return true;
@@ -90,7 +100,7 @@ export function canSeeContract(user: ServerUser, contract: ServerContract): bool
       && hasRbacScope(String(user.id), 'division', owner, 'contracts');
   }
 
-  return user.role === owner;
+  return hasLegacyContractDivisionScope(user, owner);
 }
 
 export function canManageContracts(user: ServerUser): boolean {
@@ -100,7 +110,7 @@ export function canManageContracts(user: ServerUser): boolean {
     return hasRbacPermission(String(user.id), 'contracts.create')
       || hasRbacPermission(String(user.id), 'contracts.update');
   }
-  return user.role === 'IT' || user.role === 'GA';
+  return hasLegacyContractCapability(user, 'IT') || hasLegacyContractCapability(user, 'GA');
 }
 
 /** Creation is a distinct capability; update-only users must not create records. */
@@ -108,7 +118,7 @@ export function canCreateContract(user: ServerUser): boolean {
   if (isAuditorActor(user)) return false;
   if (isSuperadminActor(user)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(user.id), 'contracts.create');
-  return user.role === 'IT' || user.role === 'GA';
+  return hasLegacyContractCapability(user, 'IT') || hasLegacyContractCapability(user, 'GA');
 }
 
 // SEC-08: Expose canEditContract for server.ts file upload validation
@@ -120,13 +130,13 @@ export function canEditContract(user: ServerUser, contract: ServerContract): boo
   if (contract.pic_user_id === user.id) {
     return isPostgresPersistenceActive()
       ? hasRbacPermission(String(user.id), 'contracts.update')
-      : user.role === owner;
+      : hasLegacyContractDivisionScope(user, owner);
   }
   if (isPostgresPersistenceActive()) {
     return hasRbacPermission(String(user.id), 'contracts.update')
       && hasRbacScope(String(user.id), 'division', owner, 'contracts');
   }
-  return user.role === owner;
+  return hasLegacyContractDivisionScope(user, owner);
 }
 
 function recordContractAudit(action: string, details: string, actor: ServerUser, contractId: string) {
@@ -188,7 +198,7 @@ export const ContractDomainService = {
     const ownerScopeAllowed = ownerExists
       && (isSuperadminActor(actor) || (isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'division', ownerDivision, 'contracts')
-        : actor.role === ownerDivision));
+        : hasLegacyContractDivisionScope(actor, ownerDivision)));
     if (!ownerScopeAllowed) {
       throw new Error(`Akses ditolak: scope pengguna tidak mencakup owner kontrak ${ownerDivision}.`);
     }

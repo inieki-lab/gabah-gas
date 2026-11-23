@@ -1,23 +1,35 @@
-# GABAH — Authoritative Business Rules Matrix
+# GABAH — Business Rules and Decisions Register
 
 **Dokumen:** `docs/product/BUSINESS-RULES.md`  
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
-**Status:** Authoritative Rules Matrix (100% Sesuai Source Code Aktual)  
-**Terakhir Diperbarui:** 28 September 2026  
+**Status:** Register aturan bisnis dan keputusan pemilik proses. Setiap aturan harus memiliki status persetujuan; kesesuaian implementasi dicatat terpisah dan diverifikasi terhadap kode serta UAT.  
+**Terakhir Ditinjau untuk tata kelola dokumen:** 23 November 2026 (isi aturan historis masih memerlukan rekonsiliasi per aturan)  
+
+---
+
+> **Penting:** Dokumen ini tidak otomatis membuktikan bahwa semua aturan di bawah masih disetujui atau sudah diterapkan. Aturan lama harus ditandai APPROVED, IMPLEMENTED, TESTED, DECISION REQUIRED, atau HISTORICAL sesuai bukti. Jangan gunakan matriks lama sebagai izin untuk mengubah perilaku tanpa verifikasi. Pisahkan owner aset, unit pengelola, lokasi fisik, jabatan, application role, permission, dan data scope.
+
+## 0. Model Identitas Pegawai dan Dynamic RBAC (BR-00)
+
+- **Profil utama** di `users.role` hanya `Admin GABAH` (administrator sistem) dan `Karyawan` (seluruh pegawai).
+- IT, GA, Auditor, Humas, Sekretariat Direksi, Admin ME, dan fungsi lain adalah role/capability tambahan yang ditetapkan melalui Dynamic RBAC, bukan profil utama yang ditanam di kode.
+- RPC/SC dan PIBC adalah lokasi/unit operasional, bukan role aplikasi dan bukan owner aset otomatis.
+- Permission menentukan tindakan; scope menentukan data yang dapat dijangkau. Jabatan, unit, divisi, dan lokasi tidak memberi izin secara implisit.
+- Akun dengan label role lama dinormalisasi melalui migration `048_dynamic_employee_profile_normalization.sql`. Assignment fungsi IT/GA/Auditor/Humas/Sekretariat Direksi dipertahankan sebagai role tambahan; assignment Supply Chain/PIBC dinonaktifkan sebagai role karena keduanya adalah lokasi/unit.
 
 ---
 
 ## 1. Aturan Kepemilikan Aset & Batas Wewenang Divisi (BR-01)
 
 ### BR-01.1: Kepemilikan Barang IT (IT-H & IT-S)
-- **Aturan**: Seluruh aset hardware komputasi (`IT-H`: Laptop `HLT`, PC `HPC`, Server `HSV`, Workstation `HWS`, Monitor `HMON`, Printer `HPRN`, Jaringan `HNET`, Firewall `HFW`, Storage `HSTG`, UPS `HUPS`, Rack `HRCK`) dan software/lisensi (`IT-S`: `SLIC`) adalah **hak milik mutlak Divisi IT**.
-- **Enforcement Kode**: `server/services.ts` (baris 117-120 & 131-134), `server/taxonomy.ts` (baris 33-50).
-- **Konsekuensi**: Divisi General Affairs (GA) hanya memiliki hak akses lihat (*read-only*). Pengguna peran `GA` ditolak jika mencoba mendaftarkan, menugaskan, memutasi lokasi, atau mengubah status siklus hidup barang IT.
+- **Aturan**: Aset hardware komputasi (termasuk laptop, PC, server, jaringan, storage, UPS) dan software/lisensi yang ditetapkan sebagai owner IT dikelola oleh fungsi IT lintas seluruh lokasi. Lokasi fisik tidak mengubah owner.
+- **Akses GA**: GA hanya dapat diberi akses baca tambahan untuk kategori Laptop/PC owner IT melalui permission/scope yang eksplisit dan dapat dikonfigurasi. Akses tersebut tidak memberikan hak create, update, assign, move, lifecycle, atau approval. Jangan memperluas akses baca ke seluruh aset IT atau software/lisensi tanpa keputusan dan grant khusus.
+- **Enforcement Kode**: Kandidat implementasi tercatat pada `server/services.ts`, `server/taxonomy.ts`, `server/rbac-policy.ts`, dan `server/runtime-hardening.ts`; nama baris dapat berubah. Verifikasi list dan direct-ID dengan test sebelum menyatakan aturan telah ditegakkan.
 
 ### BR-01.2: Kepemilikan Sentral Furniture (INV-F)
 - **Aturan**: Seluruh perabot kantor (`INV-F`: meja kerja, kursi rapat, lemari arsip, rak dokumen) adalah **hak milik mutlak Divisi GA**, di manapun lokasi fisik penempatannya di seluruh kantor atau pergudangan BUMD.
-- **Enforcement Kode**: `server/services.ts` (baris 120-123 & 135-137), `server/taxonomy.ts` (baris 51-53).
+- **Enforcement yang ditemukan**: `server/services.ts` memaksa owner `GA` untuk kategori `INV-F`; `server/taxonomy.ts` menyediakan mapping kategori. Uji create dan update agar owner tidak dapat dipalsukan dari request body.
 - **Konsekuensi**: Pendaftaran kategori furniture secara otomatis dialokasikan ke divisi pemilik `GA`.
 
 ### BR-01.3: Kepemilikan Aset Operasional di RPC dan PIBC
@@ -26,7 +38,7 @@
   - Data aset lama dengan owner code SC/PIBC dipertahankan sebagai histori sampai ditinjau satu per satu oleh Superadmin dan pemilik fungsi terkait.
   - Aset baru harus memakai owner yang telah disahkan pada master owner; lokasi fisik RPC/PIBC tidak boleh menentukan owner.
   - Kendaraan dinas operasional kantor (KDR) yang ditetapkan sebagai aset umum dikelola GA.
-- **Enforcement Kode**: `server/services.ts` menolak owner SC/PIBC untuk aset baru; master lokasi dan owner dipisahkan.
+- **Enforcement yang ditemukan pada baseline**: `GabahDomainService.createAsset()` di `server/services.ts` menolak `SC`, `PIBC`, dan `UNASSIGNED` sebagai owner aset baru (409), memerlukan owner aktif pada master `db.divisions`, serta permission `assets.create` dan scope owner. Catatan: `server/taxonomy.ts` masih memuat entri kategori legacy SC/PIBC dan fallback resolver lama; guard `createAsset()` yang menolak owner tersebut adalah lapisan pencegah utama. Uji regresi diperlukan agar kategori legacy tidak dapat lolos melalui jalur lain/import.
 
 ---
 
@@ -58,10 +70,8 @@
 - **Enforcement Kode**: `server/services.ts` (baris 405-419), `server/migrations/003_loan_anti_collision_trigger.sql`.
 
 ### BR-03.3: Otoritas Persetujuan & Serah Terima Pinjaman
-- **Aturan**:
-  - Peminjaman aset IT wajib disetujui oleh personel `IT` atau `Admin GABAH`.
-  - Peminjaman aset GA (mobil dinas) wajib disetujui oleh personel `GA` atau `Admin GABAH`.
-  - Peminjaman aset dengan owner legacy SC/PIBC memerlukan review owner dan persetujuan petugas yang ditetapkan Superadmin; jangan menganggap role/lokasi RPC atau PIBC sebagai approver otomatis.
+- **Aturan**: Approval/rejection/handover/return ditentukan oleh permission operasi (`loans.approve`, `loans.reject`, dan seterusnya) ditambah scope owner aset pada modul Loans. Superadmin memiliki kewenangan global; role label IT/GA dan lokasi kantor bukan otorisasi dengan sendirinya. Data legacy SC/PIBC harus direview per record dan tidak boleh diasumsikan punya approver otomatis.
+- **Enforcement yang ditemukan pada baseline**: `GabahDomainService.canOperateLoan()` dan `approveLoan()`/`rejectLoan()` di `server/services.ts`; route API juga memerlukan permission. Uji per operasi, owner, dan status transisi.
 - **Transisi Status Aset**:
   1. Pinjaman disetujui (`approved`) $\to$ status aset menjadi `reserved`.
   2. Serah terima fisik (`handoverLoan`) $\to$ status aset menjadi `assigned` (borrowed).
@@ -104,9 +114,9 @@
 
 ### BR-05.1: Jalur Cepat Direksi (VIP Auto-Approval)
 - **Aturan**:
-  - Setiap permohonan reservasi ruang rapat yang diajukan oleh `Sekretaris Direksi` (atas nama Direksi & Dewan Komisaris) secara otomatis berstatus disetujui (`approved`), memiliki prioritas `high`, dan mengunci ruangan dari jadwal lain.
+  - Setiap permohonan reservasi ruang rapat yang diajukan oleh pegawai dengan capability/permission Sekretariat Direksi yang sah (atas nama Direksi & Dewan Komisaris) secara otomatis berstatus disetujui (`approved`), memiliki prioritas `high`, dan mengunci ruangan dari jadwal lain.
   - Permohonan dari karyawan/divisi lain berstatus `pending_approval` dan memerlukan persetujuan manual Divisi GA.
-- **Enforcement Kode**: `server/services.ts` (baris 945-976).
+- **Enforcement yang ditemukan**: `server/services.ts` dan `server/role-capabilities.ts`; cek capability efektif dan backend route. Nomor baris tidak dijadikan acuan tetap; UAT harus memverifikasi user Karyawan dengan capability dan user tanpa capability.
 
 ### BR-05.2: Perutean Notifikasi Fasilitas & Layanan
 - **Aturan**:
@@ -132,7 +142,7 @@
 ### BR-07.1: Strict Read-Only Mode
 - **Aturan**: Akun dengan peran `Auditor` memiliki hak inspeksi penuh ke seluruh data sistem (katalog aset, tiket, log peminjaman, rekonsiliasi Accurate, log audit), tetapi **diblokir dari segala bentuk mutasi data**.
 - **Enforcement Kode**: `server/runtime-hardening.ts` (baris 108-118).
-- **Pengecualian**: Endpoint `/api/auth/logout`, `/api/auth/switch-role` (untuk dev), dan `/api/notifications/:id/read`. Percobaan `POST`, `PATCH`, `PUT`, `DELETE` lainnya menghasilkan status HTTP `403 Forbidden`.
+- **Pengecualian**: Middleware mengizinkan `/api/auth/logout`, `/api/notifications/read-all`, dan `/api/notifications/:id/read` untuk tindakan non-GET yang terbatas. `/api/auth/switch-role` bukan pengecualian Auditor. Verifikasi ulang `server/runtime-hardening.ts` setelah perubahan auth.
 
 ---
 

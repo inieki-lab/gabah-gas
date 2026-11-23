@@ -1,5 +1,8 @@
 # GABAH-P0-SECURITY-HARDENING-REPORT.md
 
+
+> **HISTORICAL SNAPSHOT — NOT CURRENT SOURCE OF TRUTH.** This document records findings, claims, and test results from its original date/commit only. Do not treat its "current", "final", "verified", PASS, role lists, endpoint behavior, or production-readiness statements as valid for today's HEAD without rechecking the exact source code, migrations, tests, CI run, and UAT evidence. For current owner-approved business context and document authority, read `docs/PROJECT-CONTEXT.md` and `docs/GABAH-DOCUMENTATION-CONTROL.md`. Preserve this file for audit traceability; do not use it to infer current permissions or mutate data.
+
 **Repository:** `inieki-lab/gabah-gas` — GABAH (General Asset, Business & Automated Helpdesk)
 **Basis audit:** `GABAH-AUDIT-REPORT.md` (HEAD `610c899`)
 **Tanggal hardening:** 30 September 2026

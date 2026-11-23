@@ -7,7 +7,7 @@
 **Database:** PostgreSQL 17 via Docker Compose.  
 **Persistent files:** Docker named volume uploads_data mounted at /app/uploads.
 
-> **Release gate:** Jangan deploy PR draft atau branch kerja. PR #18 masih dalam stabilisasi. Deployment hanya dilakukan setelah PR di-merge ke main, CI pada commit main lulus, UAT disetujui, dan backup/rollback siap.
+> **Release gate:** Jangan deploy PR draft atau branch kerja. Deployment hanya dilakukan dari commit/tag yang telah disetujui dan masuk ke branch rilis yang ditetapkan pemilik repo, dengan CI pada exact SHA lulus, UAT disetujui, backup/restore serta rollback siap, TLS/reverse proxy dan monitoring diverifikasi. Nomor PR/branch lama bukan instruksi deployment aktif.
 
 ## 0. Aturan keselamatan
 
@@ -154,4 +154,4 @@ Uji restore terlebih dahulu pada database terpisah. Jangan menjalankan restore k
 
 ## 9. Status go-live
 
-Status saat dokumen ini diperbarui: **NO-GO**. PR #18 belum merge. CI PostgreSQL dan regression tests sedang ditutup; browser UAT, backup/restore rehearsal, staging deploy, TLS/reverse proxy, monitoring, dan sign-off pemilik proses masih wajib.
+Status pada saat dokumen ini ditulis: **NO-GO (historical snapshot)**. Re-fetch status PR/CI dan periksa exact main/release SHA sebelum deployment. Browser UAT, backup/restore rehearsal, staging deploy, TLS/reverse proxy, monitoring, dan sign-off pemilik proses wajib memiliki bukti aktual.

@@ -4,7 +4,7 @@
 **Organisasi Pemilik:** PT Food Station Tjipinang Jaya (Perseroda) — BUMD Pangan DKI Jakarta  
 **Versi Sistem:** 2026.1.0-enterprise  
 **Status Dokumen:** Baseline kebutuhan bisnis; sinkronisasi implementasi dan UAT masih berjalan (bukan klaim seluruh fitur sudah selesai).  
-**Terakhir Diperbarui:** 8 November 2026  
+**Terakhir Ditinjau:** 23 November 2026 (business baseline; implementation reconciliation ongoing)  
 
 ---
 
@@ -21,31 +21,33 @@ Sebelum adanya GABAH, pencatatan aset inventaris, penjadwalan pemeliharaan armad
 
 **GABAH** hadir sebagai portal internal perusahaan terpadu (*single pane of glass*) untuk:
 1. **Manajemen Inventaris Multi-Divisi**: Pencatatan aset komprehensif lintas lokasi; owner ditetapkan berdasarkan fungsi pengelola yang disahkan, sedangkan RPC/PIBC adalah lokasi/unit operasional dengan klasifikasi akuntansi PSAK 16 BUMD.
-2. **Penomoran Aset Standar Korporat**: Generator nomor otomatis terpusat `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` dan rekonsiliasi nomor ERP Accurate BUMD.
+2. **Penomoran Aset**: Generator nomor terpusat yang dapat dikonfigurasi dan mendukung rekonsiliasi nomor ERP Accurate BUMD. Format yang sedang digunakan aplikasi adalah implementasi teknis; standar korporat final menunggu konfirmasi resmi perusahaan dan tidak boleh diasumsikan dari contoh historis.
 3. **Peminjaman Aset Anti-Bentrok Jadwal (*Conflict-Free Loans*)**: Validasi tumpang tindih tanggal berbasis server untuk aset pool, alur persetujuan divisi pemilik, dan cetak Berita Acara Serah Terima (BAST).
 4. **Helpdesk & Gangguan Layanan (SLA-Driven)**: Pelaporan kendala operasional dengan matriks SLA otomatis (Urgent 4 jam, High 8 jam, Medium 24 jam, Low 48 jam) dan eskalasi teknisi.
 5. **Pemeliharaan Berkala (*Preventive Maintenance & Calibration*)**: Kalender servis berkala armada logistik, AC data center, genset, serta uji tera resmi jembatan timbang PIBC.
 6. **Reservasi Ruang Rapat VIP & Otomatisasi Fasilitas**: Pemesanan ruang rapat dengan penanganan prioritas Direksi, deteksi tabrakan jadwal, serta perutean notifikasi otomatis multi-divisi (IT Support untuk alat vicon/proyektor, GA Sarpras untuk fisik, GA Pantry untuk konsumsi, dan Humas untuk peliputan/dokumentasi).
 7. **Kepatuhan & Audit Trail BUMD**: Pencatatan log mutasi dan aktivitas administratif yang tidak dapat diubah (*immutable audit logs*), inspeksi kepatuhan Satuan Pengawas Internal (SPI/Auditor).
-8. **Contract Management (Domain Tersendiri)**: Register kontrak lintas divisi (security → GA, maintenance firewall → IT, supplier beras → SC, layanan pasar → PIBC, kontrak divisi lain sesuai pemilik) dengan PIC, dokumen append-only (original/amendment/renewal/supporting), nilai kontrak, notice period + notice date, reminder kedaluwarsa configurable (default 60/35/7 hari) via in-app, email, dan Telegram dengan log pengiriman per channel berstatus jujur (sent/failed/skipped — tanpa sukses palsu), scheduler otomatis idempoten per hari, keputusan renewal (outcome + notes), dashboard kedaluwarsa berfilter, dan audit trail. **Contract Management adalah domain tersendiri; Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract (`contract_id`) apabila terdapat pekerjaan yang perlu ditindaklanjuti.
+8. **Contract Management (Domain Tersendiri)**: Register kontrak lintas divisi (security → GA, maintenance firewall → IT, supplier beras/layanan pasar → fungsi owner yang disahkan setelah review; SC/RPC dan PIBC tidak otomatis menjadi owner domain) dengan PIC, dokumen append-only (original/amendment/renewal/supporting), nilai kontrak, notice period + notice date, reminder kedaluwarsa configurable (default 60/35/7 hari) via in-app, email, dan Telegram dengan log pengiriman per channel berstatus jujur (sent/failed/skipped — tanpa sukses palsu), scheduler otomatis idempoten per hari, keputusan renewal (outcome + notes), dashboard kedaluwarsa berfilter, dan audit trail. **Contract Management adalah domain tersendiri; Contract bukan kategori Helpdesk.** Ticket dapat ditautkan ke Contract (`contract_id`) apabila terdapat pekerjaan yang perlu ditindaklanjuti.
 
 ---
 
-## 2. Persona & Pengguna Sasaran (Role Existing — Model Transisi)
+## 2. Persona & Pengguna Sasaran (Identitas Pegawai + Dynamic RBAC)
 
-Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun dan data lama. Daftar ini bukan batas jumlah role dan bukan model organisasi target. Model target mengikuti keputusan pada Bagian 2.1–2.2; role legacy akan dipetakan bertahap tanpa menghapus akun atau histori:
+GABAH tidak memiliki katalog sembilan role primer. Profil utama hanya membedakan **Admin GABAH** (administrator sistem) dan **Karyawan** (identitas seluruh pegawai). Fungsi kerja diberikan melalui role/capability tambahan yang dapat dikelola pada Dynamic RBAC; jumlah dan nama role fungsi tidak dikunci oleh kode.
 
-| No | Peran (Role) | Persona Uji | Divisi Utama | Lingkup Tanggung Jawab & Hak Akses |
-|:---|:---|:---|:---|:---|
-| 1 | **Admin GABAH** | Budi Santoso | IT (MIS & TI) | Super Administrator. Kontrol penuh seluruh modul, Master Data, Manajemen Pengguna, Persetujuan Penghapusan Aset (*Disposal*), Override Reservasi, dan Akses Administration Control Panel. |
-| 2 | **IT** | Dani Setiawan | IT (MIS & TI) | Pengelola seluruh aset komputasi, hardware jaringan, server, lisensi software, penanganan tiket kategori IT/License, persetujuan pinjaman laptop/proyektor, serta penyiapan fasilitas IT ruang rapat. |
-| 3 | **GA** | Siti Rahmawati | General Affairs | Pengelola aset umum (furniture, peralatan kantor, kendaraan dinas, gedung), persetujuan pinjaman kendaraan kantor, pengelolaan tiket GA, persetujuan reservasi ruang rapat, dan koordinasi konsumsi pantry. |
-| 4 | **Sekretaris Direksi** | Dewi Anggraini, S.Sos | GA (Sekretariat Direksi) | Pemesanan ruang rapat prioritas tinggi untuk jajaran Direksi & Dewan Komisaris (otomatis disetujui / auto-approved), peminjaman perlengkapan rapat, dan pelaporan kendala eksekutif. |
-| 5 | **Humas** | Rina Kartika, M.I.Kom | GA (Humas & Protokoler) | Menerima notifikasi khusus permintaan peliputan dan dokumentasi acara/rapat VIP (foto, video, press release). Akses menu aset disembunyikan sesuai SOP protokoler. |
-| 6 | **RPC (legacy account label)** | Agus Pratama | Lokasi RPC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
-| 7 | **PIBC (legacy)** | Bambang Hermawan | Lokasi PIBC | Akun legacy yang harus dipetakan ke pegawai, jabatan, unit kerja, dan lokasi. Nama lokasi tidak otomatis memberi hak kelola aset atau seluruh tiket. |
-| 8 | **Karyawan** | Hendra Wijaya | Komersial / Operasional | Staf umum perusahaan. Melihat aset kerja yang ditugaskan (*Aset Saya*), mengajukan peminjaman barang dinas, membuat tiket bantuan IT/GA, dan mereservasi ruang rapat. |
-| 9 | **Auditor** | Maya Indriani, SE, Ak, CA | Audit (SPI) | Pengawas kepatuhan internal. Hak akses **Read-Only** ke seluruh modul katalog aset, log sirkulasi, log audit, rekonsiliasi Accurate, dan riwayat helpdesk. Dilarang melakukan mutasi data (403 Forbidden). |
+| Profil utama | Persona uji | Fungsi/assignment tambahan | Unit/lokasi |
+|:---|:---|:---|:---|
+| **Admin GABAH** | Budi Santoso | Superadmin; administrasi global | IT / HO |
+| **Karyawan** | Dani Setiawan | IT Support; owner scope IT dan tiket IT | IT / HO |
+| **Karyawan** | Siti Rahmawati | GA; owner scope GA dan operasional fasilitas | GA / HO |
+| **Karyawan** | Dewi Anggraini, S.Sos | Capability Sekretariat Direksi sesuai permission agenda/reservasi | Sekretariat Direksi / HO |
+| **Karyawan** | Rina Kartika, M.I.Kom | Capability Humas untuk dokumentasi/peliputan | Humas / HO |
+| **Karyawan** | Agus Pratama | Tidak ada role RPC; hak kerja ditentukan assignment yang disahkan | Lokasi RPC |
+| **Karyawan** | Bambang Hermawan | Tidak ada role PIBC; hak kerja ditentukan assignment yang disahkan | Lokasi PIBC |
+| **Karyawan** | Hendra Wijaya | Fungsi pegawai umum sesuai permission | Komersial |
+| **Karyawan** | Maya Indriani, SE, Ak, CA | Role/capability Auditor dengan kebijakan read-only | SPI / Audit |
+
+IT, GA, Auditor, Sekretariat Direksi, Humas, ME Admin, dan fungsi lain adalah role/capability dinamis—bukan daftar profil primer yang tertanam di frontend. RPC dan PIBC adalah konteks lokasi/unit, bukan role aplikasi. Data akun lama dipetakan melalui migration dan review assignment; jangan melakukan perubahan massal di luar migration yang ditinjau dan diuji.
 
 ---
 
@@ -69,9 +71,9 @@ Implementasi saat ini masih membawa **9 role legacy** untuk kompatibilitas akun 
 - Hak baca terbatas GA tidak membuka data sensitif seperti kredensial, konfigurasi keamanan, detail lisensi tertentu, maupun administrasi infrastruktur.
 - Akses baca tidak pernah otomatis memberikan hak create, update, delete, approve, assign, atau admin. Backend wajib menegakkan aturan yang sama; menyembunyikan menu di frontend saja tidak cukup.
 
-### C. Sekretaris Direksi dan Humas tetap pengguna/karyawan dengan kewenangan tambahan
-- Pengguna dengan role **Sekretaris Direksi** dan **Humas** tetap merupakan karyawan/staf perusahaan. Keduanya tetap membutuhkan fungsi dasar karyawan, seperti melihat aset yang ditugaskan kepada dirinya, mengajukan peminjaman, membuat tiket bantuan, dan menggunakan fasilitas/reservasi sesuai kebijakan.
-- Perbedaan role terletak pada **kewenangan tambahan dan alur kerja khusus**, bukan status kepegawaian atau pemisahan total dari pengalaman dasar karyawan.
+### C. Sekretariat Direksi dan Humas adalah capability tambahan pada profil pegawai
+- Pengguna yang menjalankan fungsi Sekretariat Direksi atau Humas tetap merupakan karyawan/staf perusahaan dengan profil dasar pegawai (umumnya Karyawan) dan atribut unit, jabatan, serta lokasi yang terpisah.
+- Sekretariat Direksi dan Humas menerima **permission/capability tambahan** sesuai tugas, bukan primary role terpisah. Fungsi dasar pegawai tetap tersedia sesuai grant.
 - Sekretaris Direksi dapat memiliki kewenangan khusus untuk mengelola kebutuhan agenda Direksi, termasuk reservasi/agenda prioritas sesuai kebijakan. Sekretaris Direksi juga dapat membuat permintaan dukungan Humas (misalnya foto atau dokumentasi rapat Direksi) yang terkait dengan agenda/rapat tertentu.
 - Humas memiliki fungsi dasar karyawan sekaligus kewenangan operasional untuk menerima, melihat, mengonfirmasi, dan menangani permintaan peliputan/dokumentasi yang menjadi tugasnya. Humas bukan pemilik aset IT atau GA hanya karena menerima permintaan dukungan.
 
@@ -110,7 +112,7 @@ Bagian ini memperjelas dan menjadi acuan target implementasi. Daftar role legacy
 
 ### 2.3 Role Primer, Role Tambahan, dan Scope per Modul
 
-- Setiap pegawai memiliki satu role primer yang selaras dengan role aplikasi dasarnya (misalnya Karyawan, IT, GA, Humas, Sekretaris Direksi, Auditor). Role primer tersimpan selaras dengan profil pengguna.
+- Setiap pegawai memiliki satu dari dua profil utama: Karyawan atau Admin GABAH. IT, GA, Auditor, Sekretariat Direksi, Humas, ME Admin, dan fungsi lain diberikan sebagai role/capability tambahan melalui Dynamic RBAC; bukan nilai profil utama.
 - Super Admin dapat menetapkan role tambahan kepada pegawai untuk fungsi/jabatan tertentu. Role tambahan menambah permission dan scope tanpa mengganti identitas pegawai, jabatan, unit, atau lokasi kerja.
 - Penggantian role primer tidak boleh menghapus role tambahan yang masih sah; role primer lama harus dilepas agar permission lama tidak tertinggal.
 - Permission dan scope adalah dua hal berbeda. Permission menjawab tindakan apa yang boleh dilakukan; scope menjawab data mana yang boleh dijangkau.
@@ -140,7 +142,7 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 
 ### 2.5 Kontrak Data dan Otorisasi Target
 
-- users.role dipertahankan sebagai profil/role primer selama transisi; gabah_user_roles menyimpan role primer dan role tambahan yang aktif. Role tambahan tidak boleh hilang akibat siklus persistensi normal.
+- users.role hanya menyimpan dua profil utama (Karyawan atau Admin GABAH); gabah_user_roles menyimpan role fungsi dan role tambahan yang aktif. Role tambahan tidak boleh hilang akibat siklus persistensi normal.
 - Permission efektif berasal dari gabungan role dinamis yang ditetapkan secara eksplisit; scope diperiksa per modul dan objek. Tidak ada grant hanya karena jabatan atau lokasi kerja.
 - Master office location, organizational unit, job level, asset location, owner domain, dan custodian adalah entitas berbeda.
 - Semua endpoint list, detail-by-ID, create, update, delete, approve/reject, export, pencarian, dan agregasi harus menerapkan permission serta scope di backend. Menu frontend hanya cerminan hak efektif.
@@ -156,7 +158,7 @@ Subang sudah ditutup. Record historis lokasi Subang, bila ada, harus dinonaktifk
 - Klasifikasi Aset Tetap PSAK 16:
   - `TNH`: Tanah & Lahan
   - `BGN`: Bangunan Fisik & Gudang
-  - `MSN`: Mesin Produksi & Timbangan PIBC
+  - `MSN`: Mesin produksi, forklift, dan peralatan mekanikal; owner setiap aset ditetapkan melalui review fungsi pemilik, bukan otomatis SC/PIBC dari kategori atau lokasi.
   - `KDR`: Kendaraan Dinas & Truk Logistik
   - `INV-F`: Inventaris Furniture (Wajib Milik Divisi GA secara sentral)
   - `INV-P`: Inventaris Peralatan Kantor (Dispenser, AC, APAR)
