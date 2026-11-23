@@ -614,31 +614,31 @@ async function main() {
     const adminToken = { cookie: '' };
     const adminLogin = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS }, token: adminToken });
     record('login admin returns no bearer token in JSON', '200 + no JSON token', 'HTTP ' + adminLogin.status, adminLogin.status === 200 && !adminLogin.json?.data?.token && !adminLogin.json?.token);
-    record('admin login sets HttpOnly SameSite gabah_session cookie', 'Set-Cookie + HttpOnly + SameSite', adminLogin.setCookie ? 'cookie present (value redacted)' : '(missing)', /gabah_session=/.test(adminLogin.setCookie) && /HttpOnly/i.test(adminLogin.setCookie) && /SameSite=/i.test(adminLogin.setCookie) && /Max-Age=604800/i.test(adminLogin.setCookie));
+    record('admin login sets HttpOnly SameSite gabah_session cookie', 'Set-Cookie + HttpOnly + SameSite', adminLogin.setCookie ? 'cookie present (value redacted)' : '(missing)', /gabah_session=/.test(adminLogin.setCookie) && /HttpOnly/i.test(adminLogin.setCookie) && /Secure/i.test(adminLogin.setCookie) && /SameSite=Strict/i.test(adminLogin.setCookie) && /Max-Age=604800/i.test(adminLogin.setCookie));
     const adminMe = await req(base, 'GET', '/api/auth/me', { token: adminToken });
     record('admin cookie restores a valid session', '200 + identity', 'HTTP ' + adminMe.status, adminMe.status === 200 && Boolean(adminMe.json?.data?.id));
 
     const itToken = { cookie: '' };
     const itLogin = await req(base, 'POST', '/api/auth/login', { body: { email: IT_EMAIL, password: USER_PASS }, token: itToken });
-    record('login IT uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + itLogin.status, itLogin.status === 200 && /gabah_session=/.test(itLogin.setCookie) && /HttpOnly/i.test(itLogin.setCookie) && /SameSite=/i.test(itLogin.setCookie) && !itLogin.json?.data?.token);
+    record('login IT uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + itLogin.status, itLogin.status === 200 && /gabah_session=/.test(itLogin.setCookie) && /HttpOnly/i.test(itLogin.setCookie) && /Secure/i.test(itLogin.setCookie) && /SameSite=Strict/i.test(itLogin.setCookie) && !itLogin.json?.data?.token);
     const itMe = await req(base, 'GET', '/api/auth/me', { token: itToken });
     record('IT cookie resolves to correct identity', IT_EMAIL, itMe.json?.data?.email, itMe.status === 200 && itMe.json?.data?.email === IT_EMAIL);
 
     const gaToken = { cookie: '' };
     const gaLogin = await req(base, 'POST', '/api/auth/login', { body: { email: GA_EMAIL, password: USER_PASS }, token: gaToken });
-    record('login GA uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + gaLogin.status, gaLogin.status === 200 && /gabah_session=/.test(gaLogin.setCookie) && /HttpOnly/i.test(gaLogin.setCookie) && /SameSite=/i.test(gaLogin.setCookie) && !gaLogin.json?.data?.token);
+    record('login GA uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + gaLogin.status, gaLogin.status === 200 && /gabah_session=/.test(gaLogin.setCookie) && /HttpOnly/i.test(gaLogin.setCookie) && /Secure/i.test(gaLogin.setCookie) && /SameSite=Strict/i.test(gaLogin.setCookie) && !gaLogin.json?.data?.token);
     const gaMe = await req(base, 'GET', '/api/auth/me', { token: gaToken });
     record('GA cookie resolves to correct identity', GA_EMAIL, gaMe.json?.data?.email, gaMe.status === 200 && gaMe.json?.data?.email === GA_EMAIL);
 
     let karyawanToken = { cookie: '' };
     const karyawanLogin = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS }, token: karyawanToken });
-    record('login Karyawan uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + karyawanLogin.status, karyawanLogin.status === 200 && /gabah_session=/.test(karyawanLogin.setCookie) && /HttpOnly/i.test(karyawanLogin.setCookie) && /SameSite=/i.test(karyawanLogin.setCookie) && !karyawanLogin.json?.data?.token);
+    record('login Karyawan uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + karyawanLogin.status, karyawanLogin.status === 200 && /gabah_session=/.test(karyawanLogin.setCookie) && /HttpOnly/i.test(karyawanLogin.setCookie) && /Secure/i.test(karyawanLogin.setCookie) && /SameSite=Strict/i.test(karyawanLogin.setCookie) && !karyawanLogin.json?.data?.token);
     const karyawanMe = await req(base, 'GET', '/api/auth/me', { token: karyawanToken });
     record('Karyawan cookie resolves to correct identity', KARYAWAN_EMAIL, karyawanMe.json?.data?.email, karyawanMe.status === 200 && karyawanMe.json?.data?.email === KARYAWAN_EMAIL);
 
     const auditorToken = { cookie: '' };
     const auditorLogin = await req(base, 'POST', '/api/auth/login', { body: { email: AUDITOR_EMAIL, password: USER_PASS }, token: auditorToken });
-    record('login Auditor uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + auditorLogin.status, auditorLogin.status === 200 && /gabah_session=/.test(auditorLogin.setCookie) && /HttpOnly/i.test(auditorLogin.setCookie) && /SameSite=/i.test(auditorLogin.setCookie) && !auditorLogin.json?.data?.token);
+    record('login Auditor uses HttpOnly cookie, not JSON token', '200 + cookie', 'HTTP ' + auditorLogin.status, auditorLogin.status === 200 && /gabah_session=/.test(auditorLogin.setCookie) && /HttpOnly/i.test(auditorLogin.setCookie) && /Secure/i.test(auditorLogin.setCookie) && /SameSite=Strict/i.test(auditorLogin.setCookie) && !auditorLogin.json?.data?.token);
     const auditorMe = await req(base, 'GET', '/api/auth/me', { token: auditorToken });
     record('Auditor cookie resolves to correct identity', AUDITOR_EMAIL, auditorMe.json?.data?.email, auditorMe.status === 200 && auditorMe.json?.data?.email === AUDITOR_EMAIL);
 
@@ -663,7 +663,7 @@ async function main() {
     const validAfterMissingOrigin = await req(base, 'GET', '/api/auth/me', { token: logoutToken });
     record('Missing-Origin logout does not destroy session', '200', 'HTTP ' + validAfterMissingOrigin.status, validAfterMissingOrigin.status === 200);
     const logout = await req(base, 'POST', '/api/auth/logout', { token: logoutToken, headers: { Origin: base } });
-    record('Same-Origin logout clears cookie and returns 200', '200 + cleared cookie', 'HTTP ' + logout.status, logout.status === 200 && /gabah_session=;/.test(logout.setCookie) && /HttpOnly/i.test(logout.setCookie) && /SameSite=/i.test(logout.setCookie));
+    record('Same-Origin logout clears cookie and returns 200', '200 + cleared cookie', 'HTTP ' + logout.status, logout.status === 200 && /gabah_session=;/.test(logout.setCookie) && /HttpOnly/i.test(logout.setCookie) && /Secure/i.test(logout.setCookie) && /SameSite=Strict/i.test(logout.setCookie));
     const afterLogout = await req(base, 'GET', '/api/auth/me', { token: logoutToken });
     record('Logout revokes the session', '401', 'HTTP ' + afterLogout.status, afterLogout.status === 401);
 
