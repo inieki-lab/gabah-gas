@@ -89,7 +89,7 @@ Server Linux menggunakan Docker Compose yang sama. Jalankan `chmod +x deploy.sh 
 ├── server/                      # Modul backend & business logic
 │   ├── auth.ts                  # Autentikasi sesi token Bearer, rate limiting, hashing
 │   ├── crypto.ts                # SHA-256 + salt password hashing & token generation
-│   ├── db.ts                    # In-memory store, seeder, canonical users (9 roles)
+│   ├── db.ts                    # In-memory store, seeder, legacy-compatible users normalized by Dynamic RBAC
 │   ├── migrations/              # Skema SQL PostgreSQL (DDL, Auth, Trigger)
 │   ├── numbering.ts             # Generator nomor kanonikal aset, tiket, pinjaman
 │   ├── persistence.ts           # PostgreSQL pool & dual-persistence resilience
