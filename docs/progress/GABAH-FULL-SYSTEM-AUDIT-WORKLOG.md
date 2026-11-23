@@ -64,3 +64,5 @@ Branch audit/full-system-hardening-2026-11-23; draft PR #248 targets main. No me
 - PR branch CI after lockfile update: FAIL, run 45113180356 (verify, completed 04:41:05Z). Detailed job output was unavailable; root cause beyond the observed lock mismatch is NOT TESTED. Do not mark CI green.
 - Auth source inspection: no active Bearer, Authorization, x-auth-token, gabah_auth_token, or getToken usage in browser source. API, password reset, and document upload/download requests use same-origin credentials. Server extractToken still accepts legacy Bearer and x-auth-token compatibility transports; runtime endpoint proof and retirement remain open.
 - Cookie/session/Origin, password reset, upload authorization, and endpoint matrix have not received runtime integration tests. Module/security backlog remains open.
+
+- Latest exact-head CI after evidence docs commit: FAIL, run 45113547899 (verify, completed 04:44:53Z). Logs could not be retrieved with available interface; root cause remains unknown.
