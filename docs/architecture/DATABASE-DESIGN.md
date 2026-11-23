@@ -313,3 +313,60 @@ CREATE TRIGGER trg_check_loan_schedule_collision
   FOR EACH ROW
   EXECUTE FUNCTION check_loan_schedule_collision();
 ```
+
+
+## 9. Migration file inventory — main snapshot 23 November 2026
+
+> File inventory only, extracted from `server/migrations/` at main SHA `f39db6b8fd819d301f49815c7a33a04c80b2a6c0`. This does not prove that every migration applies cleanly, is idempotent, or upgrades a representative legacy database. Fresh-install and legacy-upgrade paths require separate PostgreSQL integration tests. Migration SQL is the schema authority; this design document must be updated when migrations change.
+
+Found 47 SQL migration files:
+
+- `server/migrations/001_gabah_normalized_schema.sql`
+- `server/migrations/002_gabah_auth_hardening.sql`
+- `server/migrations/003_loan_anti_collision_trigger.sql`
+- `server/migrations/004_contract_management.sql`
+- `server/migrations/005_contract_notification_delivery.sql`
+- `server/migrations/006_org_model_masters.sql`
+- `server/migrations/007_asset_managing_unit.sql`
+- `server/migrations/008_asset_location_master.sql`
+- `server/migrations/009_asset_category_master.sql`
+- `server/migrations/010_dynamic_rbac_foundation.sql`
+- `server/migrations/011_dynamic_rbac_legacy_backfill.sql`
+- `server/migrations/012_dynamic_rbac_permission_catalog_expansion.sql`
+- `server/migrations/013_dynamic_rbac_dashboard_permission_seed.sql`
+- `server/migrations/014_dynamic_rbac_assets_read_permission_seed.sql`
+- `server/migrations/015_room_reservations.sql`
+- `server/migrations/016_dynamic_rbac_asset_write_permissions_seed.sql`
+- `server/migrations/017_dynamic_rbac_movements_read_permission_seed.sql`
+- `server/migrations/018_dynamic_rbac_knowledge_permissions_seed.sql`
+- `server/migrations/019_dynamic_rbac_vendor_write_permissions_seed.sql`
+- `server/migrations/020_dynamic_rbac_maintenance_permissions_seed.sql`
+- `server/migrations/021_dynamic_rbac_ga_it_workstation_read.sql`
+- `server/migrations/022_dynamic_rbac_it_ga_asset_owner_scopes.sql`
+- `server/migrations/023_dynamic_rbac_employee_and_navigation_permissions.sql`
+- `server/migrations/024_dynamic_rbac_core_operational_permissions.sql`
+- `server/migrations/025_dynamic_rbac_audit_and_admin_permissions.sql`
+- `server/migrations/026_map_branch_accounts_to_employee_location.sql`
+- `server/migrations/027_dynamic_rbac_asset_catalog_read.sql`
+- `server/migrations/028_dynamic_rbac_user_directory_read.sql`
+- `server/migrations/029_rbac_module_scoped_data_scopes.sql`
+- `server/migrations/030_rbac_primary_role_assignment.sql`
+- `server/migrations/031_employee_primary_role_with_job_capabilities.sql`
+- `server/migrations/032_rbac_owner_scope_exclusions.sql`
+- `server/migrations/033_current_office_location_master.sql`
+- `server/migrations/034_dynamic_rbac_room_reservation_capabilities.sql`
+- `server/migrations/036_dynamic_rbac_auditor_ticket_create_deny.sql`
+- `server/migrations/042_module_lifecycle_registry.sql`
+- `server/migrations/043_asset_numbering_rules.sql`
+- `server/migrations/044_pibc_me_helpdesk_queue.sql`
+- `server/migrations/045_rpc_location_label_consistency.sql`
+- `server/migrations/046_dynamic_me_queue_capability.sql`
+- `server/migrations/047_me_ticket_assignment_permission.sql`
+- `server/migrations/098_loan_collision_asset_lock.sql`
+- `server/migrations/099_room_reservation_collision_lock.sql`
+- `server/migrations/100_audit_log_immutability.sql`
+- `server/migrations/101_shared_rate_limit_buckets.sql`
+- `server/migrations/102_notification_rule_settings.sql`
+- `server/migrations/103_system_settings_company_profile.sql`
+
+**NOT VERIFIED by this inventory:** execution order/ledger behavior, actual schema after full migration, foreign-key/index/trigger definitions, upgrade from legacy snapshots, rollback safety, and PostgreSQL restore.
