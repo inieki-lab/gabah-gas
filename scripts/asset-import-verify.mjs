@@ -25,14 +25,15 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token ? { Cookie: token } : {}),
+      Origin: base,
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
+  return { status: res.status, json, setCookie: res.headers.get('set-cookie') || '' };
 }
 
 async function waitForServer(base, tries = 60) {
@@ -120,8 +121,8 @@ async function main() {
     const login = await req(base, 'POST', '/api/auth/login', {
       body: { email: 'admin@foodstation.co.id', password: adminPass },
     });
-    const adminToken = login.json?.token || login.json?.data?.token;
-    record('Admin login (env-provisioned password)', 'token issued', adminToken ? 'token issued' : 'none', Boolean(adminToken));
+    const adminToken = login.setCookie?.split(';', 1)[0] || '';
+    record('Admin login (env-provisioned password)', 'HttpOnly cookie issued', adminToken ? 'HttpOnly cookie issued' : 'none', Boolean(adminToken));
     if (!adminToken) throw new Error('No admin token — cannot continue.');
 
     // ---------- Empty + oversized batch ----------
@@ -207,8 +208,8 @@ async function main() {
     const itLogin = await req(base, 'POST', '/api/auth/login', {
       body: { email: 'it.support@foodstation.co.id', password: userPass },
     });
-    const itToken = itLogin.json?.token || itLogin.json?.data?.token;
-    record('IT user login (GABAH_INITIAL_USER_PASSWORD)', 'token issued', itToken ? 'token issued' : 'none', Boolean(itToken));
+    const itToken = itLogin.setCookie?.split(';', 1)[0] || '';
+    record('IT user login (GABAH_INITIAL_USER_PASSWORD)', 'HttpOnly cookie issued', itToken ? 'HttpOnly cookie issued' : 'none', Boolean(itToken));
     if (itToken) {
       const r5 = await req(base, 'POST', '/api/assets/bulk-import', {
         token: itToken,
@@ -220,7 +221,7 @@ async function main() {
 
     // ---------- Non-authorized role guard (LAST: switch-role rotates token) ----------
     const sw = await req(base, 'POST', '/api/auth/switch-role', { token: adminToken, body: { role: 'Karyawan' } });
-    const staffToken = sw.json?.token || sw.json?.data?.token;
+    const staffToken = sw.setCookie?.split(';', 1)[0] || '';
     if (staffToken) {
       const forbidden = await req(base, 'POST', '/api/assets/bulk-import', {
         token: staffToken,
