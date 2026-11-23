@@ -1440,3 +1440,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Removed the "Ingat perangkat ini" checkbox because login always stores the session token in localStorage regardless of the checkbox state. Replaced the inert password-help text with clear Service Desk contact guidance.
 - Removed the unused `availableUsers` prop and mock-user import from LoginPage; employee directory state is no longer passed into either public landing or login screens.
 - Expanded `test:public-landing-privacy` to assert these public-facing claims and controls remain truthful.
+
+
+### Legacy snapshot capability restoration — 2026-11-23 (stacked fix for PR #249; validation pending)
+
+- PR #249 CI run #3282 passed typecheck, dependency audit, production build, Docker runtime smoke, and PostgreSQL integration, but the meeting-room stage-3 regression failed 7 of 34 assertions: Sekdir HIGH-priority interruption and GA room operations were denied.
+- Root cause identified in `hydrateDbFromState()`: canonical users' primary profile and label were refreshed from `CANONICAL_USERS`, but canonical `role_keys` were not restored when loading older persisted snapshots that predate the `role_keys` field. That left canonical GA/Sekdir/Humas/IT users without their default secondary capability mirror after hydration, despite the new two-profile model.
+- Fix: when a canonical user's persisted `role_keys` field is absent/malformed, restore the canonical seed role keys. Preserve an explicit empty array so a deliberate role revocation is not undone. The subsequent existing Dynamic RBAC reconciliation persists those assignments and the PostgreSQL policy refresh reads them.
+- Added regression assertions to `test:employee-role-normalization` for missing-field restoration and explicit-empty preservation.
+- Fix branch: `fix/rbac-restore-canonical-secondary-roles-2026-11-23`. Code commit: `ae7db7906d1174f7072edecfff08317bc1a04c73`; test commit: `977a2b116e9e4766e61c76866ef044abd5f92f67`.
+- Exact-head CI and the previously failing meeting-room PostgreSQL test remain PENDING. Do not treat this as resolved until a fresh exact-head CI run passes.
