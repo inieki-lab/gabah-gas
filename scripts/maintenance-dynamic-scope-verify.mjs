@@ -13,7 +13,7 @@ const checks = [
   ['Employee baseline remains personal-asset-only', /asset\.assigned_to\?\.id === actor\.id/.test(route)],
   ['Primary-role filtering is confined to file-store compatibility', /if \(isPostgresPersistenceActive\(\)\)[\s\S]*?return res\.json\(\{ success: true, data: filtered \}\);[\s\S]*?const employeeBaseline/.test(route)],
   ['GA IT-workstation read-only exception is explicitly excluded from maintenance scope', /read-only IT-workstation exception is intentionally excluded/.test(route)],
-  ['File-store legacy GA owner filter remains intact', /actor\.role !== 'GA' \|\| String\(asset\.owner_division\)\.toUpperCase\(\) === 'GA'/.test(route)],
+  ['File-store IT/GA secondary capabilities filter maintenance by matching owner domain', /const canReadItMaintenance = hasApplicationRole\(actor, 'it'\)/.test(route) && /const canReadGaMaintenance = hasApplicationRole\(actor, 'ga'\)/.test(route) && /if \(canReadItMaintenance && owner === 'IT'\)/.test(route) && /if \(canReadGaMaintenance && owner === 'GA'\)/.test(route)],
   ['Dynamic maintenance resolver evaluates explicit asset scopes, not workstation read permission', /assetVisibleUnderDynamicScopes\(user, asset\)/.test(services) && !/assets\.read\.it_workstations/.test(services.slice(services.indexOf('export function filterMaintenanceSchedulesByDynamicScopes'), services.indexOf('export class GabahDomainService')))],
   ['Unknown or missing asset references fail closed', /asset != null && assetVisibleUnderDynamicScopes\(user, asset\)/.test(services)],
 ];
