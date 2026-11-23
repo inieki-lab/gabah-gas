@@ -20,3 +20,7 @@ console.log('PASS: Ticket reporters can confirm resolved tickets or reopen close
 const hardening = fs.readFileSync('server/runtime-hardening.ts', 'utf8');
 assert.ok(hardening.includes('actor.role_keys || []'), 'file-store ticket/loan scopes must honor secondary functional roles');
 assert.ok(hardening.includes("capabilities.has('it')") && hardening.includes("capabilities.has('ga')"), 'IT/GA secondary capabilities must govern ticket queue scope');
+
+const ticketRoutes = source.slice(source.indexOf('const canAccessTicketRecord'), source.indexOf("app.get('/api/tickets/:id/comments'"));
+assert.ok(ticketRoutes.includes('hasApplicationRole(actor, String(ticket.category'), 'file-store ticket record access must honor secondary operational roles');
+assert.ok(source.includes("hasApplicationRole(actor, String(ticket.category || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'))"), 'file-store ticket comments and status transitions must honor secondary operational roles');
