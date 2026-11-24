@@ -21,4 +21,4 @@ assert.match(source, /const relatedAsset = ticket\.related_asset_id \? assetsByI
 assert.match(source, /normalizeOwnerCode\(relatedAsset\.owner_division\) === divisionFilter/);
 assert.doesNotMatch(source, /divisionFilter === 'all' \|\| t\.category === divisionFilter/);
 assert.match(source, /normalizeOwnerCode\(m\.owner_division \|\| 'Umum'\)/);
-console.log('Report KPI data integrity: 13 checks passed');
+console.log('Report KPI data integrity: checks passed');
