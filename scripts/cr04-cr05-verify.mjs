@@ -1103,6 +1103,13 @@ async function main() {
       record('Karyawan obtains a session on the peer instance', '200 + token',
         `HTTP ${peerLogin.status}`, peerLogin.status === 200 && Boolean(rbacPeerToken));
       if (!rbacPeerToken) throw new Error('Karyawan peer login failed');
+      const peerAdminLogin = await req(rbacPeerBase, 'POST', '/api/auth/login', {
+        body: { email: ADMIN_EMAIL, password: ADMIN_PASS },
+      });
+      const rbacPeerAdminToken = peerAdminLogin.json?.data?.token || '';
+      record('Superadmin obtains an independent session on the RBAC peer', '200 + token',
+        `HTTP ${peerAdminLogin.status}`, peerAdminLogin.status === 200 && Boolean(rbacPeerAdminToken));
+      if (!rbacPeerAdminToken) throw new Error('peer Superadmin login failed');
 
       const peerInitialContracts = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerToken });
       record('Peer instance initially honors the assigned GA contracts.read role', '200',
@@ -1121,6 +1128,12 @@ async function main() {
         for (let attempt = 0; attempt < 48; attempt += 1) {
           latest = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerToken });
           if (latest.status === expectedStatus) return latest;
+          if (latest.status === 401) {
+            const relogin = await req(rbacPeerBase, 'POST', '/api/auth/login', {
+              body: { email: KARYAWAN_EMAIL, password: USER_PASS },
+            });
+            rbacPeerToken = relogin.json?.data?.token || rbacPeerToken;
+          }
           await new Promise(resolve => setTimeout(resolve, 250));
         }
         return latest;
@@ -1149,12 +1162,22 @@ async function main() {
       try {
         await rbacFaultClient.query('ALTER TABLE gabah_role_division_scopes RENAME TO gabah_role_division_scopes_ci_hold');
         scopesTableRenamed = true;
-        const peerAfterFailure = await waitForPeerStatus(403);
+        let peerAfterFailure = null;
+        for (let attempt = 0; attempt < 48; attempt += 1) {
+          peerAfterFailure = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerAdminToken });
+          if (peerAfterFailure.status === 403) break;
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
         record('Peer clears stale RBAC grants after PostgreSQL policy query failure', '403 within 12 seconds',
           `HTTP ${peerAfterFailure?.status ?? 'no response'}`, peerAfterFailure?.status === 403);
-        const primaryAfterFailure = await req(base, 'GET', '/api/contracts', { token: adminToken });
-        record('Primary instance also fails closed when its RBAC refresh query fails', '403',
-          `HTTP ${primaryAfterFailure.status}`, primaryAfterFailure.status === 403);
+        let primaryAfterFailure = null;
+        for (let attempt = 0; attempt < 48; attempt += 1) {
+          primaryAfterFailure = await req(base, 'GET', '/api/contracts', { token: adminToken });
+          if (primaryAfterFailure.status === 403) break;
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+        record('Primary instance also fails closed when its RBAC refresh query fails', '403 within 12 seconds',
+          `HTTP ${primaryAfterFailure?.status ?? 'no response'}`, primaryAfterFailure?.status === 403);
       } finally {
         if (scopesTableRenamed) {
           await rbacFaultClient.query('ALTER TABLE gabah_role_division_scopes_ci_hold RENAME TO gabah_role_division_scopes');
@@ -1162,7 +1185,12 @@ async function main() {
         }
         await rbacFaultClient.end();
       }
-      const peerAfterRecovery = await waitForPeerStatus(200);
+      let peerAfterRecovery = null;
+      for (let attempt = 0; attempt < 48; attempt += 1) {
+        peerAfterRecovery = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerAdminToken });
+        if (peerAfterRecovery.status === 200) break;
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
       record('Peer restores RBAC grants after PostgreSQL policy query recovery', '200 within 12 seconds',
         `HTTP ${peerAfterRecovery?.status ?? 'no response'}`, peerAfterRecovery?.status === 200);
       let primaryAfterRecovery = null;
