@@ -208,7 +208,7 @@ export default function App() {
     } catch (err: any) {
       console.error('Failed to fetch from backend:', err);
     } finally {
-      setIsLoading(false);
+      if (generation === dataRefreshGeneration.current) setIsLoading(false);
     }
   }, []);
 
