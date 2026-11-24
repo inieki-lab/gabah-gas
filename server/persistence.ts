@@ -1112,11 +1112,11 @@ export async function withRbacTransaction<T>(work: (client: PoolClient) => Promi
 export async function withLastSuperadminGuard<T>(work: () => Promise<T>): Promise<T> {
   if (!isPostgresAvailable) return work();
   const client = await pool.connect();
-  const lockKey = 742_061_124_001n;
+  const lockKey = '742061124001';
   let acquired = false;
   let discardClient = false;
   try {
-    await client.query('SELECT pg_advisory_lock($1::bigint)', [lockKey.toString()]);
+    await client.query('SELECT pg_advisory_lock($1::bigint)', [lockKey]);
     acquired = true;
     return await work();
   } catch (error) {
