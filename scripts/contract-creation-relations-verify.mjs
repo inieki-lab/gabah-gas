@@ -11,6 +11,9 @@ assert.ok(actor, 'IT actor fixture exists');
 // Permission regression: update-only RBAC grants must never imply create authority.
 const contractSource = readFileSync(new URL('../server/contracts.ts', import.meta.url), 'utf8');
 const notificationSource = readFileSync(new URL('../server/notifications/notificationService.ts', import.meta.url), 'utf8');
+const persistenceSource = readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
+const numberingSource = readFileSync(new URL('../server/numbering.ts', import.meta.url), 'utf8');
+const serverSource = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const createStart = contractSource.indexOf('export function canCreateContract(');
 const createEnd = contractSource.indexOf('// SEC-08:', createStart);
 const createGuard = contractSource.slice(createStart, createEnd);
@@ -19,6 +22,11 @@ assert.ok(!createGuard.includes("'contracts.update'"), 'Update permission must n
 assert.ok(contractSource.includes("id: `LOG-CTR-${randomUUID()}`"), 'Contract audit records must use UUID identifiers');
 assert.ok(notificationSource.includes("id: `AUD-CTR-${crypto.randomUUID()}`"), 'Contract reminder audit records must use UUID identifiers');
 assert.ok(notificationSource.includes("id: `NTF-${crypto.randomUUID()}`"), 'In-app contract reminder notification IDs must use UUID identifiers');
+assert.match(persistenceSource, /INSERT INTO contract_number_sequences \(sequence_year, last_sequence\)[\s\S]*ON CONFLICT \(sequence_year\)[\s\S]*last_sequence = contract_number_sequences\.last_sequence \+ 1[\s\S]*RETURNING last_sequence/);
+assert.match(contractSource, /await reserveContractNumberSequence\(numberingYear\)/);
+assert.match(contractSource, /isPostgresFailureLatched\(\)[\s\S]*throw Object\.assign/);
+assert.match(numberingSource, /formatReservedContractNumber/);
+assert.match(serverSource, /await ContractDomainService\.createContract\(req\.body, actor\)/);
 
 
 const base = {
@@ -75,6 +83,7 @@ const created = await ContractDomainService.createContract({
   milestones: [{ id: 'FORGED-MILESTONE', status: 'completed' }],
 }, actor);
 
+assert.match(created.contract_number, /^CTR-\\d{4}-\\d{4}$/);
 assert.equal(created.parent_contract_id, 'CTR-SEED-001');
 assert.equal(created.escalation_user_id, 'USR-01');
 assert.deepEqual(created.documents, [], 'Client-supplied document metadata must not be trusted on creation');
