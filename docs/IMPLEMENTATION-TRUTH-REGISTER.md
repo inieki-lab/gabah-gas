@@ -38,7 +38,7 @@ This register separates owner-approved intent from behavior actually visible in 
 3. Run deployment-level Dynamic RBAC fault UAT under a PostgreSQL network interruption; CI already covers two-process role revocation/restoration and policy-query failure/recovery.
 4. Test asset read scope parity across list, search, detail-by-ID, dashboards, exports, and linked records.
 5. Confirm the company-approved asset numbering format and owner taxonomy before changing any existing pattern; do not alter existing patterns without owner approval.
-6. Serialize the last-active-Superadmin invariant across role assignment, account update/deactivation, and account deletion; issue #247 is in progress.
+6. Serialize the last-active-Superadmin invariant across role assignment, account update/deactivation, and account deletion; branch `fix/last-superadmin-concurrency-guard-2026-11-24` adds a shared PostgreSQL advisory lock and two-connection integration regression; CI pending.
 7. Reconcile each API route with middleware, handler permission, domain service, DB transaction, frontend action, and UAT case.
 8. Apply all SQL migrations to a fresh PostgreSQL database and a representative legacy snapshot; compare actual tables/columns/indexes/constraints/triggers with Database Design.
 
@@ -50,6 +50,6 @@ This register separates owner-approved intent from behavior actually visible in 
 - PR #261 merged; CI run #3397 passed 117/117 for PostgreSQL atomic contract numbering, two-instance concurrency, and restart continuation.
 - PR #262 merged; CI run #3401 passed 117/117 for cross-instance HttpOnly session verification.
 - PR #263 merged; CI run #3404 passed 117/117 for explicit trusted reverse-proxy configuration. Main workflow #3405 passed.
-- Issue #247 remains open until the last-active-Superadmin race is fixed and PostgreSQL concurrency regression passes.
+- Issue #247 implementation is in branch `fix/last-superadmin-concurrency-guard-2026-11-24`; shared lock coverage and PostgreSQL two-connection race regression are added; CI pending.
 - Browser UAT, production HTTPS/reverse-proxy validation, PostgreSQL network interruption UAT, and penetration testing remain separate release gates.
 - Recheck the register whenever the base branch changes or the referenced implementation changes.
