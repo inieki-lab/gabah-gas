@@ -7,6 +7,8 @@ import { AssetNumberingEngine } from '../server/numbering.ts';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const server = fs.readFileSync(path.join(root, 'server.ts'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'server/migrations/043_asset_numbering_rules.sql'), 'utf8');
+const persistence = fs.readFileSync(path.join(root, 'server/persistence.ts'), 'utf8');
+const services = fs.readFileSync(path.join(root, 'server/services.ts'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src/index.css'), 'utf8');
 
 AssetNumberingEngine._resetForTesting();
@@ -44,6 +46,12 @@ assert.throws(
 );
 
 assert.match(migration, /UNIQUE\s*\(owner_division,\s*asset_code\)/i);
+assert.match(persistence, /INSERT INTO asset_number_sequences[\s\S]*ON CONFLICT \(owner_division_id, asset_code, sequence_year\)[\s\S]*last_sequence = asset_number_sequences\.last_sequence \+ 1[\s\S]*RETURNING last_sequence/i);
+assert.match(persistence, /GREATEST\(asset_number_sequences\.last_sequence, EXCLUDED\.last_sequence\)/i);
+assert.match(persistence, /reserveAssetNumberSequence[\s\S]*postgresFailureLatched/i);
+assert.match(services, /static async createAsset/);
+assert.match(services, /await reserveAssetNumberSequence/);
+assert.match(services, /isPostgresPersistenceActive\(\)[\s\S]*generateAssetNumber/);
 assert.match(server, /app\.get\('\/api\/numbering\/rules'/);
 assert.match(server, /app\.post\('\/api\/numbering\/rules'/);
 assert.match(server, /app\.patch\('\/api\/numbering\/rules\/:id'/);
