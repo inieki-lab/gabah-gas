@@ -68,12 +68,11 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     || (hasPermissionMetadata
       ? currentUser!.permission_keys!.some(key => ['maintenances.create', 'maintenances.update'].includes(key))
       : currentUser?.role === 'Admin GABAH' || ['IT', 'GA'].includes(currentUser?.role || '') || ['it', 'ga'].some(key => currentUser?.role_keys?.includes(key) === true));
-  const isRequestRole = currentUser?.role === 'Karyawan' || ['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(currentUser?.role || '');
 
   // Filtered schedules
   const filteredSchedules = schedules.filter((sch) => {
     if (activeStatusFilter !== 'ALL' && sch.status !== activeStatusFilter) return false;
-    if (divisionFilter !== 'ALL' && sch.owner_division !== divisionFilter) return false;
+    if (divisionFilter !== 'ALL' && String(sch.owner_division || '').trim().toUpperCase() !== divisionFilter) return false;
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
       return (
@@ -87,6 +86,15 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     }
     return true;
   });
+
+  // Owner division is not the same as office location. Legacy SC/PIBC values
+  // remain visible in the unfiltered list but are not offered as owner filters.
+  const locationOnlyOwnerValues = new Set(['SC', 'SUPPLY CHAIN', 'RPC', 'PIBC']);
+  const ownerDivisionOptions = Array.from(new Set(
+    schedules
+      .map(schedule => String(schedule.owner_division || '').trim().toUpperCase())
+      .filter(owner => owner && !locationOnlyOwnerValues.has(owner))
+  )).sort();
 
   // KPI calculations
   const totalScheduled = schedules.filter((s) => s.status === 'scheduled').length;
@@ -252,11 +260,10 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
             onChange={(e) => setDivisionFilter(e.target.value)}
             className="text-xs px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#4ABDAC]/30 focus:border-[#4ABDAC]"
           >
-            <option value="ALL">Semua Divisi Pemilik</option>
-            <option value="IT">IT (Server &amp; Network)</option>
-            <option value="GA">GA (Kendaraan &amp; Gedung)</option>
-            <option value="SC">Supply Chain (Truk &amp; Timbangan)</option>
-            <option value="PIBC">Kawasan PIBC</option>
+            <option value="ALL">Semua Pemilik Aset</option>
+            {ownerDivisionOptions.map(owner => (
+              <option key={owner} value={owner}>{owner}</option>
+            ))}
           </select>
         </div>
 
