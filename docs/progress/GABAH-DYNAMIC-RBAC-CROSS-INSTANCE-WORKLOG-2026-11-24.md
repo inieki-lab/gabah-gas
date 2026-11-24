@@ -14,9 +14,10 @@ Ensure role, permission, and scope changes made on one GABAH application process
 - Karyawan initially receives GA-scoped `contracts.read` on the peer.
 - The primary process revokes the GA role; the peer must switch to HTTP 403 within the bounded polling window.
 - The primary process restores the role; the peer must return to HTTP 200 without restart.
+- The same integration temporarily renames the RBAC scope table to force a policy-query failure; both instances must return 403, then return 200 after the table is restored and the next scheduled refresh succeeds.
 - Static regression checks cover serialized refresh, atomic replacement, and fail-closed behavior after refresh errors.
 
 ## Verification
 - PR #259: https://github.com/inieki-lab/gabah-gas/pull/259
 - CI is pending for the branch head.
-- Production failure/recovery behavior still requires controlled runtime fault-injection before a production-ready claim.
+- The CI fault injection covers policy-query failure/recovery; deployment-level network interruption remains an operational UAT item.
