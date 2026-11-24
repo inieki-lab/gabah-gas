@@ -1411,6 +1411,52 @@ async function main() {
     const adminLogin2 = await req(base, 'POST', '/api/auth/login', { body: { email: ADMIN_EMAIL, password: ADMIN_PASS } });
     const adminToken2 = adminLogin2.json?.data?.token || '';
 
+    // Verify that the durable sequence survives a process restart and continues
+    // from the last PostgreSQL counter rather than rebuilding from a local Map.
+    const numberingRestartDb = new pg.Client({ connectionString: TEST_DB_URL });
+    numberingRestartDb.on('error', e => console.error('[asset numbering restart async error]', e.message));
+    await numberingRestartDb.connect();
+    const numberingYear = new Date().getFullYear();
+    const counterBeforeRestartCreate = await numberingRestartDb.query(
+      `SELECT s.last_sequence
+       FROM asset_number_sequences s
+       JOIN divisions d ON d.id = s.owner_division_id
+       WHERE UPPER(d.code) = 'IT' AND UPPER(s.asset_code) = 'HLT' AND s.sequence_year = $1`,
+      [numberingYear],
+    );
+    const sequenceBeforeRestartCreate = Number(counterBeforeRestartCreate.rows[0]?.last_sequence || 0);
+    const restartSuffix = crypto.randomBytes(6).toString('hex');
+    const restartNumberingAsset = await req(base, 'POST', '/api/assets', {
+      token: adminToken2,
+      body: {
+        category_name_or_code: 'HLT',
+        name: `CI numbering after restart ${restartSuffix}`,
+        serial_number: `CI-NUM-RESTART-${restartSuffix}`,
+        location: 'Head Office - Gudang IT Pool (Lt. 2)',
+        is_loanable: false,
+        purchase_price: 1,
+      },
+    });
+    const restartAssetNumber = restartNumberingAsset.json?.data?.asset_number || '';
+    const sequenceFromIssuedNumber = Number(restartAssetNumber.split(/[-_/]/).at(-1));
+    const counterAfterRestartCreate = await numberingRestartDb.query(
+      `SELECT s.last_sequence
+       FROM asset_number_sequences s
+       JOIN divisions d ON d.id = s.owner_division_id
+       WHERE UPPER(d.code) = 'IT' AND UPPER(s.asset_code) = 'HLT' AND s.sequence_year = $1`,
+      [numberingYear],
+    );
+    const sequenceAfterRestartCreate = Number(counterAfterRestartCreate.rows[0]?.last_sequence || 0);
+    const restartNumberingPass = restartNumberingAsset.status === 201
+      && sequenceBeforeRestartCreate > 0
+      && sequenceAfterRestartCreate === sequenceBeforeRestartCreate + 1
+      && sequenceFromIssuedNumber === sequenceAfterRestartCreate;
+    record('Asset numbering continues from the durable PostgreSQL counter after app restart',
+      'HTTP 201 + sequence increments exactly once from persisted counter',
+      `HTTP ${restartNumberingAsset.status}; before=${sequenceBeforeRestartCreate}; issued=${restartAssetNumber || '-'}; after=${sequenceAfterRestartCreate}`,
+      restartNumberingPass);
+    await numberingRestartDb.end();
+
     const afterRestart = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken2 });
     record('CR-04 contract persists across restart (PostgreSQL authoritative)', '200 + updated notes', `HTTP ${afterRestart.status} notes=${afterRestart.json?.data?.notes || '-'}`,
       afterRestart.status === 200 && afterRestart.json?.data?.notes === 'updated notes by verify' && afterRestart.json?.data?.contract_number === readBack.json?.data?.contract_number);
