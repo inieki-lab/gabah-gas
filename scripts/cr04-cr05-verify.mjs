@@ -1139,6 +1139,40 @@ async function main() {
       const peerAfterRestore = await waitForPeerStatus(200);
       record('Peer instance restores the GA contract capability without restart', '200 within 12 seconds',
         `HTTP ${peerAfterRestore?.status ?? 'no response'}`, peerAfterRestore?.status === 200);
+
+      // Fault-inject a temporary policy-query outage. Every node must clear
+      // cached grants (default-deny), then reload them after PostgreSQL recovers.
+      const rbacFaultClient = new pg.Client({ connectionString: TEST_DB_URL });
+      rbacFaultClient.on('error', e => console.error('[RBAC fault injection async error]', e.message));
+      await rbacFaultClient.connect();
+      let scopesTableRenamed = false;
+      try {
+        await rbacFaultClient.query('ALTER TABLE gabah_role_division_scopes RENAME TO gabah_role_division_scopes_ci_hold');
+        scopesTableRenamed = true;
+        const peerAfterFailure = await waitForPeerStatus(403);
+        record('Peer clears stale RBAC grants after PostgreSQL policy query failure', '403 within 12 seconds',
+          `HTTP ${peerAfterFailure?.status ?? 'no response'}`, peerAfterFailure?.status === 403);
+        const primaryAfterFailure = await req(base, 'GET', '/api/contracts', { token: adminToken });
+        record('Primary instance also fails closed when its RBAC refresh query fails', '403',
+          `HTTP ${primaryAfterFailure.status}`, primaryAfterFailure.status === 403);
+      } finally {
+        if (scopesTableRenamed) {
+          await rbacFaultClient.query('ALTER TABLE gabah_role_division_scopes_ci_hold RENAME TO gabah_role_division_scopes');
+          scopesTableRenamed = false;
+        }
+        await rbacFaultClient.end();
+      }
+      const peerAfterRecovery = await waitForPeerStatus(200);
+      record('Peer restores RBAC grants after PostgreSQL policy query recovery', '200 within 12 seconds',
+        `HTTP ${peerAfterRecovery?.status ?? 'no response'}`, peerAfterRecovery?.status === 200);
+      let primaryAfterRecovery = null;
+      for (let attempt = 0; attempt < 48; attempt += 1) {
+        primaryAfterRecovery = await req(base, 'GET', '/api/contracts', { token: adminToken });
+        if (primaryAfterRecovery.status === 200) break;
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+      record('Primary restores RBAC grants after PostgreSQL policy query recovery', '200 within 12 seconds',
+        `HTTP ${primaryAfterRecovery?.status ?? 'no response'}`, primaryAfterRecovery?.status === 200);
     } catch (error) {
       record('Dynamic RBAC cross-instance propagation integration', 'role revocation and restoration propagate',
         `error: ${error.message}`, false);
