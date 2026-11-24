@@ -17,10 +17,11 @@ Issue #247 identified a cross-instance race in the invariant that at least one a
 - Added regression assertions that all three account mutation routes use the shared guard and that PATCH/DELETE use database-backed counts.
 
 ## Verification status
-- PR: pending creation / CI.
-- PostgreSQL integration requires the existing CI CR-04/CR-05 fresh-database job.
+- PR #264 merged into main as `57b69b3`.
+- CI run #3410 passed 119/119 checks on the exact PR head `49a344b`.
+- PostgreSQL CR-04/CR-05 fresh-database integration passed, including two independent connections contending for the same advisory lock; the second demotion waited and was denied, leaving one active Superadmin.
 - This branch does not change user data, seed accounts, or role assignments outside the isolated test database.
-- No merge until full CI passes and the concurrency test is green.
+- Merge completed only after the full CI workflow was green.
 
 ## Related issue
 - #247 — Serialize last-active-Superadmin protection across concurrent account changes.
