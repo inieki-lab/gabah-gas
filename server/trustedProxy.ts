@@ -27,7 +27,7 @@ export function parseTrustedProxyConfig(value: string | undefined): false | stri
     }
 
     if (parts.length === 2) {
-      if (!/^\\d+$/.test(parts[1])) {
+      if (!/^[0-9]+$/.test(parts[1])) {
         throw new Error(`Invalid GABAH_TRUST_PROXY CIDR prefix: ${entry}`);
       }
       const prefix = Number(parts[1]);
