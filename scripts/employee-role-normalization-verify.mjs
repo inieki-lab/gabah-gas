@@ -19,6 +19,9 @@ assert.ok(persistence.includes("WHEN 'Admin GABAH' THEN 'superadmin' ELSE 'karya
 assert.ok(persistence.includes("user.role = 'Karyawan'"));
 assert.ok(persistence.includes("user.office_location_id = 'OFF-RPC'"));
 assert.ok(persistence.includes("user.office_location_id = 'OFF-PIBC'"));
+assert.match(persistence, /INSERT INTO users \([\s\S]*job_level_code,unit_id,office_location_id/);
+assert.match(persistence, /office_location_id=CASE WHEN \$16::boolean THEN EXCLUDED\.office_location_id ELSE users\.office_location_id END/);
+assert.match(persistence, /unit_id=CASE WHEN \$15::boolean THEN EXCLUDED\.unit_id ELSE users\.unit_id END/);
 assert.ok(migration.includes("SET role = 'Karyawan'"));
 assert.ok(dashboard.includes("hasEffectivePermission('room_reservations.documentation.read', ['Humas'])"));
 assert.ok(dashboard.includes("hasEffectivePermission('room_reservations.override_priority', ['Sekretaris Direksi'])"));

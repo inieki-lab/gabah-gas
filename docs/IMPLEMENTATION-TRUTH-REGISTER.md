@@ -1,8 +1,8 @@
 # GABAH — Implementation Truth Register
 
-**Baseline reviewed:** `main` at `f39db6b8fd819d301f49815c7a33a04c80b2a6c0`  
-**Review date:** 23 November 2026  
-**Status:** Source-inspection snapshot; not test evidence and not a production-readiness approval.
+**Baseline reviewed:** `main` at `3cb832a472a897e6e811dd5ad21623e612386cdd`  
+**Review date:** 24 November 2026  
+**Status:** Source-inspection snapshot with linked CI evidence; not a production-readiness approval.
 
 This register separates owner-approved intent from behavior actually visible in the source. “IMPLEMENTED” below means the relevant code path was found by inspection only; it does not mean integration/UAT has passed.
 
@@ -18,8 +18,8 @@ This register separates owner-approved intent from behavior actually visible in 
 | Asset creation | `GabahDomainService.createAsset()` rejects owner codes SC, PIBC, and UNASSIGNED; requires an active owner master; then requires `assets.create` plus matching owner scope. IT hardware/software is forced to owner IT; INV-F is forced to GA. | IMPLEMENTED by source inspection for this service path; bulk-import and every alternate creation path still need parity tests |
 | Asset legacy taxonomy | `server/taxonomy.ts` still contains legacy SC/PIBC category entries and resolver fallbacks so historical records remain readable. The create service guard is what blocks those owners for new assets. | PARTIAL; keep legacy data readable and test all new-write paths |
 | Loan approval/rejection | `GabahDomainService.canOperateLoan()` requires the operation permission plus matching owner scope in PostgreSQL mode; Superadmin is global and Auditor denied. | IMPLEMENTED by source inspection; test per action, owner, borrower, and status transition |
-| Number generation | PostgreSQL mode reserves sequence values transactionally through `asset_number_sequences` using an atomic UPSERT shared by app instances; startup reconciliation seeds historical maxima without lowering existing counters. PostgreSQL failure is fail-closed. File-store development retains the in-memory counter. | IMPLEMENTED in source; concurrency and restart integration tests required before production claim |
-| Employee profile model | `ServerUser.role` is now an open display/profile string, while create/edit API validation permits only `Admin GABAH` and `Karyawan`. Bulk import accepts known historical labels but stores non-admin users as Karyawan. Migration `048_dynamic_employee_profile_normalization.sql` preserves IT/GA/Auditor/Humas/Sekretariat Direksi as secondary Dynamic RBAC assignments, sets Karyawan as the primary profile, and disables Supply Chain/PIBC role templates. | IMPLEMENTED by source change; migration execution and account-by-account PostgreSQL verification NOT YET TESTED |
+| Number generation | PostgreSQL mode reserves sequence values transactionally through `asset_number_sequences` using an atomic UPSERT shared by app instances; startup reconciliation seeds historical maxima without lowering existing counters. PostgreSQL failure is fail-closed. File-store development retains the in-memory counter. | CI run #3371 passed two-instance concurrent issuance; PR #260 adds post-restart counter continuation assertion before final status update |
+| Employee profile model | `ServerUser.role` is an employee profile; IT/GA/Auditor/Humas/Sekretariat Direksi are secondary Dynamic RBAC assignments. Migration `048_dynamic_employee_profile_normalization.sql` makes Karyawan the primary profile, preserves those job capabilities as secondary roles, and retires Supply Chain/PIBC role templates. | CI regression and fresh-PostgreSQL account assertions added in PR #260; pending CI result |
 | Employee asset baseline | `getScopedAssets()` no longer checks a fixed list of employee role labels; non-Superadmin/non-Auditor users receive the personal/loanable baseline plus explicit dynamic scopes. | IMPLEMENTED by source inspection; verify effective role assignments and all scope regressions in CI/UAT |
 
 ## 2. Important interpretation
@@ -36,13 +36,14 @@ This register separates owner-approved intent from behavior actually visible in 
 2. Remove remaining employee baseline visibility decisions based on legacy role labels only after an explicit replacement capability/policy is approved and UAT fixtures are migrated.
 3. Run deployment-level Dynamic RBAC fault UAT under a PostgreSQL network interruption; CI already covers two-process role revocation/restoration and policy-query failure/recovery.
 4. Test asset read scope parity across list, search, detail-by-ID, dashboards, exports, and linked records.
-5. Move asset number allocation to a PostgreSQL transaction/UPSERT or equivalent concurrency-safe mechanism; test simultaneous allocation across two app processes before claiming concurrency safety.
+5. Confirm the company-approved asset numbering format and owner taxonomy before changing any existing pattern; concurrency-safe PostgreSQL issuance is implemented and covered by two-instance CI.
 6. Reconcile each API route with middleware, handler permission, domain service, DB transaction, frontend action, and UAT case.
 7. Apply all SQL migrations to a fresh PostgreSQL database and a representative legacy snapshot; compare actual tables/columns/indexes/constraints/triggers with Database Design.
 
 ## 4. Evidence boundary
 
-- This document was prepared by inspecting source files on the baseline SHA above.
-- No TypeScript check, build, PostgreSQL integration test, Docker smoke test, browser UAT, concurrency test, or penetration test was run as part of this register.
-- Do not convert source-inspection status into TESTED or PASS without a test run and exact commit evidence.
+- This document records source behavior on the baseline SHA above and links to current implementation evidence where available.
+- PR #258 CI run #3371 passed 117/117 checks, including two-instance concurrent asset issuance; PR #259 CI run #3377 passed 117/117 checks, including two-process RBAC propagation and policy-query failure/recovery.
+- PR #260 adds explicit restart-continuation and migration-048 account assertions; those tests are pending.
+- Browser UAT, production HTTPS/reverse-proxy validation, PostgreSQL network interruption UAT, and penetration testing remain separate release gates.
 - Recheck the register whenever the base branch changes or the referenced implementation changes.
