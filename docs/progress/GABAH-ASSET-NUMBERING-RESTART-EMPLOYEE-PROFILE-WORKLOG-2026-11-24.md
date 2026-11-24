@@ -18,7 +18,7 @@ Close two verification gaps in the implementation truth register after the Postg
 ## Additional defect found and fixed
 - CI exposed that normalized PostgreSQL user synchronization omitted `job_level_code`, `unit_id`, and `office_location_id`, even though the schema and in-memory model contained them.
 - `backfillNormalizedTables()` now persists all three fields. If an older JSON state omits a field, an existing database value is preserved; an explicit `null` remains a supported clear operation for unit/location.
-- Static and fresh-PostgreSQL assertions now cover these fields, including SC/RPC and PIBC office locations.
+- Static and fresh-PostgreSQL assertions now cover all three fields, including STAF job level, nullable unit, and SC/RPC or PIBC office locations.
 
 ## Verification
 - PR #260: https://github.com/inieki-lab/gabah-gas/pull/260
