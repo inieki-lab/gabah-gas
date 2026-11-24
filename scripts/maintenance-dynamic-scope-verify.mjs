@@ -17,14 +17,14 @@ const checks = [
   ['Dynamic maintenance resolver evaluates explicit asset scopes, not workstation read permission', /assetVisibleUnderDynamicScopes\(user, asset\)/.test(services) && !/assets\.read\.it_workstations/.test(services.slice(services.indexOf('export function filterMaintenanceSchedulesByDynamicScopes'), services.indexOf('export class GabahDomainService')))],
   ['Unknown or missing asset references fail closed', /asset != null && assetVisibleUnderDynamicScopes\(user, asset\)/.test(services)],
 ];
+checks.push(
+  ['Maintenance owner filter normalizes persisted owner values case-insensitively', /String\(sch\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\) !== divisionFilter/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8'))],
+  ['Maintenance owner options are dynamic and exclude location-only legacy values', /ownerDivisionOptions = Array\\.from\\(new Set\\(//.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8')) && /locationOnlyOwnerValues = new Set\\(\\['SC', 'SUPPLY CHAIN', 'RPC', 'PIBC'\\]\\)/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8')) && !/option value="SC">Supply Chain|option value="PIBC">Kawasan PIBC/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8'))]
+);
 let failed = 0;
 for (const [name, pass] of checks) {
   console.log((pass ? 'PASS' : 'FAIL') + ' | ' + name);
   if (!pass) failed += 1;
 }
-checks.push(
-  ['Maintenance owner filter normalizes persisted owner values case-insensitively', /String\(sch\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\) !== divisionFilter/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8'))],
-  ['Maintenance owner options are dynamic and exclude location-only legacy values', /ownerDivisionOptions = Array\.from\(new Set\([\s\S]*locationOnlyOwnerValues = new Set\(\['SC', 'SUPPLY CHAIN', 'RPC', 'PIBC'\]\)/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8')) && !/option value="SC">Supply Chain|option value="PIBC">Kawasan PIBC/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8'))]
-);
 console.log('TOTAL: ' + checks.length + ' | PASS: ' + (checks.length - failed) + ' | FAIL: ' + failed);
 process.exit(failed === 0 ? 0 : 1);
