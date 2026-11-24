@@ -34,40 +34,40 @@ const base = {
   reminder_config: { reminder1_days: 60, reminder2_days: 35, reminder3_days: 7 },
 };
 
-function mustReject(payload, expectedMessage) {
-  assert.throws(
+async function mustReject(payload, expectedMessage) {
+  await assert.rejects(
     () => ContractDomainService.createContract({ ...base, ...payload }, actor),
     new RegExp(expectedMessage),
   );
 }
 
-mustReject({ pic_user_id: 'USR-NOT-FOUND' }, /PIC kontrak tidak ditemukan/);
+await mustReject({ pic_user_id: 'USR-NOT-FOUND' }, /PIC kontrak tidak ditemukan/);
 const inactivePic = db.users.find(user => user.id === 'USR-03');
 inactivePic.is_active = false;
-mustReject({}, /PIC kontrak tidak ditemukan/);
+await mustReject({}, /PIC kontrak tidak ditemukan/);
 inactivePic.is_active = true;
 
-mustReject({ escalation_user_id: 'USR-NOT-FOUND' }, /Pengguna eskalasi tidak ditemukan/);
-mustReject({ parent_contract_id: 'CTR-NOT-FOUND' }, /Kontrak induk tidak ditemukan/);
-mustReject({ parent_contract_id: 'CTR-SEED-002' }, /divisi pemilik yang sama/);
-mustReject({ start_date: '2027-02-01', end_date: '2027-01-01' }, /Periode kontrak tidak valid/);
-mustReject({ reminder_config: { reminder1_days: 7, reminder2_days: 35, reminder3_days: 60 } }, /Konfigurasi reminder/);
-mustReject({ contract_value: -1 }, /Notice period dan nilai kontrak/);
-mustReject({ contract_value: Number.MAX_SAFE_INTEGER + 1 }, /Notice period dan nilai kontrak/);
-mustReject({ notice_period_days: 2147483648 }, /Notice period dan nilai kontrak/);
-mustReject({ reminder_config: { reminder1_days: 2147483648, reminder2_days: 35, reminder3_days: 7 } }, /Konfigurasi reminder/);
+await mustReject({ escalation_user_id: 'USR-NOT-FOUND' }, /Pengguna eskalasi tidak ditemukan/);
+await mustReject({ parent_contract_id: 'CTR-NOT-FOUND' }, /Kontrak induk tidak ditemukan/);
+await mustReject({ parent_contract_id: 'CTR-SEED-002' }, /divisi pemilik yang sama/);
+await mustReject({ start_date: '2027-02-01', end_date: '2027-01-01' }, /Periode kontrak tidak valid/);
+await mustReject({ reminder_config: { reminder1_days: 7, reminder2_days: 35, reminder3_days: 60 } }, /Konfigurasi reminder/);
+await mustReject({ contract_value: -1 }, /Notice period dan nilai kontrak/);
+await mustReject({ contract_value: Number.MAX_SAFE_INTEGER + 1 }, /Notice period dan nilai kontrak/);
+await mustReject({ notice_period_days: 2147483648 }, /Notice period dan nilai kontrak/);
+await mustReject({ reminder_config: { reminder1_days: 2147483648, reminder2_days: 35, reminder3_days: 7 } }, /Konfigurasi reminder/);
 
-mustReject({ auto_renewal: 'false' }, /auto-renewal harus berupa boolean/);
-mustReject({ restricted: 'false' }, /Flag restricted harus berupa boolean/);
+await mustReject({ auto_renewal: 'false' }, /auto-renewal harus berupa boolean/);
+await mustReject({ restricted: 'false' }, /Flag restricted harus berupa boolean/);
 
-mustReject({ title: 'x'.repeat(256) }, /Judul kontrak wajib diisi dan maksimal 255 karakter/);
-mustReject({ vendor_name: 'x'.repeat(256) }, /Nama vendor wajib diisi dan maksimal 255 karakter/);
-mustReject({ contract_type: 'x'.repeat(101) }, /Jenis kontrak maksimal 100 karakter/);
-mustReject({ title: 'NUL' + String.fromCharCode(0) + 'title' }, /Judul kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
-mustReject({ notes: 'NUL' + String.fromCharCode(0) + 'notes' }, /Catatan kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
+await mustReject({ title: 'x'.repeat(256) }, /Judul kontrak wajib diisi dan maksimal 255 karakter/);
+await mustReject({ vendor_name: 'x'.repeat(256) }, /Nama vendor wajib diisi dan maksimal 255 karakter/);
+await mustReject({ contract_type: 'x'.repeat(101) }, /Jenis kontrak maksimal 100 karakter/);
+await mustReject({ title: 'NUL' + String.fromCharCode(0) + 'title' }, /Judul kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
+await mustReject({ notes: 'NUL' + String.fromCharCode(0) + 'notes' }, /Catatan kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
 
 
-const created = ContractDomainService.createContract({
+const created = await ContractDomainService.createContract({
   ...base,
   parent_contract_id: 'CTR-SEED-001',
   escalation_user_id: 'USR-01', // Cross-division escalation is intentionally supported by the UI.
