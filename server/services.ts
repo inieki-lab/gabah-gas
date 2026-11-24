@@ -4,7 +4,7 @@ import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByH
 import { AssetNumberingEngine } from './numbering';
 import { resolveManagingUnitForOwnerDivision, validateManagingUnit } from './managing-unit';
 import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-location';
-import { persistDataStore, reserveAssetNumberSequence, isPostgresPersistenceActive } from './persistence';
+import { persistDataStore, reserveAssetNumberSequence, isPostgresPersistenceActive, isPostgresFailureLatched } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
@@ -506,6 +506,9 @@ export class GabahDomainService {
     // in-memory engine; PostgreSQL errors never fall back to a local counter.
     const numberingYear = new Date().getFullYear();
     let assetNumber: string;
+    if (isPostgresFailureLatched()) {
+      throw Object.assign(new Error('Penomoran aset ditolak karena PostgreSQL authoritative store sedang degraded. Restart layanan setelah database pulih.'), { statusCode: 503 });
+    }
     if (isPostgresPersistenceActive()) {
       const reservation = await reserveAssetNumberSequence(resolvedOwnerDivision, taxonomy.code, numberingYear);
       assetNumber = AssetNumberingEngine.formatReservedAssetNumber(
