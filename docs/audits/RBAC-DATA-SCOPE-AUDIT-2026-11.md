@@ -264,3 +264,17 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 - Filter akhir kini memakai callback `canReadTicketUnit` yang memeriksa Dynamic RBAC unit scope di PostgreSQL; fallback file-store dibatasi untuk Admin Tiket ME.
 - Tambahkan regression assertion pada pemeriksaan antrean PIBC ME untuk memastikan filter akhir dan wiring endpoint tetap konsisten.
 - CI exact-head PR #273 menjadi gate sebelum perubahan digabungkan.
+
+
+## 25 November 2026 — Isolasi data saat pergantian identitas
+
+### Temuan
+- `handleSelectUser` mengganti `currentUser` lalu menunggu `refreshData()`, tetapi koleksi data dari akun sebelumnya tidak dibersihkan terlebih dahulu.
+- Respons `refreshData()` yang dimulai sebelum pergantian akun juga dapat selesai belakangan dan menimpa state akun baru.
+- Fallback `getUsers()` mengisi direktori dari `INITIAL_USERS` ketika API gagal, sehingga data akun contoh dapat tetap berada di state klien.
+
+### Perbaikan
+- Tambahkan generation token untuk membatalkan commit hasil refresh yang dimulai di bawah identitas sebelumnya.
+- Kosongkan seluruh koleksi data yang terikat scope akun sebelum switch/login baru, dan saat logout.
+- Hilangkan fallback direktori akun ke data contoh; kegagalan endpoint menghasilkan daftar kosong.
+- Regression test diperluas untuk switch, login, logout, pembatalan refresh lama, dan reset koleksi.
