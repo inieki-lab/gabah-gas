@@ -14,4 +14,11 @@ assert.doesNotMatch(source, /Devisi SC \(Supply Chain|Devisi PIBC \(Pasar Induk/
 assert.match(source, /bukan pembukuan atau perhitungan PSAK 16/);
 assert.match(source, /bukan standar akuntansi atau daftar kategori resmi/);
 assert.match(source, /filteredMaintenances\.length === 0 \? '—'/);
-console.log('Report KPI data integrity: 13 checks passed');
+assert.match(source, /const normalizeOwnerCode = \(value: unknown\) => String\(value \|\| ''\)\.trim\(\)\.toUpperCase\(\)/);
+assert.match(source, /normalizeOwnerCode\(l\.owner_division\)/);
+assert.doesNotMatch(source, /l\.owner_division \|\| l\.asset_number\?\.split\('-'\)\[0\]/);
+assert.match(source, /const relatedAsset = ticket\.related_asset_id \? assetsById\.get\(ticket\.related_asset_id\) : undefined/);
+assert.match(source, /normalizeOwnerCode\(relatedAsset\.owner_division\) === divisionFilter/);
+assert.doesNotMatch(source, /divisionFilter === 'all' \|\| t\.category === divisionFilter/);
+assert.match(source, /normalizeOwnerCode\(m\.owner_division \|\| 'Umum'\)/);
+console.log('Report KPI data integrity: checks passed');
