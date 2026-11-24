@@ -20,6 +20,7 @@ assert.match(app, /useRef/);
 assert.match(app, /const dataRefreshGeneration = useRef\(0\)/);
 assert.match(app, /const generation = dataRefreshGeneration\.current/);
 assert.match(app, /generation !== dataRefreshGeneration\.current/);
+assert.match(app, /if \(generation === dataRefreshGeneration\.current\) setIsLoading\(false\)/);
 assert.match(app, /gabahApi\.getUsers\(\)\.catch\(\(\) => \[\]\)/);
 assert.match(app, /const \[allUsers, setAllUsers\] = useState<UserProfile\[]>\(\[\]\)/);
 assert.match(app, /dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(targetUser\)/);
