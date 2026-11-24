@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Asset, 
   Loan, 
@@ -61,7 +61,7 @@ export default function App() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [allUsers, setAllUsers] = useState<UserProfile[]>(INITIAL_USERS);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>(INITIAL_KNOWLEDGE_BASE);
   const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>(INITIAL_MAINTENANCE_SCHEDULES);
@@ -134,7 +134,25 @@ export default function App() {
   };
 
   // Fetch all authoritative data from Backend API
+  // Prevent an older user's in-flight API response from repopulating state after an identity change.
+  const dataRefreshGeneration = useRef(0);
+  const clearRoleScopedData = () => {
+    setAssets([]);
+    setLoans([]);
+    setTickets([]);
+    setAuditLogs([]);
+    setAllUsers([]);
+    setVendors([]);
+    setKnowledgeBase([]);
+    setMaintenanceSchedules([]);
+    setMeetingRooms([]);
+    setRoomReservations([]);
+    setContracts([]);
+    setMovements([]);
+  };
+
   const refreshData = useCallback(async () => {
+    const generation = dataRefreshGeneration.current;
     try {
       setIsLoading(true);
       const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge, fetchedMovements] = await Promise.all([
@@ -142,7 +160,7 @@ export default function App() {
         gabahApi.getLoans().catch(() => []),
         gabahApi.getTickets().catch(() => []),
         gabahApi.getAuditLogs().catch(() => []),
-        gabahApi.getUsers().catch(() => INITIAL_USERS),
+        gabahApi.getUsers().catch(() => []),
         gabahApi.getMeetingRooms().catch(() => []),
         gabahApi.getRoomReservations().catch(() => []),
         gabahApi.getContracts().catch(() => []),
@@ -152,11 +170,15 @@ export default function App() {
         gabahApi.getMovements().catch(() => []),
       ]);
 
+      // A role switch/logout may have happened while these requests were in flight.
+      // Never commit a response captured under the previous authenticated identity.
+      if (generation !== dataRefreshGeneration.current) return;
+
       if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
       if (Array.isArray(fetchedLoans)) setLoans(fetchedLoans);
       if (Array.isArray(fetchedTickets)) setTickets(fetchedTickets);
       if (Array.isArray(fetchedLogs)) setAuditLogs(fetchedLogs);
-      if (Array.isArray(fetchedUsers) && fetchedUsers.length > 0) setAllUsers(fetchedUsers);
+      if (Array.isArray(fetchedUsers)) setAllUsers(fetchedUsers);
       if (Array.isArray(fetchedRooms)) setMeetingRooms(fetchedRooms);
       if (Array.isArray(fetchedReservations)) setRoomReservations(fetchedReservations);
       if (Array.isArray(fetchedContracts)) setContracts(fetchedContracts);
@@ -209,6 +231,8 @@ export default function App() {
         showToast('Alih peran ditolak oleh server.', 'warning');
         return;
       }
+      dataRefreshGeneration.current += 1;
+      clearRoleScopedData();
       setCurrentUser(targetUser);
       setCurrentTab('dashboard');
       setMeetingCategoryFilter('all');
@@ -657,6 +681,8 @@ export default function App() {
         <LoginPage
           initialEmail={loginEmail}
           onLoginSuccess={(u) => {
+            dataRefreshGeneration.current += 1;
+            clearRoleScopedData();
             setCurrentUser(u);
             setCurrentTab('dashboard');
             setMeetingCategoryFilter('all');
@@ -720,6 +746,8 @@ export default function App() {
           } catch {
             /* server-side destroy best-effort */
           }
+          dataRefreshGeneration.current += 1;
+          clearRoleScopedData();
           setCurrentUser(null);
           setCurrentTab('dashboard');
           setMeetingCategoryFilter('all');
