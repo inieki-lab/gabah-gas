@@ -1271,7 +1271,7 @@ async function main() {
       const waitForPeerStatus = async (expectedStatus) => {
         let latest = null;
         for (let attempt = 0; attempt < 48; attempt += 1) {
-          latest = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerToken });
+          latest = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerSession });
           if (latest.status === expectedStatus) return latest;
           if (latest.status === 401) {
             await req(rbacPeerBase, 'POST', '/api/auth/login', {
@@ -1332,7 +1332,7 @@ async function main() {
       }
       let peerAfterRecovery = null;
       for (let attempt = 0; attempt < 48; attempt += 1) {
-        peerAfterRecovery = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerAdminToken });
+        peerAfterRecovery = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerAdminSession });
         if (peerAfterRecovery.status === 200) break;
         await new Promise(resolve => setTimeout(resolve, 250));
       }
