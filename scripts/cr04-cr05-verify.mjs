@@ -1348,10 +1348,11 @@ async function main() {
         `HTTP ${primaryAfterRecovery?.status ?? 'no response'}`, primaryAfterRecovery?.status === 200);
       const karyawanReloginAfterPeerTest = await req(base, 'POST', '/api/auth/login', {
         body: { email: KARYAWAN_EMAIL, password: USER_PASS },
+        token: karyawanToken,
       });
-      karyawanToken = karyawanReloginAfterPeerTest.json?.data?.token || '';
-      record('Karyawan session is renewed after cross-instance role mutation checks', '200 + new token',
-        `HTTP ${karyawanReloginAfterPeerTest.status}`, karyawanReloginAfterPeerTest.status === 200 && Boolean(karyawanToken));
+      record('Karyawan session is renewed after cross-instance role mutation checks', '200 + HttpOnly cookie, no JSON token',
+        `HTTP ${karyawanReloginAfterPeerTest.status}`,
+        karyawanReloginAfterPeerTest.status === 200 && Boolean(karyawanToken.cookie) && !karyawanReloginAfterPeerTest.json?.data?.token);
     } catch (error) {
       record('Dynamic RBAC cross-instance propagation integration', 'role revocation and restoration propagate',
         `error: ${error.message}`, false);
@@ -1508,6 +1509,16 @@ async function main() {
     record('ticket linkage honored for authorized actor', '201 + contract_id', `HTTP ${linkedTicket.status} contract_id=${linkedTicket.json?.data?.contract_id ?? 'unset'}`,
       linkedTicket.status === 201 && linkedTicket.json?.data?.contract_id === contractId);
 
+    // The isolated integration suite intentionally exercises many API routes.
+    // Reset only its shared API-rate-limit bucket before the focused reminder
+    // assertions, so those assertions test authorization and reminder behavior,
+    // not the unrelated 200-request/minute abuse-control ceiling.
+    const reminderLimiterClient = new pg.Client({ connectionString: TEST_DB_URL });
+    reminderLimiterClient.on('error', e => console.error('[reminder limiter reset async error]', e.message));
+    await reminderLimiterClient.connect();
+    await reminderLimiterClient.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'api'");
+    await reminderLimiterClient.end();
+
     // ---------- 5. Reminder sweep ----------
     const itRun = await req(base, 'POST', '/api/contracts/reminders/run', { token: itToken });
     record('RBAC reminders/run denied for non-admin', '403', `HTTP ${itRun.status}`, itRun.status === 403);
@@ -1540,6 +1551,16 @@ async function main() {
 
     const adminStatus = await req(base, 'GET', '/api/contracts/reminders/scheduler-status', { token: adminToken });
     record('CR-05 scheduler-status visible for admin', '200', `HTTP ${adminStatus.status}`, adminStatus.status === 200);
+
+    // Clear only the isolated test database's API limiter bucket before the
+    // restart health probe. The limiter is PostgreSQL-shared across processes,
+    // so without this reset the fresh process inherits the previous suite's
+    // request count and a health probe can be throttled despite a healthy boot.
+    const restartLimiterClient = new pg.Client({ connectionString: TEST_DB_URL });
+    restartLimiterClient.on('error', e => console.error('[restart limiter reset async error]', e.message));
+    await restartLimiterClient.connect();
+    await restartLimiterClient.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'api'");
+    await restartLimiterClient.end();
 
     // ---------- 6. Restart persistence (authoritative PostgreSQL) ----------
     child.kill('SIGKILL');
