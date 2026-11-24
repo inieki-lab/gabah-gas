@@ -4552,7 +4552,7 @@ async function startServer() {
       canReadOwnerScope,
       canReadTicketUnit: (unitId: string) => isPostgresPersistenceActive()
         ? hasRbacScope(String(actor.id), 'unit', unitId, 'tickets')
-        : unitId === 'UNIT-PIBC-ME' && hasApplicationRole(actor, 'admin_tiket_me'),
+        : unitId === 'UNIT-PIBC-ME' && hasApplicationRole(actor, 'me'),
     });
     res.json({ success: true, data: visibleItems });
   });
