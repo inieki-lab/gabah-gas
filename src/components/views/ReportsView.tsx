@@ -39,16 +39,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const safeMaintenances = Array.isArray(maintenanceSchedules) ? maintenanceSchedules : [];
+  const locationOnlyOwnerValues = new Set(['SC', 'SUPPLY CHAIN', 'RPC', 'PIBC']);
+  const normalizeOwnerCode = (value: unknown) => String(value || '').trim().toUpperCase();
+  const assetsById = new Map(safeAssets.map(asset => [asset.id, asset]));
 
-  // FILTER LAPORAN per bagian/departemen/divisi — pilihan diambil DINAMIS dari
-  // data yang benar-benar ada (divisi pemilik aset + departemen penanggung
-  // jawab/peminjam/pelapor), sehingga laporan selalu mengikuti struktur
-  // organisasi yang berlaku tanpa hardcode.
+  // Owner division is an ownership domain; ticket category and office location
+  // are separate concepts and must never be used as substitutes for it.
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
   const divisionOptions = useMemo(
-    () => Array.from(new Set(safeAssets.map(a => a.owner_division || 'Umum'))).sort(),
+    () => Array.from(new Set(safeAssets
+      .map(a => normalizeOwnerCode(a.owner_division || 'Umum'))
+      .filter(owner => owner && !locationOnlyOwnerValues.has(owner)))).sort(),
     [safeAssets]
   );
   const departmentOptions = useMemo(
@@ -57,22 +60,30 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   );
 
   const filteredAssets = useMemo(() => safeAssets.filter(a =>
-    (divisionFilter === 'all' || (a.owner_division || 'Umum') === divisionFilter) &&
+    (divisionFilter === 'all' || normalizeOwnerCode(a.owner_division || 'Umum') === divisionFilter) &&
     (departmentFilter === 'all' || (a.assigned_to?.department || '') === departmentFilter)
   ), [safeAssets, divisionFilter, departmentFilter]);
 
   const filteredLoans = useMemo(() => safeLoans.filter(l =>
-    (divisionFilter === 'all' || (l.owner_division || l.asset_number?.split('-')[0]) === divisionFilter) &&
+    // Loan owner_division is authoritative. Asset-number prefixes are numbering
+    // identifiers and are not a safe substitute for the persisted owner field.
+    (divisionFilter === 'all' || normalizeOwnerCode(l.owner_division) === divisionFilter) &&
     (departmentFilter === 'all' || (l.borrower_department || '') === departmentFilter)
   ), [safeLoans, divisionFilter, departmentFilter]);
 
-  const filteredTickets = useMemo(() => safeTickets.filter(t =>
-    (divisionFilter === 'all' || t.category === divisionFilter) &&
-    (departmentFilter === 'all' || (t.reporter_department || '') === departmentFilter)
-  ), [safeTickets, divisionFilter, departmentFilter]);
+  const filteredTickets = useMemo(() => safeTickets.filter(ticket => {
+    const relatedAsset = ticket.related_asset_id ? assetsById.get(ticket.related_asset_id) : undefined;
+    // Ticket category (IT/GA/ME) is a service queue, not an asset owner.
+    // Unlinked tickets have no owner-division attribution and are excluded
+    // only while a specific owner filter is active.
+    const ownerMatches = divisionFilter === 'all'
+      || (relatedAsset != null && normalizeOwnerCode(relatedAsset.owner_division) === divisionFilter);
+    return ownerMatches &&
+      (departmentFilter === 'all' || (ticket.reporter_department || '') === departmentFilter);
+  }), [safeTickets, assetsById, divisionFilter, departmentFilter]);
 
   const filteredMaintenances = useMemo(() => safeMaintenances.filter(m =>
-    divisionFilter === 'all' || (m.owner_division || 'Umum') === divisionFilter
+    divisionFilter === 'all' || normalizeOwnerCode(m.owner_division || 'Umum') === divisionFilter
   ), [safeMaintenances, divisionFilter]);
 
   const isFilterActive = divisionFilter !== 'all' || departmentFilter !== 'all';
@@ -133,7 +144,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   // SC/Supply Chain/RPC and PIBC are office locations, not owner divisions.
   // Legacy records carrying these values in owner_division are called out for
   // data correction instead of being reported as organizational divisions.
-  const locationOnlyOwnerValues = new Set(['SC', 'SUPPLY CHAIN', 'RPC', 'PIBC']);
   const unclassifiedOwnerAssets = filteredAssets.filter(asset => {
     const owner = String(asset.owner_division || '').trim().toUpperCase();
     return !owner || locationOnlyOwnerValues.has(owner);
@@ -263,7 +273,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
             value={divisionFilter}
             onChange={e => setDivisionFilter(e.target.value)}
             className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white font-semibold focus:outline-none focus:border-emerald-500"
-            title="Filter semua laporan berdasarkan divisi pemilik aset / kategori tiket"
+            title="Filter berdasarkan divisi pemilik aset; tiket hanya teratribusi melalui aset terkait"
           >
             <option value="all">Semua Divisi ({divisionOptions.length})</option>
             {divisionOptions.map(d => (
