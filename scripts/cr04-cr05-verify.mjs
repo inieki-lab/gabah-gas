@@ -798,6 +798,56 @@ async function main() {
 
     if (!adminToken.cookie) throw new Error('cannot continue without admin cookie session');
 
+    // ---------- Asset creation options: live permission + owner-scope parity ----------
+    const adminCreateOptions = await req(base, 'GET', '/api/assets/create-options', { token: adminToken });
+    const adminOwnerCodes = (adminCreateOptions.json?.data?.owner_domains || []).map(owner => String(owner.code || '').toUpperCase());
+    const adminCategories = adminCreateOptions.json?.data?.categories || [];
+    const adminCategoryOwnersValid = adminCategories.every(category =>
+      adminOwnerCodes.includes(String(category.owner_division || '').toUpperCase())
+      && category.is_active !== false
+    );
+    record(
+      'Superadmin asset-create options expose active owner masters, never SC/PIBC legacy owners',
+      '200 + IT/GA owners + no SC/PIBC/UNASSIGNED + categories only for returned active owners',
+      `HTTP ${adminCreateOptions.status}; owners=${adminOwnerCodes.join(',')}; categories=${adminCategories.length}`,
+      adminCreateOptions.status === 200
+        && adminOwnerCodes.includes('IT')
+        && adminOwnerCodes.includes('GA')
+        && !adminOwnerCodes.some(code => ['SC', 'PIBC', 'UNASSIGNED'].includes(code))
+        && adminCategoryOwnersValid,
+    );
+
+    const itCreateOptions = await req(base, 'GET', '/api/assets/create-options', { token: itToken });
+    const itOwnerCodes = (itCreateOptions.json?.data?.owner_domains || []).map(owner => String(owner.code || '').toUpperCase());
+    record(
+      'IT asset-create options follow IT owner write scope only',
+      '200 + IT only; no GA/SC/PIBC',
+      `HTTP ${itCreateOptions.status}; owners=${itOwnerCodes.join(',')}`,
+      itCreateOptions.status === 200 && itOwnerCodes.length === 1 && itOwnerCodes[0] === 'IT',
+    );
+
+    const gaCreateOptions = await req(base, 'GET', '/api/assets/create-options', { token: gaToken });
+    const gaOwnerCodes = (gaCreateOptions.json?.data?.owner_domains || []).map(owner => String(owner.code || '').toUpperCase());
+    record(
+      'GA asset-create options do not inherit read-only IT workstation visibility as write authority',
+      '200 + GA only; IT is not a create owner',
+      `HTTP ${gaCreateOptions.status}; owners=${gaOwnerCodes.join(',')}`,
+      gaCreateOptions.status === 200 && gaOwnerCodes.length === 1 && gaOwnerCodes[0] === 'GA',
+    );
+
+    for (const [label, token] of [
+      ['Karyawan', karyawanToken],
+      ['Auditor', auditorToken],
+    ]) {
+      const deniedOptions = await req(base, 'GET', '/api/assets/create-options', { token });
+      record(
+        `${label} without assets.create cannot load asset-create choices`,
+        '403',
+        `HTTP ${deniedOptions.status}`,
+        deniedOptions.status === 403,
+      );
+    }
+
     const expiredCookie = await req(base, 'GET', '/api/auth/me', { headers: { Cookie: 'gabah_session=invalid-expired-session' } });
     record('Unknown session cookie is rejected', '401', 'HTTP ' + expiredCookie.status, expiredCookie.status === 401);
     const expiredBrowserCookie = await req(base, 'GET', '/api/auth/me');
@@ -860,6 +910,18 @@ async function main() {
       'SC user → OFF-RPC; PIBC user → OFF-PIBC; both primary Karyawan',
       `SC=${scLocationProfile}; PIBC=${pibcLocationProfile}`,
       scLocationProfile && pibcLocationProfile);
+    const legacyLocationCreateGrants = await profileClient.query(
+      `SELECT COUNT(DISTINCT u.id)::int AS count
+       FROM users u
+       JOIN gabah_user_roles ur ON ur.user_id = u.id::text
+       JOIN gabah_role_permissions rp ON rp.role_id = ur.role_id
+       WHERE u.email = ANY($1::text[]) AND rp.permission_key = 'assets.create'`,
+      [[SC_EMAIL, PIBC_EMAIL]],
+    );
+    record('RPC/SC and PIBC Karyawan profiles have no implicit asset-create grant',
+      '0 users with assets.create from any assigned role',
+      `users with grant=${legacyLocationCreateGrants.rows[0]?.count}`,
+      Number(legacyLocationCreateGrants.rows[0]?.count || 0) === 0);
     const invalidPrimaryProfiles = await profileClient.query(
       `SELECT COUNT(*)::int AS count FROM users
        WHERE role NOT IN ('Admin GABAH', 'Karyawan')`,
@@ -1650,6 +1712,16 @@ async function main() {
       `HTTP ${auditorDocumentDownload?.status ?? 'skipped'}`,
       auditorDocumentDownload?.status === 200 && auditorDocumentBody === contractFileContent);
 
+    // The isolated suite intentionally exercises many API routes. Reset only
+    // its API limiter bucket before the final owner-reference/ticket-link checks,
+    // so these assertions test domain persistence rather than the 200/minute
+    // abuse-control ceiling.
+    const ownerTicketLimiterClient = new pg.Client({ connectionString: TEST_DB_URL });
+    ownerTicketLimiterClient.on('error', e => console.error('[owner/ticket limiter reset async error]', e.message));
+    await ownerTicketLimiterClient.connect();
+    await ownerTicketLimiterClient.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'api'");
+    await ownerTicketLimiterClient.end();
+
     const deleteReferencedOwner = await req(base, 'DELETE', '/api/master/divisions/RPCSC', { token: adminToken });
     record('Owner domain referenced by vendor cannot be deleted', '400', `HTTP ${deleteReferencedOwner.status}`, deleteReferencedOwner.status === 400);
 
@@ -1660,16 +1732,6 @@ async function main() {
     const linkedTicketId = linkedTicket.json?.data?.id || '';
     record('ticket linkage honored for authorized actor', '201 + contract_id', `HTTP ${linkedTicket.status} contract_id=${linkedTicket.json?.data?.contract_id ?? 'unset'}`,
       linkedTicket.status === 201 && linkedTicket.json?.data?.contract_id === contractId);
-
-    // The isolated integration suite intentionally exercises many API routes.
-    // Reset only its shared API-rate-limit bucket before the focused reminder
-    // assertions, so those assertions test authorization and reminder behavior,
-    // not the unrelated 200-request/minute abuse-control ceiling.
-    const reminderLimiterClient = new pg.Client({ connectionString: TEST_DB_URL });
-    reminderLimiterClient.on('error', e => console.error('[reminder limiter reset async error]', e.message));
-    await reminderLimiterClient.connect();
-    await reminderLimiterClient.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'api'");
-    await reminderLimiterClient.end();
 
     // ---------- 5. Reminder sweep ----------
     const itRun = await req(base, 'POST', '/api/contracts/reminders/run', { token: itToken });
