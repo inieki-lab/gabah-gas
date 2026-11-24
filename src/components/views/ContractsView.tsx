@@ -98,7 +98,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   )).sort(), [contracts]);
 
   const filtered = contracts.filter(c => {
-    if (deptFilter !== 'ALL' && c.owner_division !== deptFilter) return false;
+    if (deptFilter !== 'ALL' && String(c.owner_division || '').trim().toUpperCase() !== deptFilter) return false;
     if (vendorFilter !== 'ALL' && c.vendor_name !== vendorFilter) return false;
     if (typeFilter !== 'ALL' && c.contract_type !== typeFilter) return false;
     if (statusFilter !== 'ALL' && c.status !== statusFilter) return false;
