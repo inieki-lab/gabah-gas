@@ -478,6 +478,22 @@ async function startServer() {
     await syncPrimaryRbacRoles([{ id: userId, role: roleLabel }]);
   };
 
+  // Last-Superadmin decisions must read the authoritative database while the
+  // shared advisory lock is held; process-local RBAC caches are not sufficient.
+  const isActiveSuperadminInDatabase = async (userId: string): Promise<boolean> => {
+    const result = await queryRbac<{ is_superadmin: boolean }>(
+      "SELECT EXISTS (SELECT 1 FROM users u JOIN gabah_user_roles ur ON ur.user_id = u.id::text JOIN gabah_roles r ON r.id = ur.role_id WHERE u.id = $1 AND u.is_active = TRUE AND r.is_superadmin = TRUE AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id WHERE aur.user_id = u.id::text AND ar.role_key = 'auditor')) AS is_superadmin",
+      [userId],
+    );
+    return result.rows[0]?.is_superadmin === true;
+  };
+  const countActiveSuperadminsInDatabase = async (): Promise<number> => {
+    const result = await queryRbac<{ count: number }>(
+      "SELECT COUNT(DISTINCT u.id)::int AS count FROM users u JOIN gabah_user_roles ur ON ur.user_id = u.id::text JOIN gabah_roles r ON r.id = ur.role_id WHERE u.is_active = TRUE AND r.is_superadmin = TRUE AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id WHERE aur.user_id = u.id::text AND ar.role_key = 'auditor')",
+    );
+    return Number(result.rows[0]?.count || 0);
+  };
+
   const rbacFailure = (res: express.Response, error: any) => {
     if (error?.code === '23505') return res.status(409).json({ success: false, message: 'Nama atau kunci role sudah digunakan.' });
     if (error?.code === '23503') return res.status(409).json({ success: false, message: 'Role masih memiliki relasi yang digunakan.' });
@@ -1295,11 +1311,16 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Email sudah digunakan oleh akun lain.' });
       }
       const primaryRole = role === 'Superadmin' ? 'Admin GABAH' : role;
-      const targetIsSuperadmin = targetUser.is_active && isRbacSuperadmin(targetUser.id);
+      const targetIsSuperadmin = isPostgresPersistenceActive()
+        ? await isActiveSuperadminInDatabase(targetUser.id)
+        : targetUser.is_active && isRbacSuperadmin(targetUser.id);
       const wouldDemoteSuperadmin = role !== undefined && primaryRole !== 'Admin GABAH';
       const wouldDeactivateSuperadmin = is_active === false;
+      const activeSuperadminCount = isPostgresPersistenceActive()
+        ? await countActiveSuperadminsInDatabase()
+        : countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id));
       if (targetIsSuperadmin && (wouldDemoteSuperadmin || wouldDeactivateSuperadmin)
-        && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
+        && activeSuperadminCount <= 1) {
         return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh diturunkan atau dinonaktifkan.' });
       }
       // ORG-MODEL: jabatan/unit/lokasi ditugaskan independen — TIDAK mengubah
@@ -1464,8 +1485,13 @@ async function startServer() {
         });
       }
 
-      if (targetUser.is_active && isRbacSuperadmin(targetUser.id)
-        && countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id)) <= 1) {
+      const targetIsSuperadmin = isPostgresPersistenceActive()
+        ? await isActiveSuperadminInDatabase(targetId)
+        : targetUser.is_active && isRbacSuperadmin(targetUser.id);
+      const activeSuperadminCount = isPostgresPersistenceActive()
+        ? await countActiveSuperadminsInDatabase()
+        : countRbacSuperadmins(db.users.filter(u => u.is_active).map(u => u.id));
+      if (targetIsSuperadmin && activeSuperadminCount <= 1) {
         return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh dihapus.' });
       }
 
