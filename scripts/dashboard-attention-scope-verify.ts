@@ -8,6 +8,8 @@ const items = [
   { id: 'ticket-similar-name', link_type: 'ticket', link_id: 't-similar-name' },
   { id: 'ticket-same-name-other-id', link_type: 'ticket', link_id: 't-same-name-other-id' },
   { id: 'ticket-owner-scope', link_type: 'ticket', link_id: 't-it' },
+  { id: 'ticket-me-unit-scope', link_type: 'ticket', link_id: 't-me-unit' },
+  { id: 'ticket-me-other-unit', link_type: 'ticket', link_id: 't-me-other-unit' },
   { id: 'ticket-other', link_type: 'ticket', link_id: 't-ga' },
   { id: 'loan-own', link_type: 'loan', link_id: 'l-own' },
   { id: 'loan-owner-scope', link_type: 'loan', link_id: 'l-it' },
@@ -35,15 +37,18 @@ const scope = {
     { id: 't-assigned', reporter_id: 'user-2', assigned_agent_id: 'user-1', category: 'GA' },
     { id: 't-it', reporter_id: 'user-2', category: 'IT' },
     { id: 't-ga', reporter_id: 'user-2', category: 'GA' },
+    { id: 't-me-unit', reporter_id: 'user-2', category: 'ME', assigned_unit_id: 'UNIT-PIBC-ME' },
+    { id: 't-me-other-unit', reporter_id: 'user-2', category: 'ME', assigned_unit_id: 'UNIT-OTHER' },
   ],
   canReadOwnerScope: (module: 'loans' | 'tickets', owner: string) => owner === 'IT',
+  canReadTicketUnit: (unitId: string) => unitId === 'UNIT-PIBC-ME',
 };
 
 assert.deepEqual(
   filterDashboardAttentionItems(items, scope).map(item => item.id),
-  ['ticket-own', 'ticket-assigned', 'ticket-owner-scope', 'loan-own', 'loan-owner-scope', 'asset-visible'],
-  'non-global users see only ID-owned, assigned, module-owner-scoped, and visible-asset attention cards; matching names never grant ownership',
+  ['ticket-own', 'ticket-assigned', 'ticket-owner-scope', 'ticket-me-unit-scope', 'loan-own', 'loan-owner-scope', 'asset-visible'],
+  'non-global users see only ID-owned, assigned, module-owner-scoped, unit-scoped, and visible-asset attention cards; matching names never grant ownership',
 );
 assert.equal(filterDashboardAttentionItems(items, { ...scope, isGlobalReader: true }).length, items.length,
   'Superadmin/Auditor global read scope preserves all attention cards');
-console.log('Dashboard attention scope: PASS (personal, assigned, module scope, asset scope, global reader, fail-closed)');
+console.log('Dashboard attention scope: PASS (personal, assigned, module scope, ME unit scope, asset scope, global reader, fail-closed)');
