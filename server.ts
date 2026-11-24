@@ -13,7 +13,7 @@ import { validateAssetLocation, resolveAssetLocationIdByText, assertValidLocatio
 import { ContractDomainService, canSeeContract, canEditContract } from './server/contracts';
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
-import { initializePersistence, persistDataStore, isPostgresPersistenceActive, isPostgresFailureLatched, queryRbac, withRbacTransaction } from './server/persistence';
+import { initializePersistence, persistDataStore, isPostgresPersistenceActive, isPostgresFailureLatched, queryRbac, withRbacTransaction, withLastSuperadminGuard } from './server/persistence';
 import { refreshRbacPolicy, startRbacPolicyRefresh, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor, isAuditorReadPermissionKey } from './server/rbac-policy';
 import { startReminderScheduler, runManualOnce as runReminderManualOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
@@ -705,6 +705,7 @@ async function startServer() {
       return res.status(400).json({ success: false, message: 'ID user atau daftar role tidak valid.' });
     }
     try {
+      await withLastSuperadminGuard(async () => {
       const result = await withRbacTransaction(async client => {
         const target = await client.query('SELECT id, name, email, role, is_active FROM users WHERE id = $1', [userId]);
         const user = target.rows[0];
@@ -761,6 +762,7 @@ async function startServer() {
         actor,
       );
       return res.json({ success: true, data: result });
+      });
     } catch (error: any) { return rbacFailure(res, error); }
   });
 
@@ -1247,6 +1249,7 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang mengubah akun pengguna.' });
       }
 
+      await withLastSuperadminGuard(async () => {
       const targetUser = db.users.find(u => u.id === req.params.id);
       if (!targetUser) {
         return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
@@ -1408,6 +1411,7 @@ async function startServer() {
       await refreshRbacPolicy();
 
       res.json({ success: true, data: sanitizeUser(targetUser, { includeTelegramChatId: true }) });
+      });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
     }
@@ -1420,6 +1424,7 @@ async function startServer() {
         return res.status(403).json({ success: false, message: 'Hanya Admin GABAH yang berwenang menghapus pengguna.' });
       }
 
+      await withLastSuperadminGuard(async () => {
       const targetId = req.params.id;
 
       // Cannot delete current active user
@@ -1492,6 +1497,7 @@ async function startServer() {
       res.json({
         success: true,
         message: `Pengguna ${targetUser.name} berhasil dihapus.`
+      });
       });
     } catch (err: any) {
       res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400).json({ success: false, message: err.message });
