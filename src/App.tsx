@@ -17,7 +17,7 @@ import {
   Contract,
   AssetMovement
 } from './types';
-import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_USERS, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
+import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
 import { gabahApi } from './services/gabahApi';
 import { GabahService } from './services/gabahService';
 
