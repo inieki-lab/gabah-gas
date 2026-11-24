@@ -267,7 +267,7 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
 - Hapus aturan tanpa aset/sequence: harus mengetik tepat `DIV/CODE` dan mengisi alasan minimal 20 karakter; audit log mencatat aksi.
 - Hapus aturan yang sudah dipakai: server harus menolak dengan HTTP 409 meskipun UI dimanipulasi.
 - Verifikasi generator melanjutkan sequence di atas nomor tersimpan dan preview tidak mengonsumsi sequence.
-- **Release gate:** sequence engine masih process-memory based. UAT satu instance tidak membuktikan atomicity multi-instance; penggantian generator ke PostgreSQL atomic UPSERT harus selesai sebelum horizontal scaling / multi-replica.
+- **Release gate:** CI sekarang mencakup alokasi nomor aset dan kontrak lintas dua instance serta kelanjutan counter setelah restart. Sebelum horizontal scaling, lakukan UAT operasional pada lingkungan HTTPS production-like termasuk gangguan koneksi PostgreSQL dan pemulihan; jangan menganggap CI menggantikan validasi deployment.
  
 ### 4.6 Data Contoh UAT Multi-Modul & Perbaikan Sesi (1 Oktober 2026)
 - **Seed kontrak sampel (5)**: `seedInitialData()` kini mengisi `db.contracts` dengan tanggal relatif terhadap hari seed sehingga threshold reminder selalu bermakna — CTR-2026-0001 (sisa ±5 hari → EXPIRY_7), CTR-2026-0002 (±28 hari → EXPIRY_35 + NOTICE_DATE lewat), CTR-2026-0003 (±75 hari → EXPIRY_60), CTR-2026-0004 (auto-renewal jangka panjang), CTR-2026-0005 (restricted — terverifikasi tersembunyi dari peran non-PIBC/non-owner, terlihat bagi Admin & Auditor). Live-tested di DB fresh: `GET /api/contracts` = 5 (admin), sweep boot mengantre 51 log `EXPIRY_60/35/7` dengan status jujur.
