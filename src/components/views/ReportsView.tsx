@@ -41,7 +41,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ assets, tickets, loans
   const safeMaintenances = Array.isArray(maintenanceSchedules) ? maintenanceSchedules : [];
   const locationOnlyOwnerValues = new Set(['SC', 'SUPPLY CHAIN', 'RPC', 'PIBC']);
   const normalizeOwnerCode = (value: unknown) => String(value || '').trim().toUpperCase();
-  const assetsById = useMemo(() => new Map(safeAssets.map(asset => [asset.id, asset])), [safeAssets]);
+  const assetsById = useMemo(() => new Map(safeAssets.map(asset => [asset.id, asset] as const)), [safeAssets]);
 
   // Owner division is an ownership domain; ticket category and office location
   // are separate concepts and must never be used as substitutes for it.
