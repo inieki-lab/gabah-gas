@@ -1716,6 +1716,15 @@ async function main() {
         && (karyawanVendors.json.data || []).some(v => v.owner_division === 'GA')
         && !(karyawanVendors.json.data || []).some(v => v.owner_division === 'IT'));
 
+    // Earlier endpoint and vendor assertions may approach the shared 200/minute
+    // API abuse-control ceiling. Reset the isolated test DB bucket before the
+    // Auditor document-download assertions so 429 cannot mask authorization.
+    const auditorLimiterClient = new pg.Client({ connectionString: TEST_DB_URL });
+    auditorLimiterClient.on('error', e => console.error('[auditor limiter reset async error]', e.message));
+    await auditorLimiterClient.connect();
+    await auditorLimiterClient.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'api'");
+    await auditorLimiterClient.end();
+
     // Auditor is a deny-write capability even when assigned as an additional role.
     // Preserve the employee primary role and all other approved capabilities.
     const auditorRole = (roleCatalog.json?.data || []).find(role => role.role_key === 'auditor' && role.is_active);
