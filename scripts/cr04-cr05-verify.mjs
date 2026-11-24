@@ -339,7 +339,7 @@ async function main() {
       );
       const serverSource = fs.readFileSync(path.resolve(process.cwd(), 'server.ts'), 'utf8');
       const persistenceSource = fs.readFileSync(path.resolve(process.cwd(), 'server/persistence.ts'), 'utf8');
-      const guardCoverage = (serverSource.match(/await withLastSuperadminGuard\\(async \\(\\) => \\{/g) || []).length;
+      const guardCoverage = serverSource.split('await withLastSuperadminGuard(async () => {').length - 1;
       record(
         'Every account mutation path uses the shared last-Superadmin guard',
         'RBAC role assignment + PATCH user + DELETE user (3 guarded routes)',
@@ -355,8 +355,8 @@ async function main() {
       record(
         'Last-Superadmin invariant reads authoritative PostgreSQL state',
         'PATCH and DELETE use database-backed active Superadmin count',
-        `db count helper calls=${(serverSource.match(/await countActiveSuperadminsInDatabase\\(\\)/g) || []).length}`,
-        (serverSource.match(/await countActiveSuperadminsInDatabase\\(\\)/g) || []).length === 2,
+        `db count helper calls=${serverSource.split('await countActiveSuperadminsInDatabase()').length - 1}`,
+        serverSource.split('await countActiveSuperadminsInDatabase()').length - 1 === 2,
       );
     } catch (error) {
       record('Last active Superadmin concurrency integration', 'one of two parallel demotions denied',
