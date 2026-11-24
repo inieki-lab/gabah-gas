@@ -77,10 +77,11 @@ Kode kategori dan nomor historis yang memuat `SC` atau `PIBC` hanya dipertahanka
 ## 4. Mekanisme Penomoran & Aturan Duplikasi
 
 ### 4.1 Siklus & Reset Sequence
-- Kunci sequence runtime: `OWNER_DIVISION:ASSET_CODE:YEAR`.
-- Sequence saat ini disinkronkan kembali dari nomor aset yang telah tersimpan ketika server melakukan boot.
-- Tahun menjadi bagian dari kunci sehingga counter per tahun dimulai dari nomor pertama untuk kombinasi divisi dan kode aset tersebut.
-- **Batasan yang masih harus ditutup sebelum klaim production-ready:** counter generator masih berada di memori proses. Tabel `asset_number_sequences` tersedia pada skema, tetapi belum menjadi jalur atomik yang dipakai `generateAssetNumber()`. Karena itu, multi-instance/concurrent issuance belum dijamin atomik oleh PostgreSQL. Jangan mengklaim concurrency-safe sampai generator dipindahkan ke transaksi/UPSERT database dan diuji lintas proses.
+- Kunci sequence durable: `owner_division_id + asset_code + sequence_year` pada tabel `asset_number_sequences`.
+- Saat boot, counter direkonsiliasi dari nomor aset historis melalui UPSERT `GREATEST`; counter yang sudah lebih tinggi (misalnya nomor yang sudah direservasi sebelum write aset gagal) tidak diturunkan.
+- Pada PostgreSQL mode, setiap penerbitan nomor memakai transaksi + `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`; beberapa instance aplikasi berbagi satu counter database sehingga tidak memakai cache proses untuk alokasi.
+- PostgreSQL yang gagal/tidak aktif menyebabkan penerbitan nomor ditolak (503), bukan fallback ke counter lokal. File-store development tetap memakai counter in-memory.
+- Nomor yang telah direservasi boleh menyisakan gap bila proses create/persist setelahnya gagal. Gap lebih aman daripada mengulang nomor yang mungkin telah diterbitkan.
 
 ### 4.2 Master Aturan Penomoran
 - Aturan tersimpan di tabel `asset_numbering_rules` (migration yang menambah aturan harus diverifikasi pada direktori `server/migrations/`; migration 043 tercatat sebagai baseline terkait) dan dikelola melalui Administration Control Panel oleh Superadmin.
