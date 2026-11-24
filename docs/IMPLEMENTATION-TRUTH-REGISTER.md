@@ -1,6 +1,6 @@
 # GABAH — Implementation Truth Register
 
-**Baseline reviewed:** `main` at `3cb832a472a897e6e811dd5ad21623e612386cdd`  
+**Baseline reviewed:** `main` at `4b0ed18` (PR #260 merge)  
 **Review date:** 24 November 2026  
 **Status:** Source-inspection snapshot with linked CI evidence; not a production-readiness approval.
 
@@ -18,8 +18,9 @@ This register separates owner-approved intent from behavior actually visible in 
 | Asset creation | `GabahDomainService.createAsset()` rejects owner codes SC, PIBC, and UNASSIGNED; requires an active owner master; then requires `assets.create` plus matching owner scope. IT hardware/software is forced to owner IT; INV-F is forced to GA. | IMPLEMENTED by source inspection for this service path; bulk-import and every alternate creation path still need parity tests |
 | Asset legacy taxonomy | `server/taxonomy.ts` still contains legacy SC/PIBC category entries and resolver fallbacks so historical records remain readable. The create service guard is what blocks those owners for new assets. | PARTIAL; keep legacy data readable and test all new-write paths |
 | Loan approval/rejection | `GabahDomainService.canOperateLoan()` requires the operation permission plus matching owner scope in PostgreSQL mode; Superadmin is global and Auditor denied. | IMPLEMENTED by source inspection; test per action, owner, borrower, and status transition |
-| Number generation | PostgreSQL mode reserves sequence values transactionally through `asset_number_sequences` using an atomic UPSERT shared by app instances; startup reconciliation seeds historical maxima without lowering existing counters. PostgreSQL failure is fail-closed. File-store development retains the in-memory counter. | CI run #3371 passed two-instance concurrent issuance; PR #260 adds post-restart counter continuation assertion before final status update |
-| Employee profile model | `ServerUser.role` is an employee profile; IT/GA/Auditor/Humas/Sekretariat Direksi are secondary Dynamic RBAC assignments. Migration `048_dynamic_employee_profile_normalization.sql` makes Karyawan the primary profile, preserves those job capabilities as secondary roles, and retires Supply Chain/PIBC role templates. | CI regression and fresh-PostgreSQL account assertions added in PR #260; pending CI result |
+| Asset number generation | PostgreSQL mode reserves sequence values transactionally through `asset_number_sequences` using an atomic UPSERT shared by app instances; startup reconciliation seeds historical maxima without lowering existing counters. PostgreSQL failure is fail-closed. File-store development retains the in-memory counter. | CI run #3386 passed 117/117, including two-instance issuance and counter continuation after restart |
+| Contract number generation | Current main still increments `AssetNumberingEngine.contractSeq` in process memory and only reconciles existing CTR numbers at startup; concurrent PostgreSQL app instances can reserve the same next number. | OPEN risk; PR #261 moves issuance to a durable yearly PostgreSQL sequence and adds two-instance/restart tests (CI pending) |
+| Employee profile model | `ServerUser.role` is an employee profile; IT/GA/Auditor/Humas/Sekretariat Direksi are secondary Dynamic RBAC assignments. Migration `048_dynamic_employee_profile_normalization.sql` makes Karyawan the primary profile, preserves those job capabilities as secondary roles, and retires Supply Chain/PIBC role templates. SC/RPC and PIBC remain Karyawan profiles with distinct office locations. | CI run #3386 passed 117/117, including PostgreSQL assertions for IT/GA/Auditor, Superadmin, RPC/PIBC location, job level, and unit fields |
 | Employee asset baseline | `getScopedAssets()` no longer checks a fixed list of employee role labels; non-Superadmin/non-Auditor users receive the personal/loanable baseline plus explicit dynamic scopes. | IMPLEMENTED by source inspection; verify effective role assignments and all scope regressions in CI/UAT |
 
 ## 2. Important interpretation
@@ -36,14 +37,16 @@ This register separates owner-approved intent from behavior actually visible in 
 2. Remove remaining employee baseline visibility decisions based on legacy role labels only after an explicit replacement capability/policy is approved and UAT fixtures are migrated.
 3. Run deployment-level Dynamic RBAC fault UAT under a PostgreSQL network interruption; CI already covers two-process role revocation/restoration and policy-query failure/recovery.
 4. Test asset read scope parity across list, search, detail-by-ID, dashboards, exports, and linked records.
-5. Confirm the company-approved asset numbering format and owner taxonomy before changing any existing pattern; concurrency-safe PostgreSQL issuance is implemented and covered by two-instance CI.
-6. Reconcile each API route with middleware, handler permission, domain service, DB transaction, frontend action, and UAT case.
-7. Apply all SQL migrations to a fresh PostgreSQL database and a representative legacy snapshot; compare actual tables/columns/indexes/constraints/triggers with Database Design.
+5. Confirm the company-approved asset numbering format and owner taxonomy before changing any existing pattern; do not alter existing patterns without owner approval.
+6. Make contract number issuance atomic across PostgreSQL app instances and verify restart continuation; PR #261 is in progress.
+7. Reconcile each API route with middleware, handler permission, domain service, DB transaction, frontend action, and UAT case.
+8. Apply all SQL migrations to a fresh PostgreSQL database and a representative legacy snapshot; compare actual tables/columns/indexes/constraints/triggers with Database Design.
 
 ## 4. Evidence boundary
 
 - This document records source behavior on the baseline SHA above and links to current implementation evidence where available.
 - PR #258 CI run #3371 passed 117/117 checks, including two-instance concurrent asset issuance; PR #259 CI run #3377 passed 117/117 checks, including two-process RBAC propagation and policy-query failure/recovery.
-- PR #260 adds explicit restart-continuation and migration-048 account assertions; those tests are pending.
+- PR #260 CI run #3386 passed 117/117 checks, including asset counter restart and migration-048 employee/location persistence assertions.
+- PR #261 adds PostgreSQL atomic contract numbering, two-instance concurrency, and restart-continuation tests; CI pending.
 - Browser UAT, production HTTPS/reverse-proxy validation, PostgreSQL network interruption UAT, and penetration testing remain separate release gates.
 - Recheck the register whenever the base branch changes or the referenced implementation changes.
