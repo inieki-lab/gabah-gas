@@ -869,13 +869,7 @@ export async function initializePersistence(): Promise<void> {
       await pool.query(
         "INSERT INTO contract_number_sequences (sequence_year, last_sequence) " +
         "SELECT SUBSTRING(contract_number FROM '^CTR-([0-9]{4})-')::INTEGER, " +
-        "MAX(SUBSTRING(contract_number FROM '-([0-9]+)$')::INTEGER) " +
-        "FROM contracts WHERE contract_number ~ '^CTR-[0-9]{4}-[0-9]+$' " +
-        "GROUP BY 1 " +
-        "ON CONFLICT (sequence_year) DO UPDATE SET " +
-        "last_sequence = GREATEST(contract_number_sequences.last_sequence, EXCLUDED.last_sequence), " +
-        "updated_at = NOW()",
-      );
+        "MAX(SUBSTRING(contract_number FROM '-([0-9]+)      isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
       saveStateToFile(createPayload());
       return;
@@ -1102,9 +1096,8 @@ export async function withRbacTransaction<T>(work: (client: PoolClient) => Promi
     client.release();
   }
 }
-)::INTEGER)
-         FROM contracts
-         WHERE contract_number ~ '^CTR-[0-9]{4}-[0-9]+
+)::INTEGER) " +
+        "FROM contracts WHERE contract_number ~ '^CTR-[0-9]{4}-[0-9]+      isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
       saveStateToFile(createPayload());
       return;
@@ -1294,12 +1287,11 @@ export async function withRbacTransaction<T>(work: (client: PoolClient) => Promi
     client.release();
   }
 }
-
-         GROUP BY 1
-         ON CONFLICT (sequence_year)
-         DO UPDATE SET
-           last_sequence = GREATEST(contract_number_sequences.last_sequence, EXCLUDED.last_sequence),
-           updated_at = NOW()`,
+ " +
+        "GROUP BY 1 " +
+        "ON CONFLICT (sequence_year) DO UPDATE SET " +
+        "last_sequence = GREATEST(contract_number_sequences.last_sequence, EXCLUDED.last_sequence), " +
+        "updated_at = NOW()",
       );
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
