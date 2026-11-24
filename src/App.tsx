@@ -149,6 +149,8 @@ export default function App() {
     setRoomReservations([]);
     setContracts([]);
     setMovements([]);
+    setActiveModuleKeys(null);
+    setModuleStatusLoadFailed(false);
     setSelectedAssetForDetail(null);
     setSelectedAssetForEdit(null);
     setSelectedAssetForQr(null);
@@ -221,8 +223,11 @@ export default function App() {
           gabahApi.getMe().catch(() => null),
           new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
         ]);
-        if (me) setCurrentUser(me);
-        else setViewMode('login');
+        if (me) {
+          dataRefreshGeneration.current += 1;
+          clearRoleScopedData();
+          setCurrentUser(me);
+        } else setViewMode('login');
       } catch (err) {
         console.warn('Auth initialization:', err);
         setViewMode('login');
