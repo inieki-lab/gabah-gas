@@ -753,7 +753,7 @@ export class GabahDomainService {
     if (!asset) throw new Error('Aset tidak ditemukan');
 
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.lifecycle')) {
-      throw new Error('Akses ditolak: Anda tidak memiliki permission lifecycle pada domain pemilik aset ini.');
+      throw Object.assign(new Error('Akses ditolak: Anda tidak memiliki permission lifecycle pada domain pemilik aset ini.'), { statusCode: 403 });
     }
 
     const allowedActions = ['repair', 'damaged', 'cannibalize', 'propose_disposal', 'approve_disposal', 'auction'] as const;
