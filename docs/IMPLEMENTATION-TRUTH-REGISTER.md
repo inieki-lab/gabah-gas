@@ -11,7 +11,7 @@ This register separates owner-approved intent from behavior actually visible in 
 | Area | Source behavior found | Status / evidence |
 |---|---|---|
 | API authentication | `server/runtime-hardening.ts` makes only `/api/health` and `/api/auth/login` public. Other API requests require a valid session. `server/auth.ts` currently reads `Authorization: Bearer` tokens. | IMPLEMENTED by source inspection; browser/API integration tests still required |
-| PostgreSQL Dynamic RBAC | `server/rbac-policy.ts` loads assigned roles, permissions, and scopes from PostgreSQL into a process cache via `refreshRbacPolicy()`. Permission checks use explicit keys; scope checks are module-aware. | IMPLEMENTED by source inspection; cache invalidation, cold-start, failure and concurrency tests required |
+| PostgreSQL Dynamic RBAC | `server/rbac-policy.ts` loads assigned roles, permissions, and scopes from PostgreSQL. Each application process refreshes its local policy cache every 5 seconds in addition to immediate refresh after local mutations; overlapping refreshes are serialized and failed refreshes clear grants (default-deny). | IMPLEMENTED; CI integration covers two-process grant revocation/restoration and policy-query failure/recovery; deployment network fault UAT remains |
 | Superadmin | PostgreSQL mode resolves Superadmin from assigned role metadata, not merely the legacy `ServerUser.role` label. Auditor precedence blocks Superadmin elevation when Auditor is also assigned. | IMPLEMENTED by source inspection; test assignment combinations |
 | Auditor | `isAuditorActor()` resolves the assigned Auditor role in PostgreSQL mode. `gabahSecurityMiddleware` blocks non-GET requests except narrowly allowed logout/notification-read actions. | IMPLEMENTED by source inspection; verify every mutation route and notification exception |
 | Asset read scope | `GabahDomainService.getScopedAssets()` combines dynamic asset scopes with a specific read-only IT workstation capability limited to owner IT + categories HLT/HPC. | IMPLEMENTED by source inspection; verify list, search, dashboard, export, and direct-ID parity |
@@ -34,7 +34,7 @@ This register separates owner-approved intent from behavior actually visible in 
 
 1. Add regression tests proving all asset create paths (single create, bulk import, migration/import jobs, and any internal service callers) reject SC/PIBC/UNASSIGNED as new owner values while preserving legacy reads.
 2. Remove remaining employee baseline visibility decisions based on legacy role labels only after an explicit replacement capability/policy is approved and UAT fixtures are migrated.
-3. Test Dynamic RBAC cache refresh after role/permission/scope changes, including multi-process deployment and PostgreSQL failure/recovery.
+3. Run deployment-level Dynamic RBAC fault UAT under a PostgreSQL network interruption; CI already covers two-process role revocation/restoration and policy-query failure/recovery.
 4. Test asset read scope parity across list, search, detail-by-ID, dashboards, exports, and linked records.
 5. Move asset number allocation to a PostgreSQL transaction/UPSERT or equivalent concurrency-safe mechanism; test simultaneous allocation across two app processes before claiming concurrency safety.
 6. Reconcile each API route with middleware, handler permission, domain service, DB transaction, frontend action, and UAT case.
