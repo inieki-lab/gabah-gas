@@ -15,7 +15,12 @@ Close two verification gaps in the implementation truth register after the Postg
    - Verify no legacy job/location labels remain as primary user profiles.
    - Verify Supply Chain/PIBC role templates are inactive and have no remaining user assignments.
 
+## Additional defect found and fixed
+- CI exposed that normalized PostgreSQL user synchronization omitted `job_level_code`, `unit_id`, and `office_location_id`, even though the schema and in-memory model contained them.
+- `backfillNormalizedTables()` now persists all three fields. If an older JSON state omits a field, an existing database value is preserved; an explicit `null` remains a supported clear operation for unit/location.
+- Static and fresh-PostgreSQL assertions now cover these fields, including SC/RPC and PIBC office locations.
+
 ## Verification
 - PR #260: https://github.com/inieki-lab/gabah-gas/pull/260
-- CI pending.
+- CI rerun pending after the PostgreSQL persistence fix.
 - No numbering format or historical asset numbers are changed; the company-approved format remains a separate decision.
