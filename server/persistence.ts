@@ -867,10 +867,15 @@ export async function initializePersistence(): Promise<void> {
       // Reconcile contract counters from persisted CTR-YYYY-NNNN numbers.
       // GREATEST preserves reservations even if a later contract write fails.
       await pool.query(
-        `INSERT INTO contract_number_sequences (sequence_year, last_sequence)
-         SELECT
-           SUBSTRING(contract_number FROM '^CTR-([0-9]{4})-')::INTEGER,
-           MAX(SUBSTRING(contract_number FROM '-([0-9]+)
+        "INSERT INTO contract_number_sequences (sequence_year, last_sequence) " +
+        "SELECT SUBSTRING(contract_number FROM '^CTR-([0-9]{4})-')::INTEGER, " +
+        "MAX(SUBSTRING(contract_number FROM '-([0-9]+)$')::INTEGER) " +
+        "FROM contracts WHERE contract_number ~ '^CTR-[0-9]{4}-[0-9]+$' " +
+        "GROUP BY 1 " +
+        "ON CONFLICT (sequence_year) DO UPDATE SET " +
+        "last_sequence = GREATEST(contract_number_sequences.last_sequence, EXCLUDED.last_sequence), " +
+        "updated_at = NOW()",
+      );
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
       saveStateToFile(createPayload());
       return;
