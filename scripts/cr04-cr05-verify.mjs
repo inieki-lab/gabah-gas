@@ -798,6 +798,65 @@ async function main() {
 
     if (!adminToken.cookie) throw new Error('cannot continue without admin cookie session');
 
+    // ---------- Asset creation options: live permission + owner-scope parity ----------
+    const scToken = { cookie: '' };
+    const scLogin = await req(base, 'POST', '/api/auth/login', { body: { email: SC_EMAIL, password: USER_PASS }, token: scToken });
+    record('RPC/SC employee can authenticate as a Karyawan profile', '200 + session cookie', `HTTP ${scLogin.status}`, scLogin.status === 200 && Boolean(scToken.cookie));
+    const pibcToken = { cookie: '' };
+    const pibcLogin = await req(base, 'POST', '/api/auth/login', { body: { email: PIBC_EMAIL, password: USER_PASS }, token: pibcToken });
+    record('PIBC employee can authenticate as a Karyawan profile', '200 + session cookie', `HTTP ${pibcLogin.status}`, pibcLogin.status === 200 && Boolean(pibcToken.cookie));
+
+    const adminCreateOptions = await req(base, 'GET', '/api/assets/create-options', { token: adminToken });
+    const adminOwnerCodes = (adminCreateOptions.json?.data?.owner_domains || []).map(owner => String(owner.code || '').toUpperCase());
+    const adminCategories = adminCreateOptions.json?.data?.categories || [];
+    const adminCategoryOwnersValid = adminCategories.every(category =>
+      adminOwnerCodes.includes(String(category.owner_division || '').toUpperCase())
+      && category.is_active !== false
+    );
+    record(
+      'Superadmin asset-create options expose active owner masters, never SC/PIBC legacy owners',
+      '200 + IT/GA owners + no SC/PIBC/UNASSIGNED + categories only for returned active owners',
+      `HTTP ${adminCreateOptions.status}; owners=${adminOwnerCodes.join(',')}; categories=${adminCategories.length}`,
+      adminCreateOptions.status === 200
+        && adminOwnerCodes.includes('IT')
+        && adminOwnerCodes.includes('GA')
+        && !adminOwnerCodes.some(code => ['SC', 'PIBC', 'UNASSIGNED'].includes(code))
+        && adminCategoryOwnersValid,
+    );
+
+    const itCreateOptions = await req(base, 'GET', '/api/assets/create-options', { token: itToken });
+    const itOwnerCodes = (itCreateOptions.json?.data?.owner_domains || []).map(owner => String(owner.code || '').toUpperCase());
+    record(
+      'IT asset-create options follow IT owner write scope only',
+      '200 + IT only; no GA/SC/PIBC',
+      `HTTP ${itCreateOptions.status}; owners=${itOwnerCodes.join(',')}`,
+      itCreateOptions.status === 200 && itOwnerCodes.length === 1 && itOwnerCodes[0] === 'IT',
+    );
+
+    const gaCreateOptions = await req(base, 'GET', '/api/assets/create-options', { token: gaToken });
+    const gaOwnerCodes = (gaCreateOptions.json?.data?.owner_domains || []).map(owner => String(owner.code || '').toUpperCase());
+    record(
+      'GA asset-create options do not inherit read-only IT workstation visibility as write authority',
+      '200 + GA only; IT is not a create owner',
+      `HTTP ${gaCreateOptions.status}; owners=${gaOwnerCodes.join(',')}`,
+      gaCreateOptions.status === 200 && gaOwnerCodes.length === 1 && gaOwnerCodes[0] === 'GA',
+    );
+
+    for (const [label, token] of [
+      ['Karyawan', karyawanToken],
+      ['Auditor', auditorToken],
+      ['RPC/SC location account', scToken],
+      ['PIBC location account', pibcToken],
+    ]) {
+      const deniedOptions = await req(base, 'GET', '/api/assets/create-options', { token });
+      record(
+        `${label} without assets.create cannot load asset-create choices`,
+        '403',
+        `HTTP ${deniedOptions.status}`,
+        deniedOptions.status === 403,
+      );
+    }
+
     const expiredCookie = await req(base, 'GET', '/api/auth/me', { headers: { Cookie: 'gabah_session=invalid-expired-session' } });
     record('Unknown session cookie is rejected', '401', 'HTTP ' + expiredCookie.status, expiredCookie.status === 401);
     const expiredBrowserCookie = await req(base, 'GET', '/api/auth/me');
