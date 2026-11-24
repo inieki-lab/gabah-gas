@@ -3,7 +3,7 @@ import fs from 'node:fs';
 
 const services = fs.readFileSync('server/services.ts', 'utf8');
 const server = fs.readFileSync('server.ts', 'utf8');
-const serviceStart = services.indexOf('static createAsset(');
+const serviceStart = services.indexOf('static async createAsset(');
 const serviceEnd = services.indexOf('\n  static ', serviceStart + 1);
 const service = services.slice(serviceStart, serviceEnd < 0 ? services.length : serviceEnd);
 assert.match(service, /persistAudit = true/);

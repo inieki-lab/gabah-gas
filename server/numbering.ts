@@ -123,6 +123,32 @@ export class AssetNumberingEngine {
     return [div, code, String(year), String(nextSeq).padStart(digits, '0')].join(separator);
   }
 
+  /**
+   * Format a sequence already reserved by PostgreSQL. The database is the
+   * authority in PostgreSQL mode; this method only formats and refreshes the
+   * local read/preview cache after the atomic reservation succeeds.
+   */
+  static formatReservedAssetNumber(
+    ownerDivision: string,
+    assetCode: string,
+    targetYear: number,
+    sequence: number,
+    format?: { separator?: string; sequence_digits?: number },
+  ): string {
+    const div = String(ownerDivision || '').trim().toUpperCase();
+    const code = String(assetCode || '').trim().toUpperCase();
+    if (!div || !code || !Number.isInteger(targetYear) || !Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error('Reservasi sequence nomor aset tidak valid.');
+    }
+    const rule = this.rules.get(`${div}:${code}`);
+    const key = `${div}:${code}:${targetYear}`;
+    this.sequenceStore.set(key, Math.max(this.sequenceStore.get(key) || 0, sequence));
+    const separator = format?.separator || rule?.separator || '-';
+    const digits = format?.sequence_digits || rule?.sequence_digits || 4;
+    return [div, code, String(targetYear), String(sequence).padStart(digits, '0')].join(separator);
+  }
+
+  /** In-memory fallback is used only when PostgreSQL is not authoritative. */
   static generateAssetNumber(ownerDivision?: string, assetCode?: string, targetYear?: number): string {
     const year = targetYear || new Date().getFullYear();
     const div = (ownerDivision || 'IT').trim().toUpperCase();
@@ -133,10 +159,7 @@ export class AssetNumberingEngine {
     }
     const key = `${div}:${code}:${year}`;
     const nextSeq = (this.sequenceStore.get(key) || 0) + 1;
-    this.sequenceStore.set(key, nextSeq);
-    const separator = rule?.separator || '-';
-    const digits = rule?.sequence_digits || 4;
-    return [div, code, String(year), String(nextSeq).padStart(digits, '0')].join(separator);
+    return this.formatReservedAssetNumber(div, code, year, nextSeq);
   }
 
   static generateTicketNumber(targetYear?: number): string {

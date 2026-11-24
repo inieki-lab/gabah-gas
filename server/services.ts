@@ -4,11 +4,10 @@ import { assertCategoryUsableForNewAsset, CANONICAL_TAXONOMY, resolveTaxonomyByH
 import { AssetNumberingEngine } from './numbering';
 import { resolveManagingUnitForOwnerDivision, validateManagingUnit } from './managing-unit';
 import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-location';
-import { persistDataStore } from './persistence';
+import { persistDataStore, reserveAssetNumberSequence, isPostgresPersistenceActive, isPostgresFailureLatched } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
 import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
-import { isPostgresPersistenceActive } from './persistence';
 import { parseLoanDateTimestamp } from '../shared/loan-datetime';
 
 /**
@@ -388,7 +387,7 @@ export class GabahDomainService {
   /**
    * Authoritative Asset Creation
    */
-  static createAsset(payload: {
+  static async createAsset(payload: {
     category_name_or_code?: string;
     category_code?: string;
     category_name?: string;
@@ -415,7 +414,7 @@ export class GabahDomainService {
     assigned_to_user_id?: string;
     license_detail?: any;
     notes?: string;
-  }, actor: ServerUser, persistAudit = true): ServerAsset {
+  }, actor: ServerUser, persistAudit = true): Promise<ServerAsset> {
     // Initial custody is a relational assignment, not a best-effort label.
     // Validate it before numbering or mutating any asset data.
     const assignedToId = payload.assigned_to_user_id == null ? '' : String(payload.assigned_to_user_id).trim();
@@ -502,8 +501,26 @@ export class GabahDomainService {
       }
     }
 
-    // 3. Atomically generate official asset number
-    const assetNumber = AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code);
+    // 3. Reserve the official asset number. PostgreSQL uses one atomic UPSERT
+    // counter shared by every app instance. File-store development retains the
+    // in-memory engine; PostgreSQL errors never fall back to a local counter.
+    const numberingYear = new Date().getFullYear();
+    let assetNumber: string;
+    if (isPostgresFailureLatched()) {
+      throw Object.assign(new Error('Penomoran aset ditolak karena PostgreSQL authoritative store sedang degraded. Restart layanan setelah database pulih.'), { statusCode: 503 });
+    }
+    if (isPostgresPersistenceActive()) {
+      const reservation = await reserveAssetNumberSequence(resolvedOwnerDivision, taxonomy.code, numberingYear);
+      assetNumber = AssetNumberingEngine.formatReservedAssetNumber(
+        resolvedOwnerDivision,
+        taxonomy.code,
+        numberingYear,
+        reservation.sequence,
+        reservation,
+      );
+    } else {
+      assetNumber = AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code, numberingYear);
+    }
 
     // T2B-1: managing unit operasional — divalidasi terhadap master org_units
     // (harus ada & aktif). Jika tidak dispesifikasikan, diisi hasil resolusi

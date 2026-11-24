@@ -1526,7 +1526,7 @@ async function startServer() {
 
   // P2#10: live numbering sequence snapshot for the admin Asset Numbering panel
   // (replaces the hardcoded sample counters previously shown in the UI).
-  app.get('/api/numbering/sequences', (req, res) => {
+  app.get('/api/numbering/sequences', async (req, res) => {
     // This endpoint exposes live asset-numbering counters for the Administration panel.
     // Keep it Admin GABAH-only even in file-store compatibility mode, where dynamic
     // RBAC permission checks intentionally defer to legacy application-role guards.
@@ -1536,7 +1536,22 @@ async function startServer() {
     }
     if (!requireRbacPermission(req, res, 'numbering.read')) return;
 
-    res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
+    try {
+      if (isPostgresPersistenceActive()) {
+        const result = await queryRbac<any>(
+          `SELECT d.code AS division, s.asset_code AS code, s.sequence_year AS year,
+                  s.last_sequence AS current,
+                  d.code || ':' || s.asset_code || ':' || s.sequence_year::text AS key
+           FROM asset_number_sequences s
+           JOIN divisions d ON d.id = s.owner_division_id
+           ORDER BY s.sequence_year DESC, d.code, s.asset_code`,
+        );
+        return res.json({ success: true, data: result.rows });
+      }
+      return res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, message: error.message || 'Sequence penomoran tidak tersedia.' });
+    }
   });
 
   // Configurable numbering rules: Superadmin-only, persisted in PostgreSQL and audited.
@@ -1560,10 +1575,15 @@ async function startServer() {
              AND (UPPER(c.code) = UPPER($2) OR a.asset_number LIKE $3)`,
           [rule.owner_division, rule.asset_code, `${rule.owner_division}-${rule.asset_code}-%`]
         );
-        const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
-          s.division === rule.owner_division && s.code === rule.asset_code
+        const sequence = await queryRbac<{ current: number }>(
+          `SELECT s.last_sequence AS current
+           FROM asset_number_sequences s
+           JOIN divisions d ON d.id = s.owner_division_id
+           WHERE UPPER(d.code) = UPPER($1) AND UPPER(s.asset_code) = UPPER($2)
+             AND s.sequence_year = $3`,
+          [rule.owner_division, rule.asset_code, new Date().getFullYear()],
         );
-        return { ...rule, usage_count: Number(usage.rows[0]?.count || 0), sequence_current: sequence?.current || 0 };
+        return { ...rule, usage_count: Number(usage.rows[0]?.count || 0), sequence_current: Number(sequence.rows[0]?.current || 0) };
       }));
       res.json({ success: true, data });
     } catch (err: any) {
@@ -2789,7 +2809,7 @@ async function startServer() {
       // Effective permission and explicit owner-domain scope are enforced by
       // createAsset() for every user, regardless of job title or work location.
       const auditIdsBefore = new Set(db.auditLogs.map(item => item.id));
-      const newAsset = GabahDomainService.createAsset(req.body, actor, false);
+      const newAsset = await GabahDomainService.createAsset(req.body, actor, false);
       const createdAuditIds = new Set(db.auditLogs.filter(item => !auditIdsBefore.has(item.id)).map(item => item.id));
       if (!(await persistBeforeSuccess(req, res))) {
         db.assets.splice(0, db.assets.length, ...db.assets.filter(item => item.id !== newAsset.id));
@@ -2956,7 +2976,7 @@ async function startServer() {
         const priceRaw = String(row.purchase_price ?? '').replace(/[^0-9.-]/g, '');
         const priceNum = Number(priceRaw);
         try {
-          const asset = GabahDomainService.createAsset({
+          const asset = await GabahDomainService.createAsset({
             category_name_or_code: String(row.category_name_or_code || row.category || '').trim() || undefined,
             name,
             owner_division: (division || undefined) as any,

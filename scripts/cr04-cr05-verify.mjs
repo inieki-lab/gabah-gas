@@ -635,6 +635,63 @@ async function main() {
 
     if (!adminToken) throw new Error('cannot continue without admin token');
 
+    // ---------- Asset numbering: two independent app instances share one PG counter ----------
+    // Both servers start from the same persisted state; simultaneous asset creates
+    // must still receive different numbers because reservation is database-atomic.
+    const numberingPeerPort = await getAvailablePort();
+    const numberingPeerBase = `http://127.0.0.1:${numberingPeerPort}`;
+    const numberingPeer = spawnServer({ port: numberingPeerPort, databaseUrl: TEST_DB_URL, nodeEnv: 'production' });
+    try {
+      const peerReady = await waitForServer(numberingPeerBase);
+      record('Second application instance boots against the same PostgreSQL database', 'health 200',
+        peerReady ? 'health 200' : 'no health', peerReady);
+      if (!peerReady) throw new Error('second application instance did not become ready');
+      const peerAdminLogin = await req(numberingPeerBase, 'POST', '/api/auth/login', {
+        body: { email: ADMIN_EMAIL, password: ADMIN_PASS },
+      });
+      const peerAdminToken = peerAdminLogin.json?.data?.token || '';
+      record('Second app instance authenticates the same Superadmin account', '200 + token',
+        `HTTP ${peerAdminLogin.status}`, peerAdminLogin.status === 200 && Boolean(peerAdminToken));
+      if (!peerAdminToken) throw new Error('second app instance admin login failed');
+
+      const suffix = crypto.randomBytes(6).toString('hex');
+      const assetPayload = (label) => ({
+        category_name_or_code: 'HLT',
+        name: `CI concurrent numbering ${label} ${suffix}`,
+        serial_number: `CI-NUM-SN-${label}-${suffix}`,
+        location: 'Head Office - Gudang IT Pool (Lt. 2)',
+        is_loanable: false,
+        purchase_price: 1,
+      });
+      const [numberingA, numberingB] = await Promise.all([
+        req(base, 'POST', '/api/assets', { token: adminToken, body: assetPayload('A') }),
+        req(numberingPeerBase, 'POST', '/api/assets', { token: peerAdminToken, body: assetPayload('B') }),
+      ]);
+      const numberA = numberingA.json?.data?.asset_number || '';
+      const numberB = numberingB.json?.data?.asset_number || '';
+      const uniqueNumbers = Boolean(numberA && numberB && numberA !== numberB);
+      record('Concurrent asset creation on two app instances receives unique numbers', '2 HTTP 201 responses + distinct asset numbers',
+        `A=${numberingA.status}:${numberA || '-'}; B=${numberingB.status}:${numberB || '-'}`,
+        numberingA.status === 201 && numberingB.status === 201 && uniqueNumbers);
+      const numberingCheck = new pg.Client({ connectionString: TEST_DB_URL });
+      numberingCheck.on('error', e => console.error('[asset numbering verification async error]', e.message));
+      await numberingCheck.connect();
+      const durableNumbers = await numberingCheck.query(
+        'SELECT asset_number FROM assets WHERE asset_number = ANY($1::text[]) ORDER BY asset_number',
+        [[numberA, numberB]],
+      );
+      const durableUnique = durableNumbers.rowCount === 2
+        && new Set(durableNumbers.rows.map(row => row.asset_number)).size === 2;
+      record('Both concurrently issued numbers are durable in PostgreSQL', '2 distinct normalized asset rows',
+        `rows=${durableNumbers.rowCount}`, durableUnique);
+      await numberingCheck.end();
+    } catch (error) {
+      record('Cross-instance PostgreSQL asset numbering integration', 'two unique durable asset numbers',
+        `error: ${error.message}`, false);
+    } finally {
+      try { numberingPeer.kill('SIGKILL'); } catch { /* best effort */ }
+    }
+
     // ---------- Live HTTP authorization for every Dynamic RBAC administration route ----------
     const rbacGuardClient = new pg.Client({ connectionString: TEST_DB_URL });
     await rbacGuardClient.connect();
