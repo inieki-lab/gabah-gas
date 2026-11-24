@@ -1,3 +1,8 @@
+
+## [2026-11-25] — Honor ME unit scope in Dashboard Attention
+- Dashboard Attention final filtering now recognizes ticket `assigned_unit_id` in addition to reporter, assignee, and owner-division scope.
+- PIBC ME queue operators with the explicit unit scope can see authorized follow-up cards consistently with ticket list and object-level middleware checks.
+- Added regression coverage to the PIBC ME ticket queue verification.
 ## [2026-11-23] — Require independent production rate-limit secret
 
 - Production startup rejects a missing, weak (<32-byte), whitespace-padded, or database-credential-reused `GABAH_RATE_LIMIT_SECRET`.
