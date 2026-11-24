@@ -14,7 +14,7 @@ Issue #122 asks that asset-owner choices come from server-side effective permiss
 - Superadmin receives active owner choices (including IT and GA) but no SC/PIBC/UNASSIGNED owner values.
 - IT receives IT only.
 - GA receives GA only; read-only IT workstation visibility does not become IT write authority.
-- Karyawan, Auditor, RPC/SC, and PIBC accounts without `assets.create` receive HTTP 403.
+- Karyawan and Auditor receive HTTP 403. RPC/SC and PIBC accounts are verified directly in PostgreSQL as primary Karyawan profiles with no implicit `assets.create` grant, avoiding extra CI login attempts that would interfere with the existing per-IP login-lockout regression.
 - Returned categories must be active and belong to one of the returned owner domains.
 
 ## Verification
