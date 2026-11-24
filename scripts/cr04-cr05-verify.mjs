@@ -261,13 +261,13 @@ async function main() {
         throw new Error('active Superadmin role or two active test users are unavailable');
       }
       await mig.query('DELETE FROM gabah_user_roles WHERE role_id = $1', [superadminRoleId]);
+      guardFixtureReady = true;
       for (const user of superadminFixtureUsers.rows) {
         await mig.query(
           'INSERT INTO gabah_user_roles (user_id, role_id, is_primary) VALUES ($1, $2, FALSE)',
           [String(user.id), superadminRoleId],
         );
       }
-      guardFixtureReady = true;
       await Promise.all([guardClientA.connect(), guardClientB.connect()]);
       await guardClientA.query('SELECT pg_advisory_lock($1::bigint)', [LAST_SUPERADMIN_LOCK_KEY]);
       guardLockedA = true;
@@ -336,6 +336,27 @@ async function main() {
         'first demotion allowed, second waits then denied, exactly one active Superadmin remains',
         `waited=${guardBWaited}; first=allowed; second=${secondDemotionAllowed ? 'allowed' : 'denied'}; remaining=${remainingSuperadmins}; error=${guardBError?.message || 'none'}`,
         guardBWaited && !guardBError && !secondDemotionAllowed && remainingSuperadmins === 1,
+      );
+      const serverSource = fs.readFileSync(path.resolve(process.cwd(), 'server.ts'), 'utf8');
+      const persistenceSource = fs.readFileSync(path.resolve(process.cwd(), 'server/persistence.ts'), 'utf8');
+      const guardCoverage = (serverSource.match(/await withLastSuperadminGuard\\(async \\(\\) => \\{/g) || []).length;
+      record(
+        'Every account mutation path uses the shared last-Superadmin guard',
+        'RBAC role assignment + PATCH user + DELETE user (3 guarded routes)',
+        `guarded routes=${guardCoverage}`,
+        guardCoverage === 3,
+      );
+      record(
+        'Last-Superadmin guard uses a shared PostgreSQL session advisory lock',
+        'pg_advisory_lock and pg_advisory_unlock with one stable key',
+        `lock=${persistenceSource.includes('pg_advisory_lock')}; unlock=${persistenceSource.includes('pg_advisory_unlock')}`,
+        persistenceSource.includes('pg_advisory_lock') && persistenceSource.includes('pg_advisory_unlock'),
+      );
+      record(
+        'Last-Superadmin invariant reads authoritative PostgreSQL state',
+        'PATCH and DELETE use database-backed active Superadmin count',
+        `db count helper calls=${(serverSource.match(/await countActiveSuperadminsInDatabase\\(\\)/g) || []).length}`,
+        (serverSource.match(/await countActiveSuperadminsInDatabase\\(\\)/g) || []).length === 2,
       );
     } catch (error) {
       record('Last active Superadmin concurrency integration', 'one of two parallel demotions denied',
