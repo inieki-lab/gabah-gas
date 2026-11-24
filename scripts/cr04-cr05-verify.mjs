@@ -1712,6 +1712,16 @@ async function main() {
       `HTTP ${auditorDocumentDownload?.status ?? 'skipped'}`,
       auditorDocumentDownload?.status === 200 && auditorDocumentBody === contractFileContent);
 
+    // The isolated suite intentionally exercises many API routes. Reset only
+    // its API limiter bucket before the final owner-reference/ticket-link checks,
+    // so these assertions test domain persistence rather than the 200/minute
+    // abuse-control ceiling.
+    const ownerTicketLimiterClient = new pg.Client({ connectionString: TEST_DB_URL });
+    ownerTicketLimiterClient.on('error', e => console.error('[owner/ticket limiter reset async error]', e.message));
+    await ownerTicketLimiterClient.connect();
+    await ownerTicketLimiterClient.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'api'");
+    await ownerTicketLimiterClient.end();
+
     const deleteReferencedOwner = await req(base, 'DELETE', '/api/master/divisions/RPCSC', { token: adminToken });
     record('Owner domain referenced by vendor cannot be deleted', '400', `HTTP ${deleteReferencedOwner.status}`, deleteReferencedOwner.status === 400);
 
@@ -1722,16 +1732,6 @@ async function main() {
     const linkedTicketId = linkedTicket.json?.data?.id || '';
     record('ticket linkage honored for authorized actor', '201 + contract_id', `HTTP ${linkedTicket.status} contract_id=${linkedTicket.json?.data?.contract_id ?? 'unset'}`,
       linkedTicket.status === 201 && linkedTicket.json?.data?.contract_id === contractId);
-
-    // The isolated integration suite intentionally exercises many API routes.
-    // Reset only its shared API-rate-limit bucket before the focused reminder
-    // assertions, so those assertions test authorization and reminder behavior,
-    // not the unrelated 200-request/minute abuse-control ceiling.
-    const reminderLimiterClient = new pg.Client({ connectionString: TEST_DB_URL });
-    reminderLimiterClient.on('error', e => console.error('[reminder limiter reset async error]', e.message));
-    await reminderLimiterClient.connect();
-    await reminderLimiterClient.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'api'");
-    await reminderLimiterClient.end();
 
     // ---------- 5. Reminder sweep ----------
     const itRun = await req(base, 'POST', '/api/contracts/reminders/run', { token: itToken });
