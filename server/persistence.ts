@@ -864,6 +864,18 @@ export async function initializePersistence(): Promise<void> {
           [sequence.division, sequence.code, sequence.year, sequence.current],
         );
       }
+      // Reconcile contract counters from persisted CTR-YYYY-NNNN numbers.
+      // GREATEST preserves reservations even if a later contract write fails.
+      await pool.query(
+        "INSERT INTO contract_number_sequences (sequence_year, last_sequence) " +
+        "SELECT SUBSTRING(contract_number FROM '^CTR-([0-9]{4})-')::INTEGER, " +
+        "MAX(SUBSTRING(contract_number FROM '-([0-9]+)$')::INTEGER) " +
+        "FROM contracts " +
+        "WHERE contract_number ~ '^CTR-[0-9]{4}-[0-9]+$' " +
+        "GROUP BY 1 " +
+        "ON CONFLICT (sequence_year) DO UPDATE SET " +
+        "last_sequence = GREATEST(contract_number_sequences.last_sequence, EXCLUDED.last_sequence)"
+      );
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
       saveStateToFile(createPayload());
@@ -1020,6 +1032,43 @@ export async function reserveAssetNumberSequence(
 /** True after an authoritative PostgreSQL runtime failure; restart is required. */
 export function isPostgresFailureLatched(): boolean {
   return postgresFailureLatched;
+}
+
+/**
+ * Reserve a yearly contract number atomically across PostgreSQL-backed app
+ * instances. Sequence gaps are allowed if the contract write later fails.
+ */
+export async function reserveContractNumberSequence(year: number): Promise<number> {
+  if (!isPostgresAvailable || postgresFailureLatched) {
+    throw Object.assign(new Error('Penomoran kontrak memerlukan PostgreSQL aktif; nomor tidak diterbitkan dari cache lokal.'), { statusCode: 503 });
+  }
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    throw Object.assign(new Error('Tahun sequence nomor kontrak tidak valid.'), { statusCode: 400 });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query<{ last_sequence: number }>(
+      `INSERT INTO contract_number_sequences (sequence_year, last_sequence)
+       VALUES ($1, 1)
+       ON CONFLICT (sequence_year)
+       DO UPDATE SET last_sequence = contract_number_sequences.last_sequence + 1,
+                     updated_at = NOW()
+       RETURNING last_sequence`,
+      [year],
+    );
+    const sequence = Number(result.rows[0]?.last_sequence);
+    if (!Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error('PostgreSQL mengembalikan sequence nomor kontrak yang tidak valid.');
+    }
+    await client.query('COMMIT');
+    return sequence;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 

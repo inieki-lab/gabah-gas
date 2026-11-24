@@ -2,8 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { db, ServerUser, ServerContract, ServerContractDocument, ServerContractMilestone, ServerContractNotificationLog, ContractStatus, RenewalOutcome, ContractReminderConfig } from './db';
 import { AssetNumberingEngine } from './numbering';
 import { queueNotification, summarize, SCHEDULER_ACTOR } from './notifications/notificationService';
-import { persistDataStore } from './persistence';
-import { isPostgresPersistenceActive } from './persistence';
+import { persistDataStore, isPostgresPersistenceActive, isPostgresFailureLatched, reserveContractNumberSequence } from './persistence';
 import { hasRbacPermission, hasRbacScope, isSuperadminActor, isAuditorActor } from './rbac-policy';
 
 /**
@@ -174,7 +173,7 @@ export const ContractDomainService = {
     return contract;
   },
 
-  createContract(payload: Partial<ServerContract> & { end_date: string; start_date: string; title: string; vendor_name: string; owner_division: string; pic_user_id: string }, actor: ServerUser): ServerContract {
+  async createContract(payload: Partial<ServerContract> & { end_date: string; start_date: string; title: string; vendor_name: string; owner_division: string; pic_user_id: string }, actor: ServerUser): Promise<ServerContract> {
     if (!canCreateContract(actor)) {
       throw new Error('Akses ditolak: permission contracts.create tidak diberikan.');
     }
@@ -251,10 +250,22 @@ export const ContractDomainService = {
       throw new Error('Notice period dan nilai kontrak harus berupa angka non-negatif yang valid.');
     }
 
+    const numberingYear = new Date().getFullYear();
+    let contractNumber: string;
+    if (isPostgresFailureLatched()) {
+      throw Object.assign(new Error('Penomoran kontrak ditolak karena PostgreSQL authoritative store sedang degraded. Restart layanan setelah database pulih.'), { statusCode: 503 });
+    }
+    if (isPostgresPersistenceActive()) {
+      const sequence = await reserveContractNumberSequence(numberingYear);
+      contractNumber = AssetNumberingEngine.formatReservedContractNumber(numberingYear, sequence);
+    } else {
+      contractNumber = AssetNumberingEngine.generateContractNumber(numberingYear);
+    }
+
     const nowIso = new Date().toISOString();
     const contract: ServerContract = {
-      id: `CTR-${Date.now()}`,
-      contract_number: AssetNumberingEngine.generateContractNumber(),
+      id: `CTR-${randomUUID()}`,
+      contract_number: contractNumber,
       contract_type: (payload.contract_type || 'Umum').trim(),
       title: payload.title.trim(),
       vendor_name: payload.vendor_name.trim(),

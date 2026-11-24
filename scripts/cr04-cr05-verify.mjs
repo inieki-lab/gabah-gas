@@ -743,9 +743,61 @@ async function main() {
         && new Set(durableNumbers.rows.map(row => row.asset_number)).size === 2;
       record('Both concurrently issued numbers are durable in PostgreSQL', '2 distinct normalized asset rows',
         `rows=${durableNumbers.rowCount}`, durableUnique);
+
+      const contractPicResult = await numberingCheck.query(
+        'SELECT id FROM users WHERE email = $1 AND is_active = TRUE',
+        [KARYAWAN_EMAIL],
+      );
+      const contractPicUserId = String(contractPicResult.rows[0]?.id || '');
+      const contractYear = new Date().getFullYear();
+      const contractCounterBefore = await numberingCheck.query(
+        'SELECT last_sequence FROM contract_number_sequences WHERE sequence_year = $1',
+        [contractYear],
+      );
+      const contractSequenceBefore = Number(contractCounterBefore.rows[0]?.last_sequence || 0);
+      const contractPayload = label => ({
+        contract_type: 'CI Integration',
+        title: `CI concurrent contract ${label} ${suffix}`,
+        vendor_name: `CI vendor ${label} ${suffix}`,
+        owner_division: 'IT',
+        pic_user_id: contractPicUserId,
+        start_date: '2026-01-01',
+        end_date: '2027-01-01',
+        notice_period_days: 30,
+        contract_value: 1000,
+        auto_renewal: false,
+        restricted: false,
+        status: 'draft',
+      });
+      const [contractA, contractB] = await Promise.all([
+        req(base, 'POST', '/api/contracts', { token: adminToken, body: contractPayload('A') }),
+        req(numberingPeerBase, 'POST', '/api/contracts', { token: peerAdminToken, body: contractPayload('B') }),
+      ]);
+      const contractNumberA = contractA.json?.data?.contract_number || '';
+      const contractNumberB = contractB.json?.data?.contract_number || '';
+      const contractCounterAfter = await numberingCheck.query(
+        'SELECT last_sequence FROM contract_number_sequences WHERE sequence_year = $1',
+        [contractYear],
+      );
+      const contractSequenceAfter = Number(contractCounterAfter.rows[0]?.last_sequence || 0);
+      const durableContracts = await numberingCheck.query(
+        'SELECT contract_number FROM contracts WHERE contract_number = ANY($1::text[]) ORDER BY contract_number',
+        [[contractNumberA, contractNumberB]],
+      );
+      const contractNumbersDistinct = Boolean(contractNumberA && contractNumberB
+        && contractNumberA !== contractNumberB);
+      const contractSequencePass = contractSequenceAfter === contractSequenceBefore + 2
+        && Number(contractNumberA.split('-').at(-1)) !== Number(contractNumberB.split('-').at(-1));
+      record('Concurrent contract creation on two app instances receives unique numbers',
+        '2 HTTP 201 responses + distinct numbers + shared counter increments twice',
+        `A=${contractA.status}:${contractNumberA || '-'}; B=${contractB.status}:${contractNumberB || '-'}; counter=${contractSequenceBefore}->${contractSequenceAfter}`,
+        contractA.status === 201 && contractB.status === 201 && contractNumbersDistinct && contractSequencePass);
+      record('Both concurrently issued contract numbers are durable in PostgreSQL', '2 distinct normalized contract rows',
+        `rows=${durableContracts.rowCount}`,
+        durableContracts.rowCount === 2 && new Set(durableContracts.rows.map(row => row.contract_number)).size === 2);
       await numberingCheck.end();
     } catch (error) {
-      record('Cross-instance PostgreSQL asset numbering integration', 'two unique durable asset numbers',
+      record('Cross-instance PostgreSQL asset and contract numbering integration', 'two unique durable asset numbers',
         `error: ${error.message}`, false);
     } finally {
       try { numberingPeer.kill('SIGKILL'); } catch { /* best effort */ }
@@ -1514,6 +1566,48 @@ async function main() {
       'HTTP 201 + sequence increments exactly once from persisted counter',
       `HTTP ${restartNumberingAsset.status}; before=${sequenceBeforeRestartCreate}; issued=${restartAssetNumber || '-'}; after=${sequenceAfterRestartCreate}`,
       restartNumberingPass);
+
+    const contractCounterBeforeRestartCreate = await numberingRestartDb.query(
+      'SELECT last_sequence FROM contract_number_sequences WHERE sequence_year = $1',
+      [numberingYear],
+    );
+    const contractSequenceBeforeRestartCreate = Number(contractCounterBeforeRestartCreate.rows[0]?.last_sequence || 0);
+    const restartPicResult = await numberingRestartDb.query(
+      'SELECT id FROM users WHERE email = $1 AND is_active = TRUE',
+      [KARYAWAN_EMAIL],
+    );
+    const restartContractSuffix = crypto.randomBytes(6).toString('hex');
+    const restartContract = await req(base, 'POST', '/api/contracts', {
+      token: adminToken2,
+      body: {
+        contract_type: 'CI Restart',
+        title: `CI contract after restart ${restartContractSuffix}`,
+        vendor_name: `CI restart vendor ${restartContractSuffix}`,
+        owner_division: 'IT',
+        pic_user_id: String(restartPicResult.rows[0]?.id || ''),
+        start_date: '2026-01-01',
+        end_date: '2027-01-01',
+        notice_period_days: 30,
+        contract_value: 1000,
+        auto_renewal: false,
+        restricted: false,
+        status: 'draft',
+      },
+    });
+    const restartContractNumber = restartContract.json?.data?.contract_number || '';
+    const contractCounterAfterRestartCreate = await numberingRestartDb.query(
+      'SELECT last_sequence FROM contract_number_sequences WHERE sequence_year = $1',
+      [numberingYear],
+    );
+    const contractSequenceAfterRestartCreate = Number(contractCounterAfterRestartCreate.rows[0]?.last_sequence || 0);
+    const contractRestartPass = restartContract.status === 201
+      && contractSequenceBeforeRestartCreate > 0
+      && contractSequenceAfterRestartCreate === contractSequenceBeforeRestartCreate + 1
+      && Number(restartContractNumber.split('-').at(-1)) === contractSequenceAfterRestartCreate;
+    record('Contract numbering continues from the durable PostgreSQL counter after app restart',
+      'HTTP 201 + sequence increments exactly once from persisted counter',
+      `HTTP ${restartContract.status}; before=${contractSequenceBeforeRestartCreate}; issued=${restartContractNumber || '-'}; after=${contractSequenceAfterRestartCreate}`,
+      contractRestartPass);
     await numberingRestartDb.end();
 
     const afterRestart = await req(base, 'GET', `/api/contracts/${contractId}`, { token: adminToken2 });
@@ -1558,6 +1652,11 @@ async function main() {
       $$;
     `);
     await faultClient.query('CREATE TRIGGER gabah_ci_reject_user_sync BEFORE INSERT OR UPDATE ON users FOR EACH ROW EXECUTE FUNCTION gabah_ci_reject_user_sync()');
+
+    // This isolated test database has already served the full CR-04/CR-05
+    // request suite. Clear only its API limiter bucket so the injected PG
+    // failure—not the unrelated 200/minute abuse-control ceiling—is observed.
+    await faultClient.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'api'");
 
     const faultedPasswordReset = await req(base, 'POST', `/api/users/${itUserId}/reset-password`, { token: adminToken2 });
     const passwordAfterFault = await faultClient.query('SELECT password_hash FROM users WHERE id = $1', [itUserId]);

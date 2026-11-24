@@ -11,6 +11,10 @@ assert.ok(actor, 'IT actor fixture exists');
 // Permission regression: update-only RBAC grants must never imply create authority.
 const contractSource = readFileSync(new URL('../server/contracts.ts', import.meta.url), 'utf8');
 const notificationSource = readFileSync(new URL('../server/notifications/notificationService.ts', import.meta.url), 'utf8');
+const persistenceSource = readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
+const numberingSource = readFileSync(new URL('../server/numbering.ts', import.meta.url), 'utf8');
+const serverSource = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const contractSequenceMigration = readFileSync(new URL('../server/migrations/104_contract_number_sequences.sql', import.meta.url), 'utf8');
 const createStart = contractSource.indexOf('export function canCreateContract(');
 const createEnd = contractSource.indexOf('// SEC-08:', createStart);
 const createGuard = contractSource.slice(createStart, createEnd);
@@ -19,6 +23,13 @@ assert.ok(!createGuard.includes("'contracts.update'"), 'Update permission must n
 assert.ok(contractSource.includes("id: `LOG-CTR-${randomUUID()}`"), 'Contract audit records must use UUID identifiers');
 assert.ok(notificationSource.includes("id: `AUD-CTR-${crypto.randomUUID()}`"), 'Contract reminder audit records must use UUID identifiers');
 assert.ok(notificationSource.includes("id: `NTF-${crypto.randomUUID()}`"), 'In-app contract reminder notification IDs must use UUID identifiers');
+assert.match(persistenceSource, /INSERT INTO contract_number_sequences \(sequence_year, last_sequence\)[\s\S]*ON CONFLICT \(sequence_year\)[\s\S]*last_sequence = contract_number_sequences\.last_sequence \+ 1[\s\S]*RETURNING last_sequence/);
+assert.match(contractSource, /await reserveContractNumberSequence\(numberingYear\)/);
+assert.match(contractSource, /isPostgresFailureLatched\(\)[\s\S]*throw Object\.assign/);
+assert.match(numberingSource, /formatReservedContractNumber/);
+assert.match(serverSource, /await ContractDomainService\.createContract\(req\.body, actor\)/);
+assert.match(contractSequenceMigration, /CREATE TABLE IF NOT EXISTS contract_number_sequences/);
+assert.match(contractSequenceMigration, /sequence_year INTEGER PRIMARY KEY/);
 
 
 const base = {
@@ -34,40 +45,40 @@ const base = {
   reminder_config: { reminder1_days: 60, reminder2_days: 35, reminder3_days: 7 },
 };
 
-function mustReject(payload, expectedMessage) {
-  assert.throws(
+async function mustReject(payload, expectedMessage) {
+  await assert.rejects(
     () => ContractDomainService.createContract({ ...base, ...payload }, actor),
     new RegExp(expectedMessage),
   );
 }
 
-mustReject({ pic_user_id: 'USR-NOT-FOUND' }, /PIC kontrak tidak ditemukan/);
+await mustReject({ pic_user_id: 'USR-NOT-FOUND' }, /PIC kontrak tidak ditemukan/);
 const inactivePic = db.users.find(user => user.id === 'USR-03');
 inactivePic.is_active = false;
-mustReject({}, /PIC kontrak tidak ditemukan/);
+await mustReject({}, /PIC kontrak tidak ditemukan/);
 inactivePic.is_active = true;
 
-mustReject({ escalation_user_id: 'USR-NOT-FOUND' }, /Pengguna eskalasi tidak ditemukan/);
-mustReject({ parent_contract_id: 'CTR-NOT-FOUND' }, /Kontrak induk tidak ditemukan/);
-mustReject({ parent_contract_id: 'CTR-SEED-002' }, /divisi pemilik yang sama/);
-mustReject({ start_date: '2027-02-01', end_date: '2027-01-01' }, /Periode kontrak tidak valid/);
-mustReject({ reminder_config: { reminder1_days: 7, reminder2_days: 35, reminder3_days: 60 } }, /Konfigurasi reminder/);
-mustReject({ contract_value: -1 }, /Notice period dan nilai kontrak/);
-mustReject({ contract_value: Number.MAX_SAFE_INTEGER + 1 }, /Notice period dan nilai kontrak/);
-mustReject({ notice_period_days: 2147483648 }, /Notice period dan nilai kontrak/);
-mustReject({ reminder_config: { reminder1_days: 2147483648, reminder2_days: 35, reminder3_days: 7 } }, /Konfigurasi reminder/);
+await mustReject({ escalation_user_id: 'USR-NOT-FOUND' }, /Pengguna eskalasi tidak ditemukan/);
+await mustReject({ parent_contract_id: 'CTR-NOT-FOUND' }, /Kontrak induk tidak ditemukan/);
+await mustReject({ parent_contract_id: 'CTR-SEED-002' }, /divisi pemilik yang sama/);
+await mustReject({ start_date: '2027-02-01', end_date: '2027-01-01' }, /Periode kontrak tidak valid/);
+await mustReject({ reminder_config: { reminder1_days: 7, reminder2_days: 35, reminder3_days: 60 } }, /Konfigurasi reminder/);
+await mustReject({ contract_value: -1 }, /Notice period dan nilai kontrak/);
+await mustReject({ contract_value: Number.MAX_SAFE_INTEGER + 1 }, /Notice period dan nilai kontrak/);
+await mustReject({ notice_period_days: 2147483648 }, /Notice period dan nilai kontrak/);
+await mustReject({ reminder_config: { reminder1_days: 2147483648, reminder2_days: 35, reminder3_days: 7 } }, /Konfigurasi reminder/);
 
-mustReject({ auto_renewal: 'false' }, /auto-renewal harus berupa boolean/);
-mustReject({ restricted: 'false' }, /Flag restricted harus berupa boolean/);
+await mustReject({ auto_renewal: 'false' }, /auto-renewal harus berupa boolean/);
+await mustReject({ restricted: 'false' }, /Flag restricted harus berupa boolean/);
 
-mustReject({ title: 'x'.repeat(256) }, /Judul kontrak wajib diisi dan maksimal 255 karakter/);
-mustReject({ vendor_name: 'x'.repeat(256) }, /Nama vendor wajib diisi dan maksimal 255 karakter/);
-mustReject({ contract_type: 'x'.repeat(101) }, /Jenis kontrak maksimal 100 karakter/);
-mustReject({ title: 'NUL' + String.fromCharCode(0) + 'title' }, /Judul kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
-mustReject({ notes: 'NUL' + String.fromCharCode(0) + 'notes' }, /Catatan kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
+await mustReject({ title: 'x'.repeat(256) }, /Judul kontrak wajib diisi dan maksimal 255 karakter/);
+await mustReject({ vendor_name: 'x'.repeat(256) }, /Nama vendor wajib diisi dan maksimal 255 karakter/);
+await mustReject({ contract_type: 'x'.repeat(101) }, /Jenis kontrak maksimal 100 karakter/);
+await mustReject({ title: 'NUL' + String.fromCharCode(0) + 'title' }, /Judul kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
+await mustReject({ notes: 'NUL' + String.fromCharCode(0) + 'notes' }, /Catatan kontrak harus berupa teks dan tidak boleh mengandung karakter NUL/);
 
 
-const created = ContractDomainService.createContract({
+const created = await ContractDomainService.createContract({
   ...base,
   parent_contract_id: 'CTR-SEED-001',
   escalation_user_id: 'USR-01', // Cross-division escalation is intentionally supported by the UI.
@@ -75,6 +86,7 @@ const created = ContractDomainService.createContract({
   milestones: [{ id: 'FORGED-MILESTONE', status: 'completed' }],
 }, actor);
 
+assert.match(created.contract_number, /^CTR-\d{4}-\d{4}$/);
 assert.equal(created.parent_contract_id, 'CTR-SEED-001');
 assert.equal(created.escalation_user_id, 'USR-01');
 assert.deepEqual(created.documents, [], 'Client-supplied document metadata must not be trusted on creation');

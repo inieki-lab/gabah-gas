@@ -4564,7 +4564,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'contracts.create')) return;
     const actor = getActor(req);
-      const created = ContractDomainService.createContract(req.body, actor);
+      const created = await ContractDomainService.createContract(req.body, actor);
       await persistDataStore();
       (req as any).__gabahPersisted = true;
       res.status(201).json({ success: true, data: created });
