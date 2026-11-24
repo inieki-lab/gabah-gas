@@ -28,4 +28,7 @@ assert.match(app, /dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(
 for (const state of ['setAssets([])', 'setLoans([])', 'setTickets([])', 'setAuditLogs([])', 'setAllUsers([])', 'setVendors([])', 'setKnowledgeBase([])', 'setMaintenanceSchedules([])', 'setMeetingRooms([])', 'setRoomReservations([])', 'setContracts([])', 'setMovements([])']) {
   assert.ok(app.includes(state), `Identity reset must clear ${state}`);
 }
+for (const transient of ["setSelectedAssetForDetail(null)","setSelectedAssetForEdit(null)","setSelectedAssetForQr(null)","setSelectedLoanForBast(null)","setPreselectedTicketAssetId(undefined)","setContractForLinkedTicket(null)","setLinkedTicketContractId(undefined)","setIsCreateAssetModalOpen(false)","setIsCreateLoanModalOpen(false)","setIsCreateTicketModalOpen(false)","setIsCreateContractModalOpen(false)","setIsChangePasswordOpen(false)","setIsAssetImportOpen(false)","setIsScannerModalOpen(false)","setIsGlobalSearchOpen(false)","setIsAdministrationModalOpen(false)"]) {
+  assert.ok(app.includes(transient), `Identity reset must clear transient state ${transient}`);
+}
 console.log('PASS: role switch, login, and logout clear role-scoped data and invalidate stale in-flight refreshes.');
