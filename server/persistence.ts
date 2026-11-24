@@ -464,14 +464,29 @@ async function backfillNormalizedTables(existingClient?: PoolClient): Promise<vo
     }
     for (const u of db.users) {
       await client.query(
-        `INSERT INTO users (id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,updated_at)
-         VALUES ($1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),$6,$7,$8,$9,$10,NOW())
-         ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,email=EXCLUDED.email,role=EXCLUDED.role,
+        `INSERT INTO users (
+           id,name,email,role,division_id,phone,avatar,is_active,password_hash,password_salt,
+           job_level_code,unit_id,office_location_id,updated_at
+         )
+         VALUES (
+           $1,$2,$3,$4,(SELECT id FROM divisions WHERE code=$5),$6,$7,$8,$9,$10,
+           $11,$12,$13,NOW()
+         )
+         ON CONFLICT (id) DO UPDATE SET
+           name=EXCLUDED.name,email=EXCLUDED.email,role=EXCLUDED.role,
            division_id=EXCLUDED.division_id,phone=EXCLUDED.phone,avatar=EXCLUDED.avatar,is_active=EXCLUDED.is_active,
            password_hash=COALESCE(EXCLUDED.password_hash, users.password_hash),
            password_salt=COALESCE(EXCLUDED.password_salt, users.password_salt),
+           job_level_code=CASE WHEN $14::boolean THEN EXCLUDED.job_level_code ELSE users.job_level_code END,
+           unit_id=CASE WHEN $15::boolean THEN EXCLUDED.unit_id ELSE users.unit_id END,
+           office_location_id=CASE WHEN $16::boolean THEN EXCLUDED.office_location_id ELSE users.office_location_id END,
            updated_at=NOW()`,
-        [u.id,u.name,u.email,u.role,u.division,u.phone || null,u.avatar || null,u.is_active,u.password_hash || null,u.password_salt || null],
+        [
+          u.id,u.name,u.email,u.role,u.division,u.phone || null,u.avatar || null,u.is_active,
+          u.password_hash || null,u.password_salt || null,u.job_level_code || 'STAF',
+          u.unit_id ?? null,u.office_location_id ?? null,
+          u.job_level_code !== undefined,u.unit_id !== undefined,u.office_location_id !== undefined,
+        ],
       );
     }
     // SECURITY (CR-03): db.sessions are deliberately NOT backfilled into
