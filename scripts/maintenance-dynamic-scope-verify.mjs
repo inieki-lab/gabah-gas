@@ -19,7 +19,7 @@ const checks = [
 ];
 checks.push(
   ['Maintenance owner filter normalizes persisted owner values case-insensitively', /String\(sch\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\) !== divisionFilter/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8'))],
-  ['Maintenance owner options are dynamic and exclude location-only legacy values', /ownerDivisionOptions = Array\\.from\\(new Set\\(//.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8')) && /locationOnlyOwnerValues = new Set\\(\\['SC', 'SUPPLY CHAIN', 'RPC', 'PIBC'\\]\\)/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8')) && !/option value="SC">Supply Chain|option value="PIBC">Kawasan PIBC/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8'))]
+  ['Maintenance owner options are dynamic and exclude location-only legacy values', /ownerDivisionOptions = Array\.from\(new Set\(/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8')) && /locationOnlyOwnerValues = new Set\(\['SC', 'SUPPLY CHAIN', 'RPC', 'PIBC'\]\)/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8')) && !/option value="SC">Supply Chain|option value="PIBC">Kawasan PIBC/.test(fs.readFileSync(new URL('../src/components/views/MaintenanceView.tsx', import.meta.url), 'utf8'))],
 );
 let failed = 0;
 for (const [name, pass] of checks) {
