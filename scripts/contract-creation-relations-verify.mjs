@@ -83,7 +83,7 @@ const created = await ContractDomainService.createContract({
   milestones: [{ id: 'FORGED-MILESTONE', status: 'completed' }],
 }, actor);
 
-assert.match(created.contract_number, /^CTR-\\d{4}-\\d{4}$/);
+assert.match(created.contract_number, /^CTR-\d{4}-\d{4}$/);
 assert.equal(created.parent_contract_id, 'CTR-SEED-001');
 assert.equal(created.escalation_user_id, 'USR-01');
 assert.deepEqual(created.documents, [], 'Client-supplied document metadata must not be trusted on creation');
