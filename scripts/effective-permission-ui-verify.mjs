@@ -15,3 +15,17 @@ assert.match(header, /isSuperadmin \? \(/, 'Account directory must only render f
 assert.match(header, /Direktori akun hanya dapat diakses Superadmin/, 'Non-Superadmin receives a privacy-safe account menu state');
 assert.match(header, /\{\(allUsers \|\| \[\]\)\.map\(user =>/, 'Registered account list remains available inside the Superadmin-only branch');
 console.log('PASS: Superadmin and wildcard permissions are consistent; account directory is hidden from non-Superadmin users.');
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+assert.match(app, /useRef/);
+assert.match(app, /const dataRefreshGeneration = useRef\(0\)/);
+assert.match(app, /const generation = dataRefreshGeneration\.current/);
+assert.match(app, /generation !== dataRefreshGeneration\.current/);
+assert.match(app, /gabahApi\.getUsers\(\)\.catch\(\(\) => \[\]\)/);
+assert.match(app, /const \[allUsers, setAllUsers\] = useState<UserProfile\[]>\(\[\]\)/);
+assert.match(app, /dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(targetUser\)/);
+assert.match(app, /onLoginSuccess=\{\(u\) => \{\s*dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(u\)/);
+assert.match(app, /dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(null\)/);
+for (const state of ['setAssets([])', 'setLoans([])', 'setTickets([])', 'setAuditLogs([])', 'setAllUsers([])', 'setVendors([])', 'setKnowledgeBase([])', 'setMaintenanceSchedules([])', 'setMeetingRooms([])', 'setRoomReservations([])', 'setContracts([])', 'setMovements([])']) {
+  assert.ok(app.includes(state), `Identity reset must clear ${state}`);
+}
+console.log('PASS: role switch, login, and logout clear role-scoped data and invalidate stale in-flight refreshes.');
