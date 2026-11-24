@@ -14,6 +14,7 @@ const notificationSource = readFileSync(new URL('../server/notifications/notific
 const persistenceSource = readFileSync(new URL('../server/persistence.ts', import.meta.url), 'utf8');
 const numberingSource = readFileSync(new URL('../server/numbering.ts', import.meta.url), 'utf8');
 const serverSource = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const contractSequenceMigration = readFileSync(new URL('../server/migrations/104_contract_number_sequences.sql', import.meta.url), 'utf8');
 const createStart = contractSource.indexOf('export function canCreateContract(');
 const createEnd = contractSource.indexOf('// SEC-08:', createStart);
 const createGuard = contractSource.slice(createStart, createEnd);
@@ -27,6 +28,8 @@ assert.match(contractSource, /await reserveContractNumberSequence\(numberingYear
 assert.match(contractSource, /isPostgresFailureLatched\(\)[\s\S]*throw Object\.assign/);
 assert.match(numberingSource, /formatReservedContractNumber/);
 assert.match(serverSource, /await ContractDomainService\.createContract\(req\.body, actor\)/);
+assert.match(contractSequenceMigration, /CREATE TABLE IF NOT EXISTS contract_number_sequences/);
+assert.match(contractSequenceMigration, /sequence_year INTEGER PRIMARY KEY/);
 
 
 const base = {
