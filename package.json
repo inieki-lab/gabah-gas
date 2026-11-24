@@ -47,6 +47,7 @@
     "test:module-lifecycle-api": "node scripts/module-lifecycle-api-verify.mjs",
     "test:module-lifecycle-ui": "node scripts/module-lifecycle-ui-verify.mjs",
     "test:trusted-client-ip": "node scripts/trusted-client-ip-verify.mjs",
+    "test:trusted-proxy-config": "node --import tsx scripts/trusted-proxy-config-verify.mjs",
     "test:user-admin-validation": "node scripts/user-admin-validation-verify.mjs",
     "test:bulk-import": "node scripts/bulk-import-verify.mjs",
     "test:user-import-parser": "node --import tsx scripts/user-import-parser-verify.mjs",

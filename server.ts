@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import crypto from 'node:crypto';
 import express from 'express';
+import { parseTrustedProxyConfig } from './server/trustedProxy';
 import multer from 'multer';
 import fs from 'node:fs/promises';
 import path from 'path';
@@ -53,6 +54,9 @@ async function startServer() {
   startReminderScheduler();
 
   const app = express();
+  // Forwarded protocol/host headers are trusted only from explicitly configured
+  // proxy addresses. An unset value preserves Express's secure default (no proxy trust).
+  app.set('trust proxy', parseTrustedProxyConfig(process.env.GABAH_TRUST_PROXY));
   const PORT = Number(process.env.PORT || 3000);
   const setSessionCookie = (res: express.Response, token: string) => res.cookie('gabah_session', token, {
     httpOnly: true,

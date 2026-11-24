@@ -202,6 +202,9 @@ jobs:
       - name: Trusted client IP extraction regression
         run: npm run test:trusted-client-ip
 
+      - name: Trusted reverse proxy configuration regression
+        run: npm run test:trusted-proxy-config
+
       - name: User administration validation regression
         run: npm run test:user-admin-validation
 
