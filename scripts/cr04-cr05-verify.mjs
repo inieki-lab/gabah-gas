@@ -1083,6 +1083,77 @@ async function main() {
       assignment.status === 200 && (persistedAssignment?.role_ids || []).includes(Number(gaRole?.id))
         && Number(persistedAssignment?.primary_role_id) === Number(assignment.json?.data?.primary_role_id));
 
+    // Dynamic RBAC must converge across independent Node processes without
+    // requiring a restart or a login on the node receiving the policy change.
+    const rbacPeerPort = await getAvailablePort();
+    const rbacPeerBase = `http://127.0.0.1:${rbacPeerPort}`;
+    const rbacPeer = spawnServer({ port: rbacPeerPort, databaseUrl: TEST_DB_URL, nodeEnv: 'production' });
+    const originalAdditionalRoleIds = gaRole ? [Number(gaRole.id)] : [];
+    let rbacPeerToken = '';
+    let rbacRoleRemoved = false;
+    try {
+      const peerReady = await waitForServer(rbacPeerBase);
+      record('RBAC peer application instance boots on shared PostgreSQL', 'health 200',
+        peerReady ? 'health 200' : 'no health', peerReady);
+      if (!peerReady) throw new Error('RBAC peer instance did not become ready');
+      const peerLogin = await req(rbacPeerBase, 'POST', '/api/auth/login', {
+        body: { email: KARYAWAN_EMAIL, password: USER_PASS },
+      });
+      rbacPeerToken = peerLogin.json?.data?.token || '';
+      record('Karyawan obtains a session on the peer instance', '200 + token',
+        `HTTP ${peerLogin.status}`, peerLogin.status === 200 && Boolean(rbacPeerToken));
+      if (!rbacPeerToken) throw new Error('Karyawan peer login failed');
+
+      const peerInitialContracts = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerToken });
+      record('Peer instance initially honors the assigned GA contracts.read role', '200',
+        `HTTP ${peerInitialContracts.status}`, peerInitialContracts.status === 200);
+
+      const revokePeerRole = await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
+        token: adminToken,
+        body: { role_ids: [] },
+      });
+      rbacRoleRemoved = revokePeerRole.status === 200;
+      record('Primary instance revokes the additional GA role', '200',
+        `HTTP ${revokePeerRole.status}`, rbacRoleRemoved);
+
+      const waitForPeerStatus = async (expectedStatus) => {
+        let latest = null;
+        for (let attempt = 0; attempt < 48; attempt += 1) {
+          latest = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerToken });
+          if (latest.status === expectedStatus) return latest;
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+        return latest;
+      };
+      const peerAfterRevoke = await waitForPeerStatus(403);
+      record('Peer instance revokes stale GA contract grants within the 5-second refresh window', '403 within 12 seconds',
+        `HTTP ${peerAfterRevoke?.status ?? 'no response'}`, peerAfterRevoke?.status === 403);
+
+      const restorePeerRole = await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
+        token: adminToken,
+        body: { role_ids: originalAdditionalRoleIds },
+      });
+      rbacRoleRemoved = restorePeerRole.status !== 200;
+      record('Primary instance restores the original GA role assignment', '200',
+        `HTTP ${restorePeerRole.status}`, restorePeerRole.status === 200);
+      const peerAfterRestore = await waitForPeerStatus(200);
+      record('Peer instance restores the GA contract capability without restart', '200 within 12 seconds',
+        `HTTP ${peerAfterRestore?.status ?? 'no response'}`, peerAfterRestore?.status === 200);
+    } catch (error) {
+      record('Dynamic RBAC cross-instance propagation integration', 'role revocation and restoration propagate',
+        `error: ${error.message}`, false);
+    } finally {
+      if (rbacRoleRemoved) {
+        try {
+          await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
+            token: adminToken,
+            body: { role_ids: originalAdditionalRoleIds },
+          });
+        } catch { /* best effort in isolated test DB */ }
+      }
+      try { rbacPeer.kill('SIGKILL'); } catch { /* best effort */ }
+    }
+
     // Vendor ownership is independent from category and employee work location.
     const itVendor = await req(base, 'POST', '/api/vendors', {
       token: itToken,
