@@ -505,14 +505,19 @@ export class GabahDomainService {
     // counter shared by every app instance. File-store development retains the
     // in-memory engine; PostgreSQL errors never fall back to a local counter.
     const numberingYear = new Date().getFullYear();
-    const assetNumber = isPostgresPersistenceActive()
-      ? AssetNumberingEngine.formatReservedAssetNumber(
-          resolvedOwnerDivision,
-          taxonomy.code,
-          numberingYear,
-          await reserveAssetNumberSequence(resolvedOwnerDivision, taxonomy.code, numberingYear),
-        )
-      : AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code, numberingYear);
+    let assetNumber: string;
+    if (isPostgresPersistenceActive()) {
+      const reservation = await reserveAssetNumberSequence(resolvedOwnerDivision, taxonomy.code, numberingYear);
+      assetNumber = AssetNumberingEngine.formatReservedAssetNumber(
+        resolvedOwnerDivision,
+        taxonomy.code,
+        numberingYear,
+        reservation.sequence,
+        reservation,
+      );
+    } else {
+      assetNumber = AssetNumberingEngine.generateAssetNumber(resolvedOwnerDivision, taxonomy.code, numberingYear);
+    }
 
     // T2B-1: managing unit operasional — divalidasi terhadap master org_units
     // (harus ada & aktif). Jika tidak dispesifikasikan, diisi hasil resolusi
