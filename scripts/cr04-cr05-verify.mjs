@@ -167,6 +167,8 @@ const IT_EMAIL = 'it.support@foodstation.co.id';
 const GA_EMAIL = 'ga@foodstation.co.id';
 const KARYAWAN_EMAIL = 'hendra.w@foodstation.co.id';
 const AUDITOR_EMAIL = 'auditor@foodstation.co.id';
+const SC_EMAIL = 'sc.warehouse@foodstation.co.id';
+const PIBC_EMAIL = 'pibc.admin@foodstation.co.id';
 
 async function main() {
   const serverPath = path.resolve(process.cwd(), 'dist/server.cjs');
@@ -640,13 +642,13 @@ async function main() {
     profileClient.on('error', e => console.error('[employee profile verification async error]', e.message));
     await profileClient.connect();
     const profileRows = await profileClient.query(
-      `SELECT u.email, u.role, r.role_key, ur.is_primary
+      `SELECT u.email, u.role, u.office_location_id, r.role_key, ur.is_primary
        FROM users u
        LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id::text
        LEFT JOIN gabah_roles r ON r.id = ur.role_id
        WHERE u.email = ANY($1::text[])
        ORDER BY u.email, r.role_key`,
-      [[ADMIN_EMAIL, IT_EMAIL, GA_EMAIL, AUDITOR_EMAIL, KARYAWAN_EMAIL]],
+      [[ADMIN_EMAIL, IT_EMAIL, GA_EMAIL, AUDITOR_EMAIL, KARYAWAN_EMAIL, SC_EMAIL, PIBC_EMAIL]],
     );
     const rowsFor = email => profileRows.rows.filter(row => row.email === email);
     const hasRole = (email, roleKey, primary) => rowsFor(email).some(row =>
@@ -660,10 +662,20 @@ async function main() {
       && hasRole(AUDITOR_EMAIL, 'auditor', false) && hasRole(AUDITOR_EMAIL, 'karyawan', true);
     const adminProfile = rowsFor(ADMIN_EMAIL).every(row => row.role === 'Admin GABAH')
       && hasRole(ADMIN_EMAIL, 'superadmin', true);
+    const scLocationProfile = rowsFor(SC_EMAIL).every(row => row.role === 'Karyawan' && row.office_location_id === 'OFF-RPC')
+      && hasRole(SC_EMAIL, 'karyawan', true)
+      && !rowsFor(SC_EMAIL).some(row => ['supply_chain', 'pibc'].includes(row.role_key));
+    const pibcLocationProfile = rowsFor(PIBC_EMAIL).every(row => row.role === 'Karyawan' && row.office_location_id === 'OFF-PIBC')
+      && hasRole(PIBC_EMAIL, 'karyawan', true)
+      && !rowsFor(PIBC_EMAIL).some(row => ['supply_chain', 'pibc'].includes(row.role_key));
     record('Migration 048 preserves IT/GA/Auditor as secondary capabilities and Karyawan as primary profile',
       'IT, GA, Auditor → Karyawan + respective secondary role; Superadmin → Admin GABAH',
       `IT=${itProfile}; GA=${gaProfile}; Auditor=${auditorProfile}; Admin=${adminProfile}`,
       itProfile && gaProfile && auditorProfile && adminProfile);
+    record('RPC/PIBC accounts remain Karyawan at their respective office locations, not role templates',
+      'SC user → OFF-RPC; PIBC user → OFF-PIBC; both primary Karyawan',
+      `SC=${scLocationProfile}; PIBC=${pibcLocationProfile}`,
+      scLocationProfile && pibcLocationProfile);
     const invalidPrimaryProfiles = await profileClient.query(
       `SELECT COUNT(*)::int AS count FROM users
        WHERE role NOT IN ('Admin GABAH', 'Karyawan')`,
