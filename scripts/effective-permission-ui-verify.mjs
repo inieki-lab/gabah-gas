@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const source = fs.readFileSync('src/services/gabahService.ts', 'utf8');
+const header = fs.readFileSync('src/components/HeaderNavbar.tsx', 'utf8');
 assert.ok(source.includes('static isSuperAdmin(user?: UserProfile): boolean'));
 assert.ok(source.includes("user.is_superadmin === true"));
 assert.ok(source.includes("user.role_keys?.includes('superadmin') === true"));
@@ -10,4 +11,7 @@ assert.ok(source.includes("this.hasEffectivePermission(user, 'loans.approve')"))
 assert.ok(source.includes("this.hasEffectivePermission(user, key)"));
 const auditor = source.indexOf('static canApproveLoan(');
 assert.ok(source.slice(auditor, auditor + 220).includes('this.isAuditor(user)'), 'Auditor remains deny-write');
-console.log('PASS: Superadmin and wildcard permissions are consistent in frontend action helpers.');
+assert.match(header, /isSuperadmin \? \(/, 'Account directory must only render for Superadmin');
+assert.match(header, /Direktori akun hanya dapat diakses Superadmin/, 'Non-Superadmin receives a privacy-safe account menu state');
+assert.match(header, /\{\(allUsers \|\| \[\]\)\.map\(user =>/, 'Registered account list remains available inside the Superadmin-only branch');
+console.log('PASS: Superadmin and wildcard permissions are consistent; account directory is hidden from non-Superadmin users.');

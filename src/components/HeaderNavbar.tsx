@@ -381,44 +381,61 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   <p className="text-[11px] text-slate-500 mt-0.5">Pilih akun pengujian untuk memeriksa hak akses aktual.</p>
                 </div>
 
-                {/* Section 1: Registered Users in Database */}
-                <div className="mb-3">
-                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
-                    Akun Terdaftar ({(allUsers || []).length})
+                {/* The account directory is private and only available to Superadmin. */}
+                {isSuperadmin ? (
+                  <>
+                    <div className="px-3 py-2 border-b border-slate-100 mb-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                          Akun Terdaftar
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Pilih akun pengujian untuk memeriksa hak akses aktual.</p>
+                    </div>
+                    <div className="mb-3">
+                      <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
+                        Akun Terdaftar ({(allUsers || []).length})
+                      </div>
+                      <div className="space-y-1">
+                        {(allUsers || []).map(user => {
+                          const isSelected = user.id === currentUser.id;
+                          return (
+                            <button
+                              key={user.id}
+                              onClick={() => {
+                                onSelectUser(user);
+                                setShowRoleDropdown(false);
+                              }}
+                              className={`w-full text-left p-2 rounded-xl flex items-center gap-2.5 transition-colors ${
+                                isSelected
+                                  ? 'bg-emerald-50 border border-emerald-300 text-emerald-900'
+                                  : 'hover:bg-slate-50 text-slate-700 hover:text-slate-900'
+                              }`}
+                            >
+                              <img src={user.avatar} alt={user.name} className="w-7 h-7 rounded-lg object-cover border border-slate-200 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold truncate text-slate-900">{user.name}</span>
+                                  {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                                  <span className="text-emerald-700 font-bold">{user.role}</span>
+                                  <span>•</span>
+                                  <span className="truncate">{user.department}</span>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="px-3 py-3 mb-2 border-b border-slate-100">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Akun aktif</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Direktori akun hanya dapat diakses Superadmin.</p>
                   </div>
-                  <div className="space-y-1">
-                    {(allUsers || []).map(user => {
-                      const isSelected = user.id === currentUser.id;
-                      return (
-                        <button
-                          key={user.id}
-                          onClick={() => {
-                            onSelectUser(user);
-                            setShowRoleDropdown(false);
-                          }}
-                          className={`w-full text-left p-2 rounded-xl flex items-center gap-2.5 transition-colors ${
-                            isSelected 
-                              ? 'bg-emerald-50 border border-emerald-300 text-emerald-900' 
-                              : 'hover:bg-slate-50 text-slate-700 hover:text-slate-900'
-                          }`}
-                        >
-                          <img src={user.avatar} alt={user.name} className="w-7 h-7 rounded-lg object-cover border border-slate-200 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold truncate text-slate-900">{user.name}</span>
-                              {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                              <span className="text-emerald-700 font-bold">{user.role}</span>
-                              <span>•</span>
-                              <span className="truncate">{user.department}</span>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                )}
 
                 {/* Account actions */}
                 <div className="mt-2.5 pt-2 border-t border-slate-100">
