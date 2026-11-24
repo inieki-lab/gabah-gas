@@ -278,3 +278,15 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 - Kosongkan seluruh koleksi data yang terikat scope akun sebelum switch/login baru, dan saat logout.
 - Hilangkan fallback direktori akun ke data contoh; kegagalan endpoint menghasilkan daftar kosong.
 - Regression test diperluas untuk switch, login, logout, pembatalan refresh lama, dan reset koleksi.
+
+
+## 25 November 2026 — Konsistensi status penolakan mutasi lifecycle aset
+
+### Temuan
+- `mutateLifecycle()` sudah memeriksa permission operasi dan owner-scope melalui `canMutateAssetOwner()`, tetapi melempar `Error` biasa tanpa `statusCode`.
+- Route lifecycle menerjemahkan error tanpa status menjadi HTTP 400. Akibatnya, penolakan otorisasi tampil sebagai kesalahan request, bukan `403 Forbidden`.
+
+### Perbaikan
+- Domain service kini menandai penolakan lifecycle dengan `statusCode: 403`.
+- Regression test mutasi aset mencakup `assign`, `move`, dan `lifecycle`, termasuk propagasi status HTTP dari route.
+
