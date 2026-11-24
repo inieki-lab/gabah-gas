@@ -11,6 +11,7 @@ Close two verification gaps in the implementation truth register after the Postg
 2. **Migration 048 employee profile normalization**
    - Verify IT, GA, and Auditor users have primary profile Karyawan plus their corresponding secondary role.
    - Verify Superadmin maps to primary Admin GABAH.
+   - Verify SC/RPC and PIBC users remain primary Karyawan at OFF-RPC/OFF-PIBC and do not receive location-as-role assignments.
    - Verify no legacy job/location labels remain as primary user profiles.
    - Verify Supply Chain/PIBC role templates are inactive and have no remaining user assignments.
 
