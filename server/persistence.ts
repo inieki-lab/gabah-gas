@@ -946,7 +946,11 @@ export function isPostgresPersistenceActive(): boolean {
  * instances. Gaps are allowed after later create/persist failures; duplicates
  * are not. Owner existence and active status are checked by the same statement.
  */
-export async function reserveAssetNumberSequence(ownerDivision: string, assetCode: string, year: number): Promise<number> {
+export async function reserveAssetNumberSequence(
+  ownerDivision: string,
+  assetCode: string,
+  year: number,
+): Promise<{ sequence: number; separator: string; sequence_digits: number }> {
   if (!isPostgresAvailable || postgresFailureLatched) {
     throw Object.assign(new Error('Penomoran aset memerlukan PostgreSQL aktif; nomor tidak diterbitkan dari cache lokal.'), { statusCode: 503 });
   }
@@ -958,6 +962,16 @@ export async function reserveAssetNumberSequence(ownerDivision: string, assetCod
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // Lock the current rule row so a concurrent Superadmin format/deactivation
+    // update cannot race the number issuance transaction.
+    const ruleResult = await client.query<{ separator: string; sequence_digits: number; is_active: boolean }>(
+      'SELECT separator, sequence_digits, is_active FROM asset_numbering_rules WHERE UPPER(owner_division) = UPPER($1) AND UPPER(asset_code) = UPPER($2) FOR SHARE',
+      [owner, code],
+    );
+    const rule = ruleResult.rows[0];
+    if (rule && rule.is_active !== true) {
+      throw Object.assign(new Error(`Aturan penomoran ${owner}/${code} sedang nonaktif. Aktifkan kembali melalui Administration Control Panel.`), { statusCode: 409 });
+    }
     const result = await client.query<{ last_sequence: number }>(
       `INSERT INTO asset_number_sequences (owner_division_id, asset_code, sequence_year, last_sequence)
        SELECT id, $2, $3, 1 FROM divisions
@@ -970,12 +984,16 @@ export async function reserveAssetNumberSequence(ownerDivision: string, assetCod
     if (result.rows.length !== 1) {
       throw Object.assign(new Error(`Owner aset "${owner}" tidak ditemukan atau nonaktif pada PostgreSQL.`), { statusCode: 409 });
     }
-    await client.query('COMMIT');
     const sequence = Number(result.rows[0].last_sequence);
     if (!Number.isSafeInteger(sequence) || sequence < 1) {
       throw new Error('PostgreSQL mengembalikan sequence nomor aset yang tidak valid.');
     }
-    return sequence;
+    await client.query('COMMIT');
+    return {
+      sequence,
+      separator: rule?.separator || '-',
+      sequence_digits: Number(rule?.sequence_digits) || 4,
+    };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined);
     throw error;
