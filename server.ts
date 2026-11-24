@@ -2789,7 +2789,7 @@ async function startServer() {
       // Effective permission and explicit owner-domain scope are enforced by
       // createAsset() for every user, regardless of job title or work location.
       const auditIdsBefore = new Set(db.auditLogs.map(item => item.id));
-      const newAsset = GabahDomainService.createAsset(req.body, actor, false);
+      const newAsset = await GabahDomainService.createAsset(req.body, actor, false);
       const createdAuditIds = new Set(db.auditLogs.filter(item => !auditIdsBefore.has(item.id)).map(item => item.id));
       if (!(await persistBeforeSuccess(req, res))) {
         db.assets.splice(0, db.assets.length, ...db.assets.filter(item => item.id !== newAsset.id));
@@ -2956,7 +2956,7 @@ async function startServer() {
         const priceRaw = String(row.purchase_price ?? '').replace(/[^0-9.-]/g, '');
         const priceNum = Number(priceRaw);
         try {
-          const asset = GabahDomainService.createAsset({
+          const asset = await GabahDomainService.createAsset({
             category_name_or_code: String(row.category_name_or_code || row.category || '').trim() || undefined,
             name,
             owner_division: (division || undefined) as any,
