@@ -234,6 +234,130 @@ async function main() {
     mig.on('error', e => console.error('[pg ledger async error]', e.message));
     await mig.connect();
 
+    // ---------- Last active Superadmin guard: cross-connection race regression ----------
+    // The test database is isolated for this run. Snapshot and restore every
+    // existing Superadmin assignment so the fixture never leaks into later tests.
+    const superadminRoleResult = await mig.query(
+      "SELECT id FROM gabah_roles WHERE role_key = 'superadmin' AND is_active = TRUE LIMIT 1",
+    );
+    const superadminRoleId = Number(superadminRoleResult.rows[0]?.id || 0);
+    const originalSuperadminAssignments = superadminRoleId
+      ? (await mig.query(
+        'SELECT user_id, role_id, is_primary, assigned_by_user_id FROM gabah_user_roles WHERE role_id = $1',
+        [superadminRoleId],
+      )).rows
+      : [];
+    const superadminFixtureUsers = await mig.query(
+      'SELECT id FROM users WHERE is_active = TRUE ORDER BY id LIMIT 2',
+    );
+    const guardClientA = new pg.Client({ connectionString: TEST_DB_URL });
+    const guardClientB = new pg.Client({ connectionString: TEST_DB_URL });
+    let guardFixtureReady = false;
+    let guardLockedA = false;
+    let guardLockedB = false;
+    const LAST_SUPERADMIN_LOCK_KEY = '742061124001';
+    try {
+      if (!superadminRoleId || superadminFixtureUsers.rowCount !== 2) {
+        throw new Error('active Superadmin role or two active test users are unavailable');
+      }
+      await mig.query('DELETE FROM gabah_user_roles WHERE role_id = $1', [superadminRoleId]);
+      for (const user of superadminFixtureUsers.rows) {
+        await mig.query(
+          'INSERT INTO gabah_user_roles (user_id, role_id, is_primary) VALUES ($1, $2, FALSE)',
+          [String(user.id), superadminRoleId],
+        );
+      }
+      guardFixtureReady = true;
+      await Promise.all([guardClientA.connect(), guardClientB.connect()]);
+      await guardClientA.query('SELECT pg_advisory_lock($1::bigint)', [LAST_SUPERADMIN_LOCK_KEY]);
+      guardLockedA = true;
+      await guardClientA.query('BEGIN');
+      const countBeforeDemotion = await guardClientA.query(
+        "SELECT COUNT(DISTINCT u.id)::int AS count FROM users u JOIN gabah_user_roles ur ON ur.user_id = u.id::text JOIN gabah_roles r ON r.id = ur.role_id WHERE u.is_active = TRUE AND r.is_superadmin = TRUE AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id WHERE aur.user_id = u.id::text AND ar.role_key = 'auditor')",
+      );
+      const initialGuardCount = Number(countBeforeDemotion.rows[0]?.count || 0);
+      if (initialGuardCount !== 2) throw new Error('expected exactly two active Superadmin fixtures');
+      await guardClientA.query(
+        'DELETE FROM gabah_user_roles WHERE user_id = $1 AND role_id = $2',
+        [String(superadminFixtureUsers.rows[0].id), superadminRoleId],
+      );
+
+      const guardBackendB = await guardClientB.query('SELECT pg_backend_pid() AS pid');
+      let guardBSettled = false;
+      let guardBError = null;
+      const secondDemotion = (async () => {
+        await guardClientB.query('SELECT pg_advisory_lock($1::bigint)', [LAST_SUPERADMIN_LOCK_KEY]);
+        guardLockedB = true;
+        try {
+          await guardClientB.query('BEGIN');
+          const count = await guardClientB.query(
+            "SELECT COUNT(DISTINCT u.id)::int AS count FROM users u JOIN gabah_user_roles ur ON ur.user_id = u.id::text JOIN gabah_roles r ON r.id = ur.role_id WHERE u.is_active = TRUE AND r.is_superadmin = TRUE AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id WHERE aur.user_id = u.id::text AND ar.role_key = 'auditor')",
+          );
+          if (Number(count.rows[0]?.count || 0) <= 1) {
+            await guardClientB.query('ROLLBACK');
+            return false;
+          }
+          await guardClientB.query(
+            'DELETE FROM gabah_user_roles WHERE user_id = $1 AND role_id = $2',
+            [String(superadminFixtureUsers.rows[1].id), superadminRoleId],
+          );
+          await guardClientB.query('COMMIT');
+          return true;
+        } catch (error) {
+          await guardClientB.query('ROLLBACK').catch(() => undefined);
+          throw error;
+        } finally {
+          await guardClientB.query('SELECT pg_advisory_unlock($1::bigint)', [LAST_SUPERADMIN_LOCK_KEY]);
+          guardLockedB = false;
+        }
+      })().then(value => { guardBSettled = true; return value; }, error => {
+        guardBSettled = true; guardBError = error; return false;
+      });
+
+      let guardBWaited = false;
+      for (let attempt = 0; attempt < 100 && !guardBWaited; attempt += 1) {
+        const wait = await mig.query(
+          "SELECT wait_event_type FROM pg_stat_activity WHERE pid = $1 AND wait_event_type = 'Lock'",
+          [guardBackendB.rows[0].pid],
+        );
+        if (wait.rowCount > 0) guardBWaited = true;
+        else await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      await guardClientA.query('COMMIT');
+      await guardClientA.query('SELECT pg_advisory_unlock($1::bigint)', [LAST_SUPERADMIN_LOCK_KEY]);
+      guardLockedA = false;
+      const secondDemotionAllowed = await secondDemotion;
+      const guardCountAfter = await mig.query(
+        "SELECT COUNT(DISTINCT u.id)::int AS count FROM users u JOIN gabah_user_roles ur ON ur.user_id = u.id::text JOIN gabah_roles r ON r.id = ur.role_id WHERE u.is_active = TRUE AND r.is_superadmin = TRUE AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id WHERE aur.user_id = u.id::text AND ar.role_key = 'auditor')",
+      );
+      const remainingSuperadmins = Number(guardCountAfter.rows[0]?.count || 0);
+      record(
+        'Concurrent demotions cannot remove the last active Superadmin',
+        'first demotion allowed, second waits then denied, exactly one active Superadmin remains',
+        `waited=${guardBWaited}; first=allowed; second=${secondDemotionAllowed ? 'allowed' : 'denied'}; remaining=${remainingSuperadmins}; error=${guardBError?.message || 'none'}`,
+        guardBWaited && !guardBError && !secondDemotionAllowed && remainingSuperadmins === 1,
+      );
+    } catch (error) {
+      record('Last active Superadmin concurrency integration', 'one of two parallel demotions denied',
+        `error: ${error.message}`, false);
+      await guardClientA.query('ROLLBACK').catch(() => undefined);
+      await guardClientB.query('ROLLBACK').catch(() => undefined);
+    } finally {
+      if (guardLockedA) await guardClientA.query('SELECT pg_advisory_unlock($1::bigint)', [LAST_SUPERADMIN_LOCK_KEY]).catch(() => undefined);
+      if (guardLockedB) await guardClientB.query('SELECT pg_advisory_unlock($1::bigint)', [LAST_SUPERADMIN_LOCK_KEY]).catch(() => undefined);
+      await guardClientA.end().catch(() => undefined);
+      await guardClientB.end().catch(() => undefined);
+      if (guardFixtureReady) {
+        await mig.query('DELETE FROM gabah_user_roles WHERE role_id = $1', [superadminRoleId]);
+        for (const assignment of originalSuperadminAssignments) {
+          await mig.query(
+            'INSERT INTO gabah_user_roles (user_id, role_id, is_primary, assigned_by_user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, role_id) DO UPDATE SET is_primary = EXCLUDED.is_primary, assigned_by_user_id = EXCLUDED.assigned_by_user_id',
+            [assignment.user_id, assignment.role_id, assignment.is_primary, assignment.assigned_by_user_id],
+          );
+        }
+      }
+    }
+
     // ---------- Loan anti-collision under concurrent approvals ----------
     // Exercise the real PostgreSQL trigger using two independent transactions.
     const loanFixture = await mig.query(`
