@@ -635,6 +635,53 @@ async function main() {
 
     if (!adminToken) throw new Error('cannot continue without admin token');
 
+    // ---------- Employee profile normalization migration (048) ----------
+    const profileClient = new pg.Client({ connectionString: TEST_DB_URL });
+    profileClient.on('error', e => console.error('[employee profile verification async error]', e.message));
+    await profileClient.connect();
+    const profileRows = await profileClient.query(
+      `SELECT u.email, u.role, r.role_key, ur.is_primary
+       FROM users u
+       LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id::text
+       LEFT JOIN gabah_roles r ON r.id = ur.role_id
+       WHERE u.email = ANY($1::text[])
+       ORDER BY u.email, r.role_key`,
+      [[ADMIN_EMAIL, IT_EMAIL, GA_EMAIL, AUDITOR_EMAIL, KARYAWAN_EMAIL]],
+    );
+    const rowsFor = email => profileRows.rows.filter(row => row.email === email);
+    const hasRole = (email, roleKey, primary) => rowsFor(email).some(row =>
+      row.role_key === roleKey && row.is_primary === primary
+    );
+    const itProfile = rowsFor(IT_EMAIL).every(row => row.role === 'Karyawan')
+      && hasRole(IT_EMAIL, 'it', false) && hasRole(IT_EMAIL, 'karyawan', true);
+    const gaProfile = rowsFor(GA_EMAIL).every(row => row.role === 'Karyawan')
+      && hasRole(GA_EMAIL, 'ga', false) && hasRole(GA_EMAIL, 'karyawan', true);
+    const auditorProfile = rowsFor(AUDITOR_EMAIL).every(row => row.role === 'Karyawan')
+      && hasRole(AUDITOR_EMAIL, 'auditor', false) && hasRole(AUDITOR_EMAIL, 'karyawan', true);
+    const adminProfile = rowsFor(ADMIN_EMAIL).every(row => row.role === 'Admin GABAH')
+      && hasRole(ADMIN_EMAIL, 'superadmin', true);
+    record('Migration 048 preserves IT/GA/Auditor as secondary capabilities and Karyawan as primary profile',
+      'IT, GA, Auditor → Karyawan + respective secondary role; Superadmin → Admin GABAH',
+      `IT=${itProfile}; GA=${gaProfile}; Auditor=${auditorProfile}; Admin=${adminProfile}`,
+      itProfile && gaProfile && auditorProfile && adminProfile);
+    const invalidPrimaryProfiles = await profileClient.query(
+      `SELECT COUNT(*)::int AS count FROM users
+       WHERE role NOT IN ('Admin GABAH', 'Karyawan')`,
+    );
+    const retiredLocationRoles = await profileClient.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM gabah_roles WHERE role_key IN ('supply_chain', 'pibc') AND is_active = FALSE) AS inactive_templates,
+         (SELECT COUNT(*)::int FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id
+          WHERE r.role_key IN ('supply_chain', 'pibc')) AS remaining_assignments`,
+    );
+    record('Migration 048 retires Supply Chain/PIBC role templates without invalid primary profiles',
+      'invalid primary=0; inactive templates=2; assignments=0',
+      `invalid primary=${invalidPrimaryProfiles.rows[0]?.count}; inactive templates=${retiredLocationRoles.rows[0]?.inactive_templates}; assignments=${retiredLocationRoles.rows[0]?.remaining_assignments}`,
+      Number(invalidPrimaryProfiles.rows[0]?.count) === 0
+        && Number(retiredLocationRoles.rows[0]?.inactive_templates) === 2
+        && Number(retiredLocationRoles.rows[0]?.remaining_assignments) === 0);
+    await profileClient.end();
+
     // ---------- Asset numbering: two independent app instances share one PG counter ----------
     // Both servers start from the same persisted state; simultaneous asset creates
     // must still receive different numbers because reservation is database-atomic.
