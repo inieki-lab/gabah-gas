@@ -51,6 +51,7 @@ assert.match(persistence, /GREATEST\(asset_number_sequences\.last_sequence, EXCL
 assert.match(persistence, /reserveAssetNumberSequence[\s\S]*postgresFailureLatched/i);
 assert.match(services, /static async createAsset/);
 assert.match(services, /await reserveAssetNumberSequence/);
+assert.match(services, /isPostgresFailureLatched\(\)[\s\S]*throw Object\.assign/);
 assert.match(services, /isPostgresPersistenceActive\(\)[\s\S]*generateAssetNumber/);
 assert.match(server, /app\.get\('\/api\/numbering\/rules'/);
 assert.match(server, /app\.post\('\/api\/numbering\/rules'/);
