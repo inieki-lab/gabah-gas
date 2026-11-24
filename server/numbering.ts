@@ -176,11 +176,21 @@ export class AssetNumberingEngine {
     return `LOAN-${year}-${String(next).padStart(4, '0')}`;
   }
 
+  /** Format a sequence already reserved from the durable PostgreSQL counter. */
+  static formatReservedContractNumber(targetYear: number, sequence: number): string {
+    if (!Number.isInteger(targetYear) || targetYear < 2000 || targetYear > 2100
+      || !Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error('Reservasi sequence nomor kontrak tidak valid.');
+    }
+    this.contractSeq.set(targetYear, Math.max(this.contractSeq.get(targetYear) || 0, sequence));
+    return `CTR-${targetYear}-${String(sequence).padStart(4, '0')}`;
+  }
+
+  /** In-memory fallback is used only when PostgreSQL is not authoritative. */
   static generateContractNumber(targetYear?: number): string {
     const year = targetYear || new Date().getFullYear();
     const next = (this.contractSeq.get(year) || 0) + 1;
-    this.contractSeq.set(year, next);
-    return `CTR-${year}-${String(next).padStart(4, '0')}`;
+    return this.formatReservedContractNumber(year, next);
   }
 
   private static contractSeq = new Map<number, number>();
