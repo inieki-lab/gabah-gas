@@ -799,13 +799,6 @@ async function main() {
     if (!adminToken.cookie) throw new Error('cannot continue without admin cookie session');
 
     // ---------- Asset creation options: live permission + owner-scope parity ----------
-    const scToken = { cookie: '' };
-    const scLogin = await req(base, 'POST', '/api/auth/login', { body: { email: SC_EMAIL, password: USER_PASS }, token: scToken });
-    record('RPC/SC employee can authenticate as a Karyawan profile', '200 + session cookie', `HTTP ${scLogin.status}`, scLogin.status === 200 && Boolean(scToken.cookie));
-    const pibcToken = { cookie: '' };
-    const pibcLogin = await req(base, 'POST', '/api/auth/login', { body: { email: PIBC_EMAIL, password: USER_PASS }, token: pibcToken });
-    record('PIBC employee can authenticate as a Karyawan profile', '200 + session cookie', `HTTP ${pibcLogin.status}`, pibcLogin.status === 200 && Boolean(pibcToken.cookie));
-
     const adminCreateOptions = await req(base, 'GET', '/api/assets/create-options', { token: adminToken });
     const adminOwnerCodes = (adminCreateOptions.json?.data?.owner_domains || []).map(owner => String(owner.code || '').toUpperCase());
     const adminCategories = adminCreateOptions.json?.data?.categories || [];
@@ -845,8 +838,6 @@ async function main() {
     for (const [label, token] of [
       ['Karyawan', karyawanToken],
       ['Auditor', auditorToken],
-      ['RPC/SC location account', scToken],
-      ['PIBC location account', pibcToken],
     ]) {
       const deniedOptions = await req(base, 'GET', '/api/assets/create-options', { token });
       record(
@@ -919,6 +910,18 @@ async function main() {
       'SC user → OFF-RPC; PIBC user → OFF-PIBC; both primary Karyawan',
       `SC=${scLocationProfile}; PIBC=${pibcLocationProfile}`,
       scLocationProfile && pibcLocationProfile);
+    const legacyLocationCreateGrants = await profileClient.query(
+      `SELECT COUNT(DISTINCT u.id)::int AS count
+       FROM users u
+       JOIN gabah_user_roles ur ON ur.user_id = u.id::text
+       JOIN gabah_role_permissions rp ON rp.role_id = ur.role_id
+       WHERE u.email = ANY($1::text[]) AND rp.permission_key = 'assets.create'`,
+      [[SC_EMAIL, PIBC_EMAIL]],
+    );
+    record('RPC/SC and PIBC Karyawan profiles have no implicit asset-create grant',
+      '0 users with assets.create from any assigned role',
+      `users with grant=${legacyLocationCreateGrants.rows[0]?.count}`,
+      Number(legacyLocationCreateGrants.rows[0]?.count || 0) === 0);
     const invalidPrimaryProfiles = await profileClient.query(
       `SELECT COUNT(*)::int AS count FROM users
        WHERE role NOT IN ('Admin GABAH', 'Karyawan')`,
