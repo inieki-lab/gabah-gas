@@ -149,6 +149,22 @@ export default function App() {
     setRoomReservations([]);
     setContracts([]);
     setMovements([]);
+    setSelectedAssetForDetail(null);
+    setSelectedAssetForEdit(null);
+    setSelectedAssetForQr(null);
+    setSelectedLoanForBast(null);
+    setPreselectedTicketAssetId(undefined);
+    setContractForLinkedTicket(null);
+    setLinkedTicketContractId(undefined);
+    setIsCreateAssetModalOpen(false);
+    setIsCreateLoanModalOpen(false);
+    setIsCreateTicketModalOpen(false);
+    setIsCreateContractModalOpen(false);
+    setIsChangePasswordOpen(false);
+    setIsAssetImportOpen(false);
+    setIsScannerModalOpen(false);
+    setIsGlobalSearchOpen(false);
+    setIsAdministrationModalOpen(false);
   };
 
   const refreshData = useCallback(async () => {
@@ -236,18 +252,6 @@ export default function App() {
       setCurrentUser(targetUser);
       setCurrentTab('dashboard');
       setMeetingCategoryFilter('all');
-      setSelectedAssetForDetail(null);
-      setSelectedAssetForEdit(null);
-      setSelectedAssetForQr(null);
-      setSelectedLoanForBast(null);
-      setPreselectedTicketAssetId(undefined);
-      setContractForLinkedTicket(null);
-      setLinkedTicketContractId(undefined);
-      setIsCreateAssetModalOpen(false);
-      setIsCreateLoanModalOpen(false);
-      setIsCreateTicketModalOpen(false);
-      setIsGlobalSearchOpen(false);
-      setIsAdministrationModalOpen(false);
       showToast(`Berpindah akun aktif: ${targetUser.name} (${targetUser.role_label || targetUser.role})`, 'info');
       await refreshData();
     } catch (err: any) {
