@@ -1631,6 +1631,21 @@ async function main() {
     });
     record('Super Admin can add future owner domain without code change', '201', `HTTP ${newOwner.status}`, newOwner.status === 201);
 
+    const rpcscAssetCategory = await req(base, 'POST', '/api/taxonomy/categories', {
+      token: adminToken,
+      body: {
+        code: 'RPC-TST',
+        name: 'CI RPCSC Asset Category',
+        main_type: 'LNY',
+        owner_division: 'RPCSC',
+        category_type: 'General',
+        is_active: true,
+      },
+    });
+    record('Superadmin can add an active category for a future owner domain', '201 + RPCSC category',
+      `HTTP ${rpcscAssetCategory.status}`,
+      rpcscAssetCategory.status === 201 && rpcscAssetCategory.json?.data?.owner_division === 'RPCSC');
+
     const vendorRole = await req(base, 'POST', '/api/admin/rbac/roles', {
       token: adminToken,
       body: { role_key: 'vendor_rpcsc_test', name: 'Vendor RPC/SC Test', description: 'CI-only custom owner role', permission_keys: ['vendors.read', 'vendors.create', 'vendors.update'] },
@@ -1647,15 +1662,19 @@ async function main() {
 
     const vendorRolePermissions = await req(base, 'PUT', `/api/admin/rbac/roles/${vendorRoleId}/permissions`, {
       token: adminToken,
-      body: { permission_keys: ['vendors.read', 'vendors.create', 'vendors.update'] },
+      body: { permission_keys: ['vendors.read', 'vendors.create', 'vendors.update', 'assets.create'] },
     });
-    record('Custom role can receive explicit vendor permissions', '200', `HTTP ${vendorRolePermissions.status}`, vendorRolePermissions.status === 200);
+    record('Custom role can receive explicit vendor and asset-create permissions', '200', `HTTP ${vendorRolePermissions.status}`,
+      vendorRolePermissions.status === 200);
 
     const vendorRoleScopes = await req(base, 'PUT', `/api/admin/rbac/roles/${vendorRoleId}/scopes`, {
       token: adminToken,
-      body: { scopes: [{ module: 'vendors', type: 'division', value: 'RPCSC' }] },
+      body: { scopes: [
+        { module: 'vendors', type: 'division', value: 'RPCSC' },
+        { module: 'assets', type: 'division', value: 'RPCSC' },
+      ] },
     });
-    record('Custom role can receive future owner domain scope', '200', `HTTP ${vendorRoleScopes.status}`, vendorRoleScopes.status === 200);
+    record('Custom role can receive explicit vendor and asset owner scopes', '200', `HTTP ${vendorRoleScopes.status}`, vendorRoleScopes.status === 200);
 
     const assignVendorRole = await req(base, 'PUT', `/api/admin/rbac/users/${karyawanUser?.id}/roles`, {
       token: adminToken,
@@ -1665,6 +1684,20 @@ async function main() {
     karyawanToken = { cookie: '' };
     const karyawanReloginAfterVendorRole = await req(base, 'POST', '/api/auth/login', { body: { email: KARYAWAN_EMAIL, password: USER_PASS }, token: karyawanToken });
     record('Karyawan re-authenticates after vendor role assignment', '200 + HttpOnly cookie, no JSON token', `HTTP ${karyawanReloginAfterVendorRole.status}`, karyawanReloginAfterVendorRole.status === 200 && Boolean(karyawanToken.cookie) && !karyawanReloginAfterVendorRole.json?.data?.token);
+
+    const customRoleAssetOptions = await req(base, 'GET', '/api/assets/create-options', { token: karyawanToken });
+    const customRoleAssetOwners = (customRoleAssetOptions.json?.data?.owner_domains || [])
+      .map(owner => String(owner.code || '').toUpperCase()).sort();
+    const customRoleAssetCategories = customRoleAssetOptions.json?.data?.categories || [];
+    record(
+      'Custom role asset-create choices combine only explicit GA and RPCSC owner scopes',
+      '200 + GA/RPCSC owners; no IT; active RPCSC category included',
+      `HTTP ${customRoleAssetOptions.status}; owners=${customRoleAssetOwners.join(',')}; RPC-TST=${customRoleAssetCategories.some(category => category.code === 'RPC-TST')}`,
+      customRoleAssetOptions.status === 200
+        && customRoleAssetOwners.join(',') === 'GA,RPCSC'
+        && customRoleAssetCategories.some(category => category.code === 'RPC-TST' && category.owner_division === 'RPCSC')
+        && !customRoleAssetOwners.includes('IT'),
+    );
 
     const rpcscVendor = await req(base, 'POST', '/api/vendors', {
       token: karyawanToken,
