@@ -15,3 +15,24 @@ assert.match(header, /isSuperadmin \? \(/, 'Account directory must only render f
 assert.match(header, /Direktori akun hanya dapat diakses Superadmin/, 'Non-Superadmin receives a privacy-safe account menu state');
 assert.match(header, /\{\(allUsers \|\| \[\]\)\.map\(user =>/, 'Registered account list remains available inside the Superadmin-only branch');
 console.log('PASS: Superadmin and wildcard permissions are consistent; account directory is hidden from non-Superadmin users.');
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+assert.match(app, /useRef/);
+assert.match(app, /const dataRefreshGeneration = useRef\(0\)/);
+assert.match(app, /const generation = dataRefreshGeneration\.current/);
+assert.match(app, /generation !== dataRefreshGeneration\.current/);
+assert.match(app, /if \(generation === dataRefreshGeneration\.current\) setIsLoading\(false\)/);
+assert.match(app, /gabahApi\.getUsers\(\)\.catch\(\(\) => \[\]\)/);
+assert.match(app, /const \[allUsers, setAllUsers\] = useState<UserProfile\[]>\(\[\]\)/);
+assert.match(app, /dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(targetUser\)/);
+assert.match(app, /onLoginSuccess=\{\(u\) => \{\s*dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(u\)/);
+assert.match(app, /if \(me\) \{\s*dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(me\)/);
+assert.ok(app.includes('setActiveModuleKeys(null)'));
+assert.ok(app.includes('setModuleStatusLoadFailed(false)'));
+assert.match(app, /dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(null\)/);
+for (const state of ['setAssets([])', 'setLoans([])', 'setTickets([])', 'setAuditLogs([])', 'setAllUsers([])', 'setVendors([])', 'setKnowledgeBase([])', 'setMaintenanceSchedules([])', 'setMeetingRooms([])', 'setRoomReservations([])', 'setContracts([])', 'setMovements([])']) {
+  assert.ok(app.includes(state), `Identity reset must clear ${state}`);
+}
+for (const transient of ["setSelectedAssetForDetail(null)","setSelectedAssetForEdit(null)","setSelectedAssetForQr(null)","setSelectedLoanForBast(null)","setPreselectedTicketAssetId(undefined)","setContractForLinkedTicket(null)","setLinkedTicketContractId(undefined)","setIsCreateAssetModalOpen(false)","setIsCreateLoanModalOpen(false)","setIsCreateTicketModalOpen(false)","setIsCreateContractModalOpen(false)","setIsChangePasswordOpen(false)","setIsAssetImportOpen(false)","setIsScannerModalOpen(false)","setIsGlobalSearchOpen(false)","setIsAdministrationModalOpen(false)"]) {
+  assert.ok(app.includes(transient), `Identity reset must clear transient state ${transient}`);
+}
+console.log('PASS: role switch, login, and logout clear role-scoped data and invalidate stale in-flight refreshes.');

@@ -1,4 +1,9 @@
 
+## [2026-11-25] — Prevent cross-account stale data after identity changes
+- Clear all role-scoped client collections before switching users, signing in as another identity, or logging out.
+- In-flight refresh responses are generation-guarded so a request started under a previous account cannot repopulate the next account's state.
+- Remove seeded `INITIAL_USERS` fallback from the client account directory; failed directory requests now fail closed to an empty list.
+
 ## [2026-11-25] — Honor ME unit scope in Dashboard Attention
 - Dashboard Attention final filtering now recognizes ticket `assigned_unit_id` in addition to reporter, assignee, and owner-division scope.
 - PIBC ME queue operators with the explicit unit scope can see authorized follow-up cards consistently with ticket list and object-level middleware checks.
