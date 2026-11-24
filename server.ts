@@ -722,7 +722,10 @@ async function startServer() {
     }
     try {
       await withLastSuperadminGuard(async () => {
-      const result = await withRbacTransaction(async client => {
+      if (isPostgresPersistenceActive() && !(await isActiveSuperadminInDatabase(actor.id))) {
+        return res.status(403).json({ success: false, message: 'Assignment Superadmin Anda sudah tidak aktif.' });
+      }
+      const result = await withRbacTransaction(async client => {}
         const target = await client.query('SELECT id, name, email, role, is_active FROM users WHERE id = $1', [userId]);
         const user = target.rows[0];
         if (!user) throw new Error('RBAC_USER_NOT_FOUND');
@@ -1266,6 +1269,9 @@ async function startServer() {
       }
 
       await withLastSuperadminGuard(async () => {
+      if (isPostgresPersistenceActive() && !(await isActiveSuperadminInDatabase(actor.id))) {
+        return res.status(403).json({ success: false, message: 'Assignment Superadmin Anda sudah tidak aktif.' });
+      }
       const targetUser = db.users.find(u => u.id === req.params.id);
       if (!targetUser) {
         return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan' });
@@ -1446,6 +1452,9 @@ async function startServer() {
       }
 
       await withLastSuperadminGuard(async () => {
+      if (isPostgresPersistenceActive() && !(await isActiveSuperadminInDatabase(actor.id))) {
+        return res.status(403).json({ success: false, message: 'Assignment Superadmin Anda sudah tidak aktif.' });
+      }
       const targetId = req.params.id;
 
       // Cannot delete current active user
