@@ -1103,3 +1103,39 @@ export async function withRbacTransaction<T>(work: (client: PoolClient) => Promi
     client.release();
   }
 }
+
+/**
+ * Serialize account changes that can remove the final active Superadmin.
+ * A session-level advisory lock is held across all DB writes, including
+ * persistence helpers that acquire their own pool connections.
+ */
+export async function withLastSuperadminGuard<T>(work: () => Promise<T>): Promise<T> {
+  if (postgresFailureLatched) {
+    throw Object.assign(new Error('PostgreSQL persistence sedang dalam status gagal; perubahan akun Superadmin dibatalkan.'), { statusCode: 503 });
+  }
+  if (!isPostgresAvailable) return work();
+  const client = await pool.connect();
+  const lockKey = '742061124001';
+  let acquired = false;
+  let discardClient = false;
+  try {
+    await client.query('SELECT pg_advisory_lock($1::bigint)', [lockKey]);
+    acquired = true;
+    return await work();
+  } catch (error) {
+    if (!acquired) {
+      discardClient = true;
+      throw Object.assign(new Error('Tidak dapat mengunci perubahan akun Superadmin; perubahan dibatalkan.'), { statusCode: 503 });
+    }
+    throw error;
+  } finally {
+    if (acquired) {
+      try {
+        await client.query('SELECT pg_advisory_unlock($1::bigint)', [lockKey.toString()]);
+      } catch {
+        discardClient = true;
+      }
+    }
+    client.release(discardClient);
+  }
+}
