@@ -217,7 +217,7 @@ Mencatat permohonan bantuan teknis dan pemenuhan SLA layanan.
 - `notes` (TEXT), metadata created/updated
 - Tabel pendukung: `contract_documents` (append-only, kind: original/amendment/renewal/supporting), `contract_milestones` (payment/service_maintenance/evaluation/other), `contract_notification_logs` (contract_id, notification_type, channel in_app/email/telegram, recipient, scheduled_at, sent_at, status sent/failed/skipped, error_message, **attempts**, **last_attempt_at**)
 - **Indeks Penting**: `idx_contracts_expiry` ON contracts(end_date, status); `idx_tickets_contract` ON tickets(contract_id); **UNIQUE idempotensi** `uq_contract_notif_idempotency` ON contract_notification_logs (contract_id, notification_type, channel, recipient, (scheduled_at AT TIME ZONE 'UTC')::date) — menjamin satu pengiriman per (kontrak, threshold, kanal, penerima, hari)
-- **Migration ledger**: `schema_migrations` (version PK, name, applied_at) — dijalankan otomatis oleh migration runner `ensureNormalizedSchema()` saat boot; tiap file migrasi 001–005 berjalan dalam transaksinya sendiri dan tercatat sekali; migrasi gagal = boot gagal dengan error jelas (tanpa fallback senyap)
+- **Migration ledger**: `schema_migrations` (version PK, name, applied_at) — dijalankan otomatis oleh migration runner `ensureNormalizedSchema()` saat boot; file migrasi 001–104 berjalan berurutan dalam transaksinya sendiri dan tercatat sekali; migrasi gagal = boot gagal dengan error jelas (tanpa fallback senyap)
 
 ### 2.13b Tabel `contracts` (Legacy Spec — Terintegrasi)
 - `id` (VARCHAR(64), PRIMARY KEY)
