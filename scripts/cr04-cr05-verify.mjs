@@ -1653,6 +1653,11 @@ async function main() {
     `);
     await faultClient.query('CREATE TRIGGER gabah_ci_reject_user_sync BEFORE INSERT OR UPDATE ON users FOR EACH ROW EXECUTE FUNCTION gabah_ci_reject_user_sync()');
 
+    // This isolated test database has already served the full CR-04/CR-05
+    // request suite. Clear only its API limiter bucket so the injected PG
+    // failure—not the unrelated 200/minute abuse-control ceiling—is observed.
+    await faultClient.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type = 'api'");
+
     const faultedPasswordReset = await req(base, 'POST', `/api/users/${itUserId}/reset-password`, { token: adminToken2 });
     const passwordAfterFault = await faultClient.query('SELECT password_hash FROM users WHERE id = $1', [itUserId]);
     const snapshotPasswordAfterFault = await faultClient.query(
