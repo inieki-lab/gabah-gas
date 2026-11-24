@@ -21,6 +21,21 @@ const checks = [
     /\['SC', 'PIBC'\]\.includes\(code\)[\s\S]*legacy — review/.test(source)
       && /Owner aset:/.test(source),
   ],
+  [
+    'CSV export uses the same filtered owner/status/category/search result set as the visible table',
+    /onClick=\{\(\) => exportAssetsToCsv\(filteredAssets\)\}/.test(source)
+      && !/exportAssetsToCsv\(safeAssets\)/.test(source),
+  ],
+  [
+    'Asset detail view receives the same filtered collection as the table',
+    /assets=\{filteredAssets\}/.test(source),
+  ],
+  [
+    'Owner filter is applied before rendering and is not inferred from physical location or asset-number prefix',
+    /String\(asset\.owner_division \|\| ''\)\.trim\(\)\.toUpperCase\(\) !== selectedDivision/.test(source)
+      && !/asset\.location.*selectedDivision/.test(source)
+      && !/asset\.asset_number.*selectedDivision/.test(source),
+  ],
 ];
 
 let failed = 0;
