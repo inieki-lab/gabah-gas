@@ -1,6 +1,6 @@
 # GABAH — Implementation Truth Register
 
-**Baseline reviewed:** `main` at `d052703` (PR #263 merge)  
+**Baseline reviewed:** `main` at `57b69b3` (PR #264 merge)  
 **Review date:** 24 November 2026  
 **Status:** Source-inspection snapshot with linked CI evidence; not a production-readiness approval.
 
@@ -22,6 +22,7 @@ This register separates owner-approved intent from behavior actually visible in 
 | Contract number generation | PostgreSQL mode reserves `CTR-YYYY-NNNN` values through durable yearly `contract_number_sequences` with atomic UPSERT, startup reconciliation, and fail-closed behavior. File-store development retains the in-memory fallback. | PR #261 merged; CI run #3397 passed 117/117 including two-instance creation and restart continuation |
 | Employee profile model | `ServerUser.role` is an employee profile; IT/GA/Auditor/Humas/Sekretariat Direksi are secondary Dynamic RBAC assignments. Migration `048_dynamic_employee_profile_normalization.sql` makes Karyawan the primary profile and retires Supply Chain/PIBC role templates. SC/RPC and PIBC remain Karyawan profiles with distinct office locations. | PR #260 merged; CI run #3386 passed 117/117 including PostgreSQL assertions for role, location, job level, and unit fields |
 | Employee asset baseline | `getScopedAssets()` no longer checks a fixed list of employee role labels; non-Superadmin/non-Auditor users receive the personal/loanable baseline plus explicit dynamic scopes. | IMPLEMENTED by source inspection; verify effective role assignments and all scope regressions in CI/UAT |
+| Last-active Superadmin invariant | Role assignment, user PATCH (demotion/deactivation), and user DELETE acquire the same PostgreSQL session-level advisory lock. PATCH/DELETE recheck the acting administrator and read target status + active Superadmin count from PostgreSQL under the lock; PostgreSQL failure is fail-closed. | PR #264 merged; CI run #3410 passed 119/119 including two-connection race: first demotion allowed, second waited then denied, one active Superadmin remained |
 
 ## 2. Important interpretation
 
@@ -38,7 +39,7 @@ This register separates owner-approved intent from behavior actually visible in 
 3. Run deployment-level Dynamic RBAC fault UAT under a PostgreSQL network interruption; CI already covers two-process role revocation/restoration and policy-query failure/recovery.
 4. Test asset read scope parity across list, search, detail-by-ID, dashboards, exports, and linked records.
 5. Confirm the company-approved asset numbering format and owner taxonomy before changing any existing pattern; do not alter existing patterns without owner approval.
-6. Serialize the last-active-Superadmin invariant across role assignment, account update/deactivation, and account deletion; branch `fix/last-superadmin-concurrency-guard-2026-11-24` adds a shared PostgreSQL advisory lock and two-connection integration regression; CI pending.
+6. Perform deployment-level UAT for last-active-Superadmin protection under PostgreSQL network interruption and recovery; CI covers the two-connection concurrency invariant.
 7. Reconcile each API route with middleware, handler permission, domain service, DB transaction, frontend action, and UAT case.
 8. Apply all SQL migrations to a fresh PostgreSQL database and a representative legacy snapshot; compare actual tables/columns/indexes/constraints/triggers with Database Design.
 
@@ -50,6 +51,6 @@ This register separates owner-approved intent from behavior actually visible in 
 - PR #261 merged; CI run #3397 passed 117/117 for PostgreSQL atomic contract numbering, two-instance concurrency, and restart continuation.
 - PR #262 merged; CI run #3401 passed 117/117 for cross-instance HttpOnly session verification.
 - PR #263 merged; CI run #3404 passed 117/117 for explicit trusted reverse-proxy configuration. Main workflow #3405 passed.
-- Issue #247 implementation is in branch `fix/last-superadmin-concurrency-guard-2026-11-24`; shared lock coverage and PostgreSQL two-connection race regression are added; CI pending.
+- PR #264 merged; CI run #3410 passed 119/119, including PostgreSQL two-connection Superadmin demotion race and all three guarded account mutation paths. Issue #247 closed.
 - Browser UAT, production HTTPS/reverse-proxy validation, PostgreSQL network interruption UAT, and penetration testing remain separate release gates.
 - Recheck the register whenever the base branch changes or the referenced implementation changes.
