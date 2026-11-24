@@ -455,6 +455,9 @@ export function extractToken(req: Request): string | null {
     return authHeader.slice(7).trim();
   }
 
+  const cookie = req.headers.cookie?.split(';').map(part => part.trim()).find(part => part.startsWith('gabah_session='));
+  if (cookie) return cookie.slice('gabah_session='.length);
+
   const customHeader = req.headers['x-auth-token'];
   if (typeof customHeader === 'string' && customHeader.trim()) {
     return customHeader.trim();

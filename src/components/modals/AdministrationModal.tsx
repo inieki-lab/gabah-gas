@@ -1751,9 +1751,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       setIsSubmittingReset(true);
       const res = await fetch(`/api/users/${passwordResetTarget.id}/reset-password`, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${gabahApi.getToken() || ''}`,
         },
       });
       const body = await res.json().catch(() => ({}));

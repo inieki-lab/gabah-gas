@@ -44,13 +44,14 @@ async function req(base, method, urlPath, { token, body } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Origin: base,
+      ...(token ? { Cookie: token } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
+  return { status: res.status, json, setCookie: res.headers.get('set-cookie') || '' };
 }
 
 async function waitForServer(base, timeoutMs = 30000) {
@@ -140,8 +141,8 @@ async function main() {
     for (const [key, email] of Object.entries(accounts)) {
       const pass = creds[email] || process.env.GABAH_TEST_PASSWORD || '';
       const login = await req(base, 'POST', '/api/auth/login', { body: { email, password: pass } });
-      record(`login ${key} (${email})`, '200 + token', `HTTP ${login.status}`, login.status === 200 && !!login.json?.data?.token);
-      if (login.status === 200 && login.json?.data?.token) tokens[key] = login.json.data.token;
+      record(`login ${key} (${email})`, '200 + cookie, no JSON token', `HTTP ${login.status}`, login.status === 200 && Boolean(login.setCookie?.split(';', 1)[0]) && !login.json?.data?.token && !login.json?.token);
+      if (login.status === 200 && Boolean(login.setCookie?.split(';', 1)[0])) tokens[key] = login.setCookie.split(';', 1)[0];
     }
 
     // ---------- READ (legacy filter chain invariance, file-store) ----------

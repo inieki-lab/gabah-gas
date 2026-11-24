@@ -25,14 +25,15 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Origin: base,
+      ...(token ? { Cookie: token } : {}),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
+  return { status: res.status, json, setCookie: res.headers.get('set-cookie') || '' };
 }
 
 async function waitForServer(base, tries = 60) {
@@ -118,7 +119,7 @@ async function main() {
     const login = await req(base, 'POST', '/api/auth/login', {
       body: { email: 'admin@foodstation.co.id', password: adminPass },
     });
-    const adminToken = login.json?.token || login.json?.data?.token;
+    const adminToken = login.setCookie?.split(';', 1)[0] || '';
     record('Admin login (env-provisioned password)', 'token issued', adminToken ? 'token issued' : 'none', Boolean(adminToken));
     if (!adminToken) throw new Error('No admin token — cannot continue.');
 
@@ -223,7 +224,7 @@ async function main() {
       token: adminToken,
       body: { role: 'Karyawan' },
     });
-    const staffToken = sw.json?.token || sw.json?.data?.token;
+    const staffToken = sw.setCookie?.split(';', 1)[0] || '';
     if (staffToken) {
       const forbidden = await req(base, 'POST', '/api/users/bulk-import', {
         token: staffToken,

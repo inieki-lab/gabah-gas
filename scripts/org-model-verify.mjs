@@ -14,9 +14,9 @@ import net from 'node:net';
 
 const R = []; const rec = (n, e, a, p) => R.push({ n, e, a, p });
 const req = async (b, m, p, o = {}) => {
-  const r = await fetch(b + p, { method: m, headers: { 'Content-Type': 'application/json', ...(o.token ? { Authorization: `Bearer ${o.token}` } : {}) }, body: o.body === undefined ? undefined : JSON.stringify(o.body) });
+  const r = await fetch(b + p, { method: m, headers: { 'Content-Type': 'application/json', ...(o.token ? { Cookie: o.token } : {}), Origin: b }, body: o.body === undefined ? undefined : JSON.stringify(o.body) });
   let j = {}; try { j = await r.json() } catch { }
-  return { status: r.status, json: j };
+  return { status: r.status, json: j, setCookie: r.headers.get('set-cookie') || '' };
 };
 
 async function getAvailablePort() {
@@ -46,7 +46,7 @@ async function main() {
   try {
     let ok = false; for (let i = 0; i < 60; i++) { try { if ((await fetch(b + '/api/health')).ok) { ok = true; break } } catch { } await new Promise(r => setTimeout(r, 300)) }
     if (!ok) throw Error(log.slice(-1500));
-    const login = async (e) => { const r = await req(b, 'POST', '/api/auth/login', { body: { email: e, password: e.startsWith('admin@') ? ap : up } }); return r.json?.data?.token || '' };
+    const login = async (e) => { const r = await req(b, 'POST', '/api/auth/login', { body: { email: e, password: e.startsWith('admin@') ? ap : up } }); return r.setCookie.split(';', 1)[0] || '' };
     const emails = ['admin@foodstation.co.id', 'it.support@foodstation.co.id', 'ga@foodstation.co.id', 'auditor@foodstation.co.id'];
     const [admin, it, ga, aud] = await Promise.all(emails.map(login));
 
@@ -119,7 +119,7 @@ async function main() {
     // job level alone must never grant asset mutation authority.
     const kar = users.find(u => u.role === 'Karyawan' && !(u.role_keys || []).some(key => ['it', 'ga'].includes(String(key).toLowerCase())));
     await req(b, 'PATCH', `/api/users/${kar.id}`, { token: admin, body: { job_level_code: 'DIREKSI' } });
-    const karLogin = await (async () => { const r = await req(b, 'POST', '/api/auth/login', { body: { email: kar.email, password: up } }); return r.json?.data?.token || '' })();
+    const karLogin = await (async () => { const r = await req(b, 'POST', '/api/auth/login', { body: { email: kar.email, password: up } }); return r.setCookie.split(';', 1)[0] || '' })();
     const gaAsset = ((await req(b, 'GET', '/api/assets', { token: admin })).json?.data || []).find(a => a.owner_division === 'GA');
     const deny = await req(b, 'PATCH', `/api/assets/${gaAsset?.id}`, { token: karLogin, body: { notes: 'hack via jabatan DIREKSI' } });
     rec('5: Jabatan tidak memberi permission mutation', '403', `${deny.status}`, deny.status === 403);

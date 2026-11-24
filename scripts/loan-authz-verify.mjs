@@ -48,14 +48,15 @@ async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Origin: base,
+      ...(token ? { Cookie: token } : {}),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
+  return { status: res.status, json, setCookie: res.headers.get('set-cookie') || '' };
 }
 
 async function waitForServer(base, tries = 60) {
@@ -143,7 +144,7 @@ async function main() {
     // ---------- Logins (canonical accounts provisioned from random env) ----------
     const login = async (email, password) => {
       const r = await req(base, 'POST', '/api/auth/login', { body: { email, password } });
-      const token = r.json?.data?.token || r.json?.token || '';
+      const token = r.setCookie?.split(';', 1)[0] || '';
       return { token, status: r.status };
     };
 

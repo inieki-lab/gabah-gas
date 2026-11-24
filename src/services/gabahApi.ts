@@ -34,48 +34,16 @@ export interface ModuleStatusAuditRecord {
   changed_at: string;
 }
 
-const TOKEN_STORAGE_KEY = 'gabah_auth_token';
-
 class GabahApiClient {
   private currentUserId: string = 'USR-ADM-001';
-  private authToken: string | null = null;
 
-  constructor() {
-    if (typeof window !== 'undefined') {
-      this.authToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-    }
-  }
-
-  setToken(token: string | null) {
-    this.authToken = token;
-    if (typeof window !== 'undefined') {
-      if (token) {
-        localStorage.setItem(TOKEN_STORAGE_KEY, token);
-      } else {
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-      }
-    }
-  }
-
-  /**
-   * Self-service password change (P1). On success the server revokes every
-   * session and re-issues a fresh token for this device, which we persist so
-   * the user stays signed in on the current browser only.
-   */
+  /** Self-service password change rotates the HttpOnly session cookie. */
   async changePassword(currentPassword: string, newPassword: string): Promise<UserProfile> {
-    const res = await this.request<{ user: UserProfile; token: string; expires_at: string }>('/api/auth/change-password', {
+    const res = await this.request<{ user: UserProfile; expires_at: string }>('/api/auth/change-password', {
       method: 'POST',
       body: JSON.stringify({ currentPassword, newPassword }),
     });
-    this.setToken(res.token);
     return res.user;
-  }
-
-  getToken(): string | null {
-    if (!this.authToken && typeof window !== 'undefined') {
-      this.authToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-    }
-    return this.authToken;
   }
 
   setActor(userId: string) {
@@ -87,23 +55,19 @@ class GabahApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers as any),
     };
 
     const res = await fetch(endpoint, {
       ...options,
+      credentials: 'same-origin',
       headers,
     });
 
     const json = await res.json().catch(() => ({}));
     if (!res.ok || json.success === false) {
-      if (res.status === 401 && endpoint !== '/api/auth/login') {
-        this.setToken(null);
-      }
       const err: any = new Error(json.message || `Request gagal: ${res.statusText}`);
       err.conflict = json.conflict;
       err.can_override = json.can_override;
@@ -114,25 +78,17 @@ class GabahApiClient {
   }
 
   // Users & Auth
-  async login(email: string, password: string): Promise<{ user: UserProfile; token: string; expires_at: string }> {
-    const data = await this.request<{ user: UserProfile; token: string; expires_at: string }>('/api/auth/login', {
+  async login(email: string, password: string): Promise<{ user: UserProfile; expires_at: string }> {
+    const data = await this.request<{ user: UserProfile; expires_at: string }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-
-    if (data?.token) {
-      this.setToken(data.token);
-      this.setActor(data.user.id);
-    }
+    this.setActor(data.user.id);
     return data;
   }
 
   async logout(): Promise<void> {
-    try {
-      await this.request('/api/auth/logout', { method: 'POST' });
-    } finally {
-      this.setToken(null);
-    }
+    await this.request('/api/auth/logout', { method: 'POST' });
   }
 
   async getUsers(): Promise<any[]> {
@@ -263,11 +219,7 @@ class GabahApiClient {
       body: JSON.stringify(payload),
     });
 
-    const token = data?.token || data?.data?.token;
     const user = data?.user || data?.data?.user;
-    if (token) {
-      this.setToken(token);
-    }
     if (user?.id) {
       this.setActor(user.id);
     }
@@ -895,10 +847,9 @@ class GabahApiClient {
   async uploadContractDocument(id: string, file: File): Promise<{ document_id: string; file_name: string; file_size: number; file_mime: string }> {
     const form = new FormData();
     form.append('file', file);
-    const token = this.getToken();
     const res = await fetch(`/api/contracts/${id}/documents/upload`, {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'same-origin',
       body: form,
     });
     const json = await res.json().catch(() => ({}));
@@ -911,9 +862,8 @@ class GabahApiClient {
   }
 
   async downloadContractDocument(id: string, documentId: string): Promise<Blob> {
-    const token = this.getToken();
     const res = await fetch(`/api/contracts/${id}/documents/${documentId}/download`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'same-origin',
     });
     if (!res.ok) {
       const json = await res.json().catch(() => ({}));

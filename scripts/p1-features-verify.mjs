@@ -29,13 +29,14 @@ async function req(base, method, urlPath, { token, body } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Origin: base,
+      ...(token ? { Cookie: token } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   let json = {};
   try { json = await res.json(); } catch { /* empty body */ }
-  return { status: res.status, json };
+  return { status: res.status, json, setCookie: res.headers.get('set-cookie') || '' };
 }
 
 async function waitForServer(base, tries = 60) {
@@ -117,13 +118,13 @@ async function main() {
     const login = await req(base, 'POST', '/api/auth/login', {
       body: { email: 'admin@foodstation.co.id', password: bootPass },
     });
-    const token = login.json?.data?.token || '';
+    const token = login.setCookie?.split(';', 1)[0] || '';
     record('Admin login (boot password)', '200 + token', `HTTP ${login.status}`, login.status === 200 && token.length > 0);
 
     const otherLogin = await req(base, 'POST', '/api/auth/login', {
       body: { email: 'karyawan@foodstation.co.id', password: userPass },
     });
-    const karyawanToken = otherLogin.json?.data?.token || '';
+    const karyawanToken = otherLogin.setCookie?.split(';', 1)[0] || '';
     record('Second user login (for revocation test)', '200 + token', `HTTP ${otherLogin.status}`, otherLogin.status === 200 && karyawanToken.length > 0);
 
     // ---------------- P1-3: change password ----------------
@@ -149,7 +150,7 @@ async function main() {
       token,
       body: { currentPassword: bootPass, newPassword: newPass },
     });
-    const newToken = changed.json?.data?.token || '';
+    const newToken = changed.setCookie?.split(';', 1)[0] || '';
     record('change-password sukses + token baru', '200 + token', `HTTP ${changed.status}${newToken ? ' + token' : ''}`,
       changed.status === 200 && newToken.length > 0 && newToken !== token);
 
@@ -169,7 +170,7 @@ async function main() {
     });
     record('login dgn sandi baru berhasil', '200', `HTTP ${newPassLogin.status}`, newPassLogin.status === 200);
 
-    const restoredToken = newPassLogin.json?.data?.token || newToken;
+    const restoredToken = newPassLogin.setCookie?.split(';', 1)[0] || newToken;
 
     // ---------------- P1-1: Vendor CRUD ----------------
     const karyawanVendor = await req(base, 'POST', '/api/vendors', {
