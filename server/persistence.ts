@@ -838,6 +838,17 @@ export async function initializePersistence(): Promise<void> {
       );
       AssetNumberingEngine.configureRules(numberingRules.rows);
       AssetNumberingEngine.syncFromExistingAssets(db.assets);
+      // Seed durable counters from recognized historical asset numbers.
+      // GREATEST preserves already-reserved values after a failed asset write.
+      for (const sequence of AssetNumberingEngine.getAssetSequenceSnapshot()) {
+        await pool.query(
+          `INSERT INTO asset_number_sequences (owner_division_id, asset_code, sequence_year, last_sequence)
+           SELECT id, $2, $3, $4 FROM divisions WHERE UPPER(code) = UPPER($1)
+           ON CONFLICT (owner_division_id, asset_code, sequence_year)
+           DO UPDATE SET last_sequence = GREATEST(asset_number_sequences.last_sequence, EXCLUDED.last_sequence)`,
+          [sequence.division, sequence.code, sequence.year, sequence.current],
+        );
+      }
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
       saveStateToFile(createPayload());
@@ -928,6 +939,49 @@ export function getDbPool(): Pool {
  */
 export function isPostgresPersistenceActive(): boolean {
   return isPostgresAvailable;
+}
+
+/**
+ * Reserve the next asset number atomically across PostgreSQL-backed app
+ * instances. Gaps are allowed after later create/persist failures; duplicates
+ * are not. Owner existence and active status are checked by the same statement.
+ */
+export async function reserveAssetNumberSequence(ownerDivision: string, assetCode: string, year: number): Promise<number> {
+  if (!isPostgresAvailable || postgresFailureLatched) {
+    throw Object.assign(new Error('Penomoran aset memerlukan PostgreSQL aktif; nomor tidak diterbitkan dari cache lokal.'), { statusCode: 503 });
+  }
+  const owner = String(ownerDivision || '').trim().toUpperCase();
+  const code = String(assetCode || '').trim().toUpperCase();
+  if (!owner || !code || !Number.isInteger(year) || year < 2000 || year > 2100) {
+    throw Object.assign(new Error('Kunci sequence penomoran aset tidak valid.'), { statusCode: 400 });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query<{ last_sequence: number }>(
+      `INSERT INTO asset_number_sequences (owner_division_id, asset_code, sequence_year, last_sequence)
+       SELECT id, $2, $3, 1 FROM divisions
+       WHERE UPPER(code) = UPPER($1) AND is_active = TRUE
+       ON CONFLICT (owner_division_id, asset_code, sequence_year)
+       DO UPDATE SET last_sequence = asset_number_sequences.last_sequence + 1
+       RETURNING last_sequence`,
+      [owner, code, year],
+    );
+    if (result.rows.length !== 1) {
+      throw Object.assign(new Error(`Owner aset "${owner}" tidak ditemukan atau nonaktif pada PostgreSQL.`), { statusCode: 409 });
+    }
+    await client.query('COMMIT');
+    const sequence = Number(result.rows[0].last_sequence);
+    if (!Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error('PostgreSQL mengembalikan sequence nomor aset yang tidak valid.');
+    }
+    return sequence;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /** True after an authoritative PostgreSQL runtime failure; restart is required. */
