@@ -1575,10 +1575,15 @@ async function startServer() {
              AND (UPPER(c.code) = UPPER($2) OR a.asset_number LIKE $3)`,
           [rule.owner_division, rule.asset_code, `${rule.owner_division}-${rule.asset_code}-%`]
         );
-        const sequence = AssetNumberingEngine.getAssetSequenceSnapshot().find(s =>
-          s.division === rule.owner_division && s.code === rule.asset_code
+        const sequence = await queryRbac<{ current: number }>(
+          `SELECT s.last_sequence AS current
+           FROM asset_number_sequences s
+           JOIN divisions d ON d.id = s.owner_division_id
+           WHERE UPPER(d.code) = UPPER($1) AND UPPER(s.asset_code) = UPPER($2)
+             AND s.sequence_year = $3`,
+          [rule.owner_division, rule.asset_code, new Date().getFullYear()],
         );
-        return { ...rule, usage_count: Number(usage.rows[0]?.count || 0), sequence_current: sequence?.current || 0 };
+        return { ...rule, usage_count: Number(usage.rows[0]?.count || 0), sequence_current: Number(sequence.rows[0]?.current || 0) };
       }));
       res.json({ success: true, data });
     } catch (err: any) {
