@@ -725,7 +725,7 @@ async function startServer() {
       if (isPostgresPersistenceActive() && !(await isActiveSuperadminInDatabase(actor.id))) {
         return res.status(403).json({ success: false, message: 'Assignment Superadmin Anda sudah tidak aktif.' });
       }
-      const result = await withRbacTransaction(async client => {}
+      const result = await withRbacTransaction(async client => {
         const target = await client.query('SELECT id, name, email, role, is_active FROM users WHERE id = $1', [userId]);
         const user = target.rows[0];
         if (!user) throw new Error('RBAC_USER_NOT_FOUND');
