@@ -642,7 +642,7 @@ async function main() {
     profileClient.on('error', e => console.error('[employee profile verification async error]', e.message));
     await profileClient.connect();
     const profileRows = await profileClient.query(
-      `SELECT u.email, u.role, u.office_location_id, r.role_key, ur.is_primary
+      `SELECT u.email, u.role, u.job_level_code, u.unit_id, u.office_location_id, r.role_key, ur.is_primary
        FROM users u
        LEFT JOIN gabah_user_roles ur ON ur.user_id = u.id::text
        LEFT JOIN gabah_roles r ON r.id = ur.role_id
@@ -662,10 +662,10 @@ async function main() {
       && hasRole(AUDITOR_EMAIL, 'auditor', false) && hasRole(AUDITOR_EMAIL, 'karyawan', true);
     const adminProfile = rowsFor(ADMIN_EMAIL).every(row => row.role === 'Admin GABAH')
       && hasRole(ADMIN_EMAIL, 'superadmin', true);
-    const scLocationProfile = rowsFor(SC_EMAIL).every(row => row.role === 'Karyawan' && row.office_location_id === 'OFF-RPC')
+    const scLocationProfile = rowsFor(SC_EMAIL).every(row => row.role === 'Karyawan' && row.job_level_code === 'STAF' && row.unit_id === null && row.office_location_id === 'OFF-RPC')
       && hasRole(SC_EMAIL, 'karyawan', true)
       && !rowsFor(SC_EMAIL).some(row => ['supply_chain', 'pibc'].includes(row.role_key));
-    const pibcLocationProfile = rowsFor(PIBC_EMAIL).every(row => row.role === 'Karyawan' && row.office_location_id === 'OFF-PIBC')
+    const pibcLocationProfile = rowsFor(PIBC_EMAIL).every(row => row.role === 'Karyawan' && row.job_level_code === 'STAF' && row.unit_id === null && row.office_location_id === 'OFF-PIBC')
       && hasRole(PIBC_EMAIL, 'karyawan', true)
       && !rowsFor(PIBC_EMAIL).some(row => ['supply_chain', 'pibc'].includes(row.role_key));
     record('Migration 048 preserves IT/GA/Auditor as secondary capabilities and Karyawan as primary profile',
