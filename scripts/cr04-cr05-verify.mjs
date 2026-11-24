@@ -737,13 +737,14 @@ async function main() {
       record('Second application instance boots against the same PostgreSQL database', 'health 200',
         peerReady ? 'health 200' : 'no health', peerReady);
       if (!peerReady) throw new Error('second application instance did not become ready');
+      const peerAdminSession = { cookie: '' };
       const peerAdminLogin = await req(numberingPeerBase, 'POST', '/api/auth/login', {
         body: { email: ADMIN_EMAIL, password: ADMIN_PASS },
+        token: peerAdminSession,
       });
-      const peerAdminToken = peerAdminLogin.json?.data?.token || '';
-      record('Second app instance authenticates the same Superadmin account', '200 + token',
-        `HTTP ${peerAdminLogin.status}`, peerAdminLogin.status === 200 && Boolean(peerAdminToken));
-      if (!peerAdminToken) throw new Error('second app instance admin login failed');
+      record('Second app instance authenticates the same Superadmin account', '200 + HttpOnly cookie, no JSON token',
+        `HTTP ${peerAdminLogin.status}`, peerAdminLogin.status === 200 && Boolean(peerAdminSession.cookie) && !peerAdminLogin.json?.data?.token);
+      if (!peerAdminSession.cookie) throw new Error('second app instance admin login failed');
 
       const suffix = crypto.randomBytes(6).toString('hex');
       const assetPayload = (label) => ({
@@ -756,7 +757,7 @@ async function main() {
       });
       const [numberingA, numberingB] = await Promise.all([
         req(base, 'POST', '/api/assets', { token: adminToken, body: assetPayload('A') }),
-        req(numberingPeerBase, 'POST', '/api/assets', { token: peerAdminToken, body: assetPayload('B') }),
+        req(numberingPeerBase, 'POST', '/api/assets', { token: peerAdminSession, body: assetPayload('B') }),
       ]);
       const numberA = numberingA.json?.data?.asset_number || '';
       const numberB = numberingB.json?.data?.asset_number || '';
@@ -803,7 +804,7 @@ async function main() {
       });
       const [contractA, contractB] = await Promise.all([
         req(base, 'POST', '/api/contracts', { token: adminToken, body: contractPayload('A') }),
-        req(numberingPeerBase, 'POST', '/api/contracts', { token: peerAdminToken, body: contractPayload('B') }),
+        req(numberingPeerBase, 'POST', '/api/contracts', { token: peerAdminSession, body: contractPayload('B') }),
       ]);
       const contractNumberA = contractA.json?.data?.contract_number || '';
       const contractNumberB = contractB.json?.data?.contract_number || '';
@@ -1232,7 +1233,8 @@ async function main() {
     const rbacPeerBase = `http://127.0.0.1:${rbacPeerPort}`;
     const rbacPeer = spawnServer({ port: rbacPeerPort, databaseUrl: TEST_DB_URL, nodeEnv: 'production' });
     const originalAdditionalRoleIds = gaRole ? [Number(gaRole.id)] : [];
-    let rbacPeerToken = '';
+    const rbacPeerSession = { cookie: '' };
+    const rbacPeerAdminSession = { cookie: '' };
     let rbacRoleRemoved = false;
     try {
       const peerReady = await waitForServer(rbacPeerBase);
@@ -1241,20 +1243,20 @@ async function main() {
       if (!peerReady) throw new Error('RBAC peer instance did not become ready');
       const peerLogin = await req(rbacPeerBase, 'POST', '/api/auth/login', {
         body: { email: KARYAWAN_EMAIL, password: USER_PASS },
+        token: rbacPeerSession,
       });
-      rbacPeerToken = peerLogin.json?.data?.token || '';
-      record('Karyawan obtains a session on the peer instance', '200 + token',
-        `HTTP ${peerLogin.status}`, peerLogin.status === 200 && Boolean(rbacPeerToken));
-      if (!rbacPeerToken) throw new Error('Karyawan peer login failed');
+      record('Karyawan obtains a session on the peer instance', '200 + HttpOnly cookie, no JSON token',
+        `HTTP ${peerLogin.status}`, peerLogin.status === 200 && Boolean(rbacPeerSession.cookie) && !peerLogin.json?.data?.token);
+      if (!rbacPeerSession.cookie) throw new Error('Karyawan peer login failed');
       const peerAdminLogin = await req(rbacPeerBase, 'POST', '/api/auth/login', {
         body: { email: ADMIN_EMAIL, password: ADMIN_PASS },
+        token: rbacPeerAdminSession,
       });
-      const rbacPeerAdminToken = peerAdminLogin.json?.data?.token || '';
-      record('Superadmin obtains an independent session on the RBAC peer', '200 + token',
-        `HTTP ${peerAdminLogin.status}`, peerAdminLogin.status === 200 && Boolean(rbacPeerAdminToken));
-      if (!rbacPeerAdminToken) throw new Error('peer Superadmin login failed');
+      record('Superadmin obtains an independent session on the RBAC peer', '200 + HttpOnly cookie, no JSON token',
+        `HTTP ${peerAdminLogin.status}`, peerAdminLogin.status === 200 && Boolean(rbacPeerAdminSession.cookie) && !peerAdminLogin.json?.data?.token);
+      if (!rbacPeerAdminSession.cookie) throw new Error('peer Superadmin login failed');
 
-      const peerInitialContracts = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerToken });
+      const peerInitialContracts = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerSession });
       record('Peer instance initially honors the assigned GA contracts.read role', '200',
         `HTTP ${peerInitialContracts.status}`, peerInitialContracts.status === 200);
 
@@ -1272,10 +1274,10 @@ async function main() {
           latest = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerToken });
           if (latest.status === expectedStatus) return latest;
           if (latest.status === 401) {
-            const relogin = await req(rbacPeerBase, 'POST', '/api/auth/login', {
+            await req(rbacPeerBase, 'POST', '/api/auth/login', {
               body: { email: KARYAWAN_EMAIL, password: USER_PASS },
+              token: rbacPeerSession,
             });
-            rbacPeerToken = relogin.json?.data?.token || rbacPeerToken;
           }
           await new Promise(resolve => setTimeout(resolve, 250));
         }
@@ -1307,7 +1309,7 @@ async function main() {
         scopesTableRenamed = true;
         let peerAfterFailure = null;
         for (let attempt = 0; attempt < 48; attempt += 1) {
-          peerAfterFailure = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerAdminToken });
+          peerAfterFailure = await req(rbacPeerBase, 'GET', '/api/contracts', { token: rbacPeerAdminSession });
           if (peerAfterFailure.status === 403) break;
           await new Promise(resolve => setTimeout(resolve, 250));
         }
