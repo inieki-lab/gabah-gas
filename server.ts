@@ -4550,6 +4550,9 @@ async function startServer() {
       loans: db.loans,
       tickets: db.tickets,
       canReadOwnerScope,
+      canReadTicketUnit: (unitId: string) => isPostgresPersistenceActive()
+        ? hasRbacScope(String(actor.id), 'unit', unitId, 'tickets')
+        : unitId === 'UNIT-PIBC-ME' && hasApplicationRole(actor, 'me'),
     });
     res.json({ success: true, data: visibleItems });
   });
